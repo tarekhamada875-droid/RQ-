@@ -1,0 +1,348 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Amiri", Georgia, serif;
+
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+  --shadow: none;
+  --shadow-inner: none;
+}
+
+/* Configure Dark Mode for Tailwind v4 to work with the .dark class */
+@custom-variant dark (.dark &);
+
+/* Disable all hover states across the app completely as per user request to make taps and clicks instant like a switch */
+@custom-variant hover (&:where(.disabled-hover-state-active));
+
+
+
+@layer base {
+  /* Prevent copy/paste and highlight selections across the app unless it's an input/textarea */
+  * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
+  :root {
+    --bg-main: #faf9f6; /* alabaster */
+    --text-main: #0f172a; /* slate-900 */
+    --card-bg: #ffffff;
+    --card-border: #cbd5e1; /* slate-300 (high contrast) */
+  }
+
+  .dark {
+    --bg-main: #000000; /* Pure black top */
+    --text-main: #f4f4f5; /* Clean neutral light text */
+    --card-bg: #111112; /* Sleek card background contrasted with grid background */
+    --card-border: #1e1e1f; /* Fine neutral border */
+
+    /* Override standard tailwind slate colors to match dark style */
+    --color-slate-950: #000000 !important;
+    --color-slate-900: #111112 !important;
+    --color-slate-800: #1e1e20 !important;
+    --color-slate-700: #2f3033 !important;
+    --color-slate-600: #454649 !important;
+    --color-slate-500: #6b6c70 !important;
+    --color-slate-400: #939498 !important;
+    --color-slate-300: #bebfc2 !important;
+    --color-slate-200: #e0e1e3 !important;
+    --color-slate-100: #f0f1f3 !important;
+    --color-slate-50: #fafafb !important;
+
+    /* Override blue colors in dark mode to retain cohesive theme */
+    --color-blue-950: #000000 !important;
+    --color-blue-900: #1e1e1f !important;
+    --color-blue-800: #2a2b2d !important;
+    --color-blue-700: #3c3d3f !important;
+    --color-blue-600: #4e4f52 !important;
+    --color-blue-500: #3b82f6 !important;
+  }
+
+  /* Theme transitions removed entirely for absolute maximum performance and zero stutter as chosen by user */
+  .disable-transitions,
+  .disable-transitions *,
+  .disable-transitions *::before,
+  .disable-transitions *::after {
+    -webkit-transition: none !important;
+    -moz-transition: none !important;
+    -ms-transition: none !important;
+    -o-transition: none !important;
+    transition: none !important;
+  }
+
+  html, body {
+    @apply w-full h-full antialiased overflow-hidden;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none !important; /* Force prevent pull-to-refresh */
+    -webkit-overflow-scrolling: touch;
+    position: fixed; /* Prevent OS level elastic bounce */
+  }
+
+  #root {
+    @apply h-full w-full flex flex-col overflow-hidden;
+  }
+
+  /* Reset some specific elements that might need forced red for delete/close as per user request */
+  .btn-delete, .btn-close {
+    background-color: #dc2626 !important; /* bg-red-600 */
+    color: white !important;
+  }
+
+  .laptop-view {
+    font-size: 1.15rem;
+  }
+  
+  .laptop-view .text-\[10px\] { font-size: 12px; }
+  .laptop-view .text-xs { font-size: 14px; }
+  .laptop-view .text-sm { font-size: 16px; }
+  .laptop-view .text-base { font-size: 18px; }
+  .laptop-view .text-lg { font-size: 20px; }
+  .laptop-view .text-xl { font-size: 24px; }
+  .laptop-view .text-2xl { font-size: 30px; }
+  .laptop-view .text-3xl { font-size: 36px; }
+  .laptop-view .text-4xl { font-size: 44px; }
+  .laptop-view .text-5xl { font-size: 56px; }
+  .laptop-view .text-6xl { font-size: 72px; }
+}
+
+@layer utilities {
+  html.dark,
+  body.dark,
+  .dark #root,
+  .dark .theme-logged-in,
+  .dark.theme-logged-in,
+  .dark-night-grid {
+    background-color: #000000 !important;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, #000000 0%, #000000 40%, rgba(16, 185, 129, 0.25) 100%) !important;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(
+        to bottom, 
+        #000000 0%, 
+        #000000 20%, 
+        color-mix(in srgb, var(--theme-accent-color, #10b981) 12%, #000000) 60%, 
+        color-mix(in srgb, var(--theme-accent-color, #10b981) 32%, #000000) 100%
+      ) !important;
+    background-size: 32px 32px, 32px 32px, 100% 100% !important;
+    background-position: 0 0, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .custom-scrollbar-slate::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar-slate::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+  }
+  .custom-scrollbar-slate::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar-slate::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .custom-scrollbar-emerald::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar-emerald::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+  .custom-scrollbar-emerald::-webkit-scrollbar-thumb {
+    background: rgba(5, 150, 105, 0.3);
+    border-radius: 10px;
+  }
+  .custom-scrollbar-emerald::-webkit-scrollbar-thumb:hover {
+    background: rgba(5, 150, 105, 0.5);
+  }
+
+  .stable-scrollbar {
+    scrollbar-gutter: stable;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar,
+  .hide-scroll-bar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .scrollbar-hide,
+  .no-scrollbar,
+  .hide-scroll-bar {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
+  }
+
+  /* Mobile text system: content can wrap; compact labels scale within readable limits. */
+  .text-mobile-wrap {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .text-mobile-fluid {
+    font-size: clamp(0.75rem, 2.8vw, 1.125rem);
+    line-height: 1.25;
+  }
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 
+  =========================================
+  HIGH CONTRAST BORDERS & DIVIDERS CUSTOM OVERRIDES
+  =========================================
+  This ensures distinct visual separation across both light and dark modes, 
+  combating the "blended" or "washed out" feeling of modern interfaces.
+*/
+
+/* Keep transparent borders absolutely transparent */
+.dark .border-slate-800,
+.dark .border-slate-900 {
+  border-color: #38393b !important; /* Sharp, high-contrast Slate-800/900 outline in dark mode */
+}
+.dark .border-slate-700 {
+  border-color: #4e4f52 !important; /* Stronger accent border contrast */
+}
+.dark .border-slate-100 {
+  border-color: #303133 !important; /* Premium neutral inner border definition */
+}
+.dark .border-slate-200 {
+  border-color: #424345 !important; /* Standard high-contrast borders for inputs and buttons */
+}
+.dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #303133 !important; /* High-contrast subtle divider */
+}
+.dark .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #303133 !important; /* High-contrast subtle divider */
+}
+.dark .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #3f4042 !important; /* Stronger divider definition */
+}
+
+/* Keep transparent borders absolutely transparent */
+.border-transparent, .border-b-transparent, .border-t-transparent, .border-l-transparent, .border-r-transparent {
+  border-color: transparent !important;
+}
+
+/* Clean, premium static footer text styling without shimmer animations */
+.brand-shimmer-text {
+  display: inline-block;
+  color: #94a3b8; /* Slate-400 for light mode */
+  font-weight: 500;
+}
+
+.dark .brand-shimmer-text {
+  color: #64748b; /* Slate-500 for dark mode */
+}
+
+/* Hardware-accelerated lightweight popup animations */
+@keyframes popup-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes overlay-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-popup-30fps {
+  animation: popup-scale-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-overlay-30fps {
+  animation: overlay-fade-in 0.15s ease-out forwards;
+  will-change: opacity;
+}
+
+/* Freeze dynamic layout properties to isolate composition pipelines entirely within GPU layers */
+.animate-popup-30fps, 
+.animate-overlay-30fps,
+.brand-shimmer-text,
+#balance_arrows_container * {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
+}
+
+/* Fluid auto-contained font utility overrides */
+.text-mobile-fluid {
+  font-size: clamp(0.8rem, 2.5vw + 0.2rem, 1.15rem) !important;
+  line-height: 1.3 !important;
+}
+
+.text-mobile-wrap {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+
+
+
+
+
+
+
+

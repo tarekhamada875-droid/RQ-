@@ -1,0 +1,71 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export const APP_TEXT = {
+  APP_NAME: "RQ SYSTEM",
+  SYSTEM_DESCRIPTION: "RQ SYSTEM الذكي",
+  LOGIN: {
+    PHONE_PLACEHOLDER: "رقم الموبايل",
+    SUBMIT: "دخول",
+    LOADING: "جاري الدخول...",
+    ERROR_PHONE_REQUIRED: "يرجى إدخال رقم الهاتف",
+    ERROR_NOT_REGISTERED: "رقم الهاتف غير مسجل",
+    ERROR_INACTIVE: "عذراً، الجراج غير مفعل حالياً. يرجى التواصل مع الإدارة.",
+    ERROR_WRONG_PIN: "الرقم السري خطأ",
+  },
+  GARAGE: {
+    CHECK_IN_OUT_TITLE: "تسجيل (دخول / خروج)",
+    PLATE_PLACEHOLDER: "مثال: أ ب ج 1234",
+    CHECK_IN: "دخول",
+    CHECK_OUT: "خروج",
+    INSIDE_COUNT: "بالداخل",
+    HOURLY_RATE: "سعر الساعة",
+    RECENT_ACTIVITY: "آخر عمليات الخروج",
+    CURRENCY: "ج.م",
+    EMPTY_GARAGE: "الجراج فارغ حالياً",
+    MODAL_TYPE_TITLE: "نوع الركنة؟",
+    MODAL_PLATE_LABEL: "لوحة:",
+    TYPE_HOURLY: "بالساعة",
+    TYPE_OVERNIGHT: "مبيت",
+    CANCEL: "إلغاء",
+    CONFIRM_EXIT: "تأكيد الخروج",
+    DURATION_LABEL: "مدة الركنة:",
+    ENTRY_TIME_LABEL: "وقت الدخول:",
+    TYPE_LABEL: "نوع الركنة:",
+    AMOUNT_LABEL: "المبلغ المطلوب:",
+    CONFIRM_PAYMENT: "تأكيد الخروج والدفع",
+    DAILY_REPORT: "تقرير اليوم",
+    TOTAL_COLLECTED: "إجمالي المحصل اليوم",
+    VEHICLES_EXITED: "عدد السيارات المغادرة",
+    NO_TRANSACTIONS: "لا توجد عمليات خروج اليوم بعد",
+    OFFLINE_MODE: "أنت تعمل الآن بدون إنترنت - سيتم حفظ البيانات محلياً",
+    ONLINE_MODE: "متصل بالإنترنت",
+  },
+  ADMIN: {
+    TITLE: "لوحة تحكم النظام",
+    ADD_GARAGE: "إضافة جراج جديد",
+    GARAGE_NAME: "اسم الجراج",
+    PHONE: "رقم الموبايل",
+    HOURLY_PRICE: "سعر الساعة",
+    OVERNIGHT_PRICE: "سعر المبيت",
+    SAVE: "حفظ الجراج",
+    GARAGE_LIST: "الجراجات المشتركة",
+    ACTIVE: "مفعل",
+    INACTIVE: "معطل",
+    DELETE_CONFIRM: "تم حذف الجراج بنجاح",
+    ADD_SUCCESS: "تم إضافة الجراج بنجاح",
+    DUPLICATE_ERROR: "هذا الجراج (الاسم أو الرقم) مسجل بالفعل",
+    STATS_TITLE: "إحصائيات الجراج",
+    TOTAL_VEHICLES: "إجمالي السيارات المغادرة",
+    TOTAL_REVENUE: "إجمالي الإيرادات",
+    CLOSE: "إغلاق",
+  },
+  ERRORS: {
+    GENERAL: "حدث خطأ ما",
+    RELOAD: "إعادة تحميل الصفحة",
+    NOT_FOUND: "هذه السيارة غير موجودة بالجراج حالياً",
+  }
+};
+

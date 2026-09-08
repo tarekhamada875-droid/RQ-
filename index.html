@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>RQ</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RQ" />
+    <script>
+      // Browser compatibility and theme initialization check
+      (function() {
+        try {
+          // Instantly set dark/light theme class to avoid flash on reload
+          var savedTheme = localStorage.getItem('theme');
+          var theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.classList.remove('dark', 'light');
+          document.documentElement.classList.add(theme);
+
+          var isModern = typeof Promise !== "undefined" && typeof Proxy !== "undefined";
+          if (!isModern) {
+            document.documentElement.className += " browser-unsupported";
+          }
+        } catch (e) {
+          document.documentElement.className += " browser-unsupported";
+        }
+      })();
+
+      // Register clean service worker for PWA installability helper
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('PWA ServiceWorker registered with scope:', reg.scope);
+          }).catch(function(err) {
+            console.warn('PWA ServiceWorker registration failed:', err);
+          });
+        });
+      }
+    </script>
+    <style>
+      /* Prevent initial white flashes before React script compiles */
+      html, body {
+        background-color: #faf9f6;
+        margin: 0;
+        padding: 0;
+      }
+      html.dark, html.dark body {
+        background-color: #000000;
+      }
+      .browser-unsupported-message { display: none; }
+      .browser-unsupported .browser-unsupported-message {
+        display: block;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: #f8fafc;
+        z-index: 9999;
+        padding: 2rem;
+        text-align: center;
+        font-family: sans-serif;
+        direction: rtl;
+      }
+      .unsupported-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        margin: 2rem auto;
+      }
+
+      /* Landscape configuration warning styles */
+      .landscape-warning-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: #f8fafc;
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        padding: 2rem;
+        text-align: center;
+        direction: rtl;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .dark .landscape-warning-overlay {
+        background: #000000;
+      }
+      .landscape-card {
+        background: white;
+        border: 1px solid #cbd5e1;
+        padding: 2.5rem 2rem;
+        border-radius: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+        max-width: 450px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .dark .landscape-card {
+        background: #1e1e1f;
+        border-color: #2e2f30;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      }
+      .phone-icon-wrapper {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .phone-icon {
+        width: 44px;
+        height: 44px;
+        color: #10b981;
+        animation: rotatePhone 2.5s ease-in-out infinite;
+      }
+      .rotate-arrow {
+        position: absolute;
+        width: 72px;
+        height: 72px;
+        color: #34d399;
+        opacity: 0.8;
+        transform: rotate(45deg);
+        animation: spinArrow 2.5s ease-in-out infinite;
+      }
+      .landscape-title {
+        font-weight: 900;
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+        color: #0f172a;
+      }
+      .dark .landscape-title {
+        color: #fafafb;
+      }
+      .landscape-desc {
+        color: #64748b;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        font-weight: bold;
+        margin: 0;
+      }
+      .dark .landscape-desc {
+        color: #9e9fa2;
+      }
+      @keyframes rotatePhone {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(90deg); }
+      }
+      @keyframes spinArrow {
+        0%, 100% { transform: rotate(45deg) scale(0.9); opacity: 0.5; }
+        50% { transform: rotate(225deg) scale(1.1); opacity: 1; }
+      }
+      
+      /* Only show in landscape orientation on handheld/touch devices - Disabled to let React App.tsx handle it with live dashboard rates */
+    </style>
+  </head>
+  <body>
+    <!-- Landscape Orientation Blocker for Touch Devices -->
+    <div class="landscape-warning-overlay">
+      <div class="landscape-card">
+        <div class="phone-icon-wrapper">
+          <svg class="phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <path d="M12 18h.01"></path>
+          </svg>
+          <svg class="rotate-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+          </svg>
+        </div>
+        <h2 class="landscape-title">يرجى تدوير الهاتف للوضع الرأسي</h2>
+        <p class="landscape-desc">
+          برنامج RQ مصمم بالكامل للعمل بالوضع العمودي لضمان تجربة تحكم سريعة وعملية.
+        </p>
+      </div>
+    </div>
+
+    <div class="browser-unsupported-message">
+      <div class="unsupported-card">
+        <h2 style="color: #ef4444; font-weight: 900; margin-bottom: 1rem;">المتصفح قديم جداً</h2>
+        <p style="color: #64748b; font-size: 0.875rem; line-height: 1.6; font-weight: bold;">
+          عذراً، هذا المتصفح لا يدعم التقنيات الحديثة المطلوبة لتشغيل النظام. 
+          يرجى تحديث المتصفح (Chrome, Safari, Edge) إلى أحدث نسخة لضمان عمل النظام بشكل صحيح وسريع.
+        </p>
+      </div>
+    </div>
+    <div id="root">
+      <div style="position:fixed;inset:0;background-color:#020617;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;direction:rtl;text-align:center;color:#fff;z-index:9999;">
+        <div style="background-color:#0f172a;border:2px solid #1e293b;border-radius:1.5rem;padding:2rem;max-width:24rem;width:100%;display:flex;flex-direction:column;align-items:center;gap:1.5rem;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+          <div style="width:5rem;height:5rem;background-color:rgba(239,68,68,0.1);color:#f87171;border-radius:1rem;display:flex;align-items:center;justify-content:center;border:1px solid rgba(239,68,68,0.2);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M2 2l20 20"/><path d="M8.5 8.5A6 6 0 0 1 12 8c1.66 0 3.16.68 4.24 1.76"/><path d="M5 5a10 10 0 0 1 14 0"/><path d="M1.42 1.42l21.16 21.16"/></svg>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <h2 style="font-size:1.5rem;font-weight:900;margin:0;">مفيش اتصال بالإنترنت</h2>
+            <p style="color:#cbd5e1;font-weight:700;font-size:1rem;line-height:1.6;margin:0;">البرنامج بيشتغل بالنت بس، اتأكد من توصيل النت وجرب تاني.</p>
+          </div>
+          <div style="width:100%;padding-top:0.5rem;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;color:#94a3b8;font-size:0.75rem;font-weight:700;background-color:rgba(30,41,59,0.8);padding:0.75rem 1rem;border-radius:0.75rem;border:1px solid rgba(51,65,85,0.5);">
+              <div style="width:0.5rem;height:0.5rem;border-radius:50%;background-color:#fbbf24;"></div>
+              <span>جاري فحص الاتصال بالشبكة تلقائياً...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

@@ -1,0 +1,6 @@
+{
+  "name": "RQ",
+  "description": "نظام متكامل لإدارة جراجات السيارات بتعدد المستأجرين، يدعم حسابات الساعة والمبيت مع لوحة تحكم إدارية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

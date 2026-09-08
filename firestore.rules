@@ -1,0 +1,714 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: garages
+// Document ID: garageId
+// Fields:
+//   - name: string (required)
+//   - phone: string (required)
+//   - hourlyRate: number (required)
+//   - overnightRate: number (required)
+//   - subscriptionExpiry: timestamp (required)
+//   - createdAt: timestamp (required)
+//   - subscriptionDays: number (required)
+//   - billingModel: string ('subscription' | 'commission') (optional)
+//   - commissionPerVehicle: number (optional)
+//   - monthlySubscriptionFee: number (optional)
+//   - balance: number (optional)
+//   - isLocked: bool (optional)
+//   - lastSubscriptionDeduction: timestamp (optional)
+//   - lastPaidFriday: string (optional)
+//
+// Collection: garages/{garageId}/vehicles
+// Document ID: vehicleId
+// Fields:
+//   - plateNumber: string (required)
+//   - plateNumberRaw: string (required)
+//   - entryTime: timestamp (required)
+//   - exitTime: timestamp (optional)
+//   - type: string ('hourly' | 'overnight') (required)
+//   - garageId: string (required)
+//   - status: string ('inside' | 'outside') (required)
+//   - totalCost: number (optional)
+//
+// Collection: staff
+// Document ID: staffId
+// Fields:
+//   - name: string (required)
+//   - phone: string (required)
+//   - garageId: string (required)
+//   - role: string ('staff') (required)
+//   - currentSessionId: string (optional)
+//
+// Collection: activity_logs
+// Document ID: logId
+// Fields:
+//   - garageId: string (required)
+//   - staffId: string (optional)
+//   - staffName: string (required)
+//   - actionType: string ('check_in' | 'check_out') (required)
+//   - plateNumber: string (required)
+//   - timestamp: timestamp (required)
+//
+// Collection: delegates
+// Document ID: delegateId
+// Fields:
+//   - name: string (required)
+//   - phone: string (required)
+//   - pin: string (required)
+//   - role: string ('delegate') (required)
+//   - currentSessionId: string (optional)
+//   - createdAt: timestamp (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Deny & Catch-All
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // ===============================================================
+    // Zero-Trust Cryptographic Session Matching Helpers
+    // ===============================================================
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admin_sessions/$(request.auth.uid));
+    }
+
+    function isAdminPin(pin) {
+      return pin is string && (
+        exists(/databases/$(database)/documents/admin_settings/auth_pin) && pin == get(/databases/$(database)/documents/admin_settings/auth_pin).data.pin
+      );
+    }
+
+    function isSupervisor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid));
+    }
+
+    function isDelegate() {
+      return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid));
+    }
+
+    function isGarageDeleting(garageId) {
+      return exists(/databases/$(database)/documents/garages/$(garageId)) &&
+             'isDeleting' in get(/databases/$(database)/documents/garages/$(garageId)).data &&
+             get(/databases/$(database)/documents/garages/$(garageId)).data.isDeleting == true;
+    }
+
+    function isGarageSession(garageId) {
+      return isSignedIn() && (
+        request.auth.uid == garageId ||
+        (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId) ||
+        (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) && 
+         exists(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)) &&
+         get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId)
+      );
+    }
+
+    function isSupervisorSession(supervisorId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.entityId == supervisorId;
+    }
+
+    function isDelegateSession(delegateId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.entityId == delegateId;
+    }
+
+    function getDelegateIdFromSession() {
+      return get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.entityId;
+    }
+
+    function isDelegateForGarage(garageId) {
+      return isDelegate() &&
+        exists(/databases/$(database)/documents/garages/$(garageId)) &&
+        (
+          (('createdByDelegateId' in get(/databases/$(database)/documents/garages/$(garageId)).data) &&
+           get(/databases/$(database)/documents/garages/$(garageId)).data.createdByDelegateId == getDelegateIdFromSession()) ||
+          (('referrerId' in get(/databases/$(database)/documents/garages/$(garageId)).data) &&
+           get(/databases/$(database)/documents/garages/$(garageId)).data.referrerId == getDelegateIdFromSession())
+        );
+    }
+
+    function isStaffSession(staffId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == staffId;
+    }
+
+    function isOwnerDeleter(garageId, vehicleData) {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
+         vehicleData.staffId == null) ||
+        (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId &&
+         vehicleData.staffId is string &&
+         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == vehicleData.staffId)
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isRateLimited(operationId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)) &&
+        (request.time.toMillis() - get(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.lastOperationAt.toMillis()) < 5000;
+    }
+
+    function hasRateLimitReservation(operationId) {
+      return isSignedIn() &&
+        getAfter(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.keys().hasOnly(['lastOperationAt']) &&
+        getAfter(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.lastOperationAt == request.time;
+    }
+
+    // ===============================================================
+    // Verification Schema Rules
+    // ===============================================================
+
+    function isValidGarage(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.phone is string && (data.phone.size() == 0 || (data.phone.size() >= 3 && data.phone.size() <= 20)) &&
+             data.hourlyRate is number && data.hourlyRate >= 0 &&
+             data.overnightRate is number && data.overnightRate >= 0 &&
+             data.createdAt is timestamp &&
+             (data.billingModel == 'commission' || data.billingModel == 'subscription') &&
+             data.pin is string && data.pin.size() >= 4 &&
+             (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128)) &&
+             (!('commissionPerVehicle' in data) || (data.commissionPerVehicle is number && data.commissionPerVehicle >= 0)) &&
+             (!('balance' in data) || data.balance is number) &&
+             (!('isLocked' in data) || data.isLocked is bool) &&
+             (!('isDeleting' in data) || data.isDeleting is bool) &&
+             (!('dailyRefundCount' in data) || data.dailyRefundCount is number) &&
+             (!('lastRefundDate' in data) || data.lastRefundDate is string) &&
+             (!('recentExits' in data) || data.recentExits is list) &&
+             (!('lastTransactionDate' in data) || data.lastTransactionDate is string) &&
+             (!('lastRechargeDate' in data) || data.lastRechargeDate is timestamp) &&
+             (!('activePlates' in data) || data.activePlates is map) &&
+             (!('referredByGarageId' in data) || data.referredByGarageId == null || (data.referredByGarageId is string && isValidId(data.referredByGarageId))) &&
+             (!('referredByGarageName' in data) || data.referredByGarageName == null || data.referredByGarageName is string) &&
+             (!('referralRewardClaimed' in data) || data.referralRewardClaimed is bool) &&
+             (!('totalReferralRewardDays' in data) || data.totalReferralRewardDays is number) &&
+             (!('totalGaragesReferredCount' in data) || data.totalGaragesReferredCount is number);
+    }
+
+    function isGarageUpdateValid(data) {
+      return (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
+             (!('phone' in data) || (data.phone is string && (data.phone.size() == 0 || data.phone.size() >= 3))) &&
+             (!('hourlyRate' in data) || (data.hourlyRate is number && data.hourlyRate >= 0)) &&
+             (!('overnightRate' in data) || (data.overnightRate is number && data.overnightRate >= 0)) &&
+             (!('balance' in data) || data.balance is number) &&
+             (!('isLocked' in data) || data.isLocked is bool) &&
+             (!('carsInside' in data) || (data.carsInside is number && data.carsInside >= 0)) &&
+             (!('carsInsideCount' in data) || (data.carsInsideCount is int && data.carsInsideCount >= 0)) &&
+             (!('activeVehicles' in data) || data.activeVehicles is list) &&
+             (!('lastUpdated' in data) || data.lastUpdated is string || data.lastUpdated is timestamp) &&
+             (!('isTrial' in data) || data.isTrial is bool) &&
+             (!('dailyCapacity' in data) || data.dailyCapacity is number) &&
+             (!('hasMonthlySubscribers' in data) || data.hasMonthlySubscribers is bool) &&
+             (!('totalAdminRevenue' in data) || data.totalAdminRevenue is number) &&
+             (!('activePlates' in data) || data.activePlates is map) &&
+             (!('recentExits' in data) || data.recentExits is list) &&
+             (!('lastTransactionDate' in data) || data.lastTransactionDate is string) &&
+             (!('lastRechargeDate' in data) || data.lastRechargeDate is timestamp) &&
+             (!('lastRechargeAmount' in data) || data.lastRechargeAmount is number) &&
+             (!('lastRechargePackageName' in data) || data.lastRechargePackageName == null || data.lastRechargePackageName is string) &&
+             (!('lastReferralRewardAt' in data) || data.lastReferralRewardAt == null || data.lastReferralRewardAt is timestamp) &&
+             (!('activePackageName' in data) || data.activePackageName == null || data.activePackageName is string) &&
+             (!('packageName' in data) || data.packageName == null || data.packageName is string) &&
+             (!('billingModel' in data) || data.billingModel == null || data.billingModel is string) &&
+             (!('totalRevenue' in data) || (data.totalRevenue is number && data.totalRevenue >= 0)) &&
+             (!('totalVehiclesOut' in data) || (data.totalVehiclesOut is number && data.totalVehiclesOut >= 0)) &&
+             (!('todayRevenue' in data) || (data.todayRevenue is number && data.todayRevenue >= 0)) &&
+             (!('todayCount' in data) || (data.todayCount is number && data.todayCount >= 0)) &&
+             (!('dailyRefundCount' in data) || data.dailyRefundCount is number) &&
+             (!('lastRefundDate' in data) || data.lastRefundDate is string) &&
+             (!('dailyDeletionCount' in data) || data.dailyDeletionCount is number) &&
+             (!('lastDeletionDate' in data) || data.lastDeletionDate is string) &&
+             (!('lastGiftMonth' in data) || data.lastGiftMonth is string) &&
+             (!('currentSessionId' in data) || data.currentSessionId == null || (data.currentSessionId is string && data.currentSessionId.size() <= 128)) &&
+             (!('shimmerColor' in data) || data.shimmerColor is string) &&
+             (!('lastActive' in data) || data.lastActive == null || data.lastActive is timestamp) &&
+             (!('referredByGarageId' in data) || data.referredByGarageId == null || (data.referredByGarageId is string && isValidId(data.referredByGarageId))) &&
+             (!('referredByGarageName' in data) || data.referredByGarageName == null || data.referredByGarageName is string) &&
+             (!('referralRewardClaimed' in data) || data.referralRewardClaimed is bool) &&
+             (!('totalReferralRewardDays' in data) || data.totalReferralRewardDays is number) &&
+             (!('totalGaragesReferredCount' in data) || data.totalGaragesReferredCount is number) &&
+             (!('referralRewardAwardedAt' in data) || data.referralRewardAwardedAt == null || data.referralRewardAwardedAt is timestamp) &&
+             (!('lastReferralClaimAt' in data) || data.lastReferralClaimAt == null || data.lastReferralClaimAt is timestamp) &&
+             (!('balanceExpiry' in data) || data.balanceExpiry == null || data.balanceExpiry is timestamp) &&
+             (!('dailyCapacity' in data) || data.dailyCapacity is number) &&
+             (!('isDeleting' in data) || data.isDeleting is bool) &&
+             (!('isLocked' in data) || data.isLocked is bool);
+    }
+
+    function isValidVehicle(data) {
+      return data.plateNumber is string && data.plateNumber.size() > 0 && data.plateNumber.size() <= 20 &&
+             data.entryTime is timestamp &&
+             data.type in ['hourly', 'overnight'] &&
+             data.garageId is string && isValidId(data.garageId) &&
+             data.status in ['inside', 'outside'] &&
+             data.plateNumberRaw is string && data.plateNumberRaw.size() <= 20 &&
+             (!('totalCost' in data) || (data.totalCost is number && data.totalCost >= 0)) &&
+             (!('exitTime' in data) || data.exitTime is timestamp) &&
+             (!('isSubscriber' in data) || data.isSubscriber is bool) &&
+             (!('staffId' in data) || data.staffId == null || (data.staffId is string && isValidId(data.staffId))) &&
+             (!('staffName' in data) || (data.staffName is string && data.staffName.size() <= 100));
+    }
+
+    function isValidVehicleCreate(garageId, vehicleId) {
+      return incoming().keys().hasOnly([
+               'id', 'plate', 'plateNumber', 'plateNumberRaw', 'entryTime',
+               'type', 'garageId', 'status', 'staffId', 'staffName', 'isSubscriber'
+             ]) &&
+             incoming().id == vehicleId &&
+             incoming().plate == incoming().plateNumber &&
+             incoming().plateNumberRaw == vehicleId &&
+             incoming().garageId == garageId &&
+             incoming().entryTime == request.time &&
+             incoming().status == 'inside' &&
+             isValidVehicle(incoming());
+    }
+
+    function isValidVehicleUpdate(garageId, vehicleId) {
+      return existing().garageId == garageId &&
+             incoming().garageId == garageId &&
+             (!('id' in existing()) || incoming().id == existing().id) &&
+             incoming().plateNumberRaw == vehicleId &&
+             (
+               (existing().status == 'inside' &&
+                incoming().status == 'outside' &&
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'exitTime', 'totalCost']) &&
+                incoming().exitTime == request.time &&
+                incoming().totalCost is number && incoming().totalCost >= 0) ||
+               (existing().status == 'outside' &&
+                incoming().status == 'inside' &&
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'plate', 'plateNumber', 'plateNumberRaw', 'entryTime', 'type',
+                  'status', 'staffId', 'staffName', 'isSubscriber', 'exitTime', 'totalCost'
+                ]) &&
+                incoming().entryTime == request.time &&
+                incoming().plate == incoming().plateNumber &&
+                !('exitTime' in incoming()) &&
+                !('totalCost' in incoming()))
+             ) &&
+             isValidVehicle(incoming());
+    }
+
+    function isValidSubscriberCreate(garageId, subscriberId) {
+      return incoming().keys().hasOnly([
+               'id', 'plateNumber', 'plateNumberRaw', 'ownerName', 'phone',
+               'startDate', 'endDate', 'garageId', 'costUnits', 'createdAt'
+             ]) &&
+             incoming().id == subscriberId &&
+             incoming().garageId == garageId &&
+             incoming().createdAt == request.time &&
+             isValidSubscriber(incoming());
+    }
+
+    function isValidSubscriberUpdate(garageId, subscriberId) {
+      return existing().garageId == garageId &&
+             incoming().garageId == garageId &&
+             (!('id' in existing()) || incoming().id == existing().id) &&
+             incoming().diff(existing()).affectedKeys().hasOnly([
+               'plateNumber', 'plateNumberRaw', 'ownerName', 'phone',
+               'startDate', 'endDate', 'costUnits'
+             ]) &&
+             isValidSubscriber(incoming());
+    }
+
+    function isValidStaff(data) {
+      return data.keys().hasAll(['name', 'garageId', 'role', 'pin']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.pin is string && data.pin.size() >= 4 && data.pin.size() <= 10 &&
+             data.garageId is string && isValidId(data.garageId) &&
+             data.role == 'staff' &&
+             (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128));
+    }
+
+    function isValidActivityLog(data) {
+      return data.keys().hasAll(['garageId', 'staffName', 'actionType', 'plateNumber', 'timestamp']) &&
+             data.garageId is string && isValidId(data.garageId) &&
+             data.staffName is string && data.staffName.size() <= 100 &&
+             data.actionType in ['check_in', 'check_out', 'recharge', 'delete_refund', 'commission_payment'] &&
+             data.plateNumber is string && data.plateNumber.size() <= 150 &&
+             data.timestamp is timestamp &&
+             (!('staffId' in data) || data.staffId == null || (data.staffId is string && isValidId(data.staffId))) &&
+             (!('amount' in data) || data.amount is number) &&
+             (!('packageId' in data) || data.packageId == null || data.packageId is string) &&
+             (!('details' in data) || data.details is map) &&
+             (!('garageName' in data) || data.garageName == null || data.garageName is string);
+    }
+
+    function isValidDelegate(data) {
+      return ('name' in data) && ('phone' in data) && ('pin' in data) && ('role' in data) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 20 &&
+             data.pin is string && data.pin.size() >= 4 && data.pin.size() <= 10 &&
+             data.role == 'delegate' &&
+             (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('canCreateGarage' in data) || data.canCreateGarage is bool) &&
+             (!('commissionRate' in data) || data.commissionRate is number) &&
+             (!('totalRechargedAmount' in data) || data.totalRechargedAmount is number) &&
+             (!('lastSettledAt' in data) || data.lastSettledAt == null || data.lastSettledAt is timestamp);
+    }
+
+    function isValidSupervisor(data) {
+      return ('name' in data) && ('phone' in data) && ('pin' in data) && ('role' in data) &&
+             data.name is string && data.name.size() > 0 &&
+             data.phone is string && data.phone.size() >= 1 &&
+             data.pin is string && data.pin.size() >= 4 &&
+             data.role == 'supervisor';
+    }
+
+    function isValidRechargeRequest(data) {
+      return data.keys().hasAll(['garageId', 'garageName', 'delegateId', 'delegateName', 'packageId', 'packageName', 'status', 'createdAt']) &&
+             data.garageId is string && isValidId(data.garageId) &&
+             data.delegateId is string && isValidId(data.delegateId) &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt is timestamp &&
+             (('revenueAmount' in data && data.revenueAmount is number) || ('amount' in data && data.amount is number));
+    }
+
+    function isValidTopupRequest(data) {
+      return data.keys().hasAll(['garageId', 'garageName', 'packageName', 'amount', 'status', 'createdAt']) &&
+             data.garageId is string && isValidId(data.garageId) &&
+             data.garageName is string && data.garageName.size() <= 100 &&
+             data.packageName is string && data.packageName.size() <= 100 &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'completed', 'cancelled'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidPackage(data) {
+      return data.keys().hasAll(['name', 'price']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             (('vehiclesCount' in data && data.vehiclesCount is number && data.vehiclesCount > 0) || 
+              ('durationDays' in data && data.durationDays is number && data.durationDays > 0));
+    }
+
+    function isValidSubscriber(data) {
+      return data.keys().hasAll(['plateNumber', 'plateNumberRaw', 'ownerName', 'phone', 'startDate', 'endDate', 'garageId', 'createdAt']) &&
+             data.plateNumber is string &&
+             data.ownerName is string &&
+             data.phone is string &&
+             data.garageId is string &&
+             data.createdAt is timestamp;
+    }
+
+    function canRefreshOwnSession() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
+             incoming().lastActive is timestamp;
+    }
+
+    function isAllowedGarageSessionUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+               'hourlyRate', 'overnightRate', 'shimmerColor',
+               'currentSessionId', 'lastActive',
+               'todayRevenue', 'todayCount',
+               'carsInside', 'carsInsideCount', 'activeVehicles', 'lastUpdated',
+               'lastTransactionDate',
+               'totalRevenue', 'totalVehiclesOut'
+             ]) &&
+             isGarageUpdateValid(incoming());
+    }
+
+    // Session validation helpers
+    function isValidSessionDoc(data, expectedRole) {
+      return data.uid == request.auth.uid &&
+             data.role == expectedRole &&
+             data.entityId is string && data.entityId.size() > 0 &&
+             data.sessionId is string && data.sessionId.size() > 0 &&
+             data.isActive is bool;
+    }
+
+    function isSessionUpdateValid() {
+      return incoming().uid == existing().uid &&
+             incoming().role == existing().role &&
+             incoming().entityId == existing().entityId &&
+             (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
+             incoming().diff(existing()).affectedKeys().hasOnly(['lastActive', 'isActive', 'sessionId', 'createdAt']);
+    }
+
+    // ===============================================================
+    // Cryptographic Secure Sessions Mapping Rules (Server-Authoritative Only)
+    // ===============================================================
+
+    match /admin_sessions/{sessionUid} {
+      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      // Sessions can ONLY be created by the Server via Firebase Admin SDK
+      allow create: if false;
+      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
+      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+    }
+
+    match /admin_settings/{settingId} {
+      allow get: if isSignedIn() && (
+        isAdmin() || settingId in ['wallet_number', 'subscription_prices']
+      );
+      allow write: if isAdmin();
+    }
+
+    match /delegate_sessions/{sessionUid} {
+      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      // Sessions can ONLY be created by the Server via Firebase Admin SDK
+      allow create: if false;
+      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
+      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+    }
+
+    match /supervisor_sessions/{sessionUid} {
+      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      // Sessions can ONLY be created by the Server via Firebase Admin SDK
+      allow create: if false;
+      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
+      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+    }
+
+    match /garage_sessions/{sessionDocId} {
+      allow get: if isSignedIn() && (sessionDocId == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      // Sessions can ONLY be created by the Server via Firebase Admin SDK
+      allow create: if false;
+      allow update: if isSignedIn() && sessionDocId == request.auth.uid && isSessionUpdateValid();
+      allow delete: if isSignedIn() && (sessionDocId == request.auth.uid || isAdmin());
+    }
+
+    match /staff_sessions/{sessionUid} {
+      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      // Sessions can ONLY be created by the Server via Firebase Admin SDK
+      allow create: if false;
+      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
+      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+    }
+
+    // ===============================================================
+    // Business Collection Rules
+    // ===============================================================
+
+    match /recharge_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // Garages can request
+      allow update, delete: if false; // Server-only (Approve/Reject)
+    }
+
+    match /referral_rewards/{rewardId} {
+      allow get: if isValidId(rewardId) &&
+        (isAdmin() || isSupervisor() ||
+         (isDelegate() &&
+          ('referrerGarageId' in resource.data) &&
+          isDelegateForGarage(resource.data.referrerGarageId)));
+      allow list: if isAdmin() || isSupervisor();
+      allow create, update, delete: if (isAdmin() || isSupervisor()) && isValidId(rewardId);
+    }
+
+    match /topup_requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) &&
+        (isAdmin() || isSupervisor() ||
+         isGarageSession(resource.data.garageId) ||
+         isDelegateForGarage(resource.data.garageId));
+      allow list: if isAdmin() || isSupervisor() || (isDelegate() && isDelegateForGarage(resource.data.garageId)) || isGarageSession(resource.data.garageId);
+      allow create: if isSignedIn() && isValidTopupRequest(incoming()) && isValidId(requestId) && isGarageSession(incoming().garageId) &&
+                    !isGarageDeleting(incoming().garageId);
+      allow update: if (isAdmin() || isSupervisor() || (isGarageSession(existing().garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['status']))) && isValidId(requestId);
+      allow delete: if (isAdmin() || isSupervisor()) && isValidId(requestId);
+    }
+
+    match /packages/{packageId} {
+      allow get: if isSignedIn() && isValidId(packageId);
+      allow list: if isSignedIn();
+      allow create: if isAdmin() && isValidPackage(incoming()) && isValidId(packageId);
+      allow update: if isAdmin() && isValidPackage(incoming()) && isValidId(packageId);
+      allow delete: if isAdmin() && isValidId(packageId);
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    match /login_requests/{requestId} {
+      allow read: if isSignedIn() && isValidId(requestId) && 
+        (request.auth.uid == requestId || isAdmin() || isDelegate() || isSupervisor());
+      allow create: if isSignedIn() && isValidId(requestId);
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(requestId) && 
+        (request.auth.uid == requestId || isAdmin() || isDelegate() || isSupervisor());
+    }
+
+    match /activity_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false; // Server-only
+    }
+
+    match /settings/{docId} {
+      allow read: if isSignedIn() && isValidId(docId);
+      allow write: if isAdmin() && isValidId(docId);
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && (!('targetGarageId' in incoming()) || !isGarageDeleting(incoming().targetGarageId));
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /system_config/{configId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+
+    match /private_pins/{docId} {
+      allow read, write: if false; // Server-only
+    }
+
+    match /supervisors/{supervisorId} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || (isSignedIn() && 'adminPin' in incoming() && isAdminPin(incoming().adminPin))) && isValidSupervisor(incoming()) && isValidId(supervisorId);
+      allow update: if isValidId(supervisorId) && (
+        isAdmin() || 
+        (isSupervisorSession(supervisorId) && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive'])) ||
+        (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive']))
+      );
+      allow delete: if isAdmin() && isValidId(supervisorId);
+    }
+
+    match /delegates/{delegateId} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || isSupervisor() || (isSignedIn() && 'adminPin' in incoming() && isAdminPin(incoming().adminPin))) && isValidDelegate(incoming()) && isValidId(delegateId);
+      allow update: if isValidId(delegateId) && (
+        isAdmin() || 
+        isSupervisor() ||
+        (isDelegateSession(delegateId) && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive'])) ||
+        (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive']))
+      );
+      allow delete: if (isAdmin() || isSupervisor()) && isValidId(delegateId);
+    }
+
+    match /staff/{staffId} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || isGarageSession(incoming().garageId)) && isValidStaff(incoming()) && isValidId(staffId) &&
+                    !isGarageDeleting(incoming().garageId);
+      allow update: if isValidId(staffId) && (
+        isAdmin() || 
+        isGarageSession(existing().garageId) || 
+        (isStaffSession(staffId) && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive'])) ||
+        (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive']))
+      );
+      allow delete: if (isAdmin() || isGarageSession(existing().garageId)) && isValidId(staffId);
+    }
+
+    match /garages/{garageId} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || isSupervisor() || (isDelegate() && (('createdByDelegateId' in incoming() && incoming().createdByDelegateId == getDelegateIdFromSession()) || ('referrerId' in incoming() && incoming().referrerId == getDelegateIdFromSession())))) && isValidId(garageId) && 
+                      incoming().keys().hasAll(['name', 'phone', 'hourlyRate', 'overnightRate', 'createdAt', 'billingModel', 'pin']) &&
+                      isValidGarage(incoming()) &&
+                      (!isAdmin() || (!isRateLimited('garage_create') && hasRateLimitReservation('garage_create')));
+      allow delete: if (isAdmin() || isSupervisor()) && isValidId(garageId);
+      
+      // Admin and supervisor retain their existing full management authority.
+      // A garage session or assigned delegate may mutate only allowed fields.
+      allow update: if isValidId(garageId) && isSignedIn() && (
+        isAdmin() ||
+        isSupervisor() ||
+        (isDelegateForGarage(garageId) &&
+          (!('createdByDelegateId' in incoming()) || incoming().createdByDelegateId == existing().createdByDelegateId) &&
+          (!('referrerId' in incoming()) || incoming().referrerId == existing().referrerId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'dailyCapacity', 'activePackageName', 'packageName',
+            'billingModel', 'isTrial', 'lastRechargePackageName', 'lastActive', 'currentSessionId'
+          ])
+        ) ||
+        (isGarageSession(garageId) && isAllowedGarageSessionUpdate()) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['currentSessionId', 'lastActive']))
+      );
+      
+      match /vehicles/{vehicleId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if false; // Replaced by server-side API
+      }
+
+      match /subscribers/{subscriberId} {
+        allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
+        allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
+        allow create: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+                      !isGarageDeleting(garageId) &&
+                      isValidSubscriberCreate(garageId, subscriberId);
+        allow update: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+                      !isGarageDeleting(garageId) &&
+                      isValidSubscriberUpdate(garageId, subscriberId);
+        allow delete: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
+      }
+    }
+
+    match /admin_rate_limits/{adminUid}/operations/{operationId} {
+      allow get: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create';
+      allow create, update: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create' &&
+                            request.resource.data.keys().hasOnly(['lastOperationAt']) &&
+                            request.resource.data.lastOperationAt == request.time;
+      allow delete: if false;
+    }
+
+    // === DAILY COUNTER RULES (Phase 1) ===
+    match /garages/{garageId}/daily_counts/{dateId} {
+      allow get: if isSignedIn() && isValidId(garageId) && isValidId(dateId) &&
+        (isGarageSession(garageId) || isAdmin() ||
+         isSupervisor() || isDelegateForGarage(garageId));
+      allow list: if isAdmin();
+
+      allow create: if (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+                       !isGarageDeleting(garageId) &&
+                       !exists(/databases/$(database)/documents/garages/$(garageId)/daily_counts/$(dateId)) &&
+                       request.resource.data.count <= 1 &&
+                       request.resource.data.dateId == dateId;
+
+      allow update: if (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+                       !isGarageDeleting(garageId) &&
+                       (
+                         request.resource.data.count == resource.data.count + 1 ||
+                         (request.resource.data.count == resource.data.count - 1 && resource.data.count > 0)
+                       ) &&
+                       (
+                         (request.resource.data.count == resource.data.count + 1 ?
+                           (resource.data.limit == 0 || request.resource.data.count <= resource.data.limit) :
+                           true)
+                       );
+
+      allow delete: if isAdmin();
+    }
+
+    match /garages/{garageId}/daily_stats/{dateId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false; // Server-only
+    }
+  }
+}

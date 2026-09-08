@@ -1,0 +1,49 @@
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "npm@10.8.2",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist build",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "ci:check": "tsx tools/ci-check.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "esbuild": "^0.28.2",
+    "express": "^5.2.1",
+    "firebase": "^12.12.0",
+    "firebase-admin": "^14.3.0",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.38.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.14",
+    "terser": "^5.46.2",
+    "tsx": "^4.23.13",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/generator": "^8.0.0",
+    "@babel/parser": "^8.0.4",
+    "@babel/traverse": "^8.0.4",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "autoprefixer": "^10.4.21",
+    "jsdom": "^30.0.1",
+    "vitest": "^4.1.10"
+  }
+}
