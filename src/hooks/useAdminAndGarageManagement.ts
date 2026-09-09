@@ -388,19 +388,15 @@ export function useAdminAndGarageManagement({
       const formData = new FormData(form);
       const data: any = Object.fromEntries(formData.entries());
 
-      data.packages = packages;
-
       const isTrialRaw = formData.get('isTrial') || formData.get('isTrial_hidden');
       const isTrial = isTrialRaw === 'true' || isTrialRaw === 'on' || isTrialRaw === '1';
       data.isTrial = isTrial;
       if (isTrial) {
-        data.initialPackageId = '';
         const rawTrialDays = Number(formData.get('trialDays'));
         data.trialDays = rawTrialDays > 0 ? rawTrialDays : 15;
       }
 
-      const hasMonthlySubscribersRaw = formData.get('hasMonthlySubscribers');
-      data.hasMonthlySubscribers = hasMonthlySubscribersRaw === 'true' || hasMonthlySubscribersRaw === 'on' || hasMonthlySubscribersRaw === '1';
+      data.hasMonthlySubscribers = false;
 
       if (delegate && delegate.id) {
         const today = new Date();

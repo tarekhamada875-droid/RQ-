@@ -788,6 +788,16 @@ const dictionary: Record<string, string> = {
   'الرصيد الحالي': 'Current Balance',
   'الرصيد الجديد': 'New Balance',
   'جاري شحن الرصيد...': 'Adding Balance...',
+  'تنبيهات سقف الاستخدام العادل': 'Fair-Use Capacity Alerts',
+  'مراقبة الاستخدام العادل للباقات المفتوحة': 'Fair-Use Monitoring (Unlimited Packages)',
+  'نظام التمديد التلقائي الذكي يعمل بالخلفية بدون إظهار أي قيود للمشتركين': 'Smart auto-extension operates silently in the background without imposing visible limits on subscribers',
+  'بلغ السقف الأقصى': 'Max Limit Reached',
+  'يقترب من السقف': 'Near Max Limit',
+  'سلس ومستقر': 'Smooth & Stable',
+  'الاستهلاك الحالي': 'Current Usage',
+  'سقف': 'Cap',
+  'مرات التمديد التلقائي': 'Auto-Extensions Count',
+  'تمديد استثنائي': 'Extend Allowance',
 };
 
 export const useAdminTranslation = (lang: AdminLang) => {

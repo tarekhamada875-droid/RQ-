@@ -147,37 +147,19 @@ export const getEffectiveDailyCapacity = (garage: any): number => {
     return garage.dailyCapacity;
   }
 
-  // 4. Check carsCount / vehiclesCount if set as capacity (not duration days)
-  if (
-    typeof garage.carsCount === 'number' && 
-    garage.carsCount > 0 && 
-    garage.carsCount <= 1000 && 
-    ![7, 15, 30].includes(garage.carsCount)
-  ) {
-    return garage.carsCount;
-  }
-  if (
-    typeof garage.vehiclesCount === 'number' && 
-    garage.vehiclesCount > 0 && 
-    garage.vehiclesCount <= 1000 && 
-    ![7, 15, 30].includes(garage.vehiclesCount)
-  ) {
-    return garage.vehiclesCount;
-  }
-
-  // 5. Try parsing capacity from package name (e.g. "40 سيارة")
+  // 4. Try parsing capacity from package name (e.g. "40 سيارة")
   const match = pkgName.match(/(\d+)\s*سيارة/);
   if (match && match[1]) {
     const parsed = parseInt(match[1], 10);
     if (parsed > 0 && parsed <= 1000) return parsed;
   }
 
-  // 6. If dailyCapacity === 0 and package name was explicitly unlimited
+  // 5. If dailyCapacity === 0 and package name was explicitly unlimited
   if (garage.dailyCapacity === 0 && (pkgName.includes('مفتوح') || pkgName.includes('غير محدود'))) {
     return 0;
   }
 
-  // 7. Fallback for non-trial subscriptions without explicit capacity: default limited capacity is 40
+  // 6. Fallback for non-trial subscriptions without explicit capacity: default limited capacity is 40
   return 40;
 };
 

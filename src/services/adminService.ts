@@ -18,12 +18,15 @@ export const adminService = {
   // Supervisors
   addSupervisor: async (data: Omit<Supervisor, 'id'>) => {
     try {
-      return await withRetry(() => addDoc(collection(db, 'supervisors'), {
-        ...data,
-        createdAt: serverTimestamp()
-      }));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'supervisors');
+      const res = await apiFetch('/api/supervisors/create', {
+        method: 'POST',
+        body: data
+      });
+      return { id: res.id };
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       throw error;
     }
   },
@@ -53,12 +56,20 @@ export const adminService = {
 
   updateSupervisor: async (id: string, data: Partial<Supervisor>) => {
     try {
-      const payload: any = { ...data };
       if (data.pin) {
-        payload.currentSessionId = null;
+        await apiFetch('/api/people/update-pin', {
+          method: 'POST',
+          body: { entityType: 'supervisors', entityId: id, newPin: data.pin }
+        });
       }
-      return await withRetry(() => updateDoc(doc(db, 'supervisors', id), payload));
-    } catch (error) {
+      const { pin, ...otherFields } = data;
+      if (Object.keys(otherFields).length > 0) {
+        await withRetry(() => updateDoc(doc(db, 'supervisors', id), otherFields));
+      }
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       handleFirestoreError(error, OperationType.UPDATE, `supervisors/${id}`);
       throw error;
     }
@@ -67,24 +78,35 @@ export const adminService = {
   // Staff
   addStaff: async (data: Omit<Staff, 'id'>) => {
     try {
-      return await withRetry(() => addDoc(collection(db, 'staff'), {
-        ...data,
-        createdAt: serverTimestamp()
-      }));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'staff');
+      const res = await apiFetch('/api/staff/create', {
+        method: 'POST',
+        body: data
+      });
+      return { id: res.id };
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       throw error;
     }
   },
 
   updateStaff: async (id: string, data: Partial<Staff>) => {
     try {
-      const payload: any = { ...data };
       if (data.pin) {
-        payload.currentSessionId = null;
+        await apiFetch('/api/people/update-pin', {
+          method: 'POST',
+          body: { entityType: 'staff', entityId: id, newPin: data.pin }
+        });
       }
-      return await withRetry(() => updateDoc(doc(db, 'staff', id), payload));
-    } catch (error) {
+      const { pin, ...otherFields } = data;
+      if (Object.keys(otherFields).length > 0) {
+        await withRetry(() => updateDoc(doc(db, 'staff', id), otherFields));
+      }
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       handleFirestoreError(error, OperationType.UPDATE, `staff/${id}`);
       throw error;
     }
@@ -478,6 +500,22 @@ export const adminService = {
           adminDetails
         }
       });
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
+      throw error;
+    }
+  },
+
+  adminExtendFairUse: async (
+    garageId: string,
+    extraCars?: number
+  ): Promise<any> => {
+    try {
+      const res = await apiFetch(`/api/admin/garages/${garageId}/extend-fair-use`, {
+        method: 'POST',
+        body: { extraCars: extraCars || 0 }
+      });
+      return res;
     } catch (error: any) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
       throw error;

@@ -19,9 +19,11 @@ export function useSystemDelegateCommissions(): {
 } {
   const config = useSystemConfig();
   const commissions = config?.delegatePackageCommissions;
-  const fallbackMonthly = config?.referralFeePerRenewal !== undefined && !isNaN(Number(config.referralFeePerRenewal))
-    ? Math.max(0, Number(config.referralFeePerRenewal))
-    : 50;
+  const fallbackMonthly = config?.delegateMonthlyCommission !== undefined && !isNaN(Number(config.delegateMonthlyCommission))
+    ? Math.max(0, Number(config.delegateMonthlyCommission))
+    : (config?.referralFeePerRenewal !== undefined && !isNaN(Number(config.referralFeePerRenewal))
+      ? Math.max(0, Number(config.referralFeePerRenewal))
+      : 100);
 
   return {
     daily: commissions?.daily !== undefined && !isNaN(Number(commissions.daily)) ? Math.max(0, Number(commissions.daily)) : 5,
@@ -31,18 +33,18 @@ export function useSystemDelegateCommissions(): {
   };
 }
 
-/** Subscribes to system_config/global.referralFeePerRenewal (default 50). */
+/** Subscribes to system_config/global.delegateMonthlyCommission or referralFeePerRenewal (default 100). */
 export function useSystemReferralFee(): number {
   const config = useSystemConfig();
-  if (config?.delegatePackageCommissions?.monthly !== undefined) {
-    const val = Number(config.delegatePackageCommissions.monthly);
-    return isNaN(val) || val < 0 ? 50 : Math.floor(val);
+  if (config?.delegateMonthlyCommission !== undefined) {
+    const val = Number(config.delegateMonthlyCommission);
+    return isNaN(val) || val < 0 ? 100 : Math.floor(val);
   }
   if (config?.referralFeePerRenewal !== undefined) {
     const val = Number(config.referralFeePerRenewal);
-    return isNaN(val) || val < 0 ? 50 : Math.floor(val);
+    return isNaN(val) || val < 0 ? 100 : Math.floor(val);
   }
-  return 50;
+  return 100;
 }
 
 

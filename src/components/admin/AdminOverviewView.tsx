@@ -26,6 +26,7 @@ interface AdminOverviewViewProps {
   delegates: Delegate[];
   onSelectGarage?: (garage: Garage) => void;
   onOpenAddGarage?: () => void;
+  setActiveTab?: (tab: any) => void;
   isSupervisor?: boolean;
 }
 
@@ -43,6 +44,15 @@ export const AdminOverviewView = memo(({
 
   const [showPlateLookupModal, setShowPlateLookupModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+
+  const unlimitedGarages = useMemo(() => {
+    return allGarages.filter(g => {
+      if (g.status === 'pending') return false;
+      const hasFU = g.unlimitedFairUse && g.unlimitedFairUse.isActive;
+      const isUnlimitedPkg = Number(g.dailyCapacity || 0) === 0 || String(g.activePackageName || '').includes('مفتوح');
+      return hasFU || isUnlimitedPkg;
+    });
+  }, [allGarages]);
 
   // 5-Card High Precision Metrics Calculation directly from props
   const systemMetrics = useMemo(() => {
@@ -77,6 +87,14 @@ export const AdminOverviewView = memo(({
       return getRemainingDays(g) <= warningDaysThreshold;
     }).length;
 
+    // Fair-use near max limit or limit reached
+    const fairUseNearLimitCount = unlimitedGarages.filter(g => {
+      const fu = g.unlimitedFairUse;
+      if (!fu) return false;
+      const remainingToMax = (fu.maxAllowance || 0) - (fu.cycleCarsCount || 0);
+      return Boolean(fu.isMaxLimitReached || fu.isNearMaxLimit || remainingToMax <= (fu.threshold || 20));
+    }).length;
+
     return {
       totalGarages,
       activeGarages,
@@ -87,9 +105,10 @@ export const AdminOverviewView = memo(({
       todayRevenue,
       totalAdminRevenue,
       totalGaragesRevenue,
-      expiringSoonCount
+      expiringSoonCount,
+      fairUseNearLimitCount
     };
-  }, [allGarages, warningDaysThreshold]);
+  }, [allGarages, warningDaysThreshold, unlimitedGarages]);
 
   const expiringGarages = useMemo(() => {
     return allGarages
@@ -155,7 +174,7 @@ export const AdminOverviewView = memo(({
       </div>
 
       {/* Metric Stat Grid */}
-      <div className={`grid grid-cols-1 ${!isSupervisor ? 'md:grid-cols-2' : ''} gap-3`}>
+      <div className={`grid grid-cols-1 ${!isSupervisor ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-3`}>
         {/* Card 1: Admin Net Revenue - Hidden for Supervisors */}
         {!isSupervisor && (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 rounded-2xl relative overflow-hidden flex items-center justify-between gap-3 shadow-sm hover:border-emerald-500/50 transition-all">

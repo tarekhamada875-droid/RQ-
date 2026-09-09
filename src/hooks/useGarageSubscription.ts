@@ -51,7 +51,7 @@ export function useGarageSubscription({
         const effCap = cleanPkg ? (cleanPkg.isUnlimited ? 0 : (cleanPkg.dailyCapacity || 40)) : 0;
         
         const referrerId = g.referrerId || g.createdByDelegateId || delegate.id || null;
-        const effectiveReferralFee = (g.referrerId || g.createdByDelegateId) ? (delegateCommissions || systemReferralFee || 50) : 0;
+        const effectiveReferralFee = 0;
 
         let revenueIncrement = amount;
         let originalRev = amount;

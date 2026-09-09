@@ -17,18 +17,20 @@ import {
   ChevronDown,
   ChevronUp,
   TrendingUp,
-  Wallet
+  Wallet,
+  FileText
 } from 'lucide-react';
 import { Garage, Delegate, Package, RechargeRequest } from '../../types';
 import { getCleanPackageInfo, getDefaultDurationFilter, filterPackagesForGarage, BALANCE_PRESET_AMOUNTS } from '../../constants/packages';
 import { useTheme } from '../../utils/ThemeContext';
-import { generateSafePin, safeDate, getRemainingDays, normalizeArabicSearch, normalizeDigits } from '../../utils';
+import { generateSafePin, safeDate, getRemainingDays, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
 import { 
   calculateApprovedCommission, 
   getAvailableRequestMonths 
 } from '../../utils/delegateCommissionCalculations';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { FitText } from '../ui/FitText';
+import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -79,6 +81,7 @@ export const DelegateDashboardView = memo(({
   const [newGaragePin, setNewGaragePin] = useState('');
   const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
   const [showMenu, setShowMenu] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [showAllOperations, setShowAllOperations] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -117,11 +120,11 @@ export const DelegateDashboardView = memo(({
 
   const filteredGarages = React.useMemo(() => {
     const rawSearch = searchTerm.trim();
-    if (!rawSearch) return allGarages;
+    if (!rawSearch) return sortGaragesNewestFirst(allGarages || []);
     const normSearch = normalizeArabicSearch(rawSearch);
     const digitSearch = normalizeDigits(rawSearch);
 
-    return allGarages.filter(g => {
+    const filtered = (allGarages || []).filter(g => {
       const normName = normalizeArabicSearch(g.name || '');
       const nameMatch = normName.includes(normSearch);
       const rawPhone = g.phone || '';
@@ -129,6 +132,8 @@ export const DelegateDashboardView = memo(({
       const phoneMatch = rawPhone.includes(rawSearch) || (digitSearch ? normPhone.includes(digitSearch) : false);
       return nameMatch || phoneMatch;
     });
+
+    return sortGaragesNewestFirst(filtered);
   }, [allGarages, searchTerm]);
 
   const handleTopupSubmit = async () => {
@@ -155,7 +160,7 @@ export const DelegateDashboardView = memo(({
 
   // Approved garages count (excluding pending or rejected review garages)
   const approvedGarages = React.useMemo(() => {
-    return (allGarages || []).filter(g => g.status !== 'pending' && g.status !== 'rejected');
+    return sortGaragesNewestFirst((allGarages || []).filter(g => g.status !== 'pending' && g.status !== 'rejected'));
   }, [allGarages]);
 
   // Performance and statistics calculations
@@ -288,6 +293,20 @@ export const DelegateDashboardView = memo(({
                         <span>الليلي</span>
                       </button>
                     </div>
+                  </div>
+
+                  <div className="p-2 border-t border-slate-100 dark:border-slate-800">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setShowTermsModal(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-right hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 rounded-xl transition-colors font-bold text-xs cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>الشروط والأحكام</span>
+                    </button>
                   </div>
 
                   <div className="p-2 border-t border-slate-100 dark:border-slate-800">
@@ -926,6 +945,11 @@ export const DelegateDashboardView = memo(({
             )}
           </div>
         </div>
+      )}
+      {showTermsModal && (
+        <TermsAndConditionsModal 
+          onClose={() => setShowTermsModal(false)}
+        />
       )}
     </div>
   );

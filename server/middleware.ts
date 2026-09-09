@@ -39,30 +39,61 @@ export const requestTimeoutMiddleware = (timeoutMs = 15000) => {
 };
 
 /**
- * In-memory sliding window rate limiter for financial & authentication endpoints
+ * Rate limiter for financial & critical endpoints (Firestore-backed with in-memory fallback)
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export const financialRateLimiter = (maxRequests = 30, windowMs = 60000) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
     const key = req.user?.uid || req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
     const now = Date.now();
-    const entry = rateLimitMap.get(key);
 
-    if (!entry || now > entry.resetAt) {
-      rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    if (!adminDb) {
+      const entry = rateLimitMap.get(key);
+      if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+        return next();
+      }
+      if (entry.count >= maxRequests) {
+        return res.status(429).json({
+          success: false,
+          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
+        });
+      }
+      entry.count += 1;
       return next();
     }
 
-    if (entry.count >= maxRequests) {
-      return res.status(429).json({
-        success: false,
-        error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
-      });
-    }
+    const docId = crypto.createHash('sha256').update(`fin:${key}`).digest('hex');
+    const ref = adminDb.doc(`rate_limits/${docId}`);
 
-    entry.count += 1;
-    next();
+    try {
+      const allowed = await adminDb.runTransaction(async (t: any) => {
+        const snap = await t.get(ref);
+        const data = snap.exists ? snap.data() || {} : null;
+
+        if (!data || now > data.resetAt) {
+          t.set(ref, { count: 1, resetAt: now + windowMs, expiresAt: new Date(now + windowMs) });
+          return true;
+        }
+        if (data.count >= maxRequests) {
+          return false;
+        }
+        t.update(ref, { count: data.count + 1 });
+        return true;
+      });
+
+      if (!allowed) {
+        return res.status(429).json({
+          success: false,
+          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
+        });
+      }
+      next();
+    } catch (e) {
+      console.error('[Financial Rate Limiter] Fallback on error:', e);
+      next();
+    }
   };
 };
 

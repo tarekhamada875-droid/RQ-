@@ -5,7 +5,6 @@
  */
 
 import firebaseConfig from '../../firebase-applet-config.json';
-import { User } from 'firebase/auth';
 
 export const logDiagnostic = (tag: string, details?: Record<string, any>) => {
   const timestamp = new Date().toISOString();
@@ -37,14 +36,3 @@ export const verifyFirebaseAppletConfig = () => {
   return isValid;
 };
 
-export const formatUserAuthState = (user: User | null) => {
-  if (!user) {
-    return { authenticated: false, uid: null, isAnonymous: false };
-  }
-  return {
-    authenticated: true,
-    uid: user.uid,
-    isAnonymous: user.isAnonymous,
-    email: user.email || null,
-  };
-};

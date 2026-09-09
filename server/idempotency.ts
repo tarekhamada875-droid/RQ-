@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { adminDb } from './firebaseAdmin';
 
 export interface IdempotencyRecord {
@@ -5,6 +6,16 @@ export interface IdempotencyRecord {
   endpoint: string;
   actorUid?: string;
   createdAt: any;
+  expiresAt: any;
+}
+
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Composite key so the same raw client key can never collide across
+// endpoints or actors.
+function scopedKey(idempotencyKey: string, endpoint: string, actorUid?: string): string {
+  const raw = `${endpoint}:${actorUid || 'system'}:${idempotencyKey}`;
+  return crypto.createHash('sha256').update(raw).digest('hex');
 }
 
 /**
@@ -13,13 +24,16 @@ export interface IdempotencyRecord {
  */
 export async function checkIdempotencyInTransaction(
   t: any,
-  idempotencyKey: string | null
+  idempotencyKey: string | null,
+  endpoint: string,
+  actorUid?: string
 ): Promise<{ isDuplicate: boolean; cachedResult?: any }> {
   if (!idempotencyKey || !adminDb) {
     return { isDuplicate: false };
   }
 
-  const keyRef = adminDb.doc(`idempotency_records/${idempotencyKey}`);
+  const docId = scopedKey(idempotencyKey, endpoint, actorUid);
+  const keyRef = adminDb.doc(`idempotency_records/${docId}`);
   const keySnap = await t.get(keyRef);
 
   if (keySnap.exists) {
@@ -45,11 +59,15 @@ export function storeIdempotencyInTransaction(
 ): void {
   if (!idempotencyKey || !adminDb) return;
 
-  const keyRef = adminDb.doc(`idempotency_records/${idempotencyKey}`);
+  const docId = scopedKey(idempotencyKey, endpoint, actorUid);
+  const keyRef = adminDb.doc(`idempotency_records/${docId}`);
+  const now = Date.now();
   t.set(keyRef, {
     result,
     endpoint,
     actorUid: actorUid || 'system',
-    createdAt: new Date()
+    createdAt: new Date(),
+    expiresAt: new Date(now + IDEMPOTENCY_TTL_MS)
   });
 }
+

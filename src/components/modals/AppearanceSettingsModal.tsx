@@ -1,11 +1,12 @@
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, Sun, Moon, Palette, Check, Sparkles } from 'lucide-react';
+import { ChevronRight, Sun, Moon, Palette, Check, Sparkles, FileText } from 'lucide-react';
 import { useTheme } from '../../utils/ThemeContext';
 import { firestoreService } from '../../services';
 import { soundManager } from '../../utils/sounds';
 import { Garage, Staff } from '../../types';
 import { isLightColor, resolveShimmerColor } from '../../utils';
+import { TermsAndConditionsModal } from './TermsAndConditionsModal';
 
 interface AppearanceSettingsModalProps {
   garage?: Garage | null;
@@ -39,6 +40,7 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
   const { theme, toggleTheme } = useTheme();
   const [pendingColor, setPendingColor] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const defaultColor = adminColor || (garage?.shimmerColor || '#10b981');
   const activeColor = pendingColor !== null ? pendingColor : defaultColor;
@@ -172,6 +174,20 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                 )}
               </button>
             </div>
+
+            {/* Small button right after theme buttons - only for garage/staff users, not admin */}
+            {!adminColor && (
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 rounded-xl transition-all cursor-pointer border border-slate-200/60 dark:border-slate-800/60 active:scale-95"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>الشروط والأحكام وإخلاء المسؤولية</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Shimmer Color Section (Only Admin if garage or adminColor is provided) */}
@@ -270,6 +286,13 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
           )}
         </div>
       </div>
+
+      {/* Terms & Conditions Modal */}
+      {showTermsModal && (
+        <TermsAndConditionsModal
+          onClose={() => setShowTermsModal(false)}
+        />
+      )}
     </div>
   );
 });

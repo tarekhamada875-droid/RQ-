@@ -22,12 +22,15 @@ import { listenerTracker } from '../utils/listenerTracker';
 export const delegateService = {
   addDelegate: async (data: Omit<Delegate, 'id'>) => {
     try {
-      return await withRetry(() => addDoc(collection(db, 'delegates'), {
-        ...data,
-        createdAt: serverTimestamp()
-      }));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'delegates');
+      const res = await apiFetch('/api/delegates/create', {
+        method: 'POST',
+        body: data
+      });
+      return { id: res.id };
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       throw error;
     }
   },
@@ -83,12 +86,20 @@ export const delegateService = {
 
   updateDelegate: async (id: string, data: Partial<Delegate>) => {
     try {
-      const payload: any = { ...data };
       if (data.pin) {
-        payload.currentSessionId = null;
+        await apiFetch('/api/people/update-pin', {
+          method: 'POST',
+          body: { entityType: 'delegates', entityId: id, newPin: data.pin }
+        });
       }
-      return await withRetry(() => updateDoc(doc(db, 'delegates', id), payload));
-    } catch (error) {
+      const { pin, ...otherFields } = data;
+      if (Object.keys(otherFields).length > 0) {
+        await withRetry(() => updateDoc(doc(db, 'delegates', id), otherFields));
+      }
+    } catch (error: any) {
+      if (error.message === 'PIN_ALREADY_TAKEN') {
+        throw new Error('الرمز مستخدم بالفعل');
+      }
       handleFirestoreError(error, OperationType.UPDATE, `delegates/${id}`);
       throw error;
     }

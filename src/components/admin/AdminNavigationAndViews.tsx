@@ -16,6 +16,7 @@ import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
 import { AdminPackagesView } from './AdminPackagesView';
+import { AdminFairUseView } from './AdminFairUseView';
 import { AdminWalletView } from './AdminWalletView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
@@ -90,6 +91,19 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   adminLang,
   t,
 }) => {
+  const unlimitedGarages = React.useMemo(() => {
+    return approvedGarages.filter(g => {
+      if (g.status === 'pending') return false;
+      const hasFU = g.unlimitedFairUse && g.unlimitedFairUse.isActive;
+      const pkgName = g.activePackageName || g.lastRechargePackageName || '';
+      const isUnlimitedPkg = pkgName.includes('مفتوح') || 
+                             pkgName.includes('غير محدود') || 
+                             pkgName.includes('unlimited') || 
+                             pkgName.includes('بلا حدود');
+      return Boolean(hasFU || isUnlimitedPkg);
+    });
+  }, [approvedGarages]);
+
   return (
     <>
       {/* Top Navigation Bar with Horizontal Scrolling */}
@@ -189,7 +203,30 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </span>
             </button>
 
-            {/* Tab 6: Settings */}
+            {/* Tab 6: Fair-Use (الاستخدام العادل) */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('fair_use')}
+              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                activeTab === 'fair_use'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>{t('الاستخدام العادل')}</span>
+              {unlimitedGarages.length > 0 && (
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'fair_use'
+                    ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                }`}>
+                  {unlimitedGarages.length}
+                </span>
+              )}
+            </button>
+
+            {/* Tab 7: Settings */}
             <button
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
@@ -221,6 +258,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           currentSupervisor={currentSupervisor}
           allGarages={approvedGarages}
           onSelectDelegate={onSelectDelegate}
+        />
+      ) : activeTab === 'fair_use' ? (
+        <AdminFairUseView 
+          garages={approvedGarages}
+          unlimitedGarages={unlimitedGarages}
+          onSelectGarage={onSelectGarage}
+          t={t}
         />
       ) : activeTab === 'catalog_settings' ? (
         <div className="space-y-6 animate-in fade-in duration-200">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, X, Car, Building2, Zap, ClipboardList, Loader2, Wallet, Phone } from 'lucide-react';
 import { RechargeRequest, Garage } from '../../types';
+import { sortGaragesNewestFirst } from '../../utils';
 
 interface AdminRequestsViewProps {
   rechargeRequests: RechargeRequest[];
@@ -293,7 +294,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {pendingGarages.map((garage) => {
+          {sortGaragesNewestFirst(pendingGarages).map((garage) => {
             const isGarageProcessing = processingGarageId === garage.id;
             const isApproving = isGarageProcessing && processingGarageAction === 'approve';
             const isRejecting = isGarageProcessing && processingGarageAction === 'reject';

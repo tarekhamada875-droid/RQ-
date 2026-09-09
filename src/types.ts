@@ -98,6 +98,23 @@ export interface Garage {
   activePackageName?: string; // Current package name
   status?: 'pending' | 'approved' | 'rejected';
   isTrial?: boolean; // 15-day free trial indicator
+  unlimitedFairUse?: UnlimitedFairUse | null;
+}
+
+export type UnlimitedTierType = 'daily' | 'biweekly' | 'monthly';
+
+export interface UnlimitedFairUse {
+  isActive: boolean;
+  tierType: UnlimitedTierType;
+  cycleCarsCount: number;
+  currentAllowance: number;
+  maxAllowance: number;
+  stepAmount: number;
+  threshold: number;
+  extensionsCount: number;
+  isNearMaxLimit?: boolean;
+  isMaxLimitReached?: boolean;
+  lastExtendedAt?: any;
 }
 
 export interface Staff {
@@ -241,7 +258,8 @@ export interface SystemConfig {
   subscriptionPrices?: Record<string, number>;
   monthlySubscribersSurchargePercent: number;
   monthlySubscribersFlatFee: number; // e.g. 500
-  referralFeePerRenewal?: number; // fallback e.g. 50
+  referralFeePerRenewal?: number; // fallback e.g. 100
+  delegateMonthlyCommission?: number; // Monthly delegate commission per garage (e.g. 100 EGP)
   delegatePackageCommissions?: {
     daily?: number; // 1 day
     weekly?: number; // 7 days
@@ -254,23 +272,4 @@ export interface SystemConfig {
   adminColor?: string; // Persisted admin accent/shimmer color
   updatedAt?: any;
 }
-
-export interface ReferralReward {
-  id?: string;
-  requestId: string;
-  referrerGarageId: string;
-  referrerGarageName: string;
-  referredGarageId: string;
-  referredGarageName: string;
-  rewardDays: number;
-  rewardPackageName?: string;
-  rewardDailyCapacity?: number;
-  triggeredByPackageName?: string;
-  triggeredByPackageId?: string;
-  createdAt: any;
-  status: 'awarded';
-}
-
-// Domain V2 Types
-export type { BillingModel, GarageStatus, PackageType, PackageV2, GarageV2, RechargeRequestV2 } from './domain/types';
 

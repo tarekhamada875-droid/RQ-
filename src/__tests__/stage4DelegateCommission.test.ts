@@ -1,27 +1,29 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Stage 4: Delegate Balance Settlements & Commission Ledgers', () => {
-  it('1. Calculates delegate commission based on subscription package duration', () => {
-    const delegateCommissions = {
-      daily: 5,
-      weekly: 15,
-      biweekly: 25,
-      monthly: 50
-    };
-
-    const computeCommission = (durationDays: number, referredByDelegate: boolean) => {
+  it('1. Calculates delegate commission based on monthly qualification rule (100 EGP per garage per month)', () => {
+    const computeCommission = (durationDays: number, referredByDelegate: boolean, prevMonthDays: number, alreadyPaid: boolean) => {
       if (!referredByDelegate) return 0;
-      if (durationDays >= 30) return delegateCommissions.monthly;
-      if (durationDays >= 14) return delegateCommissions.biweekly;
-      if (durationDays >= 7) return delegateCommissions.weekly;
-      return delegateCommissions.daily;
+      if (alreadyPaid) return 0;
+      const newTotal = prevMonthDays + durationDays;
+      if (durationDays >= 30 || newTotal >= 10) return 100;
+      return 0;
     };
 
-    expect(computeCommission(30, true)).toBe(50);
-    expect(computeCommission(15, true)).toBe(25);
-    expect(computeCommission(7, true)).toBe(15);
-    expect(computeCommission(1, true)).toBe(5);
-    expect(computeCommission(30, false)).toBe(0);
+    // Monthly package (30 days) -> 100 EGP
+    expect(computeCommission(30, true, 0, false)).toBe(100);
+
+    // Single 1-day package -> 0 EGP
+    expect(computeCommission(1, true, 0, false)).toBe(0);
+
+    // Cumulative 10th day package -> 100 EGP
+    expect(computeCommission(1, true, 9, false)).toBe(100);
+
+    // Subsequent package in same month after already paid -> 0 EGP
+    expect(computeCommission(1, true, 10, true)).toBe(0);
+
+    // Not referred by delegate -> 0 EGP
+    expect(computeCommission(30, false, 0, false)).toBe(0);
   });
 
   it('2. Prevents re-processing of already resolved recharge requests', () => {

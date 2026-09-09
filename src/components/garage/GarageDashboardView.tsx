@@ -21,6 +21,7 @@ import {
   Crown,
   Megaphone,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import { Announcement } from "../../types";
 import { FlipNumber } from "../ui/FlipNumber";
@@ -49,6 +50,7 @@ import { PackagesModal } from "../modals/PackagesModal";
 import { RewardsModal } from "../modals/RewardsModal";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
+import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { BorderShimmer } from "./BorderShimmer";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
 import { AnnouncementModal } from "./modals/AnnouncementModal";
@@ -105,6 +107,7 @@ export const GarageDashboardView = memo((props: any) => {
     [Oe, ot] = useState(!1),
     [os, is] = useState(!1),
     [zt, Xt] = useState(!1),
+    [showTermsModal, setShowTermsModal] = useState(!1),
     Wt = useRef(null),
     Ft = useRef(null),
     [De, He] = useState(!!Qt.currentUser),
@@ -137,17 +140,14 @@ export const GarageDashboardView = memo((props: any) => {
     return () => clearInterval(timer);
   }, []);
 
-  const tt = !0,
-    packageDays = useMemo(() => {
+  const packageDays = useMemo(() => {
       if (!t) return 30;
       return packageIdToDays(t.activePackageId || t.packageId || '', t.activePackageName || t.packageName || t.lastPackageName || '');
     }, [t]),
     isDailyPackage = packageDays <= 2,
     subInfo = useMemo(() => getRemainingSubscriptionInfo(t), [t, timeTicker]),
     at = useMemo(() => subInfo.days, [subInfo]),
-    mt = useMemo(() => t.balance || 0, [t.balance]),
-    bs = useMemo(() => t.commissionPerVehicle || 1, [t.commissionPerVehicle]),
-    L = useMemo(() => at, [tt, at, mt, bs]),
+    L = useMemo(() => at, [at]),
     isCountdownInHours = subInfo.unit === 'hours',
     countdownValue = subInfo.displayCount,
     isUrgentRed = subInfo.isUrgentRed,
@@ -246,7 +246,8 @@ export const GarageDashboardView = memo((props: any) => {
       is(_e === "rewards"),
       X(_e === "history"),
       te(_e === "staff"),
-      Xt(_e === "appearance"));
+      Xt(_e === "appearance"),
+      setShowTermsModal(_e === "terms"));
   };
   return (
     <div
@@ -563,6 +564,29 @@ export const GarageDashboardView = memo((props: any) => {
                                   {
                                     <span className="font-bold text-sm">
                                       إعدادات المظهر
+                                    </span>
+                                  }
+                                </div>
+                              }
+                            </button>
+                          }
+                          {
+                            <button
+                              onClick={() => ys("terms")}
+                              className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none cursor-pointer"
+                            >
+                              {
+                                <div className="flex items-center gap-2.5">
+                                  {
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                                      {
+                                        <FileText className="w-4 h-4" />
+                                      }
+                                    </div>
+                                  }
+                                  {
+                                    <span className="font-bold text-sm">
+                                      الشروط والأحكام
                                     </span>
                                   }
                                 </div>
@@ -1069,6 +1093,11 @@ export const GarageDashboardView = memo((props: any) => {
           onClose={() => Xt(!1)}
           showToast={V}
           onToggleMenu={() => O(!_)}
+        />
+      )}
+      {showTermsModal && (
+        <TermsAndConditionsModal
+          onClose={() => setShowTermsModal(false)}
         />
       )}
       <RechargeNotificationModal

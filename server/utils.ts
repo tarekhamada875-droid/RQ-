@@ -138,48 +138,119 @@ export function verifyDocMatch(inputCleanPin: string, docData: any): { matches: 
   return { matches: false, isLegacy: false };
 }
 
-export async function migratePinToHash(collName: string, docId: string, cleanInputPin: string): Promise<void> {
+export async function saveEntityPin(collName: string, docId: string, cleanInputPin: string): Promise<void> {
+  if (!cleanInputPin || !docId) return;
   const newScrypt = hashPinWithUniqueSalt(cleanInputPin);
   const lookupHash = computeLookupHash(cleanInputPin);
-  const updatePayload = {
+  const privatePinPayload = {
     pin: newScrypt,
-    pinLookupHash: lookupHash
+    pinLookupHash: lookupHash,
+    entityType: collName,
+    entityId: docId,
+    updatedAt: new Date()
   };
 
   try {
     if (!adminDb) {
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
-    if (collName === 'admin_settings') {
-      await adminDb.doc('admin_settings/auth_pin').set(updatePayload, { merge: true });
-    } else {
-      await adminDb.collection(collName).doc(docId).update(updatePayload);
+    const pinDocId = collName === 'admin_settings' ? 'auth_pin' : docId;
+    await adminDb.doc(`private_pins/${pinDocId}`).set(privatePinPayload, { merge: true });
+  } catch (e) {
+    console.error(`[Server Auth] Error saving private pin for ${collName}/${docId}:`, e);
+    throw e;
+  }
+}
+
+export async function migratePinToHash(collName: string, docId: string, cleanInputPin: string): Promise<void> {
+  try {
+    if (!adminDb) {
+      throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
-    console.log(`[Server Auth] Auto-migrated legacy PIN to unique-salt $scrypt$ hash for ${collName}/${docId}`);
+    // 1. Save to secure server-only private_pins collection
+    await saveEntityPin(collName, docId, cleanInputPin);
+
+    // 2. Cleanse legacy plaintext/hash fields from public tenant document
+    const targetDocRef = collName === 'admin_settings' 
+      ? adminDb.doc('admin_settings/auth_pin') 
+      : adminDb.collection(collName).doc(docId);
+
+    const docSnap = await targetDocRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data() || {};
+      const updates: Record<string, any> = {};
+      if ('pin' in data) updates.pin = null;
+      if ('ownerPin' in data) updates.ownerPin = null;
+      if ('adminPin' in data) updates.adminPin = null;
+      if ('pinLookupHash' in data) updates.pinLookupHash = null;
+
+      if (Object.keys(updates).length > 0) {
+        await targetDocRef.set(updates, { merge: true });
+      }
+    }
+
+    console.log(`[Server Auth] Auto-migrated credentials to private_pins for ${collName}/${docId}`);
   } catch (e) {
     console.error(`[Server Auth] Error auto-migrating PIN for ${collName}/${docId}:`, e);
   }
 }
 
-// In-Memory Rate Limiter for Authentication Endpoints
-const failedAttemptsByIp = new Map<string, { count: number; resetAt: number }>();
+// Firestore-Backed Rate Limiter (safe across multiple Cloud Run instances)
+const RATE_LIMIT_WINDOW_MS = 60000;
+const RATE_LIMIT_MAX_ATTEMPTS = 20;
 
-export function checkRateLimit(ip: string): boolean {
+// In-memory LRU fallback when adminDb is unavailable
+const memoryFallback = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimitInMemory(ip: string): boolean {
   const now = Date.now();
-  const entry = failedAttemptsByIp.get(ip);
+  const entry = memoryFallback.get(ip);
   if (!entry || now > entry.resetAt) {
-    failedAttemptsByIp.set(ip, { count: 1, resetAt: now + 60000 });
+    memoryFallback.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     return true;
   }
-  if (entry.count >= 20) {
-    return false;
-  }
+  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
   entry.count += 1;
   return true;
 }
 
-export function resetRateLimit(ip: string): void {
-  failedAttemptsByIp.delete(ip);
+export async function checkRateLimit(ip: string): Promise<boolean> {
+  if (!adminDb) return checkRateLimitInMemory(ip);
+
+  const docId = crypto.createHash('sha256').update(ip).digest('hex');
+  const ref = adminDb.doc(`rate_limits/${docId}`);
+
+  try {
+    return await adminDb.runTransaction(async (t: any) => {
+      const snap = await t.get(ref);
+      const now = Date.now();
+      const data = snap.exists ? snap.data() || {} : null;
+
+      if (!data || now > data.resetAt) {
+        t.set(ref, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS, expiresAt: new Date(now + RATE_LIMIT_WINDOW_MS) });
+        return true;
+      }
+      if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+        return false;
+      }
+      t.update(ref, { count: data.count + 1 });
+      return true;
+    });
+  } catch (e) {
+    console.error('[Server Auth] Rate limit transaction failed, failing closed to in-memory:', e);
+    return checkRateLimitInMemory(ip);
+  }
+}
+
+export async function resetRateLimit(ip: string): Promise<void> {
+  memoryFallback.delete(ip);
+  if (!adminDb) return;
+  const docId = crypto.createHash('sha256').update(ip).digest('hex');
+  try {
+    await adminDb.doc(`rate_limits/${docId}`).delete();
+  } catch (e) {
+    console.error('[Server Auth] Failed to reset Firestore rate limit doc:', e);
+  }
 }
 
 // Server Database Access Abstractions
@@ -188,6 +259,13 @@ export async function getAdminPin(): Promise<string> {
     if (!adminDb) {
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
+    // 1. Check secure private_pins collection first
+    const privSnap = await adminDb.doc('private_pins/auth_pin').get();
+    if (privSnap.exists && privSnap.data()?.pin) {
+      return String(privSnap.data().pin);
+    }
+
+    // 2. Fallback to legacy admin_settings document
     const snap = await adminDb.doc('admin_settings/auth_pin').get();
     return snap.exists ? String(snap.data()?.pin || '') : '';
   } catch (e) {
@@ -202,24 +280,55 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
   const matches: Array<{ id: string; data: any; isLegacyMatch: boolean }> = [];
   const seenIds = new Set<string>();
 
-  // Deterministic candidate queries to test (field and matching value)
-  const candidateQueries: Array<{ field: string; value: string }> = [
-    { field: 'pinLookupHash', value: lookupHash },
-    { field: 'pin', value: legacyHash },
-    { field: 'pin', value: normPin }
-  ];
-
-  if (collName === 'garages') {
-    candidateQueries.push(
-      { field: 'ownerPin', value: normPin },
-      { field: 'adminPin', value: normPin }
-    );
-  }
-
   try {
     if (!adminDb) {
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
+
+    // Phase 1: Query secure server-only private_pins collection
+    try {
+      const privSnap = await adminDb.collection('private_pins')
+        .where('entityType', '==', collName)
+        .where('pinLookupHash', '==', lookupHash)
+        .limit(5)
+        .get();
+
+      for (const privDoc of privSnap.docs) {
+        const privData = privDoc.data() || {};
+        const entityId = privData.entityId || privDoc.id;
+        const check = verifyDocMatch(normPin, privData);
+        if (check.matches && !seenIds.has(entityId)) {
+          seenIds.add(entityId);
+          // Fetch actual public tenant document
+          const entitySnap = await adminDb.collection(collName).doc(entityId).get();
+          if (entitySnap.exists) {
+            matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check.isLegacy });
+          }
+        }
+      }
+    } catch (privErr) {
+      // Bounded fallback if private_pins index is warming
+    }
+
+    // If match found in private_pins, return immediately
+    if (matches.length > 0) {
+      return matches;
+    }
+
+    // Phase 2: Legacy fallback queries for unmigrated accounts
+    const candidateQueries: Array<{ field: string; value: string }> = [
+      { field: 'pinLookupHash', value: lookupHash },
+      { field: 'pin', value: legacyHash },
+      { field: 'pin', value: normPin }
+    ];
+
+    if (collName === 'garages') {
+      candidateQueries.push(
+        { field: 'ownerPin', value: normPin },
+        { field: 'adminPin', value: normPin }
+      );
+    }
+
     for (const { field, value } of candidateQueries) {
       if (!value) continue;
       try {
@@ -236,7 +345,7 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
       } catch (e) {}
     }
 
-    // Legacy fallback: bounded collection scan for unmigrated accounts (prevents lockout)
+    // Phase 3: Bounded collection scan for legacy unhashed records (ensures zero lockout)
     if (matches.length === 0) {
       try {
         const fallbackSnap = await adminDb.collection(collName).limit(50).get();
@@ -270,3 +379,98 @@ export async function queryDelegatesWherePhone(normPhone: string): Promise<Array
     return [];
   }
 }
+
+export async function checkPinAvailabilityAcrossAll(
+  normPin: string,
+  excludeId?: string
+): Promise<{
+  taken: boolean;
+  role?: string;
+  roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
+  name?: string;
+  accountId?: string;
+  account?: any;
+}> {
+  if (!normPin) return { taken: false };
+
+  // 1. Check Admin PIN
+  const adminPinStored = await getAdminPin();
+  if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
+    if (!excludeId || excludeId !== 'auth_pin') {
+      return {
+        taken: true,
+        role: 'مسؤول النظام (الآدمن الرئيسي)',
+        roleKey: 'admin',
+        name: 'الآدمن',
+        accountId: 'auth_pin'
+      };
+    }
+  }
+
+  // 2. Check collections
+  const collectionsToCheck: Array<{
+    name: string;
+    roleKey: 'supervisor' | 'delegate' | 'staff' | 'garage';
+    label: string;
+  }> = [
+    { name: 'supervisors', roleKey: 'supervisor', label: 'مشرف نظام' },
+    { name: 'delegates', roleKey: 'delegate', label: 'مندوب شحن' },
+    { name: 'staff', roleKey: 'staff', label: 'موظف جراج' },
+    { name: 'garages', roleKey: 'garage', label: 'صاحب جراج' }
+  ];
+
+  for (const coll of collectionsToCheck) {
+    try {
+      const docs = await queryAccountWherePin(coll.name, normPin);
+      for (const dDoc of docs) {
+        if (excludeId && dDoc.id === excludeId) continue;
+        const docData = dDoc.data || {};
+        return {
+          taken: true,
+          role: coll.label,
+          roleKey: coll.roleKey,
+          name: docData.name || docData.ownerName || docData.garageName || 'مستخدم آخر',
+          accountId: dDoc.id,
+          account: docData
+        };
+      }
+    } catch (e) {
+      console.error(`[Server Auth] Error checking pin in collection ${coll.name}:`, e);
+    }
+  }
+
+  return { taken: false };
+}
+
+// Server-Authoritative Vehicle Cost Calculation
+// Mirrors src/utils/index.ts calculateCost() — keep the two in sync if either changes.
+export function calculateVehicleCost(
+  vehicleData: { isSubscriber?: boolean; type?: string; entryTime: any },
+  garageData: { hourlyRate?: number; overnightRate?: number },
+  now: number = Date.now()
+): number {
+  if (vehicleData.isSubscriber) return 0;
+
+  const entryTime = vehicleData.entryTime?.toDate
+    ? vehicleData.entryTime.toDate()
+    : new Date(vehicleData.entryTime);
+  if (!entryTime || isNaN(entryTime.getTime())) return 0;
+
+  const diffMs = now - entryTime.getTime();
+
+  // 5-minute grace period: protects against accidental/instant check-in errors
+  if (diffMs < 5 * 60 * 1000) return 0;
+
+  const type = vehicleData.type || 'hourly';
+
+  if (type === 'overnight') {
+    const overnightRate = Number(garageData.overnightRate || 0);
+    const days = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    return Number((days * overnightRate).toFixed(2));
+  }
+
+  const hourlyRate = Number(garageData.hourlyRate || 0);
+  const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
+  return Number((hours * hourlyRate).toFixed(2));
+}
+

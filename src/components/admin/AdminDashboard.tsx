@@ -10,7 +10,7 @@ import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { normalizeArabicSearch, resolveShimmerColor, isLightColor, normalizeDigits } from '../../utils';
+import { normalizeArabicSearch, resolveShimmerColor, isLightColor, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 
@@ -138,8 +138,6 @@ export const AdminDashboard = memo(({
     hourlyRate: string;
     overnightRate: string;
     phone: string;
-    initialPackageId: string;
-    hasMonthlySubscribers: boolean;
     isTrial: boolean;
     ownerPin: string;
   }>({
@@ -147,8 +145,6 @@ export const AdminDashboard = memo(({
     hourlyRate: '',
     overnightRate: '',
     phone: '',
-    initialPackageId: '',
-    hasMonthlySubscribers: false,
     isTrial: false,
     ownerPin: ''
   });
@@ -321,24 +317,22 @@ export const AdminDashboard = memo(({
   };
 
   const approvedGarages = React.useMemo(() => {
-    return allGarages.filter(g => g.status !== 'pending');
+    return sortGaragesNewestFirst(allGarages.filter(g => g.status !== 'pending'));
   }, [allGarages]);
 
   const pendingGarages = React.useMemo(() => {
-    return allGarages.filter(g => g.status === 'pending');
+    return sortGaragesNewestFirst(allGarages.filter(g => g.status === 'pending'));
   }, [allGarages]);
 
   const effectiveGarages = React.useMemo(() => {
-    if (activeTab === 'garages' && adminGarageRows.length > 0) {
-      return adminGarageRows;
-    }
-    return allGarages;
+    const list = activeTab === 'garages' && adminGarageRows.length > 0 ? adminGarageRows : allGarages;
+    return sortGaragesNewestFirst(list);
   }, [activeTab, adminGarageRows, allGarages]);
 
   const displayedGarages = React.useMemo(() => {
     const rawSearch = adminSearch.trim();
     if (!rawSearch) {
-      return effectiveGarages.filter(garage => garage?.status !== 'pending');
+      return sortGaragesNewestFirst(effectiveGarages.filter(garage => garage?.status !== 'pending'));
     }
     const q = normalizeArabicSearch(rawSearch);
     const digitQuery = normalizeDigits(rawSearch);
@@ -346,7 +340,7 @@ export const AdminDashboard = memo(({
     // Search across both loaded page rows and global pool to ensure complete 1000-garage coverage
     const pool = Array.from(new Map([...allGarages, ...effectiveGarages].map(g => [g.id, g])).values());
 
-    return pool.filter(garage => {
+    const filtered = pool.filter(garage => {
       if (!garage || garage.status === 'pending') return false;
 
       const normalizedName = normalizeArabicSearch(garage.name || '');
@@ -355,6 +349,8 @@ export const AdminDashboard = memo(({
       const phoneMatch = rawPhone.includes(rawSearch) || (digitQuery ? normalizedPhone.includes(digitQuery) : false);
       return normalizedName.includes(q) || phoneMatch;
     });
+
+    return sortGaragesNewestFirst(filtered);
   }, [effectiveGarages, allGarages, adminSearch]);
 
   return (
@@ -527,11 +523,9 @@ export const AdminDashboard = memo(({
         setGarageForm={setGarageForm}
         pinInput={pinInput}
         setPinInput={setPinInput}
-        packages={packages}
         allGarages={allGarages}
         isLoading={isLoading}
         trialDays={systemConfig?.defaultTrialDays ?? 15}
-        subscriberFlatFee={systemConfig?.monthlySubscribersFlatFee ?? 500}
         onSubmit={handleAddGarage}
         t={t}
       />

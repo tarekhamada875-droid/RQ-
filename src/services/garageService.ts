@@ -17,7 +17,7 @@ import {
   startAfter
 } from 'firebase/firestore';
 import type { Garage } from '../types';
-import { withRetry } from '../utils';
+import { withRetry, sortGaragesNewestFirst } from '../utils';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 
@@ -43,7 +43,8 @@ export const garageService = {
 
     const q = query(collection(db, 'garages'));
     const unsub = onSnapshot(q, (snapshot) => {
-      latestGarages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
+      const rawGarages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
+      latestGarages = sortGaragesNewestFirst(rawGarages);
       if (isFirst) {
         isFirst = false;
         emit();
@@ -82,8 +83,8 @@ export const garageService = {
       )
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const garages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
-      callback(garages);
+      const rawGarages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
+      callback(sortGaragesNewestFirst(rawGarages));
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'garages/delegate'));
 
     return () => {
@@ -96,24 +97,25 @@ export const garageService = {
     try {
       let q = query(
         collection(db, 'garages'),
-        orderBy('name'),
+        orderBy('createdAt', 'desc'),
         limit(pageSize)
       );
 
       if (lastDocRef) {
         q = query(
           collection(db, 'garages'),
-          orderBy('name'),
+          orderBy('createdAt', 'desc'),
           startAfter(lastDocRef),
           limit(pageSize)
         );
       }
 
       const snapshot = await getDocs(q);
-      const garages = snapshot.docs.map(garageDoc => ({
+      const rawGarages = snapshot.docs.map(garageDoc => ({
         id: garageDoc.id,
         ...garageDoc.data()
       } as Garage));
+      const garages = sortGaragesNewestFirst(rawGarages);
 
       return {
         garages,
@@ -134,10 +136,11 @@ export const garageService = {
           );
         }
         const snapshot = await getDocs(fallbackQ);
-        const garages = snapshot.docs.map(garageDoc => ({
+        const rawGarages = snapshot.docs.map(garageDoc => ({
           id: garageDoc.id,
           ...garageDoc.data()
         } as Garage));
+        const garages = sortGaragesNewestFirst(rawGarages);
 
         return {
           garages,

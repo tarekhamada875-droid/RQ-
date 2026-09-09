@@ -15,12 +15,15 @@ import {
   verifySingleFieldValue,
   verifyPinMatch,
   verifyDocMatch,
+  saveEntityPin,
   migratePinToHash,
   checkRateLimit,
   resetRateLimit,
   getAdminPin,
   queryAccountWherePin,
-  queryDelegatesWherePhone
+  queryDelegatesWherePhone,
+  checkPinAvailabilityAcrossAll,
+  calculateVehicleCost
 } from './utils';
 import {
   requireAuth,
@@ -43,6 +46,11 @@ import {
   checkIdempotencyInTransaction,
   storeIdempotencyInTransaction
 } from './idempotency';
+import {
+  initializeFairUse,
+  evaluateFairUseCheckIn,
+  manualAdminExtendFairUse
+} from './unlimitedFairUse';
 
 /**
  * Domain Error Status Code Resolver
@@ -64,11 +72,13 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('VEHICLE_ALREADY_OUTSIDE') ||
     errMsg.includes('INSUFFICIENT_BALANCE') ||
     errMsg.includes('CAPACITY_LIMIT_REACHED') ||
+    errMsg.includes('FAIR_USE_LIMIT_REACHED') ||
     errMsg.includes('DAILY_DELETION_LIMIT_REACHED') ||
     errMsg.includes('reached_daily_deletion_limit') ||
     errMsg.includes('PIN_ALREADY_TAKEN') ||
     errMsg.includes('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION') ||
-    errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE')
+    errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE') ||
+    errMsg.includes('SUBSCRIPTION_EXPIRED')
   ) {
     return { statusCode: 409, code: 'CONFLICT', message: errMsg };
   }
@@ -117,7 +127,7 @@ export function createApp() {
   app.post('/api/auth/verify-pin', async (req, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
-      if (!checkRateLimit(clientIp)) {
+      if (!(await checkRateLimit(clientIp))) {
         return res.status(429).json({
           success: false,
           error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
@@ -290,7 +300,7 @@ export function createApp() {
           }
 
           // Reset rate limit ONLY when authentication and session claim both succeed
-          resetRateLimit(clientIp);
+          await resetRateLimit(clientIp);
 
           return res.json({
             success: true,
@@ -367,7 +377,7 @@ export function createApp() {
             }
 
             // Reset rate limit ONLY when authentication and session claim both succeed
-            resetRateLimit(clientIp);
+            await resetRateLimit(clientIp);
 
             return res.json({
               success: true,
@@ -398,35 +408,8 @@ export function createApp() {
         return res.json({ taken: false });
       }
 
-      // Check Admin PIN
-      let adminPinStored = await getAdminPin();
-      if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
-        return res.json({ taken: true, role: 'مسؤول النظام (الآدمن الرئيسي)', name: 'الآدمن' });
-      }
-
-      const collectionsToCheck = [
-        { name: 'supervisors', label: 'مشرف نظام' },
-        { name: 'delegates', label: 'مندوب شحن' },
-        { name: 'staff', label: 'موظف جراج' },
-        { name: 'garages', label: 'صاحب جراج' }
-      ];
-
-      for (const coll of collectionsToCheck) {
-        try {
-          const docs = await queryAccountWherePin(coll.name, normPin);
-          for (const dDoc of docs) {
-            if (excludeId && dDoc.id === excludeId) continue;
-            const docData = dDoc.data;
-            return res.json({
-              taken: true,
-              role: coll.label,
-              name: docData.name || docData.ownerName || docData.garageName || 'مستخدم آخر'
-            });
-          }
-        } catch (e) {}
-      }
-
-      return res.json({ taken: false });
+      const result = await checkPinAvailabilityAcrossAll(normPin, excludeId);
+      return res.json(result);
     } catch (error) {
       console.error('[Server Auth] Error in check-pin-availability:', error);
       return res.status(500).json({ taken: false });
@@ -436,6 +419,14 @@ export function createApp() {
   // Secure Server API: Verify Admin PIN for Admin Logout
   app.post('/api/auth/verify-admin-pin', async (req, res) => {
     try {
+      const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+      if (!(await checkRateLimit(clientIp))) {
+        return res.status(429).json({
+          valid: false,
+          error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
+        });
+      }
+
       const { pin } = req.body || {};
       const normInput = cleanPin(pin);
       if (!normInput) {
@@ -447,6 +438,9 @@ export function createApp() {
       if (matches && isLegacy) {
         migratePinToHash('admin_settings', 'auth_pin', normInput);
       }
+      if (matches) {
+        await resetRateLimit(clientIp);
+      }
       return res.json({ valid: matches });
     } catch (error) {
       return res.status(500).json({ valid: false });
@@ -456,6 +450,14 @@ export function createApp() {
   // Secure Server API: Claim / Re-claim Admin Session (Protected against unauthenticated escalation)
   app.post('/api/auth/claim-admin-session', async (req, res) => {
     try {
+      const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+      if (!(await checkRateLimit(clientIp))) {
+        return res.status(429).json({
+          success: false,
+          error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
+        });
+      }
+
       const { uid, sessionId, pin, firebaseIdToken } = req.body || {};
       if (!uid || !sessionId || typeof uid !== 'string' || typeof sessionId !== 'string') {
         return res.status(400).json({ success: false, error: 'بيانات غير صالحة' });
@@ -489,6 +491,7 @@ export function createApp() {
         const adminPinStored = await getAdminPin();
         if (verifyPinMatch(cleanInputPin, adminPinStored).matches) {
           isAuthorized = true;
+          await resetRateLimit(clientIp);
         }
       }
 
@@ -798,7 +801,10 @@ export function createApp() {
 
   // Secure Server API: Server-Authoritative Garage Package Recharge Engine
   app.post('/api/transactions/recharge-garage', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    if (req.user?.role === 'garage') return res.status(403).json({ success: false, error: 'GARAGE_CANNOT_RECHARGE_OTHERS' });
+    const ALLOWED_ROLES = ['admin', 'supervisor', 'delegate'];
+    if (!ALLOWED_ROLES.includes(req.user?.role || '')) {
+      return res.status(403).json({ success: false, error: 'ADMIN_SUPERVISOR_OR_OWNING_DELEGATE_ONLY' });
+    }
     try {
       const sanitized = sanitizePayload(req.body, ['garageId', 'packageId', 'adminDetails', 'idempotencyKey'], false);
       const garageId = validateId(sanitized.garageId, 'garageId', true);
@@ -810,6 +816,18 @@ export function createApp() {
 
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      // Delegates may only recharge garages they created or referred
+      if (callerRole === 'delegate') {
+        const delegateGarageSnap = await adminDb.doc(`garages/${garageId}`).get();
+        const delegateGarageData = delegateGarageSnap.exists ? delegateGarageSnap.data() || {} : {};
+        const ownsGarage =
+          delegateGarageData.createdByDelegateId === req.user?.entityId ||
+          delegateGarageData.referrerId === req.user?.entityId;
+        if (!ownsGarage) {
+          return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
+        }
       }
 
       // Package Data Parsing & Sanitization (Server Authoritative)
@@ -835,7 +853,7 @@ export function createApp() {
 
       await adminDb.runTransaction(async (t: any) => {
         // Idempotency check
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/recharge-garage', callerUid);
         if (isDuplicate) {
           resultData = cachedResult;
           return;
@@ -892,7 +910,8 @@ export function createApp() {
           lastRechargeAmount: price,
           lastRechargePackageName: packageName,
           balanceExpiry: baseDate,
-          billingModel: 'subscription'
+          billingModel: 'subscription',
+          unlimitedFairUse: isUnlimited ? initializeFairUse(durationDays, packageName) : null
         };
 
         t.set(garageRef, updateData, { merge: true });
@@ -985,7 +1004,7 @@ export function createApp() {
 
       await adminDb.runTransaction(async (t: any) => {
         // Idempotency check
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/approve-recharge-request', callerUid);
         if (isDuplicate) {
           resultData = cachedResult;
           return;
@@ -1016,14 +1035,21 @@ export function createApp() {
         const garageData = garageSnap.data() || {};
 
         // System Settings - Always load server authoritative config!
-        const settingsSnap = await t.get(adminDb.doc('admin_settings/general'));
-        const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
+        const globalSettingsSnap = await t.get(adminDb.doc('system_config/global'));
+        const legacySettingsSnap = await t.get(adminDb.doc('admin_settings/general'));
+        const systemConfig = globalSettingsSnap.exists 
+          ? { ...(legacySettingsSnap.exists ? legacySettingsSnap.data() : {}), ...globalSettingsSnap.data() } 
+          : (legacySettingsSnap.exists ? legacySettingsSnap.data() : {});
+
+        const delegateMonthlyCommission = Number(
+          systemConfig?.delegateMonthlyCommission ?? systemConfig?.referralFeePerRenewal ?? 100
+        );
 
         const delegateCommissions = systemConfig?.delegatePackageCommissions || {
           daily: 5,
           weekly: 15,
           biweekly: 25,
-          monthly: systemConfig?.referralFeePerRenewal !== undefined ? Number(systemConfig.referralFeePerRenewal) : 50
+          monthly: delegateMonthlyCommission
         };
 
         const subscriberFlatFee = systemConfig?.subscriberFlatFee !== undefined
@@ -1104,26 +1130,71 @@ export function createApp() {
             revenue: topupAmount
           };
         } else {
-          // Package Price Calculation from Package Doc or Server Defaults
+          // Package Price Calculation from Package Doc (Server Authoritative)
           const rawPackageData = requestData.packageData || {};
           let basePrice = Number(rawPackageData.price || rawPackageData.priceAmount || requestData.amount || 0);
+          let durationDays = Number(requestData.durationDays || requestData.carsCount || 30);
+          let pkgName = String(requestData.packageName || rawPackageData.name || 'باقة الاشتراك');
+          let isUnlimitedPkg =
+            pkgName.includes('مفتوح') ||
+            pkgName.includes('غير محدود') ||
+            pkgName.includes('غير محدودة') ||
+            pkgName.includes('بدون حدود') ||
+            pkgName.includes('سعة مفتوحة');
+          let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
 
           if (requestData.packageId) {
             const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
             const pkgSnap = await t.get(pkgRef);
             if (pkgSnap.exists) {
-              basePrice = Number(pkgSnap.data()?.price || basePrice);
+              const pData = pkgSnap.data() || {};
+              if (pData.price !== undefined) {
+                basePrice = Number(pData.price);
+              }
+              if (pData.durationDays !== undefined) {
+                durationDays = Number(pData.durationDays);
+              }
+              if (pData.dailyCapacity !== undefined) {
+                effCapacity = pData.isUnlimited ? 0 : Number(pData.dailyCapacity);
+              }
+              if (pData.name) {
+                pkgName = String(pData.name);
+              }
             }
           }
 
-          const durationDays = Number(requestData.durationDays || requestData.carsCount || 30);
+          // Delegate Doc Check & Monthly Qualification
+          const targetDelegateId = delegateReferrerId || requestData.delegateId || null;
+          let delegateRef: any = null;
+          let delegateSnap: any = null;
+          if (targetDelegateId) {
+            delegateRef = adminDb.doc(`delegates/${targetDelegateId}`);
+            delegateSnap = await t.get(delegateRef);
+          }
 
           let commission = 0;
-          if (referredByDelegate) {
-            if (durationDays >= 30) commission = Number(delegateCommissions.monthly || 50);
-            else if (durationDays >= 14) commission = Number(delegateCommissions.biweekly || 25);
-            else if (durationDays >= 7) commission = Number(delegateCommissions.weekly || 15);
-            else commission = Number(delegateCommissions.daily || 5);
+          if (referredByDelegate && targetDelegateId) {
+            const currentMonthKey = new Date().toISOString().slice(0, 7);
+            const monthlyStatsRef = adminDb.doc(`garage_monthly_stats/${targetGarageId}_${currentMonthKey}`);
+            const monthlyStatsSnap = await t.get(monthlyStatsRef);
+            const monthlyStatsData = monthlyStatsSnap.exists ? monthlyStatsSnap.data() : {};
+
+            const prevDaysPurchased = Number(monthlyStatsData.totalDaysPurchased || 0);
+            const newDaysPurchased = prevDaysPurchased + durationDays;
+            const alreadyPaid = Boolean(monthlyStatsData.paid100EgpCommission);
+
+            if (!alreadyPaid && (durationDays >= 30 || newDaysPurchased >= 10)) {
+              commission = delegateMonthlyCommission > 0 ? delegateMonthlyCommission : 100;
+            }
+
+            t.set(monthlyStatsRef, {
+              garageId: targetGarageId,
+              delegateId: targetDelegateId,
+              monthKey: currentMonthKey,
+              totalDaysPurchased: newDaysPurchased,
+              paid100EgpCommission: alreadyPaid || commission > 0,
+              updatedAt: new Date()
+            }, { merge: true });
           }
 
           const effectiveOriginalRevenue = basePrice;
@@ -1131,15 +1202,6 @@ export function createApp() {
           let effectiveRevenue = Math.max(0, basePrice - discountAmount);
           if (garageData.hasMonthlySubscribers === true) {
             effectiveRevenue += subscriberFlatFee;
-          }
-
-          // Delegate Doc Check
-          const targetDelegateId = delegateReferrerId || requestData.delegateId || null;
-          let delegateRef: any = null;
-          let delegateSnap: any = null;
-          if (targetDelegateId) {
-            delegateRef = adminDb.doc(`delegates/${targetDelegateId}`);
-            delegateSnap = await t.get(delegateRef);
           }
 
           // Expiry Calculation
@@ -1153,30 +1215,20 @@ export function createApp() {
           }
           baseDate.setDate(baseDate.getDate() + durationDays);
 
-          // Unlimited capacity check
-          const pkgName = String(requestData.packageName || '');
-          const isUnlimitedPkg =
-            pkgName.includes('مفتوح') ||
-            pkgName.includes('غير محدود') ||
-            pkgName.includes('غير محدودة') ||
-            pkgName.includes('بدون حدود') ||
-            pkgName.includes('سعة مفتوحة');
-
-          const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
-
           // Update Garage
           t.set(garageRef, {
             balanceExpiry: baseDate,
             dailyCapacity: effCapacity,
-            activePackageName: requestData.packageName || 'الباقة',
-            packageName: requestData.packageName || 'الباقة',
+            activePackageName: pkgName || requestData.packageName || 'الباقة',
+            packageName: pkgName || requestData.packageName || 'الباقة',
             billingModel: 'subscription',
             isLocked: false,
             isTrial: false,
             totalAdminRevenue: (garageData.totalAdminRevenue || 0) + effectiveRevenue,
             lastRechargeDate: new Date(),
             lastRechargeAmount: effectiveRevenue,
-            lastRechargePackageName: requestData.packageName || null
+            lastRechargePackageName: requestData.packageName || null,
+            unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName || requestData.packageName || '') : null
           }, { merge: true });
 
           // Update Request
@@ -1257,7 +1309,7 @@ export function createApp() {
 
       await adminDb.runTransaction(async (t: any) => {
         // Idempotency check
-        const { isDuplicate } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/reject-recharge-request', callerUid);
         if (isDuplicate) {
           return;
         }
@@ -1307,7 +1359,7 @@ export function createApp() {
 
       await adminDb.runTransaction(async (t: any) => {
         // Idempotency check
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/admin-topup-balance', callerUid);
         if (isDuplicate) {
           resultData = cachedResult;
           return;
@@ -1365,17 +1417,20 @@ export function createApp() {
   // Secure Server API: Garage Self-Service Subscription Using Balance
   app.post('/api/transactions/garage-self-subscribe', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     const userRole = req.user?.role;
-    const userGarageId = req.user?.garageId;
+    const userGarageId = req.user?.garageId || req.user?.entityId;
     const callerUid = req.user?.uid;
     try {
-      const sanitized = sanitizePayload(req.body, ['garageId', 'packageId', 'idempotencyKey'], false);
+      const sanitized = sanitizePayload(req.body, ['garageId', 'packageId', 'packageData', 'idempotencyKey'], false);
       const bodyGarageId = validateId(sanitized.garageId, 'garageId', false);
       const packageId = validateId(sanitized.packageId, 'packageId', true);
       const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       const garageId = userRole === 'garage' ? userGarageId : (bodyGarageId || userGarageId);
-      if (userRole === 'garage' && userGarageId !== bodyGarageId && bodyGarageId) {
+      if (userRole === 'garage' && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
         return res.status(403).json({ success: false, error: 'UNAUTHORIZED_GARAGE_ACCESS' });
+      }
+      if (!['garage', 'admin', 'supervisor'].includes(userRole || '')) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for self subscribe' });
       }
       if (!garageId) {
         return res.status(400).json({ success: false, error: 'GARAGE_ID_REQUIRED' });
@@ -1388,7 +1443,7 @@ export function createApp() {
 
       await adminDb.runTransaction(async (t: any) => {
         // Idempotency check
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/garage-self-subscribe', callerUid);
         if (isDuplicate) {
           resultData = cachedResult;
           return;
@@ -1410,13 +1465,30 @@ export function createApp() {
           ? Math.max(0, Number(systemConfig.subscriberFlatFee))
           : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
 
-        // Resolve package info entirely from server
-        let pkg = null;
+        // Standard default packages mapping
+        const DEFAULT_PACKAGES_MAP: Record<string, { id: string; name: string; price: number; durationDays: number; dailyCapacity: number; isUnlimited?: boolean }> = {
+          daily_30: { id: 'daily_30', name: 'باقة 30 سيارة/يوم', price: 15, durationDays: 1, dailyCapacity: 30 },
+          daily_50: { id: 'daily_50', name: 'باقة 50 سيارة/يوم', price: 25, durationDays: 1, dailyCapacity: 50 },
+          daily_unlimited: { id: 'daily_unlimited', name: 'باقة سعة مفتوحة', price: 40, durationDays: 1, dailyCapacity: 0, isUnlimited: true },
+          biweekly_30: { id: 'biweekly_30', name: 'باقة 30 سيارة/يوم', price: 120, durationDays: 15, dailyCapacity: 30 },
+          biweekly_50: { id: 'biweekly_50', name: 'باقة 50 سيارة/يوم', price: 180, durationDays: 15, dailyCapacity: 50 },
+          biweekly_unlimited: { id: 'biweekly_unlimited', name: 'باقة سعة مفتوحة', price: 280, durationDays: 15, dailyCapacity: 0, isUnlimited: true },
+          monthly_30: { id: 'monthly_30', name: 'باقة 30 سيارة/يوم', price: 200, durationDays: 30, dailyCapacity: 30 },
+          monthly_50: { id: 'monthly_50', name: 'باقة 50 سيارة/يوم', price: 300, durationDays: 30, dailyCapacity: 50 },
+          monthly_unlimited: { id: 'monthly_unlimited', name: 'باقة سعة مفتوحة', price: 450, durationDays: 30, dailyCapacity: 0, isUnlimited: true }
+        };
+
+        // Resolve package info from Firestore collection, or fallback to default packages / request packageData
+        let pkg: any = null;
         if (packageId) {
           const pkgRef = adminDb.doc(`packages/${packageId}`);
           const pkgSnap = await t.get(pkgRef);
           if (pkgSnap.exists) {
             pkg = { id: pkgSnap.id, ...pkgSnap.data() };
+          } else if (DEFAULT_PACKAGES_MAP[packageId]) {
+            pkg = { ...DEFAULT_PACKAGES_MAP[packageId] };
+          } else if (sanitized.packageData && typeof sanitized.packageData === 'object') {
+            pkg = { id: packageId, ...sanitized.packageData };
           }
         }
 
@@ -1480,7 +1552,8 @@ export function createApp() {
           isTrial: false,
           lastRechargeDate: new Date(),
           lastRechargeAmount: effectivePrice,
-          lastRechargePackageName: pkgName
+          lastRechargePackageName: pkgName,
+          unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName) : null
         }, { merge: true });
 
         // Log Activity
@@ -1581,19 +1654,36 @@ export function createApp() {
            throw new Error('SUBSCRIPTION_EXPIRED');
         }
 
+        // Compute the day rollover FIRST — todayCount from a previous day is stale
+        // and must not be used against today's capacity limit.
+        const isNewDay = garageData.lastTransactionDate !== today;
+
         // Capacity check
         const capacity = Number(garageData.dailyCapacity || 0);
-        const used = Number(garageData.todayCount || 0);
+        const used = isNewDay ? 0 : Number(garageData.todayCount || 0);
         const isUnlimited = capacity === 0 || String(garageData.activePackageName || '').includes('مفتوح');
-        if (!isUnlimited && used >= capacity) {
+        
+        let updatedFairUse: any = null;
+        let didAutoExtend = false;
+
+        if (isUnlimited) {
+          const evalResult = evaluateFairUseCheckIn(
+            garageData.unlimitedFairUse,
+            garageData.durationDays || 30,
+            garageData.activePackageName || ''
+          );
+          if (!evalResult.allowed) {
+            throw new Error('FAIR_USE_LIMIT_REACHED');
+          }
+          updatedFairUse = evalResult.updatedFairUse;
+          didAutoExtend = evalResult.autoExtended;
+        } else if (used >= capacity) {
           throw new Error('CAPACITY_LIMIT_REACHED');
         }
 
         if (vehicleSnap.exists && vehicleSnap.data()?.status === 'inside') {
           throw new Error('VEHICLE_ALREADY_INSIDE');
         }
-
-        const isNewDay = garageData.lastTransactionDate !== today;
         
         t.set(vehicleRef, {
           id: plateRaw,
@@ -1608,12 +1698,36 @@ export function createApp() {
           staffName: staffName || 'مدير الجراج'
         }, { merge: true });
 
-        t.set(garageRef, {
+        const garageUpdate: any = {
           carsInside: (garageData.carsInside || 0) + 1,
           todayCount: isNewDay ? 1 : used + 1,
           todayRevenue: isNewDay ? 0 : (garageData.todayRevenue || 0),
           lastTransactionDate: today
-        }, { merge: true });
+        };
+        if (updatedFairUse) {
+          garageUpdate.unlimitedFairUse = updatedFairUse;
+        }
+
+        t.set(garageRef, garageUpdate, { merge: true });
+
+        if (didAutoExtend && updatedFairUse) {
+          const autoExtLogRef = adminDb.collection('activity_logs').doc();
+          t.set(autoExtLogRef, {
+            garageId,
+            garageName: garageData.name || '',
+            staffId: 'system',
+            staffName: 'نظام الاستخدام العادل',
+            actionType: 'fair_use_auto_extended',
+            plateNumber: `تمديد تلقائي لسعة الباقة (+${updatedFairUse.stepAmount} سيارة)`,
+            timestamp: new Date(),
+            details: {
+              currentAllowance: updatedFairUse.currentAllowance,
+              maxAllowance: updatedFairUse.maxAllowance,
+              cycleCarsCount: updatedFairUse.cycleCarsCount,
+              tierType: updatedFairUse.tierType
+            }
+          });
+        }
 
         if (!dailyStatsSnap.exists) {
           t.set(dailyStatsRef, {
@@ -1643,7 +1757,8 @@ export function createApp() {
       return res.json({ success: true });
     } catch (err: any) {
       console.error('[Server] Check-in error:', err);
-      return res.status(500).json({ success: false, error: err.message || 'CHECK_IN_FAILED' });
+      const { statusCode, message } = mapDomainErrorToStatus(err);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -1701,18 +1816,8 @@ export function createApp() {
           throw new Error('VEHICLE_ALREADY_OUTSIDE');
         }
 
-        // Server-authoritative cost calculation
-        let cost = 0;
-        if (!vehicleData.isSubscriber) {
-          const entryTime = vehicleData.entryTime?.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
-          if (entryTime && !isNaN(entryTime.getTime())) {
-            const diffMs = Date.now() - entryTime.getTime();
-            let hours = Math.ceil(diffMs / (1000 * 60 * 60));
-            if (hours < 1) hours = 1;
-            const rate = Number(garageData.hourlyRate || 0);
-            cost = hours * rate;
-          }
-        }
+        // Server-authoritative cost calculation (type-aware: hourly vs overnight)
+        const cost = calculateVehicleCost(vehicleData, garageData);
         finalCost = cost;
 
         t.set(vehicleRef, {
@@ -1763,7 +1868,8 @@ export function createApp() {
       return res.json({ success: true, data: { cost: finalCost } });
     } catch (err: any) {
       console.error('[Server] Check-out error:', err);
-      return res.status(500).json({ success: false, error: err.message || 'CHECK_OUT_FAILED' });
+      const { statusCode, message } = mapDomainErrorToStatus(err);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -1809,7 +1915,8 @@ export function createApp() {
           t.get(dailyStatsRef)
         ]);
 
-        if (!garageDoc.exists || !vehicleDoc.exists) throw new Error('NOT_FOUND');
+        if (!garageDoc.exists) throw new Error('GARAGE_NOT_FOUND');
+        if (!vehicleDoc.exists) throw new Error('VEHICLE_NOT_FOUND');
         
         const garageData = garageDoc.data() || {};
         const vehicleData = vehicleDoc.data() || {};
@@ -1824,8 +1931,8 @@ export function createApp() {
         // Strict refund validation: refund amount cannot exceed actual fee recorded for this vehicle,
         // and cannot be refunded if the vehicle was only inside (unpaid entry).
         const requestedRefund = Math.max(0, Number(refundAmount || 0));
-        const maxEligibleRefund = (vehicleData.status === 'exited' && typeof vehicleData.cost === 'number')
-          ? Math.max(0, vehicleData.cost)
+        const maxEligibleRefund = (vehicleData.status === 'outside' && typeof vehicleData.totalCost === 'number')
+          ? Math.max(0, vehicleData.totalCost)
           : 0;
         const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
 
@@ -1874,13 +1981,8 @@ export function createApp() {
       return res.json({ success: true });
     } catch (err: any) {
       console.error('[Server] Delete error:', err);
-      if (err?.message === 'reached_daily_deletion_limit') {
-        return res.status(403).json({ success: false, error: 'reached_daily_deletion_limit' });
-      }
-      if (err?.message === 'NOT_FOUND') {
-        return res.status(404).json({ success: false, error: 'VEHICLE_NOT_FOUND' });
-      }
-      return res.status(500).json({ success: false, error: err?.message || 'DELETE_FAILED' });
+      const { statusCode, message } = mapDomainErrorToStatus(err);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -1902,34 +2004,34 @@ export function createApp() {
       }
 
       // Check uniqueness of new PIN
-      const existingAccount = await queryAccountWherePin(normNewPin);
-      if (existingAccount && !(existingAccount.role === 'admin' && existingAccount.id === 'auth_pin')) {
+      const pinCheck = await checkPinAvailabilityAcrossAll(normNewPin, 'auth_pin');
+      if (pinCheck.taken) {
         return res.status(400).json({
           success: false,
           error: 'PIN_ALREADY_TAKEN',
-          takenBy: { name: existingAccount.account?.name || '', role: existingAccount.role }
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
         });
       }
 
       // If current PIN is supplied, verify it
       if (currentPin) {
         const normCurrent = cleanPin(currentPin);
-        const adminDocSnap = await adminDb.doc('admin_settings/auth_pin').get();
-        if (adminDocSnap.exists) {
-          const storedPin = adminDocSnap.data()?.pin || '';
-          const isMatch = verifyPinMatch(normCurrent, storedPin);
+        const adminStoredPin = await getAdminPin();
+        if (adminStoredPin) {
+          const isMatch = verifyPinMatch(normCurrent, adminStoredPin);
           if (!isMatch) {
             return res.status(400).json({ success: false, error: 'CURRENT_PIN_INCORRECT' });
           }
         }
       }
 
-      const scryptHash = hashPinWithUniqueSalt(normNewPin);
-      const lookupHash = computeLookupHash(normNewPin);
+      // 1. Save in private_pins
+      await saveEntityPin('admin_settings', 'auth_pin', normNewPin);
 
+      // 2. Cleanse legacy plaintext pin from admin_settings/auth_pin
       await adminDb.doc('admin_settings/auth_pin').set({
-        pin: scryptHash,
-        pinLookupHash: lookupHash,
+        pin: null,
+        pinLookupHash: null,
         updatedAt: new Date()
       }, { merge: true });
 
@@ -1937,6 +2039,64 @@ export function createApp() {
     } catch (e: any) {
       console.error('[Server Admin] Error in update-pin:', e);
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Admin Extend Garage Fair-Use Allowance
+  app.post('/api/admin/garages/:id/extend-fair-use', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+
+      const garageId = validateId(req.params.id, 'garageId');
+      const extraCars = Math.max(0, Number(req.body?.extraCars || 0));
+
+      let resultFairUse: any = null;
+      await adminDb.runTransaction(async (t: any) => {
+        const garageRef = adminDb.doc(`garages/${garageId}`);
+        const garageSnap = await t.get(garageRef);
+        if (!garageSnap.exists) {
+          throw new Error('GARAGE_NOT_FOUND');
+        }
+
+        const garageData = garageSnap.data() || {};
+        const isUnlimited = Number(garageData.dailyCapacity || 0) === 0 || String(garageData.activePackageName || '').includes('مفتوح');
+        if (!isUnlimited) {
+          throw new Error('NOT_AN_UNLIMITED_PACKAGE');
+        }
+
+        let fairUse = garageData.unlimitedFairUse;
+        if (!fairUse || !fairUse.isActive) {
+          fairUse = initializeFairUse(garageData.durationDays || 30, garageData.activePackageName || '');
+        }
+
+        resultFairUse = manualAdminExtendFairUse(fairUse, extraCars);
+        t.set(garageRef, { unlimitedFairUse: resultFairUse }, { merge: true });
+
+        // Activity log
+        const logRef = adminDb.collection('activity_logs').doc();
+        t.set(logRef, {
+          garageId,
+          garageName: garageData.name || '',
+          staffId: req.user?.uid || 'admin',
+          staffName: 'مدير النظام (Admin)',
+          actionType: 'fair_use_admin_extended',
+          plateNumber: `تمديد استثنائي للاستخدام العادل (+${extraCars > 0 ? extraCars : fairUse.stepAmount} سيارة)`,
+          timestamp: new Date(),
+          details: {
+            currentAllowance: resultFairUse.currentAllowance,
+            maxAllowance: resultFairUse.maxAllowance,
+            cycleCarsCount: resultFairUse.cycleCarsCount
+          }
+        });
+      });
+
+      return res.json({ success: true, unlimitedFairUse: resultFairUse });
+    } catch (err: any) {
+      console.error('[Server Admin] Error in extend-fair-use:', err);
+      const { statusCode, message } = mapDomainErrorToStatus(err);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -1966,48 +2126,52 @@ export function createApp() {
       }
 
       // Check PIN availability
-      const existingMatch = await queryAccountWherePin(normPin);
-      if (existingMatch) {
+      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+      if (pinCheck.taken) {
         return res.status(400).json({
           success: false,
           error: 'PIN_ALREADY_TAKEN',
-          takenBy: { name: existingMatch.account?.name || '', role: existingMatch.role }
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
         });
       }
 
-      const scryptHash = hashPinWithUniqueSalt(normPin);
-      const lookupHash = computeLookupHash(normPin);
-
       const isTrial = sanitized.isTrial !== undefined ? Boolean(sanitized.isTrial) : true;
-      const trialDays = validateNumber(sanitized.trialDays || sanitized.defaultTrialDays, 'trialDays', { min: 1, max: 365 }) || 15;
+      const rawTrialDays = sanitized.trialDays !== undefined ? sanitized.trialDays : sanitized.defaultTrialDays;
+      const trialDays = rawTrialDays !== undefined
+        ? validateNumber(rawTrialDays, 'trialDays', { min: 1, max: 365, required: false })
+        : 15;
       const now = new Date();
 
-      let balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 15) * 24 * 60 * 60 * 1000);
-      let dailyCapacity = validateNumber(sanitized.dailyCapacity, 'dailyCapacity', { min: 0, max: 10000 }) || 40;
-      let activePackageName = `الباقة التجريبية (${trialDays} يوم)`;
+      let balanceExpiry: Date;
+      let dailyCapacity: number;
+      let activePackageName: string;
 
-      if (!isTrial && sanitized.initialPackageId && Array.isArray(sanitized.packages)) {
-        const pkg = sanitized.packages.find((p: any) => p?.id === sanitized.initialPackageId);
-        if (pkg) {
-          const durationDays = Number(pkg.durationDays || 30);
-          dailyCapacity = pkg.isUnlimited ? 0 : Number(pkg.dailyCapacity || 40);
-          balanceExpiry = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-          activePackageName = String(pkg.name || 'باقة الاشتراك');
-        }
+      if (isTrial) {
+        balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 15) * 24 * 60 * 60 * 1000);
+        dailyCapacity = sanitized.dailyCapacity !== undefined
+          ? validateNumber(sanitized.dailyCapacity, 'dailyCapacity', { min: 0, max: 10000, required: false })
+          : 40;
+        activePackageName = `الباقة التجريبية (${trialDays} يوم)`;
+      } else {
+        balanceExpiry = new Date(now.getTime() - 1000);
+        dailyCapacity = 0;
+        activePackageName = 'بدون باقة';
       }
 
       const garageRef = adminDb.collection('garages').doc();
       const garageId = garageRef.id;
 
+      // Save credentials exclusively to secure private_pins collection
+      await saveEntityPin('garages', garageId, normPin);
+
       const garageDoc: any = {
         name: name.trim(),
         phone: sanitized.phone ? String(sanitized.phone).trim() : '',
-        hourlyRate: validateNumber(sanitized.hourlyRate, 'hourlyRate', { min: 0, max: 10000 }) || 0,
-        overnightRate: validateNumber(sanitized.overnightRate, 'overnightRate', { min: 0, max: 10000 }) || 0,
-        pin: scryptHash,
-        pinLookupHash: lookupHash,
-        billingModel: sanitized.billingModel || 'subscription',
-        status: 'approved',
+        hourlyRate: sanitized.hourlyRate !== undefined ? validateNumber(sanitized.hourlyRate, 'hourlyRate', { min: 0, max: 10000, required: false }) : 0,
+        overnightRate: sanitized.overnightRate !== undefined ? validateNumber(sanitized.overnightRate, 'overnightRate', { min: 0, max: 10000, required: false }) : 0,
+        billingModel: ['subscription', 'trial'].includes(sanitized.billingModel) ? sanitized.billingModel : 'subscription',
+        status: (callerRole === 'delegate' || sanitized.createdByDelegateId || sanitized.isPending) ? 'pending' : 'approved',
+        hasMonthlySubscribers: false,
         createdAt: now,
         isTrial,
         dailyCapacity,
@@ -2030,11 +2194,12 @@ export function createApp() {
         isDeleting: false
       };
 
-      if (callerRole === 'delegate' && callerUid) {
-        garageDoc.createdByDelegateId = callerUid;
-        garageDoc.createdByDelegateName = callerName || 'المندوب';
-        garageDoc.referrerId = callerUid;
-        garageDoc.referrerName = callerName || 'المندوب';
+      if (callerRole === 'delegate') {
+        const delegateEntityId = req.user?.entityId || callerUid;
+        garageDoc.createdByDelegateId = delegateEntityId;
+        garageDoc.createdByDelegateName = sanitized.createdByDelegateName || callerName || 'المندوب';
+        garageDoc.referrerId = delegateEntityId;
+        garageDoc.referrerName = sanitized.referrerName || sanitized.createdByDelegateName || callerName || 'المندوب';
       } else if (sanitized.createdByDelegateId) {
         garageDoc.createdByDelegateId = sanitized.createdByDelegateId;
         garageDoc.createdByDelegateName = sanitized.createdByDelegateName || 'المندوب';
@@ -2055,16 +2220,16 @@ export function createApp() {
         garageId,
         garageName: garageDoc.name,
         staffId: callerUid || null,
-        staffName: callerName || (isTrial ? 'النظام (تفعيل تجريبي)' : 'الإدارة (تفعيل الاشتراك)'),
-        actionType: 'recharge',
+        staffName: callerName || (isTrial ? 'النظام (تفعيل تجريبي)' : 'الإدارة (إنشاء جراج)'),
+        actionType: isTrial ? 'recharge' : 'create',
         plateNumber: isTrial
           ? `تفعيل الباقة التجريبية (${trialDays} يوم)`
-          : `تفعيل اشتراك: ${activePackageName}`,
+          : `إنشاء حساب جراج جديد (بدون باقة)`,
         timestamp: now,
         amount: 0,
         details: {
           packageName: isTrial ? `الباقة التجريبية (${trialDays} يوم)` : activePackageName,
-          durationDays: isTrial ? trialDays : 30,
+          durationDays: isTrial ? trialDays : 0,
           carsCount: dailyCapacity,
           revenueAmount: 0
         }
@@ -2078,6 +2243,217 @@ export function createApp() {
     }
   });
 
+  // Secure Server API: Create Supervisor (Admin Only)
+  app.post('/api/supervisors/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { name, phone, pin, permissions } = req.body || {};
+      const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+      const normPin = cleanPin(pin);
+      if (!normPin || normPin.length < 4 || normPin.length > 10) {
+        return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
+      }
+
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+      if (pinCheck.taken) {
+        return res.status(400).json({
+          success: false,
+          error: 'PIN_ALREADY_TAKEN',
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+        });
+      }
+
+      const supRef = adminDb.collection('supervisors').doc();
+      const supId = supRef.id;
+
+      await saveEntityPin('supervisors', supId, normPin);
+
+      await supRef.set({
+        name: normName.trim(),
+        phone: phone ? String(phone).trim() : '',
+        permissions: permissions || {},
+        createdAt: new Date()
+      });
+
+      return res.json({ success: true, id: supId });
+    } catch (e: any) {
+      console.error('[Server Supervisor] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Create Delegate (Admin Only)
+  app.post('/api/delegates/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = req.body || {};
+      const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+      const normPhone = phone ? String(phone).trim() : '';
+      const normPin = cleanPin(pin);
+      if (!normPin || normPin.length < 4 || normPin.length > 10) {
+        return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
+      }
+
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+      if (pinCheck.taken) {
+        return res.status(400).json({
+          success: false,
+          error: 'PIN_ALREADY_TAKEN',
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+        });
+      }
+
+      const delRef = adminDb.collection('delegates').doc();
+      const delId = delRef.id;
+
+      await saveEntityPin('delegates', delId, normPin);
+
+      await delRef.set({
+        name: normName.trim(),
+        phone: normPhone,
+        commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
+        commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
+        defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : 15,
+        balance: 0,
+        totalEarned: 0,
+        createdAt: new Date()
+      });
+
+      return res.json({ success: true, id: delId });
+    } catch (e: any) {
+      console.error('[Server Delegate] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Create Staff Member
+  app.post('/api/staff/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { name, phone, pin, garageId, role, permissions } = req.body || {};
+      const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
+
+      if (callerRole !== 'admin' && callerRole !== 'supervisor' && (!callerGarageId || callerGarageId !== garageId)) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' });
+      }
+
+      const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+      const normPin = cleanPin(pin);
+      if (!normPin || normPin.length < 4 || normPin.length > 10) {
+        return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
+      }
+
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+      if (pinCheck.taken) {
+        return res.status(400).json({
+          success: false,
+          error: 'PIN_ALREADY_TAKEN',
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+        });
+      }
+
+      const staffRef = adminDb.collection('staff').doc();
+      const staffId = staffRef.id;
+
+      await saveEntityPin('staff', staffId, normPin);
+
+      await staffRef.set({
+        name: normName.trim(),
+        phone: phone ? String(phone).trim() : '',
+        garageId,
+        role: role || 'worker',
+        permissions: permissions || {},
+        createdAt: new Date()
+      });
+
+      return res.json({ success: true, id: staffId });
+    } catch (e: any) {
+      console.error('[Server Staff] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Update Entity PIN (Admin, Supervisor, or Garage Owner for own staff)
+  app.post('/api/people/update-pin', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { entityType, entityId, newPin } = req.body || {};
+      if (!entityType || !entityId || !['garages', 'supervisors', 'delegates', 'staff'].includes(entityType)) {
+        return res.status(400).json({ success: false, error: 'INVALID_ENTITY_TYPE' });
+      }
+
+      const normNewPin = cleanPin(newPin);
+      if (!normNewPin || normNewPin.length < 4 || normNewPin.length > 10) {
+        return res.status(400).json({ success: false, error: 'INVALID_NEW_PIN: PIN must be 4 to 10 digits' });
+      }
+
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
+
+      // Verify Authorization
+      if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+        if (entityType === 'staff') {
+          const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
+          if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+            return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage staff outside your garage' });
+          }
+        } else if (entityType === 'garages' && entityId !== callerGarageId) {
+          return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot update PIN of other garages' });
+        } else if (entityType !== 'staff' && entityType !== 'garages') {
+          return res.status(403).json({ success: false, error: 'FORBIDDEN: Insufficient permissions' });
+        }
+      }
+
+      const pinCheck = await checkPinAvailabilityAcrossAll(normNewPin, entityId);
+      if (pinCheck.taken) {
+        return res.status(400).json({
+          success: false,
+          error: 'PIN_ALREADY_TAKEN',
+          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+        });
+      }
+
+      await saveEntityPin(entityType, entityId, normNewPin);
+
+      // Cleanse public document of legacy pin fields
+      const targetDocRef = adminDb.collection(entityType).doc(entityId);
+      const docSnap = await targetDocRef.get();
+      if (docSnap.exists) {
+        const data = docSnap.data() || {};
+        const updates: Record<string, any> = { updatedAt: new Date() };
+        if ('pin' in data) updates.pin = null;
+        if ('ownerPin' in data) updates.ownerPin = null;
+        if ('adminPin' in data) updates.adminPin = null;
+        if ('pinLookupHash' in data) updates.pinLookupHash = null;
+        await targetDocRef.set(updates, { merge: true });
+      }
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server People] Error in update-pin:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
   // Secure Server API: Garage Referral Reward Claim
   app.post('/api/transactions/use-referral-reward', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     try {
@@ -2087,10 +2463,14 @@ export function createApp() {
 
       const callerUid = req.user?.uid;
       const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
 
       // Only garage owner of this garage, admin, or supervisor can claim
-      if (callerRole === 'garage' && callerUid !== garageId) {
+      if (callerRole === 'garage' && callerGarageId !== garageId) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot claim reward for another garage' });
+      }
+      if (callerRole === 'staff') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Staff cannot claim referral rewards' });
       }
 
       if (!adminDb) {
@@ -2100,7 +2480,7 @@ export function createApp() {
       let claimedDays = 0;
       await adminDb.runTransaction(async (t) => {
         // Idempotency check
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey);
+        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/use-referral-reward', callerUid);
         if (isDuplicate) {
           claimedDays = cachedResult?.daysClaimed || 0;
           return;

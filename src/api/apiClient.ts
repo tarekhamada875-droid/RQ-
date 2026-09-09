@@ -80,6 +80,9 @@ export async function apiFetch<T = any>(
   if (contentType && !contentType.includes('application/json')) {
     const text = await response.text().catch(() => '');
     console.error(`[ApiClient] Received non-JSON response from ${endpoint} (Correlation ID: ${serverCorrelationId}):`, text);
+    if (text.includes('FUNCTION_INVOCATION_FAILED')) {
+      throw new Error(`تعذر تشغيل خدمة الخادم على منصة الاستضافة (ID: ${serverCorrelationId})`);
+    }
     throw new Error(`استجابة غير صالحة من الخادم (ID: ${serverCorrelationId})`);
   }
 

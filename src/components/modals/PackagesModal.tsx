@@ -1,9 +1,9 @@
 import React, { useState, memo } from 'react';
 import { Package, Garage } from '../../types';
 import { getCleanPackageInfo, getDefaultDurationFilter, filterPackagesForGarage, DEFAULT_PACKAGES } from '../../constants/packages';
-import { ChevronRight, Clock, Car, Sparkles, Filter, Wallet, CheckCircle2, Loader2, Zap } from 'lucide-react';
+import { ChevronRight, Clock, Sparkles, Filter, Wallet, CheckCircle2, Loader2, Zap, Smartphone } from 'lucide-react';
 import { calculateFinalPrice } from '../../utils';
-import { useSystemSubscribersFlatFee, useSystemDelegateCommissions } from '../../hooks/useSystemSubscribersFlatFee';
+import { useSystemSubscribersFlatFee } from '../../hooks/useSystemSubscribersFlatFee';
 import { garageService } from '../../services/garageService';
 
 interface PackagesModalProps {
@@ -29,7 +29,7 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
   onClose, 
   walletNumber = "01552411323",
   hasMonthlySubscribers = false,
-  referrerId = null,
+  referrerId: _referrerId = null,
   garage = null,
   garageId = '',
   garageBalance = 0,
@@ -48,8 +48,7 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
 
   const [selectedDurationFilter, setSelectedDurationFilter] = useState<number>(() => getDefaultDurationFilter(rawList, hasMonthlySubscribers));
   const subscriberFlatFee = useSystemSubscribersFlatFee();
-  const delegateCommissions = useSystemDelegateCommissions();
-  const effectiveReferralFee = referrerId ? delegateCommissions : 0;
+  const effectiveReferralFee = 0;
 
   // Self-Service Subscribe States
   const effectiveGarageId = garageId || garage?.id || '';
@@ -77,13 +76,17 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const formattedWalletNumber = React.useMemo(() => {
-    const digits = walletNumber ? walletNumber.replace(/\D/g, '') : '01552411323';
-    if (digits.length === 11) {
-      return `${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
-    }
-    return walletNumber || '015 52 41 13 23';
+  const rawDigits = React.useMemo(() => {
+    return walletNumber ? walletNumber.replace(/\D/g, '') : '01552411323';
   }, [walletNumber]);
+
+  const formattedWalletNumber = React.useMemo(() => {
+    if (rawDigits.length === 11) {
+      // Egyptian mobile prefix standard grouping with clear dash separators: 0155 - 241 - 1323
+      return `${rawDigits.slice(0, 4)} - ${rawDigits.slice(4, 7)} - ${rawDigits.slice(7, 11)}`;
+    }
+    return walletNumber || '0155 - 241 - 1323';
+  }, [rawDigits, walletNumber]);
 
   const displayPackages = rawList
     .map(p => {
@@ -158,39 +161,48 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
       <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar-slate stable-scrollbar flex-1">
         <div className="max-w-xl mx-auto w-full space-y-4 sm:space-y-5">
           
-          {/* Unified Compact Wallet & Recharge Card - Dark Hero Card for Ultra Contrast */}
-          <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 p-4 sm:p-5 shadow-md space-y-3.5 transition-colors">
-            {/* Top Row: Balance on Left, Icon + Label on Right */}
-            <div className="flex items-center justify-between">
+          {/* Unified Wallet & Recharge Card - Dark Hero Card with Direct One-Tap Copy */}
+          <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 p-4 sm:p-5 shadow-lg space-y-4 transition-colors">
+            {/* Top Row: Balance Display */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-amber-400/20 border border-amber-400/30 text-amber-400 flex items-center justify-center shrink-0">
-                  <Wallet className="w-5 h-5" />
+                  <Wallet className="w-5.5 h-5.5" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-300 block">رصيد المحفظة المتاح</span>
+                  <span className="text-[11px] font-medium text-slate-400">لتفعيل الباقات مباشرة</span>
                 </div>
               </div>
 
-              <div className="flex items-baseline gap-1 font-mono">
-                <span className="text-2xl sm:text-3xl font-black text-amber-400">{currentBalance}</span>
+              <div className="flex items-baseline gap-1 font-mono bg-slate-950 px-3.5 py-1.5 rounded-2xl border border-slate-800">
+                <span className="text-2xl sm:text-3xl font-black text-amber-400">{formatNumber(currentBalance)}</span>
                 <span className="text-xs font-black text-amber-400/80">ج.م</span>
               </div>
             </div>
 
-            {/* Bottom Row: Direct Phone & Operating Hours */}
-            <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-3 flex flex-col sm:flex-row items-center justify-between gap-2 transition-colors">
-              <span className="text-base sm:text-lg font-black font-mono text-amber-300 tracking-wider dir-ltr" dir="ltr">
-                {formattedWalletNumber}
-              </span>
+            {/* Middle Section: Clean Wallet Number */}
+            <div className="bg-slate-950/90 rounded-2xl border border-slate-800/90 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>رقم المحفظة:</span>
+                </span>
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 whitespace-nowrap">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>الشحن: 9 ص - 5 م</span>
+                </div>
+              </div>
 
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300 whitespace-nowrap">
-                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>الشحن: 9 ص - 5 م يومياً</span>
+              <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-center">
+                <span className="text-xl sm:text-2xl font-black font-mono text-amber-300 tracking-wider dir-ltr select-all" dir="ltr">
+                  {formattedWalletNumber}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Duration Filter Tabs */}
+          {/* Duration Filter Tabs with Badge Counts */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -198,7 +210,7 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                 اختر مدة الاشتراك:
               </span>
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                {filteredPackages.length} باقة
+                {filteredPackages.length} باقة متاحة
               </span>
             </div>
 
@@ -208,24 +220,36 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
               availableDurations.length === 3 ? 'grid-cols-3' :
               'grid-cols-2 sm:grid-cols-4'
             }`}>
-              {availableDurations.map((dur) => (
-                <button
-                  key={dur}
-                  type="button"
-                  onClick={() => setSelectedDurationFilter(dur)}
-                  className={`py-2 px-2 rounded-xl font-black text-xs transition-all text-center cursor-pointer ${
-                    selectedDurationFilter === dur
-                      ? 'bg-amber-400 text-slate-950 shadow-sm scale-[1.01]'
-                      : 'text-slate-700 hover:text-slate-950 hover:bg-white/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  {getDurationLabel(dur)}
-                </button>
-              ))}
+              {availableDurations.map((dur) => {
+                const count = rawList.filter(p => getCleanPackageInfo(p).durationDays === dur).length;
+                const isSelected = selectedDurationFilter === dur;
+
+                return (
+                  <button
+                    key={dur}
+                    type="button"
+                    onClick={() => setSelectedDurationFilter(dur)}
+                    className={`py-2.5 px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-400 text-slate-950 shadow-sm scale-[1.01]'
+                        : 'text-slate-700 hover:text-slate-950 hover:bg-white/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <span>{getDurationLabel(dur)}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      isSelected
+                        ? 'bg-slate-950/20 text-slate-950'
+                        : 'bg-slate-300/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Packages List - High Contrast Cards */}
+          {/* Packages List - Structured Professional Cards */}
           <div className="space-y-3.5">
             {filteredPackages.map((pkg) => {
               const info = getCleanPackageInfo(pkg);
@@ -237,59 +261,81 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
               );
 
               const canAfford = currentBalance >= effectivePrice;
+              const missingAmount = effectivePrice - currentBalance;
 
               return (
                 <div 
                   key={pkg.id}
-                  className={`p-4 sm:p-5 rounded-3xl border-2 transition-all space-y-3.5 ${
+                  className={`p-4 sm:p-5 rounded-3xl border-2 transition-all space-y-4 relative overflow-hidden ${
                     info.isUnlimited
-                      ? 'bg-white dark:bg-slate-900 border-amber-500/80 shadow-md'
+                      ? 'bg-white dark:bg-slate-900 border-amber-500/90 shadow-md ring-1 ring-amber-500/20'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
                   {/* Header Row: Full Package Name + Badges */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight transition-colors">
-                      {packageName}
-                    </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                        {packageName}
+                      </h4>
+                    </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                       {hasDiscount && (
-                        <span className="text-xs sm:text-sm font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-1 rounded-xl whitespace-nowrap shadow-xs">
+                        <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-1 rounded-xl whitespace-nowrap shadow-xs">
                           خصم {pkg.discountType === 'percentage' ? `${pkg.discountValue}%` : `${pkg.discountValue} ج.م`}
                         </span>
                       )}
                       {isTopTier && (
                         <span className="bg-amber-400 text-slate-950 font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shadow-xs">
-                          <Sparkles className="w-3 h-3" />
+                          <Sparkles className="w-3 h-3 text-slate-950" />
                           الأعلى سعة
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Price Section: Clean & High Contrast */}
-                  <div className="flex items-baseline gap-2 font-mono pt-0.5">
-                    <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                      {formatNumber(effectivePrice)}
-                    </span>
-                    <span className="text-xs sm:text-sm font-black text-amber-600/90 dark:text-amber-400/80">ج.م</span>
+                  {/* Price Hero Area */}
+                  <div className="bg-slate-50 dark:bg-slate-950/70 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">سعر الاشتراك</span>
+                      <div className="flex items-baseline gap-1.5 font-mono">
+                        <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
+                          {formatNumber(effectivePrice)}
+                        </span>
+                        <span className="text-xs font-black text-amber-600/90 dark:text-amber-400/80">ج.م</span>
+                        {hasDiscount && (
+                          <span className="text-xs font-bold text-red-600 dark:text-red-400 line-through mr-1.5">
+                            بدلاً من {formatNumber(displayBasePrice)} ج.م
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     {hasDiscount && (
-                      <span className="text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 line-through mr-1.5">
-                        بدلاً من {formatNumber(displayBasePrice)} ج.م
-                      </span>
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1 rounded-lg block">
+                          وفرت {formatNumber(displayBasePrice - effectivePrice)} ج.م
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Feature / Capacity Row in distinct enclosed pill */}
-                  <div className="bg-slate-100 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/50 flex items-center gap-2.5 text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
-                    <div className="w-7 h-7 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                      <Car className="w-4 h-4" />
+                  {/* Bulleted Feature List */}
+                  <div className="space-y-2 pt-0.5">
+                    <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </div>
+                      <span>
+                        {info.isUnlimited 
+                          ? 'تسجيل سيارات بدون حد أقصى يومياً' 
+                          : `تسجيل حتى ${info.dailyCapacity} سيارة يومياً`}
+                      </span>
                     </div>
-                    <span>{info.isUnlimited ? 'تسجل عربيات من غير حد أقصى يومياً' : `بتسجل لغاية ${info.dailyCapacity} عربية يومياً`}</span>
                   </div>
 
-                  {/* Dedicated Full-Width Action Button */}
+                  {/* Dedicated Action Button (CTA) with Informative Top-Up State */}
                   {effectiveGarageId && (
                     <button
                       type="button"
@@ -301,17 +347,24 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                       className={`w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] whitespace-nowrap ${
                         canAfford
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
+                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 cursor-not-allowed'
                       }`}
-                      title={canAfford ? 'تفعيل الباقة وخصم المبلغ من الرصيد' : currentBalance <= 0 ? 'مفيش رصيد لشراء الباقة' : 'رصيدك مش كافي لشراء الباقة'}
+                      title={canAfford ? 'تفعيل الباقة وخصم المبلغ من الرصيد' : `رصيدك مش كافي لشراء الباقة (باقي ${formatNumber(missingAmount)} ج.م)`}
                     >
-                      <Zap className="w-4 h-4 shrink-0" />
                       {canAfford ? (
-                        <span className="whitespace-nowrap">تفعيل الباقة</span>
-                      ) : currentBalance <= 0 ? (
-                        <span className="whitespace-nowrap">مفيش رصيد</span>
+                        <>
+                          <Zap className="w-4 h-4 text-white shrink-0" />
+                          <span>تفعيل الباقة الآن</span>
+                        </>
                       ) : (
-                        <span className="whitespace-nowrap">رصيدك مش كافي</span>
+                        <>
+                          <Wallet className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>
+                            {currentBalance <= 0
+                              ? `رصيدك مش كافي (احتاج ${formatNumber(effectivePrice)} ج.م)`
+                              : `رصيدك مش كافي (باقي ${formatNumber(missingAmount)} ج.م للشحن)`}
+                          </span>
+                        </>
                       )}
                     </button>
                   )}
@@ -381,15 +434,15 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                         </div>
                         <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between items-center">
                           <span className="text-slate-500 dark:text-slate-400 font-bold">الرصيد الحالي:</span>
-                          <span className="font-black text-amber-600 dark:text-amber-400 font-mono">{currentBalance} ج.م</span>
+                          <span className="font-black text-amber-600 dark:text-amber-400 font-mono">{formatNumber(currentBalance)} ج.م</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-slate-500 dark:text-slate-400 font-bold">تكلفة الباقة:</span>
-                          <span className="font-black text-rose-500 dark:text-rose-400 font-mono">-{effectivePrice} ج.م</span>
+                          <span className="font-black text-rose-500 dark:text-rose-400 font-mono">-{formatNumber(effectivePrice)} ج.م</span>
                         </div>
                         <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between items-center text-emerald-600 dark:text-emerald-400">
                           <span className="font-black">الرصيد بعد التفعيل:</span>
-                          <span className="font-black font-mono text-sm">{remainingBalance} ج.م</span>
+                          <span className="font-black font-mono text-sm">{formatNumber(remainingBalance)} ج.م</span>
                         </div>
                       </div>
 
@@ -426,6 +479,9 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
     </div>
   );
 });
+
+PackagesModal.displayName = 'PackagesModal';
+
 
 PackagesModal.displayName = 'PackagesModal';
 

@@ -31,6 +31,17 @@ export const safeDate = (date: any): Date => {
   return d;
 };
 
+export const getGarageTimestamp = (g: any): number => {
+  if (!g || !g.createdAt) return 0;
+  const d = safeDate(g.createdAt);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+export const sortGaragesNewestFirst = <T extends { createdAt?: any }>(garages: T[]): T[] => {
+  if (!Array.isArray(garages)) return [];
+  return [...garages].sort((a, b) => getGarageTimestamp(b) - getGarageTimestamp(a));
+};
+
 export const normalizeDigits = (val: string): string => {
   if (!val) return '';
   const arabicDigits = '٠١٢٣٤٥٦٧٨٩';

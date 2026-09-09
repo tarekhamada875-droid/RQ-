@@ -4,9 +4,8 @@ import {
   X,
   RefreshCw
 } from 'lucide-react';
-import { Garage, Package } from '../../types';
+import { Garage } from '../../types';
 import { Spinner } from '../ui/Spinner';
-import { getCleanPackageInfo } from '../../constants/packages';
 import { generateSafePin, normalizeDigits } from '../../utils';
 
 interface AdminAddGarageModalProps {
@@ -17,8 +16,6 @@ interface AdminAddGarageModalProps {
     hourlyRate: string;
     overnightRate: string;
     phone: string;
-    initialPackageId: string;
-    hasMonthlySubscribers: boolean;
     isTrial: boolean;
     ownerPin: string;
   };
@@ -27,18 +24,14 @@ interface AdminAddGarageModalProps {
     hourlyRate: string;
     overnightRate: string;
     phone: string;
-    initialPackageId: string;
-    hasMonthlySubscribers: boolean;
     isTrial: boolean;
     ownerPin: string;
   }>>;
   pinInput: string;
   setPinInput: (pin: string) => void;
-  packages: Package[];
   allGarages: Garage[];
   isLoading: boolean;
   trialDays?: number;
-  subscriberFlatFee?: number;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   t: (key: string) => string;
 }
@@ -50,11 +43,9 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   setGarageForm,
   pinInput,
   setPinInput,
-  packages,
   allGarages,
   isLoading,
   trialDays = 15,
-  subscriberFlatFee = 500,
   onSubmit,
   t,
 }) => {
@@ -64,8 +55,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
     hourlyRate: '',
     overnightRate: '',
     phone: '',
-    initialPackageId: '',
-    hasMonthlySubscribers: false,
     isTrial: false,
     ownerPin: ''
   });
@@ -79,8 +68,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
         hourlyRate: garageForm?.hourlyRate || '',
         overnightRate: garageForm?.overnightRate || '',
         phone: garageForm?.phone || '',
-        initialPackageId: garageForm?.initialPackageId || '',
-        hasMonthlySubscribers: garageForm?.hasMonthlySubscribers || false,
         isTrial: garageForm?.isTrial || false,
         ownerPin: garageForm?.ownerPin || ''
       });
@@ -135,8 +122,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   hourlyRate: '', 
                   overnightRate: '', 
                   phone: '', 
-                  initialPackageId: '', 
-                  hasMonthlySubscribers: false,
                   isTrial: false,
                   ownerPin: ''
                 };
@@ -201,43 +186,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               </div>
 
               <input type="hidden" name="billingModel" value="subscription" />
-
-              {/* Subscription Package Selection */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('باقة الاشتراك الابتدائي')}</label>
-                <select 
-                  name="initialPackageId" 
-                  value={localForm.initialPackageId}
-                  onChange={(e) => setLocalForm(prev => ({ ...prev, initialPackageId: e.target.value }))}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-slate-900 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 appearance-none text-center transition-all" 
-                  dir="rtl"
-                >
-                  <option value="">{t('اختر باقة الاشتراك النظامية')}</option>
-                  {packages.map(pkg => (
-                    <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} - {pkg.price} {t('ج.م')} ({getCleanPackageInfo(pkg).isUnlimited ? 'سعة مفتوحة' : `${getCleanPackageInfo(pkg).dailyCapacity} سيارة/يوم`})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Monthly Subscribers Surcharge Toggle */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors">
-                <div className="text-right">
-                  <span className="text-xs font-black text-slate-900 dark:text-white block">{t('يتضمن مشتركين شهريين / إيواء')}</span>
-                  <span className="text-[10px] font-bold text-slate-400 block mt-0.5">{t('إضافة')} {subscriberFlatFee} {t('ج.م ثابتة تلقائياً على سعر أية باقة/اشتراك')}</span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input 
-                    type="checkbox"
-                    name="hasMonthlySubscribers"
-                    checked={localForm.hasMonthlySubscribers}
-                    onChange={(e) => setLocalForm(prev => ({ ...prev, hasMonthlySubscribers: e.target.checked }))}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-purple-600"></div>
-                </label>
-              </div>
 
               {/* Free Trial Toggle */}
               <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl transition-colors">

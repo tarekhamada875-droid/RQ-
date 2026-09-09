@@ -16,26 +16,12 @@ export const validateGarageCreation = (data: any): ValidationResult => {
     errors.push('رمز الدخول يجب أن يكون 6 أرقام');
   }
   
-  if (!data.hourlyRate || data.hourlyRate <= 0) {
-    errors.push('سعر الساعة يجب أن يكون أكبر من صفر');
+  if (data.hourlyRate === undefined || data.hourlyRate === null || Number(data.hourlyRate) < 0) {
+    errors.push('سعر الساعة يجب أن يكون صفر أو أكبر');
   }
   
-  if (!data.overnightRate || data.overnightRate <= 0) {
-    errors.push('سعر المبيت يجب أن يكون أكبر من صفر');
-  }
-  
-  // Trial validation
-  const isTrial = data.isTrial === true || data.isTrial === 'true';
-  if (isTrial) {
-    // Trial garages should NOT have a package
-    if (data.initialPackageId) {
-      errors.push('الجراج التجريبي لا يحتاج باقة — سيتم تفعيله تلقائياً');
-    }
-  } else {
-    // Non-trial must have a package or capacity
-    if (!data.initialPackageId && !data.dailyCapacity) {
-      errors.push('يجب اختيار باقة اشتراك أو تحديد السعة اليومية');
-    }
+  if (data.overnightRate === undefined || data.overnightRate === null || Number(data.overnightRate) < 0) {
+    errors.push('سعر المبيت يجب أن يكون صفر أو أكبر');
   }
   
   return { valid: errors.length === 0, errors };
