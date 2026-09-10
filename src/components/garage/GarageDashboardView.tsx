@@ -224,7 +224,10 @@ export const GarageDashboardView = memo((props: any) => {
   useEffect(() => {
     ke(15);
   }, [ie]);
-  const ls = l.slice(0, W);
+  const sortedVehicles = useMemo(() => {
+    return [...(l || [])].sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
+  }, [l]);
+  const ls = sortedVehicles.slice(0, W);
   useEffect(() => {
     const _e = new IntersectionObserver(
       (st) => {

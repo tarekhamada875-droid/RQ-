@@ -330,15 +330,10 @@ export const generateSafePin = (existingPins: Set<string> | string[] = new Set()
 };
 
 /**
- * Resolves a shimmer color value, mapping the pink placeholder (#ec4899) to gray in light mode
- * and off-white in dark mode.
+ * Resolves the application shimmer accent color, always returning Amber Gold (#f59e0b).
  */
-export const resolveShimmerColor = (color: string | undefined, theme: 'light' | 'dark'): string => {
-  const baseColor = color || '#10b981';
-  if (baseColor === '#ec4899') {
-    return theme === 'dark' ? '#faf9f6' : '#64748b';
-  }
-  return baseColor;
+export const resolveShimmerColor = (_color?: string, _theme?: 'light' | 'dark'): string => {
+  return '#f59e0b';
 };
 
 /**

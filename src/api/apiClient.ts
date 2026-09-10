@@ -6,8 +6,29 @@ export interface ApiClientOptions {
   headers?: Record<string, string>;
 }
 
-export const getApiUrl = (endpoint: string) => {
-  return endpoint;
+export const getApiUrl = (endpoint: string): string => {
+  if (!endpoint.startsWith('/api')) {
+    return endpoint;
+  }
+
+  // If running directly on the backend host (Cloud Run or local development),
+  // always use relative endpoints to ensure reliable same-origin requests.
+  if (typeof window !== 'undefined' && window.location) {
+    const currentHost = (window.location.hostname || '').toLowerCase();
+    if (currentHost.endsWith('.run.app') || currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return endpoint;
+    }
+  }
+
+  const rawBaseUrl = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_API_URL || '') : '';
+  const customBaseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.trim().replace(/\/+$/, '') : '';
+
+  // Guard against placeholder or bare apex domain (e.g. 'https://run.app') which is not a real Cloud Run service URL
+  if (!customBaseUrl || customBaseUrl === 'https://run.app' || customBaseUrl === 'http://run.app') {
+    return endpoint;
+  }
+
+  return `${customBaseUrl}${endpoint}`;
 };
 
 export async function apiFetch<T = any>(

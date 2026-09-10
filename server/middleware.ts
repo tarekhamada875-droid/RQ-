@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     garageId?: string;
     entityId?: string;
     sessionId?: string;
+    displayName?: string;
   };
   correlationId?: string;
 }
@@ -28,7 +29,7 @@ export const correlationMiddleware = (req: AuthRequest, res: Response, next: Nex
  * Timeout Middleware: prevents hanging connections (15s limit)
  */
 export const requestTimeoutMiddleware = (timeoutMs = 15000) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (_req: Request, res: Response, next: NextFunction) => {
     res.setTimeout(timeoutMs, () => {
       if (!res.headersSent) {
         res.status(504).json({ success: false, error: 'REQUEST_TIMEOUT: Operation timed out on server' });
@@ -91,7 +92,19 @@ export const financialRateLimiter = (maxRequests = 30, windowMs = 60000) => {
       }
       next();
     } catch (e) {
-      console.error('[Financial Rate Limiter] Fallback on error:', e);
+      console.warn('[Financial Rate Limiter] Database transaction fallback to memory:', e);
+      const entry = rateLimitMap.get(key);
+      if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+        return next();
+      }
+      if (entry.count >= maxRequests) {
+        return res.status(429).json({
+          success: false,
+          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
+        });
+      }
+      entry.count += 1;
       next();
     }
   };
@@ -122,6 +135,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     let assignedGarageId = '';
     let foundEntityId = '';
     let foundSessionId = '';
+    let foundDisplayName = '';
 
     const secCollMap = [
       { role: 'admin', coll: 'admin_sessions' },
@@ -131,14 +145,25 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       { role: 'staff', coll: 'staff_sessions' }
     ];
 
+    const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+
     for (const { role, coll } of secCollMap) {
       const secSnap = await adminDb.doc(`${coll}/${uid}`).get();
       if (secSnap.exists) {
         const secData = secSnap.data() || {};
         if (secData.isActive) {
+          // Check session freshness (15-minute inactivity timeout)
+          const rawLastActive = secData.lastActive;
+          const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
+          if (lastActive > 0 && (Date.now() - lastActive > SESSION_TIMEOUT_MS)) {
+            return res.status(401).json({ success: false, error: 'SESSION_EXPIRED: Inactivity timeout' });
+          }
+
           foundRole = role;
           foundEntityId = secData.entityId || '';
           foundSessionId = secData.sessionId || '';
+          foundDisplayName = secData.displayName || '';
+
           if (role === 'garage') {
             assignedGarageId = secData.garageId || secData.entityId || '';
           } else if (role === 'staff') {
@@ -146,7 +171,11 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
             if (!assignedGarageId && secData.entityId) {
               const staffSnap = await adminDb.doc(`staff/${secData.entityId}`).get();
               if (staffSnap.exists) {
-                assignedGarageId = staffSnap.data()?.garageId || '';
+                const staffDocData = staffSnap.data() || {};
+                assignedGarageId = staffDocData.garageId || '';
+                if (!foundDisplayName && staffDocData.name) {
+                  foundDisplayName = staffDocData.name;
+                }
               }
             }
           }
@@ -164,7 +193,8 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       role: foundRole,
       garageId: assignedGarageId,
       entityId: foundEntityId,
-      sessionId: foundSessionId
+      sessionId: foundSessionId,
+      displayName: foundDisplayName
     };
     next();
   } catch (e: any) {

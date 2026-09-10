@@ -39,7 +39,7 @@ describe('approveRechargeRequest service API integration', () => {
     });
 
     expect(res.success).toBe(true);
-    expect(fetchSpy).toHaveBeenCalledWith('/api/transactions/approve-recharge-request', expect.objectContaining({
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/transactions/approve-recharge-request'), expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({
         'Content-Type': 'application/json',

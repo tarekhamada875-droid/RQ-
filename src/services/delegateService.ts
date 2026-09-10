@@ -50,7 +50,10 @@ export const delegateService = {
     const unsub = onSnapshot(q, (snapshot) => {
       const delegates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Delegate));
       callback(delegates);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'delegates'));
+    }, (err) => {
+      console.warn('[delegateService] subscribeToDelegates listener error:', err);
+      callback([]);
+    });
 
     return () => {
       unsub();

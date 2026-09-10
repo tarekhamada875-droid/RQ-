@@ -146,7 +146,16 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = memo(({
               )}
             </button>
             <button 
-              onClick={() => setView('login')}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.location.hash) {
+                  try {
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                  } catch {
+                    window.location.hash = '';
+                  }
+                }
+                setView('login');
+              }}
               disabled={isLoading}
               className="bg-[#faf9f6] dark:bg-slate-800 text-slate-400 dark:text-slate-300 py-5 sm:py-6 md:py-8 rounded-2xl md:rounded-xl font-black text-xl sm:text-2xl hover:bg-slate-50 dark:hover:bg-slate-700 border-2 border-slate-100 dark:border-slate-700 transition-all outline-none shadow-sm disabled:opacity-50"
             >

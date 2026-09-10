@@ -30,7 +30,7 @@ describe('v167 - Garage Deletion', () => {
       progressLog.push(progress);
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith('/api/garages/delete', expect.objectContaining({
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/garages/delete'), expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ garageId: 'test_garage' })
     }));

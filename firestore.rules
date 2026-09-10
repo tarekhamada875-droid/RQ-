@@ -91,7 +91,8 @@ service cloud.firestore {
     // ===============================================================
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admin_sessions/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/admin_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admin_sessions/$(request.auth.uid)).data.isActive == true;
     }
 
     function isAdminPin(pin) {
@@ -101,11 +102,13 @@ service cloud.firestore {
     }
 
     function isSupervisor() {
-      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.isActive == true;
     }
 
     function isDelegate() {
-      return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.isActive == true;
     }
 
     function isGarageDeleting(garageId) {
@@ -118,8 +121,10 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.uid == garageId ||
         (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId) ||
+         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
+         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true) ||
         (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
          exists(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)) &&
          get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId)
       );
@@ -127,11 +132,13 @@ service cloud.firestore {
 
     function isSupervisorSession(supervisorId) {
       return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.isActive == true &&
              get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.entityId == supervisorId;
     }
 
     function isDelegateSession(delegateId) {
       return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.isActive == true &&
              get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.entityId == delegateId;
     }
 
@@ -587,7 +594,7 @@ service cloud.firestore {
     }
 
     match /system_config/{configId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow create: if isAdmin();
       allow update: if isAdmin();
     }

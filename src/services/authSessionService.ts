@@ -233,28 +233,6 @@ export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: C
   }
 };
 
-// Legacy backward compatibility
-export const attemptGarageLogin = async (garageId: string, deviceId?: string): Promise<string> => {
-  const sid = deviceId || getCanonicalSessionId();
-  await claimEntitySession({
-    role: 'garage',
-    entityId: garageId,
-    sessionId: sid,
-    uid: garageId
-  });
-  return sid;
-};
-
-export const releaseGarageSession = async (garageId: string): Promise<void> => {
-  const sid = getCanonicalSessionId();
-  await releaseEntitySession({
-    role: 'garage',
-    entityId: garageId,
-    sessionId: sid,
-    uid: garageId
-  });
-};
-
 export const updateSessionHeartbeat = async (garageId: string): Promise<void> => {
   const sid = getCanonicalSessionId();
   await refreshEntitySession({

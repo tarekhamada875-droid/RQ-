@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
 import { apiFetch } from '../api/apiClient';
+import { safeDate } from '../utils';
 
 function getCairoDateKey(date: Date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -83,6 +84,7 @@ export const vehicleService = {
     );
     const unsub = onSnapshot(q, (snapshot) => {
       const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+      vehicles.sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
       callback(vehicles);
     });
     return () => {

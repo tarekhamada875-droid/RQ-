@@ -46,7 +46,10 @@ export const adminService = {
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supervisor));
       callback(list);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'supervisors'));
+    }, (err) => {
+      console.warn('[adminService] subscribeToSupervisors listener error:', err);
+      callback([]);
+    });
 
     return () => {
       unsub();
@@ -169,6 +172,9 @@ export const adminService = {
       console.error('[AdminService] updateAdminPin error:', error);
       if (error.message === 'PIN_ALREADY_TAKEN') {
         throw new Error('الرمز مستخدم بالفعل');
+      }
+      if (error.message === 'CURRENT_PIN_REQUIRED') {
+        throw new Error('رمز الدخول الحالي مطلوب');
       }
       if (error.message === 'CURRENT_PIN_INCORRECT') {
         throw new Error('رمز الدخول الحالي غير صحيح');

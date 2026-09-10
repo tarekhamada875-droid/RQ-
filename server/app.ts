@@ -1,18 +1,11 @@
 import express from 'express';
+import cors from 'cors';
 import {
   adminDb,
   adminAuth
 } from './firebaseAdmin';
 import {
-  normalizeDigits,
   cleanPin,
-  hashPinWithUniqueSalt,
-  computeLookupHash,
-  legacyHashPin,
-  hashPin,
-  isHashedPin,
-  verifyScryptHash,
-  verifySingleFieldValue,
   verifyPinMatch,
   verifyDocMatch,
   saveEntityPin,
@@ -36,8 +29,6 @@ import {
   validateId,
   validateNumber,
   validateString,
-  validatePlate,
-  validateEnum,
   sanitizePayload,
   validateIdempotencyKey,
   ValidationError
@@ -101,8 +92,84 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
   return { statusCode: 500, code: 'INTERNAL_ERROR', message: errMsg || 'TRANSACTION_FAILED' };
 }
 
+export function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true;
+
+  const normalizedOrigin = origin.replace(/\/+$/, '');
+
+  // Preview deployments: add the exact URL here as real ones come up
+  // (e.g. via `vercel` CLI output or the Vercel dashboard) rather than
+  // trusting anything that merely looks like one of our project names —
+  // Vercel project names are self-service, so a naming pattern alone can
+  // be deliberately matched by an unrelated project.
+  if (process.env.ALLOWED_ORIGINS) {
+    const customOrigins = process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
+    if (customOrigins.includes(normalizedOrigin)) return true;
+  }
+
+  // The backend trusts its own canonical URL (injected by the hosting platform)
+  // and paired dev/preview domains for this specific service instance.
+  if (process.env.APP_URL) {
+    const canonicalAppUrl = process.env.APP_URL.replace(/\/+$/, '');
+    if (normalizedOrigin === canonicalAppUrl) return true;
+
+    const pairedAppUrl = canonicalAppUrl.includes('ais-dev-')
+      ? canonicalAppUrl.replace('ais-dev-', 'ais-pre-')
+      : canonicalAppUrl.includes('ais-pre-')
+        ? canonicalAppUrl.replace('ais-pre-', 'ais-dev-')
+        : '';
+    if (pairedAppUrl && normalizedOrigin === pairedAppUrl) return true;
+  }
+
+  const exactOrigins = new Set([
+    'https://parqv2.vercel.app',
+    'https://parq1.vercel.app',
+    'https://aistudio.google.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173'
+  ]);
+
+  if (exactOrigins.has(normalizedOrigin)) return true;
+
+  try {
+    const parsed = new URL(normalizedOrigin);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1);
+
+  // Dynamic Multi-Tenant CORS policy
+  app.use(cors({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    credentials: false,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Correlation-ID',
+      'Idempotency-Key'
+    ]
+  }));
+
   app.use(express.json());
   app.use(correlationMiddleware);
   app.use(requestTimeoutMiddleware(15000));
@@ -280,6 +347,7 @@ export function createApp() {
                     role: match.role,
                     entityId: entityDocId,
                     garageId: resolvedGarageId,
+                    displayName: match.account?.name || (match.role === 'admin' ? 'مدير النظام' : (match.role === 'garage' ? (match.account?.name || 'مدير الجراج') : match.role)),
                     sessionId,
                     isActive: true,
                     lastActive: new Date(),
@@ -402,6 +470,14 @@ export function createApp() {
   // Secure Server API: Check PIN Availability across all accounts
   app.post('/api/auth/check-pin-availability', async (req, res) => {
     try {
+      const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+      if (!(await checkRateLimit(clientIp))) {
+        return res.status(429).json({
+          taken: false,
+          error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
+        });
+      }
+
       const { pin, excludeId } = req.body || {};
       const normPin = cleanPin(pin);
       if (!normPin) {
@@ -409,7 +485,8 @@ export function createApp() {
       }
 
       const result = await checkPinAvailabilityAcrossAll(normPin, excludeId);
-      return res.json(result);
+      // Return minimal sanitized boolean result to prevent account enumeration
+      return res.json({ taken: !!result.taken });
     } catch (error) {
       console.error('[Server Auth] Error in check-pin-availability:', error);
       return res.status(500).json({ taken: false });
@@ -1045,13 +1122,6 @@ export function createApp() {
           systemConfig?.delegateMonthlyCommission ?? systemConfig?.referralFeePerRenewal ?? 100
         );
 
-        const delegateCommissions = systemConfig?.delegatePackageCommissions || {
-          daily: 5,
-          weekly: 15,
-          biweekly: 25,
-          monthly: delegateMonthlyCommission
-        };
-
         const subscriberFlatFee = systemConfig?.subscriberFlatFee !== undefined
           ? Math.max(0, Number(systemConfig.subscriberFlatFee))
           : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
@@ -1348,7 +1418,7 @@ export function createApp() {
     try {
       const sanitized = sanitizePayload(req.body, ['garageId', 'amount', 'idempotencyKey'], false);
       const garageId = validateId(sanitized.garageId, 'garageId', true);
-      const numAmount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1000000, integer: true });
+      const numAmount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1000000, integerOnly: true });
       const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       if (!adminDb) {
@@ -1601,7 +1671,7 @@ export function createApp() {
   // Secure Server API: Vehicle Check-In
   app.post('/api/vehicles/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     try {
-      const { garageId: bodyGarageId, plateNumber, plateRaw, type, isSubscriber, staffName } = req.body || {};
+      const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
       const callerRole = req.user?.role;
       let garageId = '';
 
@@ -1631,10 +1701,47 @@ export function createApp() {
         return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
       };
 
+      const today = getCairoDateKey();
+
+      // Server-authoritative subscriber verification (anti-bypass)
+      let isSubscriberAuthoritative = false;
+      try {
+        const subSnapRaw = await adminDb.collection(`garages/${garageId}/subscribers`)
+          .where('plateNumberRaw', '==', plateRaw)
+          .get();
+
+        for (const doc of subSnapRaw.docs) {
+          const subData = doc.data() || {};
+          const startDate = subData.startDate || '';
+          const endDate = subData.endDate || '';
+          if (startDate && endDate && today >= startDate && today <= endDate) {
+            isSubscriberAuthoritative = true;
+            break;
+          }
+        }
+
+        if (!isSubscriberAuthoritative) {
+          const subSnapPlate = await adminDb.collection(`garages/${garageId}/subscribers`)
+            .where('plateNumber', '==', plateNumber)
+            .get();
+
+          for (const doc of subSnapPlate.docs) {
+            const subData = doc.data() || {};
+            const startDate = subData.startDate || '';
+            const endDate = subData.endDate || '';
+            if (startDate && endDate && today >= startDate && today <= endDate) {
+              isSubscriberAuthoritative = true;
+              break;
+            }
+          }
+        }
+      } catch (subErr) {
+        console.warn('[Server Check-In] Subscriber lookup warning:', subErr);
+      }
+
       await adminDb.runTransaction(async (t: any) => {
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
-        const today = getCairoDateKey();
         const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
 
         const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
@@ -1645,6 +1752,9 @@ export function createApp() {
 
         if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
         const garageData = garageSnap.data() || {};
+
+        // Authoritative staff name resolution
+        const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
         
         // Subscription check
         const expDateRaw = garageData.balanceExpiry;
@@ -1691,11 +1801,12 @@ export function createApp() {
           plateNumber,
           plateNumberRaw: plateRaw,
           type: type || 'hourly',
-          isSubscriber: !!isSubscriber,
+          isSubscriber: isSubscriberAuthoritative,
           entryTime: new Date(),
           status: 'inside',
           staffId: staffId || null,
-          staffName: staffName || 'مدير الجراج'
+          staffName: resolvedStaffName,
+          enteredByUid: req.user?.uid || null
         }, { merge: true });
 
         const garageUpdate: any = {
@@ -1746,7 +1857,7 @@ export function createApp() {
           garageId,
           garageName: garageData.name || '',
           staffId: staffId || null,
-          staffName: staffName || 'مدير الجراج',
+          staffName: resolvedStaffName,
           actionType: 'check_in',
           plateNumber,
           timestamp: new Date(),
@@ -1754,7 +1865,7 @@ export function createApp() {
         });
       });
 
-      return res.json({ success: true });
+      return res.json({ success: true, data: { isSubscriber: isSubscriberAuthoritative } });
     } catch (err: any) {
       console.error('[Server] Check-in error:', err);
       const { statusCode, message } = mapDomainErrorToStatus(err);
@@ -1765,7 +1876,7 @@ export function createApp() {
   // Secure Server API: Vehicle Check-Out
   app.post('/api/vehicles/check-out', requireAuth, async (req: AuthRequest, res: any) => {
     try {
-      const { garageId: bodyGarageId, vehicleId, staffName } = req.body || {};
+      const { garageId: bodyGarageId, vehicleId } = req.body || {};
       const callerRole = req.user?.role;
       let garageId = '';
 
@@ -1812,6 +1923,9 @@ export function createApp() {
         const garageData = garageSnap.data() || {};
         const vehicleData = vehicleSnap.data() || {};
 
+        // Authoritative staff name resolution
+        const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+
         if (vehicleData.status === 'outside') {
           throw new Error('VEHICLE_ALREADY_OUTSIDE');
         }
@@ -1853,7 +1967,7 @@ export function createApp() {
           garageId,
           garageName: garageData.name || '',
           staffId: staffId || null,
-          staffName: staffName || 'مدير الجراج',
+          staffName: resolvedStaffName,
           actionType: 'check_out',
           plateNumber: vehicleData.plateNumber,
           plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
@@ -1876,7 +1990,7 @@ export function createApp() {
   // Secure Server API: Vehicle Delete
   app.post('/api/vehicles/delete', requireAuth, async (req: AuthRequest, res: any) => {
     try {
-      const { garageId: bodyGarageId, vehicleId, refundAmount, staffName } = req.body || {};
+      const { garageId: bodyGarageId, vehicleId, refundAmount } = req.body || {};
       const callerRole = req.user?.role;
       let garageId = '';
 
@@ -1921,9 +2035,23 @@ export function createApp() {
         const garageData = garageDoc.data() || {};
         const vehicleData = vehicleDoc.data() || {};
         
+        // Authoritative staff name resolution
+        const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+
+        // Entrant identity verification: only the staff member who entered the vehicle or an Admin can delete/correct it
+        if (callerRole !== 'admin') {
+          const entrantUid = vehicleData.enteredByUid || vehicleData.staffUid || vehicleData.staffId;
+          const callerUid = req.user?.uid;
+          const callerEntityId = req.user?.entityId;
+          
+          if (entrantUid && entrantUid !== callerUid && entrantUid !== callerEntityId) {
+            throw new Error('CORRECTION_FORBIDDEN: Only the staff member who entered the vehicle can correct or delete it');
+          }
+        }
+
         // Deletion limit logic
         const todayDeletions = garageData.lastDeletionDate === todayYMD ? (garageData.dailyDeletionCount || 0) : 0;
-        if (todayDeletions >= 3) {
+        if (todayDeletions >= 3 && callerRole !== 'admin') {
           throw new Error('reached_daily_deletion_limit');
         }
 
@@ -1971,7 +2099,7 @@ export function createApp() {
           garageId,
           garageName: garageData.name || '',
           staffId: staffId || vehicleData.staffId || null,
-          staffName: staffName || vehicleData.staffName || 'مدير الجراج',
+          staffName: resolvedStaffName,
           actionType: 'delete_refund',
           plateNumber: `مسح لوحة: ${vehicleData.plateNumber || vehicleId}`,
           timestamp: new Date(),
@@ -1999,8 +2127,26 @@ export function createApp() {
         return res.status(400).json({ success: false, error: 'INVALID_NEW_PIN: PIN must be 4 to 6 digits' });
       }
 
+      // Current PIN is mandatory — verifying it is the entire point of this
+      // endpoint being separate from an admin-initiated reset. Do not make this
+      // conditional on the field being present; the UI always sends it, but the
+      // server must not trust that the client did.
+      const normCurrent = cleanPin(currentPin);
+      if (!normCurrent) {
+        return res.status(400).json({ success: false, error: 'CURRENT_PIN_REQUIRED' });
+      }
+
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const adminStoredPin = await getAdminPin();
+      if (!adminStoredPin) {
+        return res.status(500).json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' });
+      }
+      const isMatch = verifyPinMatch(normCurrent, adminStoredPin);
+      if (!isMatch) {
+        return res.status(400).json({ success: false, error: 'CURRENT_PIN_INCORRECT' });
       }
 
       // Check uniqueness of new PIN
@@ -2011,18 +2157,6 @@ export function createApp() {
           error: 'PIN_ALREADY_TAKEN',
           takenBy: { name: pinCheck.name || '', role: pinCheck.role }
         });
-      }
-
-      // If current PIN is supplied, verify it
-      if (currentPin) {
-        const normCurrent = cleanPin(currentPin);
-        const adminStoredPin = await getAdminPin();
-        if (adminStoredPin) {
-          const isMatch = verifyPinMatch(normCurrent, adminStoredPin);
-          if (!isMatch) {
-            return res.status(400).json({ success: false, error: 'CURRENT_PIN_INCORRECT' });
-          }
-        }
       }
 
       // 1. Save in private_pins
@@ -2105,7 +2239,7 @@ export function createApp() {
     try {
       const callerRole = req.user?.role;
       const callerUid = req.user?.uid;
-      const callerName = req.user?.name || '';
+      const callerName = req.user?.displayName || '';
 
       if (!callerRole || !['admin', 'supervisor', 'delegate'].includes(callerRole)) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
@@ -2119,7 +2253,7 @@ export function createApp() {
         return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
       }
 
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+      validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -2589,7 +2723,7 @@ export function createApp() {
         garageId,
         garageName: garageData.name || '',
         staffId: req.user?.uid || null,
-        staffName: req.user?.name || 'الإدارة',
+        staffName: req.user?.displayName || 'الإدارة',
         actionType: 'garage_delete',
         plateNumber: `حذف جراج: ${garageData.name || garageId}`,
         timestamp: new Date(),
@@ -2613,7 +2747,7 @@ export function createApp() {
   // API 404 handler
 
   // API 404 handler
-  app.use('/api', (req: express.Request, res: express.Response) => {
+  app.use('/api', (_req: express.Request, res: express.Response) => {
     res.status(404).json({ success: false, error: 'API route not found' });
   });
 

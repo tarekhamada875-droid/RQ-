@@ -45,7 +45,7 @@ describe('adminDirectRechargeGarage API transaction', () => {
       isEnglish: false
     });
 
-    expect(fetchSpy).toHaveBeenCalledWith('/api/transactions/recharge-garage', expect.objectContaining({
+    expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/transactions/recharge-garage'), expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({
         'Content-Type': 'application/json',

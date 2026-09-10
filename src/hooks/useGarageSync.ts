@@ -13,6 +13,7 @@ interface UseGarageSyncProps {
   setGarage: (g: Garage | null) => void;
   delegate: any | null;
   setDelegate: (d: any | null) => void;
+  currentSupervisor: Supervisor | null;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
@@ -30,6 +31,7 @@ export function useGarageSync({
   setGarage,
   delegate,
   setDelegate,
+  currentSupervisor,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
   setVehicles,
@@ -62,12 +64,14 @@ export function useGarageSync({
     if (!isSessionReady || !garage?.id) {
       return;
     }
+    let hasReceivedInitialSnapshot = false;
     const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
       setVehicles(activeVehicles);
       const currentGarage = garageRef.current;
       const now = Date.now();
       const isOnline = typeof navigator === 'undefined' || navigator.onLine;
       if (
+        hasReceivedInitialSnapshot &&
         isOnline &&
         view === 'garage' &&
         currentGarage &&
@@ -81,6 +85,7 @@ export function useGarageSync({
           console.warn('Failed to heal carsInside:', err);
         });
       }
+      hasReceivedInitialSnapshot = true;
     }, 1500);
 
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
@@ -159,7 +164,7 @@ export function useGarageSync({
       ? firestoreService.subscribeToDelegates(setDelegates)
       : () => {};
 
-    const unsubSupervisors = (view === 'admin_dashboard')
+    const unsubSupervisors = (view === 'admin_dashboard' && !currentSupervisor)
       ? firestoreService.subscribeToSupervisors(setSupervisors)
       : () => {};
 
@@ -178,7 +183,7 @@ export function useGarageSync({
       unsubCurrentGarage();
       unsubCurrentDelegate();
     };
-  }, [isSessionReady, isAuthReady, user, view, delegate?.id, garage?.id, setGarage, setDelegate]);
+  }, [isSessionReady, isAuthReady, user, view, delegate?.id, garage?.id, currentSupervisor?.id, setGarage, setDelegate]);
 
   // Load Admin specific garage details once
   useEffect(() => {

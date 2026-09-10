@@ -169,8 +169,9 @@ export function useGarageSession({
       return;
     }
 
+    setIsSessionReady(false);
+
     if (!isAuthReady) {
-      setIsSessionReady(false);
       return;
     }
 
