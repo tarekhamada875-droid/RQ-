@@ -90,7 +90,7 @@ export const GarageDashboardView = memo((props: any) => {
     setShowStaffStats: te,
     showSubscribers: R,
     setShowSubscribers: j,
-    walletNumber: I = "015 - 524 - 113 - 23",
+    walletNumber: I = "",
     subscriptionPrices: A,
     isLoading = false,
   } = props;
@@ -168,32 +168,72 @@ export const GarageDashboardView = memo((props: any) => {
     const _e = me.subscribeToGarageRechargeLogs(t.id, (st) => {
       if (st.length > 0) {
         const Ue = st[0].id;
-        if (
-          localStorage.getItem("acknowledged_recharge_".concat(t.id)) !== Ue
-        ) {
-          const wt = pt(st[0].timestamp),
-            Ht = new Date().getTime() - wt.getTime(),
-            B = Ht < 1440 * 60 * 1e3;
-          if (Te(B), Le(st[0]), Ht < 300 * 1e3) {
-            if (
-              localStorage.getItem("dashboard_seen_recharge_".concat(t.id)) !==
-                Ue
-            ) {
-              yt(!0);
-              if (Ht < 600 * 1e3)
-                try {
-                  Rn.play("checkIn");
-                } catch (Ia) {
-                  console.error(Ia);
-                }
-              localStorage.setItem("dashboard_seen_recharge_".concat(t.id), Ue);
+        const wt = pt(st[0].timestamp);
+        const Ht = new Date().getTime() - wt.getTime();
+        const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
+        const isAcknowledged = localStorage.getItem("acknowledged_recharge_".concat(t.id)) === Ue;
+
+        if (!isAcknowledged && isRecent) {
+          Te(true);
+          Le(st[0]);
+          yt(true);
+          if (localStorage.getItem("dashboard_sound_recharge_".concat(t.id)) !== Ue) {
+            try {
+              Rn.play("checkIn");
+            } catch (Ia) {
+              console.error(Ia);
             }
-          } else yt(!1);
-        } else (Te(!1), Le(null), yt(!1));
-      } else (Te(!1), Le(null), yt(!1));
+            localStorage.setItem("dashboard_sound_recharge_".concat(t.id), Ue);
+          }
+        } else {
+          Te(false);
+          Le(null);
+          yt(false);
+        }
+      } else if (t?.lastRechargeDate) {
+        const wt = pt(t.lastRechargeDate);
+        const Ht = new Date().getTime() - wt.getTime();
+        const fallbackId = `recharge_${wt.getTime()}`;
+        const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
+        const isAcknowledged = localStorage.getItem("acknowledged_recharge_".concat(t.id)) === fallbackId;
+
+        if (!isAcknowledged && isRecent) {
+          const fallbackLog: any = {
+            id: fallbackId,
+            garageId: t.id,
+            actionType: 'recharge',
+            plateNumber: t.lastRechargePackageName ? `شحن باقة: ${t.lastRechargePackageName}` : 'شحن رصيد الجراج',
+            amount: t.lastRechargeAmount || 0,
+            timestamp: t.lastRechargeDate,
+            details: {
+              packageName: t.lastRechargePackageName || 'الباقة',
+              revenueAmount: t.lastRechargeAmount || 0
+            }
+          };
+          Te(true);
+          Le(fallbackLog);
+          yt(true);
+          if (localStorage.getItem("dashboard_sound_recharge_".concat(t.id)) !== fallbackId) {
+            try {
+              Rn.play("checkIn");
+            } catch (Ia) {
+              console.error(Ia);
+            }
+            localStorage.setItem("dashboard_sound_recharge_".concat(t.id), fallbackId);
+          }
+        } else {
+          Te(false);
+          Le(null);
+          yt(false);
+        }
+      } else {
+        Te(false);
+        Le(null);
+        yt(false);
+      }
     }, 1);
     return () => _e();
-  }, [t.id, De]),
+  }, [t.id, De, t?.lastRechargeDate, t?.lastRechargeAmount, t?.lastRechargePackageName]),
     useEffect(
       () => () => {
         document.body.style.overflow = "unset";

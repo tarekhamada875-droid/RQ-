@@ -3,7 +3,8 @@ import { ChevronRight, Zap, Clock, User } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { ActivityLog, Garage } from '../../types';
 import { safeDate } from '../../utils';
-import { getCleanPackageInfo, DEFAULT_PACKAGES } from '../../constants/packages';
+import { getCleanPackageInfo } from '../../constants/packages';
+import { useAppStore } from '../../store/appStore';
 
 interface RechargeHistoryViewProps {
   garage: Garage;
@@ -15,6 +16,7 @@ interface RechargeHistoryViewProps {
 export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToast }: RechargeHistoryViewProps) => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const systemPackages = useAppStore(state => state.packages) || [];
 
   // Subscribe to activity logs for this garage in real-time
   useEffect(() => {
@@ -92,7 +94,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
       return lastAmt;
     }
 
-    const matched = DEFAULT_PACKAGES.find(p => 
+    const matched = systemPackages.find(p => 
       p.name === cleanName || 
       (logPackageId && p.id === logPackageId) || 
       (logPackageId && p.id.toLowerCase() === logPackageId.toLowerCase())
@@ -318,9 +320,33 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
           <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">سجل العمليات السابقة</h3>
           
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-rose-500 animate-spin" />
-              <p className="text-sm font-bold text-slate-400">جاري تحميل سجل الشحن...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4.5 flex flex-col space-y-3 animate-pulse shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="h-5 w-24 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                    <div className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                  </div>
+                  <div className="flex justify-between items-start gap-3 pt-1">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-5 w-36 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                      </div>
+                    </div>
+                    <div className="h-6 w-20 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                  </div>
+                  <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800 my-1" />
+                  <div className="flex justify-between items-center pt-1">
+                    <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : displayLogs.length === 0 ? (
             <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-xl p-12 text-center border border-slate-200 dark:border-slate-800">

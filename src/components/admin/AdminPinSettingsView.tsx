@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Key, Check, Loader2 } from 'lucide-react';
 import { normalizeDigits } from '../../utils';
 import { firestoreService } from '../../services';
+import { apiFetch } from '../../api/apiClient';
 
 interface AdminPinSettingsViewProps {
   currentAdminPin?: string;
@@ -37,12 +38,10 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
     setIsVerifyingCurrent(true);
     try {
-      const res = await fetch('/api/auth/verify-admin-pin', {
+      const data = await apiFetch('/api/auth/verify-admin-pin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: attempt })
+        body: { pin: attempt }
       });
-      const data = await res.json();
       if (data && data.valid) {
         setIsAdminPinVerified(true);
       } else {

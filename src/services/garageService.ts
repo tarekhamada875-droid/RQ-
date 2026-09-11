@@ -6,7 +6,6 @@ import {
   where, 
   or,
   onSnapshot, 
-  updateDoc, 
   doc, 
   getDoc,
   getDocs, 
@@ -216,7 +215,10 @@ export const garageService = {
       if (data.pin || (data as any).ownerPin) {
         payload.currentSessionId = null;
       }
-      return await withRetry(() => updateDoc(doc(db, 'garages', id), payload));
+      await apiFetch('/api/garages/update', {
+        method: 'POST',
+        body: { id, ...payload }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${id}`);
       throw error;
@@ -265,20 +267,11 @@ export const garageService = {
 
   recalculateCarsInside: async (garageId: string): Promise<number> => {
     try {
-      return await withRetry(async () => {
-        const q = query(
-          collection(db, `garages/${garageId}/vehicles`),
-          where('status', '==', 'inside')
-        );
-        const snapshot = await getDocs(q);
-        const actualCount = snapshot.size;
-
-        await updateDoc(doc(db, 'garages', garageId), {
-          carsInside: actualCount
-        });
-
-        return actualCount;
+      const res = await apiFetch('/api/garages/recalculate-cars-inside', {
+        method: 'POST',
+        body: { garageId }
       });
+      return res.count || 0;
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/recalculateCarsInside`);
       throw error;

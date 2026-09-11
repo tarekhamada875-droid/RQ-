@@ -67,7 +67,9 @@ export async function apiFetch<T = any>(
   // We remove redundant identity fields from body unless it is an auth endpoint
   let safeBody = undefined;
   if (options.body !== undefined) {
-    if (options.body && typeof options.body === 'object') {
+    if (typeof options.body === 'string') {
+      safeBody = options.body;
+    } else if (options.body && typeof options.body === 'object') {
       const isAuthEndpoint = endpoint.includes('/api/auth/');
       if (isAuthEndpoint) {
         safeBody = JSON.stringify(options.body);
@@ -117,12 +119,17 @@ export async function apiFetch<T = any>(
   }
 
   // 6. Only trigger global logout event on 401 Unauthorized or explicit session death errors
+  const errorCode = result?.code;
+  const errorMessage = typeof result?.error === 'string' ? result.error : '';
   const isSessionTerminated = response.status === 401 ||
-    result?.error?.includes('SESSION_REVOKED') ||
-    result?.error?.includes('SESSION_EXPIRED');
+    errorCode === 'SESSION_REVOKED' ||
+    errorCode === 'SESSION_EXPIRED' ||
+    errorCode === 'UNAUTHORIZED' ||
+    errorMessage.includes('SESSION_REVOKED') ||
+    errorMessage.includes('SESSION_EXPIRED');
 
   if (isSessionTerminated) {
-    const errMsg = result?.error || 'انتهت صلاحية الجلسة أو غير مصرح لك بالوصول';
+    const errMsg = errorMessage || 'انتهت صلاحية الجلسة أو غير مصرح لك بالوصول';
     console.warn(`[ApiClient] Auth Session Expiry (${response.status}) on ${endpoint}. Exiting session. (Correlation ID: ${serverCorrelationId})`);
     
     // Dispatch global session expiry event to trigger logout cleanly
@@ -132,6 +139,7 @@ export async function apiFetch<T = any>(
           detail: {
             status: response.status,
             error: errMsg,
+            code: errorCode || 'UNAUTHORIZED',
             correlationId: serverCorrelationId,
           },
         })

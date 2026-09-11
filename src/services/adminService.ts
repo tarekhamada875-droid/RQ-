@@ -1,6 +1,6 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { collection, query, where, onSnapshot, addDoc, setDoc, updateDoc, doc, getDoc, getDocs, deleteDoc, orderBy, limit, serverTimestamp, startAfter, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 import type { 
   Supervisor, 
   Staff, 
@@ -11,7 +11,7 @@ import type {
   ActivityLog, 
   Subscriber 
 } from '../types';
-import { withRetry, safeDate } from '../utils';
+import { safeDate } from '../utils';
 import { listenerTracker } from '../utils/listenerTracker';
 
 export const adminService = {
@@ -33,7 +33,10 @@ export const adminService = {
 
   removeSupervisor: async (id: string) => {
     try {
-      return await withRetry(() => deleteDoc(doc(db, 'supervisors', id)));
+      await apiFetch('/api/supervisors/delete', {
+        method: 'POST',
+        body: { id }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `supervisors/${id}`);
       throw error;
@@ -67,7 +70,10 @@ export const adminService = {
       }
       const { pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
-        await withRetry(() => updateDoc(doc(db, 'supervisors', id), otherFields));
+        await apiFetch('/api/supervisors/update', {
+          method: 'POST',
+          body: { id, ...otherFields }
+        });
       }
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
@@ -104,7 +110,10 @@ export const adminService = {
       }
       const { pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
-        await withRetry(() => updateDoc(doc(db, 'staff', id), otherFields));
+        await apiFetch('/api/staff/update', {
+          method: 'POST',
+          body: { id, ...otherFields }
+        });
       }
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
@@ -117,7 +126,10 @@ export const adminService = {
 
   removeStaff: async (id: string) => {
     try {
-      return await withRetry(() => deleteDoc(doc(db, 'staff', id)));
+      await apiFetch('/api/staff/delete', {
+        method: 'POST',
+        body: { id }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `staff/${id}`);
       throw error;
@@ -185,16 +197,16 @@ export const adminService = {
 
   subscribeToWalletNumber: (callback: (wallet: string) => void) => {
     return adminService.subscribeToSystemConfig((config) => {
-      callback(config?.walletNumber || '01000000000');
+      callback(config?.walletNumber || '');
     });
   },
 
   updateWalletNumber: async (walletNumber: string): Promise<void> => {
     try {
-      await setDoc(doc(db, 'system_config', 'global'), {
-        walletNumber,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await apiFetch('/api/admin/update-system-config', {
+        method: 'POST',
+        body: { walletNumber }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'system_config/global');
       throw error;
@@ -209,29 +221,30 @@ export const adminService = {
 
   // Packages Management
   addPackage: async (pkg: Omit<Package, 'id' | 'createdAt' | 'isActive'>): Promise<void> => {
-    const pkgData: Record<string, any> = {
-      name: pkg.name,
-      price: pkg.price,
-      vehiclesCount: pkg.vehiclesCount,
-      durationDays: pkg.durationDays || 30,
-      dailyCapacity: pkg.dailyCapacity !== undefined ? pkg.dailyCapacity : 50,
-      isActive: true,
-      createdAt: serverTimestamp()
-    };
-    if (pkg.discountType !== undefined) pkgData.discountType = pkg.discountType;
-    if (pkg.discountValue !== undefined) pkgData.discountValue = pkg.discountValue;
-
-    await withRetry(() => addDoc(collection(db, 'packages'), pkgData));
+    await apiFetch('/api/admin/packages/create', {
+      method: 'POST',
+      body: pkg
+    });
   },
 
   deletePackage: async (id: string): Promise<void> => {
-    const docRef = doc(db, 'packages', id);
-    await withRetry(() => setDoc(docRef, { isActive: false }, { merge: true }));
+    await apiFetch('/api/admin/packages/delete', {
+      method: 'POST',
+      body: { id }
+    });
   },
 
   subscribeToPackages: (callback: (packages: Package[]) => void) => {
     const colRef = collection(db, 'packages');
     return onSnapshot(colRef, async (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          localStorage.setItem('app_packages_cache', JSON.stringify([]));
+        } catch (e) {}
+        callback([]);
+        return;
+      }
+      
       const activePkgs = snapshot.docs
         .map(doc => {
           const data = doc.data() as Package;
@@ -245,8 +258,9 @@ export const adminService = {
         .filter(p => p.isActive !== false);
       
       try {
-        localStorage.setItem('app_packages_cache', `${Date.now()}|${JSON.stringify(activePkgs)}`);
+        localStorage.setItem('app_packages_cache', JSON.stringify(activePkgs));
       } catch (e) {}
+      
       callback(activePkgs);
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'packages'));
   },
@@ -272,14 +286,11 @@ export const adminService = {
 
   addSubscriber: async (garageId: string, subscriberData: any) => {
     try {
-      const subscribersCol = collection(db, `garages/${garageId}/subscribers`);
-      const subscriberRef = doc(subscribersCol);
-      await setDoc(subscriberRef, {
-        ...subscriberData,
-        id: subscriberRef.id,
-        createdAt: serverTimestamp()
+      const res = await apiFetch('/api/subscribers/add', {
+        method: 'POST',
+        body: { garageId, subscriberData }
       });
-      return subscriberRef.id;
+      return res.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `garages/${garageId}/subscribers`);
       throw error;
@@ -288,10 +299,9 @@ export const adminService = {
 
   renewSubscriber: async (garageId: string, subscriberId: string, _costUnits: number, newDates: { startDate: string, endDate: string }) => {
     try {
-      const subscriberRef = doc(db, `garages/${garageId}/subscribers`, subscriberId);
-      await updateDoc(subscriberRef, {
-        startDate: newDates.startDate,
-        endDate: newDates.endDate
+      await apiFetch('/api/subscribers/renew', {
+        method: 'POST',
+        body: { garageId, subscriberId, newDates }
       });
       return true;
     } catch (error) {
@@ -302,7 +312,10 @@ export const adminService = {
 
   updateSubscriber: async (garageId: string, subscriberId: string, subscriberData: any) => {
     try {
-      return await withRetry(() => updateDoc(doc(db, `garages/${garageId}/subscribers`, subscriberId), subscriberData));
+      await apiFetch('/api/subscribers/update', {
+        method: 'POST',
+        body: { garageId, subscriberId, subscriberData }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/subscribers`);
       throw error;
@@ -311,7 +324,10 @@ export const adminService = {
 
   deleteSubscriber: async (garageId: string, subscriberId: string) => {
     try {
-      return await withRetry(() => deleteDoc(doc(db, `garages/${garageId}/subscribers`, subscriberId)));
+      await apiFetch('/api/subscribers/delete', {
+        method: 'POST',
+        body: { garageId, subscriberId }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `garages/${garageId}/subscribers`);
       throw error;
@@ -340,11 +356,11 @@ export const adminService = {
   // Coupons
   addCoupon: async (coupon: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) => {
     try {
-      return await withRetry(() => addDoc(collection(db, 'coupons'), {
-        ...coupon,
-        usedCount: 0,
-        createdAt: serverTimestamp()
-      }));
+      const res = await apiFetch('/api/admin/coupons/create', {
+        method: 'POST',
+        body: coupon
+      });
+      return res.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'coupons');
       throw error;
@@ -353,7 +369,10 @@ export const adminService = {
 
   updateCoupon: async (id: string, data: Partial<Coupon>) => {
     try {
-      return await withRetry(() => updateDoc(doc(db, 'coupons', id), data));
+      await apiFetch('/api/admin/coupons/update', {
+        method: 'POST',
+        body: { id, ...data }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `coupons/${id}`);
       throw error;
@@ -362,7 +381,10 @@ export const adminService = {
 
   deleteCoupon: async (id: string) => {
     try {
-      return await withRetry(() => deleteDoc(doc(db, 'coupons', id)));
+      await apiFetch('/api/admin/coupons/delete', {
+        method: 'POST',
+        body: { id }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `coupons/${id}`);
       throw error;
@@ -386,11 +408,11 @@ export const adminService = {
   // Activity Logs
   addActivityLog: async (log: Record<string, any>) => {
     try {
-      const { id, timestamp, ...rest } = log;
-      return await addDoc(collection(db, 'activity_logs'), {
-        ...rest,
-        timestamp: timestamp || serverTimestamp()
+      const res = await apiFetch('/api/activity-logs/add', {
+        method: 'POST',
+        body: log
       });
+      return res.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'activity_logs');
       throw error;
@@ -444,11 +466,12 @@ export const adminService = {
   subscribeToGarageRechargeLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/recharge_logs`);
     try {
+      const fetchLimit = Math.max(limitCount, 25);
       const q = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
         where('actionType', '==', 'recharge'),
-        limit(limitCount)
+        limit(fetchLimit)
       );
       const unsub = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs
@@ -549,11 +572,11 @@ export const adminService = {
   // Announcements
   createAnnouncement: async (announcement: Omit<Announcement, 'id' | 'createdAt'>): Promise<string> => {
     try {
-      const docRef = await addDoc(collection(db, 'announcements'), {
-        ...announcement,
-        createdAt: serverTimestamp()
+      const res = await apiFetch('/api/admin/announcements/create', {
+        method: 'POST',
+        body: announcement
       });
-      return docRef.id;
+      return res.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'announcements');
       throw error;
@@ -562,7 +585,10 @@ export const adminService = {
 
   deleteAnnouncement: async (id: string): Promise<void> => {
     try {
-      await deleteDoc(doc(db, 'announcements', id));
+      await apiFetch('/api/admin/announcements/delete', {
+        method: 'POST',
+        body: { id }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `announcements/${id}`);
       throw error;
@@ -571,7 +597,10 @@ export const adminService = {
 
   toggleAnnouncementActive: async (id: string, isActive: boolean): Promise<void> => {
     try {
-      await updateDoc(doc(db, 'announcements', id), { isActive });
+      await apiFetch('/api/admin/announcements/toggle', {
+        method: 'POST',
+        body: { id, isActive }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `announcements/${id}`);
       throw error;
@@ -596,10 +625,10 @@ export const adminService = {
   subscribeToSystemConfig: (callback: (config: SystemConfig | null) => void) => {
     const trackerUnsub = listenerTracker.register('system_config');
     const defaults: SystemConfig = { 
-      defaultTrialDays: 15, 
+      defaultTrialDays: 2, 
       warningDaysThreshold: 3, 
       supportPhone: '01000000000',
-      walletNumber: '01000000000',
+      walletNumber: '',
       monthlySubscribersFlatFee: 500,
       monthlySubscribersSurchargePercent: 25,
       referralFeePerRenewal: 50,
@@ -638,10 +667,10 @@ export const adminService = {
         return { id: docSnap.id, ...docSnap.data() } as SystemConfig;
       }
       return {
-        defaultTrialDays: 15,
+        defaultTrialDays: 2,
         warningDaysThreshold: 3,
         supportPhone: '01000000000',
-        walletNumber: '01000000000',
+        walletNumber: '',
         monthlySubscribersFlatFee: 500,
         monthlySubscribersSurchargePercent: 25,
         referralFeePerRenewal: 50,
@@ -663,10 +692,10 @@ export const adminService = {
 
   updateSystemConfig: async (config: Partial<SystemConfig>): Promise<void> => {
     try {
-      await setDoc(doc(db, 'system_config', 'global'), {
-        ...config,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await apiFetch('/api/admin/update-system-config', {
+        method: 'POST',
+        body: config
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'system_config/global');
       throw error;

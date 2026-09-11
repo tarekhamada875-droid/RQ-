@@ -156,13 +156,11 @@ export const RegistrationCard = memo(({
                 isInputFocused ? 'border-[4px]' : 'border-2 md:border-[3px]'
               }`} dir="ltr">
                 {/* Plate Header */}
-                <div className={`flex items-center justify-between px-6 font-black border-b border-slate-900/10 shrink-0 h-10 sm:h-14 md:h-20 ${
+                <div className={`flex items-center justify-center px-6 font-black border-b border-slate-900/10 shrink-0 h-10 sm:h-14 md:h-20 ${
                   newPlateNumber 
                     ? 'bg-[#0057b7] text-white' 
                     : 'bg-slate-200 dark:bg-slate-300 text-slate-400 dark:text-slate-500'
                 }`}>
-                  <span className="tracking-tight antialiased text-[12px] sm:text-[16px] md:text-2xl">EGYPT</span>
-                  <span className="font-sans antialiased text-[12px] sm:text-[16px] md:text-2xl" dir="rtl">مصر</span>
                 </div>
  
                 {/* Plate Content */}

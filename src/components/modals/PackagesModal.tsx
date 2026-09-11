@@ -1,7 +1,7 @@
 import React, { useState, memo } from 'react';
 import { Package, Garage } from '../../types';
-import { getCleanPackageInfo, getDefaultDurationFilter, filterPackagesForGarage, DEFAULT_PACKAGES } from '../../constants/packages';
-import { ChevronRight, Clock, Sparkles, Filter, Wallet, CheckCircle2, Loader2, Zap, Smartphone } from 'lucide-react';
+import { getCleanPackageInfo, getDefaultDurationFilter, filterPackagesForGarage } from '../../constants/packages';
+import { ChevronRight, Clock, Sparkles, Filter, Wallet, CheckCircle2, Loader2, Zap, Smartphone, Package as PackageIcon } from 'lucide-react';
 import { calculateFinalPrice } from '../../utils';
 import { useSystemSubscribersFlatFee } from '../../hooks/useSystemSubscribersFlatFee';
 import { garageService } from '../../services/garageService';
@@ -18,6 +18,7 @@ interface PackagesModalProps {
   garage?: Garage | null;
   garageId?: string;
   garageBalance?: number;
+  isLoading?: boolean;
   onSubscribedSuccess?: (updatedGarageInfo?: any) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -27,16 +28,17 @@ export { getCleanPackageInfo };
 export const PackagesModal: React.FC<PackagesModalProps> = memo(({ 
   packages, 
   onClose, 
-  walletNumber = "01552411323",
+  walletNumber = "",
   hasMonthlySubscribers = false,
   referrerId: _referrerId = null,
   garage = null,
   garageId = '',
   garageBalance = 0,
+  isLoading = false,
   onSubscribedSuccess,
   showToast
 }) => {
-  const allPackages = (packages && packages.length > 0) ? packages : DEFAULT_PACKAGES;
+  const allPackages = Array.isArray(packages) ? packages : [];
   const rawList = React.useMemo(() => {
     return filterPackagesForGarage(allPackages, hasMonthlySubscribers);
   }, [allPackages, hasMonthlySubscribers]);
@@ -77,15 +79,14 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
   };
 
   const rawDigits = React.useMemo(() => {
-    return walletNumber ? walletNumber.replace(/\D/g, '') : '01552411323';
+    return walletNumber ? walletNumber.replace(/\D/g, '') : '';
   }, [walletNumber]);
 
   const formattedWalletNumber = React.useMemo(() => {
     if (rawDigits.length === 11) {
-      // Egyptian mobile prefix standard grouping with clear dash separators: 0155 - 241 - 1323
       return `${rawDigits.slice(0, 4)} - ${rawDigits.slice(4, 7)} - ${rawDigits.slice(7, 11)}`;
     }
-    return walletNumber || '0155 - 241 - 1323';
+    return walletNumber ? walletNumber.trim() : '';
   }, [rawDigits, walletNumber]);
 
   const displayPackages = rawList
@@ -170,8 +171,7 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                   <Wallet className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-slate-300 block">رصيد المحفظة المتاح</span>
-                  <span className="text-[11px] font-medium text-slate-400">لتفعيل الباقات مباشرة</span>
+                  <span className="text-sm font-bold text-slate-300 block">رصيدك</span>
                 </div>
               </div>
 
@@ -195,20 +195,72 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
               </div>
 
               <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-center">
-                <span className="text-xl sm:text-2xl font-black font-mono text-amber-300 tracking-wider dir-ltr select-all" dir="ltr">
-                  {formattedWalletNumber}
-                </span>
+                {formattedWalletNumber ? (
+                  <span className="text-xl sm:text-2xl font-black font-mono text-amber-300 tracking-wider dir-ltr select-all" dir="ltr">
+                    {formattedWalletNumber}
+                  </span>
+                ) : (
+                  <span className="text-xs sm:text-sm font-bold text-slate-400">
+                    لم يتم تحديد رقم المحفظة بعد - يرجى التواصل مع الإدارة
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Duration Filter Tabs with Badge Counts */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Filter className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                اختر مدة الاشتراك:
-              </span>
+          {isLoading ? (
+            <div className="space-y-4">
+              {/* Skeleton Duration Tabs */}
+              <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-200/80 dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 animate-pulse">
+                <div className="h-9 bg-slate-300 dark:bg-slate-800 rounded-xl" />
+                <div className="h-9 bg-slate-300 dark:bg-slate-800 rounded-xl" />
+                <div className="h-9 bg-slate-300 dark:bg-slate-800 rounded-xl" />
+              </div>
+
+              {/* Skeleton Package Cards */}
+              <div className="space-y-3.5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="p-4 sm:p-5 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse space-y-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="h-6 w-36 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-950/70 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="h-3 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                        <div className="h-8 w-28 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                      </div>
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-4 w-44 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                    </div>
+                    <div className="w-full h-12 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : allPackages.length === 0 ? (
+            <div className="text-center py-10 px-4 bg-slate-100/80 dark:bg-slate-900/60 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <PackageIcon className="w-10 h-10 text-amber-500 mx-auto opacity-70" />
+              <div className="space-y-1">
+                <p className="font-bold text-slate-800 dark:text-slate-200 text-base">لا توجد باقات متاحة حالياً</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">يرجى التواصل مع إدارة النظام لإضافة أو تفعيل الباقات.</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Duration Filter Tabs with Badge Counts */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Filter className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                    اختر مدة الاشتراك:
+                  </span>
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                 {filteredPackages.length} باقة متاحة
               </span>
@@ -250,8 +302,14 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
           </div>
 
           {/* Packages List - Structured Professional Cards */}
-          <div className="space-y-3.5">
-            {filteredPackages.map((pkg) => {
+          {filteredPackages.length === 0 ? (
+            <div className="text-center py-8 px-4 bg-slate-100/80 dark:bg-slate-900/60 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">لا توجد باقات للمدة المحددة</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">اختر مدة اشتراك أخرى للاطلاع على الباقات المتاحة.</p>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {filteredPackages.map((pkg) => {
               const info = getCleanPackageInfo(pkg);
               const { finalPrice: effectivePrice, displayBasePrice, hasDiscount } = calculateFinalPrice(pkg, hasMonthlySubscribers, subscriberFlatFee, effectiveReferralFee);
 
@@ -371,7 +429,10 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
+          </>
+          )}
 
         </div>
       </div>
@@ -479,9 +540,6 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
     </div>
   );
 });
-
-PackagesModal.displayName = 'PackagesModal';
-
 
 PackagesModal.displayName = 'PackagesModal';
 

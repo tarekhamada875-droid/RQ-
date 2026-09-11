@@ -273,3 +273,5 @@ export interface SystemConfig {
   updatedAt?: any;
 }
 
+export * from './types/apiContracts';
+

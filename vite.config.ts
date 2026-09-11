@@ -18,6 +18,8 @@ export default defineConfig(({mode}) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.{ts,tsx}'],
+      exclude: ['**/node_modules/**', '**/dist/**'],
     },
     build: {
       outDir: 'dist',

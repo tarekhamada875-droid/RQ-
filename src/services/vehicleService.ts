@@ -103,12 +103,12 @@ export const vehicleService = {
       const logs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
       const todayLogs = logs.filter((log: any) => {
         if (!log.timestamp) return false;
-        const d = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+        const d = safeDate(log.timestamp);
         return getCairoDateKey(d) === today;
       });
       todayLogs.sort((a: any, b: any) => {
-        const ta = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
-        const tb = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
+        const ta = safeDate(a.timestamp).getTime();
+        const tb = safeDate(b.timestamp).getTime();
         return tb - ta;
       });
       callback(todayLogs);
@@ -171,11 +171,11 @@ export const vehicleService = {
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       return logs.filter(log => {
         if (!log.timestamp) return false;
-        const d = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+        const d = safeDate(log.timestamp);
         return getCairoDateKey(d) === today;
       }).sort((a, b) => {
-        const ta = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
-        const tb = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
+        const ta = safeDate(a.timestamp).getTime();
+        const tb = safeDate(b.timestamp).getTime();
         return tb - ta;
       });
     } catch (err) {
@@ -189,11 +189,11 @@ export const vehicleService = {
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       return logs.filter(log => {
         if (!log.timestamp) return false;
-        const d = log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
+        const d = safeDate(log.timestamp);
         return getCairoDateKey(d) === today;
       }).sort((a, b) => {
-        const ta = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
-        const tb = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
+        const ta = safeDate(a.timestamp).getTime();
+        const tb = safeDate(b.timestamp).getTime();
         return tb - ta;
       });
     }

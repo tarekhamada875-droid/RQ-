@@ -5,17 +5,13 @@ import {
   query, 
   where, 
   onSnapshot, 
-  addDoc, 
-  updateDoc, 
   doc, 
   getDocs, 
-  deleteDoc, 
   orderBy, 
-  limit, 
-  serverTimestamp
+  limit
 } from 'firebase/firestore';
 import type { Delegate, RechargeRequest, ActivityLog } from '../types';
-import { withRetry, safeDate } from '../utils';
+import { safeDate } from '../utils';
 import { validateRechargeRequest } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 
@@ -37,7 +33,10 @@ export const delegateService = {
 
   removeDelegate: async (id: string) => {
     try {
-      return await withRetry(() => deleteDoc(doc(db, 'delegates', id)));
+      await apiFetch('/api/delegates/delete', {
+        method: 'POST',
+        body: { id }
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `delegates/${id}`);
       throw error;
@@ -97,7 +96,10 @@ export const delegateService = {
       }
       const { pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
-        await withRetry(() => updateDoc(doc(db, 'delegates', id), otherFields));
+        await apiFetch('/api/delegates/update', {
+          method: 'POST',
+          body: { id, ...otherFields }
+        });
       }
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
@@ -148,11 +150,11 @@ export const delegateService = {
       const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined)
       );
-      return await withRetry(() => addDoc(collection(db, 'recharge_requests'), {
-        ...cleanData,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      }));
+      const res = await apiFetch('/api/recharge-requests/create', {
+        method: 'POST',
+        body: cleanData
+      });
+      return { id: res.id };
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'recharge_requests');
       throw error;

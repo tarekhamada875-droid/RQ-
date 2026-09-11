@@ -21,7 +21,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   const t = useAdminTranslation(adminLang);
 
   const [config, setConfig] = useState<SystemConfig>({
-    defaultTrialDays: 15,
+    defaultTrialDays: 2,
     warningDaysThreshold: 3,
     monthlySubscribersFlatFee: 500,
     monthlySubscribersSurchargePercent: 25,
@@ -83,7 +83,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
           : 100);
 
       await firestoreService.updateSystemConfig({
-        defaultTrialDays: Number(config.defaultTrialDays) || 15,
+        defaultTrialDays: Number(config.defaultTrialDays) || 2,
         warningDaysThreshold: Number(config.warningDaysThreshold) || 3,
         monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee) || 500,
         monthlySubscribersSurchargePercent: 25,

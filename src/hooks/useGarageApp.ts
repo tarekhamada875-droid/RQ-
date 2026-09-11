@@ -80,7 +80,17 @@ export function useGarageApp() {
   const [todayTransactions, setTodayTransactions] = useState<Vehicle[]>([]);
   const [adminPin, setAdminPin] = useState<string>('');
   const [activeAdminPin, setActiveAdminPin] = useState<string>('');
-  const [walletNumber, setWalletNumber] = useLocalStorageState<string>('app_wallet_number', '015 - 524 - 113 - 23');
+  const [walletNumber, setWalletNumber] = useLocalStorageState<string>('app_wallet_number', '');
+  // Sanitize any previously cached hardcoded dummy wallet number
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('app_wallet_number');
+      if (cached && (cached.includes('015 - 524') || cached.includes('01552411323'))) {
+        localStorage.removeItem('app_wallet_number');
+        setWalletNumber('');
+      }
+    } catch (e) {}
+  }, [setWalletNumber]);
   const [subscriptionPrices, setSubscriptionPrices] = useState<{ weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number }>({ weekly: 800, biweekly: 1500, monthly: 3000 });
   const [loginPhone, setLoginPhone] = useState<string>('');
 

@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Garage, Vehicle, Package, Staff, RechargeRequest, Supervisor } from '../types';
 import { firestoreService } from '../services';
-import { DEFAULT_PACKAGES } from '../constants/packages';
 import { throttleSnapshot } from '../utils';
 
 interface UseGarageSyncProps {
@@ -49,14 +48,16 @@ export function useGarageSync({
     try {
       const cached = localStorage.getItem('app_packages_cache');
       if (cached) {
-        const parts = cached.split('|');
-        if (parts.length > 1 && (Date.now() - parseInt(parts[0])) < 300000) {
-          const parsed = JSON.parse(cached.substring(cached.indexOf('|') + 1));
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        let jsonStr = cached;
+        const separatorIdx = cached.indexOf('|');
+        if (separatorIdx !== -1) {
+          jsonStr = cached.substring(separatorIdx + 1);
         }
+        const parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
-    return DEFAULT_PACKAGES;
+    return [];
   });
 
   // Subscribe to Active Vehicles
@@ -140,11 +141,7 @@ export function useGarageSync({
     if (!isAuthReady || !user) return;
 
     const unsubPackages = firestoreService.subscribeToPackages((pkgs) => {
-      if (Array.isArray(pkgs) && pkgs.length > 0) {
-        setPackages(pkgs);
-      } else {
-        setPackages(DEFAULT_PACKAGES);
-      }
+      setPackages(Array.isArray(pkgs) ? pkgs : []);
     });
 
     return () => unsubPackages();

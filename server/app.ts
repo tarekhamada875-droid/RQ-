@@ -20,10 +20,12 @@ import {
 } from './utils';
 import {
   requireAuth,
+  requireFirebaseUser,
   AuthRequest,
   correlationMiddleware,
   requestTimeoutMiddleware,
-  financialRateLimiter
+  financialRateLimiter,
+  sendApiError
 } from './middleware';
 import {
   validateId,
@@ -191,39 +193,44 @@ export function createApp() {
     });
   });
 
-  app.post('/api/auth/verify-pin', async (req, res) => {
+  app.post('/api/auth/verify-pin', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
       if (!(await checkRateLimit(clientIp))) {
-        return res.status(429).json({
-          success: false,
-          error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
-        });
+        return sendApiError(
+          res,
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً',
+          req.correlationId
+        );
       }
 
       const credentials = req.body || {};
       const rawInput = credentials.pin || credentials.input;
 
-      // Token verification trust boundary
-      let verifiedUid = '';
-      if (credentials.firebaseIdToken) {
-        if (adminAuth) {
-          try {
-            const decoded = await adminAuth.verifyIdToken(credentials.firebaseIdToken);
-            verifiedUid = decoded.uid;
-          } catch (tokenErr) {
-            console.warn('[Server Auth] Invalid Firebase ID token:', tokenErr);
-            return res.status(401).json({ success: false, error: 'INVALID_ID_TOKEN' });
-          }
-        }
+      const effectiveUid = req.user?.uid || '';
+      if (!effectiveUid) {
+        return sendApiError(
+          res,
+          401,
+          'UNAUTHORIZED',
+          'UNAUTHORIZED: Missing Firebase ID Token',
+          req.correlationId
+        );
       }
 
       // Check for UID mismatch if body.uid is supplied alongside verified token
-      if (verifiedUid && credentials.uid && credentials.uid.trim() !== verifiedUid) {
-        return res.status(401).json({ success: false, error: 'UID_MISMATCH' });
+      if (credentials.uid && credentials.uid.trim() !== effectiveUid) {
+        return sendApiError(
+          res,
+          401,
+          'UNAUTHORIZED',
+          'UID_MISMATCH',
+          req.correlationId
+        );
       }
 
-      const effectiveUid = verifiedUid || (typeof credentials.uid === 'string' ? credentials.uid.trim() : '');
       const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
 
       // 1. Single Input PIN Verification (Canonical Path)
@@ -468,7 +475,7 @@ export function createApp() {
   });
 
   // Secure Server API: Check PIN Availability across all accounts
-  app.post('/api/auth/check-pin-availability', async (req, res) => {
+  app.post('/api/auth/check-pin-availability', requireFirebaseUser, financialRateLimiter(10, 60000), async (req: AuthRequest, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
       if (!(await checkRateLimit(clientIp))) {
@@ -494,7 +501,7 @@ export function createApp() {
   });
 
   // Secure Server API: Verify Admin PIN for Admin Logout
-  app.post('/api/auth/verify-admin-pin', async (req, res) => {
+  app.post('/api/auth/verify-admin-pin', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
       if (!(await checkRateLimit(clientIp))) {
@@ -525,41 +532,36 @@ export function createApp() {
   });
 
   // Secure Server API: Claim / Re-claim Admin Session (Protected against unauthenticated escalation)
-  app.post('/api/auth/claim-admin-session', async (req, res) => {
+  app.post('/api/auth/claim-admin-session', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
       if (!(await checkRateLimit(clientIp))) {
-        return res.status(429).json({
-          success: false,
-          error: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً'
-        });
+        return sendApiError(
+          res,
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً',
+          req.correlationId
+        );
       }
 
-      const { uid, sessionId, pin, firebaseIdToken } = req.body || {};
+      const { uid, sessionId, pin } = req.body || {};
       if (!uid || !sessionId || typeof uid !== 'string' || typeof sessionId !== 'string') {
-        return res.status(400).json({ success: false, error: 'بيانات غير صالحة' });
+        return sendApiError(res, 400, 'INVALID_INPUT', 'بيانات غير صالحة', req.correlationId);
       }
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'Admin DB غير مهيأ' });
+        return sendApiError(res, 500, 'SERVICE_UNAVAILABLE', 'Admin DB غير مهيأ', req.correlationId);
       }
 
-      let verifiedUid = '';
-      if (firebaseIdToken && adminAuth) {
-        try {
-          const decoded = await adminAuth.verifyIdToken(firebaseIdToken);
-          verifiedUid = decoded.uid;
-        } catch (tokenErr) {
-          console.warn('[Server Auth] Invalid Firebase ID token during claim-admin-session:', tokenErr);
-          return res.status(401).json({ success: false, error: 'INVALID_ID_TOKEN' });
-        }
+      const effectiveUid = req.user?.uid || '';
+      if (!effectiveUid) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'UNAUTHORIZED: Missing Firebase ID Token', req.correlationId);
       }
 
-      if (verifiedUid && uid.trim() !== verifiedUid) {
-        return res.status(401).json({ success: false, error: 'UID_MISMATCH' });
+      if (uid.trim() !== effectiveUid) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'UID_MISMATCH', req.correlationId);
       }
-
-      const effectiveUid = verifiedUid || uid.trim();
 
       // Check authorization: Must either have valid admin PIN OR already have an active matching session
       let isAuthorized = false;
@@ -583,7 +585,7 @@ export function createApp() {
       }
 
       if (!isAuthorized) {
-        return res.status(403).json({ success: false, error: 'غير مصرح: يتطلب إدخال الرقم السري' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'غير مصرح: يتطلب إدخال الرقم السري', req.correlationId);
       }
 
       await adminDb.runTransaction(async (transaction) => {
@@ -623,17 +625,17 @@ export function createApp() {
       return res.json({ success: true, sessionClaimed: true });
     } catch (e: any) {
       if (e?.message === 'SESSION_OCCUPIED') {
-        return res.json({ success: false, error: 'SESSION_OCCUPIED' });
+        return res.json({ success: false, error: 'SESSION_OCCUPIED', code: 'CONFLICT' });
       }
       console.error('[Server Auth] Error in claim-admin-session:', e);
-      return res.status(500).json({ success: false, error: 'حدث خطأ في الخادم' });
+      return sendApiError(res, 500, 'INTERNAL_ERROR', 'حدث خطأ في الخادم', req.correlationId);
     }
   });
 
   // Secure Server API: Validate or Refresh an active session across all roles
-  app.post('/api/auth/validate-or-refresh-session', async (req, res) => {
+  app.post('/api/auth/validate-or-refresh-session', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
-      const { uid, sessionId, role, entityId, firebaseIdToken } = req.body || {};
+      const { uid, sessionId, role, entityId } = req.body || {};
       if (!uid || !sessionId || !role) {
         return res.status(400).json({ valid: false, error: 'INVALID_PARAMS' });
       }
@@ -642,21 +644,14 @@ export function createApp() {
         return res.status(503).json({ valid: false, error: 'DATABASE_UNAVAILABLE' });
       }
 
-      let verifiedUid = '';
-      if (firebaseIdToken && adminAuth) {
-        try {
-          const decoded = await adminAuth.verifyIdToken(firebaseIdToken);
-          verifiedUid = decoded.uid;
-        } catch (tokenErr) {
-          return res.status(401).json({ valid: false, error: 'INVALID_ID_TOKEN' });
-        }
+      const effectiveUid = req.user?.uid || '';
+      if (!effectiveUid) {
+        return res.status(401).json({ valid: false, error: 'UNAUTHORIZED: Missing Firebase ID Token' });
       }
 
-      if (verifiedUid && typeof uid === 'string' && uid.trim() !== verifiedUid) {
+      if (typeof uid === 'string' && uid.trim() !== effectiveUid) {
         return res.status(401).json({ valid: false, error: 'UID_MISMATCH' });
       }
-
-      const effectiveUid = verifiedUid || (typeof uid === 'string' ? uid.trim() : '');
 
       const secCollMap: Record<string, string> = {
         admin: 'admin_sessions',
@@ -676,17 +671,17 @@ export function createApp() {
       const secColl = secCollMap[role];
       const entityColl = entityCollMap[role];
       if (!secColl || !entityColl) {
-        return res.json({ valid: false, error: 'INVALID_ROLE' });
+        return res.json({ success: false, valid: false, code: 'INVALID_INPUT', error: 'INVALID_ROLE' });
       }
 
       const secSnap = await adminDb.doc(`${secColl}/${effectiveUid}`).get();
       if (!secSnap.exists) {
-        return res.json({ valid: false, error: 'SESSION_NOT_FOUND' });
+        return res.json({ success: false, valid: false, code: 'NOT_FOUND', error: 'SESSION_NOT_FOUND' });
       }
 
       const secData = secSnap.data() || {};
       if (!secData.isActive || secData.sessionId !== sessionId) {
-        return res.json({ valid: false, error: 'SESSION_INVALID' });
+        return res.json({ success: false, valid: false, code: 'SESSION_INVALID', error: 'SESSION_INVALID' });
       }
 
       // Check session expiration timeout (15 minutes of inactivity)
@@ -695,7 +690,7 @@ export function createApp() {
       const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
       if (lastActive > 0 && (Date.now() - lastActive > SESSION_TIMEOUT_MS)) {
         await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
-        return res.json({ valid: false, error: 'SESSION_EXPIRED' });
+        return res.json({ success: false, valid: false, code: 'SESSION_EXPIRED', error: 'SESSION_EXPIRED' });
       }
 
       // Check entity level lock: If another session has claimed the entity, this session is revoked
@@ -706,7 +701,7 @@ export function createApp() {
           const entityData = entitySnap.data() || {};
           if (entityData.currentSessionId && entityData.currentSessionId !== sessionId) {
             await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
-            return res.json({ valid: false, error: 'SESSION_REVOKED' });
+            return res.json({ success: false, valid: false, code: 'SESSION_REVOKED', error: 'SESSION_REVOKED' });
           }
         }
       }
@@ -718,44 +713,29 @@ export function createApp() {
         await adminDb.doc(`${entityColl}/${targetEntityId}`).set({ lastActive: now }, { merge: true });
       }
 
-      return res.json({ valid: true });
+      return res.json({ success: true, valid: true });
     } catch (error) {
       console.error('[Server Auth] Error validating session:', error);
-      return res.status(500).json({ valid: false, error: 'SERVER_ERROR' });
+      return res.status(500).json({ success: false, valid: false, code: 'INTERNAL_ERROR', error: 'SERVER_ERROR' });
     }
   });
 
   // Secure Server API: Release Session (Universal across all roles)
-  app.post('/api/auth/release-session', async (req, res) => {
+  app.post('/api/auth/release-session', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
-      const { uid, sessionId, role, entityId, firebaseIdToken } = req.body || {};
-      const authHeader = req.headers.authorization;
-      let token = '';
-
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split('Bearer ')[1]?.trim();
-      } else if (firebaseIdToken) {
-        token = String(firebaseIdToken).trim();
-      }
+      const { uid, sessionId, role, entityId } = req.body || {};
+      const verifiedUid = req.user?.uid || '';
 
       if (!uid || !sessionId || !role) {
-        return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+        return sendApiError(res, 400, 'INVALID_INPUT', 'MISSING_PARAMETERS', req.correlationId);
       }
 
-      if (!adminDb || !adminAuth) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      if (!adminDb) {
+        return sendApiError(res, 500, 'SERVICE_UNAVAILABLE', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
-      if (!token) {
-        return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Missing token' });
-      }
-
-      let verifiedUid = '';
-      try {
-        const decoded = await adminAuth.verifyIdToken(token);
-        verifiedUid = decoded.uid;
-      } catch (tokenErr) {
-        return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Invalid token' });
+      if (!verifiedUid) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'UNAUTHORIZED: Missing token', req.correlationId);
       }
 
       // Check authorization: caller must release own session or be active admin/supervisor
@@ -769,7 +749,7 @@ export function createApp() {
       }
 
       if (!isAuthorized) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Unauthorized session release' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Unauthorized session release', req.correlationId);
       }
 
       const secCollMap: Record<string, string> = {
@@ -818,40 +798,25 @@ export function createApp() {
   });
 
   // Secure Server API: Release Admin Session (Backward compatibility)
-  app.post('/api/auth/release-admin-session', async (req, res) => {
+  app.post('/api/auth/release-admin-session', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
-      const { uid, sessionId, firebaseIdToken } = req.body || {};
-      const authHeader = req.headers.authorization;
-      let token = '';
-
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split('Bearer ')[1]?.trim();
-      } else if (firebaseIdToken) {
-        token = String(firebaseIdToken).trim();
-      }
+      const { uid, sessionId } = req.body || {};
+      const verifiedUid = req.user?.uid || '';
 
       if (!uid || !sessionId) {
-        return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+        return sendApiError(res, 400, 'INVALID_INPUT', 'MISSING_PARAMETERS', req.correlationId);
       }
 
-      if (!adminDb || !adminAuth) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      if (!adminDb) {
+        return sendApiError(res, 500, 'SERVICE_UNAVAILABLE', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
-      if (!token) {
-        return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Missing token' });
-      }
-
-      let verifiedUid = '';
-      try {
-        const decoded = await adminAuth.verifyIdToken(token);
-        verifiedUid = decoded.uid;
-      } catch (tokenErr) {
-        return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Invalid token' });
+      if (!verifiedUid) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'UNAUTHORIZED: Missing token', req.correlationId);
       }
 
       if (verifiedUid !== uid) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Caller UID mismatch' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Caller UID mismatch', req.correlationId);
       }
 
       const snap = await adminDb.doc('admin_settings/auth_pin').get();
@@ -880,7 +845,7 @@ export function createApp() {
   app.post('/api/transactions/recharge-garage', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     const ALLOWED_ROLES = ['admin', 'supervisor', 'delegate'];
     if (!ALLOWED_ROLES.includes(req.user?.role || '')) {
-      return res.status(403).json({ success: false, error: 'ADMIN_SUPERVISOR_OR_OWNING_DELEGATE_ONLY' });
+      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_SUPERVISOR_OR_OWNING_DELEGATE_ONLY', req.correlationId);
     }
     try {
       const sanitized = sanitizePayload(req.body, ['garageId', 'packageId', 'adminDetails', 'idempotencyKey'], false);
@@ -892,7 +857,7 @@ export function createApp() {
       const adminDetails = sanitized.adminDetails || {};
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       // Delegates may only recharge garages they created or referred
@@ -903,14 +868,14 @@ export function createApp() {
           delegateGarageData.createdByDelegateId === req.user?.entityId ||
           delegateGarageData.referrerId === req.user?.entityId;
         if (!ownsGarage) {
-          return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
+          return sendApiError(res, 403, 'GARAGE_SCOPE_MISMATCH', 'GARAGE_SCOPE_MISMATCH', req.correlationId);
         }
       }
 
       // Package Data Parsing & Sanitization (Server Authoritative)
       const pkgSnap = await adminDb.doc(`packages/${packageId}`).get();
       if (!pkgSnap.exists) {
-        return res.status(404).json({ success: false, error: 'PACKAGE_NOT_FOUND' });
+        return sendApiError(res, 404, 'NOT_FOUND', 'PACKAGE_NOT_FOUND', req.correlationId);
       }
       const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
 
@@ -1057,15 +1022,15 @@ export function createApp() {
       return res.json({ success: true, data: resultData });
     } catch (error: any) {
       console.error('[Server Transaction] Error in recharge-garage:', error);
-      const { statusCode, message } = mapDomainErrorToStatus(error);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(error);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
   // Secure Server API: Approve Recharge Request
   app.post('/api/transactions/approve-recharge-request', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     if (req.user?.role !== 'admin' && req.user?.role !== 'supervisor') {
-      return res.status(403).json({ success: false, error: 'ADMIN_OR_SUPERVISOR_ONLY' });
+      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_OR_SUPERVISOR_ONLY', req.correlationId);
     }
     const callerUid = req.user?.uid;
     try {
@@ -1074,7 +1039,7 @@ export function createApp() {
       const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       let resultData: any = null;
@@ -1359,14 +1324,16 @@ export function createApp() {
       return res.json({ success: true, data: resultData });
     } catch (error: any) {
       console.error('[Server Transaction] Error in approve-recharge-request:', error);
-      const { statusCode, message } = mapDomainErrorToStatus(error);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(error);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
   // Secure Server API: Reject Recharge Request
   app.post('/api/transactions/reject-recharge-request', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    if (req.user?.role !== 'admin' && req.user?.role !== 'supervisor') return res.status(403).json({ success: false, error: 'ADMIN_OR_SUPERVISOR_ONLY' });
+    if (req.user?.role !== 'admin' && req.user?.role !== 'supervisor') {
+      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_OR_SUPERVISOR_ONLY', req.correlationId);
+    }
     const callerUid = req.user?.uid;
     try {
       const sanitized = sanitizePayload(req.body, ['requestId', 'idempotencyKey'], false);
@@ -1374,7 +1341,7 @@ export function createApp() {
       const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       await adminDb.runTransaction(async (t: any) => {
@@ -1406,14 +1373,16 @@ export function createApp() {
       return res.json({ success: true });
     } catch (error: any) {
       console.error('[Server Transaction] Error in reject-recharge-request:', error);
-      const { statusCode, message } = mapDomainErrorToStatus(error);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(error);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
   // Secure Server API: Admin Direct Balance Top-Up
   app.post('/api/transactions/admin-topup-balance', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'ADMIN_ONLY' });
+    if (req.user?.role !== 'admin') {
+      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_ONLY', req.correlationId);
+    }
     const callerUid = req.user?.uid;
     try {
       const sanitized = sanitizePayload(req.body, ['garageId', 'amount', 'idempotencyKey'], false);
@@ -1422,7 +1391,7 @@ export function createApp() {
       const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       let resultData: any = null;
@@ -1479,8 +1448,8 @@ export function createApp() {
       return res.json({ success: true, data: resultData });
     } catch (error: any) {
       console.error('[Server Transaction] Error in admin-topup-balance:', error);
-      const { statusCode, message } = mapDomainErrorToStatus(error);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(error);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
@@ -1497,16 +1466,16 @@ export function createApp() {
 
       const garageId = userRole === 'garage' ? userGarageId : (bodyGarageId || userGarageId);
       if (userRole === 'garage' && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
-        return res.status(403).json({ success: false, error: 'UNAUTHORIZED_GARAGE_ACCESS' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'UNAUTHORIZED_GARAGE_ACCESS', req.correlationId);
       }
       if (!['garage', 'admin', 'supervisor'].includes(userRole || '')) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for self subscribe' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Role not authorized for self subscribe', req.correlationId);
       }
       if (!garageId) {
-        return res.status(400).json({ success: false, error: 'GARAGE_ID_REQUIRED' });
+        return sendApiError(res, 400, 'INVALID_INPUT', 'GARAGE_ID_REQUIRED', req.correlationId);
       }
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       let resultData: any = null;
@@ -1662,8 +1631,8 @@ export function createApp() {
       return res.json({ success: true, data: resultData });
     } catch (error: any) {
       console.error('[Server Transaction] Error in garage-self-subscribe:', error);
-      const { statusCode, message } = mapDomainErrorToStatus(error);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(error);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
@@ -2176,6 +2145,65 @@ export function createApp() {
     }
   });
 
+  // Secure Server API: Admin Update System Config (General Settings & Wallet Number)
+  app.post('/api/admin/update-system-config', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin' && req.user?.role !== 'supervisor') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' });
+      }
+
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const body = req.body || {};
+      const updatePayload: Record<string, any> = {
+        updatedAt: new Date()
+      };
+
+      if (body.walletNumber !== undefined) {
+        updatePayload.walletNumber = String(body.walletNumber).trim();
+      }
+      if (body.defaultTrialDays !== undefined) {
+        updatePayload.defaultTrialDays = Number(body.defaultTrialDays) || 2;
+      }
+      if (body.warningDaysThreshold !== undefined) {
+        updatePayload.warningDaysThreshold = Number(body.warningDaysThreshold) || 3;
+      }
+      if (body.monthlySubscribersFlatFee !== undefined) {
+        updatePayload.monthlySubscribersFlatFee = Number(body.monthlySubscribersFlatFee) || 500;
+      }
+      if (body.monthlySubscribersSurchargePercent !== undefined) {
+        updatePayload.monthlySubscribersSurchargePercent = Number(body.monthlySubscribersSurchargePercent) || 25;
+      }
+      if (body.referralFeePerRenewal !== undefined) {
+        updatePayload.referralFeePerRenewal = Number(body.referralFeePerRenewal) || 100;
+      }
+      if (body.delegateMonthlyCommission !== undefined) {
+        updatePayload.delegateMonthlyCommission = Number(body.delegateMonthlyCommission) || 100;
+      }
+      if (body.isMaintenanceMode !== undefined) {
+        updatePayload.isMaintenanceMode = !!body.isMaintenanceMode;
+      }
+      if (body.maintenanceMessage !== undefined) {
+        updatePayload.maintenanceMessage = String(body.maintenanceMessage).trim();
+      }
+      if (body.adminColor !== undefined) {
+        updatePayload.adminColor = String(body.adminColor).trim();
+      }
+      if (body.subscriptionPrices !== undefined) {
+        updatePayload.subscriptionPrices = body.subscriptionPrices;
+      }
+
+      await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Admin] Error in update-system-config:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
   // Secure Server API: Admin Extend Garage Fair-Use Allowance
   app.post('/api/admin/garages/:id/extend-fair-use', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     try {
@@ -2601,14 +2629,14 @@ export function createApp() {
 
       // Only garage owner of this garage, admin, or supervisor can claim
       if (callerRole === 'garage' && callerGarageId !== garageId) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot claim reward for another garage' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Cannot claim reward for another garage', req.correlationId);
       }
       if (callerRole === 'staff') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Staff cannot claim referral rewards' });
+        return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Staff cannot claim referral rewards', req.correlationId);
       }
 
       if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
       }
 
       let claimedDays = 0;
@@ -2674,8 +2702,8 @@ export function createApp() {
       return res.json({ success: true, daysClaimed: claimedDays });
     } catch (e: any) {
       console.error('[Server Reward] Error in use-referral-reward:', e);
-      const { statusCode, message } = mapDomainErrorToStatus(e);
-      return res.status(statusCode).json({ success: false, error: message });
+      const { statusCode, code, message } = mapDomainErrorToStatus(e);
+      return sendApiError(res, statusCode, code, message, req.correlationId);
     }
   });
 
@@ -2739,6 +2767,435 @@ export function createApp() {
       console.error('[Server Garage] Error in delete garage:', e);
       const { statusCode, message } = mapDomainErrorToStatus(e);
       return res.status(statusCode).json({ success: false, error: message });
+    }
+  });
+
+  // Secure Server API: Supervisor Operations (Update / Delete)
+  app.post('/api/supervisors/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id, name, phone, permissions } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (name) updates.name = String(name).trim();
+      if (phone !== undefined) updates.phone = String(phone).trim();
+      if (permissions) updates.permissions = permissions;
+
+      await adminDb.collection('supervisors').doc(id).update(updates);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Supervisor] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/supervisors/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('supervisors').doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Supervisor] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Delegate Operations (Update / Delete)
+  app.post('/api/delegates/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (!['admin', 'supervisor'].includes(req.user?.role || '')) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' });
+      }
+      const { id, name, phone, commissionRate, commissions, defaultTrialDays } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (name) updates.name = String(name).trim();
+      if (phone !== undefined) updates.phone = String(phone).trim();
+      if (commissionRate !== undefined) updates.commissionRate = Number(commissionRate);
+      if (commissions) updates.commissions = commissions;
+      if (defaultTrialDays !== undefined) updates.defaultTrialDays = Number(defaultTrialDays);
+
+      await adminDb.collection('delegates').doc(id).update(updates);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Delegate] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/delegates/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (!['admin', 'supervisor'].includes(req.user?.role || '')) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('delegates').doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Delegate] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Staff Operations (Update / Delete)
+  app.post('/api/staff/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { id, name, phone, role, permissions } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
+
+      if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+        const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
+        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+          return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' });
+        }
+      }
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (name) updates.name = String(name).trim();
+      if (phone !== undefined) updates.phone = String(phone).trim();
+      if (role) updates.role = role;
+      if (permissions) updates.permissions = permissions;
+
+      await adminDb.collection('staff').doc(id).update(updates);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Staff] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/staff/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
+
+      if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+        const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
+        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+          return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' });
+        }
+      }
+
+      await adminDb.collection('staff').doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Staff] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Garage Update
+  app.post('/api/garages/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { id, ...data } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const callerRole = req.user?.role;
+      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
+
+      if (callerRole !== 'admin' && callerRole !== 'supervisor' && callerGarageId !== id) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot update another garage' });
+      }
+
+      // Filter out invalid/undefined fields
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      const allowedKeys = [
+        'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
+        'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'isMaintenanceMode', 
+        'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId'
+      ];
+      for (const key of allowedKeys) {
+        if (key in data && data[key] !== undefined) {
+          updates[key] = data[key];
+        }
+      }
+
+      await adminDb.collection('garages').doc(id).update(updates);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Garage] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/garages/recalculate-cars-inside', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId } = req.body || {};
+      if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const vehSnap = await adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get();
+      const actualCount = vehSnap.size;
+
+      await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
+      return res.json({ success: true, count: actualCount });
+    } catch (e: any) {
+      console.error('[Server Garage] Error in recalculate-cars-inside:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Packages (Create / Delete)
+  app.post('/api/admin/packages/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+      const pkgData = {
+        ...req.body,
+        isActive: true,
+        createdAt: new Date()
+      };
+
+      const docRef = await adminDb.collection('packages').add(pkgData);
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server Packages] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/packages/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('packages').doc(id).update({ isActive: false });
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Packages] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Announcements (Create / Delete / Toggle)
+  app.post('/api/admin/announcements/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+      const data = {
+        ...req.body,
+        createdAt: new Date()
+      };
+
+      const docRef = await adminDb.collection('announcements').add(data);
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server Announcements] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/announcements/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('announcements').doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Announcements] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/announcements/toggle', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id, isActive } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('announcements').doc(id).update({ isActive: Boolean(isActive) });
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Announcements] Error in toggle:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Coupons (Create / Update / Delete)
+  app.post('/api/admin/coupons/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+      const couponData = {
+        ...req.body,
+        usedCount: 0,
+        createdAt: new Date()
+      };
+
+      const docRef = await adminDb.collection('coupons').add(couponData);
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server Coupons] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/coupons/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id, ...data } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('coupons').doc(id).update(data);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Coupons] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/admin/coupons/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection('coupons').doc(id).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Coupons] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Subscribers (Add / Renew / Update / Delete)
+  app.post('/api/subscribers/add', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId, subscriberData } = req.body || {};
+      if (!garageId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const docRef = adminDb.collection(`garages/${garageId}/subscribers`).doc();
+      await docRef.set({
+        ...subscriberData,
+        id: docRef.id,
+        createdAt: new Date()
+      });
+
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server Subscribers] Error in add:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/subscribers/renew', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId, subscriberId, newDates } = req.body || {};
+      if (!garageId || !subscriberId || !newDates || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection(`garages/${garageId}/subscribers`).doc(subscriberId).update({
+        startDate: newDates.startDate,
+        endDate: newDates.endDate
+      });
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Subscribers] Error in renew:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/subscribers/update', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId, subscriberId, subscriberData } = req.body || {};
+      if (!garageId || !subscriberId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection(`garages/${garageId}/subscribers`).doc(subscriberId).update(subscriberData);
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Subscribers] Error in update:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  app.post('/api/subscribers/delete', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId, subscriberId } = req.body || {};
+      if (!garageId || !subscriberId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      await adminDb.collection(`garages/${garageId}/subscribers`).doc(subscriberId).delete();
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Subscribers] Error in delete:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Recharge Requests (Create)
+  app.post('/api/recharge-requests/create', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+      const cleanData = Object.fromEntries(
+        Object.entries(req.body || {}).filter(([_, v]) => v !== undefined)
+      );
+
+      const docRef = await adminDb.collection('recharge_requests').add({
+        ...cleanData,
+        status: 'pending',
+        createdAt: new Date()
+      });
+
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server RechargeRequests] Error in create:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
+  // Secure Server API: Activity Logs (Add)
+  app.post('/api/activity-logs/add', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+      const { id, timestamp, ...rest } = req.body || {};
+      const docRef = await adminDb.collection('activity_logs').add({
+        ...rest,
+        timestamp: new Date()
+      });
+
+      return res.json({ success: true, id: docRef.id });
+    } catch (e: any) {
+      console.error('[Server ActivityLogs] Error in add:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
     }
   });
 

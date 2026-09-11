@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { adminAuth, adminDb } from './firebaseAdmin';
+import { validateIdempotencyKey } from './validation';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -12,6 +13,35 @@ export interface AuthRequest extends Request {
     displayName?: string;
   };
   correlationId?: string;
+  idempotencyKey?: string;
+}
+
+/**
+ * Standardized error sender helper that provides both top-level string 'error'
+ * for client backward-compatibility, and standard envelope fields (code, statusCode, timestamp, correlationId).
+ */
+export function sendApiError(
+  res: Response,
+  statusCode: number,
+  code: string,
+  message: string,
+  correlationId?: string,
+  details?: Record<string, any>
+) {
+  const payload: Record<string, any> = {
+    success: false,
+    error: message,
+    code,
+    statusCode,
+    timestamp: new Date().toISOString(),
+  };
+  if (correlationId) {
+    payload.correlationId = correlationId;
+  }
+  if (details) {
+    payload.details = details;
+  }
+  return res.status(statusCode).json(payload);
 }
 
 /**
@@ -29,13 +59,51 @@ export const correlationMiddleware = (req: AuthRequest, res: Response, next: Nex
  * Timeout Middleware: prevents hanging connections (15s limit)
  */
 export const requestTimeoutMiddleware = (timeoutMs = 15000) => {
-  return (_req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     res.setTimeout(timeoutMs, () => {
       if (!res.headersSent) {
-        res.status(504).json({ success: false, error: 'REQUEST_TIMEOUT: Operation timed out on server' });
+        const correlationId = (req as AuthRequest).correlationId;
+        sendApiError(res, 504, 'REQUEST_TIMEOUT', 'REQUEST_TIMEOUT: Operation timed out on server', correlationId);
       }
     });
     next();
+  };
+};
+
+/**
+ * Idempotency Key Validation Middleware (Phase 1)
+ * Extracts and validates the idempotency key from headers or request body.
+ * If required = true and key is missing or invalid, immediately returns 400.
+ */
+export const idempotencyMiddleware = (required = false) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    const rawKey = req.headers['x-idempotency-key'] || req.headers['idempotency-key'] || req.body?.idempotencyKey;
+    if (!rawKey) {
+      if (required) {
+        return sendApiError(
+          res,
+          400,
+          'INVALID_IDEMPOTENCY_KEY',
+          'IDEMPOTENCY_KEY_REQUIRED: An idempotency key is required for this operation',
+          req.correlationId
+        );
+      }
+      return next();
+    }
+
+    try {
+      const validated = validateIdempotencyKey(rawKey);
+      req.idempotencyKey = validated || undefined;
+      next();
+    } catch (err: any) {
+      return sendApiError(
+        res,
+        400,
+        err?.code || 'INVALID_IDEMPOTENCY_KEY',
+        err?.message || 'Invalid idempotency key',
+        req.correlationId
+      );
+    }
   };
 };
 
@@ -56,10 +124,13 @@ export const financialRateLimiter = (maxRequests = 30, windowMs = 60000) => {
         return next();
       }
       if (entry.count >= maxRequests) {
-        return res.status(429).json({
-          success: false,
-          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
-        });
+        return sendApiError(
+          res,
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.',
+          req.correlationId
+        );
       }
       entry.count += 1;
       return next();
@@ -85,10 +156,13 @@ export const financialRateLimiter = (maxRequests = 30, windowMs = 60000) => {
       });
 
       if (!allowed) {
-        return res.status(429).json({
-          success: false,
-          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
-        });
+        return sendApiError(
+          res,
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.',
+          req.correlationId
+        );
       }
       next();
     } catch (e) {
@@ -99,16 +173,64 @@ export const financialRateLimiter = (maxRequests = 30, windowMs = 60000) => {
         return next();
       }
       if (entry.count >= maxRequests) {
-        return res.status(429).json({
-          success: false,
-          error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.'
-        });
+        return sendApiError(
+          res,
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.',
+          req.correlationId
+        );
       }
       entry.count += 1;
       next();
     }
   };
 };
+
+/**
+ * Verifies Firebase Auth ID token for authentication routes (e.g. verify-pin, check-pin-availability).
+ * Does not require an existing session document in Firestore, but verifies the caller has a valid Firebase Auth user.
+ */
+export async function requireFirebaseUser(req: AuthRequest, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length).trim()
+    : '';
+
+  if (!token) {
+    return sendApiError(
+      res,
+      401,
+      'UNAUTHORIZED',
+      'UNAUTHORIZED: Missing Firebase ID Token',
+      req.correlationId
+    );
+  }
+
+  if (!adminAuth) {
+    return sendApiError(
+      res,
+      503,
+      'SERVICE_UNAVAILABLE',
+      'ADMIN_SDK_NOT_INITIALIZED',
+      req.correlationId
+    );
+  }
+
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    req.user = { uid: decoded.uid, role: 'anonymous' };
+    next();
+  } catch (err) {
+    return sendApiError(
+      res,
+      401,
+      'UNAUTHORIZED',
+      'UNAUTHORIZED: Invalid token',
+      req.correlationId
+    );
+  }
+}
 
 export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -120,11 +242,23 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     }
 
     if (!token) {
-      return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Missing Firebase ID Token' });
+      return sendApiError(
+        res,
+        401,
+        'UNAUTHORIZED',
+        'UNAUTHORIZED: Missing Firebase ID Token',
+        req.correlationId
+      );
     }
 
     if (!adminAuth || !adminDb) {
-      return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      return sendApiError(
+        res,
+        500,
+        'INTERNAL_ERROR',
+        'ADMIN_SDK_NOT_INITIALIZED',
+        req.correlationId
+      );
     }
 
     const decoded = await adminAuth.verifyIdToken(token);
@@ -156,7 +290,13 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
           const rawLastActive = secData.lastActive;
           const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
           if (lastActive > 0 && (Date.now() - lastActive > SESSION_TIMEOUT_MS)) {
-            return res.status(401).json({ success: false, error: 'SESSION_EXPIRED: Inactivity timeout' });
+            return sendApiError(
+              res,
+              401,
+              'SESSION_EXPIRED',
+              'SESSION_EXPIRED: Inactivity timeout',
+              req.correlationId
+            );
           }
 
           foundRole = role;
@@ -185,7 +325,13 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     }
 
     if (!foundRole) {
-      return res.status(401).json({ success: false, error: 'SESSION_REVOKED: No active session found' });
+      return sendApiError(
+        res,
+        401,
+        'SESSION_REVOKED',
+        'SESSION_REVOKED: No active session found',
+        req.correlationId
+      );
     }
 
     req.user = {
@@ -199,6 +345,12 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     next();
   } catch (e: any) {
     console.warn('[Server Auth] Middleware validation failed:', e);
-    return res.status(401).json({ success: false, error: 'UNAUTHORIZED: Invalid token or session' });
+    return sendApiError(
+      res,
+      401,
+      'UNAUTHORIZED',
+      'UNAUTHORIZED: Invalid token or session',
+      req.correlationId
+    );
   }
 };

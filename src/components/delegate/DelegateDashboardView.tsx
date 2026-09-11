@@ -68,7 +68,7 @@ export const DelegateDashboardView = memo(({
 }: DelegateDashboardViewProps) => {
   const config = useSystemConfig();
   const warningDaysThreshold = typeof config?.warningDaysThreshold === 'number' ? config.warningDaysThreshold : 3;
-  const trialDays = typeof config?.defaultTrialDays === 'number' && config.defaultTrialDays > 0 ? config.defaultTrialDays : 15;
+  const trialDays = typeof config?.defaultTrialDays === 'number' && config.defaultTrialDays > 0 ? config.defaultTrialDays : 2;
   const [selectedDurationFilter, setSelectedDurationFilter] = useState<number>(() => getDefaultDurationFilter(packages));
   const [activeTab, setActiveTab] = useState<'garages' | 'performance'>('garages');
   const [searchTerm, setSearchTerm] = useState('');
@@ -827,27 +827,34 @@ export const DelegateDashboardView = memo(({
                 </div>
 
                 {/* Garage Wallet & Subscription Status */}
-                <div className="grid grid-cols-2 gap-2.5 mb-4">
-                  <div className="bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-center">
-                    <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block mb-0.5">رصيد المحفظة الحالي</span>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                        {selectedGarage.balance || 0}
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-600/70">ج.م</span>
-                    </div>
+                {isLoading ? (
+                  <div className="grid grid-cols-2 gap-2.5 mb-4 animate-pulse">
+                    <div className="bg-slate-100 dark:bg-slate-800 h-16 rounded-xl border border-slate-200 dark:border-slate-700" />
+                    <div className="bg-slate-100 dark:bg-slate-800 h-16 rounded-xl border border-slate-200 dark:border-slate-700" />
                   </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5 mb-4">
+                    <div className="bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 text-center">
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block mb-0.5">رصيد المحفظة الحالي</span>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
+                          {selectedGarage.balance || 0}
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-600/70">ج.م</span>
+                      </div>
+                    </div>
 
-                  <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 block mb-0.5">الاشتراك الحالي</span>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                        {getRemainingDays(selectedGarage)}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">يوم متبقي</span>
+                    <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800 rounded-xl p-3 text-center">
+                      <span className="text-[10px] font-bold text-slate-400 block mb-0.5">الاشتراك الحالي</span>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                          {getRemainingDays(selectedGarage)}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">يوم متبقي</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Preset Balance Amounts (No custom input allowed) */}
                 <div className="space-y-2 mb-4">
@@ -860,27 +867,35 @@ export const DelegateDashboardView = memo(({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {BALANCE_PRESET_AMOUNTS.map((amt) => {
-                      const isSelected = selectedTopupAmount === amt;
-                      return (
-                        <button
-                          key={amt}
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => setSelectedTopupAmount(amt)}
-                          className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 ${
-                            isSelected
-                              ? 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 shadow-md ring-2 ring-amber-500/30'
-                              : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-200 hover:border-amber-400/50'
-                          }`}
-                        >
-                          <span className="text-lg sm:text-xl font-black font-mono leading-tight">{amt}</span>
-                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">ج.م رصيد</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {isLoading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 animate-pulse">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {BALANCE_PRESET_AMOUNTS.map((amt) => {
+                        const isSelected = selectedTopupAmount === amt;
+                        return (
+                          <button
+                            key={amt}
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => setSelectedTopupAmount(amt)}
+                            className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 ${
+                              isSelected
+                                ? 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 shadow-md ring-2 ring-amber-500/30'
+                                : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-200 hover:border-amber-400/50'
+                            }`}
+                          >
+                            <span className="text-lg sm:text-xl font-black font-mono leading-tight">{amt}</span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">ج.م رصيد</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Selection Summary */}

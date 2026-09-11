@@ -76,9 +76,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
         <div className="mb-5 sm:mb-7 select-none" dir="ltr">
           <div className="relative w-full max-w-[320px] sm:max-w-[380px] mx-auto bg-white dark:bg-slate-900 border-[3px] border-slate-900 dark:border-slate-700 rounded-2xl overflow-hidden shadow-md flex flex-col">
             {/* Top Bar - Standard Egyptian Blue */}
-            <div className="h-7 sm:h-8 bg-[#0057b7] text-white flex items-center justify-between px-3 sm:px-4 font-black border-b border-slate-900/10 relative">
-              <span className="text-[10px] sm:text-xs tracking-wider antialiased font-mono">EGYPT</span>
-              
+            <div className="h-7 sm:h-8 bg-[#0057b7] text-white flex items-center justify-center px-3 sm:px-4 font-black border-b border-slate-900/10 relative">
               {/* Integrated Live Digit Counter Badge */}
               {cleanPin.length > 0 ? (
                 <div 
@@ -94,11 +92,9 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
                 </div>
               ) : (
                 <span className="text-[10px] text-blue-200/60 font-sans tracking-wide">
-                  اللوحة الإلكترونية
+                  {/* Empty plate text */}
                 </span>
               )}
-
-              <span className="text-xs sm:text-sm font-sans antialiased" dir="rtl">مصر</span>
             </div>
 
             {/* Plate Interior: Monospace Egyptian PIN Numbers */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Plus, Search, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
 import { Garage } from '../../types';
 
 interface AdminGaragesTabViewProps {
@@ -69,8 +69,12 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
           </div>
           <div className="p-3 sm:p-4 flex flex-col gap-2 min-h-[160px]">
             {displayedGarages.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 dark:text-slate-500 font-bold text-xs">
-                {t('لا توجد جراجات مطابقة للبحث')}
+              <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+                <Building2 className="w-16 h-16 text-emerald-500/30 dark:text-emerald-500/20 mx-auto mb-4" />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('لا توجد جراجات مسجلة')}</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-bold text-sm max-w-sm mx-auto">
+                  {t('لم يتم إضافة أي جراجات في النظام حتى الآن أو لا توجد جراجات مطابقة لخيارات البحث الخاصة بك.')}
+                </p>
               </div>
             ) : (
               displayedGarages.map((g) => {

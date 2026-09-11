@@ -223,15 +223,12 @@ export function useAdminAndGarageManagement({
       if (role === 'admin') {
         setActiveAdminPin(cleanInput);
         setView('admin_dashboard');
-        showToast('تم تسجيل الدخول كمسؤول للنظام بنجاح', 'success');
       } else if (role === 'supervisor') {
         setCurrentSupervisor(cleanAccount);
         setView('admin_dashboard');
-        showToast(`مرحباً بك يا ${cleanAccount?.name || 'مشرف'} (مشرف)`, 'success');
       } else if (role === 'delegate') {
         setDelegate(cleanAccount);
         setView('delegate_dashboard');
-        showToast(`مرحباً بك يا ${cleanAccount?.name || 'مندوب'}`, 'success');
       } else if (role === 'staff') {
         const gSnap = await getDoc(doc(db, 'garages', account.garageId));
         if (gSnap.exists()) {
@@ -241,12 +238,10 @@ export function useAdminAndGarageManagement({
         }
         setCurrentStaff(cleanAccount);
         setView('garage');
-        showToast(`مرحباً بك يا ${cleanAccount?.name || 'موظف'}`, 'success');
       } else if (role === 'garage') {
         setGarage(cleanAccount);
         setCurrentStaff(null);
         setView('garage');
-        showToast(`مرحباً بك يا صاحب جراج ${cleanAccount?.name || ''}`, 'success');
       }
 
     } catch (err: any) {
@@ -362,7 +357,6 @@ export function useAdminAndGarageManagement({
 
       setDelegate(cleanAccount);
       setView('delegate_dashboard');
-      showToast(`مرحباً بك يا ${cleanAccount?.name || 'مندوب'}`, 'success');
     } catch (err: any) {
       console.error('Delegate login critical error:', err);
       showToast('حدث خطأ أثناء تسجيل الدخول؛ يرجى إعادة المحاولة', 'error');

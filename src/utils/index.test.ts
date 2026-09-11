@@ -144,9 +144,8 @@ describe('Security & Helper Utils', () => {
     expect(isLightColor('#FFFFFF')).toBe(true);
     expect(isLightColor('#000000')).toBe(false);
 
-    // Custom dark background accent color
-    expect(resolveShimmerColor('#ef4444', 'dark')).toBe('#ef4444');
-    // Default fallback when no custom color provided
-    expect(resolveShimmerColor(undefined, 'dark')).toBe('#10b981');
+    // Fixed Amber Gold accent color across all modes and inputs
+    expect(resolveShimmerColor('#ef4444', 'dark')).toBe('#f59e0b');
+    expect(resolveShimmerColor(undefined, 'dark')).toBe('#f59e0b');
   });
 });

@@ -57,22 +57,14 @@ export const EgyptianPlate: React.FC<EgyptianPlateProps> = memo(({
     lg: 'h-4.5'
   };
 
-  const labelSize = {
-    sm: 'text-[6px]',
-    md: 'text-[10px]',
-    lg: 'text-[14px]'
-  };
-
   return (
     <div className={`relative ${customSizeClasses || sizeClasses[size]} bg-white border-slate-900 rounded-xl overflow-hidden mx-auto flex flex-col ${className}`} dir="ltr">
       {/* Top Bar - Standard Egyptian Blue (Turns on when plate has content) */}
-      <div className={`${customBarHeightClass || (hideCountryLabels ? barHeightLabelsHidden[size] : barHeight[size])} flex items-center justify-between px-2 sm:px-4 font-black border-b border-slate-900/10 ${
+      <div className={`${customBarHeightClass || (hideCountryLabels ? barHeightLabelsHidden[size] : barHeight[size])} flex items-center justify-center px-2 sm:px-4 font-black border-b border-slate-900/10 ${
         (numbers + letters) 
           ? 'bg-[#0057b7] text-white' 
           : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600'
       }`}>
-        {!hideCountryLabels && <span className={`${labelSize[size]} tracking-tight antialiased`}>EGYPT</span>}
-        {!hideCountryLabels && <span className={`${labelSize[size]} font-sans antialiased`} dir="rtl">مصر</span>}
       </div>
       
       {/* Plate Main Content */}

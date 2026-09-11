@@ -16,6 +16,7 @@ export const AdminWalletView: React.FC<AdminWalletViewProps> = ({
 }) => {
   const [walletValue, setWalletValue] = useState<string>(currentWalletNumber);
   const [isSavingWallet, setIsSavingWallet] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const renderFormattedWallet = (val: string) => {
     if (!val) return null;
@@ -43,11 +44,13 @@ export const AdminWalletView: React.FC<AdminWalletViewProps> = ({
       return;
     }
     setIsSavingWallet(true);
+    setErrorMessage(null);
     try {
       await onUpdateWalletNumber(walletValue);
       onCancel();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err?.message || t('تعذر حفظ رقم المحفظة، يرجى المحاولة مرة أخرى'));
     } finally {
       setIsSavingWallet(false);
     }
@@ -86,9 +89,12 @@ export const AdminWalletView: React.FC<AdminWalletViewProps> = ({
               }}
               dir="ltr"
               required
-              placeholder="015 - 524 - 113 - 23"
+              placeholder="01xxxxxxxxx"
               className="w-full text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-wide font-mono" 
             />
+            {errorMessage && (
+              <p className="text-xs font-bold text-rose-500 text-center">{errorMessage}</p>
+            )}
           </div>
 
           <div className="flex gap-3 sm:gap-4 pt-2">

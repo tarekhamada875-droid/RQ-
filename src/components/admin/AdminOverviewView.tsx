@@ -130,7 +130,7 @@ export const AdminOverviewView = memo(({
             {t('نظرة عامة على النظام')}
           </h2>
           <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-            {allGarages.length} {t('جراج مسجل')} • {delegates.length} {t('مندوب')}
+            {allGarages.length.toLocaleString('en-US')} {t('جراج مسجل')} • {delegates.length.toLocaleString('en-US')} {t('مندوب')}
           </p>
         </div>
 

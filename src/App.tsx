@@ -7,6 +7,7 @@ import { useEffect, Suspense } from 'react';
 import { 
   CheckCircle2, 
   XCircle, 
+  X
 } from 'lucide-react';
 import { resolveShimmerColor } from './utils';
 import { useTheme } from './utils/ThemeContext';
@@ -420,36 +421,43 @@ export default function App() {
         <NetworkStatusBanner />
         {toast && (
           <div 
-            onClick={() => setToast(null)}
-            className="fixed inset-0 z-[250] bg-slate-950/60 dark:bg-black/75 flex items-center justify-center p-4 animate-overlay-30fps cursor-pointer"
+            className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"
           >
             <div 
-              className="w-full max-w-sm bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[28px] p-6 shadow-2xl flex flex-col items-center text-center animate-popup-30fps select-none"
+              onClick={() => setToast(null)}
+              className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"
             >
-              <div 
-                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 border-2 ${
-                  toast.type === 'error' 
-                    ? 'bg-red-500/10 text-red-500 border-2 border-red-500/20' 
-                    : ''
-                }`}
-                style={toast.type === 'error' ? {} : {
-                  backgroundColor: `${resolvedColor}15`,
-                  color: resolvedColor,
-                  borderColor: `${resolvedColor}30`
-                }}
-              >
-                {toast.type === 'error' ? (
-                  <XCircle className="w-9 h-9 stroke-[2.5]" />
-                ) : (
-                  <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
-                )}
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div 
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    toast.type === 'error' 
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}
+                >
+                  {toast.type === 'error' ? (
+                    <XCircle className="w-5 h-5 stroke-[2.5]" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                  )}
+                </div>
+                <div className="truncate text-right" dir="rtl">
+                  <p className="text-xs sm:text-sm font-bold text-slate-100 leading-snug truncate">
+                    {toast.message}
+                  </p>
+                </div>
               </div>
-              <h4 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-2">
-                {toast.type === 'error' ? 'تنبيه' : 'تم بنجاح'}
-              </h4>
-              <p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed">
-                {toast.message}
-              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToast(null);
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors"
+                title="إغلاق"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
