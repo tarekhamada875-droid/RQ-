@@ -44,7 +44,6 @@ import {
   evaluateFairUseCheckIn,
   manualAdminExtendFairUse
 } from './unlimitedFairUse';
-import { isPinVerificationSuccessful } from './pinRotation';
 
 /**
  * Domain Error Status Code Resolver
@@ -2115,7 +2114,7 @@ export function createApp() {
         return res.status(500).json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' });
       }
       const isMatch = verifyPinMatch(normCurrent, adminStoredPin);
-      if (!isPinVerificationSuccessful(isMatch)) {
+      if (isMatch.matches !== true) {
         return res.status(400).json({ success: false, error: 'CURRENT_PIN_INCORRECT' });
       }
 
