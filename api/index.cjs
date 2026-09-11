@@ -26,12 +26,12 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/index.ts
-var index_exports = {};
-__export(index_exports, {
-  default: () => index_default
+// serverless/api-entry.ts
+var api_entry_exports = {};
+__export(api_entry_exports, {
+  default: () => api_entry_default
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(api_entry_exports);
 
 // server/app.ts
 var import_express = __toESM(require("express"), 1);
@@ -3536,8 +3536,8 @@ function createApp() {
 }
 var app = createApp();
 
-// api/index.ts
-var index_default = app;
+// serverless/api-entry.ts
+var api_entry_default = app;
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0

@@ -29,10 +29,10 @@ describe('Phase 1 — Foundation & Routing Test Suite', () => {
   });
 
   it('2. Verifies Vercel API entrypoint exists and exports express app', async () => {
-    const apiIndexPath = path.resolve(process.cwd(), 'api/index.ts');
+    const apiIndexPath = path.resolve(process.cwd(), 'serverless/api-entry.ts');
     expect(fs.existsSync(apiIndexPath)).toBe(true);
 
-    const apiModule = await import('../../api/index');
+    const apiModule = await import('../../serverless/api-entry');
     expect(apiModule.default).toBeDefined();
     expect(typeof apiModule.default).toBe('function');
   });
