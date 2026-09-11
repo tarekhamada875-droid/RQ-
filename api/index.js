@@ -1,48 +1,13 @@
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// serverless/api-entry.ts
-var api_entry_exports = {};
-__export(api_entry_exports, {
-  default: () => api_entry_default
-});
-module.exports = __toCommonJS(api_entry_exports);
-
 // server/app.ts
-var import_express = __toESM(require("express"), 1);
-var import_cors = __toESM(require("cors"), 1);
+import express from "express";
+import cors from "cors";
 
 // server/firebaseAdmin.ts
-var import_app = require("firebase-admin/app");
-var import_firestore = require("firebase-admin/firestore");
-var import_auth = require("firebase-admin/auth");
-var import_fs = __toESM(require("fs"), 1);
-var import_path = __toESM(require("path"), 1);
+import { initializeApp as initAdminApp, cert, getApps as getAdminApps } from "firebase-admin/app";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
+import fs from "fs";
+import path from "path";
 function loadFirebaseConfig() {
   const fallbackConfig = {
     projectId: "gen-lang-client-0091669619",
@@ -54,9 +19,9 @@ function loadFirebaseConfig() {
     messagingSenderId: "841039846471"
   };
   try {
-    const configPath = import_path.default.resolve(process.cwd(), "firebase-applet-config.json");
-    if (import_fs.default.existsSync(configPath)) {
-      return JSON.parse(import_fs.default.readFileSync(configPath, "utf-8"));
+    const configPath = path.resolve(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, "utf-8"));
     }
   } catch (e) {
     console.warn("[Server Auth] Error reading firebase-applet-config.json from fs, using embedded fallback:", e);
@@ -67,7 +32,7 @@ var firebaseConfig = loadFirebaseConfig();
 var adminDb = null;
 var adminAuth = null;
 try {
-  const existingApps = (0, import_app.getApps)();
+  const existingApps = getAdminApps();
   let adminApp = existingApps.find((a) => a.name === "admin-app");
   if (!adminApp) {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -79,8 +44,8 @@ try {
         console.error("[Server Auth] Failed to JSON.parse FIREBASE_SERVICE_ACCOUNT:", parseErr);
       }
       if (sa && typeof sa === "object") {
-        adminApp = (0, import_app.initializeApp)({
-          credential: (0, import_app.cert)(sa),
+        adminApp = initAdminApp({
+          credential: cert(sa),
           projectId: sa.project_id || firebaseConfig.projectId
         }, "admin-app");
         console.log("[Server Auth] Initialized Firebase Admin SDK with service account credentials for project:", sa.project_id || firebaseConfig.projectId);
@@ -88,7 +53,7 @@ try {
     }
     if (!adminApp) {
       try {
-        adminApp = (0, import_app.initializeApp)({
+        adminApp = initAdminApp({
           projectId: firebaseConfig.projectId
         }, "admin-app");
         console.log("[Server Auth] Initialized Firebase Admin SDK with default environment credentials");
@@ -98,15 +63,15 @@ try {
     }
   }
   if (adminApp) {
-    adminDb = (0, import_firestore.getFirestore)(adminApp, firebaseConfig.firestoreDatabaseId);
-    adminAuth = (0, import_auth.getAuth)(adminApp);
+    adminDb = getAdminFirestore(adminApp, firebaseConfig.firestoreDatabaseId);
+    adminAuth = getAdminAuth(adminApp);
   }
 } catch (e) {
   console.warn("[Server Auth] Could not initialize Firebase Admin SDK:", e);
 }
 
 // server/utils.ts
-var import_crypto = __toESM(require("crypto"), 1);
+import crypto from "crypto";
 function normalizeDigits(str) {
   if (!str) return "";
   return String(str).replace(/[٠۰]/g, "0").replace(/[١۱]/g, "1").replace(/[٢۲]/g, "2").replace(/[٣۳]/g, "3").replace(/[٤۴]/g, "4").replace(/[٥۵]/g, "5").replace(/[٦۶]/g, "6").replace(/[٧۷]/g, "7").replace(/[٨۸]/g, "8").replace(/[٩۹]/g, "9");
@@ -118,21 +83,21 @@ var LEGACY_PIN_SALT = "ark_garage_secure_pin_salt_2026";
 var PIN_LOOKUP_SALT = "ark_garage_secure_pin_lookup_salt_v2";
 function hashPinWithUniqueSalt(cleanPinStr, saltHex) {
   if (!cleanPinStr) return "";
-  const salt = saltHex ? Buffer.from(saltHex, "hex") : import_crypto.default.randomBytes(16);
+  const salt = saltHex ? Buffer.from(saltHex, "hex") : crypto.randomBytes(16);
   const actualSaltHex = salt.toString("hex");
   const N = 16384;
   const r = 8;
   const p = 1;
-  const derived = import_crypto.default.scryptSync(cleanPinStr, salt, 32, { N, r, p }).toString("hex");
+  const derived = crypto.scryptSync(cleanPinStr, salt, 32, { N, r, p }).toString("hex");
   return `$scrypt$N=${N},r=${r},p=${p}$${actualSaltHex}$${derived}`;
 }
 function computeLookupHash(cleanPinStr) {
   if (!cleanPinStr) return "";
-  return import_crypto.default.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString("hex");
+  return crypto.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString("hex");
 }
 function legacyHashPin(cleanPinStr) {
   if (!cleanPinStr) return "";
-  return import_crypto.default.scryptSync(cleanPinStr, LEGACY_PIN_SALT, 32).toString("hex");
+  return crypto.scryptSync(cleanPinStr, LEGACY_PIN_SALT, 32).toString("hex");
 }
 function isHashedPin(pin) {
   if (!pin) return false;
@@ -143,7 +108,7 @@ function safeCompare(a, b) {
   const bufA = Buffer.from(a.toLowerCase());
   const bufB = Buffer.from(b.toLowerCase());
   if (bufA.length !== bufB.length) return false;
-  return import_crypto.default.timingSafeEqual(bufA, bufB);
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 function verifyScryptHash(inputCleanPin, scryptStr) {
   try {
@@ -161,7 +126,7 @@ function verifyScryptHash(inputCleanPin, scryptStr) {
       const r = params.r || 8;
       const p = params.p || 1;
       const salt = Buffer.from(saltHex, "hex");
-      const derived = import_crypto.default.scryptSync(inputCleanPin, salt, 32, { N, r, p }).toString("hex");
+      const derived = crypto.scryptSync(inputCleanPin, salt, 32, { N, r, p }).toString("hex");
       return safeCompare(derived, expectedHash);
     }
   } catch (e) {
@@ -266,7 +231,7 @@ function checkRateLimitInMemory(ip) {
 }
 async function checkRateLimit(ip) {
   if (!adminDb) return checkRateLimitInMemory(ip);
-  const docId = import_crypto.default.createHash("sha256").update(ip).digest("hex");
+  const docId = crypto.createHash("sha256").update(ip).digest("hex");
   const ref = adminDb.doc(`rate_limits/${docId}`);
   try {
     return await adminDb.runTransaction(async (t) => {
@@ -291,7 +256,7 @@ async function checkRateLimit(ip) {
 async function resetRateLimit(ip) {
   memoryFallback.delete(ip);
   if (!adminDb) return;
-  const docId = import_crypto.default.createHash("sha256").update(ip).digest("hex");
+  const docId = crypto.createHash("sha256").update(ip).digest("hex");
   try {
     await adminDb.doc(`rate_limits/${docId}`).delete();
   } catch (e) {
@@ -460,7 +425,7 @@ function calculateVehicleCost(vehicleData, garageData, now = Date.now()) {
 }
 
 // server/middleware.ts
-var import_crypto2 = __toESM(require("crypto"), 1);
+import crypto2 from "crypto";
 
 // server/validation.ts
 var ValidationError = class extends Error {
@@ -603,7 +568,7 @@ function sendApiError(res, statusCode, code, message, correlationId, details) {
 }
 var correlationMiddleware = (req, res, next) => {
   const headerId = req.headers["x-correlation-id"];
-  const correlationId = typeof headerId === "string" && headerId.trim() ? headerId.trim() : import_crypto2.default.randomUUID();
+  const correlationId = typeof headerId === "string" && headerId.trim() ? headerId.trim() : crypto2.randomUUID();
   req.correlationId = correlationId;
   res.setHeader("X-Correlation-ID", correlationId);
   next();
@@ -642,7 +607,7 @@ var financialRateLimiter = (maxRequests = 30, windowMs = 6e4) => {
       entry.count += 1;
       return next();
     }
-    const docId = import_crypto2.default.createHash("sha256").update(`fin:${key}`).digest("hex");
+    const docId = crypto2.createHash("sha256").update(`fin:${key}`).digest("hex");
     const ref = adminDb.doc(`rate_limits/${docId}`);
     try {
       const allowed = await adminDb.runTransaction(async (t) => {
@@ -834,11 +799,11 @@ var requireAuth = async (req, res, next) => {
 };
 
 // server/idempotency.ts
-var import_crypto3 = __toESM(require("crypto"), 1);
+import crypto3 from "crypto";
 var IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1e3;
 function scopedKey(idempotencyKey, endpoint, actorUid) {
   const raw = `${endpoint}:${actorUid || "system"}:${idempotencyKey}`;
-  return import_crypto3.default.createHash("sha256").update(raw).digest("hex");
+  return crypto3.createHash("sha256").update(raw).digest("hex");
 }
 async function checkIdempotencyInTransaction(t, idempotencyKey, endpoint, actorUid) {
   if (!idempotencyKey || !adminDb) {
@@ -1046,9 +1011,9 @@ function isAllowedOrigin(origin) {
   return false;
 }
 function createApp() {
-  const app2 = (0, import_express.default)();
+  const app2 = express();
   app2.set("trust proxy", 1);
-  app2.use((0, import_cors.default)({
+  app2.use(cors({
     origin(origin, callback) {
       if (isAllowedOrigin(origin)) {
         callback(null, true);
@@ -1065,7 +1030,7 @@ function createApp() {
       "Idempotency-Key"
     ]
   }));
-  app2.use(import_express.default.json());
+  app2.use(express.json());
   app2.use(correlationMiddleware);
   app2.use(requestTimeoutMiddleware(15e3));
   app2.get("/api/health", (_req, res) => {
@@ -3538,9 +3503,10 @@ var app = createApp();
 
 // serverless/api-entry.ts
 var api_entry_default = app;
+export {
+  api_entry_default as default
+};
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
-module.exports = module.exports.default || module.exports;
