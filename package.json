@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "rq",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "packageManager": "npm@10.8.2",
   "type": "module",
   "scripts": {
