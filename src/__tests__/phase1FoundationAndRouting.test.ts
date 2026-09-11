@@ -21,7 +21,7 @@ describe('Phase 1 — Foundation & Routing Test Suite', () => {
 
     const apiRewrite = content.rewrites.find((r: any) => r.source === '/api/(.*)');
     expect(apiRewrite).toBeDefined();
-    expect(apiRewrite.destination).toBe('/api/index.ts');
+    expect(apiRewrite.destination).toBe('/api/index.cjs');
 
     const spaRewrite = content.rewrites.find((r: any) => r.source === '/(.*)');
     expect(spaRewrite).toBeDefined();
