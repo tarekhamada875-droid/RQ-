@@ -44,6 +44,7 @@ import {
   evaluateFairUseCheckIn,
   manualAdminExtendFairUse
 } from './unlimitedFairUse';
+import { isPinVerificationSuccessful } from './pinRotation';
 
 /**
  * Domain Error Status Code Resolver
@@ -56,7 +57,7 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
   const errMsg = String(err?.message || err || '');
 
   if (errMsg.includes('GARAGE_NOT_FOUND') || errMsg.includes('VEHICLE_NOT_FOUND') || errMsg.includes('REQUEST_NOT_FOUND') || errMsg.includes('PACKAGE_NOT_FOUND')) {
-    return { statusCode: 404, code: 'NOT_FOUND', message: errMsg };
+    return { statusCode: 404, code: 'NOT_FOUND', message: 'The requested resource was not found.' };
   }
 
   if (
@@ -73,7 +74,7 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE') ||
     errMsg.includes('SUBSCRIPTION_EXPIRED')
   ) {
-    return { statusCode: 409, code: 'CONFLICT', message: errMsg };
+    return { statusCode: 409, code: 'CONFLICT', message: 'The requested operation conflicts with the current state.' };
   }
 
   if (
@@ -84,14 +85,14 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('GARAGE_CANNOT_RECHARGE_OTHERS') ||
     errMsg.includes('ADMIN_OR_SUPERVISOR_ONLY')
   ) {
-    return { statusCode: 403, code: 'FORBIDDEN', message: errMsg };
+    return { statusCode: 403, code: 'FORBIDDEN', message: 'You are not authorized to perform this operation.' };
   }
 
   if (errMsg.includes('UNAUTHORIZED') || errMsg.includes('INVALID_ID_TOKEN') || errMsg.includes('SESSION_INACTIVE')) {
-    return { statusCode: 401, code: 'UNAUTHORIZED', message: errMsg };
+    return { statusCode: 401, code: 'UNAUTHORIZED', message: 'Authentication is required.' };
   }
 
-  return { statusCode: 500, code: 'INTERNAL_ERROR', message: errMsg || 'TRANSACTION_FAILED' };
+  return { statusCode: 500, code: 'INTERNAL_ERROR', message: 'An internal server error occurred.' };
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
@@ -2114,7 +2115,7 @@ export function createApp() {
         return res.status(500).json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' });
       }
       const isMatch = verifyPinMatch(normCurrent, adminStoredPin);
-      if (!isMatch) {
+      if (!isPinVerificationSuccessful(isMatch)) {
         return res.status(400).json({ success: false, error: 'CURRENT_PIN_INCORRECT' });
       }
 
@@ -2141,7 +2142,7 @@ export function createApp() {
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server Admin] Error in update-pin:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      return res.status(500).json({ success: false, error: 'SERVER_ERROR' });
     }
   });
 

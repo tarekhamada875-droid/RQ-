@@ -19,10 +19,10 @@ function runStep(name: string, command: string) {
   }
 }
 
-// 1. Lockfile Integrity
-console.log('[CHECK] Lockfile Integrity Check...');
+// 1. Reproducible clean install. Presence of a lockfile is not sufficient.
+console.log('[CHECK] Reproducible Clean Install...');
 if (fs.existsSync(path.join(process.cwd(), 'package-lock.json'))) {
-  console.log('[PASS] package-lock.json is present and tracked.\n');
+  runStep('npm ci lockfile verification', 'npm ci --ignore-scripts --no-audit --no-fund');
 } else {
   console.error('[FAIL] package-lock.json missing!\n');
   failed = true;

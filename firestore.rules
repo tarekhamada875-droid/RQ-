@@ -472,7 +472,8 @@ service cloud.firestore {
              // Client may ONLY refresh its own heartbeat timestamp.
              // isActive / sessionId / createdAt are server-authoritative
              // (Admin SDK writes bypass these rules entirely).
-             incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']);
+             incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
+             incoming().lastActive is timestamp;
     }
 
     // ===============================================================
@@ -577,7 +578,7 @@ service cloud.firestore {
     }
 
     match /test/connection {
-      allow read: if true;
+      allow read, write: if false;
     }
 
     match /login_requests/{requestId} {
@@ -595,7 +596,7 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if isSignedIn() && isValidId(docId);
+      allow read: if isAdmin() || isSupervisor();
       allow write: if isAdmin() && isValidId(docId);
     }
 
@@ -605,7 +606,7 @@ service cloud.firestore {
     }
 
     match /system_config/{configId} {
-      allow read: if true;
+      allow read: if isAdmin() || isSupervisor();
       allow create, update: if isAdmin() && isValidId(configId);
       allow delete: if false;
     }
