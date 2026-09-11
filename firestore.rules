@@ -571,7 +571,7 @@ service cloud.firestore {
     }
 
     match /packages/{packageId} {
-      allow get, list: if isAdmin() || isSupervisor() || isDelegate() || isGarageOwnerOrStaff();
+      allow get, list: if isSignedIn();
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }

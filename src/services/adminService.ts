@@ -262,7 +262,20 @@ export const adminService = {
       } catch (e) {}
       
       callback(activePkgs);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'packages'));
+    }, (err) => {
+      console.warn('[AdminService] Error listening to packages collection, falling back to cache:', err);
+      try {
+        const cached = localStorage.getItem('app_packages_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            callback(parsed);
+            return;
+          }
+        }
+      } catch (cacheErr) {}
+      callback([]);
+    });
   },
 
   // Subscribers
