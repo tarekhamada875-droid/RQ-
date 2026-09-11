@@ -5,15 +5,25 @@ import fs from 'fs';
 import path from 'path';
 
 function loadFirebaseConfig(): any {
+  const fallbackConfig = {
+    projectId: 'gen-lang-client-0091669619',
+    appId: '1:841039846471:web:2499d21dd43c7af2652562',
+    apiKey: 'AIzaSyAlX0k1nFD1E53_Y8EVJCyEByD1pz92XdE',
+    authDomain: 'gen-lang-client-0091669619.firebaseapp.com',
+    firestoreDatabaseId: 'ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759',
+    storageBucket: 'gen-lang-client-0091669619.firebasestorage.app',
+    messagingSenderId: '841039846471'
+  };
+
   try {
     const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
     if (fs.existsSync(configPath)) {
       return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     }
   } catch (e) {
-    console.warn('[Server Auth] Error reading firebase-applet-config.json from fs:', e);
+    console.warn('[Server Auth] Error reading firebase-applet-config.json from fs, using embedded fallback:', e);
   }
-  return { projectId: 'ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759' };
+  return fallbackConfig;
 }
 
 const firebaseConfig = loadFirebaseConfig();
@@ -28,13 +38,24 @@ try {
 
   if (!adminApp) {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      adminApp = initAdminApp({
-        credential: cert(sa),
-        projectId: firebaseConfig.projectId
-      }, 'admin-app');
-      console.log('[Server Auth] Initialized Firebase Admin SDK with service account credentials');
-    } else {
+      let sa: any;
+      try {
+        const rawSA = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        sa = JSON.parse(rawSA);
+      } catch (parseErr) {
+        console.error('[Server Auth] Failed to JSON.parse FIREBASE_SERVICE_ACCOUNT:', parseErr);
+      }
+
+      if (sa && typeof sa === 'object') {
+        adminApp = initAdminApp({
+          credential: cert(sa),
+          projectId: sa.project_id || firebaseConfig.projectId
+        }, 'admin-app');
+        console.log('[Server Auth] Initialized Firebase Admin SDK with service account credentials for project:', sa.project_id || firebaseConfig.projectId);
+      }
+    }
+
+    if (!adminApp) {
       // Attempt Application Default Credentials (GCP/Cloud Run native environment)
       try {
         adminApp = initAdminApp({
