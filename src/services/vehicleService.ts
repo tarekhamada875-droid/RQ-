@@ -130,6 +130,7 @@ export const vehicleService = {
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
+        where('timestamp', '>=', firestoreTimestamp),
         limit(200)
       );
       activeSubUnsub = onSnapshot(fallbackQ, handleSnapshot, (fallbackErr) => {
@@ -183,6 +184,7 @@ export const vehicleService = {
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
+        where('timestamp', '>=', firestoreTimestamp),
         limit(200)
       );
       const snapshot = await getDocs(fallbackQ);

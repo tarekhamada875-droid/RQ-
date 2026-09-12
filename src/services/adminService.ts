@@ -433,13 +433,14 @@ export const adminService = {
   },
 
   getActivityLogsSince: async (sinceDate: Date, maxCount = 2000): Promise<ActivityLog[]> => {
+    const boundedMaxCount = Math.min(Math.max(Math.floor(maxCount) || 1, 1), 5000);
     try {
       const firestoreTimestamp = Timestamp.fromDate(sinceDate);
       const q = query(
         collection(db, 'activity_logs'),
         where('timestamp', '>=', firestoreTimestamp),
         orderBy('timestamp', 'desc'),
-        limit(maxCount)
+        limit(boundedMaxCount)
       );
       const snap = await getDocs(q);
       return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
@@ -448,7 +449,7 @@ export const adminService = {
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         orderBy('timestamp', 'desc'),
-        limit(maxCount)
+        limit(boundedMaxCount)
       );
       const snap = await getDocs(fallbackQ);
       const sinceMs = sinceDate.getTime();
