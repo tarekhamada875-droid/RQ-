@@ -6,6 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "build:web": "vite build",
+    "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:cloudrun": "esbuild server/cloudRun.ts --bundle --platform=node --format=cjs --packages=bundle --sourcemap --outfile=dist/cloud-run.cjs",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && esbuild serverless/api-entry.ts --bundle --platform=node --format=cjs --packages=bundle --outfile=api/index.js && printf '\\nmodule.exports = module.exports.default || module.exports;\\n' >> api/index.js",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist build",

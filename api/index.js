@@ -147608,6 +147608,9 @@ function isAllowedOrigin(origin) {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return true;
     }
+    if (hostname.endsWith(".pages.dev") || hostname.endsWith(".vercel.app")) {
+      return true;
+    }
   } catch {
     return false;
   }
@@ -149438,7 +149441,8 @@ function createApp() {
           packageName: isTrial ? `\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)` : activePackageName,
           durationDays: isTrial ? trialDays : 0,
           carsCount: dailyCapacity,
-          revenueAmount: 0
+          revenueAmount: 0,
+          isTrial: Boolean(isTrial)
         }
       });
       return res.json({ success: true, id: garageId });
