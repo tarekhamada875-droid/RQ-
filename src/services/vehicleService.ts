@@ -23,7 +23,7 @@ function getCairoDayStartTimestamp(date = new Date()): Date {
 export const vehicleService = {
   checkInVehicle: async (garageId: string, vehicleData: any) => {
     try {
-      await apiFetch('/api/vehicles/check-in', {
+      const data = await apiFetch('/api/vehicles/check-in', {
         method: 'POST',
         body: {
           garageId,
@@ -34,7 +34,7 @@ export const vehicleService = {
           staffName: vehicleData.staffName
         }
       });
-      return { success: true };
+      return { success: true, data: data.data };
     } catch (err: any) {
       return { success: false, error: err.message };
     }

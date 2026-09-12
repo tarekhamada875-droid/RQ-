@@ -27,6 +27,7 @@ function withAsyncLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
 
 interface UseVehicleOperationsProps {
   garage: Garage | null;
+  setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   currentStaff: Staff | null;
   vehicles: Vehicle[];
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
@@ -39,6 +40,7 @@ interface UseVehicleOperationsProps {
 
 export function useVehicleOperations({
   garage,
+  setGarage,
   currentStaff,
   vehicles,
   setVehicles,
@@ -171,19 +173,32 @@ export function useVehicleOperations({
           throw new Error(res.error);
         }
 
+        const serverData = (res as any).data;
+        const serverVehicle = serverData?.vehicle;
         const newVehicleObj: Vehicle = {
           id: raw,
-          plateNumber: formatted,
-          plateNumberRaw: raw,
-          entryTime: new Date() as any,
-          type: type,
+          plateNumber: serverVehicle?.plateNumber || formatted,
+          plateNumberRaw: serverVehicle?.plateNumberRaw || raw,
+          entryTime: serverVehicle?.entryTime || new Date() as any,
+          type: serverVehicle?.type || type,
           garageId: garage.id,
           status: 'inside',
-          staffId: currentStaff ? currentStaff.id : null,
-          staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-          isSubscriber: isSubscriber
+          staffId: serverVehicle?.staffId ?? (currentStaff ? currentStaff.id : null),
+          staffName: serverVehicle?.staffName || (currentStaff ? currentStaff.name : 'مدير الجراج'),
+          isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
         };
         setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
+
+        if (typeof serverData?.carsInside === 'number' || typeof serverData?.dailyCount === 'number') {
+          setGarage(prev => prev ? {
+            ...prev,
+            ...(typeof serverData.carsInside === 'number' ? { carsInside: serverData.carsInside } : {}),
+            ...(typeof serverData.dailyCount === 'number' ? {
+              todayCount: serverData.dailyCount,
+              lastTransactionDate: getCairoDateKey(),
+            } : {}),
+          } : prev);
+        }
 
         setShowCheckInModal(false);
       } catch (error: any) {
@@ -221,7 +236,7 @@ export function useVehicleOperations({
       showToast('جاري المعالجة... يرجى الانتظار', 'info');
       return;
     }
-  }, [isOnline, garage, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
+  }, [isOnline, garage, setGarage, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {

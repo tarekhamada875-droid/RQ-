@@ -259,6 +259,7 @@ export function useGarageApp() {
     handleDeleteVehicle,
   } = useVehicleOperations({
     garage,
+    setGarage,
     currentStaff,
     vehicles,
     setVehicles,
