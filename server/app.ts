@@ -142,7 +142,11 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return true;
     }
-    if (hostname === 'parqv2.pages.dev' || hostname === 'parq1.pages.dev') {
+    if (
+      hostname === 'parqv2.pages.dev' ||
+      hostname === 'parq1.pages.dev' ||
+      hostname === 'rq-acg.pages.dev'
+    ) {
       return true;
     }
   } catch {
