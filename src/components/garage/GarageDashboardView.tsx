@@ -163,27 +163,40 @@ export const GarageDashboardView = memo((props: any) => {
     );
   const Ns = isSubscriptionExpired(t),
     ne = t.isLocked || t.isSuspended || !1;
-  (useEffect(() => {
+  useEffect(() => {
     if (!De) return;
     const _e = me.subscribeToGarageRechargeLogs(t.id, (st) => {
-      if (st.length > 0) {
-        const Ue = st[0].id;
-        const wt = pt(st[0].timestamp);
-        const Ht = new Date().getTime() - wt.getTime();
+      // Filter out claim/usage logs so they never trigger recharge/gift celebration popups
+      const candidateLogs = (st || []).filter((log: any) => {
+        if (!log) return false;
+        if (log.details?.type === 'use_referral_reward') return false;
+        if (log.plateNumber && String(log.plateNumber).includes('استخدام مكافأة')) return false;
+        return true;
+      });
+
+      const lastAckId = localStorage.getItem(`acknowledged_recharge_${t.id}`);
+      const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${t.id}`) || 0);
+
+      if (candidateLogs.length > 0) {
+        const latest = candidateLogs[0];
+        const Ue = latest.id;
+        const wt = pt(latest.timestamp);
+        const logTime = wt.getTime();
+        const Ht = Date.now() - logTime;
         const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
-        const isAcknowledged = localStorage.getItem("acknowledged_recharge_".concat(t.id)) === Ue;
+        const isAcknowledged = lastAckId === Ue || (lastAckTime > 0 && logTime <= lastAckTime);
 
         if (!isAcknowledged && isRecent) {
           Te(true);
-          Le(st[0]);
+          Le(latest);
           yt(true);
-          if (localStorage.getItem("dashboard_sound_recharge_".concat(t.id)) !== Ue) {
+          if (localStorage.getItem(`dashboard_sound_recharge_${t.id}`) !== Ue) {
             try {
               Rn.play("checkIn");
             } catch (Ia) {
               console.error(Ia);
             }
-            localStorage.setItem("dashboard_sound_recharge_".concat(t.id), Ue);
+            localStorage.setItem(`dashboard_sound_recharge_${t.id}`, Ue);
           }
         } else {
           Te(false);
@@ -192,10 +205,11 @@ export const GarageDashboardView = memo((props: any) => {
         }
       } else if (t?.lastRechargeDate) {
         const wt = pt(t.lastRechargeDate);
-        const Ht = new Date().getTime() - wt.getTime();
-        const fallbackId = `recharge_${wt.getTime()}`;
+        const logTime = wt.getTime();
+        const Ht = Date.now() - logTime;
+        const fallbackId = `recharge_${logTime}`;
         const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
-        const isAcknowledged = localStorage.getItem("acknowledged_recharge_".concat(t.id)) === fallbackId;
+        const isAcknowledged = lastAckId === fallbackId || (lastAckTime > 0 && logTime <= lastAckTime);
 
         if (!isAcknowledged && isRecent) {
           const fallbackLog: any = {
@@ -207,19 +221,20 @@ export const GarageDashboardView = memo((props: any) => {
             timestamp: t.lastRechargeDate,
             details: {
               packageName: t.lastRechargePackageName || 'الباقة',
-              revenueAmount: t.lastRechargeAmount || 0
+              revenueAmount: t.lastRechargeAmount || 0,
+              isTrial: Boolean(t?.isTrial)
             }
           };
           Te(true);
           Le(fallbackLog);
           yt(true);
-          if (localStorage.getItem("dashboard_sound_recharge_".concat(t.id)) !== fallbackId) {
+          if (localStorage.getItem(`dashboard_sound_recharge_${t.id}`) !== fallbackId) {
             try {
               Rn.play("checkIn");
             } catch (Ia) {
               console.error(Ia);
             }
-            localStorage.setItem("dashboard_sound_recharge_".concat(t.id), fallbackId);
+            localStorage.setItem(`dashboard_sound_recharge_${t.id}`, fallbackId);
           }
         } else {
           Te(false);
@@ -233,13 +248,13 @@ export const GarageDashboardView = memo((props: any) => {
       }
     }, 1);
     return () => _e();
-  }, [t.id, De, t?.lastRechargeDate, t?.lastRechargeAmount, t?.lastRechargePackageName]),
+  }, [t.id, De, t?.lastRechargeDate, t?.lastRechargeAmount, t?.lastRechargePackageName]);
     useEffect(
       () => () => {
         document.body.style.overflow = "unset";
       },
       [ne],
-    ),
+    );
     useEffect(() => {
       if (De && !e && t?.hasMonthlySubscribers) {
         const _e = me.subscribeToSubscribers(t.id, (st) => {
@@ -255,12 +270,18 @@ export const GarageDashboardView = memo((props: any) => {
         });
         return () => _e();
       }
-    }, [t.id, e, De, t?.hasMonthlySubscribers]));
+    }, [t.id, e, De, t?.hasMonthlySubscribers]);
   const $e = useCallback(() => {
-      (Re && localStorage.setItem("acknowledged_recharge_".concat(t.id), Re.id),
-        Te(!1),
-        yt(!1));
-    }, [t.id, Re]);
+    if (Re) {
+      localStorage.setItem(`acknowledged_recharge_${t.id}`, Re.id);
+      const logTime = pt(Re.timestamp).getTime();
+      if (logTime > 0) {
+        localStorage.setItem(`acknowledged_recharge_time_${t.id}`, String(logTime));
+      }
+    }
+    Te(false);
+    yt(false);
+  }, [t.id, Re]);
   useEffect(() => {
     ke(15);
   }, [ie]);

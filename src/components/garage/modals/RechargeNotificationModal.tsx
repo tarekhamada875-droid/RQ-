@@ -1,5 +1,5 @@
 import React from 'react';
-import { X as XIcon, Gift, Zap } from 'lucide-react';
+import { X as XIcon, Gift, Zap, Sparkles } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils';
 
@@ -17,14 +17,32 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
   if (!isOpen || !rechargeLog) return null;
 
   const details = rechargeLog.details as Record<string, any> | undefined;
+
+  // Claim/usage logs must NEVER display as an incoming gift notification
+  if (details?.type === 'use_referral_reward' || rechargeLog.plateNumber?.includes('استخدام مكافأة')) {
+    return null;
+  }
+  
   const isReferralReward =
     details?.type === 'referral_reward' ||
     rechargeLog.packageId === 'referral_reward' ||
-    (rechargeLog.plateNumber && rechargeLog.plateNumber.includes('مكافأة إحالة'));
+    (Boolean(rechargeLog.plateNumber && rechargeLog.plateNumber.includes('مكافأة إحالة')) && !rechargeLog.plateNumber?.includes('استخدام'));
+
+  const rawPkgName = String(details?.packageName || rechargeLog.plateNumber || '');
+  const isTrial =
+    Boolean(details?.isTrial) ||
+    rechargeLog.packageId === 'trial' ||
+    rawPkgName.includes('تجريب') ||
+    rawPkgName.includes('تجريبية');
 
   const referredGarageName =
     details?.referredGarageName ||
     (rechargeLog.plateNumber ? rechargeLog.plateNumber.replace(/^مكافأة إحالة من\s*/, '').split('—')[0].trim() : 'جراج صديق');
+
+  const cleanPackageName =
+    rawPkgName
+      .replace(/^(شحن باقة:|شحن باقة\s*|تفعيل الباقة:|تفعيل\s*|شحن رصيد الجراج)/gi, '')
+      .trim() || (isTrial ? 'الباقة التجريبية' : 'الباقة');
 
   const formattedDate = rechargeLog.timestamp
     ? safeDate(rechargeLog.timestamp).toLocaleDateString('ar-EG', {
@@ -41,48 +59,86 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
       })
     : 'غير معروف';
 
+  const modalTitle = isReferralReward
+    ? 'مبروك! جالك يوم هدية مجاني 🎁'
+    : isTrial
+    ? 'تم تفعيل الباقة التجريبية بنجاح! 🎉'
+    : 'تم تجديد الاشتراك بنجاح!';
+
+  const modalSubtitle = isReferralReward
+    ? 'تمت إضافة 1 يوم لرصيد اشتراكك'
+    : isTrial
+    ? 'تم تفعيل الفترة التجريبية المجانية لبدء الاستخدام فوراً'
+    : 'تم تحديث رصيد الاشتراك بنجاح';
+
+  const displayAmount = isTrial || !rechargeLog.amount
+    ? 'مجاناً (فترة تجريبية)'
+    : `${rechargeLog.amount} ج.م`;
+
   return (
     <div
       className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4 animate-overlay-30fps"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl p-6 shadow-2xl relative overflow-hidden animate-popup-30fps"
+        className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-popup-30fps"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
         <div
           className={`absolute top-0 right-1/2 translate-x-1/2 w-48 h-48 ${
-            isReferralReward ? 'bg-amber-500/10 dark:bg-amber-500/5' : 'bg-emerald-500/10 dark:bg-emerald-500/5'
+            isReferralReward 
+              ? 'bg-amber-500/10 dark:bg-amber-500/5' 
+              : isTrial 
+              ? 'bg-emerald-500/15 dark:bg-emerald-500/10' 
+              : 'bg-emerald-500/10 dark:bg-emerald-500/5'
           } rounded-full blur-2xl pointer-events-none`}
         />
+        
+        {/* Subtle, modern close button */}
         <button
           onClick={onClose}
-          className="w-10 h-10 bg-red-500 text-white rounded-xl flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm outline-none"
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition-colors outline-none z-20"
           aria-label="إغلاق"
         >
-          <XIcon className="w-6 h-6" />
+          <XIcon className="w-5 h-5" />
         </button>
-        <div className="text-center mt-4">
+
+        <div className="text-center mt-2">
           <div
             className={`w-16 h-16 ${
               isReferralReward
                 ? 'bg-amber-500 shadow-amber-500/20 dark:shadow-amber-500/10'
+                : isTrial
+                ? 'bg-emerald-500 shadow-emerald-500/25 dark:shadow-emerald-500/15'
                 : 'bg-emerald-500 shadow-emerald-500/20 dark:shadow-emerald-500/10'
             } text-white rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg`}
           >
-            {isReferralReward ? <Gift className="w-8 h-8 fill-current" /> : <Zap className="w-8 h-8 fill-current" />}
+            {isReferralReward ? (
+              <Gift className="w-8 h-8 fill-current" />
+            ) : isTrial ? (
+              <Sparkles className="w-8 h-8 fill-current" />
+            ) : (
+              <Zap className="w-8 h-8 fill-current" />
+            )}
           </div>
+
           <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
-            {isReferralReward ? 'مبروك! جالك يوم هدية مجاني 🎁' : 'تم تجديد الاشتراك بنجاح!'}
+            {modalTitle}
           </h3>
+
           <p
             className={`text-xs font-bold mb-6 ${
-              isReferralReward ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'
+              isReferralReward
+                ? 'text-amber-600 dark:text-amber-400'
+                : isTrial
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-400 dark:text-slate-500'
             }`}
           >
-            {isReferralReward ? 'تمت إضافة 1 يوم لرصيد اشتراكك' : 'تم تفعيل الاشتراك الجديد في حساب الجراج'}
+            {modalSubtitle}
           </p>
+
           <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4.5 text-right space-y-3.5 border border-slate-100 dark:border-slate-800/50 mb-6">
             {isReferralReward ? (
               <>
@@ -111,7 +167,7 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
                     الباقة:
                   </span>
                   <span className="text-sm font-black text-slate-900 dark:text-white leading-tight text-left">
-                    {rechargeLog.plateNumber}
+                    {cleanPackageName}
                   </span>
                 </div>
                 <div className="w-full border-t border-slate-200/40 dark:border-slate-800/40" />
@@ -120,7 +176,7 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
                     المبلغ:
                   </span>
                   <span className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                    {rechargeLog.amount !== undefined ? `${rechargeLog.amount} ج.م` : 'مجانية'}
+                    {displayAmount}
                   </span>
                 </div>
                 <div className="w-full border-t border-slate-200/40 dark:border-slate-800/40" />
@@ -135,6 +191,7 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
               </>
             )}
           </div>
+
           <button
             onClick={onClose}
             className={`w-full ${
@@ -150,3 +207,4 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
     </div>
   );
 };
+

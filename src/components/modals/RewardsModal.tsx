@@ -28,7 +28,16 @@ export const RewardsModal: React.FC<RewardsModalProps> = memo(({
     try {
       const result = await garageService.useReferralRewardDays(garage.id);
       if (result.success) {
-        showToast?.(`تم استخدام ${result.daysClaimed} ${result.daysClaimed === 1 ? 'يوم مجاني' : 'أيام مجانية'} وتمديد اشتراكك بنجاح! 🎉`, 'success');
+        try {
+          localStorage.setItem(`acknowledged_recharge_${garage.id}`, `reward_claim_${Date.now()}`);
+          localStorage.setItem(`acknowledged_recharge_time_${garage.id}`, String(Date.now()));
+        } catch {}
+        const daysText = result.daysClaimed === 1
+          ? 'يوم مجاني'
+          : result.daysClaimed === 2
+          ? 'يومان مجانيان'
+          : `${result.daysClaimed} أيام مجانية`;
+        showToast?.(`تم استخدام ${daysText} وتمديد اشتراكك بنجاح! 🎉`, 'success');
       } else {
         showToast?.(result.error || 'حدث خطأ أثناء استخدام رصيد المكافآت', 'error');
       }

@@ -103,9 +103,9 @@ export function useAdminAndGarageManagement({
           console.error("Anonymous authentication failed during login:", authErr);
           const errMsg = authErr?.message || String(authErr);
           if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-            showToast('فشل التفويض الآمن؛ برجاء مراجعة الإدارة', 'error');
+            showToast('تعذر الاتصال بالخادم، يرجى إعادة المحاولة', 'error');
           } else {
-            showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
           }
           return;
         }
@@ -187,9 +187,9 @@ export function useAdminAndGarageManagement({
         ) {
           showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
         } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-          showToast('فشل التفويض الآمن؛ برجاء مراجعة الإدارة', 'error');
+          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
         } else {
-          showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
         }
         return;
       }
@@ -248,9 +248,9 @@ export function useAdminAndGarageManagement({
       console.error('Login critical error:', err);
       const errMsg = err?.message || String(err);
       if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-        showToast('فشل التفويض الآمن؛ برجاء مراجعة الإدارة', 'error');
+        showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
       } else {
-        showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+        showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
       }
     } finally {
       setIsLoading(false);
@@ -280,7 +280,7 @@ export function useAdminAndGarageManagement({
           setUser(currentUser);
         } catch (authErr: any) {
           console.error("Anonymous authentication failed during delegate login:", authErr);
-          showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
           return;
         }
       }
@@ -344,8 +344,10 @@ export function useAdminAndGarageManagement({
           errMsg.includes('مستخدم على جهاز آخر')
         ) {
           showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+        } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
         } else {
-          showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
         }
         return;
       }

@@ -129,7 +129,10 @@ export async function apiFetch<T = any>(
     errorMessage.includes('SESSION_EXPIRED');
 
   if (isSessionTerminated) {
-    const errMsg = errorMessage || 'انتهت صلاحية الجلسة أو غير مصرح لك بالوصول';
+    let errMsg = 'انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً';
+    if (errorMessage.includes('SESSION_REVOKED') || errorCode === 'SESSION_REVOKED') {
+      errMsg = 'تم تسجيل خروجك من جهاز آخر';
+    }
     console.warn(`[ApiClient] Auth Session Expiry (${response.status}) on ${endpoint}. Exiting session. (Correlation ID: ${serverCorrelationId})`);
     
     // Dispatch global session expiry event to trigger logout cleanly

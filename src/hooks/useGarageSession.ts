@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
@@ -142,13 +142,24 @@ export function useGarageSession({
     setShowLogoutConfirm(true);
   };
 
+  // Track last logout toast time to prevent multiple stacked toasts when session expires
+  const lastLogoutToastRef = useRef<number>(0);
+
+  const showLogoutToastOnce = (msg: string) => {
+    const now = Date.now();
+    if (now - lastLogoutToastRef.current > 3000) {
+      lastLogoutToastRef.current = now;
+      showToast(msg, 'error');
+    }
+  };
+
   // API Session Expiration Listener
   useEffect(() => {
     const handleApiSessionExpired = (e: any) => {
       console.warn('[Session] Global api-session-expired event detected. Triggering forced logout:', e.detail);
       const detail = e.detail || {};
-      const msg = detail.error || 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى';
-      showToast(msg, 'error');
+      const msg = detail.error || 'انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً';
+      showLogoutToastOnce(msg);
       handleLogout(true);
     };
 
@@ -191,9 +202,11 @@ export function useGarageSession({
           console.error("Anonymous authentication failed:", authErr);
           const errMsg = authErr?.message || String(authErr);
           if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-            showToast('فشل التفويض الآمن؛ برجاء مراجعة الإدارة', 'error');
+            showLogoutToastOnce('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً');
+            handleLogout(true);
+            return;
           } else {
-            showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
           }
           if (isMounted) setIsSessionReady(false);
           return;
@@ -276,11 +289,11 @@ export function useGarageSession({
           handleLogout(true);
           return;
         } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-          showToast('فشل التفويض الآمن؛ برجاء مراجعة الإدارة', 'error');
+          showLogoutToastOnce('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً');
           handleLogout(true);
           return;
         } else {
-          showToast('جاري تحضير الاتصال الآمن؛ يرجى إعادة المحاولة', 'error');
+          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
           if (isMounted) setIsSessionReady(true);
           return;
         }
@@ -339,7 +352,7 @@ export function useGarageSession({
           }
           const data = snapshot.data();
           if (data?.currentSessionId && data.currentSessionId !== sessionId) {
-            showToast('تم تسجيل خروجك من جهاز آخر', 'error');
+            showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
             handleLogout(true);
           }
         }, (err) => {

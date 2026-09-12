@@ -218,7 +218,7 @@ export function useVehicleOperations({
           showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
         } else if (message.includes('permission') || message.includes('PERMISSION_DENIED')) {
           setNewPlateNumber(formatted);
-          showToast('انتهت صلاحية الجلسة أو لا توجد صلاحيات لتسجيل الدخول', 'error');
+          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
         } else if (message.includes('الحد اليومي') || message.includes('اشتراك')) {
           setNewPlateNumber(formatted);
           showToast(message, 'error');

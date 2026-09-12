@@ -15,12 +15,9 @@ import {
   Plus, 
   Phone, 
   Loader2, 
-  Sun, 
-  Moon, 
   MoreVertical, 
   Check, 
   Gift, 
-  RotateCcw,
   ChevronDown,
   Key,
   Calendar,
@@ -38,7 +35,6 @@ import { BALANCE_PRESET_AMOUNTS } from '../../constants/packages';
 import { useTheme } from '../../utils/ThemeContext';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { AdminConfirmDialog } from './AdminConfirmDialog';
 
 interface AdminGarageDetailsViewProps {
   selectedGarageForDetails: Garage;
@@ -68,7 +64,6 @@ export const AdminGarageDetailsView = memo(({
   allGarages = []
 }: AdminGarageDetailsViewProps) => {
   const [showClearBalanceConfirm, setShowClearBalanceConfirm] = useState(false);
-  const [showResetCountersConfirm, setShowResetCountersConfirm] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [staffForm, setStaffForm] = useState({ name: '', pin: '' });
@@ -76,7 +71,7 @@ export const AdminGarageDetailsView = memo(({
   const [showTopupModal, setShowTopupModal] = useState(false);
   const [isTopupSuccess, setIsTopupSuccess] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const { theme, toggleTheme, adminLang } = useTheme();
+  const { adminLang } = useTheme();
   const t = useAdminTranslation(adminLang);
 
   // Accordion state for Zone 3
@@ -187,10 +182,6 @@ export const AdminGarageDetailsView = memo(({
     }
   };
 
-  const handleResetTodayCounters = () => {
-    setShowResetCountersConfirm(true);
-  };
-
   useEffect(() => {
     if (showAddStaffModal || staffToDelete) {
       document.body.style.overflow = 'hidden';
@@ -211,6 +202,9 @@ export const AdminGarageDetailsView = memo(({
   const totalCount = selectedGarageForDetails.totalVehiclesOut || 0;
   const totalRevenue = selectedGarageForDetails.totalRevenue || 0;
   const remainingDays = getRemainingDays(selectedGarageForDetails);
+  const carsInside = typeof selectedGarageForDetails.carsInside === 'number'
+    ? Math.max(0, selectedGarageForDetails.carsInside)
+    : (selectedGarageForDetails.activePlates ? Object.keys(selectedGarageForDetails.activePlates).length : 0);
 
   const generateNewStaffPin = () => {
     let newPin = '';
@@ -273,66 +267,17 @@ export const AdminGarageDetailsView = memo(({
                   onClick={() => setShowMenu(false)}
                 />
                 
-                <div className={`absolute top-12 ${adminLang === 'en' ? 'right-0' : 'left-0'} w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl`}>
-                  <div className="p-4 flex flex-col gap-3">
-                    <span className="font-black text-xs text-slate-400 dark:text-slate-500 select-none">{t('وضع الشاشة:')}</span>
-                    <div className="flex gap-2">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          if (theme !== 'light') toggleTheme();
-                          setShowMenu(false);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all font-bold text-xs ${
-                          theme === 'light'
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <Sun className="w-3.5 h-3.5" />
-                        <span>{t('النهاري')}</span>
-                      </button>
-
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          if (theme !== 'dark') toggleTheme();
-                          setShowMenu(false);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all font-bold text-xs ${
-                          theme === 'dark'
-                            ? 'bg-emerald-600 border-emerald-600 text-white'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <Moon className="w-3.5 h-3.5" />
-                        <span>{t('الليلي')}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-2 space-y-1 border-t border-slate-100 dark:border-slate-800">
-                    <button 
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleResetTodayCounters();
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl transition-colors text-xs font-bold"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      <span>{t('تصفير عدادات اليوم')}</span>
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowDeleteConfirm(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 rounded-xl transition-colors text-xs font-bold"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>{t('حذف الجراج')}</span>
-                    </button>
-                  </div>
+                <div className={`absolute top-12 ${adminLang === 'en' ? 'right-0' : 'left-0'} w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl p-2`}>
+                  <button 
+                    onClick={() => {
+                      setShowDeleteConfirm(true);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 rounded-xl transition-colors text-xs font-bold"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{t('حذف الجراج')}</span>
+                  </button>
                 </div>
               </>
             )}
@@ -501,62 +446,48 @@ export const AdminGarageDetailsView = memo(({
             </div>
           </div>
 
-          {/* 4-Card Performance Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Metric 1: Today */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-center relative group shadow-sm">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <span className="text-[11px] font-black text-slate-400">{t('اليوم')}</span>
-                {(dailyCount > 0 || dailyRevenue > 0) && (
-                  <button
-                    type="button"
-                    onClick={handleResetTodayCounters}
-                    title={t('تصفير عداد وإيراد اليوم')}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-500 transition-opacity p-0.5"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </button>
-                )}
+          {/* Performance Stats Grid - Compact Single Row on Mobile & Desktop */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {/* Metric 1: Cars Inside */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
+                <Car className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black truncate">{t('بالداخل')}</span>
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono leading-none">{dailyCount}</div>
-              <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1.5">
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
+                {carsInside}
+              </div>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 truncate">
+                {t('سيارة حالياً')}
+              </p>
+            </div>
+
+            {/* Metric 2: Today */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
+                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black truncate">{t('دخول اليوم')}</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
+                {dailyCount}
+              </div>
+              <p className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono truncate">
                 {Number(dailyRevenue).toFixed(0)} {t('ج.م')}
               </p>
             </div>
 
-            {/* Metric 2: Cumulative */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 block mb-1">{t('تراكمي')}</span>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono leading-none">{totalCount}</div>
-              <p className="text-[11px] font-black text-slate-600 dark:text-slate-300 font-mono mt-1.5">
+            {/* Metric 3: Cumulative */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
+                <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black truncate">{t('إجمالي الخروج')}</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
+                {totalCount}
+              </div>
+              <p className="text-[9px] sm:text-[10px] font-black text-slate-600 dark:text-slate-300 font-mono truncate">
                 {Number(totalRevenue).toFixed(0)} {t('ج.م')}
               </p>
-            </div>
-
-            {/* Metric 3: Total Recharged Units */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-              <span className="text-[11px] font-black text-slate-400 block mb-1">{t('إجمالي الوحدات')}</span>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono leading-none">
-                {selectedGarageForDetails.totalRechargedCars || 0}
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1.5">{t('وحدة مشحونة')}</p>
-            </div>
-
-            {/* Metric 4: Daily Refund Limit */}
-            <div className={`p-4 rounded-2xl border text-center shadow-sm ${
-              (selectedGarageForDetails.lastRefundDate === today ? selectedGarageForDetails.dailyRefundCount || 0 : 0) >= 5 
-                ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40' 
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-            }`}>
-              <span className="text-[11px] font-black text-slate-400 block mb-1">{t('المرتجع اليومي')}</span>
-              <div className={`text-2xl font-black font-mono leading-none ${
-                (selectedGarageForDetails.lastRefundDate === today ? selectedGarageForDetails.dailyRefundCount || 0 : 0) >= 5 
-                  ? 'text-rose-600 dark:text-rose-400' 
-                  : 'text-slate-900 dark:text-white'
-              }`}>
-                {selectedGarageForDetails.lastRefundDate === today ? selectedGarageForDetails.dailyRefundCount || 0 : 0}
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1.5">{t('/ 5 حد يومي')}</p>
             </div>
           </div>
         </section>
@@ -565,61 +496,67 @@ export const AdminGarageDetailsView = memo(({
         <section className="space-y-6">
           {/* Subscription & Wallet Hero Card */}
           <div className="bg-slate-900 dark:bg-slate-900/90 text-white rounded-3xl border border-slate-800 p-6 sm:p-8 relative overflow-hidden shadow-md">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               {/* Wallet Balance Hero */}
               <div className="lg:col-span-6 bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 flex items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                      <Wallet className="w-4 h-4" />
-                    </div>
-                    <span className="text-slate-300 text-xs font-black uppercase tracking-wider">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-slate-300 text-xs font-black uppercase tracking-wider block">
                       {t('رصيد المحفظة الحالي')}
                     </span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-amber-400">
-                      {(selectedGarageForDetails.balance || 0).toLocaleString('en-US')}
+                    <span className="text-[11px] text-slate-400 font-bold">
+                      {t('رصيد الدفع المسبق')}
                     </span>
-                    <span className="text-base font-bold text-amber-300/80">{t('ج.م')}</span>
                   </div>
+                </div>
+
+                <div className="flex items-baseline gap-1.5 font-mono shrink-0">
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-amber-400">
+                    {(selectedGarageForDetails.balance || 0).toLocaleString('en-US')}
+                  </span>
+                  <span className="text-base font-bold text-amber-300/80">{t('ج.م')}</span>
                 </div>
               </div>
 
               {/* Subscription Remaining */}
-              <div className="lg:col-span-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-800/30 border border-slate-800 rounded-2xl p-5">
-                <div>
-                  <span className="text-slate-400 text-xs font-black uppercase tracking-wider block mb-1">
-                    {t('الاشتراك المتبقي للجراج')}
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tight ${
+              <div className="lg:col-span-6 bg-slate-800/30 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-slate-400 text-xs font-black uppercase tracking-wider block mb-1">
+                      {t('الاشتراك المتبقي للجراج')}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                      <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>
+                        {t('تاريخ انتهاء الاشتراك:')} {(() => {
+                          const expiry = selectedGarageForDetails.balanceExpiry;
+                          if (!expiry) return '-';
+                          const expiryDate = safeDate(expiry);
+                          return expiryDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-baseline gap-1.5 font-mono shrink-0">
+                    <span className={`text-4xl sm:text-5xl font-black tracking-tight ${
                       remainingDays <= 0 ? 'text-rose-400' : remainingDays <= 3 ? 'text-amber-400' : 'text-emerald-400'
                     }`}>
                       {remainingDays}
                     </span>
                     <span className="text-base font-bold text-slate-400">{t('يوم')}</span>
                   </div>
-
-                  <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                    <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                    <span>
-                      {t('تاريخ انتهاء الاشتراك:')} {(() => {
-                        const expiry = selectedGarageForDetails.balanceExpiry;
-                        if (!expiry) return '-';
-                        const expiryDate = safeDate(expiry);
-                        return expiryDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-                      })()}
-                    </span>
-                  </div>
                 </div>
 
                 {/* Zero Balance / Clear Wallet Action */}
-                <div className="shrink-0 w-full sm:w-auto">
+                <div className="pt-2 border-t border-slate-700/40 flex justify-end">
                   {!showClearBalanceConfirm ? (
                     <button 
                       onClick={() => setShowClearBalanceConfirm(true)}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl font-bold text-xs border border-rose-500/20 transition-all cursor-pointer"
+                      className="w-full sm:w-auto px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl font-bold text-xs border border-rose-500/20 transition-all cursor-pointer"
                     >
                       {t('تصفير المحفظة وإنهاء الاشتراك')}
                     </button>
@@ -1293,36 +1230,6 @@ export const AdminGarageDetailsView = memo(({
           </div>
         </div>
       )}
-
-      {/* Reset Today Counters Confirmation Modal */}
-      <AdminConfirmDialog
-        isOpen={showResetCountersConfirm}
-        title={adminLang === 'en' ? 'Reset Today Counters' : t('تصفير عداد وإيراد اليوم')}
-        message={adminLang === 'en' ? 'Are you sure you want to reset today counters (revenue & cars)?' : t('هل أنت متأكد من تصفير عداد وإيراد اليوم لهذا الجراج؟')}
-        type="warning"
-        confirmText={adminLang === 'en' ? 'Reset' : t('تصفير')}
-        cancelText={adminLang === 'en' ? 'Cancel' : t('إلغاء')}
-        onConfirm={async () => {
-          setShowResetCountersConfirm(false);
-          setIsLoading(true);
-          try {
-            await firestoreService.updateGarage(selectedGarageForDetails.id, {
-              todayRevenue: 0,
-              todayCount: 0
-            });
-            setSelectedGarageForDetails({
-              ...selectedGarageForDetails,
-              todayRevenue: 0,
-              todayCount: 0
-            });
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsLoading(false);
-          }
-        }}
-        onCancel={() => setShowResetCountersConfirm(false)}
-      />
     </div>
   );
 });

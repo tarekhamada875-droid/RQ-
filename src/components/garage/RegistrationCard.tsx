@@ -152,48 +152,59 @@ export const RegistrationCard = memo(({
                 dir="rtl"
               />
               
-              <div className={`absolute inset-0 w-full h-full bg-white dark:bg-slate-200 border-slate-900 rounded-xl overflow-hidden flex flex-col z-10 ${
-                isInputFocused ? 'border-[4px]' : 'border-2 md:border-[3px]'
+              <div className={`absolute inset-0 w-full h-full bg-white border-slate-900 rounded-xl overflow-hidden flex flex-col z-10 ${
+                isInputFocused ? 'border-[3px] ring-2 ring-blue-500/20' : 'border-2 md:border-[3px]'
               }`} dir="ltr">
-                {/* Plate Header */}
-                <div className={`flex items-center justify-center px-6 font-black border-b border-slate-900/10 shrink-0 h-10 sm:h-14 md:h-20 ${
-                  newPlateNumber 
-                    ? 'bg-[#0057b7] text-white' 
-                    : 'bg-slate-200 dark:bg-slate-300 text-slate-400 dark:text-slate-500'
-                }`}>
+                {/* Authentic Egyptian Plate Header */}
+                <div className="flex items-center justify-between px-3 sm:px-6 font-black bg-[#0057b7] text-white shrink-0 h-8 sm:h-11 md:h-14 border-b-2 border-slate-900/20 select-none">
+                  {/* Left Screw Rivet + English Name */}
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40 shadow-inner inline-block" />
+                    <span className="text-[11px] sm:text-base md:text-xl tracking-[0.2em] font-black uppercase font-mono drop-shadow-sm">
+                      EGYPT
+                    </span>
+                  </div>
+
+                  {/* Right Screw Rivet + Arabic Name */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-lg md:text-2xl font-black font-serif tracking-wider drop-shadow-sm" dir="rtl">
+                      مـصـر
+                    </span>
+                    <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40 shadow-inner inline-block" />
+                  </div>
                 </div>
  
                 {/* Plate Content */}
-                <div className="flex-1 flex items-center justify-between bg-[#fcfcfc] dark:bg-slate-200 overflow-hidden">
-                  {/* Numbers Section */}
+                <div className="flex-1 flex items-center justify-between bg-[#ffffff] overflow-hidden">
+                  {/* Numbers Section (Left) */}
                   <div className="flex-1 h-full min-w-0 flex justify-center items-center px-2">
                     <FitText
-                      minFontSize={12}
-                      className={`font-mono font-black text-slate-900 tracking-tighter text-center ${
+                      minFontSize={14}
+                      className={`font-mono font-black text-slate-950 tracking-tighter text-center ${
                         newPlateNumber 
                           ? (getPlateParts(newPlateNumber).numbers.length >= 4
                               ? 'text-3xl sm:text-6xl md:text-7xl lg:text-8xl'
                               : 'text-4xl sm:text-7xl md:text-8xl lg:text-9xl') 
-                          : 'text-xl sm:text-3xl md:text-5xl text-slate-200 dark:text-slate-400'
+                          : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
-                      {getPlateParts(newPlateNumber).numbers}
+                      {getPlateParts(newPlateNumber).numbers || (isInputFocused ? '' : '١ ٢ ٣')}
                     </FitText>
                   </div>
  
                   {/* Vertical Divider */}
-                  <div className="w-[1.5px] md:w-[3px] h-[60%] bg-slate-200 dark:bg-slate-400" />
+                  <div className="w-[2px] md:w-[3px] h-[70%] bg-slate-300 rounded-full" />
  
-                  {/* Letters Section */}
+                  {/* Letters Section (Right) */}
                   <div className="flex-1 h-full min-w-0 flex justify-center items-center px-2" dir="rtl">
                     <FitText
-                      minFontSize={12}
-                      className={`font-black text-slate-800 text-center transition-all duration-150 ${
+                      minFontSize={14}
+                      className={`font-black text-slate-950 text-center transition-all duration-150 ${
                         newPlateNumber 
                           ? (getPlateParts(newPlateNumber).letters.length >= 4
                               ? 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl tracking-normal'
                               : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-[0.1em]') 
-                          : 'text-xl sm:text-3xl md:text-5xl text-slate-200 dark:text-slate-400'
+                          : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
                       {getPlateParts(newPlateNumber).letters ? (
@@ -205,14 +216,14 @@ export const RegistrationCard = memo(({
                             {char}
                           </span>
                         ))
-                      ) : ''}
+                      ) : (isInputFocused ? '' : 'أ ب ج')}
                     </FitText>
                   </div>
                 </div>
  
                 {/* Fixed Cursor Line */}
                 {isInputFocused && (
-                  <div className="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 w-12 md:w-20 h-1.5 md:h-2.5 bg-slate-900 rounded-full animate-pulse" />
+                  <div className="absolute bottom-1.5 md:bottom-3 left-1/2 -translate-x-1/2 w-12 md:w-20 h-1 md:h-1.5 bg-blue-600 rounded-full animate-pulse" />
                 )}
               </div>
             </div>            {(() => {

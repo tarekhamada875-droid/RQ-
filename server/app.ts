@@ -2407,7 +2407,8 @@ export function createApp() {
           packageName: isTrial ? `الباقة التجريبية (${trialDays} يوم)` : activePackageName,
           durationDays: isTrial ? trialDays : 0,
           carsCount: dailyCapacity,
-          revenueAmount: 0
+          revenueAmount: 0,
+          isTrial: Boolean(isTrial)
         }
       });
 

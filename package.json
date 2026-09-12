@@ -14,6 +14,8 @@
     "ci:check": "tsx tools/ci-check.ts"
   },
   "dependencies": {
+    "@csstools/postcss-color-mix-function": "^4.0.11",
+    "@csstools/postcss-oklab-function": "^5.0.11",
     "@tailwindcss/vite": "^4.1.14",
     "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
@@ -27,6 +29,7 @@
     "firebase-admin": "^14.3.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.38.0",
+    "postcss-preset-env": "^11.5.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.1.14",

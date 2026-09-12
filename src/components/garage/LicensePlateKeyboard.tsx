@@ -53,11 +53,11 @@ export const LicensePlateKeyboard: React.FC<LicensePlateKeyboardProps> = memo(({
           e.preventDefault();
           if (!isDisabled) onKeyPress(char);
         }}
-        className={`${heightClass} w-full border-slate-100/5 dark:border-slate-200/50 flex items-center justify-center transition-all active:brightness-150 touch-manipulation ${fontClass} ${
+        className={`${heightClass} w-full flex items-center justify-center transition-colors active:brightness-125 touch-manipulation select-none ${fontClass} ${
           isSelected 
-            ? 'bg-emerald-600 text-white z-10 scale-[1.05] border-transparent rounded-md shadow-md' 
-            : 'bg-slate-900 dark:bg-white text-white dark:text-black active:bg-slate-800 dark:active:bg-slate-100 border-[0.5px]'
-        } ${isDisabled ? 'opacity-20 cursor-not-allowed grayscale' : 'opacity-100'} ${className}`}
+            ? 'bg-emerald-600 text-white z-10 scale-[1.03] border-transparent rounded-lg shadow-md' 
+            : 'bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 active:bg-slate-100 dark:active:bg-slate-700 border-[0.5px] border-slate-200 dark:border-slate-700/60'
+        } ${isDisabled ? 'opacity-25 cursor-not-allowed' : 'opacity-100'} ${className}`}
       >
         {char}
       </button>
@@ -66,10 +66,10 @@ export const LicensePlateKeyboard: React.FC<LicensePlateKeyboardProps> = memo(({
 
   return (
     <div 
-      className={`flex flex-col bg-slate-900 dark:bg-white overflow-hidden select-none touch-none ${
+      className={`flex flex-col bg-slate-100 dark:bg-slate-900 overflow-hidden select-none touch-none ${
         compact 
-          ? 'rounded-xl border-2 border-slate-900 dark:border-white mt-0.5' 
-          : 'rounded-[2rem] border-4 border-slate-900 dark:border-white mt-1'
+          ? 'rounded-xl border border-slate-300 dark:border-slate-800 mt-1' 
+          : 'rounded-2xl md:rounded-[2rem] border-2 border-slate-300 dark:border-slate-800 mt-2'
       }`} 
       dir="rtl"
       onMouseDown={(e) => e.preventDefault()}
@@ -85,8 +85,8 @@ export const LicensePlateKeyboard: React.FC<LicensePlateKeyboardProps> = memo(({
         ))}
       </div>
 
-      {/* Taller Divider */}
-      <div className="h-1 bg-slate-800/50 dark:bg-slate-100" />
+      {/* Middle Divider */}
+      <div className="h-1 bg-slate-300/80 dark:bg-slate-800" />
 
       {/* Letters Section */}
       <div className="flex flex-col">

@@ -324,76 +324,61 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
               return (
                 <div 
                   key={pkg.id}
-                  className={`p-4 sm:p-5 rounded-3xl border-2 transition-all space-y-4 relative overflow-hidden ${
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all relative overflow-hidden space-y-3.5 ${
                     info.isUnlimited
-                      ? 'bg-white dark:bg-slate-900 border-amber-500/90 shadow-md ring-1 ring-amber-500/20'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700'
+                      ? 'bg-white dark:bg-slate-900 border-amber-400 dark:border-amber-500/80 shadow-md ring-1 ring-amber-400/20'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
-                  {/* Header Row: Full Package Name + Badges */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
-                        {packageName}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                      {hasDiscount && (
-                        <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-1 rounded-xl whitespace-nowrap shadow-xs">
-                          خصم {pkg.discountType === 'percentage' ? `${pkg.discountValue}%` : `${pkg.discountValue} ج.م`}
-                        </span>
-                      )}
-                      {isTopTier && (
-                        <span className="bg-amber-400 text-slate-950 font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shadow-xs">
-                          <Sparkles className="w-3 h-3 text-slate-950" />
-                          الأعلى سعة
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Price Hero Area */}
-                  <div className="bg-slate-50 dark:bg-slate-950/70 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">سعر الاشتراك</span>
-                      <div className="flex items-baseline gap-1.5 font-mono">
-                        <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                          {formatNumber(effectivePrice)}
-                        </span>
-                        <span className="text-xs font-black text-amber-600/90 dark:text-amber-400/80">ج.م</span>
-                        {hasDiscount && (
-                          <span className="text-xs font-bold text-red-600 dark:text-red-400 line-through mr-1.5">
-                            بدلاً من {formatNumber(displayBasePrice)} ج.م
+                  {/* Top Header & Price Row (Apple Clean Minimalist) */}
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Right: Package Title & Features */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
+                          {packageName}
+                        </h4>
+                        {isTopTier && (
+                          <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                            <Sparkles className="w-3 h-3 text-slate-950" />
+                            الأعلى سعة
                           </span>
                         )}
                       </div>
-                    </div>
 
-                    {hasDiscount && (
-                      <div className="text-right">
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1 rounded-lg block">
-                          وفرت {formatNumber(displayBasePrice - effectivePrice)} ج.م
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span className="truncate">
+                          {info.isUnlimited 
+                            ? 'تسجيل سيارات بدون حد أقصى' 
+                            : `تسجيل حتى ${info.dailyCapacity} سيارة يومياً`}
                         </span>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Bulleted Feature List */}
-                  <div className="space-y-2 pt-0.5">
-                    <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
-                      <div className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                    {/* Left: Clean Price Pill Display */}
+                    <div className="text-left shrink-0 font-mono">
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-amber-400">
+                          {formatNumber(effectivePrice)}
+                        </span>
+                        <span className="text-xs font-black text-slate-500 dark:text-amber-400/80">ج.م</span>
                       </div>
-                      <span>
-                        {info.isUnlimited 
-                          ? 'تسجيل سيارات بدون حد أقصى يومياً' 
-                          : `تسجيل حتى ${info.dailyCapacity} سيارة يومياً`}
-                      </span>
+                      
+                      {hasDiscount && (
+                        <div className="flex items-center justify-end gap-1.5 mt-0.5 text-[11px] font-bold">
+                          <span className="text-red-500 dark:text-red-400 line-through">
+                            {formatNumber(displayBasePrice)}
+                          </span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-mono">
+                            (-{pkg.discountType === 'percentage' ? `${pkg.discountValue}%` : `${pkg.discountValue}ج.م`})
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Dedicated Action Button (CTA) with Informative Top-Up State */}
+                  {/* Dedicated Action Pill Button (Apple Style) */}
                   {effectiveGarageId && (
                     <button
                       type="button"
@@ -402,12 +387,12 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                         setPendingPackage(pkg);
                       }}
                       disabled={!canAfford}
-                      className={`w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] whitespace-nowrap ${
+                      className={`w-full min-h-[44px] py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] whitespace-nowrap ${
                         canAfford
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
-                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 cursor-not-allowed'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 cursor-not-allowed'
                       }`}
-                      title={canAfford ? 'تفعيل الباقة وخصم المبلغ من الرصيد' : `رصيدك مش كافي لشراء الباقة (باقي ${formatNumber(missingAmount)} ج.م)`}
+                      title={canAfford ? 'تفعيل الباقة وخصم المبلغ من الرصيد' : `رصيدك مش كافي لشراء الباقة (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
                     >
                       {canAfford ? (
                         <>
@@ -419,8 +404,8 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                           <Wallet className="w-4 h-4 text-slate-400 shrink-0" />
                           <span>
                             {currentBalance <= 0
-                              ? `رصيدك مش كافي (احتاج ${formatNumber(effectivePrice)} ج.م)`
-                              : `رصيدك مش كافي (باقي ${formatNumber(missingAmount)} ج.م للشحن)`}
+                              ? `رصيدك مش كافي (محتاج تشحن ${formatNumber(effectivePrice)} ج.م)`
+                              : `رصيدك مش كافي (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
                           </span>
                         </>
                       )}
