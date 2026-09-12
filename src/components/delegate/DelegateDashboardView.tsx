@@ -43,7 +43,7 @@ interface DelegateDashboardViewProps {
     discountInfo?: { discountAmount?: number }
   ) => Promise<void>;
   onRechargeBalance?: (garageId: string, amount: number) => Promise<void>;
-  onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   isLoading: boolean;
   packages: Package[];
   pendingRequests: RechargeRequest[];

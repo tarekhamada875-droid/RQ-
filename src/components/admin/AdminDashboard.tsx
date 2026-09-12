@@ -27,7 +27,7 @@ export { AdminGarageList };
 interface AdminDashboardProps {
   allGarages: Garage[];
   isLoading: boolean;
-  createNewGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  createNewGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   setView: (view: any) => void;
   setSelectedGarageForDetails: (garage: Garage | null) => void;
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
@@ -309,10 +309,14 @@ export const AdminDashboard = memo(({
     e.preventDefault();
     if (currentSupervisor) {
       showToast?.('غير مصرح للمشرف بإضافة جراجات', 'error');
-      setShowOverview(false);
       return;
     }
-    await createNewGarage(e);
+    const created = await createNewGarage(e);
+    if (!created) return;
+
+    // Garage rows are loaded through a separate paginated query. Reset that
+    // query after the mutation so the new garage is visible immediately.
+    await loadAdminGaragePage(true);
     setShowOverview(false);
   };
 

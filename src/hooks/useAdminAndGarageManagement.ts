@@ -366,14 +366,14 @@ export function useAdminAndGarageManagement({
   }, [isOnline, closeKeyboard, sessionId, showToast, setView, setDelegate, setUser, setIsLoading]);
 
   // Create new garage
-  const createNewGarage = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+  const createNewGarage = useCallback(async (e: React.FormEvent<HTMLFormElement>): Promise<boolean> => {
     if (currentSupervisor) {
       showToast('غير مصرح للمشرف بإضافة جراجات جديدة', 'error');
-      return;
+      return false;
     }
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
-      return;
+      return false;
     }
     e.preventDefault();
     setIsLoading(true);
@@ -406,7 +406,7 @@ export function useAdminAndGarageManagement({
         if (delegateGaragesCreatedToday.length >= 3) {
           showToast('عذراً، لقد وصلت للحد الأقصى اليومي المسموح به لإنشاء الجراجات وهو 3 جراجات في اليوم.', 'error');
           setIsLoading(false);
-          return;
+          return false;
         }
 
         data.createdByDelegateId = delegate.id;
@@ -419,7 +419,7 @@ export function useAdminAndGarageManagement({
       if (pinCheck.taken) {
         showToast(`هذا الرمز السري (PIN) مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
         setIsLoading(false);
-        return;
+        return false;
       }
 
       const name = ((data.name as string) || '').trim();
@@ -428,7 +428,7 @@ export function useAdminAndGarageManagement({
       if (existing) {
         showToast(APP_TEXT.ADMIN.DUPLICATE_ERROR, 'error');
         setIsLoading(false);
-        return;
+        return false;
       }
 
       const result = await firestoreService.createGarage(data);
@@ -437,12 +437,15 @@ export function useAdminAndGarageManagement({
         showToast(delegate ? 'تم إرسال طلب إنشاء الجراج بنجاح بانتظار موافقة الإدارة' : APP_TEXT.ADMIN.ADD_SUCCESS);
         form.reset();
         closeKeyboard();
+        return true;
       } else {
         showToast(result.error || 'حدث خطأ أثناء إنشاء الجراج', 'error');
+        return false;
       }
     } catch (err: any) {
       console.error('createNewGarage error:', err);
       showToast(err.message || 'حدث خطأ أثناء إنشاء الجراج', 'error');
+      return false;
     } finally {
       setIsLoading(false);
     }
