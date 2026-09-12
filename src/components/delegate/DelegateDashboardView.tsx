@@ -672,7 +672,6 @@ export const DelegateDashboardView = memo(({
                       inputMode="numeric" 
                       pattern="[0-9]*"
                       placeholder="10" 
-                      required 
                       className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg" 
                       dir="ltr" 
                     />
@@ -688,7 +687,6 @@ export const DelegateDashboardView = memo(({
                       inputMode="numeric" 
                       pattern="[0-9]*"
                       placeholder="50" 
-                      required 
                       className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg" 
                       dir="ltr" 
                     />
@@ -700,23 +698,60 @@ export const DelegateDashboardView = memo(({
               <input type="hidden" name="billingModel" value="subscription" />
 
               {/* Free Trial Toggle */}
-              <div className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl flex items-center justify-between">
-                <div className="space-y-0.5 text-right">
-                  <label className="text-xs font-black text-slate-900 dark:text-emerald-300 block">تفعيل فترة تجريبية مجانية ({trialDays} يوم)</label>
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">صلاحية مجانية لمدة {trialDays} يوماً للجراج الجديد</span>
+              <div 
+                id="delegate-trial-toggle-container"
+                onClick={() => setIsTrial(prev => !prev)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none flex items-center justify-between ${
+                  isTrial 
+                    ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/50 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="space-y-0.5 text-right flex-1 min-w-0 pr-2">
+                  <label className={`text-xs sm:text-sm font-bold block cursor-pointer truncate transition-colors ${
+                    isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
+                  }`}>
+                    تفعيل فترة تجريبية مجانية ({trialDays} يوم)
+                  </label>
+                  <span className={`text-[11px] block truncate transition-colors ${
+                    isTrial ? 'text-emerald-600 dark:text-emerald-400/80' : 'text-slate-400 dark:text-slate-400'
+                  }`}>
+                    صلاحية مجانية لمدة {trialDays} يوماً للجراج الجديد
+                  </span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+
+                <div 
+                  className="relative shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  dir="ltr"
+                >
                   <input 
                     type="checkbox" 
+                    id="delegate-trial-checkbox"
                     name="isTrial" 
                     checked={isTrial} 
                     onChange={(e) => setIsTrial(e.target.checked)} 
-                    className="sr-only peer" 
+                    className="sr-only" 
                   />
                   <input type="hidden" name="isTrial_hidden" value={isTrial ? 'true' : 'false'} />
                   <input type="hidden" name="trialDays" value={trialDays} />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                </label>
+                  
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isTrial}
+                    onClick={() => setIsTrial(prev => !prev)}
+                    className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out relative focus:outline-none flex items-center p-0.5 ${
+                      isTrial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span 
+                      className={`inline-block w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
+                        isTrial ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1.5">

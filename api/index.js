@@ -148814,6 +148814,7 @@ function createApp() {
     }
   });
   app2.post("/api/vehicles/check-in", requireAuth, async (req, res) => {
+    const requestStartedAt = Date.now();
     try {
       const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
       const callerRole = req.user?.role;
@@ -148842,8 +148843,12 @@ function createApp() {
       const today = getCairoDateKey();
       let isSubscriberAuthoritative = false;
       try {
-        const subSnapRaw = await adminDb.collection(`garages/${garageId}/subscribers`).where("plateNumberRaw", "==", plateRaw).get();
-        for (const doc of subSnapRaw.docs) {
+        const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+        const [subSnapRaw, subSnapPlate] = await Promise.all([
+          subscriberCollection.where("plateNumberRaw", "==", plateRaw).get(),
+          subscriberCollection.where("plateNumber", "==", plateNumber).get()
+        ]);
+        for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
           const subData = doc.data() || {};
           const startDate = subData.startDate || "";
           const endDate = subData.endDate || "";
@@ -148852,21 +148857,10 @@ function createApp() {
             break;
           }
         }
-        if (!isSubscriberAuthoritative) {
-          const subSnapPlate = await adminDb.collection(`garages/${garageId}/subscribers`).where("plateNumber", "==", plateNumber).get();
-          for (const doc of subSnapPlate.docs) {
-            const subData = doc.data() || {};
-            const startDate = subData.startDate || "";
-            const endDate = subData.endDate || "";
-            if (startDate && endDate && today >= startDate && today <= endDate) {
-              isSubscriberAuthoritative = true;
-              break;
-            }
-          }
-        }
       } catch (subErr) {
         console.warn("[Server Check-In] Subscriber lookup warning:", subErr);
       }
+      let resultData = {};
       await adminDb.runTransaction(async (t2) => {
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
@@ -148971,8 +148965,33 @@ function createApp() {
           timestamp: /* @__PURE__ */ new Date(),
           amount: 0
         });
+        resultData = {
+          isSubscriber: isSubscriberAuthoritative,
+          vehicle: {
+            id: plateRaw,
+            plateNumber,
+            plateNumberRaw: plateRaw,
+            type: type || "hourly",
+            status: "inside",
+            entryTime: (/* @__PURE__ */ new Date()).toISOString(),
+            staffId: staffId || null,
+            staffName: resolvedStaffName,
+            isSubscriber: isSubscriberAuthoritative
+          },
+          carsInside: Number(garageUpdate.carsInside || 0),
+          dailyCount: Number(garageUpdate.todayCount || 0),
+          dailyCapacity: isUnlimited ? 0 : capacity
+        };
       });
-      return res.json({ success: true, data: { isSubscriber: isSubscriberAuthoritative } });
+      const durationMs = Date.now() - requestStartedAt;
+      res.setHeader("Server-Timing", `check-in;dur=${durationMs}`);
+      console.info("[Server Check-In] completed", {
+        correlationId: req.correlationId,
+        durationMs,
+        garageId,
+        isSubscriber: isSubscriberAuthoritative
+      });
+      return res.json({ success: true, data: resultData });
     } catch (err) {
       console.error("[Server] Check-in error:", err);
       const { statusCode, message: message2 } = mapDomainErrorToStatus(err);

@@ -1,6 +1,8 @@
 /// <reference types="vitest" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import postcssCascadeLayers from '@csstools/postcss-cascade-layers';
+import autoprefixer from 'autoprefixer';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
@@ -21,7 +23,17 @@ export default defineConfig(({mode}) => {
       include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.{ts,tsx}'],
       exclude: ['**/node_modules/**', '**/dist/**'],
     },
+    css: {
+      postcss: {
+        plugins: [
+          postcssCascadeLayers(),
+          autoprefixer(),
+        ],
+      },
+    },
     build: {
+      target: 'es2015',
+      cssTarget: 'chrome60',
       outDir: 'dist',
       emptyOutDir: true,
       sourcemap: false,

@@ -59,6 +59,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
     ownerPin: ''
   });
   const [localPin, setLocalPin] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sync initial values on open
   useEffect(() => {
@@ -72,6 +73,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
         ownerPin: garageForm?.ownerPin || ''
       });
       setLocalPin(pinInput || '');
+      setErrorMessage(null);
     }
   }, [isOpen]);
 
@@ -111,9 +113,21 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
         
         <div className="p-5 sm:p-8 max-h-[80vh] max-h-[80dvh] overflow-y-auto custom-scrollbar-slate">
           <div className="transition-colors">
+            {errorMessage && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl text-red-600 dark:text-red-400 text-xs font-bold text-center">
+                {errorMessage}
+              </div>
+            )}
             <form 
               onSubmit={async (e) => {
                 e.preventDefault();
+                setErrorMessage(null);
+                const hourlyNum = Number(localForm.hourlyRate) || 0;
+                const overnightNum = Number(localForm.overnightRate) || 0;
+                if (hourlyNum <= 0 && overnightNum <= 0) {
+                  setErrorMessage('يجب إدخال سعر الساعة أو سعر المبيت على الأقل');
+                  return;
+                }
                 setGarageForm(localForm);
                 setPinInput(localPin);
                 await onSubmit(e);
@@ -158,7 +172,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                         const val = sanitizeNumeric(e.target.value);
                         setLocalForm(prev => ({ ...prev, hourlyRate: val }));
                       }}
-                      required 
                       className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all" 
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م')}</span>
@@ -177,7 +190,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                         const val = sanitizeNumeric(e.target.value);
                         setLocalForm(prev => ({ ...prev, overnightRate: val }));
                       }}
-                      required 
                       className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all" 
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م')}</span>
@@ -188,27 +200,60 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <input type="hidden" name="billingModel" value="subscription" />
 
               {/* Free Trial Toggle */}
-              <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl transition-colors">
-                <div className="text-right">
-                  <span className="text-xs font-black text-blue-950 dark:text-blue-200 block">
+              <div 
+                id="trial-toggle-container"
+                onClick={() => setLocalForm(prev => ({ ...prev, isTrial: !prev.isTrial }))}
+                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none ${
+                  localForm.isTrial 
+                    ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/50 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="text-right space-y-0.5 flex-1 min-w-0 pr-2">
+                  <span className={`text-xs sm:text-sm font-bold block truncate transition-colors ${
+                    localForm.isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
+                  }`}>
                     {t('تفعيل فترة تجريبية مجانية')} ({trialDays} {t('يوم')})
                   </span>
-                  <span className="text-[10px] font-bold text-blue-500/80 block mt-0.5">
+                  <span className={`text-[11px] block truncate transition-colors ${
+                    localForm.isTrial ? 'text-emerald-600 dark:text-emerald-400/80' : 'text-slate-400 dark:text-slate-400'
+                  }`}>
                     {t('صلاحية مجانية لمدة')} {trialDays} {t('يوماً للجراج الجديد')}
                   </span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+
+                <div 
+                  className="relative shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  dir="ltr"
+                >
                   <input 
                     type="checkbox"
+                    id="admin-trial-checkbox"
                     name="isTrial"
                     checked={localForm.isTrial}
                     onChange={(e) => setLocalForm(prev => ({ ...prev, isTrial: e.target.checked }))}
-                    className="sr-only peer"
+                    className="sr-only"
                   />
                   <input type="hidden" name="isTrial" value={localForm.isTrial ? 'true' : 'false'} />
                   <input type="hidden" name="trialDays" value={trialDays} />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
-                </label>
+                  
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={localForm.isTrial}
+                    onClick={() => setLocalForm(prev => ({ ...prev, isTrial: !prev.isTrial }))}
+                    className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out relative focus:outline-none flex items-center p-0.5 ${
+                      localForm.isTrial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span 
+                      className={`inline-block w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
+                        localForm.isTrial ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

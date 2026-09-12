@@ -244,45 +244,58 @@ export const RegistrationCard = memo(({
 
               // 2. Normal check-in controls
               if (isInputFocused || (newPlateNumber && isValid)) {
+                const hourlyPrice = Number(garage?.hourlyRate) || 0;
+                const overnightPrice = Number(garage?.overnightRate) || 0;
+                const hasHourly = hourlyPrice > 0;
+                const hasOvernight = overnightPrice > 0;
+                // If both are enabled or both are zero/unset, show both side-by-side
+                const showBoth = (hasHourly && hasOvernight) || (!hasHourly && !hasOvernight);
+                const showOnlyHourly = hasHourly && !hasOvernight;
+                const showOnlyOvernight = !hasHourly && hasOvernight;
+
                 return (
                   <div className="overflow-hidden">
                     <div className="flex gap-4 mt-1">
-                      <button 
-                        disabled={!isValid || isLoading || isDebouncing}
-                        onClick={() => handleGuardedCheckIn('hourly')}
-                        className={`flex-1 py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
-                          isValid && !isLoading && !isDebouncing
-                            ? 'bg-white dark:bg-slate-900 border-2 md:border-3 border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/80 active:scale-[0.98]' 
-                            : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <div className="text-base md:text-2xl uppercase tracking-tight font-black flex items-center justify-center gap-2">
-                          {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'ساعة'}
-                        </div>
-                        <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
-                          isValid ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400/70 dark:text-slate-700'
-                        }`}>
-                          <span className="font-mono">{garage.hourlyRate}</span> ج.م / ساعة
-                        </span>
-                      </button>
-                      <button 
-                        disabled={!isValid || isLoading || isDebouncing}
-                        onClick={() => handleGuardedCheckIn('overnight')}
-                        className={`flex-1 py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
-                          isValid && !isLoading && !isDebouncing
-                            ? 'bg-emerald-600 dark:bg-emerald-600 border-2 md:border-3 border-emerald-700 dark:border-emerald-500 text-white font-black hover:bg-emerald-700 dark:hover:bg-emerald-600/90 active:scale-[0.98]' 
-                            : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <div className="text-base md:text-2xl uppercase tracking-tight font-black flex items-center justify-center gap-2">
-                          {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'مبيت'}
-                        </div>
-                        <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
-                          isValid ? 'text-slate-950/80 dark:text-slate-950/85' : 'text-slate-400/70 dark:text-slate-700'
-                        }`}>
-                          <span className="font-mono">{garage.overnightRate}</span> ج.م مبيت
-                        </span>
-                      </button>
+                      {(showBoth || showOnlyHourly) && (
+                        <button 
+                          disabled={!isValid || isLoading || isDebouncing}
+                          onClick={() => handleGuardedCheckIn('hourly')}
+                          className={`${showOnlyHourly ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
+                            isValid && !isLoading && !isDebouncing
+                              ? 'bg-white dark:bg-slate-900 border-2 md:border-3 border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/80 active:scale-[0.98]' 
+                              : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                          }`}
+                        >
+                          <div className="text-base md:text-2xl uppercase tracking-tight font-black flex items-center justify-center gap-2">
+                            {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'ساعة'}
+                          </div>
+                          <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
+                            isValid ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400/70 dark:text-slate-700'
+                          }`}>
+                            <span className="font-mono">{garage?.hourlyRate ?? 0}</span> ج.م / ساعة
+                          </span>
+                        </button>
+                      )}
+                      {(showBoth || showOnlyOvernight) && (
+                        <button 
+                          disabled={!isValid || isLoading || isDebouncing}
+                          onClick={() => handleGuardedCheckIn('overnight')}
+                          className={`${showOnlyOvernight ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
+                            isValid && !isLoading && !isDebouncing
+                              ? 'bg-emerald-600 dark:bg-emerald-600 border-2 md:border-3 border-emerald-700 dark:border-emerald-500 text-white font-black hover:bg-emerald-700 dark:hover:bg-emerald-600/90 active:scale-[0.98]' 
+                              : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
+                          }`}
+                        >
+                          <div className="text-base md:text-2xl uppercase tracking-tight font-black flex items-center justify-center gap-2">
+                            {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'مبيت'}
+                          </div>
+                          <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
+                            isValid ? 'text-slate-950/80 dark:text-slate-950/85' : 'text-slate-400/70 dark:text-slate-700'
+                          }`}>
+                            <span className="font-mono">{garage?.overnightRate ?? 0}</span> ج.م مبيت
+                          </span>
+                        </button>
+                      )}
                     </div>
 
                     {isInputFocused && (

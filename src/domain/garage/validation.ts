@@ -16,12 +16,19 @@ export const validateGarageCreation = (data: any): ValidationResult => {
     errors.push('رمز الدخول يجب أن يكون 6 أرقام');
   }
   
-  if (data.hourlyRate === undefined || data.hourlyRate === null || Number(data.hourlyRate) < 0) {
+  const hourly = data.hourlyRate !== undefined && data.hourlyRate !== null && data.hourlyRate !== '' ? Number(data.hourlyRate) : 0;
+  const overnight = data.overnightRate !== undefined && data.overnightRate !== null && data.overnightRate !== '' ? Number(data.overnightRate) : 0;
+
+  if (isNaN(hourly) || hourly < 0) {
     errors.push('سعر الساعة يجب أن يكون صفر أو أكبر');
   }
   
-  if (data.overnightRate === undefined || data.overnightRate === null || Number(data.overnightRate) < 0) {
+  if (isNaN(overnight) || overnight < 0) {
     errors.push('سعر المبيت يجب أن يكون صفر أو أكبر');
+  }
+
+  if (hourly <= 0 && overnight <= 0) {
+    errors.push('يجب تحديد سعر الساعة أو سعر المبيت على الأقل');
   }
   
   return { valid: errors.length === 0, errors };

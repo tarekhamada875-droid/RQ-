@@ -73,39 +73,43 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
             </div>
             
             <div className="flex flex-col gap-3 sm:gap-4">
-              <button 
-                onClick={() => onCheckIn('hourly')}
-                disabled={isLoading}
-                className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
-              >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
-                  {loadingType === 'hourly' ? <Spinner /> : <Clock className="w-7 h-7 sm:w-8 sm:h-8" />}
-                </div>
-                <div className="text-right">
-                  <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white">{APP_TEXT.GARAGE.TYPE_HOURLY}</div>
-                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold mt-0.5">
-                    <span className="font-mono">{garage.hourlyRate}</span> {APP_TEXT.GARAGE.CURRENCY} / ساعة
+              {((Number(garage.hourlyRate) > 0 && Number(garage.overnightRate) > 0) || (Number(garage.hourlyRate) <= 0 && Number(garage.overnightRate) <= 0) || Number(garage.hourlyRate) > 0) && (
+                <button 
+                  onClick={() => onCheckIn('hourly')}
+                  disabled={isLoading}
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
+                >
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
+                    {loadingType === 'hourly' ? <Spinner /> : <Clock className="w-7 h-7 sm:w-8 sm:h-8" />}
                   </div>
-                </div>
-                <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
-              </button>
+                  <div className="text-right">
+                    <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white">{APP_TEXT.GARAGE.TYPE_HOURLY}</div>
+                    <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                      <span className="font-mono">{garage.hourlyRate ?? 0}</span> {APP_TEXT.GARAGE.CURRENCY} / ساعة
+                    </div>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
+                </button>
+              )}
 
-               <button 
-                onClick={() => onCheckIn('overnight')}
-                disabled={isLoading}
-                className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
-              >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
-                  {loadingType === 'overnight' ? <Spinner /> : <Moon className="w-7 h-7 sm:w-8 sm:h-8" />}
-                </div>
-                <div className="text-right">
-                  <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white transition-colors">{APP_TEXT.GARAGE.TYPE_OVERNIGHT}</div>
-                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold transition-colors mt-0.5">
-                    <span className="font-mono">{garage.overnightRate}</span> {APP_TEXT.GARAGE.CURRENCY} ثابت
+              {((Number(garage.hourlyRate) > 0 && Number(garage.overnightRate) > 0) || (Number(garage.hourlyRate) <= 0 && Number(garage.overnightRate) <= 0) || Number(garage.overnightRate) > 0) && (
+                <button 
+                  onClick={() => onCheckIn('overnight')}
+                  disabled={isLoading}
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
+                >
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
+                    {loadingType === 'overnight' ? <Spinner /> : <Moon className="w-7 h-7 sm:w-8 sm:h-8" />}
                   </div>
-                </div>
-                <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
-              </button>
+                  <div className="text-right">
+                    <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white transition-colors">{APP_TEXT.GARAGE.TYPE_OVERNIGHT}</div>
+                    <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold transition-colors mt-0.5">
+                      <span className="font-mono">{garage.overnightRate ?? 0}</span> {APP_TEXT.GARAGE.CURRENCY} ثابت
+                    </div>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
+                </button>
+              )}
             </div>
 
             <button 

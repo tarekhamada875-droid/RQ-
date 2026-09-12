@@ -680,47 +680,53 @@ export const GarageDashboardView = memo((props: any) => {
               return null;
             }
 
+            const hasWarning = (isUrgentRed || L <= 0) || (We && !isUrgentRed && L === 1);
+
             return (
               <div className="flex gap-4 shrink-0 w-full select-none" id="persistent_balance_card">
                 {/* RIGHT CARD: Subscription countdown */}
                 <div
-                  className={"flex-1 transition-all duration-300 py-2.5 md:py-6 px-4 md:px-6 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden ".concat(
+                  className={`flex-1 transition-all duration-300 ${
+                    hasWarning ? "py-2 md:py-4 px-3 md:px-6" : "py-2.5 md:py-6 px-4 md:px-6"
+                  } rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden ${
                     isUrgentRed || L <= 0
                       ? "bg-slate-900 border-red-500/50"
                       : We
                         ? "bg-slate-900 border-amber-500/50"
-                        : "bg-[#faf9f6] dark:bg-slate-900 border-slate-200 dark:border-slate-800",
-                  )}
+                        : "bg-[#faf9f6] dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  }`}
                 >
                   {/* Trial Badge */}
                   {t?.isTrial && (
-                    <div className="absolute top-3 left-3 md:top-4 md:left-4 z-10">
-                      <span className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] font-black px-2.5 py-0.5 md:px-3 md:py-1 rounded-full border border-amber-500/30 inline-flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" />
+                    <div className="absolute top-2 left-2 md:top-3 md:left-3 z-10">
+                      <span className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] md:text-[11px] font-black px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full border border-amber-500/30 inline-flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         <span>تجريبي</span>
                       </span>
                     </div>
                   )}
 
-                  <div className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 mb-1 z-10">
+                  <div className={`${hasWarning ? "text-[11px] md:text-xs mb-0.5" : "text-xs md:text-sm mb-1"} font-bold text-slate-500 dark:text-slate-400 z-10`}>
                     الرصيد المتبقي
                   </div>
 
                   {/* Countdown */}
-                  <div className="py-1 flex items-center justify-center overflow-visible z-10">
+                  <div className="py-0.5 flex items-center justify-center overflow-visible z-10">
                     <div
-                      className={"text-2xl md:text-4xl font-black transition-colors duration-300 flex items-center gap-2 ".concat(
+                      className={`${
+                        hasWarning ? "text-lg md:text-3xl gap-1.5" : "text-2xl md:text-4xl gap-2"
+                      } font-black transition-colors duration-300 flex items-center ${
                         isUrgentRed || L <= 0
                           ? "text-red-500"
                           : We
                             ? "text-amber-400"
-                            : "text-slate-900 dark:text-slate-100",
-                      )}
+                            : "text-slate-900 dark:text-slate-100"
+                      }`}
                     >
-                      <span className="text-4xl md:text-7xl font-extrabold font-mono tracking-tight">
+                      <span className={`${hasWarning ? "text-2xl md:text-4xl" : "text-4xl md:text-7xl"} font-extrabold font-mono tracking-tight`}>
                         <AnimatedCounter value={countdownValue} disableColorChange={!0} />
                       </span>
-                      <span>
+                      <span className={hasWarning ? "text-sm md:text-xl font-bold" : ""}>
                         {isCountdownInHours
                           ? (countdownValue === 1
                               ? "ساعة"
@@ -742,14 +748,14 @@ export const GarageDashboardView = memo((props: any) => {
 
                   {/* Subtle Footer Warning if Urgent or Very close */}
                   {(isUrgentRed || L <= 0) && (
-                    <div className="mt-2 bg-red-500/10 border border-red-500/20 text-red-500 px-3 py-1 rounded-lg text-[10px] md:text-xs font-bold z-10 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />
+                    <div className="mt-1 bg-red-500/10 border border-red-500/20 text-red-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
                       {L <= 0 ? "منتهي" : "ينتهي قريباً جداً"}
                     </div>
                   )}
                   {(We && !isUrgentRed && L === 1) && (
-                    <div className="mt-2 bg-amber-500/10 border border-amber-500/20 text-amber-500 px-3 py-1 rounded-lg text-[10px] md:text-xs font-bold z-10 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />
+                    <div className="mt-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
                       يجب الشحن اليوم
                     </div>
                   )}
