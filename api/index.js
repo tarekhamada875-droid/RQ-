@@ -147608,7 +147608,7 @@ function isAllowedOrigin(origin) {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return true;
     }
-    if (hostname.endsWith(".pages.dev") || hostname.endsWith(".vercel.app")) {
+    if (hostname === "parqv2.pages.dev" || hostname === "parq1.pages.dev" || hostname === "rq-acg.pages.dev") {
       return true;
     }
   } catch {

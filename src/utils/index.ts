@@ -31,7 +31,7 @@ export const safeDate = (date: any): Date => {
   return d;
 };
 
-export const getGarageTimestamp = (g: any): number => {
+const getGarageTimestamp = (g: any): number => {
   if (!g || !g.createdAt) return 0;
   const d = safeDate(g.createdAt);
   return isNaN(d.getTime()) ? 0 : d.getTime();
@@ -363,12 +363,10 @@ export {
   getRemainingDays, 
   getRemainingSubscriptionInfo,
   type RemainingSubscriptionInfo,
-  isTrialActive, 
   getEffectiveDailyCapacity,
-  isUnlimitedCapacity, 
-  calculateCapacityUsed 
+  isUnlimitedCapacity
 } from '../domain/garage/subscription';
-export { validateVehicleEntry, validateGarageCreation, validateRechargeRequest } from '../domain/garage/validation';
+export { validateRechargeRequest } from '../domain/garage/validation';
 
 /**
  * Applies the configured monthly-subscribers fixed fee (default 500 EGP).
@@ -512,29 +510,6 @@ export const withRetry = async <T>(
     }
   }
   throw lastError;
-};
-
-/**
- * Creates a debounced version of a function.
- * Prevents rapid-fire calls (e.g., double-click on check-in button).
- */
-export const debounce = <T extends (...args: any[]) => any>(
-  fn: T,
-  delayMs: number = 500
-): T & { cancel: () => void } => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const debounced = (...args: Parameters<T>) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      fn(...args);
-      timeoutId = null;
-    }, delayMs);
-  };
-  debounced.cancel = () => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = null;
-  };
-  return debounced as T & { cancel: () => void };
 };
 
 /**
