@@ -183,7 +183,7 @@ export const GarageDashboardView = memo((props: any) => {
         const wt = pt(latest.timestamp);
         const logTime = wt.getTime();
         const Ht = Date.now() - logTime;
-        const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
+        const isRecent = Ht < 15 * 60 * 1e3;
         const isAcknowledged = lastAckId === Ue || (lastAckTime > 0 && logTime <= lastAckTime);
 
         if (!isAcknowledged && isRecent) {
@@ -208,7 +208,7 @@ export const GarageDashboardView = memo((props: any) => {
         const logTime = wt.getTime();
         const Ht = Date.now() - logTime;
         const fallbackId = `recharge_${logTime}`;
-        const isRecent = Ht < 7 * 24 * 60 * 60 * 1e3;
+        const isRecent = Ht < 15 * 60 * 1e3;
         const isAcknowledged = lastAckId === fallbackId || (lastAckTime > 0 && logTime <= lastAckTime);
 
         if (!isAcknowledged && isRecent) {
