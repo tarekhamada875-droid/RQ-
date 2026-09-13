@@ -306,9 +306,6 @@ export function useVehicleOperations({
         
         showToast(errMsg, 'error');
         setShowCheckOutModal(false);
-        if (vehicleToOut) {
-          setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
-        }
         setSelectedVehicle(null);
       } finally {
         setIsLoading(false);
