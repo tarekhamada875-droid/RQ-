@@ -154,6 +154,7 @@ export function useVehicleOperations({
 
     const lockResult = await checkInLock.current(async () => {
       const previousVehicles = [...vehicles];
+      const previousGarage = garage ? { ...garage } : null;
       const optimisticVehicle: Vehicle = {
         id: raw,
         plateNumber: formatted,
@@ -168,6 +169,13 @@ export function useVehicleOperations({
       };
       
       setVehicles(prev => [optimisticVehicle, ...prev.filter(v => v.id !== raw)]);
+      // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR COUNTERS
+      setGarage(prev => prev ? {
+        ...prev,
+        carsInside: (prev.carsInside || 0) + 1,
+        todayCount: (prev.todayCount || 0) + 1,
+        lastTransactionDate: getCairoDateKey()
+      } : prev);
       setNewPlateNumber('');
       setShowCheckInModal(false);
       soundManager.play('checkIn');
@@ -217,6 +225,9 @@ export function useVehicleOperations({
         }
       } catch (error: any) {
         setVehicles(previousVehicles);
+        if (previousGarage) {
+          setGarage(previousGarage);
+        }
         if (error?.message === 'Operation already in progress') return;
         
         let message = error?.message || '';
@@ -261,15 +272,22 @@ export function useVehicleOperations({
 
     const lockResult = await checkOutLock.current(async () => {
       const previousVehicles = [...vehicles];
+      const previousGarage = garage ? { ...garage } : null;
       setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
+      const cost = calculateCost(vehicleToOut, garage, now);
+      // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR CHECK-OUT
+      setGarage(prev => prev ? {
+        ...prev,
+        carsInside: Math.max(0, (prev.carsInside || 0) - 1),
+        todayRevenue: Number(((prev.todayRevenue || 0) + cost).toFixed(2)),
+        totalRevenue: Number(((prev.totalRevenue || 0) + cost).toFixed(2))
+      } : prev);
       setShowCheckOutModal(false);
       setSelectedVehicle(null);
       setNewPlateNumber('');
       soundManager.play('checkOut');
       
       try {
-        const cost = calculateCost(vehicleToOut, garage, now);
-
         const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
           firestoreService.checkOutVehicle(
             garage.id,
@@ -285,6 +303,9 @@ export function useVehicleOperations({
         }
       } catch (error: any) {
         setVehicles(previousVehicles);
+        if (previousGarage) {
+          setGarage(previousGarage);
+        }
         setSelectedVehicle(vehicleToOut);
         
         if (error?.message === 'Operation already in progress') return;
@@ -357,9 +378,17 @@ export function useVehicleOperations({
 
     const vehicleToDelete = selectedVehicle;
     const previousVehicles = [...vehicles];
+    const previousGarage = garage ? { ...garage } : null;
+    const isInside = vehicleToDelete.status === 'inside';
     
-    // Optimistic deletion: instantly remove from UI
+    // Optimistic deletion: instantly remove from UI and decrement counter
     setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
+    if (isInside) {
+      setGarage(prev => prev ? {
+        ...prev,
+        carsInside: Math.max(0, (prev.carsInside || 0) - 1)
+      } : prev);
+    }
     setSelectedVehicle(null);
     setNewPlateNumber('');
     showToast('اللوحة اتمسحت بنجاح');
@@ -376,12 +405,18 @@ export function useVehicleOperations({
       if (!success) {
         // Rollback on failure
         setVehicles(previousVehicles);
+        if (previousGarage) {
+          setGarage(previousGarage);
+        }
         showToast('فشل في حذف السيارة، جرب تانى', 'error');
       }
     } catch (err: any) {
       console.error('Delete Vehicle Error:', err);
       // Rollback on error
       setVehicles(previousVehicles);
+      if (previousGarage) {
+        setGarage(previousGarage);
+      }
       if (err?.message === 'reached_daily_deletion_limit' || err?.message?.includes('reached_daily_deletion_limit')) {
         showToast('وصلت للحد الأقصى للحذف اليوم (3 مرات)', 'error');
       } else {

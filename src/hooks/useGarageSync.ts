@@ -87,7 +87,7 @@ export function useGarageSync({
         });
       }
       hasReceivedInitialSnapshot = true;
-    }, 1500);
+    }, 100);
 
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
       throttledVehicleUpdate(activeVehicles);
