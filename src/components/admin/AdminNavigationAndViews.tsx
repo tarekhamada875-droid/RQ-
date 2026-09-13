@@ -8,14 +8,17 @@ import {
   Wallet,
   Key,
   ClipboardList,
-  ChevronRight
+  ChevronRight,
+  Clock
 } from 'lucide-react';
 import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
 import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
+import { AdminTrialLeadsView } from './AdminTrialLeadsView';
 import { AdminPackagesView } from './AdminPackagesView';
+import { garageService } from '../../services/garageService';
 import { AdminFairUseView } from './AdminFairUseView';
 import { AdminWalletView } from './AdminWalletView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
@@ -55,6 +58,7 @@ interface AdminNavigationAndViewsProps {
   loadAdminGaragePage: (reset?: boolean) => void;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
@@ -90,6 +94,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   loadAdminGaragePage,
   adminLang,
   t,
+  showToast
 }) => {
   const unlimitedGarages = React.useMemo(() => {
     return approvedGarages.filter(g => {
@@ -103,6 +108,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       return Boolean(hasFU || isUnlimitedPkg);
     });
   }, [approvedGarages]);
+
+  const trialLeadsCount = React.useMemo(() => {
+    return allGarages.filter(g => g.trialDecision === 'continued' || g.trialDecision === 'declined').length;
+  }, [allGarages]);
 
   return (
     <>
@@ -157,6 +166,29 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                     : 'bg-rose-500 text-white'
                 }`}>
                   {rechargeRequests.length + pendingGarages.length}
+                </span>
+              )}
+            </button>
+
+            {/* Tab: Trial Leads */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('trial_leads')}
+              className={`flex shrink-0 snap-start items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                activeTab === 'trial_leads'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Clock className="w-4 h-4 text-emerald-400" />
+              <span>{t('متابعة التجارب')}</span>
+              {trialLeadsCount > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                  activeTab === 'trial_leads'
+                    ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
+                    : 'bg-emerald-500 text-white'
+                }`}>
+                  {trialLeadsCount}
                 </span>
               )}
             </button>
@@ -364,6 +396,30 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           handleRejectGarage={handleRejectGarage}
           adminLang={adminLang}
           t={t}
+        />
+      ) : activeTab === 'trial_leads' ? (
+        <AdminTrialLeadsView
+          garages={allGarages}
+          onSelectGarage={onSelectGarage}
+          onDeleteGarage={(garageId, garageName) => {
+            setConfirmDialog({
+              isOpen: true,
+              title: `حذف الجراج (${garageName})`,
+              message: `هل أنت متأكد من حذف الجراج (${garageName}) وكافة بياناته نهائياً؟ هذا الإجراء غير قابل للتراجع.`,
+              onConfirm: async () => {
+                try {
+                  await garageService.deleteGarage(garageId);
+                  showToast?.('تم حذف الجراج بنجاح', 'success');
+                } catch (err: any) {
+                  showToast?.(`حدث خطأ أثناء حذف الجراج: ${err.message || err}`, 'error');
+                }
+              }
+            });
+          }}
+          onRechargeGarage={(garage) => {
+            onSelectGarage(garage);
+          }}
+          showToast={showToast}
         />
       ) : activeTab === 'packages' ? (
         <AdminPackagesView

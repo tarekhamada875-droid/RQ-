@@ -24,6 +24,7 @@ import {
   FileText,
 } from "lucide-react";
 import { Announcement } from "../../types";
+import { TrialExpiryModal } from "../modals/TrialExpiryModal";
 import { FlipNumber } from "../ui/FlipNumber";
 import { AnimatedCounter } from "../AnimatedCounter";
 import { useTheme } from "../../utils/ThemeContext";
@@ -139,6 +140,22 @@ export const GarageDashboardView = memo((props: any) => {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const prevBalanceRef = useRef<number>(t?.balance || 0);
+  useEffect(() => {
+    if (t?.balance !== undefined) {
+      if (t.balance > prevBalanceRef.current) {
+        const diff = t.balance - prevBalanceRef.current;
+        if (V) {
+          V(`تم إضافة ${diff} ج.م للرصيد بنجاح`, 'success');
+        }
+        try {
+          Rn.play('checkIn');
+        } catch (e) {}
+      }
+      prevBalanceRef.current = t.balance;
+    }
+  }, [t?.balance, V]);
 
   const packageDays = useMemo(() => {
       if (!t) return 30;
@@ -1178,6 +1195,10 @@ export const GarageDashboardView = memo((props: any) => {
       <AnnouncementModal
         announcement={selectedAnnouncement}
         onClose={() => setSelectedAnnouncement(null)}
+      />
+      <TrialExpiryModal
+        garage={t}
+        showToast={V}
       />
     </div>
   );

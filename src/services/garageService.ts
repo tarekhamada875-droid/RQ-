@@ -211,14 +211,28 @@ export const garageService = {
       if ('balanceExpiry' in data && data.balanceExpiry === null && data.status === 'approved') {
         throw new Error('لا يمكن حذف تاريخ انتهاء الاشتراك لجراج مفعل');
       }
+      const newPin = data.pin || (data as any).ownerPin;
+      if (newPin) {
+        await apiFetch('/api/people/update-pin', {
+          method: 'POST',
+          body: { entityType: 'garages', entityId: id, newPin }
+        });
+      }
+
       const payload: any = { ...data };
-      if (data.pin || (data as any).ownerPin) {
+      delete payload.pin;
+      delete payload.ownerPin;
+
+      if (newPin) {
         payload.currentSessionId = null;
       }
-      await apiFetch('/api/garages/update', {
-        method: 'POST',
-        body: { id, ...payload }
-      });
+
+      if (Object.keys(payload).length > 0) {
+        await apiFetch('/api/garages/update', {
+          method: 'POST',
+          body: { id, ...payload }
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${id}`);
       throw error;

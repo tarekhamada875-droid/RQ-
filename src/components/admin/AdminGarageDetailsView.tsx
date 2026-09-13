@@ -35,6 +35,8 @@ import { BALANCE_PRESET_AMOUNTS } from '../../constants/packages';
 import { useTheme } from '../../utils/ThemeContext';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useAdminTranslation } from '../../utils/adminTranslations';
+import { soundManager } from '../../utils/sounds';
+import { useAppStore } from '../../store/appStore';
 
 interface AdminGarageDetailsViewProps {
   selectedGarageForDetails: Garage;
@@ -77,9 +79,10 @@ export const AdminGarageDetailsView = memo(({
   // Accordion state for Zone 3
   const [isZone3Open, setIsZone3Open] = useState(false);
 
-  const [isEditingGaragePin, setIsEditingGaragePin] = useState(false);
+  const [showEditGaragePinModal, setShowEditGaragePinModal] = useState(false);
   const [garagePinInput, setGaragePinInput] = useState(selectedGarageForDetails.pin || '');
   const [isUpdatingGaragePin, setIsUpdatingGaragePin] = useState(false);
+  const [pinError, setPinError] = useState('');
 
   const [editingStaffPinId, setEditingStaffPinId] = useState<string | null>(null);
   const [editingStaffPinValue, setEditingStaffPinValue] = useState<string>('');
@@ -152,11 +155,26 @@ export const AdminGarageDetailsView = memo(({
   const handleTopupSubmit = async () => {
     if (!selectedTopupAmount || selectedTopupAmount <= 0) return;
     setIsLoading(true);
+    const { showToast } = useAppStore.getState();
     try {
       await firestoreService.adminTopupGarageBalance(
         selectedGarageForDetails.id,
         selectedTopupAmount
       );
+      
+      try {
+        soundManager.play("checkIn");
+      } catch (err) {
+        console.error("Sound error", err);
+      }
+      
+      showToast?.(
+        adminLang === 'en'
+          ? `Successfully added ${selectedTopupAmount} EGP to balance`
+          : `تم إضافة ${selectedTopupAmount} ج.م للرصيد بنجاح`,
+        'success'
+      );
+      
       setIsTopupSuccess(true);
       
       // Refresh garage details in state if updater is provided
@@ -326,70 +344,25 @@ export const AdminGarageDetailsView = memo(({
                     <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                       <Key className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                       <span className="text-[10px] text-slate-500">{t('رمز المالك:')}</span>
-                      {isEditingGaragePin ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            value={garagePinInput}
-                            maxLength={6}
-                            onChange={(e) => setGaragePinInput(e.target.value.replace(/\D/g, ''))}
-                            className="w-14 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black"
-                            placeholder="••••"
-                            autoFocus
-                          />
-                          <button
-                            onClick={async () => {
-                              if (garagePinInput.length < 4) return;
-                              setIsUpdatingGaragePin(true);
-                              try {
-                                const pinCheck = await firestoreService.isPinTaken(garagePinInput, selectedGarageForDetails.id);
-                                if (pinCheck.taken) {
-                                  setIsUpdatingGaragePin(false);
-                                  return;
-                                }
-                                await firestoreService.updateGarage(selectedGarageForDetails.id, { pin: garagePinInput, ownerPin: garagePinInput });
-                                selectedGarageForDetails.pin = garagePinInput;
-                                selectedGarageForDetails.ownerPin = garagePinInput;
-                                setIsEditingGaragePin(false);
-                              } catch (err) {
-                                console.error(err);
-                              } finally {
-                                setIsUpdatingGaragePin(false);
-                              }
-                            }}
-                            disabled={isUpdatingGaragePin}
-                            className="w-5 h-5 bg-emerald-600 text-white rounded flex items-center justify-center"
-                          >
-                            {isUpdatingGaragePin ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 stroke-[3]" />}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setGaragePinInput(selectedGarageForDetails.pin || '');
-                              setIsEditingGaragePin(false);
-                            }}
-                            className="text-[10px] text-slate-400 hover:underline px-0.5"
-                          >
-                            {t('إلغاء')}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
-                            {formatDisplayPin(selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin)}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setIsEditingGaragePin(true);
-                              const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
-                              setGaragePinInput(isHashedPin(p) ? '' : p);
-                            }}
-                            className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold"
-                          >
-                            {t('تعديل')}
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                          {formatDisplayPin(selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
+                            setGaragePinInput(isHashedPin(p) ? '' : p);
+                            setPinError('');
+                            setShowEditGaragePinModal(true);
+                          }}
+                          className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
+                        >
+                          {t('تعديل')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1227,6 +1200,118 @@ export const AdminGarageDetailsView = memo(({
                 {t('إلغاء')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Owner PIN Modal */}
+      {showEditGaragePinModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEditGaragePinModal(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-right animate-popup-30fps"
+            onClick={(e) => e.stopPropagation()}
+            dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+          >
+            <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/60">
+              <Key className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-1">
+              {t('تعديل رمز المالك')}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-bold mb-6">
+              {selectedGarageForDetails.name}
+            </p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (garagePinInput.length < 4) {
+                setPinError(adminLang === 'en' ? 'PIN must be at least 4 digits' : 'يجب أن يكون الرمز 4 أرقام على الأقل');
+                return;
+              }
+              setIsUpdatingGaragePin(true);
+              setPinError('');
+              try {
+                const pinCheck = await firestoreService.isPinTaken(garagePinInput, selectedGarageForDetails.id);
+                if (pinCheck.taken) {
+                  setPinError(adminLang === 'en' 
+                    ? `PIN used by ${pinCheck.name}` 
+                    : `الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
+                  setIsUpdatingGaragePin(false);
+                  return;
+                }
+                await firestoreService.updateGarage(selectedGarageForDetails.id, { pin: garagePinInput, ownerPin: garagePinInput });
+                selectedGarageForDetails.pin = garagePinInput;
+                selectedGarageForDetails.ownerPin = garagePinInput;
+                if (typeof setSelectedGarageForDetails === 'function') {
+                  setSelectedGarageForDetails({ ...selectedGarageForDetails, pin: garagePinInput, ownerPin: garagePinInput });
+                }
+                setShowEditGaragePinModal(false);
+              } catch (err: any) {
+                setPinError(err?.message || 'فشل تحديث الرمز');
+              } finally {
+                setIsUpdatingGaragePin(false);
+              }
+            }}>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
+                    {t('رمز الدخول الجديد (4-6 أرقام):')}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={garagePinInput}
+                    onChange={(e) => {
+                      setGaragePinInput(e.target.value.replace(/\D/g, ''));
+                      setPinError('');
+                    }}
+                    placeholder="••••"
+                    autoFocus
+                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none transition-all"
+                  />
+                  {pinError && (
+                    <p className="text-xs font-bold text-rose-500 text-center mt-2 animate-shake">
+                      {pinError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isUpdatingGaragePin || garagePinInput.length < 4}
+                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  {isUpdatingGaragePin ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      <span>{t('جاري الحفظ...')}</span>
+                    </>
+                  ) : (
+                    <span>{t('حفظ الرمز')}</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={isUpdatingGaragePin}
+                  onClick={() => setShowEditGaragePinModal(false)}
+                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
+                >
+                  {t('إلغاء')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

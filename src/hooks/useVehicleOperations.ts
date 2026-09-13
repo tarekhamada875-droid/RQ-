@@ -109,7 +109,9 @@ export function useVehicleOperations({
     
     if (garage.hasMonthlySubscribers) {
       try {
-        const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
+        const subPromise = firestoreService.getSubscriberByPlateOnce(garage.id, raw);
+        const timeoutPromise = new Promise<null>((res) => setTimeout(() => res(null), 200));
+        const subData = await Promise.race([subPromise, timeoutPromise]);
         if (subData && subData.endDate) {
           const end = safeDate(subData.endDate);
           const today = new Date();
@@ -151,9 +153,23 @@ export function useVehicleOperations({
     }
 
     const lockResult = await checkInLock.current(async () => {
-      setIsLoading(true);
-      setLoadingType(type);
+      const previousVehicles = [...vehicles];
+      const optimisticVehicle: Vehicle = {
+        id: raw,
+        plateNumber: formatted,
+        plateNumberRaw: raw,
+        entryTime: new Date() as any,
+        type: type,
+        garageId: garage.id,
+        status: 'inside',
+        staffId: currentStaff ? currentStaff.id : null,
+        staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
+        isSubscriber: isSubscriber
+      };
+      
+      setVehicles(prev => [optimisticVehicle, ...prev.filter(v => v.id !== raw)]);
       setNewPlateNumber('');
+      setShowCheckInModal(false);
       soundManager.play('checkIn');
       
       try {
@@ -199,13 +215,10 @@ export function useVehicleOperations({
             } : {}),
           } : prev);
         }
-
-        setShowCheckInModal(false);
       } catch (error: any) {
-        if (error?.message === 'Operation already in progress') {
-          showToast('جاري معالجة طلب الدخول... يرجى الانتظار', 'info');
-          return;
-        }
+        setVehicles(previousVehicles);
+        if (error?.message === 'Operation already in progress') return;
+        
         let message = error?.message || '';
         if (message.startsWith('{') && message.endsWith('}')) {
           try {
@@ -226,9 +239,6 @@ export function useVehicleOperations({
           setNewPlateNumber(formatted);
           showToast(message || 'حدث خطأ أثناء الدخول، تأكد من الاتصال بالإنترنت', 'error');
         }
-      } finally {
-        setIsLoading(false);
-        setLoadingType(null);
       }
     });
 
@@ -250,8 +260,11 @@ export function useVehicleOperations({
     const vehicleToOut = selectedVehicle;
 
     const lockResult = await checkOutLock.current(async () => {
-      setIsLoading(true);
-      setLoadingType('checkout');
+      const previousVehicles = [...vehicles];
+      setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
+      setShowCheckOutModal(false);
+      setSelectedVehicle(null);
+      setNewPlateNumber('');
       soundManager.play('checkOut');
       
       try {
@@ -270,16 +283,12 @@ export function useVehicleOperations({
         if (!res.success) {
           throw new Error(res.error);
         }
-
-        setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
-        setShowCheckOutModal(false);
-        setSelectedVehicle(null);
-        setNewPlateNumber('');
       } catch (error: any) {
-        if (error?.message === 'Operation already in progress') {
-          showToast('جاري معالجة طلب الخروج... يرجى الانتظار', 'info');
-          return;
-        }
+        setVehicles(previousVehicles);
+        setSelectedVehicle(vehicleToOut);
+        
+        if (error?.message === 'Operation already in progress') return;
+        
         console.error('CheckOut Error:', error);
         let errMsg = 'حدث خطأ أثناء الخروج';
         
@@ -307,9 +316,6 @@ export function useVehicleOperations({
         showToast(errMsg, 'error');
         setShowCheckOutModal(false);
         setSelectedVehicle(null);
-      } finally {
-        setIsLoading(false);
-        setLoadingType(null);
       }
     });
 
@@ -346,29 +352,36 @@ export function useVehicleOperations({
     }
 
     deletingVehicleRef.current = selectedVehicle.id;
-    setIsLoading(true);
-    setLoadingType('delete');
     soundManager.play('checkOut');
-
     setShowCheckOutModal(false);
+
+    const vehicleToDelete = selectedVehicle;
+    const previousVehicles = [...vehicles];
+    
+    // Optimistic deletion: instantly remove from UI
+    setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
+    setSelectedVehicle(null);
+    setNewPlateNumber('');
+    showToast('اللوحة اتمسحت بنجاح');
 
     try {
       const success = await firestoreService.deleteVehicleWithRefund(
         garage.id,
-        selectedVehicle.id,
+        vehicleToDelete.id,
         0,
         todayYMD,
         currentStaff ? currentStaff.name : 'مدير الجراج',
         currentStaff ? currentStaff.id : undefined
       );
-      if (success) {
-        setVehicles(prev => prev.filter(v => v.id !== selectedVehicle.id));
-        showToast('اللوحة اتمسحت بنجاح');
-      } else {
+      if (!success) {
+        // Rollback on failure
+        setVehicles(previousVehicles);
         showToast('فشل في حذف السيارة، جرب تانى', 'error');
       }
     } catch (err: any) {
       console.error('Delete Vehicle Error:', err);
+      // Rollback on error
+      setVehicles(previousVehicles);
       if (err?.message === 'reached_daily_deletion_limit' || err?.message?.includes('reached_daily_deletion_limit')) {
         showToast('وصلت للحد الأقصى للحذف اليوم (3 مرات)', 'error');
       } else {
@@ -376,12 +389,8 @@ export function useVehicleOperations({
       }
     } finally {
       deletingVehicleRef.current = null;
-      setSelectedVehicle(null);
-      setNewPlateNumber('');
-      setLoadingType(null);
-      setIsLoading(false);
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, isLoading]);
+  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, vehicles]);
 
   return {
     newPlateNumber,

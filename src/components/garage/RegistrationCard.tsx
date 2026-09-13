@@ -45,7 +45,7 @@ export const RegistrationCard = memo(({
   const handleGuardedCheckIn = (type: 'hourly' | 'overnight') => {
     if (isDebouncing || isLoading) return;
     setIsDebouncing(true);
-    setTimeout(() => setIsDebouncing(false), 1200);
+    setTimeout(() => setIsDebouncing(false), 300);
     closeKeyboard();
     handleCheckIn(type);
   };
@@ -53,7 +53,7 @@ export const RegistrationCard = memo(({
   const handleGuardedCheckOut = (vehicle: Vehicle) => {
     if (isDebouncing || isLoading) return;
     setIsDebouncing(true);
-    setTimeout(() => setIsDebouncing(false), 1200);
+    setTimeout(() => setIsDebouncing(false), 300);
     closeKeyboard();
     setNewPlateNumber('');
     onCheckOut(vehicle);
@@ -157,23 +157,17 @@ export const RegistrationCard = memo(({
               }`} dir="ltr">
                 {/* Authentic Egyptian Plate Header */}
                 <div className="flex items-center justify-between px-3 sm:px-6 font-black bg-[#0057b7] text-white shrink-0 h-8 sm:h-11 md:h-14 border-b-2 border-slate-900/20 select-none">
-                  {/* Left Screw Rivet + English Name */}
+                  {/* Left Screw Rivet */}
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40 shadow-inner inline-block" />
-                    <span className="text-[11px] sm:text-base md:text-xl tracking-[0.2em] font-black uppercase font-mono drop-shadow-sm">
-                      EGYPT
-                    </span>
                   </div>
 
-                  {/* Right Screw Rivet + Arabic Name */}
+                  {/* Right Screw Rivet */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs sm:text-lg md:text-2xl font-black font-serif tracking-wider drop-shadow-sm" dir="rtl">
-                      مـصـر
-                    </span>
                     <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-gradient-to-tr from-slate-400 to-slate-100 border border-slate-600/40 shadow-inner inline-block" />
                   </div>
                 </div>
- 
+
                 {/* Plate Content */}
                 <div className="flex-1 flex items-center justify-between bg-[#ffffff] overflow-hidden">
                   {/* Numbers Section (Left) */}
@@ -188,13 +182,13 @@ export const RegistrationCard = memo(({
                           : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
-                      {getPlateParts(newPlateNumber).numbers || (isInputFocused ? '' : '١ ٢ ٣')}
+                      {getPlateParts(newPlateNumber).numbers}
                     </FitText>
                   </div>
- 
+
                   {/* Vertical Divider */}
                   <div className="w-[2px] md:w-[3px] h-[70%] bg-slate-300 rounded-full" />
- 
+
                   {/* Letters Section (Right) */}
                   <div className="flex-1 h-full min-w-0 flex justify-center items-center px-2" dir="rtl">
                     <FitText
@@ -216,7 +210,7 @@ export const RegistrationCard = memo(({
                             {char}
                           </span>
                         ))
-                      ) : (isInputFocused ? '' : 'أ ب ج')}
+                      ) : null}
                     </FitText>
                   </div>
                 </div>

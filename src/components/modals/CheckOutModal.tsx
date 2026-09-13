@@ -47,34 +47,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     onConfirm();
   };
 
-  const [isGenerating, setIsGenerating] = React.useState(true);
-  const [generationProgress, setGenerationProgress] = React.useState(0);
+  const isGenerating = false;
+  const generationProgress = 100;
 
   const loadingStatus = React.useMemo(() => {
-    if (generationProgress < 50) return 'جاري الحساب...';
     return 'جاري الإصدار...';
-  }, [generationProgress]);
-
-  React.useEffect(() => {
-    let startTimestamp: number | null = null;
-    const duration = 2000; // 2 seconds
-    
-    const animate = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const elapsed = timestamp - startTimestamp;
-      const progress = Math.min(100, (elapsed / duration) * 100);
-      
-      setGenerationProgress(Math.floor(progress));
-      
-      if (elapsed < duration) {
-        requestAnimationFrame(animate);
-      } else {
-        setIsGenerating(false);
-      }
-    };
-    
-    const animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
   }, []);
 
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);

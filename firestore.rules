@@ -446,7 +446,7 @@ service cloud.firestore {
 
     function isAllowedGarageSessionUpdate() {
       return incoming().diff(existing()).affectedKeys().hasOnly([
-               'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive'
+               'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive', 'trialDecision', 'trialDecisionAt'
              ]) &&
              (!('hourlyRate' in incoming()) || (incoming().hourlyRate is number && incoming().hourlyRate >= 0 && incoming().hourlyRate <= 10000)) &&
              (!('overnightRate' in incoming()) || (incoming().overnightRate is number && incoming().overnightRate >= 0 && incoming().overnightRate <= 10000)) &&
@@ -659,6 +659,7 @@ service cloud.firestore {
       allow delete: if false; // Server-only via Admin SDK
       
       allow update: if isValidId(garageId) && isSignedIn() && (
+        isAdmin() ||
         (isGarageSession(garageId) && isAllowedGarageSessionUpdate()) ||
         (isDelegateForGarage(garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
       );

@@ -31,7 +31,9 @@
         "lastReferralClaimAt": { "type": "string", "format": "date-time", "description": "Timestamp when reward days were last claimed" },
         "totalGaragesReferredCount": { "type": "number", "description": "Total number of garages referred" },
         "referralRewardAwardedAt": { "type": "string", "format": "date-time", "description": "Timestamp when referral reward was awarded" },
-        "activePlates": { "type": "object", "description": "Map of currently active plate numbers to their vehicle IDs" }
+        "activePlates": { "type": "object", "description": "Map of currently active plate numbers to their vehicle IDs" },
+        "trialDecision": { "type": "string", "description": "Trial decision status: continued or declined" },
+        "trialDecisionAt": { "type": "string", "format": "date-time", "description": "Timestamp when trial decision was made" }
       },
       "required": ["name", "phone", "hourlyRate", "overnightRate", "subscriptionExpiry", "subscriptionDays"]
     },
