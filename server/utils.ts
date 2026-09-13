@@ -470,7 +470,19 @@ export function calculateVehicleCost(
   }
 
   const hourlyRate = Number(garageData.hourlyRate || 0);
+  const overnightRate = Number(garageData.overnightRate || 0);
   const hours = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
-  return Number((hours * hourlyRate).toFixed(2));
+  let total = hours * hourlyRate;
+
+  // Day-Cap Rate Optimization: if stay spans >= 24h and overnight rate is defined, cap multi-day chunks
+  if (overnightRate > 0 && diffMs >= (1000 * 60 * 60 * 24)) {
+    const fullDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const remMs = diffMs % (1000 * 60 * 60 * 24);
+    const remHours = Math.ceil(remMs / (1000 * 60 * 60));
+    const blended = (fullDays * overnightRate) + Math.min(overnightRate, remHours * hourlyRate);
+    total = Math.min(total, blended);
+  }
+
+  return Number(total.toFixed(2));
 }
 

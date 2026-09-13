@@ -241,8 +241,19 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
   
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
+    const overnightRate = garage.overnightRate || 0;
     const hours = Math.ceil(diffMs / MS_PER_HOUR);
-    const total = Math.max(1, hours) * hourlyRate;
+    let total = Math.max(1, hours) * hourlyRate;
+
+    // Day-Cap Rate Optimization: if stay spans >= 24h and overnight rate is defined, cap multi-day chunks
+    if (overnightRate > 0 && diffMs >= MS_PER_DAY) {
+      const fullDays = Math.floor(diffMs / MS_PER_DAY);
+      const remMs = diffMs % MS_PER_DAY;
+      const remHours = Math.ceil(remMs / MS_PER_HOUR);
+      const blended = (fullDays * overnightRate) + Math.min(overnightRate, remHours * hourlyRate);
+      total = Math.min(total, blended);
+    }
+
     return Math.round(total * 100) / 100;
   }
   return 0;

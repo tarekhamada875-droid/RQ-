@@ -858,9 +858,9 @@ export function createApp() {
 
   // Secure Server API: Server-Authoritative Garage Package Recharge Engine
   app.post('/api/transactions/recharge-garage', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    const ALLOWED_ROLES = ['admin', 'delegate'];
+    const ALLOWED_ROLES = ['admin'];
     if (!ALLOWED_ROLES.includes(req.user?.role || '')) {
-      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_SUPERVISOR_OR_OWNING_DELEGATE_ONLY', req.correlationId);
+      return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_ONLY', req.correlationId);
     }
     try {
       const sanitized = sanitizePayload(req.body, ['garageId', 'packageId', 'adminDetails', 'idempotencyKey'], false);
@@ -2085,15 +2085,29 @@ export function createApp() {
           lastRefundDate: todayYMD
         };
 
-        if (refundAmt > 0) updates.balance = (garageData.balance || 0) + refundAmt;
+        // If an exited vehicle that paid cash is deleted/refunded, decrement cash revenue to match actual drawer cash
+        if (refundAmt > 0) {
+          updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
+          updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
+        }
         if (vehicleData.status === 'inside') updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
         if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
 
         t.set(garageRef, updates, { merge: true });
 
-        if (enteredToday && dailyStatsDoc.exists) {
-          const prevCount = dailyStatsDoc.data()?.count || 0;
-          if (prevCount > 0) t.set(dailyStatsRef, { count: prevCount - 1 }, { merge: true });
+        if (dailyStatsDoc.exists) {
+          const statsUpdates: any = {};
+          if (enteredToday) {
+            const prevCount = dailyStatsDoc.data()?.count || 0;
+            if (prevCount > 0) statsUpdates.count = prevCount - 1;
+          }
+          if (refundAmt > 0) {
+            const prevRev = dailyStatsDoc.data()?.revenue || 0;
+            statsUpdates.revenue = Math.max(0, Number((prevRev - refundAmt).toFixed(2)));
+          }
+          if (Object.keys(statsUpdates).length > 0) {
+            t.set(dailyStatsRef, statsUpdates, { merge: true });
+          }
         }
 
         const logRef = adminDb.collection('activity_logs').doc();
