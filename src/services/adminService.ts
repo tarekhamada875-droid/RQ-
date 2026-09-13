@@ -310,7 +310,7 @@ export const adminService = {
     }
   },
 
-  renewSubscriber: async (garageId: string, subscriberId: string, _costUnits: number, newDates: { startDate: string, endDate: string }) => {
+  renewSubscriber: async (garageId: string, subscriberId: string, newDates: { startDate: string, endDate: string }) => {
     try {
       await apiFetch('/api/subscribers/renew', {
         method: 'POST',

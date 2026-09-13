@@ -56,6 +56,14 @@
         { "fieldPath": "garageId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "garages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdByDelegateId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

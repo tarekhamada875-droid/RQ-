@@ -3,8 +3,7 @@ import { Users, Plus, X, Search, Clock, Save, Edit, Trash2, CalendarDays, Phone,
 import { firestoreService } from '../../services';
 import { auth } from '../../firebase';
 import { Subscriber, Garage } from '../../types';
-import { getCleanPlate, getRawPlate, formatPlateNumber, normalizeArabicSearch, isSubscriptionExpired as checkSubscriptionExpired, applyMonthlySubscribersFlatFee, safeDate } from '../../utils';
-import { useSystemSubscribersFlatFee } from '../../hooks/useSystemSubscribersFlatFee';
+import { getCleanPlate, getRawPlate, formatPlateNumber, normalizeArabicSearch, isSubscriptionExpired as checkSubscriptionExpired, safeDate } from '../../utils';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
@@ -37,7 +36,6 @@ interface SubscribersViewProps {
 }
 
 export const SubscribersView = memo(({ garage, onClose, showToast }: SubscribersViewProps) => {
-  const subscriberFlatFee = useSystemSubscribersFlatFee();
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -276,15 +274,13 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
     setShowRenewModal(true);
   };
 
-  const handleConfirmRenew = async (type: 'week' | 'two_weeks' | 'month', costUnits: number) => {
+  const handleConfirmRenew = async (type: 'week' | 'two_weeks' | 'month') => {
     if (!activeSubscriberForRenew) return;
 
     if (isSubscriptionExpired) {
       showToast('عفواً، انتهى اشتراك الجراج. برجاء تجديد الاشتراك أولاً.', 'error');
       return;
     }
-
-    const effectiveCostUnits = applyMonthlySubscribersFlatFee(costUnits, !!garage.hasMonthlySubscribers, subscriberFlatFee);
 
     setIsSubmitting(true);
     try {
@@ -307,7 +303,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
         endDate: formatDateKey(newEndDate)
       };
 
-      await firestoreService.renewSubscriber(garage.id, activeSubscriberForRenew.id, effectiveCostUnits, newDates);
+      await firestoreService.renewSubscriber(garage.id, activeSubscriberForRenew.id, newDates);
       
       const label = type === 'week' ? 'أسبوع' : type === 'two_weeks' ? 'أسبوعين' : 'شهر واحد';
       showToast(`تم تجديد الاشتراك بنجاح لمدة ${label}`, 'success');
@@ -327,9 +323,6 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
       showToast('يرجى إكمال جميع البيانات', 'error');
       return;
     }
-
-    const baseUnits = 5;
-    const effectiveUnits = applyMonthlySubscribersFlatFee(baseUnits, !!garage.hasMonthlySubscribers, subscriberFlatFee);
 
     if (!editingSubscriber) {
       if (isSubscriptionExpired) {
@@ -351,7 +344,6 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
         startDate,
         endDate,
         garageId: garage.id,
-        costUnits: effectiveUnits
       };
 
       if (editingSubscriber) {
@@ -838,9 +830,9 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
               <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider pr-1">خيارات التوقيت والخصم المتاحة:</p>
               
               <div className="space-y-3">
-                {[{ type: 'week' as const, label: 'تجديد لمدة أسبوع', costUnits: 5, days: 7 },
-                  { type: 'two_weeks' as const, label: 'تجديد لمدة أسبوعين', costUnits: 5, days: 14 },
-                  { type: 'month' as const, label: 'تجديد لمدة شهر واحد', costUnits: 5, days: null }].map((opt) => {
+                {[{ type: 'week' as const, label: 'تجديد لمدة أسبوع', days: 7 },
+                  { type: 'two_weeks' as const, label: 'تجديد لمدة أسبوعين', days: 14 },
+                  { type: 'month' as const, label: 'تجديد لمدة شهر واحد', days: null }].map((opt) => {
                   
                   // Calculate dynamic future expiration date preview
                   const todayKey = getCairoDateKey();
@@ -860,7 +852,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
                       key={opt.type}
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => handleConfirmRenew(opt.type, opt.costUnits)}
+                      onClick={() => handleConfirmRenew(opt.type)}
                       className="w-full text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-[#faf9f6] dark:bg-slate-900 hover:bg-blue-50/10 dark:hover:bg-blue-400/5 transition-all outline-none flex items-center justify-between group active:scale-[0.98] disabled:opacity-50"
                     >
                       <div className="space-y-1">

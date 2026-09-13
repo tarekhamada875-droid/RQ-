@@ -139,6 +139,32 @@ export function validateString(
 }
 
 /**
+ * Validates subscriber date keys and guarantees a non-negative date range.
+ * Date-only values are interpreted as calendar dates, not server-local times.
+ */
+export function validateDateRange(startDate: any, endDate: any, fieldPrefix = 'subscriber'): { startDate: string; endDate: string } {
+  const start = validateString(startDate, `${fieldPrefix} start date`, { required: true, allowEmptyString: false, pattern: /^\d{4}-\d{2}-\d{2}$/ });
+  const end = validateString(endDate, `${fieldPrefix} end date`, { required: true, allowEmptyString: false, pattern: /^\d{4}-\d{2}-\d{2}$/ });
+
+  const parseDateKey = (value: string) => {
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? date : null;
+  };
+
+  const parsedStart = parseDateKey(start);
+  const parsedEnd = parseDateKey(end);
+  if (!parsedStart || !parsedEnd) {
+    throw new ValidationError('Subscriber dates must be valid calendar dates', 'INVALID_SUBSCRIBER_DATES', 400);
+  }
+  if (parsedEnd.getTime() < parsedStart.getTime()) {
+    throw new ValidationError('Subscriber end date cannot be before start date', 'INVALID_SUBSCRIBER_DATE_RANGE', 400);
+  }
+
+  return { startDate: start, endDate: end };
+}
+
+/**
  * Validates vehicle plate input
  */
 export function validatePlate(val: any, fieldName = 'Plate Number'): { plateNumber: string; plateRaw: string } {
