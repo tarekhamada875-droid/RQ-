@@ -11,16 +11,16 @@ import { Timestamp } from 'firebase/firestore';
 
 export const safeDate = (date: any): Date => {
   if (!date) return new Date();
+  if (date instanceof Date) {
+    return isNaN(date.getTime()) || date.getTime() < 31536000000 ? new Date() : date;
+  }
   if (typeof Timestamp === 'function' && date instanceof Timestamp) return date.toDate();
   if (typeof date?.toDate === 'function') return date.toDate();
   
   // Handle Firestore internal object structure if passed directly
-  if (typeof date === 'object' && date.seconds !== undefined) {
-    try {
-      return new Timestamp(date.seconds, date.nanoseconds || 0).toDate();
-    } catch (e) {
-      return new Date();
-    }
+  if (typeof date === 'object' && typeof date.seconds === 'number') {
+    const millis = date.seconds * 1000 + Math.floor((date.nanoseconds || 0) / 1000000);
+    return isNaN(millis) || millis < 31536000000 ? new Date() : new Date(millis);
   }
 
   const d = new Date(date);
@@ -44,35 +44,20 @@ export const sortGaragesNewestFirst = <T extends { createdAt?: any }>(garages: T
 
 export const normalizeDigits = (val: string): string => {
   if (!val) return '';
-  const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
-  const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
-  const arabicDecimal = '٫';
-  let result = '';
-  for (let i = 0; i < val.length; i++) {
-    const char = val[i];
-    const aIdx = arabicDigits.indexOf(char);
-    if (aIdx !== -1) {
-      result += aIdx.toString();
-    } else {
-      const pIdx = persianDigits.indexOf(char);
-      if (pIdx !== -1) {
-        result += pIdx.toString();
-      } else if (char === arabicDecimal) {
-        result += '.';
-      } else {
-        result += char;
-      }
-    }
-  }
-  return result;
+  return val.replace(/[\u0660-\u0669\u06F0-\u06F9٫]/g, (char) => {
+    if (char === '٫') return '.';
+    const code = char.charCodeAt(0);
+    if (code >= 1632 && code <= 1641) return String(code - 1632);
+    if (code >= 1776 && code <= 1785) return String(code - 1776);
+    return char;
+  });
 };
 
 export const normalizeLetters = (val: string): string => {
   if (!val) return '';
   // Force any Alef variation to be Alef with Hamza (أ) as per Egyptian plate standard
   // Also normalize Yeh (ى) to (ي) to treat them as the same as requested
-  return val.replace(/[اإآ]/g, 'أ')
-            .replace(/[ى]/g, 'ي');
+  return val.replace(/[اإآى]/g, m => (m === 'ى' ? 'ي' : 'أ'));
 };
 
 /**
@@ -83,48 +68,49 @@ export const normalizeArabicSearch = (text: string): string => {
   if (!text) return '';
   return text
     .toLowerCase()
-    .replace(/[أإآا]/g, 'ا')
-    .replace(/[ةه]/g, 'ه')
-    .replace(/[ىي]/g, 'ي')
+    .replace(/[أإآاةهىي]/g, m => {
+      if (m === 'ة' || m === 'ه') return 'ه';
+      if (m === 'ى' || m === 'ي') return 'ي';
+      return 'ا';
+    })
     .trim();
 };
 
 export const getCleanPlate = (val: string): string => {
   if (!val) return '';
-  const letters: string[] = [];
-  const numbers: string[] = [];
+  let letters = '';
+  let numbers = '';
   
   const normalized = normalizeLetters(val);
   for (let i = 0; i < normalized.length; i++) {
     const char = normalized[i];
     // Numbers (English, Arabic, Persian)
-    if (/[0-9\u0660-\u0669\u06F0-\u06F9]/.test(char)) {
-      if (numbers.length < 4) numbers.push(char);
+    if ((char >= '0' && char <= '9') || (char >= '\u0660' && char <= '\u0669') || (char >= '\u06F0' && char <= '\u06F9')) {
+      if (numbers.length < 4) numbers += char;
     } 
     // Arabic Letters Only (Range \u0621-\u064A covers basic letters and hamzas)
-    else if (/[\u0621-\u064A]/.test(char)) {
-      if (letters.length < 4) letters.push(char);
+    else if (char >= '\u0621' && char <= '\u064A') {
+      if (letters.length < 4) letters += char;
     }
-    // All other characters (symbols, latin letters) are ignored
   }
-  return letters.join('') + numbers.join('');
+  return letters + numbers;
 };
 
 export const getRawPlate = (val: string): string => {
   if (!val) return '';
-  const letters: string[] = [];
-  const numbers: string[] = [];
+  let letters = '';
+  let numbers = '';
   
   const normalized = normalizeLetters(normalizeDigits(val));
   for (let i = 0; i < normalized.length; i++) {
     const char = normalized[i];
-    if (/[0-9]/.test(char)) {
-      if (numbers.length < 4) numbers.push(char);
-    } else if (/[\u0621-\u064A]/.test(char)) {
-      if (letters.length < 4) letters.push(char);
+    if (char >= '0' && char <= '9') {
+      if (numbers.length < 4) numbers += char;
+    } else if (char >= '\u0621' && char <= '\u064A') {
+      if (letters.length < 4) letters += char;
     }
   }
-  return letters.join('') + numbers.join('');
+  return letters + numbers;
 };
 
 export interface PlateParts {
@@ -165,21 +151,21 @@ export const formatPlateNumber = (val: string): string => {
   if (!val) return '';
   
   const letters: string[] = [];
-  const numbers: string[] = [];
+  let numbers = '';
   
   const normalized = normalizeLetters(val);
   for (let i = 0; i < normalized.length; i++) {
     const char = normalized[i];
-    if (/[0-9\u0660-\u0669\u06F0-\u06F9]/.test(char)) {
-      if (numbers.length < 4) numbers.push(char);
-    } else if (/[\u0621-\u064A]/.test(char)) {
+    if ((char >= '0' && char <= '9') || (char >= '\u0660' && char <= '\u0669') || (char >= '\u06F0' && char <= '\u06F9')) {
+      if (numbers.length < 4) numbers += char;
+    } else if (char >= '\u0621' && char <= '\u064A') {
       if (letters.length < 4) letters.push(char);
     }
   }
   
   if (letters.length === 0 && numbers.length === 0) return '';
   // Join letters with spaces, but numbers WITHOUT spaces to prevent RTL reversal of digit order
-  return letters.join(' ') + ' : ' + numbers.join('');
+  return letters.join(' ') + ' : ' + numbers;
 };
 
 export const getDuration = (entryTime: any, referenceNow?: Date): string => {
@@ -211,6 +197,10 @@ export const getDuration = (entryTime: any, referenceNow?: Date): string => {
   return `${minutes} دقيقة`;
 };
 
+const MS_PER_HOUR = 3600000;
+const MS_PER_DAY = 86400000;
+const GRACE_PERIOD_MS = 300000;
+
 export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): number => {
   if (!vehicle || !garage) return 0;
   
@@ -227,16 +217,16 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
   const diffMs = now.getTime() - start.getTime();
 
   // If it's been less than 5 minutes, it's FREE (protection against accidental entry error)
-  if (diffMs < 300000) return 0;
+  if (diffMs < GRACE_PERIOD_MS) return 0;
 
   // 0. Subscribers are always FREE at check-out
   if (vehicle.isSubscriber) return 0;
 
   if (type === 'overnight') {
     const overnightRate = garage.overnightRate || 0;
-    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const days = Math.ceil(diffMs / MS_PER_DAY);
     const total = Math.max(1, days) * overnightRate;
-    return Number(total.toFixed(2));
+    return Math.round(total * 100) / 100;
   }
   
   // FALLBACK for old offline vehicles (If everything is missing or returns now)
@@ -251,12 +241,16 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
   
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
-    const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+    const hours = Math.ceil(diffMs / MS_PER_HOUR);
     const total = Math.max(1, hours) * hourlyRate;
-    return Number(total.toFixed(2));
+    return Math.round(total * 100) / 100;
   }
   return 0;
 };
+
+const arTimeFormatter = new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit' });
+const arWeekdayFormatter = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' });
+const arDayMonthFormatter = new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'long' });
 
 export const formatEntryTimeParts = (entryTime: any, referenceNow?: Date) => {
   const date = safeDate(entryTime);
@@ -267,9 +261,9 @@ export const formatEntryTimeParts = (entryTime: any, referenceNow?: Date) => {
   
   const diffDays = Math.round((nowMidnight.getTime() - dMidnight.getTime()) / (1000 * 60 * 60 * 24));
   
-  const timeStr = date.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
-  const dayName = date.toLocaleDateString('ar-EG', { weekday: 'long' });
-  const dayMonth = date.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+  const timeStr = arTimeFormatter.format(date);
+  const dayName = arWeekdayFormatter.format(date);
+  const dayMonth = arDayMonthFormatter.format(date);
   
   if (diffDays === 0) {
     return { main: timeStr, sub: null, isToday: true };
@@ -311,9 +305,16 @@ export const generateSafePin = (existingPins: Set<string> | string[] = new Set()
   let attempts = 0;
   
   while (attempts < 100) {
-    // Shuffling digits and taking 6 often creates more "random-looking" PINs than raw Random
-    const shuffled = [...digits].sort(() => Math.random() - 0.5);
-    const candidate = shuffled.slice(0, 6).join('');
+    // Fisher-Yates partial sampling of 6 digits in O(6)
+    const pool = [...digits];
+    let candidate = '';
+    for (let i = 0; i < 6; i++) {
+      const idx = i + Math.floor(Math.random() * (pool.length - i));
+      const temp = pool[i];
+      pool[i] = pool[idx];
+      pool[idx] = temp;
+      candidate += pool[i];
+    }
     if (!pins.has(candidate)) {
       pin = candidate;
       break;
@@ -345,14 +346,13 @@ export const isLightColor = (color: string | undefined): boolean => {
   if (c === '#faf9f6' || c === '#f59e0b' || c === '#eab308') {
     return true;
   }
-  if (c.startsWith('#')) {
-    const hex = c.substring(1);
-    if (hex.length === 6) {
-      const r = parseInt(hex.substring(0, 2), 16);
-      const g = parseInt(hex.substring(2, 4), 16);
-      const b = parseInt(hex.substring(4, 6), 16);
-      const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-      return yiq > 150;
+  if (c.startsWith('#') && c.length === 7) {
+    const num = parseInt(c.substring(1), 16);
+    if (!isNaN(num)) {
+      const r = (num >> 16) & 255;
+      const g = (num >> 8) & 255;
+      const b = num & 255;
+      return ((r * 299) + (g * 587) + (b * 114)) > 150000;
     }
   }
   return false;
@@ -474,22 +474,8 @@ export const withRetry = async <T>(
     if (!err) return false;
     const msg = (err.message || String(err)).toLowerCase();
     const code = (err.code || '').toLowerCase();
-    return (
-      code.includes('permission-denied') ||
-      code.includes('unauthenticated') ||
-      code.includes('invalid-argument') ||
-      code.includes('not-found') ||
-      code.includes('already-exists') ||
-      msg.includes('permission') ||
-      msg.includes('unauthorized') ||
-      msg.includes('not_found') ||
-      msg.includes('not found') ||
-      msg.includes('locked') ||
-      msg.includes('expired') ||
-      msg.includes('validation') ||
-      msg.includes('reached_daily_deletion_limit') ||
-      msg.includes('insufficient_balance')
-    );
+    const combined = `${code} ${msg}`;
+    return /permission|unauthenticated|unauthorized|invalid-argument|not[-_ ]found|already-exists|locked|expired|validation|reached_daily_deletion_limit|insufficient_balance/.test(combined);
   };
 
   let lastError: unknown;
@@ -634,15 +620,8 @@ export const canChangeGarageRates = (garage: any): { allowed: boolean; daysRemai
 export const isHashedPin = (pin: string | undefined | null): boolean => {
   if (!pin) return false;
   const str = String(pin).trim();
-  return (
-    str.startsWith('$') ||
-    str.startsWith('!$') ||
-    str.startsWith('scrypt') ||
-    str.includes('$N=') ||
-    str.includes('$scrypt$') ||
-    (str.length === 64 && /^[0-9a-f]{64}$/i.test(str)) ||
-    str.length > 12
-  );
+  if (str.length > 12) return true;
+  return str.startsWith('$') || str.startsWith('!$') || str.startsWith('scrypt');
 };
 
 /**

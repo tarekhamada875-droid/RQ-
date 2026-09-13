@@ -63,6 +63,75 @@ export const filterRequestsByMonth = <T extends CommissionRequestLike>(
 };
 
 /**
+ * Single-pass comprehensive financial summary calculation for delegate transactions & commissions.
+ * Aggregates commissions, recharge revenues, and counts in O(N) with zero allocation overhead.
+ */
+export interface CommissionFinancialSummary {
+  totalCommission: number;
+  totalRechargeAmount: number;
+  approvedCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+}
+
+export const calculateCommissionFinancialSummary = (
+  requests: CommissionRequestLike[],
+  monthKey: string = 'all'
+): CommissionFinancialSummary => {
+  let totalCommission = 0;
+  let totalRechargeAmount = 0;
+  let approvedCount = 0;
+  let pendingCount = 0;
+  let rejectedCount = 0;
+
+  if (!Array.isArray(requests)) {
+    return { totalCommission, totalRechargeAmount, approvedCount, pendingCount, rejectedCount };
+  }
+
+  const isAllMonths = !monthKey || monthKey === 'all';
+
+  for (let i = 0; i < requests.length; i++) {
+    const r = requests[i];
+    if (!r) continue;
+
+    const status = r.status || (r.actionType === 'recharge' ? 'approved' : '');
+    if (status === 'pending') {
+      pendingCount++;
+      continue;
+    }
+    if (status === 'rejected') {
+      rejectedCount++;
+      continue;
+    }
+
+    if (status === 'approved') {
+      if (!isAllMonths && getRequestMonthKey(r) !== monthKey) continue;
+      approvedCount++;
+
+      const comm = r.commission ?? r.details?.commission;
+      if (comm !== undefined && comm !== null) {
+        const val = Number(comm);
+        if (!isNaN(val)) totalCommission += val;
+      }
+
+      const amt = r.revenueAmount ?? r.amount ?? r.details?.revenueAmount ?? r.details?.amount;
+      if (amt !== undefined && amt !== null) {
+        const val = Number(amt);
+        if (!isNaN(val)) totalRechargeAmount += val;
+      }
+    }
+  }
+
+  return {
+    totalCommission,
+    totalRechargeAmount,
+    approvedCount,
+    pendingCount,
+    rejectedCount
+  };
+};
+
+/**
  * Calculates total fixed commission from approved requests (or logs) for a given month/all time.
  * Ignores pending/rejected requests and uses the explicit recorded commission value.
  */
@@ -70,17 +139,7 @@ export const calculateApprovedCommission = (
   requests: CommissionRequestLike[], 
   monthKey: string = 'all'
 ): number => {
-  const approved = filterApprovedRequests(requests);
-  const filtered = filterRequestsByMonth(approved, monthKey);
-  return filtered.reduce((sum, request) => {
-    let comm = 0;
-    if (request.commission !== undefined && request.commission !== null) {
-      comm = Number(request.commission);
-    } else if (request.details?.commission !== undefined && request.details?.commission !== null) {
-      comm = Number(request.details.commission);
-    }
-    return sum + (isNaN(comm) ? 0 : comm);
-  }, 0);
+  return calculateCommissionFinancialSummary(requests, monthKey).totalCommission;
 };
 
 /**
@@ -90,21 +149,7 @@ export const calculateApprovedRechargeTotal = (
   requests: CommissionRequestLike[], 
   monthKey: string = 'all'
 ): number => {
-  const approved = filterApprovedRequests(requests);
-  const filtered = filterRequestsByMonth(approved, monthKey);
-  return filtered.reduce((sum, request) => {
-    let amt = 0;
-    if (request.revenueAmount !== undefined && request.revenueAmount !== null) {
-      amt = Number(request.revenueAmount);
-    } else if (request.amount !== undefined && request.amount !== null) {
-      amt = Number(request.amount);
-    } else if (request.details?.revenueAmount !== undefined && request.details?.revenueAmount !== null) {
-      amt = Number(request.details.revenueAmount);
-    } else if (request.details?.amount !== undefined && request.details?.amount !== null) {
-      amt = Number(request.details.amount);
-    }
-    return sum + (isNaN(amt) ? 0 : amt);
-  }, 0);
+  return calculateCommissionFinancialSummary(requests, monthKey).totalRechargeAmount;
 };
 
 /**

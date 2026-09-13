@@ -130,13 +130,7 @@ export const getEffectiveDailyCapacity = (garage: any): number => {
 
   // 2. Check package name or activePackageName
   const pkgName = String(garage.activePackageName || garage.packageName || garage.lastPackageName || '');
-  const isExplicitlyUnlimited = 
-    pkgName.includes('مفتوح') || 
-    pkgName.includes('غير محدود') || 
-    pkgName.includes('غير محدودة') || 
-    pkgName.includes('بدون حدود') || 
-    pkgName.includes('سعة مفتوحة') ||
-    pkgName.includes('تجريبي');
+  const isExplicitlyUnlimited = /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة|تجريبي/.test(pkgName);
 
   if (isExplicitlyUnlimited) {
     return 0; // Unlimited capacity

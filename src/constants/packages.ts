@@ -41,6 +41,13 @@ export const filterPackagesForGarage = (packages: Package[], hasMonthlySubscribe
   });
 };
 
+const DURATION_TEXT_MAP: Record<number, string> = {
+  30: 'شهر كامل (30 يوم)',
+  15: 'نصف شهر (15 يوم)',
+  1: 'يوم واحد (1 يوم)',
+  7: 'أسبوع (7 أيام)'
+};
+
 export const getCleanPackageInfo = (pkg: Partial<Package> | any) => {
   // 1. Duration Days
   let durationDays = 30;
@@ -50,22 +57,22 @@ export const getCleanPackageInfo = (pkg: Partial<Package> | any) => {
     const name = (pkg.name || '').trim();
     const pkgId = (pkg.id || '').trim().toLowerCase();
 
-    if (pkgId.startsWith('daily') || pkgId === '1day' || pkgId === '1_day' || pkgId === 'day_sub' || pkgId === 'daily') {
+    if (/^(daily|1day|1_day|day_sub)/.test(pkgId)) {
       durationDays = 1;
-    } else if (pkgId.startsWith('weekly') || pkgId === '7days' || pkgId === 'week_sub') {
+    } else if (/^(weekly|7days|week_sub)/.test(pkgId)) {
       durationDays = 7;
-    } else if (pkgId.startsWith('biweekly') || pkgId === '15days' || pkgId === 'half_month') {
+    } else if (/^(biweekly|15days|half_month)/.test(pkgId)) {
       durationDays = 15;
-    } else if (pkgId.startsWith('monthly') || pkgId === '30days' || pkgId === 'month_sub') {
+    } else if (/^(monthly|30days|month_sub)/.test(pkgId)) {
       durationDays = 30;
-    } else if (name.includes('15') || name.includes('15 يوم') || name.includes('نصف شهر') || name.includes('15 days') || name.includes('15-day')) {
+    } else if (/15|نصف شهر|15-day/i.test(name)) {
       durationDays = 15;
-    } else if (name.includes('يومي') || name.includes('يوم واحد') || name.includes('1 يوم') || name.includes('1-day') || name.includes('1 day') || name.includes('يوم')) {
+    } else if (/7|أسبوع|7 days/i.test(name)) {
+      durationDays = 7;
+    } else if (/30|شهر|30 days/i.test(name)) {
+      durationDays = 30;
+    } else if (/يومي|يوم واحد|1 يوم|1-day|1 day|يوم/i.test(name)) {
       durationDays = 1;
-    } else if (name.includes('7') || name.includes('أسبوع') || name.includes('7 أيام') || name.includes('7 days')) {
-      durationDays = 7;
-    } else if (name.includes('30') || name.includes('شهر') || name.includes('30 يوم') || name.includes('30 days')) {
-      durationDays = 30;
     } else if (typeof pkg.vehiclesCount === 'number' && [1, 7, 15, 30].includes(pkg.vehiclesCount)) {
       durationDays = pkg.vehiclesCount;
     }
@@ -75,7 +82,7 @@ export const getCleanPackageInfo = (pkg: Partial<Package> | any) => {
   let dailyCapacity: number | null = null;
   let isUnlimited = false;
 
-  if (pkg.dailyCapacity === 0 || pkg.name?.includes('مفتوح') || pkg.name?.includes('غير محدود') || pkg.name?.includes('غير محدودة') || pkg.name?.includes('بدون حدود')) {
+  if (pkg.dailyCapacity === 0 || /مفتوح|غير محدود|غير محدودة|بدون حدود/.test(pkg.name || '')) {
     isUnlimited = true;
   } else if (typeof pkg.dailyCapacity === 'number' && pkg.dailyCapacity > 0) {
     dailyCapacity = pkg.dailyCapacity;
@@ -95,23 +102,9 @@ export const getCleanPackageInfo = (pkg: Partial<Package> | any) => {
     dailyCapacity = 50;
   }
 
-  // 3. Duration Text
-  let durationText = `${durationDays} يوم`;
-  if (durationDays === 30) {
-    durationText = 'شهر كامل (30 يوم)';
-  } else if (durationDays === 15) {
-    durationText = 'نصف شهر (15 يوم)';
-  } else if (durationDays === 1) {
-    durationText = 'يوم واحد (1 يوم)';
-  } else if (durationDays === 7) {
-    durationText = 'أسبوع (7 أيام)';
-  }
-
-  // 4. Display Name
-  let displayName = pkg.name;
-  if (!displayName) {
-    displayName = isUnlimited ? 'باقة سعة مفتوحة' : `باقة ${dailyCapacity} سيارة/يوم`;
-  }
+  // 3. Duration Text & Display Name
+  const durationText = DURATION_TEXT_MAP[durationDays] || `${durationDays} يوم`;
+  const displayName = pkg.name || (isUnlimited ? 'باقة سعة مفتوحة' : `باقة ${dailyCapacity} سيارة/يوم`);
 
   return {
     durationDays,

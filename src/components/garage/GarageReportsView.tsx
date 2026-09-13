@@ -82,38 +82,46 @@ export const GarageReportsView = memo(({
   };
 
   // Calculations based on local state
+  // Single-pass statistical and financial calculation
   const stats = useMemo(() => {
+    let hourlyExited = 0;
+    let overnightExited = 0;
+    let actualCalculatedTodayRevenue = 0;
+
+    // Staff Performance (Grouped by completed exits today)
+    const staffPerformance: Record<string, { count: number; revenue: number }> = {
+      'مدير الجراج': { count: 0, revenue: 0 }
+    };
+    
+    for (let i = 0; i < staffList.length; i++) {
+      staffPerformance[staffList[i].name] = { count: 0, revenue: 0 };
+    }
+
     const totalExited = localTodayExitedVehicles.length;
-    const hourlyExited = localTodayExitedVehicles.filter(v => v.type === 'hourly').length;
-    const overnightExited = localTodayExitedVehicles.filter(v => v.type === 'overnight').length;
+    for (let i = 0; i < totalExited; i++) {
+      const v = localTodayExitedVehicles[i];
+      if (!v) continue;
+
+      if (v.type === 'hourly') hourlyExited++;
+      else if (v.type === 'overnight') overnightExited++;
+
+      const fee = typeof v.totalCost === 'number' ? v.totalCost : 0;
+      actualCalculatedTodayRevenue += fee;
+
+      const handler = v.staffName || 'مدير الجراج';
+      if (!staffPerformance[handler]) {
+        staffPerformance[handler] = { count: 0, revenue: 0 };
+      }
+      staffPerformance[handler].count++;
+      staffPerformance[handler].revenue += fee;
+    }
 
     // Financial calculations
     const today = getCairoDateKey();
     const isTodayValid = localGarage.lastTransactionDate === today;
-    const actualCalculatedTodayRevenue = localTodayExitedVehicles.reduce((sum, v) => sum + (typeof v.totalCost === 'number' ? v.totalCost : 0), 0);
-    const todayRevenue = localTodayExitedVehicles.length > 0 
+    const todayRevenue = totalExited > 0 
       ? actualCalculatedTodayRevenue 
       : (isTodayValid ? (localGarage.todayRevenue || 0) : 0);
-
-    // Staff Performance (Grouped by completed exits today)
-    const staffPerformance: Record<string, { count: number; revenue: number }> = {};
-    
-    // Default system users
-    staffPerformance['مدير الجراج'] = { count: 0, revenue: 0 };
-    staffList.forEach(s => {
-      staffPerformance[s.name] = { count: 0, revenue: 0 };
-    });
-
-    localTodayExitedVehicles.forEach(v => {
-      const handler = v.staffName || 'مدير الجراج';
-      const fee = typeof v.totalCost === 'number' ? v.totalCost : 0;
-      
-      if (!staffPerformance[handler]) {
-        staffPerformance[handler] = { count: 0, revenue: 0 };
-      }
-      staffPerformance[handler].count += 1;
-      staffPerformance[handler].revenue += fee;
-    });
 
     return {
       totalExited,

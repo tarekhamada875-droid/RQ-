@@ -11,10 +11,13 @@ import { getCairoDateKey } from '../../domain/garage/businessDay';
 
 const parseDateKey = (dateKey: string | any): Date => {
   if (!dateKey) return new Date();
-  if (typeof dateKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
-    const [year, month, day] = dateKey.split('-').map(Number);
-    const parsed = new Date(year, month - 1, day);
-    if (!isNaN(parsed.getTime())) return parsed;
+  if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
+    const y = parseInt(dateKey.substring(0, 4), 10);
+    const m = parseInt(dateKey.substring(5, 7), 10);
+    const d = parseInt(dateKey.substring(8, 10), 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m - 1, d);
+    }
   }
   return safeDate(dateKey);
 };
@@ -163,10 +166,10 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
   }, [garage.id, isAuthResolved]);
 
   const filteredSubscribers = React.useMemo(() => {
+    const q = normalizeArabicSearch(searchQuery);
+    if (!q) return subscribers;
+
     return subscribers.filter(s => {
-      const q = normalizeArabicSearch(searchQuery);
-      if (!q) return true;
-      
       const normalizedPlate = normalizeArabicSearch(s.plateNumber);
       const normalizedName = normalizeArabicSearch(s.ownerName);
       const normalizedPhone = normalizeArabicSearch(s.phone);
@@ -175,12 +178,13 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
     });
   }, [subscribers, searchQuery]);
 
+  const todayDateKey = getCairoDateKey();
+  const todayDateObj = parseDateKey(todayDateKey);
+
   const getStatus = (endStr: string) => {
     const end = parseDateKey(endStr);
-    const today = parseDateKey(getCairoDateKey());
-    
-    const diffTime = end.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = end.getTime() - todayDateObj.getTime();
+    const diffDays = Math.ceil(diffTime / 86400000);
     
     if (diffDays < 0) return { 
       label: 'منتهي الصلاحية', 
