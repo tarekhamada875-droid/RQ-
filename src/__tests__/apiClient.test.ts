@@ -35,14 +35,15 @@ describe('apiClient getApiUrl resolution', () => {
     expect(getApiUrl('/api/auth/verify-pin')).toBe('/api/auth/verify-pin');
   });
 
-  it('ignores placeholder or bare apex domain like https://run.app', () => {
+  it('falls back to the Vercel API when the configured base is unusable', () => {
     Object.defineProperty(window, 'location', {
       value: {
         hostname: 'parqv2.vercel.app',
       },
       writable: true,
     });
-    // Even if VITE_BACKEND_API_URL is set to bare https://run.app, it should not use it
-    expect(getApiUrl('/api/auth/verify-pin')).toBe('/api/auth/verify-pin');
+    // In the static Pages deployment, relative /api URLs are SPA fallbacks,
+    // so use the known Vercel backend when no valid base URL is configured.
+    expect(getApiUrl('/api/auth/verify-pin')).toBe('https://parqv2.vercel.app/api/auth/verify-pin');
   });
 });
