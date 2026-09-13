@@ -676,6 +676,16 @@ export const adminService = {
 
   getSystemConfig: async (): Promise<SystemConfig | null> => {
     try {
+      // 1. Try server API first for instantaneous cached response
+      try {
+        const apiRes = await apiFetch('/api/system-config');
+        if (apiRes?.success && apiRes?.config) {
+          return apiRes.config as SystemConfig;
+        }
+      } catch (apiErr) {
+        // Fallback to direct Firestore getDoc
+      }
+
       const docSnap = await getDoc(doc(db, 'system_config', 'global'));
       if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as SystemConfig;

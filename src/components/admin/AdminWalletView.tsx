@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wallet, Loader2 } from 'lucide-react';
+import { adminService } from '../../services/adminService';
 
 interface AdminWalletViewProps {
   currentWalletNumber: string;
@@ -14,9 +15,27 @@ export const AdminWalletView: React.FC<AdminWalletViewProps> = ({
   onCancel,
   t,
 }) => {
-  const [walletValue, setWalletValue] = useState<string>(currentWalletNumber);
+  const [walletValue, setWalletValue] = useState<string>(currentWalletNumber || '');
   const [isSavingWallet, setIsSavingWallet] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync if parent prop updates
+  useEffect(() => {
+    if (currentWalletNumber) {
+      setWalletValue(currentWalletNumber);
+    }
+  }, [currentWalletNumber]);
+
+  // Fetch on mount if empty
+  useEffect(() => {
+    if (!currentWalletNumber) {
+      adminService.getSystemConfig().then((cfg) => {
+        if (cfg?.walletNumber) {
+          setWalletValue(cfg.walletNumber);
+        }
+      }).catch((e) => console.warn('Failed to load system config for wallet view:', e));
+    }
+  }, [currentWalletNumber]);
 
   const renderFormattedWallet = (val: string) => {
     if (!val) return null;

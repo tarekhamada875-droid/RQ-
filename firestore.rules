@@ -606,7 +606,7 @@ service cloud.firestore {
     }
 
     match /system_config/{configId} {
-      allow read: if isAdmin() || isSupervisor();
+      allow read: if isSignedIn();
       allow create, update: if isAdmin() && isValidId(configId);
       allow delete: if false;
     }

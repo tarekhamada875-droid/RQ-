@@ -91,6 +91,26 @@ export function useGarageApp() {
       }
     } catch (e) {}
   }, [setWalletNumber]);
+
+  // Real-time synchronization of system wallet number and subscription prices
+  useEffect(() => {
+    const unsubWallet = firestoreService.subscribeToWalletNumber((wallet) => {
+      if (wallet !== undefined) {
+        setWalletNumber(wallet || '');
+      }
+    });
+
+    const unsubPrices = firestoreService.subscribeToSubscriptionPrices((prices) => {
+      if (prices && Object.keys(prices).length > 0) {
+        setSubscriptionPrices(prev => ({ ...prev, ...prices }));
+      }
+    });
+
+    return () => {
+      unsubWallet();
+      unsubPrices();
+    };
+  }, [setWalletNumber]);
   const [subscriptionPrices, setSubscriptionPrices] = useState<{ weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number }>({ weekly: 800, biweekly: 1500, monthly: 3000 });
   const [loginPhone, setLoginPhone] = useState<string>('');
 

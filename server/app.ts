@@ -2178,6 +2178,37 @@ export function createApp() {
     }
   });
 
+  // Public / Authenticated GET System Config (for wallet number, flat fee, maintenance status, etc.)
+  app.get('/api/system-config', async (_req, res) => {
+    try {
+      if (!adminDb) {
+        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+      const snap = await adminDb.doc('system_config/global').get();
+      if (!snap.exists) {
+        return res.json({
+          success: true,
+          config: {
+            defaultTrialDays: 2,
+            warningDaysThreshold: 3,
+            walletNumber: '',
+            monthlySubscribersFlatFee: 500,
+            monthlySubscribersSurchargePercent: 25,
+            referralFeePerRenewal: 100,
+            delegateMonthlyCommission: 100,
+            isMaintenanceMode: false,
+            maintenanceMessage: '',
+            adminColor: '#10b981'
+          }
+        });
+      }
+      return res.json({ success: true, config: { id: snap.id, ...snap.data() } });
+    } catch (e: any) {
+      console.error('[Server] Error fetching system-config:', e);
+      return res.status(500).json({ success: false, error: 'SERVER_ERROR' });
+    }
+  });
+
   // Secure Server API: Admin Update System Config (General Settings & Wallet Number)
   app.post('/api/admin/update-system-config', requireAuth, async (req: AuthRequest, res: any) => {
     try {

@@ -136,6 +136,7 @@ export default function App() {
   const systemConfig = useSystemConfig();
   const [localAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
+  const effectiveWalletNumber = walletNumber || systemConfig?.walletNumber || '';
 
   const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard'))
     ? adminColor
@@ -245,7 +246,7 @@ export default function App() {
             currentSupervisor={currentSupervisor}
             supervisors={supervisors}
             currentAdminPin={activeAdminPin}
-            currentWalletNumber={walletNumber}
+            currentWalletNumber={effectiveWalletNumber}
             onUpdateWalletNumber={firestoreService.updateWalletNumber}
             subscriptionPrices={subscriptionPrices}
             showToast={showToast}
@@ -351,7 +352,7 @@ export default function App() {
             setShowStaffStats={setShowStaffStats}
             showSubscribers={showSubscribers}
             setShowSubscribers={setShowSubscribers}
-            walletNumber={walletNumber}
+            walletNumber={effectiveWalletNumber}
             subscriptionPrices={subscriptionPrices}
             isLoading={isLoading}
           />
@@ -365,7 +366,7 @@ export default function App() {
           packages={sortedPackages}
           onClose={() => setView('garage')}
           garageHourlyRate={garage.hourlyRate}
-          walletNumber={walletNumber}
+          walletNumber={effectiveWalletNumber}
           subscriptionPrices={subscriptionPrices}
           hasMonthlySubscribers={garage.hasMonthlySubscribers}
           referrerId={garage.referrerId || garage.createdByDelegateId || null}
