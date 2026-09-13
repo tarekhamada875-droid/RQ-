@@ -2940,8 +2940,10 @@ export function createApp() {
       const updates: Record<string, any> = { updatedAt: new Date() };
       const allowedKeys = [
         'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
-        'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'isMaintenanceMode', 
-        'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId'
+        'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode', 
+        'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId',
+        'hasMonthlySubscribers', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity',
+        'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt'
       ];
       for (const key of allowedKeys) {
         if (key in data && data[key] !== undefined) {
