@@ -1,6 +1,5 @@
 class ListenerTracker {
   private activeListeners = new Map<string, number>();
-  private totalSubscriptions = 0;
 
   register(key: string): () => void {
     const current = this.activeListeners.get(key) || 0;
@@ -8,7 +7,6 @@ class ListenerTracker {
       console.warn(`[ListenerTracker] Warning: Duplicate active listener registered for key: "${key}" (Current count: ${current + 1})`);
     }
     this.activeListeners.set(key, current + 1);
-    this.totalSubscriptions++;
 
     let unsubscribed = false;
     return () => {
@@ -41,7 +39,6 @@ class ListenerTracker {
 
   reset(): void {
     this.activeListeners.clear();
-    this.totalSubscriptions = 0;
   }
 }
 

@@ -6,7 +6,10 @@
 
 import firebaseConfig from '../../firebase-applet-config.json';
 
-export const logDiagnostic = (tag: string, details?: Record<string, any>) => {
+export const logDiagnostic = (tag: string, details?: Record<string, unknown>) => {
+  if (!import.meta.env?.DEV) {
+    return;
+  }
   const timestamp = new Date().toISOString();
   const logPrefix = `[AUTH_DIAGNOSTIC ${timestamp}] [${tag}]`;
   if (details) {
@@ -17,7 +20,7 @@ export const logDiagnostic = (tag: string, details?: Record<string, any>) => {
 };
 
 export const verifyFirebaseAppletConfig = () => {
-  const config = firebaseConfig as Record<string, any>;
+  const config = firebaseConfig as Record<string, unknown>;
   const isValid = Boolean(
     config &&
     config.apiKey &&
@@ -35,4 +38,3 @@ export const verifyFirebaseAppletConfig = () => {
 
   return isValid;
 };
-

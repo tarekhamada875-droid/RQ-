@@ -25,6 +25,6 @@
     "noUnusedParameters": true,
     "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src", "server.ts", "server"],
   "exclude": ["node_modules", "dist", "functions"]
 }
