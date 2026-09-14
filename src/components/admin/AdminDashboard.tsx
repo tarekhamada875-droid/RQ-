@@ -103,8 +103,12 @@ export const AdminDashboard = memo(({
       );
 
       setAdminGarageRows(previousRows => {
-        const rows = reset ? page.garages : [...previousRows, ...page.garages];
-        return Array.from(new Map(rows.map(garage => [garage.id, garage])).values());
+        const rows: Garage[] = reset ? page.garages : [...previousRows, ...page.garages];
+        const map = new Map<string, Garage>();
+        for (const g of rows) {
+          map.set(g.id, g);
+        }
+        return Array.from(map.values());
       });
       adminGarageLastDocRef.current = page.lastDoc;
       adminGarageHasMoreRef.current = page.hasMore;

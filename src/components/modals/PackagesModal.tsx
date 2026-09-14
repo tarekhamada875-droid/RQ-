@@ -5,6 +5,7 @@ import { ChevronRight, Clock, Sparkles, Filter, Wallet, CheckCircle2, Loader2, Z
 import { calculateFinalPrice } from '../../utils';
 import { useSystemSubscribersFlatFee } from '../../hooks/useSystemSubscribersFlatFee';
 import { garageService } from '../../services/garageService';
+import { BorderShimmer } from '../garage/BorderShimmer';
 
 interface PackagesModalProps {
   packages: Package[];
@@ -21,6 +22,7 @@ interface PackagesModalProps {
   isLoading?: boolean;
   onSubscribedSuccess?: (updatedGarageInfo?: any) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  initialDurationFilter?: number;
 }
 
 export { getCleanPackageInfo };
@@ -36,7 +38,8 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
   garageBalance = 0,
   isLoading = false,
   onSubscribedSuccess,
-  showToast
+  showToast,
+  initialDurationFilter
 }) => {
   const allPackages = Array.isArray(packages) ? packages : [];
   const rawList = React.useMemo(() => {
@@ -48,7 +51,12 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
     return Array.from(set).sort((a, b) => a - b);
   }, [rawList]);
 
-  const [selectedDurationFilter, setSelectedDurationFilter] = useState<number>(() => getDefaultDurationFilter(rawList, hasMonthlySubscribers));
+  const [selectedDurationFilter, setSelectedDurationFilter] = useState<number>(() => {
+    if (initialDurationFilter && rawList.some(p => getCleanPackageInfo(p).durationDays === initialDurationFilter)) {
+      return initialDurationFilter;
+    }
+    return getDefaultDurationFilter(rawList, hasMonthlySubscribers);
+  });
   const subscriberFlatFee = useSystemSubscribersFlatFee();
   const effectiveReferralFee = 0;
 
@@ -380,36 +388,41 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
 
                   {/* Dedicated Action Pill Button (Apple Style) */}
                   {effectiveGarageId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setErrorMessage(null);
-                        setPendingPackage(pkg);
-                      }}
-                      disabled={!canAfford}
-                      className={`w-full min-h-[44px] py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] whitespace-nowrap ${
-                        canAfford
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                      }`}
-                      title={canAfford ? 'تفعيل الباقة وخصم المبلغ من الرصيد' : `رصيدك مش كافي لشراء الباقة (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
-                    >
-                      {canAfford ? (
-                        <>
+                    canAfford ? (
+                      <div className="relative rounded-xl p-[2px] overflow-hidden">
+                        <BorderShimmer isActive={true} rx={12} ry={12} color="#fbbf24" dur="2.5s" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setErrorMessage(null);
+                            setPendingPackage(pkg);
+                          }}
+                          className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm relative z-20"
+                          title="تفعيل الباقة وخصم المبلغ من الرصيد"
+                        >
                           <Zap className="w-4 h-4 text-white shrink-0" />
                           <span>تفعيل الباقة الآن</span>
-                        </>
-                      ) : (
-                        <>
-                          <Wallet className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span>
-                            {currentBalance <= 0
-                              ? `رصيدك مش كافي (محتاج تشحن ${formatNumber(effectivePrice)} ج.م)`
-                              : `رصيدك مش كافي (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
-                          </span>
-                        </>
-                      )}
-                    </button>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMessage(null);
+                          setPendingPackage(pkg);
+                        }}
+                        disabled={true}
+                        className="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 cursor-not-allowed"
+                        title={`رصيدك مش كافي لشراء الباقة (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
+                      >
+                        <Wallet className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>
+                          {currentBalance <= 0
+                            ? `رصيدك مش كافي (محتاج تشحن ${formatNumber(effectivePrice)} ج.م)`
+                            : `رصيدك مش كافي (محتاج تشحن ${formatNumber(missingAmount)} ج.م)`}
+                        </span>
+                      </button>
+                    )
                   )}
                 </div>
               );

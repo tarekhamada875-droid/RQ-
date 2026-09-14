@@ -52,9 +52,9 @@ import { RewardsModal } from "../modals/RewardsModal";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
-import { BorderShimmer } from "./BorderShimmer";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
 import { AnnouncementModal } from "./modals/AnnouncementModal";
+import { SmartActionPrompt, ExpiringSoonPromptBanner } from "./SmartActionPrompt";
 
 // Helper functions (mapped to actual modules)
 const uo = resolveShimmerColor;
@@ -108,6 +108,7 @@ export const GarageDashboardView = memo((props: any) => {
     [Oe, ot] = useState(!1),
     [os, is] = useState(!1),
     [zt, Xt] = useState(!1),
+    [packagesInitialDuration, setPackagesInitialDuration] = useState<number | undefined>(undefined),
     [showTermsModal, setShowTermsModal] = useState(!1),
     Wt = useRef(null),
     Ft = useRef(null),
@@ -825,83 +826,53 @@ export const GarageDashboardView = memo((props: any) => {
 
                 if (isDailyLimitReached || Ns) {
                   return (
-                    <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border border-red-200/80 dark:border-red-900/60 relative shrink-0 p-4 md:p-8 [@media(max-height:500px)]:p-3 max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto w-full transition-all duration-150 shadow-sm overflow-hidden">
-                      {/* Outer Alternating Laser Shimmer: sweeps upwards during second half of cycle */}
-                      <BorderShimmer isActive={true} rx={32} ry={32} color="#ef4444" dur="7.0s" mode="alternate-second" />
-
-                      <div className="relative h-48 sm:h-56 md:h-72 lg:h-80 [@media(max-height:500px)]:h-36 rounded-2xl bg-gradient-to-b from-red-500/10 via-red-500/5 to-transparent dark:from-red-950/40 dark:via-red-950/20 dark:to-transparent border-2 border-red-500/30 dark:border-red-500/40 flex flex-col items-center justify-center p-4 sm:p-6 text-center shadow-[inset_0_0_25px_rgba(239,68,68,0.12)]">
-                        {/* Inner Alternating Laser Shimmer: sweeps downwards during first half of cycle */}
-                        <BorderShimmer isActive={true} rx={16} ry={16} color="#ef4444" dur="7.0s" mode="alternate-first" />
-
-                        {/* Subtle Laser Radar Ambient Glow */}
-                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-                          <div 
-                            className="absolute -inset-[100%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-500/15 via-transparent to-transparent animate-pulse" 
-                            style={{ animationDuration: '6s' }}
-                          />
-                        </div>
-
-                        {/* Floating Top Border Icon */}
-                        <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-500/40 border-2 border-[#faf9f6] dark:border-slate-900">
-                          <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
-                        </div>
-                        
-                        {/* Title */}
-                        <h3 className="relative z-20 text-base sm:text-xl md:text-2xl [@media(max-height:500px)]:text-sm font-black text-red-600 dark:text-red-400 leading-tight drop-shadow-sm mb-1 sm:mb-2 mt-2 sm:mt-1">
-                          {Ns ? "عفواً، باقة الجراج خلصت" : "وصلت للحد الأقصى اليومي"}
-                        </h3>
-                        
-                        {/* Daily Limit Counter if capacity limit reached */}
-                        {isDailyLimitReached && !Ns && (
-                          <p className="relative z-20 text-sm sm:text-base md:text-lg [@media(max-height:500px)]:text-xs font-bold text-slate-800 dark:text-slate-200 font-mono tracking-wide mb-2">
-                            ({displayTodayCount} / {getEffectiveDailyCapacity(t)} سيارة اليوم)
-                          </p>
-                        )}
-                        
-                        {/* Primary Direction */}
-                        <p className="relative z-20 text-xs sm:text-sm md:text-base [@media(max-height:500px)]:text-[11px] font-medium text-slate-700 dark:text-slate-200 max-w-xs sm:max-w-md">
-                          {Ns 
-                            ? "اشترِ باقة جديدة لمتابعة العمل"
-                            : "ترقى لباقة أكبر لمتابعة العمل"}
-                        </p>
-
-                        {/* Direct Button to Packages Page */}
-                        <button
-                          type="button"
-                          onClick={() => Q && Q(true)}
-                          className="relative z-20 mt-2 sm:mt-3 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Crown className="w-4 h-4" />
-                          <span>فتح صفحة الباقات</span>
-                        </button>
-
-                        {/* Secondary Direction (Fallback) */}
-                        <p className="relative z-20 mt-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                          أو تواصل مع المندوب لشحن الرصيد
-                        </p>
-                      </div>
-                    </div>
+                    <SmartActionPrompt
+                      garage={t}
+                      packages={F}
+                      walletNumber={I}
+                      onOpenPackages={(dur) => {
+                        setPackagesInitialDuration(dur);
+                        Q && Q(true);
+                      }}
+                      showToast={V}
+                      isDailyLimitReached={isDailyLimitReached}
+                      isExpired={Ns}
+                      todayCount={displayTodayCount}
+                      dailyCapacity={getEffectiveDailyCapacity(t)}
+                    />
                   );
                 }
                 return null;
               })() || (
-                <RegistrationCard
-                  newPlateNumber={x}
-                  setNewPlateNumber={b}
-                  isInputFocused={s}
-                  setIsInputFocused={y}
-                  plateInputRef={k}
-                  vehicles={l}
-                  garage={t}
-                  handleCheckIn={T}
-                  onCheckOut={(_e) => {
-                    (d(_e), h(!0));
-                  }}
-                  closeKeyboard={m}
-                  inputRef={D}
-                  shimmerActive={!0}
-                  isLoading={isLoading}
-                />
+                <React.Fragment>
+                  {!Ns && subInfo.remainingHours > 0 && subInfo.remainingHours <= 24 && (
+                    <ExpiringSoonPromptBanner
+                      garage={t}
+                      packages={F}
+                      walletNumber={I}
+                      onOpenPackages={() => Q && Q(true)}
+                      showToast={V}
+                      remainingHours={subInfo.remainingHours}
+                    />
+                  )}
+                  <RegistrationCard
+                    newPlateNumber={x}
+                    setNewPlateNumber={b}
+                    isInputFocused={s}
+                    setIsInputFocused={y}
+                    plateInputRef={k}
+                    vehicles={l}
+                    garage={t}
+                    handleCheckIn={T}
+                    onCheckOut={(_e) => {
+                      (d(_e), h(!0));
+                    }}
+                    closeKeyboard={m}
+                    inputRef={D}
+                    shimmerActive={!0}
+                    isLoading={isLoading}
+                  />
+                </React.Fragment>
               )}
               {!s && (
                 <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-[2rem] overflow-hidden flex flex-col items-center pt-4 md:pt-10 [@media(max-height:500px)]:pt-2 transition-colors w-full shadow-sm relative shrink-0">
@@ -1131,7 +1102,10 @@ export const GarageDashboardView = memo((props: any) => {
       {Y && (
         <PackagesModal
           packages={F}
-          onClose={() => Q(!1)}
+          onClose={() => {
+            Q(!1);
+            setPackagesInitialDuration(undefined);
+          }}
           garageHourlyRate={t.hourlyRate}
           walletNumber={I}
           onToggleMenu={() => O(!_)}
@@ -1142,6 +1116,7 @@ export const GarageDashboardView = memo((props: any) => {
           garageId={t.id}
           garageBalance={t.balance || 0}
           showToast={V}
+          initialDurationFilter={packagesInitialDuration}
         />
       )}
       {os && (
