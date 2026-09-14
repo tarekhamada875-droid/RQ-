@@ -47,7 +47,6 @@ jobs:
           test -f api/index.js
 
       - name: Live release smoke check
-        if: ${{ vars.SMOKE_BASE_URL != '' }}
         env:
-          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+          SMOKE_BASE_URL: https://parqv2.vercel.app
         run: npm run release:smoke
