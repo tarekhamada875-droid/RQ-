@@ -362,7 +362,7 @@ export const adminService = {
       return null;
     } catch (err) {
       console.error('Error fetching subscriber by plate:', err);
-      return null;
+      throw err;
     }
   },
 

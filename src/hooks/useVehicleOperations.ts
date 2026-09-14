@@ -109,9 +109,7 @@ export function useVehicleOperations({
     
     if (garage.hasMonthlySubscribers) {
       try {
-        const subPromise = firestoreService.getSubscriberByPlateOnce(garage.id, raw);
-        const timeoutPromise = new Promise<null>((res) => setTimeout(() => res(null), 200));
-        const subData = await Promise.race([subPromise, timeoutPromise]);
+        const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
         if (subData && subData.endDate) {
           const end = safeDate(subData.endDate);
           const today = new Date();
@@ -122,6 +120,8 @@ export function useVehicleOperations({
         }
       } catch (e) {
         console.error("Sub check error", e);
+        showToast('تعذر التحقق من حالة الاشتراك. يرجى المحاولة مرة أخرى.', 'error');
+        return;
       }
     }
 
@@ -301,6 +301,14 @@ export function useVehicleOperations({
         if (!res.success) {
           throw new Error(res.error);
         }
+        if (typeof res.cost === 'number' && res.cost !== cost) {
+          const costDelta = res.cost - cost;
+          setGarage(prev => prev ? {
+            ...prev,
+            todayRevenue: Number(((prev.todayRevenue || 0) + costDelta).toFixed(2)),
+            totalRevenue: Number(((prev.totalRevenue || 0) + costDelta).toFixed(2)),
+          } : prev);
+        }
       } catch (error: any) {
         setVehicles(previousVehicles);
         if (previousGarage) {
@@ -391,7 +399,7 @@ export function useVehicleOperations({
     }
     setSelectedVehicle(null);
     setNewPlateNumber('');
-    showToast('اللوحة اتمسحت بنجاح');
+    showToast('جاري حذف اللوحة...', 'info');
 
     try {
       const success = await firestoreService.deleteVehicleWithRefund(
@@ -402,7 +410,9 @@ export function useVehicleOperations({
         currentStaff ? currentStaff.name : 'مدير الجراج',
         currentStaff ? currentStaff.id : undefined
       );
-      if (!success) {
+      if (success) {
+        showToast('اللوحة اتمسحت بنجاح', 'success');
+      } else {
         // Rollback on failure
         setVehicles(previousVehicles);
         if (previousGarage) {
