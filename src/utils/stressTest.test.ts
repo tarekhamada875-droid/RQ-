@@ -114,7 +114,13 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
     const entry1Year = new Date('2025-08-04T10:00:00Z');
     const now1Year = new Date('2026-08-04T10:00:00Z');
     const costHourlyYear = calculateCost({ entryTime: entry1Year, type: 'hourly' }, garage, now1Year);
-    expect(costHourlyYear).toBe(8760 * 25); // 219,000 EGP
+    // The configured overnight rate caps each full 24-hour block.
+    expect(costHourlyYear).toBe(365 * 150); // 54,750 EGP
+
+    // Case A2: The cap applies after 24 hours and also caps the partial day.
+    const entry25Hours = new Date('2026-08-01T10:00:00Z');
+    const now25Hours = new Date('2026-08-02T11:00:00Z');
+    expect(calculateCost({ entryTime: entry25Hours, type: 'hourly' }, garage, now25Hours)).toBe(175);
 
     // Case B: 100 days overnight parking
     const entry100Days = new Date('2026-05-01T10:00:00Z');
