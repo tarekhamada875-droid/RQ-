@@ -194,17 +194,20 @@ export function createApp() {
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
+    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
     if (!isReady) {
       return res.status(503).json({
         status: 'error',
         timestamp: new Date().toISOString(),
-        adminSdk: false
+        adminSdk: false,
+        version
       });
     }
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      adminSdk: true
+      adminSdk: true,
+      version
     });
   });
 
@@ -2919,6 +2922,12 @@ export function createApp() {
       }
       const { id, name, phone, commissionRate, commissions, defaultTrialDays } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+      const unsupportedFields = Object.keys(req.body || {}).filter((field) =>
+        !['id', 'name', 'phone', 'commissionRate', 'commissions', 'defaultTrialDays'].includes(field)
+      );
+      if (unsupportedFields.length > 0) {
+        return res.status(400).json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(',')}` });
+      }
 
       const updates: Record<string, any> = { updatedAt: new Date() };
       if (name) updates.name = String(name).trim();

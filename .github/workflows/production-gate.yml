@@ -45,3 +45,9 @@ jobs:
           test -f dist/index.html
           test -f dist/server.cjs
           test -f api/index.js
+
+      - name: Live release smoke check
+        if: ${{ vars.SMOKE_BASE_URL != '' }}
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+        run: npm run release:smoke

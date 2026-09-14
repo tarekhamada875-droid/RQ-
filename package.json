@@ -14,7 +14,8 @@
     "clean": "rm -rf dist build",
     "test": "vitest run",
     "lint": "tsc --noEmit",
-    "ci:check": "tsx tools/ci-check.ts"
+    "ci:check": "tsx tools/ci-check.ts",
+    "release:smoke": "tsx tools/release-smoke.ts"
   },
   "dependencies": {
     "@csstools/postcss-color-mix-function": "^4.0.11",
