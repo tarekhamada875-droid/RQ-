@@ -52,6 +52,7 @@ export const AdminDelegateDetailsView = memo(({
   const [requests, setRequests] = useState<RechargeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
+  const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isEditingPin, setIsEditingPin] = useState(false);
@@ -178,13 +179,23 @@ export const AdminDelegateDetailsView = memo(({
 
   const activeMonthKey = selectedMonthKey === 'current' ? currentMonthKey : selectedMonthKey;
 
+  const effectiveLastSettledAt = settledAtOverride || (delegate.lastSettledAt ? safeDate(delegate.lastSettledAt) : null);
+  const currentCycleDataset = React.useMemo(() => {
+    if (!effectiveLastSettledAt) return activeDataset;
+    return activeDataset.filter(item => {
+      const rawDate = (item as any).resolvedAt || (item as any).createdAt || (item as any).timestamp;
+      return safeDate(rawDate) > effectiveLastSettledAt;
+    });
+  }, [activeDataset, effectiveLastSettledAt]);
+  const selectedPeriodDataset = activeMonthKey === currentMonthKey ? currentCycleDataset : activeDataset;
+
   const totalRecharged = React.useMemo(() => {
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
       return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
     }
-    return calculateApprovedRechargeTotal(activeDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, delegate.totalRechargedAmount, historyTotal]);
+    return calculateApprovedRechargeTotal(selectedPeriodDataset, activeMonthKey);
+  }, [activeDataset, activeMonthKey, currentCycleDataset, delegate.totalRechargedAmount, historyTotal, selectedPeriodDataset]);
 
   const allTimeTotal = React.useMemo(() => {
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
@@ -196,8 +207,8 @@ export const AdminDelegateDetailsView = memo(({
       const calculated = calculateApprovedCommission(activeDataset, 'all');
       return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
     }
-    return calculateApprovedCommission(activeDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, delegate.totalCommissionEarned]);
+    return calculateApprovedCommission(selectedPeriodDataset, activeMonthKey);
+  }, [activeDataset, activeMonthKey, currentCycleDataset, delegate.totalCommissionEarned, selectedPeriodDataset]);
 
   const allTimeCommission = React.useMemo(() => {
     const calculated = calculateApprovedCommission(activeDataset, 'all');
@@ -206,16 +217,10 @@ export const AdminDelegateDetailsView = memo(({
 
   // Unsettled total since last manual settlement
   const unsettledCycleTotal = (() => {
-    if (!delegate.lastSettledAt) {
+    if (!effectiveLastSettledAt) {
       return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : historyTotal;
     }
-    const settleDate = safeDate(delegate.lastSettledAt);
-    const filteredItems = activeDataset.filter(item => {
-      const rawDate = (item as any).resolvedAt || (item as any).createdAt || (item as any).timestamp;
-      const itemDate = safeDate(rawDate);
-      return itemDate > settleDate;
-    });
-    return calculateApprovedRechargeTotal(filteredItems, 'all');
+    return calculateApprovedRechargeTotal(currentCycleDataset, 'all');
   })();
 
   const handleSettleAccount = () => {
@@ -233,6 +238,8 @@ export const AdminDelegateDetailsView = memo(({
         setIsLoading(true);
         try {
           await firestoreService.settleDelegateAccount(delegate.id);
+          setSettledAtOverride(new Date());
+          delegate.totalRechargedAmount = 0;
         } catch (err) {
           setConfirmDialog({
             isOpen: true,
@@ -588,7 +595,7 @@ export const AdminDelegateDetailsView = memo(({
                     <span>{t('صرف / تسوية العمولة')}</span>
                   </button>
                 </div>
-                {delegate.lastSettledAt && (
+                {effectiveLastSettledAt && (
                   <p className="text-[10px] text-slate-400">
                     {t('عمولة غير مسبوق صرفها:')} <strong className="text-amber-400 font-mono">{formatCurrency(unsettledCycleTotal)} {t('ج.م')}</strong>
                   </p>
