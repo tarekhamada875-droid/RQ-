@@ -2935,6 +2935,28 @@ export function createApp() {
     }
   });
 
+  // Secure Server API: Settle a delegate's current financial cycle (Admin Only)
+  app.post('/api/delegates/settle-account', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { id } = req.body || {};
+      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const now = new Date();
+      await adminDb.collection('delegates').doc(id).update({
+        lastSettledAt: now,
+        totalRechargedAmount: 0,
+        updatedAt: now
+      });
+      return res.json({ success: true, settledAt: now.toISOString() });
+    } catch (e: any) {
+      console.error('[Server Delegate] Error settling account:', e);
+      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+    }
+  });
+
   app.post('/api/delegates/delete', requireAuth, async (req: AuthRequest, res: any) => {
     try {
       if (!['admin', 'supervisor'].includes(req.user?.role || '')) {

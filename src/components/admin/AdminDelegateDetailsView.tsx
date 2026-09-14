@@ -34,7 +34,6 @@ import {
 } from '../../utils/delegateCommissionCalculations';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { serverTimestamp } from 'firebase/firestore';
 
 interface AdminDelegateDetailsViewProps {
   delegate: Delegate;
@@ -233,10 +232,7 @@ export const AdminDelegateDetailsView = memo(({
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         setIsLoading(true);
         try {
-          await firestoreService.updateDelegate(delegate.id, {
-            lastSettledAt: serverTimestamp(),
-            totalRechargedAmount: 0
-          });
+          await firestoreService.settleDelegateAccount(delegate.id);
         } catch (err) {
           setConfirmDialog({
             isOpen: true,

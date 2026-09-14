@@ -110,6 +110,18 @@ export const delegateService = {
     }
   },
 
+  settleDelegateAccount: async (id: string) => {
+    try {
+      return await apiFetch('/api/delegates/settle-account', {
+        method: 'POST',
+        body: { id }
+      });
+    } catch (error: any) {
+      handleFirestoreError(error, OperationType.UPDATE, `delegates/${id}`);
+      throw error;
+    }
+  },
+
   getDelegateRecharges: async (delegateId: string) => {
     try {
       const q = query(
