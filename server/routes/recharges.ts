@@ -48,13 +48,16 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
     const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
     const price = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
     const packageName = String(packageObj.name || packageObj.packageName || 'باقة الاشتراك');
-    const isUnlimited = Boolean(
-      packageObj.isUnlimited ||
-      packageName.includes('مفتوح') ||
-      packageName.includes('غير محدود') ||
-      packageName.includes('بدون حدود')
-    );
-    const effCapacity = isUnlimited ? 0 : Math.max(1, Number(packageObj.dailyCapacity || packageObj.carsCount || 40));
+    const hasExplicitCapacity =
+      typeof packageObj.dailyCapacity === 'number' ||
+      (typeof packageObj.dailyCapacity === 'string' && packageObj.dailyCapacity.trim() !== '');
+    const configuredCapacity = hasExplicitCapacity ? Number(packageObj.dailyCapacity) : NaN;
+    const isUnlimited = hasExplicitCapacity
+      ? Number.isFinite(configuredCapacity) && configuredCapacity === 0
+      : Boolean(packageObj.isUnlimited) || /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(packageName);
+    const effCapacity = isUnlimited
+      ? 0
+      : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : Number(packageObj.carsCount || 40));
 
     let resultData: any = null;
 
@@ -248,15 +251,17 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       let basePrice = Number(requestData.revenueAmount !== undefined ? requestData.revenueAmount : (requestData.price || 0));
       let pkgName = String(requestData.packageName || '');
 
-      const isUnlimitedPkg =
-        pkgName.includes('مفتوح') ||
-        pkgName.includes('غير محدود') ||
-        pkgName.includes('غير محدودة') ||
-        pkgName.includes('بدون حدود') ||
-        pkgName.includes('سعة مفتوحة') ||
-        requestData.dailyCapacity === 0;
+      const requestHasExplicitCapacity =
+        typeof requestData.dailyCapacity === 'number' ||
+        (typeof requestData.dailyCapacity === 'string' && requestData.dailyCapacity.trim() !== '');
+      const requestedCapacity = requestHasExplicitCapacity ? Number(requestData.dailyCapacity) : NaN;
+      const isUnlimitedPkg = requestHasExplicitCapacity
+        ? Number.isFinite(requestedCapacity) && requestedCapacity === 0
+        : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
 
-      let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
+      let effCapacity = isUnlimitedPkg
+        ? 0
+        : Math.max(1, Number.isFinite(requestedCapacity) && requestedCapacity > 0 ? requestedCapacity : 40);
 
       if (requestData.packageId) {
         const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
@@ -273,7 +278,8 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
             durationDays = Number(pData.durationDays);
           }
           if (pData.dailyCapacity !== undefined) {
-            effCapacity = pData.isUnlimited ? 0 : Number(pData.dailyCapacity);
+            const packageCapacity = Number(pData.dailyCapacity);
+            effCapacity = Number.isFinite(packageCapacity) ? packageCapacity : effCapacity;
           }
           if (pData.name) {
             pkgName = String(pData.name);
@@ -643,15 +649,17 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
       baseDate.setDate(baseDate.getDate() + durationDays);
 
       const pkgName = String(pkg.name || 'باقة اشتراك');
-      const isUnlimitedPkg =
-        pkgName.includes('مفتوح') ||
-        pkgName.includes('غير محدود') ||
-        pkgName.includes('غير محدودة') ||
-        pkgName.includes('بدون حدود') ||
-        pkgName.includes('سعة مفتوحة') ||
-        pkg.dailyCapacity === 0;
+      const hasExplicitCapacity =
+        typeof pkg.dailyCapacity === 'number' ||
+        (typeof pkg.dailyCapacity === 'string' && pkg.dailyCapacity.trim() !== '');
+      const configuredCapacity = hasExplicitCapacity ? Number(pkg.dailyCapacity) : NaN;
+      const isUnlimitedPkg = hasExplicitCapacity
+        ? Number.isFinite(configuredCapacity) && configuredCapacity === 0
+        : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
 
-      const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(pkg.dailyCapacity || 40));
+      const effCapacity = isUnlimitedPkg
+        ? 0
+        : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : 40);
 
       t.set(garageRef, {
         balance: newBalance,
