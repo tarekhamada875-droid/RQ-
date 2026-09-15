@@ -81,13 +81,24 @@ export const getCleanPackageInfo = (pkg: Partial<Package> | any) => {
   // 2. Daily Capacity
   let dailyCapacity: number | null = null;
   let isUnlimited = false;
+  const hasExplicitCapacity =
+    typeof pkg.dailyCapacity === 'number' ||
+    (typeof pkg.dailyCapacity === 'string' && pkg.dailyCapacity.trim() !== '');
 
-  if (pkg.dailyCapacity === 0 || /مفتوح|غير محدود|غير محدودة|بدون حدود/.test(pkg.name || '')) {
-    isUnlimited = true;
-  } else if (typeof pkg.dailyCapacity === 'number' && pkg.dailyCapacity > 0) {
-    dailyCapacity = pkg.dailyCapacity;
+  if (hasExplicitCapacity) {
+    const configuredCapacity = Number(pkg.dailyCapacity);
+    if (Number.isFinite(configuredCapacity) && configuredCapacity === 0) {
+      isUnlimited = true;
+    } else if (Number.isFinite(configuredCapacity) && configuredCapacity > 0) {
+      dailyCapacity = configuredCapacity;
+    }
   } else {
-    const match = (pkg.name || '').match(/(\d+)\s*سيارة/);
+    // Legacy records without dailyCapacity may still be inferred from their name.
+    const packageName = String(pkg.name || '');
+    if (/مفتوح|غير محدود|غير محدودة|بدون حدود/.test(packageName)) {
+      isUnlimited = true;
+    }
+    const match = packageName.match(/(\d+)\s*سيارة/);
     if (match && match[1]) {
       const parsedCap = parseInt(match[1], 10);
       if (parsedCap > 0 && parsedCap <= 1000) {
