@@ -54,7 +54,7 @@ import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
 import { AnnouncementModal } from "./modals/AnnouncementModal";
-import { SmartActionPrompt, ExpiringSoonPromptBanner } from "./SmartActionPrompt";
+import { SmartActionPrompt } from "./SmartActionPrompt";
 
 // Helper functions (mapped to actual modules)
 const uo = resolveShimmerColor;
@@ -845,16 +845,6 @@ export const GarageDashboardView = memo((props: any) => {
                 return null;
               })() || (
                 <React.Fragment>
-                  {!Ns && subInfo.remainingHours > 0 && subInfo.remainingHours <= 24 && (
-                    <ExpiringSoonPromptBanner
-                      garage={t}
-                      packages={F}
-                      walletNumber={I}
-                      onOpenPackages={() => Q && Q(true)}
-                      showToast={V}
-                      remainingHours={subInfo.remainingHours}
-                    />
-                  )}
                   <RegistrationCard
                     newPlateNumber={x}
                     setNewPlateNumber={b}
