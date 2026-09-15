@@ -440,38 +440,41 @@ export function createApp() {
             if (effectiveUid && sessionId && adminDb) {
               try {
                 const entityDocRef = adminDb.doc(`delegates/${dDoc.id}`);
-                const snap = await entityDocRef.get();
-                if (snap.exists) {
-                  const data = snap.data() || {};
-                  const activeSessionId = data.currentSessionId;
-                  const rawLastActive = data.lastActive;
-                  const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-                  const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
-                  const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
+                const securityDocRef = adminDb.doc(`delegate_sessions/${effectiveUid}`);
+                await adminDb.runTransaction(async (transaction) => {
+                  const snap = await transaction.get(entityDocRef);
+                  if (snap.exists) {
+                    const data = snap.data() || {};
+                    const activeSessionId = data.currentSessionId;
+                    const rawLastActive = data.lastActive;
+                    const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
+                    const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && (Date.now() - lastActive < 15 * 60 * 1000);
 
-                  if (isAlive) {
-                    return res.json({ success: false, error: 'SESSION_OCCUPIED' });
+                    if (isAlive) {
+                      throw new Error('SESSION_OCCUPIED');
+                    }
                   }
-                }
 
-                // Update entity doc with session lock
-                await entityDocRef.set({
-                  currentSessionId: sessionId,
-                  lastActive: new Date()
-                }, { merge: true });
-
-                // Provision security session doc with Admin SDK bypass
-                await adminDb.doc(`delegate_sessions/${effectiveUid}`).set({
-                  uid: effectiveUid,
-                  role: 'delegate',
-                  entityId: dDoc.id,
-                  sessionId,
-                  isActive: true,
-                  lastActive: new Date(),
-                  createdAt: new Date()
-                }, { merge: true });
-              } catch (sessErr) {
+                  const now = new Date();
+                  transaction.set(entityDocRef, {
+                    currentSessionId: sessionId,
+                    lastActive: now
+                  }, { merge: true });
+                  transaction.set(securityDocRef, {
+                    uid: effectiveUid,
+                    role: 'delegate',
+                    entityId: dDoc.id,
+                    sessionId,
+                    isActive: true,
+                    lastActive: now,
+                    createdAt: now
+                  }, { merge: true });
+                });
+              } catch (sessErr: any) {
                 console.error('[Server Auth] Error claiming delegate session during phone verification:', sessErr);
+                if (sessErr?.message === 'SESSION_OCCUPIED') {
+                  return res.json({ success: false, error: 'SESSION_OCCUPIED' });
+                }
                 // Fail closed
                 return res.status(500).json({ success: false, error: 'تعذر تهيئة الجلسة الآمنة، يرجى إعادة المحاولة' });
               }

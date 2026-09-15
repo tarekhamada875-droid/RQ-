@@ -92,6 +92,20 @@ describe('claimDelegateSession atomic locking', () => {
     expect((rejected[0] as PromiseRejectedResult).reason.message).toBe('DELEGATE_SESSION_OCCUPIED');
   });
 
+  it('allows exactly one winner under high concurrent contention', async () => {
+    const attempts = Array.from({ length: 50 }, (_, index) =>
+      firestoreService.claimDelegateSession('del-1', `load-session-${index}`)
+    );
+    const results = await Promise.allSettled(attempts);
+    const fulfilled = results.filter(result => result.status === 'fulfilled');
+    const rejected = results.filter(result => result.status === 'rejected');
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(49);
+    expect(rejected.every(result => (result as PromiseRejectedResult).reason.message === 'DELEGATE_SESSION_OCCUPIED')).toBe(true);
+    expect(delegateDocStore['delegates/del-1'].currentSessionId).toMatch(/^load-session-/);
+  });
+
   it('does not replace the winning session', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
     expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
