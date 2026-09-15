@@ -6,7 +6,9 @@ import {
   applyMonthlySubscribersFlatFee, 
   packageIdToDays, 
   validateRechargeRequest,
-  throttleSnapshot
+  throttleSnapshot,
+  getEffectiveDailyCapacity,
+  isUnlimitedCapacity
 } from '../utils';
 import { getCleanPackageInfo } from '../constants/packages';
 
@@ -58,6 +60,23 @@ describe('isSubscriptionExpired', () => {
   test('returns true for expired subscription', () => {
     const pastDate = new Date(Date.now() - 86400000); // yesterday
     expect(isSubscriptionExpired({ balanceExpiry: pastDate })).toBe(true);
+  });
+});
+
+describe('getEffectiveDailyCapacity', () => {
+  test('treats numeric zero capacity as unlimited regardless of package name', () => {
+    const garage = { dailyCapacity: 0, activePackageName: 'باقة مخصصة' };
+    expect(getEffectiveDailyCapacity(garage)).toBe(0);
+    expect(isUnlimitedCapacity(garage)).toBe(true);
+  });
+
+  test('treats string zero capacity as unlimited', () => {
+    expect(getEffectiveDailyCapacity({ dailyCapacity: '0', activePackageName: 'باقة مخصصة' })).toBe(0);
+  });
+
+  test('keeps an explicit limited capacity', () => {
+    expect(getEffectiveDailyCapacity({ dailyCapacity: 40, activePackageName: 'باقة مخصصة' })).toBe(40);
+    expect(isUnlimitedCapacity({ dailyCapacity: 40, activePackageName: 'باقة مخصصة' })).toBe(false);
   });
 });
 
@@ -262,5 +281,3 @@ describe('throttleSnapshot', () => {
     vi.useRealTimers();
   });
 });
-
-
