@@ -3041,13 +3041,36 @@ export function createApp() {
       const { id } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
+      const delRef = adminDb.collection('delegates').doc(id);
       const now = new Date();
-      await adminDb.collection('delegates').doc(id).update({
-        lastSettledAt: now,
-        totalRechargedAmount: 0,
-        updatedAt: now
+      let previousTotal = 0;
+
+      await adminDb.runTransaction(async (t: any) => {
+        const snap = await t.get(delRef);
+        if (!snap.exists) throw new Error('DELEGATE_NOT_FOUND');
+        const data = snap.data() || {};
+        previousTotal = Number(data.totalRechargedAmount || 0);
+        t.update(delRef, {
+          lastSettledAt: now,
+          totalRechargedAmount: 0,
+          updatedAt: now
+        });
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: `delegate_${id}`,
+          aggregateType: 'delegate',
+          aggregateId: id,
+          eventType: 'delegate_settled',
+          actorUid: req.user?.uid || 'admin',
+          actorRole: 'admin',
+          payload: {
+            delegateId: id,
+            previousRechargedAmount: previousTotal,
+            settledAt: now.toISOString()
+          }
+        });
       });
-      return res.json({ success: true, settledAt: now.toISOString() });
+
+      return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
     } catch (e: any) {
       console.error('[Server Delegate] Error settling account:', e);
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
@@ -3177,7 +3200,7 @@ export function createApp() {
     }
   });
 
-  // Read-only consistency diagnostics; repairs remain a separate deliberate action.
+  // Read-only consistency diagnostics & Event Ledger reconciliation
   app.post('/api/garages/reconciliation', requireAuth, async (req: AuthRequest, res: any) => {
     try {
       if (req.user?.role !== 'admin') {
@@ -3190,12 +3213,36 @@ export function createApp() {
       if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
 
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const [insideSnap, dailyStatsSnap] = await Promise.all([
+      const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
         adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
-        adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()
+        adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
+        adminDb.collection(`garages/${garageId}/events`).orderBy('occurredAt', 'desc').limit(500).get()
       ]);
       const garageData = garageSnap.data() || {};
       const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
+
+      // Event Ledger Reconciliation metrics
+      let eventDerivedRevenue = 0;
+      let eventEntersCount = 0;
+      let eventExitsCount = 0;
+      let eventRefundsCount = 0;
+
+      for (const doc of eventsSnap.docs) {
+        const ev = doc.data() || {};
+        const evDate = ev.occurredAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ev.occurredAt)) : '';
+        if (evDate === today) {
+          if (ev.eventType === 'vehicle_entered') eventEntersCount++;
+          if (ev.eventType === 'vehicle_exited') {
+            eventExitsCount++;
+            eventDerivedRevenue += Number(ev.payload?.cost || 0);
+          }
+          if (ev.eventType === 'vehicle_refunded') {
+            eventRefundsCount++;
+            eventDerivedRevenue -= Number(ev.payload?.refundAmount || 0);
+          }
+        }
+      }
+
       const expected = {
         carsInside: insideSnap.size,
         todayCount: Number(stats.count || 0),
@@ -3206,10 +3253,88 @@ export function createApp() {
         todayCount: garageData.lastTransactionDate === today ? Number(garageData.todayCount || 0) : 0,
         todayRevenue: garageData.lastTransactionDate === today ? Number(garageData.todayRevenue || 0) : 0
       };
+      const eventLedgerSummary = {
+        totalRecordedEvents: eventsSnap.size,
+        todayEnters: eventEntersCount,
+        todayExits: eventExitsCount,
+        todayRefunds: eventRefundsCount,
+        eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
+      };
+
       const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key as keyof typeof expected] - actual[key as keyof typeof actual]]));
-      return res.json({ success: true, data: { garageId, date: today, expected, actual, differences, isConsistent: Object.values(differences).every((value) => value === 0) } });
+      return res.json({
+        success: true,
+        data: {
+          garageId,
+          date: today,
+          expected,
+          actual,
+          eventLedgerSummary,
+          differences,
+          isConsistent: Object.values(differences).every((value) => value === 0)
+        }
+      });
     } catch (e: any) {
       console.error('[Server Garage] Error in reconciliation:', e);
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
+    }
+  });
+
+  // Admin-only Projection Rebuild: Rebuilds daily_stats from the authoritative Event Ledger log
+  app.post('/api/garages/rebuild-projections', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      const { garageId, date } = req.body || {};
+      if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+
+      const targetDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).orderBy('occurredAt', 'asc').get();
+
+      let count = 0;
+      let exitsCount = 0;
+      let revenue = 0;
+      let eventWatermark = eventsSnap.size;
+
+      for (const doc of eventsSnap.docs) {
+        const ev = doc.data() || {};
+        const evDate = ev.occurredAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ev.occurredAt)) : '';
+        if (evDate === targetDate) {
+          if (ev.eventType === 'vehicle_entered') count++;
+          if (ev.eventType === 'vehicle_exited') {
+            exitsCount++;
+            revenue += Number(ev.payload?.cost || 0);
+          }
+          if (ev.eventType === 'vehicle_refunded') {
+            revenue -= Number(ev.payload?.refundAmount || 0);
+          }
+        }
+      }
+
+      const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
+      const projectionData = {
+        count,
+        exitsCount,
+        revenue: Number(revenue.toFixed(2)),
+        rebuiltAt: new Date().toISOString(),
+        eventWatermark,
+        rebuiltBy: req.user?.uid || 'admin'
+      };
+
+      await projectionRef.set(projectionData, { merge: true });
+
+      return res.json({
+        success: true,
+        data: {
+          garageId,
+          date: targetDate,
+          projection: projectionData
+        }
+      });
+    } catch (e: any) {
+      console.error('[Server Garage] Error in rebuild-projections:', e);
       const { statusCode, message } = mapDomainErrorToStatus(e);
       return res.status(statusCode).json({ success: false, error: message });
     }
