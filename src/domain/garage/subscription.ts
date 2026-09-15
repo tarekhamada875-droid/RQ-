@@ -136,21 +136,23 @@ export const getEffectiveDailyCapacity = (garage: any): number => {
     return 0; // Unlimited capacity
   }
 
-  // 3. Explicit dailyCapacity > 0 stored on garage
+  // 3. The recharge transaction stores 0 as the canonical unlimited marker.
+  // Check it before the legacy name parsing/fallback so unlimited packages
+  // cannot accidentally display the default 40-car limit.
+  if ((typeof garage.dailyCapacity === 'number' || typeof garage.dailyCapacity === 'string') && Number(garage.dailyCapacity) === 0) {
+    return 0;
+  }
+
+  // 4. Explicit dailyCapacity > 0 stored on garage
   if (typeof garage.dailyCapacity === 'number' && garage.dailyCapacity > 0) {
     return garage.dailyCapacity;
   }
 
-  // 4. Try parsing capacity from package name (e.g. "40 سيارة")
+  // 5. Try parsing capacity from package name (e.g. "40 سيارة")
   const match = pkgName.match(/(\d+)\s*سيارة/);
   if (match && match[1]) {
     const parsed = parseInt(match[1], 10);
     if (parsed > 0 && parsed <= 1000) return parsed;
-  }
-
-  // 5. If dailyCapacity === 0 and package name was explicitly unlimited
-  if (garage.dailyCapacity === 0 && (pkgName.includes('مفتوح') || pkgName.includes('غير محدود'))) {
-    return 0;
   }
 
   // 6. Fallback for non-trial subscriptions without explicit capacity: default limited capacity is 40
