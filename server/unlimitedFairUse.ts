@@ -108,7 +108,8 @@ export const evaluateFairUseCheckIn = (
     threshold: Number(currentFairUse?.threshold || config.threshold),
     extensionsCount: Math.max(0, Number(currentFairUse?.extensionsCount || 0)),
     isNearMaxLimit: Boolean(currentFairUse?.isNearMaxLimit),
-    isMaxLimitReached: Boolean(currentFairUse?.isMaxLimitReached)
+    isMaxLimitReached: Boolean(currentFairUse?.isMaxLimitReached),
+    ...(currentFairUse?.lastExtendedAt !== undefined ? { lastExtendedAt: currentFairUse.lastExtendedAt } : {})
   };
 
   const nextCount = fairUse.cycleCarsCount + 1;
@@ -146,18 +147,24 @@ export const evaluateFairUseCheckIn = (
   const isNearMaxLimit = remainingToMax <= fairUse.threshold;
   const isMaxLimitReached = nextCount >= fairUse.maxAllowance;
 
+  const updatedFairUse: UnlimitedFairUse = {
+    ...fairUse,
+    cycleCarsCount: nextCount,
+    currentAllowance: newAllowance,
+    extensionsCount,
+    isNearMaxLimit,
+    isMaxLimitReached,
+  };
+  if (autoExtended) {
+    updatedFairUse.lastExtendedAt = new Date();
+  } else if (updatedFairUse.lastExtendedAt === undefined) {
+    delete updatedFairUse.lastExtendedAt;
+  }
+
   return {
     allowed: true,
     autoExtended,
-    updatedFairUse: {
-      ...fairUse,
-      cycleCarsCount: nextCount,
-      currentAllowance: newAllowance,
-      extensionsCount,
-      isNearMaxLimit,
-      isMaxLimitReached,
-      lastExtendedAt: autoExtended ? new Date() : fairUse.lastExtendedAt
-    }
+    updatedFairUse
   };
 };
 
@@ -169,7 +176,7 @@ export const manualAdminExtendFairUse = (
   const newMax = currentFairUse.maxAllowance + step;
   const newCurrent = Math.max(currentFairUse.currentAllowance, currentFairUse.cycleCarsCount) + step;
 
-  return {
+  const updatedFairUse: UnlimitedFairUse = {
     ...currentFairUse,
     maxAllowance: newMax,
     currentAllowance: newCurrent,
@@ -178,4 +185,5 @@ export const manualAdminExtendFairUse = (
     isNearMaxLimit: false,
     lastExtendedAt: new Date()
   };
+  return updatedFairUse;
 };
