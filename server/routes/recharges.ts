@@ -263,6 +263,9 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
         const pkgSnap = await t.get(pkgRef);
         if (pkgSnap.exists) {
           const pData = pkgSnap.data() || {};
+          if (pData.isActive === false) {
+            throw new Error('PACKAGE_INACTIVE');
+          }
           if (pData.price !== undefined) {
             basePrice = Number(pData.price);
           }
@@ -275,7 +278,14 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
           if (pData.name) {
             pkgName = String(pData.name);
           }
+          if (!Number.isFinite(basePrice) || basePrice < 0 || !Number.isFinite(durationDays) || durationDays <= 0) {
+            throw new Error('INVALID_PACKAGE_CONFIGURATION');
+          }
+        } else if (requestData.requestType !== 'balance_topup') {
+          throw new Error('PACKAGE_NOT_FOUND');
         }
+      } else if (requestData.requestType !== 'balance_topup') {
+        throw new Error('PACKAGE_NOT_FOUND');
       }
 
       const targetDelegateId = delegateReferrerId || requestData.delegateId || null;

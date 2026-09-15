@@ -6,11 +6,10 @@ import postcssOklabFunction from '@csstools/postcss-oklab-function';
 import postcssColorMixFunction from '@csstools/postcss-color-mix-function';
 import autoprefixer from 'autoprefixer';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     plugins: [
       react(), 
@@ -53,9 +52,6 @@ export default defineConfig(({mode}) => {
         }
       })
     ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     test: {
       globals: true,
       environment: 'jsdom',

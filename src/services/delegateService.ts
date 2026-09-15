@@ -14,6 +14,7 @@ import type { Delegate, RechargeRequest, ActivityLog } from '../types';
 import { safeDate } from '../utils';
 import { validateRechargeRequest } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
+import { generateIdempotencyKey } from '../types/apiContracts';
 
 export const delegateService = {
   addDelegate: async (data: Omit<Delegate, 'id'>) => {
@@ -164,7 +165,7 @@ export const delegateService = {
       );
       const res = await apiFetch('/api/recharge-requests/create', {
         method: 'POST',
-        body: cleanData
+        body: { ...cleanData, idempotencyKey: generateIdempotencyKey('recharge_request') }
       });
       return { id: res.id };
     } catch (error) {

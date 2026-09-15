@@ -73,6 +73,8 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('VEHICLE_ALREADY_OUTSIDE') ||
     errMsg.includes('INSUFFICIENT_BALANCE') ||
     errMsg.includes('CAPACITY_LIMIT_REACHED') ||
+    errMsg.includes('PACKAGE_INACTIVE') ||
+    errMsg.includes('INVALID_PACKAGE_CONFIGURATION') ||
     errMsg.includes('FAIR_USE_LIMIT_REACHED') ||
     errMsg.includes('DAILY_DELETION_LIMIT_REACHED') ||
     errMsg.includes('DELEGATE_DAILY_GARAGE_LIMIT_REACHED') ||
@@ -3736,7 +3738,7 @@ export function createApp() {
   });
 
   // Secure Server API: Recharge Requests (Create)
-  app.post('/api/recharge-requests/create', requireAuth, async (req: AuthRequest, res: any) => {
+  app.post('/api/recharge-requests/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     try {
       if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
 
@@ -3759,25 +3761,69 @@ export function createApp() {
         if (!canRequest) return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
       }
 
-      const cleanData = sanitizePayload(req.body || {}, [
-        'requestType', 'garageId', 'garageName', 'delegateId', 'delegateName',
-        'packageId', 'packageName', 'amount', 'price', 'carsCount', 'revenueAmount',
-        'durationDays', 'dailyCapacity', 'originalRevenueAmount', 'couponCode',
-        'discountAmount', 'commission', 'referrerId', 'idempotencyKey'
-      ], false);
-      cleanData.garageId = garageId;
-      cleanData.createdByUid = req.user?.uid || null;
+      const idempotencyKey = validateIdempotencyKey(
+        req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']
+      );
+      if (!idempotencyKey) {
+        return res.status(400).json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' });
+      }
 
-      const docRef = await adminDb.collection('recharge_requests').add({
-        ...Object.fromEntries(Object.entries(cleanData).filter(([_, v]) => v !== undefined)),
-        status: 'pending',
-        createdAt: new Date()
+      const requestType = req.body?.requestType === 'balance_topup' ? 'balance_topup' : 'subscription';
+      const packageId = validateString(req.body?.packageId, 'packageId', { required: false });
+      if (requestType !== 'balance_topup' && !packageId) {
+        return res.status(400).json({ success: false, error: 'PACKAGE_REQUIRED' });
+      }
+
+      // Never persist client-supplied prices, commissions, capacity, duration, or
+      // discount values for subscription requests. Approval derives these from
+      // the authoritative package/configuration documents.
+      const cleanData: Record<string, unknown> = {
+        requestType,
+        garageId,
+        packageId: packageId || null,
+        couponCode: validateString(req.body?.couponCode, 'couponCode', { required: false }) || null,
+        createdByUid: req.user?.uid || null,
+        idempotencyKey
+      };
+      if (requestType === 'balance_topup') {
+        const amount = validateNumber(req.body?.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
+        cleanData.amount = amount;
+      }
+
+      let createdId: string | null = null;
+      await adminDb.runTransaction(async (t: any) => {
+        const duplicate = await checkIdempotencyInTransaction(
+          t,
+          idempotencyKey,
+          '/api/recharge-requests/create',
+          req.user?.uid
+        );
+        if (duplicate.isDuplicate) {
+          createdId = duplicate.cachedResult?.id || null;
+          return;
+        }
+
+        const docRef = adminDb.collection('recharge_requests').doc();
+        createdId = docRef.id;
+        t.set(docRef, {
+          ...cleanData,
+          status: 'pending',
+          createdAt: new Date()
+        });
+        storeIdempotencyInTransaction(
+          t,
+          idempotencyKey,
+          { id: docRef.id },
+          '/api/recharge-requests/create',
+          req.user?.uid
+        );
       });
 
-      return res.json({ success: true, id: docRef.id });
+      return res.json({ success: true, id: createdId });
     } catch (e: any) {
       console.error('[Server RechargeRequests] Error in create:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 

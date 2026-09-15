@@ -119,7 +119,6 @@ service cloud.firestore {
 
     function isGarageSession(garageId) {
       return isSignedIn() && (
-        request.auth.uid == garageId ||
         (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
          get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true) ||
@@ -168,6 +167,7 @@ service cloud.firestore {
 
     function isStaffSession(staffId) {
       return isSignedIn() && exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
              get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == staffId;
     }
 
@@ -175,8 +175,10 @@ service cloud.firestore {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
+         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true &&
          vehicleData.staffId == null) ||
         (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
          get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId &&
          vehicleData.staffId is string &&
          get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == vehicleData.staffId)
