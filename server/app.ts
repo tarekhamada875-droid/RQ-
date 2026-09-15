@@ -1,5 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import vehiclesRouter from './routes/vehicles';
+import subscribersRouter from './routes/subscribers';
+import delegatesRouter from './routes/delegates';
+import rechargesRouter from './routes/recharges';
+import garagesRouter from './routes/garages';
 import {
   adminDb,
   adminAuth
@@ -193,6 +198,13 @@ export function createApp() {
   app.use(express.json());
   app.use(correlationMiddleware);
   app.use(requestTimeoutMiddleware(15000));
+
+  // Mount Modular Routers
+  app.use('/api/vehicles', vehiclesRouter);
+  app.use('/api/subscribers', subscribersRouter);
+  app.use('/api/delegates', delegatesRouter);
+  app.use('/api/transactions', rechargesRouter);
+  app.use('/api/garages', garagesRouter);
 
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {
@@ -2591,6 +2603,51 @@ export function createApp() {
       return res.json({ success: true, id: garageId });
     } catch (e: any) {
       console.error('[Server Garage] Error in create garage:', e);
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
+    }
+  });
+
+  // Secure Server API: Update Garage Trial Decision
+  app.post('/api/garages/trial-decision', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      const { garageId, trialDecision } = req.body || {};
+      if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+      const validatedGarageId = validateId(garageId, 'garageId', true);
+
+      if (trialDecision !== null && trialDecision !== 'continued' && trialDecision !== 'declined') {
+        return res.status(400).json({ success: false, error: 'INVALID_TRIAL_DECISION' });
+      }
+
+      const garageRef = adminDb.collection('garages').doc(validatedGarageId);
+      const garageSnap = await garageRef.get();
+      if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
+
+      const updates: Record<string, any> = {
+        trialDecision: trialDecision,
+        trialDecisionAt: trialDecision ? new Date() : null,
+        updatedAt: new Date()
+      };
+
+      await garageRef.update(updates);
+
+      // Record audit log
+      const logRef = adminDb.collection('activity_logs').doc();
+      await logRef.set({
+        garageId: validatedGarageId,
+        garageName: garageSnap.data()?.name || '',
+        staffId: req.user?.uid || null,
+        staffName: req.user?.displayName || 'مستخدم',
+        actionType: 'update_trial_decision',
+        plateNumber: trialDecision ? `قرار التجربة: ${trialDecision}` : 'مسح قرار التجربة',
+        timestamp: new Date(),
+        amount: 0,
+        details: { trialDecision }
+      });
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error('[Server Garage] Error in trial decision:', e);
       const { statusCode, message } = mapDomainErrorToStatus(e);
       return res.status(statusCode).json({ success: false, error: message });
     }

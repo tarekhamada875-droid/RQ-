@@ -1,0 +1,559 @@
+import { Router } from 'express';
+import { requireAuth, AuthRequest } from '../middleware';
+import { adminDb } from '../firebaseAdmin';
+import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
+import { recordDomainEventInTransaction } from '../events';
+import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
+import { calculateVehicleCost } from '../utils';
+import { validateIdempotencyKey } from '../validation';
+import { mapDomainErrorToStatus } from './helpers';
+
+const router = Router();
+
+// Secure Server API: Vehicle Check-In
+router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
+  const requestStartedAt = Date.now();
+  try {
+    const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = '';
+
+    if (callerRole === 'garage' || callerRole === 'staff') {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === 'admin') {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for vehicle operations' });
+    }
+
+    const staffId = req.user?.uid;
+    
+    if (!garageId || !plateNumber || !plateRaw) {
+      return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+
+    const getCairoDateKey = () => {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    };
+
+    const today = getCairoDateKey();
+
+    let isSubscriberAuthoritative = false;
+    try {
+      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+      const [subSnapRaw, subSnapPlate] = await Promise.all([
+        subscriberCollection.where('plateNumberRaw', '==', plateRaw).get(),
+        subscriberCollection.where('plateNumber', '==', plateNumber).get(),
+      ]);
+      for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
+        const subData = doc.data() || {};
+        const startDate = subData.startDate || '';
+        const endDate = subData.endDate || '';
+        if (startDate && endDate && today >= startDate && today <= endDate) {
+          isSubscriberAuthoritative = true;
+          break;
+        }
+      }
+    } catch (subErr) {
+      console.warn('[Server Check-In] Subscriber lookup warning:', subErr);
+    }
+
+    let resultData: Record<string, any> = {};
+    await adminDb.runTransaction(async (t: any) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', req.user?.uid);
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || {};
+          return;
+        }
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+
+      const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
+        t.get(garageRef),
+        t.get(vehicleRef),
+        t.get(dailyStatsRef)
+      ]);
+
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+      const garageData = garageSnap.data() || {};
+
+      if (isSubscriberAuthoritative) {
+        throw new Error('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN');
+      }
+
+      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+      
+      const expDateRaw = garageData.balanceExpiry;
+      if (!expDateRaw) throw new Error('SUBSCRIPTION_EXPIRED');
+      const expDate = expDateRaw.toDate ? expDateRaw.toDate() : new Date(expDateRaw);
+      if (isNaN(expDate.getTime()) || expDate.getTime() < Date.now()) {
+        throw new Error('SUBSCRIPTION_EXPIRED');
+      }
+
+      const isNewDay = garageData.lastTransactionDate !== today;
+      const capacity = Number(garageData.dailyCapacity || 0);
+      const used = isNewDay ? 0 : Number(garageData.todayCount || 0);
+      const isUnlimited = capacity === 0 || String(garageData.activePackageName || '').includes('مفتوح');
+      
+      let updatedFairUse: any = null;
+      let didAutoExtend = false;
+
+      if (isUnlimited) {
+        const evalResult = evaluateFairUseCheckIn(
+          garageData.unlimitedFairUse,
+          garageData.durationDays || 30,
+          garageData.activePackageName || ''
+        );
+        if (!evalResult.allowed) {
+          throw new Error('FAIR_USE_LIMIT_REACHED');
+        }
+        updatedFairUse = evalResult.updatedFairUse;
+        didAutoExtend = evalResult.autoExtended;
+      } else if (used >= capacity) {
+        throw new Error('CAPACITY_LIMIT_REACHED');
+      }
+
+      if (vehicleSnap.exists && vehicleSnap.data()?.status === 'inside') {
+        throw new Error('VEHICLE_ALREADY_INSIDE');
+      }
+      
+      t.set(vehicleRef, {
+        id: plateRaw,
+        plate: plateNumber,
+        plateNumber,
+        plateNumberRaw: plateRaw,
+        type: type || 'hourly',
+        isSubscriber: isSubscriberAuthoritative,
+        entryTime: new Date(),
+        status: 'inside',
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        enteredByUid: req.user?.uid || null
+      }, { merge: true });
+
+      const garageUpdate: any = {
+        carsInside: (garageData.carsInside || 0) + 1,
+        todayCount: isNewDay ? 1 : used + 1,
+        todayRevenue: isNewDay ? 0 : (garageData.todayRevenue || 0),
+        lastTransactionDate: today
+      };
+      if (updatedFairUse) {
+        garageUpdate.unlimitedFairUse = updatedFairUse;
+      }
+
+      t.set(garageRef, garageUpdate, { merge: true });
+
+      if (didAutoExtend && updatedFairUse) {
+        const autoExtLogRef = adminDb.collection('activity_logs').doc();
+        t.set(autoExtLogRef, {
+          garageId,
+          garageName: garageData.name || '',
+          staffId: 'system',
+          staffName: 'نظام الاستخدام العادل',
+          actionType: 'fair_use_auto_extended',
+          plateNumber: `تمديد تلقائي لسعة الباقة (+${updatedFairUse.stepAmount} سيارة)`,
+          timestamp: new Date(),
+          details: {
+            currentAllowance: updatedFairUse.currentAllowance,
+            maxAllowance: updatedFairUse.maxAllowance,
+            cycleCarsCount: updatedFairUse.cycleCarsCount,
+            tierType: updatedFairUse.tierType
+          }
+        });
+      }
+
+      if (!dailyStatsSnap.exists) {
+        t.set(dailyStatsRef, {
+          dateId: today,
+          count: 1,
+          limit: isUnlimited ? 0 : capacity,
+          revenue: 0,
+          createdAt: new Date()
+        });
+      } else {
+        t.set(dailyStatsRef, { count: (dailyStatsSnap.data()?.count || 0) + 1 }, { merge: true });
+      }
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        actionType: 'check_in',
+        plateNumber,
+        timestamp: new Date(),
+        amount: 0
+      });
+
+      resultData = {
+        isSubscriber: isSubscriberAuthoritative,
+        vehicle: {
+          id: plateRaw,
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          type: type || 'hourly',
+          status: 'inside',
+          entryTime: new Date().toISOString(),
+          staffId: staffId || null,
+          staffName: resolvedStaffName,
+          isSubscriber: isSubscriberAuthoritative,
+        },
+        carsInside: Number(garageUpdate.carsInside || 0),
+        dailyCount: Number(garageUpdate.todayCount || 0),
+        dailyCapacity: isUnlimited ? 0 : capacity,
+      };
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'vehicle',
+        aggregateId: plateRaw,
+        eventType: 'vehicle_entered',
+        actorUid: req.user?.uid || staffId || 'system',
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || undefined,
+        payload: {
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          type: type || 'hourly',
+          isSubscriber: isSubscriberAuthoritative,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid);
+      }
+    });
+
+    const durationMs = Date.now() - requestStartedAt;
+    res.setHeader('Server-Timing', `check-in;dur=${durationMs}`);
+    console.info('[Server Check-In] completed', {
+      correlationId: req.correlationId,
+      durationMs,
+      garageId,
+      isSubscriber: isSubscriberAuthoritative,
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (err: any) {
+    console.error('[Server] Check-in error:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message });
+  }
+});
+
+// Secure Server API: Vehicle Check-Out
+router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
+  try {
+    const { garageId: bodyGarageId, vehicleId } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = '';
+
+    if (callerRole === 'garage' || callerRole === 'staff') {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === 'admin') {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for vehicle operations' });
+    }
+
+    const staffId = req.user?.uid;
+    
+    if (!garageId || !vehicleId) {
+      return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+
+    const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
+    let finalCost = 0;
+
+    await adminDb.runTransaction(async (t: any) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', req.user?.uid);
+        if (duplicate.isDuplicate) {
+          finalCost = Number(duplicate.cachedResult?.cost || 0);
+          return;
+        }
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const today = getCairoDateKey();
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+
+      const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
+        t.get(garageRef),
+        t.get(vehicleRef),
+        t.get(dailyStatsRef)
+      ]);
+
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+      if (!vehicleSnap.exists) throw new Error('VEHICLE_NOT_FOUND');
+
+      const garageData = garageSnap.data() || {};
+      const vehicleData = vehicleSnap.data() || {};
+
+      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+
+      if (vehicleData.status === 'outside') {
+        throw new Error('VEHICLE_ALREADY_OUTSIDE');
+      }
+
+      const cost = calculateVehicleCost(vehicleData, garageData);
+      finalCost = cost;
+
+      t.set(vehicleRef, {
+        status: 'outside',
+        exitTime: new Date(),
+        totalCost: cost
+      }, { merge: true });
+
+      const isNewDay = garageData.lastTransactionDate !== today;
+      
+      t.set(garageRef, {
+        totalRevenue: (garageData.totalRevenue || 0) + cost,
+        totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
+        todayRevenue: isNewDay ? cost : (garageData.todayRevenue || 0) + cost,
+        todayCount: isNewDay ? 0 : (garageData.todayCount || 0),
+        lastTransactionDate: today,
+        carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
+      }, { merge: true });
+
+      if (!dailyStatsSnap.exists) {
+        t.set(dailyStatsRef, {
+          dateId: today,
+          count: 0,
+          revenue: cost,
+          createdAt: new Date()
+        });
+      } else {
+        t.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + cost }, { merge: true });
+      }
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        actionType: 'check_out',
+        plateNumber: vehicleData.plateNumber,
+        plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+        entryTime: vehicleData.entryTime,
+        type: vehicleData.type || 'hourly',
+        isSubscriber: !!vehicleData.isSubscriber,
+        timestamp: new Date(),
+        amount: cost
+      });
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'vehicle',
+        aggregateId: vehicleId,
+        eventType: 'vehicle_exited',
+        actorUid: req.user?.uid || staffId || 'system',
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || undefined,
+        payload: {
+          plateNumber: vehicleData.plateNumber || vehicleId,
+          plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+          type: vehicleData.type || 'hourly',
+          isSubscriber: !!vehicleData.isSubscriber,
+          cost,
+          entryTime: vehicleData.entryTime,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t, idempotencyKey, { cost }, '/api/vehicles/check-out', req.user?.uid);
+      }
+    });
+
+    return res.json({ success: true, data: { cost: finalCost } });
+  } catch (err: any) {
+    console.error('[Server] Check-out error:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message });
+  }
+});
+
+// Secure Server API: Vehicle Delete / Refund
+router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
+  try {
+    const { garageId: bodyGarageId, vehicleId, refundAmount } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = '';
+
+    if (callerRole === 'garage' || callerRole === 'staff') {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === 'admin') {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for vehicle operations' });
+    }
+
+    const staffId = req.user?.uid;
+    
+    if (!garageId || !vehicleId) {
+      return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+    const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
+    await adminDb.runTransaction(async (t: any) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/delete', req.user?.uid);
+        if (duplicate.isDuplicate) return;
+      }
+      const todayYMD = getCairoDateKey();
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
+
+      const [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
+        t.get(garageRef),
+        t.get(vehicleRef),
+        t.get(dailyStatsRef)
+      ]);
+
+      if (!garageDoc.exists) throw new Error('GARAGE_NOT_FOUND');
+      if (!vehicleDoc.exists) throw new Error('VEHICLE_NOT_FOUND');
+      
+      const garageData = garageDoc.data() || {};
+      const vehicleData = vehicleDoc.data() || {};
+      
+      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+
+      if (callerRole !== 'admin') {
+        const entrantUid = vehicleData.enteredByUid || vehicleData.staffUid || vehicleData.staffId;
+        const callerUid = req.user?.uid;
+        const callerEntityId = req.user?.entityId;
+        
+        if (entrantUid && entrantUid !== callerUid && entrantUid !== callerEntityId) {
+          throw new Error('CORRECTION_FORBIDDEN: Only the staff member who entered the vehicle can correct or delete it');
+        }
+      }
+
+      const todayDeletions = garageData.lastDeletionDate === todayYMD ? (garageData.dailyDeletionCount || 0) : 0;
+      if (todayDeletions >= 3 && callerRole !== 'admin') {
+        throw new Error('reached_daily_deletion_limit');
+      }
+
+      const isSameRefundDay = garageData.lastRefundDate === todayYMD;
+      const requestedRefund = Math.max(0, Number(refundAmount || 0));
+      const maxEligibleRefund = (vehicleData.status === 'outside' && typeof vehicleData.totalCost === 'number')
+        ? Math.max(0, vehicleData.totalCost)
+        : 0;
+      const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
+
+      let enteredToday = false;
+      if (vehicleData.status === 'inside' && vehicleData.entryTime) {
+        const entryTime = vehicleData.entryTime.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
+        if (!isNaN(entryTime.getTime())) {
+          const entryDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(entryTime);
+          enteredToday = entryDateKey === todayYMD;
+        }
+      }
+
+      t.delete(vehicleRef);
+
+      const updates: any = {
+        isLocked: false,
+        dailyDeletionCount: todayDeletions + 1,
+        lastDeletionDate: todayYMD,
+        dailyRefundCount: isSameRefundDay ? ((garageData.dailyRefundCount || 0) + 1) : 1,
+        lastRefundDate: todayYMD
+      };
+
+      if (refundAmt > 0) {
+        updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
+        updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
+      }
+      if (vehicleData.status === 'inside') updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
+      if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
+
+      t.set(garageRef, updates, { merge: true });
+
+      if (dailyStatsDoc.exists) {
+        const statsUpdates: any = {};
+        if (enteredToday) {
+          const prevCount = dailyStatsDoc.data()?.count || 0;
+          if (prevCount > 0) statsUpdates.count = prevCount - 1;
+        }
+        if (refundAmt > 0) {
+          const prevRev = dailyStatsDoc.data()?.revenue || 0;
+          statsUpdates.revenue = Math.max(0, Number((prevRev - refundAmt).toFixed(2)));
+        }
+        if (Object.keys(statsUpdates).length > 0) {
+          t.set(dailyStatsRef, statsUpdates, { merge: true });
+        }
+      }
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: staffId || vehicleData.staffId || null,
+        staffName: resolvedStaffName,
+        actionType: 'delete_refund',
+        plateNumber: `مسح لوحة: ${vehicleData.plateNumber || vehicleId}`,
+        timestamp: new Date(),
+        amount: refundAmt
+      });
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'vehicle',
+        aggregateId: vehicleId,
+        eventType: refundAmt > 0 ? 'vehicle_refunded' : 'vehicle_deleted',
+        actorUid: req.user?.uid || staffId || 'system',
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || undefined,
+        payload: {
+          plateNumber: vehicleData.plateNumber || vehicleId,
+          plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+          refundAmount: refundAmt,
+          previousStatus: vehicleData.status,
+          previousCost: vehicleData.totalCost || 0,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/vehicles/delete', req.user?.uid);
+      }
+    });
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error('[Server] Delete error:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message });
+  }
+});
+
+export default router;

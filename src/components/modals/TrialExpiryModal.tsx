@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, XCircle, AlertTriangle, HeartHandshake } from 'lucide-react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { Garage } from '../../types';
 import { isSubscriptionExpired } from '../../domain/garage/subscription';
+import { adminService } from '../../services/adminService';
 
 interface TrialExpiryModalProps {
   garage: Garage | null;
@@ -37,11 +36,7 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const garageRef = doc(db, 'garages', garage.id);
-      await updateDoc(garageRef, {
-        trialDecision: decision,
-        trialDecisionAt: serverTimestamp(),
-      });
+      await adminService.updateTrialDecision(garage.id, decision);
 
       setSubmittedChoice(decision);
       if (decision === 'continued') {

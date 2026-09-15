@@ -555,7 +555,7 @@ export const adminService = {
     extraCars?: number
   ): Promise<any> => {
     try {
-      const res = await apiFetch(`/api/admin/garages/${garageId}/extend-fair-use`, {
+      const res = await apiFetch(`/api/garages/${garageId}/extend-fair-use`, {
         method: 'POST',
         body: { extraCars: extraCars || 0 }
       });
@@ -723,6 +723,18 @@ export const adminService = {
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'system_config/global');
+      throw error;
+    }
+  },
+
+  updateTrialDecision: async (garageId: string, trialDecision: 'continued' | 'declined' | null): Promise<void> => {
+    try {
+      await apiFetch('/api/garages/trial-decision', {
+        method: 'POST',
+        body: { garageId, trialDecision }
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
       throw error;
     }
   }

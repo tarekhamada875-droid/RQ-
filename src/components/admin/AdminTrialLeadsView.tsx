@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Phone, CheckCircle2, XCircle, Clock, Trash2, Zap, ExternalLink } from 'lucide-react';
 import { Garage } from '../../types';
 import { safeDate } from '../../utils';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { adminService } from '../../services/adminService';
 
 interface AdminTrialLeadsViewProps {
   garages: Garage[];
@@ -49,10 +48,7 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
     if (!garage.id || processingId) return;
     setProcessingId(garage.id);
     try {
-      await updateDoc(doc(db, 'garages', garage.id), {
-        trialDecision: null,
-        trialDecisionAt: null
-      });
+      await adminService.updateTrialDecision(garage.id, null);
       showToast?.('تمت إزالة العميل من قائمة التماس التجربة.', 'info');
     } catch (err) {
       console.error('Error clearing trial decision:', err);
