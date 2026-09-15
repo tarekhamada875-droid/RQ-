@@ -1,43 +1,95 @@
-# RQ Safe Backend Migration Plan
+# RQ Safe Backend Migration Plan — Project-Specific Edition
 
-**Author:** Manus AI  
-**Scope:** Backend domain logic, Firestore data model, APIs, projections, reconciliation, and operations. The existing React user interface remains in place during the migration.
+**Author:** Manus AI
+**Repository:** `tarekhamada875-droid/RQ-`
+**Current frontend:** React 19 and Vite, deployed on Cloudflare Pages
+**Current backend:** Express 5 serverless API, deployed on Vercel
+**Current database and authentication:** Firebase Authentication and Firestore with Firebase Admin SDK on the server
 
 ## Executive decision
 
-RQ should migrate to a deterministic, event-based backend through a staged **strangler migration**. The current production model must remain available until the replacement has demonstrated equivalent results under real workloads.
+RQ should be migrated toward a **deterministic event ledger with rebuildable projections**, but the migration must preserve the current user interface and the current production model until the replacement proves equivalent.
 
-The migration will not begin by deleting vehicle documents, removing realtime listeners, or changing the user interface. It will begin by formalizing business rules, measuring production behavior, and introducing versioned server APIs behind the existing service methods.
+The first migration target is not a complete rewrite of the UI and not immediate deletion of vehicle documents. The first target is a safer server domain layer that makes every critical operation explicit, idempotent, auditable, and mathematically testable.
 
-The migration is complete only when the new model can reproduce the current model’s operational, financial, authorization, and reporting results, and when rollback is still possible for every migrated workflow.
+The migration must follow this order:
 
-## 1. Safety principles
+```text
+measure → formalize rules → extract pure domain logic → record events transactionally → reconcile → pilot → expand → retire redundancy
+```
 
-| Principle | Required behavior |
+No critical event may be written as an untracked background side effect. If a vehicle check-in succeeds but its event is lost, the new ledger is corrupted. Therefore the event and the critical state mutation must be committed atomically whenever Firestore transaction limits permit. Only rebuildable projections may be processed asynchronously after the authoritative event exists.
+
+## 1. What exists today
+
+RQ is already partly server-authoritative. Critical operations are handled by Express routes using Firebase Admin SDK, while the React client calls those routes through service modules. Other screens still use Firestore listeners for realtime operational state and selected historical data.
+
+The current production model includes:
+
+| Area | Current responsibility |
 |---|---|
-| Single authority | Critical mutations are decided by the server, not by client-side Firestore writes. |
-| Immutable history | Business events are append-only and are never silently edited or deleted. |
-| Rebuildable views | Counters, daily totals, monthly totals, and current-cycle balances can be regenerated from events. |
-| Idempotent mutations | Retrying the same operation produces one business effect. |
-| Tenant isolation | Every read and write is scoped to the authenticated garage, delegate, or administrator. |
-| Reversible rollout | Every phase has a stop condition and a rollback procedure. |
-| Operational realtime | Live vehicles, capacity, garage state, and active work remain realtime. |
-| Historical on demand | Reports, exports, recharge history, and long-range activity are loaded with bounded queries. |
-| Observable behavior | Latency, retries, errors, mismatches, and usage are measured before optimization decisions. |
+| `server/app.ts` | Authentication-aware API routes, authorization, pricing, vehicle lifecycle, subscriber operations, recharge operations, delegate operations, and business-rule enforcement. |
+| `server/validation.ts` | Request validation, identifiers, numbers, plates, date ranges, and idempotency keys. |
+| `server/idempotency.ts` | Transactional duplicate-operation protection with expiry handling. |
+| `server/firebaseAdmin.ts` | Server-side Firebase Admin initialization and Firestore access. |
+| `src/services/vehicleService.ts` | Vehicle mutation client calls and optimistic synchronization. |
+| `src/services/adminService.ts` | Admin subscriber and administrative mutation calls. |
+| `src/services/delegateService.ts` | Delegate operations, recharge history, and settlement calls. |
+| Firestore listeners | Active vehicles, garage state, subscribers, delegates, and selected history. |
+| Cloudflare Pages | Static React frontend. It points to `https://parqv2.vercel.app`. |
+| Vercel | Production Express/serverless API. |
 
-> A projection is a fast, derived representation of authoritative events. It may be rebuilt when damaged or outdated; it is not the final source of truth.
+The vehicle document is currently more than a duplicate-check record. It supports the live inside list, checkout, pricing, refunds, deletion/correction, staff attribution, counters, and parts of reporting. It must not be deleted on checkout until those dependencies have been replaced and reconciled.
 
-## 2. Target architecture
+## 2. Business rules that the new backend must preserve
 
-The target system has three logical layers.
+The migration is not allowed to weaken the agreed business rules:
 
-### 2.1 Immutable business events
+| Rule | Required behavior |
+|---|---|
+| Sensitive garage settings | Admin-only. Garage owners and supervisors must not receive unauthorized settings capability. |
+| Subscriber management | Admin-only where the current approved rules require it. Subscriber dates must pass strict server-side validation. |
+| Supervisor scope | Supervisors manage delegates only. They do not manage garages, recharge balances, or sensitive garage settings. |
+| Delegate garage creation | Server-enforced maximum of three garages per delegate per day. |
+| Trial capacity | Fixed at 100 cars per day. |
+| PINs | Six-digit PIN policy for the approved account flows. |
+| Subscriber operations | Free of billing behavior and validated by date range. |
+| Vehicle lifecycle | Check-in, checkout, refund, correction, and deletion must remain consistent across devices. |
+| Delegate settlement | Settlement resets the current accounting cycle, not historical records. Historical records remain available. |
+| Idempotency | Repeated requests caused by taps, retries, or mobile network behavior create at most one business effect. |
+| Audit logging | Critical activity logs are server-generated. Generic client-side activity logging must not be treated as authoritative. |
 
-Each completed business action creates one immutable event with a stable identifier, garage scope, actor, timestamp, operation key, schema version, and business payload.
+Every rule must have a positive test, a negative test, a role test, and a retry test before the corresponding migration phase is released.
 
-Recommended event types include `vehicle_entered`, `vehicle_exited`, `vehicle_refunded`, `vehicle_deleted`, `subscriber_created`, `subscriber_renewed`, `recharge_approved`, `recharge_rejected`, and `delegate_settled`.
+## 3. Target architecture
 
-A representative event is:
+### 3.1 Authoritative domain operations
+
+Each critical operation becomes one explicit server operation with a deterministic decision function:
+
+```text
+check-in
+check-out
+refund or delete vehicle
+create or renew subscriber
+approve or reject recharge
+settle delegate cycle
+change garage settings
+```
+
+The decision function must be independent of React, Express, Firebase, and browser state. It receives validated facts and returns a decision plus the events and state changes required to apply it.
+
+### 3.2 Immutable event ledger
+
+Create a new subcollection:
+
+```text
+garages/{garageId}/events/{eventId}
+```
+
+The event ledger is append-only. It is the authoritative history for migrated operations.
+
+A typed event envelope should contain:
 
 ```text
 eventId
@@ -54,131 +106,197 @@ idempotencyKey
 payload
 ```
 
-The payload must contain the values required to reproduce the business result. It must not depend on a later mutable vehicle document.
+The payload must be typed by event type. Do not use an unvalidated `Record<string, any>` as the long-term contract.
 
-### 2.2 Operational state
-
-Operational state contains only data needed for fast current screens:
+Initial vehicle event payloads should preserve the facts needed later for pricing, refunds, reports, and audit:
 
 ```text
-garages/{garageId}/active_vehicles/{normalizedPlate}
-garages/{garageId}/state/current
-garages/{garageId}/subscribers/{subscriberId}
-delegates/{delegateId}/current_cycle
+plateNumber
+plateNumberRaw
+vehicleType
+isSubscriber
+entryTime
+exitTime when applicable
+enteredByUid
+enteredByName
+exitedByUid and exitedByName when applicable
+totalCost when applicable
+paymentMethod when applicable
 ```
 
-Active vehicle state can be deleted after checkout only after the immutable exit event and required projections have been committed successfully.
+Do not place PINs, authentication tokens, or unnecessary personal data in events.
 
-### 2.3 Rebuildable projections
+### 3.3 Current operational state
 
-Projections support fast reports and dashboard display:
+Keep a small, realtime operational representation for the screens that staff use while working:
 
 ```text
-garages/{garageId}/daily_stats/{yyyy-mm-dd}
-garages/{garageId}/monthly_stats/{yyyy-mm}
+garages/{garageId}/vehicles/{normalizedPlate}
+garages/{garageId}/state/current
+garages/{garageId}/subscribers/{subscriberId}
+```
+
+The first migration does not replace the current vehicle document. A future `active_vehicles` representation may be introduced only in shadow mode.
+
+### 3.4 Rebuildable projections
+
+Keep summary documents for fast screens, but treat them as derived views:
+
+```text
+garages/{garageId}/daily_stats/{date}
+garages/{garageId}/monthly_stats/{month}
 delegates/{delegateId}/settlements/{settlementId}
 ```
 
-Every projection must record the event sequence or processing watermark used to produce it. This allows reconciliation to identify whether a projection is current.
+The existing `daily_stats` documents must remain during migration. Their values must be compared with event-derived values before any asynchronous projection model replaces them.
 
-## 3. Mathematical invariants
+## 4. Mathematical invariants
 
-The domain engine must define and test invariants before data migration begins.
+The new system must be judged by invariants, not only by whether individual buttons return success.
 
-### Vehicle state
+### Active vehicle invariant
 
-For a garage and time `t`, the active set is the vehicles whose latest valid lifecycle event is `vehicle_entered` and which have no later valid exit, refund, or deletion event.
-
-```text
-activeVehicleCount(garage, t) = |activeVehicles(garage, t)|
-```
-
-The garage state must satisfy:
+For a garage and time `t`:
 
 ```text
-0 <= activeVehicleCount <= capacity
+active vehicles = entered vehicles with no later valid exit, refund, or deletion
 ```
 
-A check-in must fail when the vehicle is already active or when capacity would be exceeded. A checkout must fail when no active vehicle exists for the normalized plate.
-
-### Revenue
-
-For a garage and period `P`:
+Therefore:
 
 ```text
-revenue(P) = sum(valid vehicle_exited.totalCost in P)
-              - sum(valid vehicle_refunded.amount in P)
+garage.currentVehicleCount = number of active vehicles
+0 <= garage.currentVehicleCount <= garage.capacity
 ```
 
-The calculation must use the immutable event payload and must not depend on a mutable vehicle document that may no longer exist.
+### Revenue invariant
 
-### Delegate settlement
-
-If a delegate settlement occurs at timestamp `S`, the current cycle is:
+For a bounded period `P`:
 
 ```text
-currentCycleAmount = sum(eligible financial events where occurredAt > S)
+revenue(P) = sum(valid vehicle_exited costs in P)
+              - sum(valid refund amounts in P)
 ```
 
-Historical totals remain available and are never reset by overwriting the event history.
+### Delegate cycle invariant
 
-### Idempotency
-
-For every mutation operation key `K`:
+After settlement cutoff `S`:
 
 ```text
-businessEffects(K) <= 1
+current cycle = eligible financial events with occurredAt > S
 ```
 
-A retry with the same key returns the stored result or a deterministic conflict. It must not create a second event, charge, refund, commission, or state transition.
+Settlement must never erase historical events.
 
-## 4. Migration phases and gates
+### Idempotency invariant
 
-### Phase 0 — Freeze the contract and business rules
+For operation key `K`:
 
-**Objective:** Remove ambiguity before changing storage.
+```text
+number of committed business effects for K <= 1
+```
 
-Document the authoritative rules for vehicle lifecycle, pricing, refunds, subscribers, recharge approvals, delegate commissions, settlement, capacity, roles, date validation, and idempotency. Each rule must have a deterministic input/output example and a negative case.
+A retry must return the same stored result or a deterministic conflict response.
 
-Create a route-to-rule matrix that identifies the server endpoint, allowed roles, garage scope, documents read, documents written, event emitted, and idempotency behavior.
+### Tenant and authorization invariant
 
-**Exit gate:** Product rules are approved, all critical rules have automated tests, and no migration implementation begins while a rule remains undefined.
+A request must not read or write a garage, delegate, subscriber, or financial record outside the authenticated user’s permitted scope.
 
-### Phase 1 — Baseline production behavior
+## 5. Migration phases
 
-**Objective:** Measure before optimizing.
+### Phase 0 — Establish a contract baseline
 
-Add privacy-safe metrics for request count, latency, transaction retries, conflict rate, Firestore read/write counts where available, active listener categories, and reconciliation mismatches. Metrics must not store PINs, license plates, names, or raw customer data.
+Create a route-to-rule matrix for the current server routes. For each route, record:
 
-Capture a representative baseline for at least one normal operating period. The baseline should include ordinary garages and the heaviest available garages.
+```text
+route
+client service caller
+allowed roles
+garage scope
+documents read
+documents written
+activity log emitted
+idempotency behavior
+expected success response
+expected failure responses
+```
 
-**Exit gate:** The team can identify the current cost and latency of check-in, checkout, reports, recharge operations, and active listeners. If no material bottleneck exists, skip unnecessary storage redesign.
+The matrix must cover vehicle operations, garage creation, subscribers, recharge requests, delegate management, settlement, PIN changes, settings, and reports.
 
-### Phase 2 — Low-risk read optimization
+**Gate:** No critical route has an undocumented authorization or financial side effect.
 
-**Objective:** Reduce waste without changing vehicle correctness.
+### Phase 1 — Measure the actual production workload
 
-Keep realtime listeners for active vehicles, garage state, capacity, currently used subscribers, and session state. Convert historical reports, recharge history, exports, and long-range activity pages to bounded on-demand API reads with pagination and date filters.
+Add privacy-safe server metrics for:
 
-Every historical screen must display loading, empty, error, retry, and stale-data states. Closing the screen must cancel or stop any associated listener.
+- Check-in request count and latency.
+- Checkout request count and latency.
+- Transaction retry and conflict counts.
+- Idempotency-hit counts.
+- Failed authorization and validation counts.
+- Report and history request counts.
+- Reconciliation mismatches.
+- Projection lag after an accepted event.
 
-**Exit gate:** Read volume decreases or remains controlled, report results remain identical, and no active operational screen becomes stale.
+Do not record PINs, plates, names, tokens, or raw customer payloads in metrics.
 
-### Phase 3 — Implement the new pure domain engine
+Use the results to decide whether the immediate constraint is reads, writes, listener count, transaction contention, latency, or incorrect projections. The existence of 1,000 garages does not by itself prove that the current model is too expensive.
 
-**Objective:** Separate business correctness from React and Firestore.
+**Gate:** A baseline exists for ordinary garages and the heaviest available garages.
 
-Implement pure functions for authorization, check-in decisions, checkout pricing, refunds, subscriber date rules, recharge approval, commission calculation, and settlement. These functions must not import Firebase, Express, React, or browser APIs.
+### Phase 2 — Optimize historical reads without changing lifecycle logic
 
-Use table-driven and property-based tests where useful. Test duplicate requests, retries, simultaneous operations, invalid dates, capacity boundaries, overnight pricing, refunds, and settlement cutoffs.
+Keep realtime listeners for:
 
-**Exit gate:** The new engine produces approved results for the complete rule matrix and has no direct infrastructure dependency.
+- Vehicles currently inside.
+- Garage state and capacity.
+- Active subscriber changes needed by staff.
+- Session state.
 
-### Phase 4 — Versioned server APIs
+Convert historical and reporting screens to bounded API reads:
 
-**Objective:** Put the new engine behind stable contracts while preserving the current UI.
+- Recharge history.
+- Long-range activity logs.
+- Historical exits.
+- Financial reports.
+- Exports and analytics.
 
-Add versioned routes such as:
+All such reads must have pagination, date bounds, loading state, empty state, error state, retry behavior, and a visible refresh path. This phase must not alter pricing, checkout, refund, or vehicle deletion behavior.
+
+**Gate:** Historical results remain equivalent and listener/read usage is measured as reduced or controlled.
+
+### Phase 3 — Build the pure RQ domain engine
+
+Create a domain layer with no Firebase or UI imports. It should contain deterministic functions for:
+
+```text
+authorization decisions
+vehicle check-in
+vehicle checkout pricing
+refund and deletion
+capacity and trial limits
+subscriber date validation
+recharge approval
+commission calculation
+delegate settlement
+```
+
+Use table-driven tests for boundary cases, including overnight pricing, day caps, subscriber dates, trial capacity, six-digit PINs, delegate daily limits, duplicate requests, transaction conflicts, and settlement cutoffs.
+
+**Gate:** The domain engine passes the approved rule matrix and produces no side effects itself.
+
+### Phase 4 — Add versioned API contracts behind existing services
+
+The existing UI should continue using service methods such as:
+
+```text
+vehicleService.checkIn()
+vehicleService.checkOut()
+delegateService.settleDelegateAccount()
+adminService.addSubscriber()
+```
+
+Those methods may be redirected internally to versioned server contracts, for example:
 
 ```text
 POST /api/v2/vehicles/check-in
@@ -189,230 +307,226 @@ POST /api/v2/recharges/approve
 POST /api/v2/delegates/settle
 ```
 
-Each route must authenticate, authorize, validate, check idempotency, apply the domain decision, write the required state atomically, and return a documented response envelope containing a correlation ID and operation result.
+Every v2 mutation must authenticate, authorize, validate, check idempotency, apply the domain decision, commit the authoritative changes, and return a stable response envelope with correlation information.
 
-Existing frontend service names may remain unchanged. During migration, they call the v2 route internally, so the UI does not need to be rewritten.
+**Gate:** API contract tests cover success, validation, forbidden access, duplicate retry, conflict, not found, and server failure behavior.
 
-**Exit gate:** Contract tests verify success, validation failure, permission failure, duplicate retry, transaction conflict, and not-found behavior for every v2 route.
+### Phase 5 — Transactional shadow event recording
 
-### Phase 5 — Shadow event recording
+This is the first data-model migration phase.
 
-**Objective:** Validate the event model without changing user-visible behavior.
+For vehicle check-in and checkout, preserve the current documents and add the new event in the same Firestore transaction whenever possible.
 
-For selected operations, continue writing the current production documents while also recording the new event and projection in the same server transaction whenever Firestore transaction size and contention permit. If atomic dual writing is not possible for a particular operation, use an outbox or durable reconciliation queue; do not silently ignore an event-write failure.
-
-Start with vehicle checkout and recharge approval because they provide clear financial and lifecycle outputs. Do not delete existing vehicle documents in this phase.
-
-**Exit gate:** New events are complete, immutable, tenant-scoped, and reproducible. Any dual-write failure is visible and recoverable.
-
-### Phase 6 — Reconciliation and backfill
-
-**Objective:** Prove equivalence between old and new representations.
-
-Build an admin-only reconciliation job that compares, by garage and bounded date range:
+Check-in transaction:
 
 ```text
-old active vehicles versus new active vehicles
-old counters versus computed active count
-old daily revenue versus event-derived revenue
-old delegate totals versus event-derived totals
-old settlement cutoff behavior versus event-derived current cycle
+validate and authorize
+check idempotency
+read the current garage and vehicle state
+create or update current vehicle state
+create vehicle_entered event
+update existing counters and daily stats as required
+store idempotency result
+commit
 ```
 
-Reconciliation must produce a report with mismatch type, scope, identifiers safe for administrators, first observed time, and recommended action. It must not silently overwrite financial data.
+Checkout transaction:
 
-Backfill historical events only when the original record contains enough information to reconstruct them confidently. Mark uncertain backfills with a migration source and confidence status rather than inventing missing values.
+```text
+validate and authorize
+check idempotency
+read current vehicle state
+calculate the price from authoritative entry facts
+create vehicle_exited event
+update or close current vehicle state
+update existing counters and daily stats as required
+store idempotency result
+commit
+```
 
-**Exit gate:** A defined pilot period produces zero unexplained critical mismatches, and all remaining mismatches have documented remediation.
+The current vehicle document must remain during this phase. Do not delete it merely because an event was created.
 
-### Phase 7 — Pilot release
+If a transaction cannot contain every required write because of a documented Firestore limitation, use a durable outbox or reconciliation queue. Never issue a successful mutation while silently dropping the event.
 
-**Objective:** Test the replacement with limited operational exposure.
+Asynchronous processing is allowed only for rebuildable projections after the event and operational mutation are durably committed.
 
-Select two to five pilot garages with different traffic patterns. Keep the existing UI and provide a server-side feature flag that selects the v2 decision path per garage.
+**Gate:** Every accepted pilot check-in and checkout has exactly one event, exactly one business effect, and a matching old-model result.
 
-Run the pilot long enough to cover ordinary operations, peak periods, refunds, subscriber activity, delegate settlement, mobile retries, and multiple staff devices.
+### Phase 6 — Add reconciliation and projection rebuilds
 
-**Exit gate:** Pilot garages meet the error, latency, reconciliation, and financial-equivalence thresholds defined below for at least seven consecutive operating days.
+Create an admin-only reconciliation operation scoped by garage and date range. It must compare:
 
-### Phase 8 — Progressive expansion
+```text
+current vehicles versus event-derived active vehicles
+current garage count versus event-derived active count
+existing daily_stats versus event-derived daily totals
+existing checkout totals versus event-derived revenue
+existing delegate cycle totals versus event-derived financial events
+settlement cutoff behavior versus event-derived current-cycle totals
+```
 
-Expand by controlled cohorts rather than by percentage of all traffic without tenant awareness. Recommended cohorts are five garages, twenty garages, fifty garages, then larger groups.
+The reconciliation result must identify mismatches and their severity. It must not silently modify financial history.
 
-After each cohort, hold a review period. Do not expand while critical mismatches, duplicate effects, unexplained financial differences, or elevated checkout failures remain.
+Create a projection rebuild operation that writes a new projection version and records its input range, event watermark, operator, and timestamp. A rebuild must be idempotent and restartable.
 
-**Exit gate:** Each cohort passes its review period and rollback remains tested.
+**Gate:** A pilot date range has zero unexplained critical mismatches.
 
-### Phase 9 — Retire redundant state
+### Phase 7 — Pilot with feature flags
 
-Only after the new model is stable should the system stop using old vehicle documents for operational decisions. Keep an archived, read-only retention copy for the agreed audit period unless legal, operational, or cost requirements say otherwise.
+Use a server-side feature flag by garage. Select two to five garages with different traffic and operational patterns.
 
-Remove old writes first, then old reads, then old indexes and rules. Each removal must be a separate deployment with a rollback point.
+The pilot must cover:
 
-**Exit gate:** No production route, report, correction flow, export, or admin tool depends on the retired representation.
+- Multiple staff devices.
+- Rapid repeated taps.
+- Slow mobile network retries.
+- Check-in and checkout at peak periods.
+- Subscriber vehicles.
+- Refunds and corrections.
+- Delegate recharge and settlement.
+- Role restrictions.
+- Historical reports.
 
-## 5. Rollback design
+The existing UI remains in use. A rollback changes the server flag rather than requiring an emergency frontend release.
 
-Rollback must be a feature-flag operation, not an emergency code rewrite.
+**Gate:** At least seven consecutive operating days meet the release thresholds.
 
-| Failure | Immediate action | Data action |
+### Phase 8 — Expand by cohorts
+
+Expand in controlled cohorts:
+
+```text
+2–5 garages → 10–20 garages → 50 garages → larger groups
+```
+
+Pause expansion when there is an unexplained financial mismatch, lost event, duplicate effect, material latency regression, or authorization regression.
+
+Before reaching approximately fifteen heavy garages, enable the Firebase Blaze plan and configure usage alerts. Blaze gives usage-based capacity; it does not replace query bounds, idempotency, monitoring, or reconciliation.
+
+### Phase 9 — Retire redundant state only after proof
+
+Only after the new model has matched production behavior should the system stop using old vehicle documents for operational decisions.
+
+Retire in separate releases:
+
+```text
+stop old writes → verify → stop old reads → verify → remove old listeners → verify → remove obsolete indexes/rules
+```
+
+Do not delete historical data during the first retirement release. Keep an auditable read-only retention copy according to the project’s retention policy.
+
+## 6. Rollback design
+
+Rollback must be a feature-flag operation and a documented data procedure.
+
+| Failure | Immediate response | Data response |
 |---|---|---|
-| New route returns elevated errors | Disable v2 flag for affected garages | Preserve events and projections for diagnosis |
-| Projection mismatch | Stop expansion | Rebuild projection from events; do not overwrite source history |
-| Duplicate business effect | Disable affected mutation route | Inspect idempotency records and reconcile affected scope |
-| Financial discrepancy | Freeze financial expansion | Compare events, old records, and projection; require admin review |
-| Realtime stale state | Revert listener/read path | Keep operational listener active until replacement is proven |
-| Deployment defect | Roll back application version | Do not roll back data blindly; use forward repair or projection rebuild |
+| New mutation errors increase | Disable the v2 flag for affected garages | Preserve events for diagnosis. |
+| An event is missing | Stop rollout | Reconcile the affected operation and repair through a controlled admin tool. |
+| Duplicate effect occurs | Disable the affected operation path | Inspect idempotency records and affected records before repair. |
+| Financial totals disagree | Freeze financial expansion | Compare events, old records, and projections; require review before correction. |
+| Projection is stale | Keep operational state active | Rebuild the projection from events. |
+| Listener becomes stale | Restore the existing listener path | Do not replace realtime state with manual refresh during an incident. |
+| Deployment is defective | Roll back application version | Do not blindly roll back Firestore data. Use forward repair or projection rebuild. |
 
-A rollback drill must be performed in staging before the first pilot. The drill must prove that disabling v2 restores the old path without losing new events or creating duplicate effects.
+Perform a rollback drill in a non-production environment before the first pilot.
 
-## 6. Release gates and suggested thresholds
+## 7. Required tests
 
-Thresholds should be finalized from Phase 1 baseline data. Initial conservative gates are:
+A green unit suite is not enough. RQ needs four layers:
 
-| Measure | Pilot requirement |
-|---|---:|
-| Critical financial mismatches | 0 unexplained |
-| Duplicate business effects | 0 |
-| Unauthorized successful mutations | 0 |
-| Lost event records | 0 |
-| Checkout correctness | 100% against approved scenarios |
-| Reconciliation completion | 100% of pilot garages and dates |
-| New-route error rate | No material regression against baseline |
-| p95 mutation latency | No material regression against baseline |
-| Rollback drill | Passed before pilot |
-| Historical report differences | 0 unexplained |
+| Layer | What it proves |
+|---|---|
+| Domain tests | Business formulas and invariants are deterministic. |
+| API contract tests | Authentication, roles, validation, idempotency, and response contracts are correct. |
+| Browser workflow tests | Real UI actions reach the expected server operation and produce visible feedback. |
+| Reconciliation tests | Events, current state, counters, reports, and rebuilds agree. |
 
-A release must be blocked when a critical threshold fails, even if the automated test suite is green.
+Critical browser journeys include check-in, checkout, refund, subscriber renewal, recharge approval, delegate settlement, garage creation, settings restrictions, supervisor restrictions, logout, session expiry, and mobile layout.
 
-## 7. Testing strategy
+## 8. Release gates
 
-The migration requires four complementary test layers.
-
-### Domain tests
-
-These test pure business functions with deterministic fixtures. They cover all approved business rules and boundary conditions.
-
-### API contract tests
-
-These verify authentication, authorization, validation, idempotency, transaction conflicts, response envelopes, and error codes for each route.
-
-### Browser workflow tests
-
-These click the existing UI and verify the resulting server-visible state. Critical journeys include check-in, checkout, refund, subscriber renewal, recharge approval, delegate settlement, garage creation, and role restrictions.
-
-### Reconciliation tests
-
-These generate known event sequences and verify that projections, counters, current state, monthly totals, settlements, and rebuild operations produce the expected values.
-
-A green unit suite is necessary but insufficient. A mutation is production-ready only when the domain, API, browser, and reconciliation layers agree.
-
-## 8. Firestore and cost controls
-
-The migration should optimize the highest-cost patterns rather than assume that the number of garages alone causes a problem.
-
-Use garage-scoped documents and queries. Avoid scans across all garages during normal operations. Bound historical queries by date and page size. Keep realtime listeners limited to operational state. Avoid unbounded aggregate documents that become write hotspots. Introduce sharded counters only when measured contention justifies them.
-
-The Blaze plan should be enabled before sustained usage approaches the Spark limits, but billing-plan changes do not remove the need for bounded queries, idempotency, transaction design, or monitoring. Usage-based billing provides capacity; it does not repair incorrect business logic.
-
-## 9. Operational requirements
-
-Before the first pilot, production must expose:
+Initial gates should be adjusted using the Phase 1 baseline, but these failures must always block rollout:
 
 ```text
-GET /api/health
+unexplained critical financial mismatch: 0 allowed
+duplicate business effects: 0 allowed
+lost authoritative events: 0 allowed
+unauthorized successful mutation: 0 allowed
+checkout calculation disagreement: 0 unexplained
+reconciliation coverage: 100% of pilot garages and dates
+rollback drill: required before pilot
 ```
 
-The response must include status, backend readiness, deployed version, and timestamp. The existing release smoke check must verify this endpoint after deployment.
+The deployment gate must continue to run type checking, the automated test suite, the production build, artifact checks, and the live `/api/health` version smoke check.
 
-The system should also provide admin-visible or operator-visible metrics for request counts, latency, transaction retries, conflict rates, idempotency hits, reconciliation mismatches, and projection lag. Alerts should identify the garage scope and operation type without exposing sensitive customer data.
+## 9. Cost and scale position
 
-## 10. Recommended implementation order for RQ
+The expected workload at fifteen heavy garages is approximately 4,500–7,500 daily check-ins, with a similar number of checkouts. That is a sensible point to move to Blaze and start paying for measured usage.
 
-The safest practical order is:
+At 1,000 garages, the design must remain garage-scoped. A check-in must not scan all garages or all historical vehicles. Historical reports must be paginated and date-bounded. Realtime listeners must be limited to operational state. High-contention documents must be identified through metrics before introducing sharded counters.
 
-1. Freeze and test the existing business rules.
-2. Measure current production reads, writes, latency, retries, and listeners.
-3. Convert historical screens to bounded on-demand reads.
-4. Extract pure domain functions from the current server routes.
-5. Add v2 vehicle check-in and checkout APIs behind existing service methods.
-6. Add immutable vehicle lifecycle events and rebuildable projections in shadow mode.
-7. Add reconciliation and backfill tools.
-8. Pilot with two to five garages.
-9. Migrate recharge, commission, settlement, subscriber, and reporting paths.
-10. Expand by cohorts.
-11. Retire redundant state only after the evidence and rollback requirements are satisfied.
+The event ledger may initially increase writes because a mutation may write an event, current state, existing stats, and an idempotency record. The expected savings come from fewer unnecessary listeners, bounded historical reads, deterministic retries, and rebuildable reports. Cost must be measured rather than assumed.
+
+## 10. First implementation backlog
+
+The first safe coding batch should be:
+
+1. Add typed event envelopes and payload validators in `server/events.ts`.
+2. Add event-type tests and sensitive-field redaction tests.
+3. Add server metrics for vehicle mutation latency, retries, conflicts, and idempotency hits.
+4. Add transactional `vehicle_entered` recording to the existing check-in route without changing the UI.
+5. Add transactional `vehicle_exited` recording to the existing checkout route without deleting current vehicle state.
+6. Add an admin-only event/state reconciliation command for a selected garage and date range.
+7. Add browser tests that verify check-in and checkout UI feedback and resulting state.
+8. Run the new path in shadow mode for pilot garages.
+
+The first batch must not include deleting vehicle documents, removing operational listeners, changing Firestore rules broadly, or making daily projections asynchronous.
 
 ## Final recommendation
 
-The migration should proceed, but it should be treated as a **controlled backend replacement**, not a one-time rewrite. Keeping the existing UI reduces user-facing risk. Keeping the existing operational model during shadow mode preserves rollback. Immutable events, deterministic domain functions, idempotency, and reconciliation provide the mathematical foundation required for growth from twenty heavy garages to one thousand or more.
+Gemini’s event-ledger direction is correct, but “quiet background event recording” is not safe for vehicle lifecycle or financial operations. RQ should record authoritative events transactionally with the critical state mutation. Asynchronous work should be reserved for rebuildable projections and reports.
 
-The first implementation milestone should be measurement plus the pure domain engine. The first production migration milestone should be shadow event recording for vehicle lifecycle operations. No old vehicle document should be deleted until the new event-derived state has matched production behavior for a defined pilot period.
+The safest migration for this project is therefore:
+
+```text
+current UI
+  → existing service methods
+  → versioned server domain operations
+  → transactional event ledger plus current operational state
+  → rebuildable projections and reconciliation
+```
+
+This design supports the transition from twenty heavy garages to one thousand or more without requiring a risky big-bang rewrite. It also gives RQ a reproducible answer for every important number: which event created it, which projection calculated it, and whether the result reconciles with current operational state.
 
 ## References
 
 [1]: https://firebase.google.com/docs/firestore/manage-data/transactions "Cloud Firestore transactions and batched writes"
 
-[2]: https://firebase.google.com/docs/firestore/quotas "Cloud Firestore quotas and limits"
+[2]: https://firebase.google.com/docs/firestore/transaction-data-contention "Cloud Firestore transaction contention"
 
-[3]: https://firebase.google.com/docs/firestore/real-time_queries_at_scale "Cloud Firestore real-time queries at scale"
+[3]: https://firebase.google.com/docs/firestore/real-time_queries_at_scale "Cloud Firestore realtime queries at scale"
 
-[4]: https://firebase.google.com/docs/firestore/solutions/aggregation "Cloud Firestore aggregation solutions"
+[4]: https://firebase.google.com/docs/firestore/query-data/query-cursors "Cloud Firestore query cursor pagination"
 
-[5]: https://firebase.google.com/docs/app-check "Firebase App Check documentation"
+[5]: https://firebase.google.com/docs/firestore/monitor-usage "Monitor Cloud Firestore usage"
 
-[6]: https://firebase.google.com/docs/firestore/security/rules-conditions "Cloud Firestore security rule conditions"
+[6]: https://firebase.google.com/docs/firestore/quotas "Cloud Firestore quotas and limits"
 
-[7]: https://cloud.google.com/firestore/docs/best-practices "Cloud Firestore best practices"
+[7]: https://firebase.google.com/docs/firestore/pricing "Cloud Firestore pricing"
 
-[8]: https://cloud.google.com/firestore/pricing "Cloud Firestore pricing"
+[8]: https://firebase.google.com/docs/firestore/security/rules-conditions "Cloud Firestore security rule conditions"
 
-[9]: https://vercel.com/docs/deployments/overview "Vercel deployments overview"
+[9]: https://firebase.google.com/docs/firestore/solutions/counters "Cloud Firestore distributed counters"
 
-[10]: https://developers.cloudflare.com/pages/configuration/git-integration/ "Cloudflare Pages Git integration"
+[10]: https://martinfowler.com/bliki/StranglerFigApplication.html "Strangler Fig application pattern"
 
-[11]: https://developers.cloudflare.com/pages/configuration/build-configuration/ "Cloudflare Pages build configuration"
+[11]: https://martinfowler.com/eaaDev/EventSourcing.html "Event sourcing pattern"
 
-[12]: https://martinfowler.com/bliki/StranglerFigApplication.html "Strangler Fig application pattern"
+[12]: https://martinfowler.com/articles/patterns-of-distributed-systems/idempotent-receiver.html "Idempotent receiver pattern"
 
-[13]: https://martinfowler.com/eaaDev/EventSourcing.html "Event sourcing pattern"
+[13]: https://sre.google/sre-book/monitoring-distributed-systems/ "Monitoring distributed systems"
 
-[14]: https://martinfowler.com/articles/patterns-of-distributed-systems/idempotent-receiver.html "Idempotent receiver pattern"
-
-[15]: https://sre.google/sre-book/monitoring-distributed-systems/ "Monitoring distributed systems"
-
-[16]: https://sre.google/sre-book/release-engineering/ "Release engineering"
-
-[17]: https://firebase.google.com/docs/firestore/enterprise/understand-use-cases "Firestore usage patterns and use cases"
-
-[18]: https://firebase.google.com/docs/firestore/transaction-data-contention "Cloud Firestore transaction contention"
-
-[19]: https://firebase.google.com/docs/firestore/query-data/indexing "Cloud Firestore indexing"
-
-[20]: https://firebase.google.com/docs/firestore/solutions/counters "Distributed counters in Cloud Firestore"
-
-[21]: https://firebase.google.com/docs/firestore/monitor-usage "Monitor Cloud Firestore usage"
-
-[22]: https://firebase.google.com/docs/firestore/backup-restore "Cloud Firestore backup and restore"
-
-[23]: https://firebase.google.com/docs/firestore/manage-data/add-data "Adding and updating Firestore data"
-
-[24]: https://firebase.google.com/docs/firestore/query-data/listen "Listen to realtime updates"
-
-[25]: https://firebase.google.com/docs/firestore/query-data/query-cursors "Paginate data with query cursors"
-
-[26]: https://firebase.google.com/docs/firestore/transaction-data-contention "Cloud Firestore transaction contention"
-
-[27]: https://firebase.google.com/docs/firestore/monitor-usage "Monitor Cloud Firestore usage"
-
-[28]: https://firebase.google.com/docs/firestore/backup-restore "Cloud Firestore backup and restore"
-
-[29]: https://martinfowler.com/bliki/StranglerFigApplication.html "Strangler Fig application pattern"
-
-[30]: https://martinfowler.com/eaaDev/EventSourcing.html "Event sourcing pattern"
-
-[31]: https://martinfowler.com/articles/patterns-of-distributed-systems/idempotent-receiver.html "Idempotent receiver pattern"
-
-[32]: https://sre.google/sre-book/monitoring-distributed-systems/ "Monitoring distributed systems"
-
-[33]: https://sre.google/sre-book/release-engineering/ "Release engineering"
+[14]: https://sre.google/sre-book/release-engineering/ "Release engineering"
+EOF
+wc -l -c SAFE_MIGRATION_PLAN.md && grep -c '^## ' SAFE_MIGRATION_PLAN.md && grep -c '^\[[0-9][0-9]*\]:' SAFE_MIGRATION_PLAN.md
