@@ -1,14 +1,17 @@
 import { doc, runTransaction, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { safeDate } from '../utils';
 import { EntityRole } from '../types';
 import { authService } from './authService';
 import {
   ENTITY_COLLECTIONS,
   SECURITY_COLLECTIONS,
-  getEntityDocumentId,
-  getSessionConflictCode
+  getEntityDocumentId
 } from '../domain/auth/sessionPolicy';
+import {
+  SESSION_TIMEOUT_MS,
+  claimSessionInTransaction,
+  releaseSessionInTransaction
+} from '../domain/auth/sessionTransactions';
 export type { EntityRole };
 
 export interface GarageSessionDoc {
@@ -27,7 +30,7 @@ export interface ClaimSessionParams {
   pin?: string;
 }
 
-export const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes timeout takeover window
+export { SESSION_TIMEOUT_MS } from '../domain/auth/sessionTransactions';
 export const HEARTBEAT_TIMEOUT_MS = SESSION_TIMEOUT_MS;
 
 export const getCanonicalSessionId = (): string => {
@@ -111,41 +114,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
   const securitySessionRef = doc(db, secColl, uid);
 
   await runTransaction(db, async (transaction) => {
-    const entitySnap = await transaction.get(entityRef);
-    const secSnap = await transaction.get(securitySessionRef);
-
-    if (entitySnap.exists()) {
-      const data = entitySnap.data();
-      const activeSessionId = data?.currentSessionId;
-      const lastActive = safeDate(data?.lastActive).getTime();
-      const isAlive = lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
-
-      if (activeSessionId && activeSessionId !== sessionId && isAlive) {
-        throw new Error(getSessionConflictCode(role));
-      }
-    }
-
-    // Update entity lock
-    if (entitySnap.exists()) {
-      transaction.update(entityRef, {
-        currentSessionId: sessionId,
-        lastActive: serverTimestamp()
-      });
-    } else if (transaction.set) {
-      transaction.set(entityRef, {
-        currentSessionId: sessionId,
-        lastActive: serverTimestamp()
-      }, { merge: true });
-    }
-
-    // Update security session doc if it exists (creation is reserved for Server Admin SDK)
-    const isSecDoc = secSnap && typeof secSnap.exists === 'function' && secSnap.exists();
-    if (isSecDoc) {
-      transaction.update(securitySessionRef, {
-        isActive: true,
-        lastActive: serverTimestamp()
-      });
-    }
+    await claimSessionInTransaction(transaction, { entityRef, securitySessionRef, role, sessionId });
   });
 
   recentClaims.set(claimKey, Date.now());
@@ -171,26 +140,7 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   const securitySessionRef = doc(db, secColl, uid);
 
   await runTransaction(db, async (transaction) => {
-    const entitySnap = await transaction.get(entityRef);
-    if (entitySnap.exists()) {
-      const data = entitySnap.data();
-      if (data?.currentSessionId === sessionId) {
-        transaction.update(entityRef, {
-          currentSessionId: null
-        });
-      }
-    }
-
-    const secSnap = await transaction.get(securitySessionRef);
-    if (secSnap.exists()) {
-      const secData = secSnap.data();
-      if (secData?.sessionId === sessionId) {
-        transaction.update(securitySessionRef, {
-          isActive: false,
-          lastActive: serverTimestamp()
-        });
-      }
-    }
+    await releaseSessionInTransaction(transaction, { entityRef, securitySessionRef, sessionId });
   }).catch((err) => {
     console.warn('releaseEntitySession failed:', err);
   });
