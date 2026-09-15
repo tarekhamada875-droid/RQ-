@@ -44,7 +44,8 @@ import {
 } from './validation';
 import {
   checkIdempotencyInTransaction,
-  storeIdempotencyInTransaction
+  storeIdempotencyInTransaction,
+  createRequestFingerprint
 } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import {
@@ -75,6 +76,7 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('CAPACITY_LIMIT_REACHED') ||
     errMsg.includes('PACKAGE_INACTIVE') ||
     errMsg.includes('INVALID_PACKAGE_CONFIGURATION') ||
+    errMsg.includes('IDEMPOTENCY_KEY_REUSE') ||
     errMsg.includes('FAIR_USE_LIMIT_REACHED') ||
     errMsg.includes('DAILY_DELETION_LIMIT_REACHED') ||
     errMsg.includes('DELEGATE_DAILY_GARAGE_LIMIT_REACHED') ||
@@ -3789,6 +3791,13 @@ export function createApp() {
         const amount = validateNumber(req.body?.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
         cleanData.amount = amount;
       }
+      const requestFingerprint = createRequestFingerprint({
+        requestType,
+        garageId,
+        packageId: packageId || null,
+        couponCode: cleanData.couponCode,
+        amount: cleanData.amount || null
+      });
 
       let createdId: string | null = null;
       await adminDb.runTransaction(async (t: any) => {
@@ -3796,7 +3805,8 @@ export function createApp() {
           t,
           idempotencyKey,
           '/api/recharge-requests/create',
-          req.user?.uid
+          req.user?.uid,
+          requestFingerprint
         );
         if (duplicate.isDuplicate) {
           createdId = duplicate.cachedResult?.id || null;
@@ -3815,7 +3825,8 @@ export function createApp() {
           idempotencyKey,
           { id: docRef.id },
           '/api/recharge-requests/create',
-          req.user?.uid
+          req.user?.uid,
+          requestFingerprint
         );
       });
 

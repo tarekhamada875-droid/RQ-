@@ -5,11 +5,27 @@ export interface IdempotencyRecord {
   result: any;
   endpoint: string;
   actorUid?: string;
+  requestFingerprint?: string;
   createdAt: any;
   expiresAt: any;
 }
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function stableValue(value: any): any {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === 'object') {
+    return Object.keys(value).sort().reduce((out, key) => {
+      out[key] = stableValue(value[key]);
+      return out;
+    }, {} as Record<string, any>);
+  }
+  return value;
+}
+
+export function createRequestFingerprint(value: unknown): string {
+  return crypto.createHash('sha256').update(JSON.stringify(stableValue(value))).digest('hex');
+}
 
 // Composite key so the same raw client key can never collide across
 // endpoints or actors.
@@ -26,7 +42,8 @@ export async function checkIdempotencyInTransaction(
   t: any,
   idempotencyKey: string | null,
   endpoint: string,
-  actorUid?: string
+  actorUid?: string,
+  requestFingerprint?: string
 ): Promise<{ isDuplicate: boolean; cachedResult?: any }> {
   if (!idempotencyKey || !adminDb) {
     return { isDuplicate: false };
@@ -42,6 +59,9 @@ export async function checkIdempotencyInTransaction(
     if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
       t.delete(keyRef);
       return { isDuplicate: false };
+    }
+    if (requestFingerprint && data.requestFingerprint && data.requestFingerprint !== requestFingerprint) {
+      throw new Error('IDEMPOTENCY_KEY_REUSE');
     }
     return {
       isDuplicate: true,
@@ -60,7 +80,8 @@ export function storeIdempotencyInTransaction(
   idempotencyKey: string | null,
   result: any,
   endpoint: string,
-  actorUid?: string
+  actorUid?: string,
+  requestFingerprint?: string
 ): void {
   if (!idempotencyKey || !adminDb) return;
 
@@ -71,6 +92,7 @@ export function storeIdempotencyInTransaction(
     result,
     endpoint,
     actorUid: actorUid || 'system',
+    requestFingerprint: requestFingerprint || null,
     createdAt: new Date(),
     expiresAt: new Date(now + IDEMPOTENCY_TTL_MS)
   });
