@@ -3,6 +3,12 @@ import { db } from '../firebase';
 import { safeDate } from '../utils';
 import { EntityRole } from '../types';
 import { authService } from './authService';
+import {
+  ENTITY_COLLECTIONS,
+  SECURITY_COLLECTIONS,
+  getEntityDocumentId,
+  getSessionConflictCode
+} from '../domain/auth/sessionPolicy';
 export type { EntityRole };
 
 export interface GarageSessionDoc {
@@ -46,22 +52,6 @@ export const getCanonicalSessionId = (): string => {
 
 export const getOrCreateDeviceId = (): string => {
   return getCanonicalSessionId();
-};
-
-const entityCollectionMap: Record<EntityRole, string> = {
-  admin: 'admin_settings',
-  supervisor: 'supervisors',
-  delegate: 'delegates',
-  staff: 'staff',
-  garage: 'garages',
-};
-
-const securityCollectionMap: Record<EntityRole, string> = {
-  admin: 'admin_sessions',
-  supervisor: 'supervisor_sessions',
-  delegate: 'delegate_sessions',
-  staff: 'staff_sessions',
-  garage: 'garage_sessions',
 };
 
 // In-memory cache to prevent duplicate Firestore transaction collisions within the same client session
@@ -113,9 +103,9 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     }
   }
 
-  const entityColl = entityCollectionMap[role];
-  const secColl = securityCollectionMap[role];
-  const entityDocId = role === 'admin' ? 'auth_pin' : entityId;
+  const entityColl = ENTITY_COLLECTIONS[role];
+  const secColl = SECURITY_COLLECTIONS[role];
+  const entityDocId = getEntityDocumentId(role, entityId);
 
   const entityRef = doc(db, entityColl, entityDocId);
   const securitySessionRef = doc(db, secColl, uid);
@@ -131,13 +121,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
       const isAlive = lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
 
       if (activeSessionId && activeSessionId !== sessionId && isAlive) {
-        if (role === 'delegate') {
-          throw new Error('DELEGATE_SESSION_OCCUPIED');
-        }
-        if (role === 'garage') {
-          throw new Error('ACCESS_DENIED_ACTIVE_SESSION_EXISTS');
-        }
-        throw new Error('SESSION_OCCUPIED');
+        throw new Error(getSessionConflictCode(role));
       }
     }
 
@@ -179,9 +163,9 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
     authService.releaseAdminSessionOnServer(uid, sessionId).catch(() => {});
   }
 
-  const entityColl = entityCollectionMap[role];
-  const secColl = securityCollectionMap[role];
-  const entityDocId = role === 'admin' ? 'auth_pin' : entityId;
+  const entityColl = ENTITY_COLLECTIONS[role];
+  const secColl = SECURITY_COLLECTIONS[role];
+  const entityDocId = getEntityDocumentId(role, entityId);
 
   const entityRef = doc(db, entityColl, entityDocId);
   const securitySessionRef = doc(db, secColl, uid);
@@ -215,9 +199,9 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
 export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {
   if (!role || !entityId || !sessionId || !uid) return;
 
-  const entityColl = entityCollectionMap[role];
-  const secColl = securityCollectionMap[role];
-  const entityDocId = role === 'admin' ? 'auth_pin' : entityId;
+  const entityColl = ENTITY_COLLECTIONS[role];
+  const secColl = SECURITY_COLLECTIONS[role];
+  const entityDocId = getEntityDocumentId(role, entityId);
 
   try {
     const batch = writeBatch(db);
