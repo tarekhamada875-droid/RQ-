@@ -41,6 +41,7 @@ import {
   checkIdempotencyInTransaction,
   storeIdempotencyInTransaction
 } from './idempotency';
+import { recordDomainEventInTransaction } from './events';
 import {
   initializeFairUse,
   evaluateFairUseCheckIn,
@@ -1870,6 +1871,24 @@ export function createApp() {
           dailyCount: Number(garageUpdate.todayCount || 0),
           dailyCapacity: isUnlimited ? 0 : capacity,
         };
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId,
+          aggregateType: 'vehicle',
+          aggregateId: plateRaw,
+          eventType: 'vehicle_entered',
+          actorUid: req.user?.uid || staffId || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            plateNumber,
+            plateNumberRaw: plateRaw,
+            type: type || 'hourly',
+            isSubscriber: isSubscriberAuthoritative,
+            staffId: staffId || null,
+            staffName: resolvedStaffName
+          }
+        });
+
         if (idempotencyKey) {
           storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid);
         }
@@ -2002,6 +2021,25 @@ export function createApp() {
           isSubscriber: !!vehicleData.isSubscriber,
           timestamp: new Date(),
           amount: cost
+        });
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId,
+          aggregateType: 'vehicle',
+          aggregateId: vehicleId,
+          eventType: 'vehicle_exited',
+          actorUid: req.user?.uid || staffId || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            plateNumber: vehicleData.plateNumber || vehicleId,
+            plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+            type: vehicleData.type || 'hourly',
+            isSubscriber: !!vehicleData.isSubscriber,
+            cost,
+            entryTime: vehicleData.entryTime,
+            staffId: staffId || null,
+            staffName: resolvedStaffName
+          }
         });
         if (idempotencyKey) {
           storeIdempotencyInTransaction(t, idempotencyKey, { cost }, '/api/vehicles/check-out', req.user?.uid);
@@ -2152,6 +2190,24 @@ export function createApp() {
           plateNumber: `مسح لوحة: ${vehicleData.plateNumber || vehicleId}`,
           timestamp: new Date(),
           amount: refundAmt
+        });
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId,
+          aggregateType: 'vehicle',
+          aggregateId: vehicleId,
+          eventType: refundAmt > 0 ? 'vehicle_refunded' : 'vehicle_deleted',
+          actorUid: req.user?.uid || staffId || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            plateNumber: vehicleData.plateNumber || vehicleId,
+            plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+            refundAmount: refundAmt,
+            previousStatus: vehicleData.status,
+            previousCost: vehicleData.totalCost || 0,
+            staffId: staffId || null,
+            staffName: resolvedStaffName
+          }
         });
         if (idempotencyKey) {
           storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/vehicles/delete', req.user?.uid);
@@ -3307,6 +3363,7 @@ export function createApp() {
   // Secure Server API: Subscribers (Add / Renew / Update / Delete)
   app.post('/api/subscribers/add', requireAuth, async (req: AuthRequest, res: any) => {
     try {
+      const callerRole = req.user?.role || 'garage';
       const { garageId, subscriberData } = req.body || {};
       if (!garageId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -3342,6 +3399,21 @@ export function createApp() {
           id: docRef.id,
           createdAt: new Date()
         });
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: validatedGarageId,
+          aggregateType: 'subscriber',
+          aggregateId: subscriberId,
+          eventType: 'subscriber_created',
+          actorUid: req.user?.uid || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            plateNumber,
+            plateNumberRaw: plateRaw,
+            startDate: dates.startDate,
+            endDate: dates.endDate
+          }
+        });
         if (idempotencyKey) {
           storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/subscribers/add', req.user?.uid);
         }
@@ -3357,6 +3429,7 @@ export function createApp() {
 
   app.post('/api/subscribers/renew', requireAuth, async (req: AuthRequest, res: any) => {
     try {
+      const callerRole = req.user?.role || 'garage';
       const { garageId, subscriberId, newDates } = req.body || {};
       if (!garageId || !subscriberId || !newDates || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -3373,6 +3446,19 @@ export function createApp() {
         const currentSnap = await t.get(subscriberRef);
         if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
         t.update(subscriberRef, { startDate: dates.startDate, endDate: dates.endDate });
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: validatedGarageId,
+          aggregateType: 'subscriber',
+          aggregateId: subscriberId,
+          eventType: 'subscriber_renewed',
+          actorUid: req.user?.uid || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            startDate: dates.startDate,
+            endDate: dates.endDate
+          }
+        });
         if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/renew', req.user?.uid);
       });
 
@@ -3386,6 +3472,7 @@ export function createApp() {
 
   app.post('/api/subscribers/update', requireAuth, async (req: AuthRequest, res: any) => {
     try {
+      const callerRole = req.user?.role || 'garage';
       const { garageId, subscriberId, subscriberData } = req.body || {};
       if (!garageId || !subscriberId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -3406,6 +3493,19 @@ export function createApp() {
         delete (safeUpdates as any).createdAt;
         delete (safeUpdates as any).costUnits;
         t.update(subscriberRef, safeUpdates);
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: validatedGarageId,
+          aggregateType: 'subscriber',
+          aggregateId: subscriberId,
+          eventType: 'subscriber_updated',
+          actorUid: req.user?.uid || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {
+            startDate: dates.startDate,
+            endDate: dates.endDate
+          }
+        });
         if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/update', req.user?.uid);
       });
       return res.json({ success: true });
@@ -3418,6 +3518,7 @@ export function createApp() {
 
   app.post('/api/subscribers/delete', requireAuth, async (req: AuthRequest, res: any) => {
     try {
+      const callerRole = req.user?.role || 'garage';
       const { garageId, subscriberId } = req.body || {};
       if (!garageId || !subscriberId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -3432,6 +3533,16 @@ export function createApp() {
         const currentSnap = await t.get(subscriberRef);
         if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
         t.delete(subscriberRef);
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: validatedGarageId,
+          aggregateType: 'subscriber',
+          aggregateId: subscriberId,
+          eventType: 'subscriber_deleted',
+          actorUid: req.user?.uid || 'system',
+          actorRole: callerRole,
+          idempotencyKey: idempotencyKey || undefined,
+          payload: {}
+        });
         if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/delete', req.user?.uid);
       });
       return res.json({ success: true });
