@@ -3,6 +3,11 @@ import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestam
 import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
+
+const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.docs
+  .map((doc: any) => ({ id: doc.id, ...doc.data() }))
+  .filter((log: any) => log.timestamp && getCairoDateKey(safeDate(log.timestamp)) === today)
+  .sort((a: any, b: any) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
 import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils';
 import { generateIdempotencyKey } from '../types/apiContracts';
@@ -172,17 +177,7 @@ export const vehicleService = {
         orderBy('timestamp', 'desc'),
         limit(200)
       );
-      const snapshot = await getDocs(q);
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      return logs.filter(log => {
-        if (!log.timestamp) return false;
-        const d = safeDate(log.timestamp);
-        return getCairoDateKey(d) === today;
-      }).sort((a, b) => {
-        const ta = safeDate(a.timestamp).getTime();
-        const tb = safeDate(b.timestamp).getTime();
-        return tb - ta;
-      });
+      return mapTodayTransactions(await getDocs(q), today);
     } catch (err) {
       console.warn('[vehicleService] getTodayTransactionsOnce fallback:', err);
       const fallbackQ = query(
@@ -191,17 +186,7 @@ export const vehicleService = {
         where('timestamp', '>=', firestoreTimestamp),
         limit(200)
       );
-      const snapshot = await getDocs(fallbackQ);
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      return logs.filter(log => {
-        if (!log.timestamp) return false;
-        const d = safeDate(log.timestamp);
-        return getCairoDateKey(d) === today;
-      }).sort((a, b) => {
-        const ta = safeDate(a.timestamp).getTime();
-        const tb = safeDate(b.timestamp).getTime();
-        return tb - ta;
-      });
+      return mapTodayTransactions(await getDocs(fallbackQ), today);
     }
   }
 };

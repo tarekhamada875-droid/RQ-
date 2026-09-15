@@ -27,6 +27,22 @@ export type GarageDeletionProgress = {
   percentage: number;
 };
 
+const mapGaragePage = (snapshot: any, pageSize: number): {
+  garages: Garage[];
+  lastDoc: any;
+  hasMore: boolean;
+} => {
+  const rawGarages: Garage[] = snapshot.docs.map((garageDoc: any) => ({
+    id: garageDoc.id,
+    ...garageDoc.data()
+  } as Garage));
+  return {
+    garages: sortGaragesNewestFirst(rawGarages),
+    lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+    hasMore: snapshot.docs.length === pageSize
+  };
+};
+
 export const garageService = {
   subscribeToGarages: (callback: (garages: Garage[]) => void) => {
     const trackerUnsub = listenerTracker.register('garages');
@@ -109,18 +125,7 @@ export const garageService = {
         );
       }
 
-      const snapshot = await getDocs(q);
-      const rawGarages = snapshot.docs.map(garageDoc => ({
-        id: garageDoc.id,
-        ...garageDoc.data()
-      } as Garage));
-      const garages = sortGaragesNewestFirst(rawGarages);
-
-      return {
-        garages,
-        lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-        hasMore: snapshot.docs.length === pageSize
-      };
+      return mapGaragePage(await getDocs(q), pageSize);
     } catch (error) {
       try {
         let fallbackQ = query(
@@ -134,18 +139,7 @@ export const garageService = {
             limit(pageSize)
           );
         }
-        const snapshot = await getDocs(fallbackQ);
-        const rawGarages = snapshot.docs.map(garageDoc => ({
-          id: garageDoc.id,
-          ...garageDoc.data()
-        } as Garage));
-        const garages = sortGaragesNewestFirst(rawGarages);
-
-        return {
-          garages,
-          lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-          hasMore: snapshot.docs.length === pageSize
-        };
+        return mapGaragePage(await getDocs(fallbackQ), pageSize);
       } catch (fallbackErr) {
         console.warn('Failed to load admin garage page:', fallbackErr);
         handleFirestoreError(fallbackErr, OperationType.LIST, 'garages/admin-page');
