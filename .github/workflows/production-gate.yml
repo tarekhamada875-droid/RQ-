@@ -49,4 +49,5 @@ jobs:
       - name: Live release smoke check
         env:
           SMOKE_BASE_URL: https://parqv2.vercel.app
+          SMOKE_EXPECTED_VERSION: ${{ github.sha }}
         run: npm run release:smoke
