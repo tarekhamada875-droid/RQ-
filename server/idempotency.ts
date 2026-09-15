@@ -38,6 +38,11 @@ export async function checkIdempotencyInTransaction(
 
   if (keySnap.exists) {
     const data = keySnap.data() || {};
+    const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt || 0);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      t.delete(keyRef);
+      return { isDuplicate: false };
+    }
     return {
       isDuplicate: true,
       cachedResult: data.result
@@ -70,4 +75,3 @@ export function storeIdempotencyInTransaction(
     expiresAt: new Date(now + IDEMPOTENCY_TTL_MS)
   });
 }
-

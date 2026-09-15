@@ -5,6 +5,7 @@ import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
 import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils';
+import { generateIdempotencyKey } from '../types/apiContracts';
 
 function getCairoDateKey(date: Date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -31,7 +32,8 @@ export const vehicleService = {
           plateRaw: vehicleData.plateNumberRaw || vehicleData.id,
           type: vehicleData.type,
           isSubscriber: vehicleData.isSubscriber,
-          staffName: vehicleData.staffName
+          staffName: vehicleData.staffName,
+          idempotencyKey: generateIdempotencyKey('vehicle_checkin')
         }
       });
       return { success: true, data: data.data };
@@ -47,7 +49,8 @@ export const vehicleService = {
         body: {
           garageId,
           vehicleId,
-          staffName
+          staffName,
+          idempotencyKey: generateIdempotencyKey('vehicle_checkout')
         }
       });
       return { success: true, cost: data.data?.cost };
@@ -64,7 +67,8 @@ export const vehicleService = {
           garageId,
           vehicleId,
           refundAmount,
-          staffName
+          staffName,
+          idempotencyKey: generateIdempotencyKey('vehicle_delete')
         }
       });
       return true;

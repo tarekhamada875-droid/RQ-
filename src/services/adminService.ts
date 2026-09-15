@@ -1,5 +1,6 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
+import { generateIdempotencyKey } from '../types/apiContracts';
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 import type { 
   Supervisor, 
@@ -301,7 +302,7 @@ export const adminService = {
     try {
       const res = await apiFetch('/api/subscribers/add', {
         method: 'POST',
-        body: { garageId, subscriberData }
+        body: { garageId, subscriberData, idempotencyKey: generateIdempotencyKey('subscriber_add') }
       });
       return res.id;
     } catch (error) {
@@ -314,7 +315,7 @@ export const adminService = {
     try {
       await apiFetch('/api/subscribers/renew', {
         method: 'POST',
-        body: { garageId, subscriberId, newDates }
+        body: { garageId, subscriberId, newDates, idempotencyKey: generateIdempotencyKey('subscriber_renew') }
       });
       return true;
     } catch (error) {
@@ -327,7 +328,7 @@ export const adminService = {
     try {
       await apiFetch('/api/subscribers/update', {
         method: 'POST',
-        body: { garageId, subscriberId, subscriberData }
+        body: { garageId, subscriberId, subscriberData, idempotencyKey: generateIdempotencyKey('subscriber_update') }
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/subscribers`);
@@ -339,7 +340,7 @@ export const adminService = {
     try {
       await apiFetch('/api/subscribers/delete', {
         method: 'POST',
-        body: { garageId, subscriberId }
+        body: { garageId, subscriberId, idempotencyKey: generateIdempotencyKey('subscriber_delete') }
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `garages/${garageId}/subscribers`);

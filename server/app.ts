@@ -32,6 +32,7 @@ import {
   validateNumber,
   validateString,
   validateDateRange,
+  validatePlate,
   sanitizePayload,
   validateIdempotencyKey,
   ValidationError
@@ -56,7 +57,7 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
 
   const errMsg = String(err?.message || err || '');
 
-  if (errMsg.includes('GARAGE_NOT_FOUND') || errMsg.includes('VEHICLE_NOT_FOUND') || errMsg.includes('REQUEST_NOT_FOUND') || errMsg.includes('PACKAGE_NOT_FOUND')) {
+  if (errMsg.includes('GARAGE_NOT_FOUND') || errMsg.includes('VEHICLE_NOT_FOUND') || errMsg.includes('REQUEST_NOT_FOUND') || errMsg.includes('PACKAGE_NOT_FOUND') || errMsg.includes('SUBSCRIBER_NOT_FOUND')) {
     return { statusCode: 404, code: 'NOT_FOUND', message: 'The requested resource was not found.' };
   }
 
@@ -74,7 +75,8 @@ function mapDomainErrorToStatus(err: any): { statusCode: number; code: string; m
     errMsg.includes('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION') ||
     errMsg.includes('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN') ||
     errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE') ||
-    errMsg.includes('SUBSCRIPTION_EXPIRED')
+    errMsg.includes('SUBSCRIPTION_EXPIRED') ||
+    errMsg.includes('SUBSCRIBER_ALREADY_EXISTS')
   ) {
     return { statusCode: 409, code: 'CONFLICT', message: 'The requested operation conflicts with the current state.' };
   }
@@ -1683,6 +1685,7 @@ export function createApp() {
         return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
       }
       if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
 
       // Get Cairo date key helper inline
       const getCairoDateKey = () => {
@@ -1715,6 +1718,13 @@ export function createApp() {
 
       let resultData: Record<string, any> = {};
       await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', req.user?.uid);
+          if (duplicate.isDuplicate) {
+            resultData = duplicate.cachedResult || {};
+            return;
+          }
+        }
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
         const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
@@ -1860,6 +1870,9 @@ export function createApp() {
           dailyCount: Number(garageUpdate.todayCount || 0),
           dailyCapacity: isUnlimited ? 0 : capacity,
         };
+        if (idempotencyKey) {
+          storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid);
+        }
       });
 
       const durationMs = Date.now() - requestStartedAt;
@@ -1905,12 +1918,20 @@ export function createApp() {
         return res.status(400).json({ success: false, error: 'MISSING_PARAMETERS' });
       }
       if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
 
       const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
       let finalCost = 0;
 
       await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', req.user?.uid);
+          if (duplicate.isDuplicate) {
+            finalCost = Number(duplicate.cachedResult?.cost || 0);
+            return;
+          }
+        }
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
         const today = getCairoDateKey();
@@ -1982,6 +2003,9 @@ export function createApp() {
           timestamp: new Date(),
           amount: cost
         });
+        if (idempotencyKey) {
+          storeIdempotencyInTransaction(t, idempotencyKey, { cost }, '/api/vehicles/check-out', req.user?.uid);
+        }
       });
 
       return res.json({ success: true, data: { cost: finalCost } });
@@ -2020,9 +2044,14 @@ export function createApp() {
       }
       if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
 
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
       const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
       await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/delete', req.user?.uid);
+          if (duplicate.isDuplicate) return;
+        }
         const todayYMD = getCairoDateKey();
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
@@ -2124,6 +2153,9 @@ export function createApp() {
           timestamp: new Date(),
           amount: refundAmt
         });
+        if (idempotencyKey) {
+          storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/vehicles/delete', req.user?.uid);
+        }
       });
       return res.json({ success: true });
     } catch (err: any) {
@@ -3089,6 +3121,44 @@ export function createApp() {
     }
   });
 
+  // Read-only consistency diagnostics; repairs remain a separate deliberate action.
+  app.post('/api/garages/reconciliation', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      const garageId = validateId(req.body?.garageId, 'garageId', true);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await garageRef.get();
+      if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
+
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const [insideSnap, dailyStatsSnap] = await Promise.all([
+        adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
+        adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()
+      ]);
+      const garageData = garageSnap.data() || {};
+      const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
+      const expected = {
+        carsInside: insideSnap.size,
+        todayCount: Number(stats.count || 0),
+        todayRevenue: Number(stats.revenue || 0)
+      };
+      const actual = {
+        carsInside: Number(garageData.carsInside || 0),
+        todayCount: garageData.lastTransactionDate === today ? Number(garageData.todayCount || 0) : 0,
+        todayRevenue: garageData.lastTransactionDate === today ? Number(garageData.todayRevenue || 0) : 0
+      };
+      const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key as keyof typeof expected] - actual[key as keyof typeof actual]]));
+      return res.json({ success: true, data: { garageId, date: today, expected, actual, differences, isConsistent: Object.values(differences).every((value) => value === 0) } });
+    } catch (e: any) {
+      console.error('[Server Garage] Error in reconciliation:', e);
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
+    }
+  });
+
   // Secure Server API: Packages (Create / Delete)
   app.post('/api/admin/packages/create', requireAuth, async (req: AuthRequest, res: any) => {
     try {
@@ -3242,21 +3312,46 @@ export function createApp() {
       const validatedGarageId = validateId(garageId, 'garageId', true);
       if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
       const dates = validateDateRange(subscriberData.startDate, subscriberData.endDate);
-      const { costUnits: _costUnits, id: _id, createdAt: _createdAt, ...subscriberFields } = subscriberData;
+      const { plateNumber, plateRaw } = validatePlate(subscriberData.plateNumberRaw || subscriberData.plateNumber);
+      const { costUnits: _costUnits, id: _id, createdAt: _createdAt, plateNumber: _clientPlate, plateNumberRaw: _clientPlateRaw, ...subscriberFields } = subscriberData;
+      const subscriberCollection = adminDb.collection(`garages/${validatedGarageId}/subscribers`);
+      const subscriberId = `plate_${Buffer.from(plateRaw).toString('base64url')}`;
+      const docRef = subscriberCollection.doc(subscriberId);
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+      let resultData: { id: string } = { id: subscriberId };
 
-      const docRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc();
-      await docRef.set({
-        ...subscriberFields,
-        ...dates,
-        garageId: validatedGarageId,
-        id: docRef.id,
-        createdAt: new Date()
+      await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/add', req.user?.uid);
+          if (duplicate.isDuplicate) {
+            resultData = duplicate.cachedResult || resultData;
+            return;
+          }
+        }
+        const deterministicSnap = await t.get(docRef);
+        const legacyMatches = await t.get(subscriberCollection.where('plateNumberRaw', '==', plateRaw).limit(1));
+        if (deterministicSnap.exists || !legacyMatches.empty) {
+          throw new Error('SUBSCRIBER_ALREADY_EXISTS');
+        }
+        t.set(docRef, {
+          ...subscriberFields,
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          ...dates,
+          garageId: validatedGarageId,
+          id: docRef.id,
+          createdAt: new Date()
+        });
+        if (idempotencyKey) {
+          storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/subscribers/add', req.user?.uid);
+        }
       });
 
-      return res.json({ success: true, id: docRef.id });
+      return res.json({ success: true, id: resultData.id });
     } catch (e: any) {
       console.error('[Server Subscribers] Error in add:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -3267,16 +3362,25 @@ export function createApp() {
       const validatedGarageId = validateId(garageId, 'garageId', true);
       if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
       const dates = validateDateRange(newDates.startDate, newDates.endDate);
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+      const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
 
-      await adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true)).update({
-        startDate: dates.startDate,
-        endDate: dates.endDate
+      await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/renew', req.user?.uid);
+          if (duplicate.isDuplicate) return;
+        }
+        const currentSnap = await t.get(subscriberRef);
+        if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
+        t.update(subscriberRef, { startDate: dates.startDate, endDate: dates.endDate });
+        if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/renew', req.user?.uid);
       });
 
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server Subscribers] Error in renew:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -3286,21 +3390,29 @@ export function createApp() {
       if (!garageId || !subscriberId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
       if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
       const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
-      const currentSnap = await subscriberRef.get();
-      if (!currentSnap.exists) return res.status(404).json({ success: false, error: 'SUBSCRIBER_NOT_FOUND' });
-      const mergedData = { ...(currentSnap.data() || {}), ...subscriberData };
-      const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
-
-      const safeUpdates = { ...subscriberData, ...dates, garageId: validatedGarageId };
-      delete (safeUpdates as any).id;
-      delete (safeUpdates as any).createdAt;
-      delete (safeUpdates as any).costUnits;
-      await subscriberRef.update(safeUpdates);
+      await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/update', req.user?.uid);
+          if (duplicate.isDuplicate) return;
+        }
+        const currentSnap = await t.get(subscriberRef);
+        if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
+        const mergedData = { ...(currentSnap.data() || {}), ...subscriberData };
+        const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
+        const safeUpdates = { ...subscriberData, ...dates, garageId: validatedGarageId };
+        delete (safeUpdates as any).id;
+        delete (safeUpdates as any).createdAt;
+        delete (safeUpdates as any).costUnits;
+        t.update(subscriberRef, safeUpdates);
+        if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/update', req.user?.uid);
+      });
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server Subscribers] Error in update:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
@@ -3310,12 +3422,23 @@ export function createApp() {
       if (!garageId || !subscriberId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
       const validatedGarageId = validateId(garageId, 'garageId', true);
       if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
-
-      await adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true)).delete();
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+      const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+      await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/delete', req.user?.uid);
+          if (duplicate.isDuplicate) return;
+        }
+        const currentSnap = await t.get(subscriberRef);
+        if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
+        t.delete(subscriberRef);
+        if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/delete', req.user?.uid);
+      });
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server Subscribers] Error in delete:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
+      const { statusCode, message } = mapDomainErrorToStatus(e);
+      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 
