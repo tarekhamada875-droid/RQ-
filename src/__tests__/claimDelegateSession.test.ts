@@ -124,6 +124,10 @@ describe('claimDelegateSession atomic locking', () => {
     expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
   });
 
+  it('rejects a missing delegate ID instead of returning a fake session', async () => {
+    await expect(firestoreService.claimDelegateSession('')).rejects.toThrow('DELEGATE_ID_REQUIRED');
+  });
+
   it('allows a new session only after the old session is inactive', async () => {
     delegateDocStore['delegates/del-1'] = {
       name: 'Delegate 1',

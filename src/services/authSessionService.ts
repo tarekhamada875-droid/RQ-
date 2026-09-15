@@ -127,9 +127,13 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   recentClaims.delete(claimKey);
 
   // Authoritative server release
-  authService.releaseSessionOnServer(uid, sessionId, role, entityId).catch(() => {});
+  authService.releaseSessionOnServer(uid, sessionId, role, entityId).catch((err) => {
+    console.error('[AuthSessionService] Server session release failed:', err);
+  });
   if (role === 'admin') {
-    authService.releaseAdminSessionOnServer(uid, sessionId).catch(() => {});
+    authService.releaseAdminSessionOnServer(uid, sessionId).catch((err) => {
+      console.error('[AuthSessionService] Admin server session release failed:', err);
+    });
   }
 
   const entityColl = ENTITY_COLLECTIONS[role];

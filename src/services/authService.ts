@@ -151,7 +151,9 @@ export const authService = {
     if (!id) return;
     try {
       await setDoc(doc(db, collectionName, id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {}
+    } catch (e) {
+      console.error(`[AuthService] Error updating ${collectionName} session:`, e);
+    }
   },
 
   releaseDelegateSession: async (delegateId: string, sessionId?: string) => {
@@ -163,25 +165,31 @@ export const authService = {
         if (auth && auth.currentUser && auth.currentUser.uid) {
           targetUid = auth.currentUser.uid;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[AuthService] Could not resolve current user for delegate release:', e);
+      }
       await releaseEntitySession({
         role: 'delegate',
         entityId: delegateId,
         sessionId: sid,
         uid: targetUid
       });
-    } catch (e) {}
+    } catch (e) {
+      console.error('[AuthService] Error releasing delegate session:', e);
+    }
   },
 
   claimDelegateSession: async (delegateId: string, sessionId?: string, _deviceInfo?: any) => {
-    if (!delegateId) return { currentSessionId: sessionId || 'session_123' };
+    if (!delegateId) throw new Error('DELEGATE_ID_REQUIRED');
     const sid = sessionId || getCanonicalSessionId();
     let targetUid = delegateId;
     try {
       if (auth && auth.currentUser && auth.currentUser.uid) {
         targetUid = auth.currentUser.uid;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[AuthService] Could not resolve current user for delegate claim:', e);
+    }
 
     await claimEntitySession({
       role: 'delegate',
@@ -201,14 +209,17 @@ export const authService = {
     if (!id) return;
     try {
       await setDoc(doc(db, 'supervisor_sessions', id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {}
+    } catch (e) {
+      console.error('[AuthService] Error updating supervisor session:', e);
+    }
   },
 
   updateStaffSession: async (id: string, _meta?: any) => {
     if (!id) return;
     try {
       await setDoc(doc(db, 'staff_sessions', id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {}
+    } catch (e) {
+      console.error('[AuthService] Error updating staff session:', e);
+    }
   }
 };
-

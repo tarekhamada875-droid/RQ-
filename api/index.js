@@ -19128,14 +19128,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto5.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash = crypto6.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash + '"';
     }
@@ -20858,27 +20858,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router;
+    module2.exports = Router6;
     module2.exports.Route = Route;
-    function Router(options) {
-      if (!(this instanceof Router)) {
-        return new Router(options);
+    function Router6(options) {
+      if (!(this instanceof Router6)) {
+        return new Router6(options);
       }
       const opts = options || {};
-      function router(req, res, next) {
-        router.handle(req, res, next);
+      function router6(req, res, next) {
+        router6.handle(req, res, next);
       }
-      Object.setPrototypeOf(router, this);
-      router.caseSensitive = opts.caseSensitive;
-      router.mergeParams = opts.mergeParams;
-      router.params = {};
-      router.strict = opts.strict;
-      router.stack = [];
-      return router;
+      Object.setPrototypeOf(router6, this);
+      router6.caseSensitive = opts.caseSensitive;
+      router6.mergeParams = opts.mergeParams;
+      router6.params = {};
+      router6.strict = opts.strict;
+      router6.stack = [];
+      return router6;
     }
-    Router.prototype = function() {
+    Router6.prototype = function() {
     };
-    Router.prototype.param = function param(name, fn) {
+    Router6.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20898,7 +20898,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router.prototype.handle = function handle(req, res, callback) {
+    Router6.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -21025,7 +21025,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router.prototype.use = function use(handler) {
+    Router6.prototype.use = function use(handler) {
       let offset = 0;
       let path2 = "/";
       if (typeof handler !== "function") {
@@ -21058,7 +21058,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router.prototype.route = function route(path2) {
+    Router6.prototype.route = function route(path2) {
       const route2 = new Route(path2);
       const layer = new Layer(path2, {
         sensitive: this.caseSensitive,
@@ -21073,7 +21073,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router.prototype[method] = function(path2) {
+      Router6.prototype[method] = function(path2) {
         const route = this.route(path2);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21256,13 +21256,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router = require_router();
+    var Router6 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router = null;
+      var router6 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21271,13 +21271,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router === null) {
-            router = new Router({
+          if (router6 === null) {
+            router6 = new Router6({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router;
+          return router6;
         }
       });
     };
@@ -21348,15 +21348,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router = this.router;
+      var router6 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router.use(path2, fn2);
+          return router6.use(path2, fn2);
         }
         debug(".use app under %s", path2);
         fn2.mountpath = path2;
         fn2.parent = this;
-        router.use(path2, function mounted_app(req, res, next) {
+        router6.use(path2, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -22685,17 +22685,17 @@ var require_content_disposition = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto5.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto6.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto5.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto6.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -24004,7 +24004,7 @@ var require_express = __commonJS({
     var EventEmitter = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router = require_router();
+    var Router6 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -24026,8 +24026,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router.Route;
-    exports2.Router = Router;
+    exports2.Route = Router6.Route;
+    exports2.Router = Router6;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -36020,22 +36020,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto5.createHash("sha256").update(str).digest("base64");
+        return crypto6.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count) {
-        return crypto5.randomBytes(count).toString("base64");
+        return crypto6.randomBytes(count).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto5.createVerify("RSA-SHA256");
+        const verifier = crypto6.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto5.createSign("RSA-SHA256");
+        const signer = crypto6.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -36053,7 +36053,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto5.createHash("sha256").update(str).digest("hex");
+        return crypto6.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -36065,7 +36065,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto5.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto6.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -36978,10 +36978,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto5 = (0, crypto_1.createCrypto)();
-        const randomString = crypto5.randomBytesBase64(96);
+        const crypto6 = (0, crypto_1.createCrypto)();
+        const randomString = crypto6.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto5.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto6.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -37422,7 +37422,7 @@ var require_oauth2client = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -37435,7 +37435,7 @@ var require_oauth2client = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto5.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto6.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -37446,7 +37446,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto5.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto6.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -37463,7 +37463,7 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto5.verify(cert2, signed, signature);
+        const verified = await crypto6.verify(cert2, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt);
         }
@@ -37838,14 +37838,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer4 = require_safe_buffer().Buffer;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto5.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto6.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -37935,17 +37935,17 @@ var require_jwa = __commonJS({
       return function sign2(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac2 = crypto5.createHmac("sha" + bits, secret);
+        var hmac2 = crypto6.createHmac("sha" + bits, secret);
         var sig2 = (hmac2.update(thing), hmac2.digest("base64"));
         return fromBase64(sig2);
       };
     }
     var bufferEqual;
-    var timingSafeEqual2 = "timingSafeEqual" in crypto5 ? function timingSafeEqual3(a, b) {
+    var timingSafeEqual2 = "timingSafeEqual" in crypto6 ? function timingSafeEqual3(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto5.timingSafeEqual(a, b);
+      return crypto6.timingSafeEqual(a, b);
     } : function timingSafeEqual3(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -37962,7 +37962,7 @@ var require_jwa = __commonJS({
       return function sign2(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig2 = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig2);
       };
@@ -37972,7 +37972,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -37981,11 +37981,11 @@ var require_jwa = __commonJS({
       return function sign2(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto5.createSign("RSA-SHA" + bits);
+        var signer = crypto6.createSign("RSA-SHA" + bits);
         var sig2 = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig2);
       };
@@ -37995,12 +37995,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto5.createVerify("RSA-SHA" + bits);
+        var verifier = crypto6.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto5.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto5.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -40576,14 +40576,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign2(crypto5, key, msg) {
-      return await crypto5.signWithHmacSha256(key, msg);
+    async function sign2(crypto6, key, msg) {
+      return await crypto6.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto5, key, dateStamp, region, serviceName) {
-      const kDate = await sign2(crypto5, `AWS4${key}`, dateStamp);
-      const kRegion = await sign2(crypto5, kDate, region);
-      const kService = await sign2(crypto5, kRegion, serviceName);
-      const kSigning = await sign2(crypto5, kService, "aws4_request");
+    async function getSigningKey(crypto6, key, dateStamp, region, serviceName) {
+      const kDate = await sign2(crypto6, `AWS4${key}`, dateStamp);
+      const kRegion = await sign2(crypto6, kDate, region);
+      const kService = await sign2(crypto6, kRegion, serviceName);
+      const kSigning = await sign2(crypto6, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -41549,7 +41549,7 @@ var require_gdchclient = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.GdchClient = exports2.GDCH_SERVICE_ACCOUNT_TYPE = void 0;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var fs3 = require("fs");
     var https2 = require("https");
     var oauth2client_1 = require_oauth2client();
@@ -41740,7 +41740,7 @@ var require_gdchclient = __commonJS({
         const encodedHeader = this.base64UrlEncode(JSON.stringify(header));
         const encodedPayload = this.base64UrlEncode(JSON.stringify(payload));
         const signingInput = `${encodedHeader}.${encodedPayload}`;
-        const signature = crypto5.sign("sha256", Buffer.from(signingInput), {
+        const signature = crypto6.sign("sha256", Buffer.from(signingInput), {
           key: this.privateKey,
           dsaEncoding: "ieee-p1363"
         });
@@ -42603,24 +42603,24 @@ var require_googleauth = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign2 = await crypto5.sign(client.key, data);
+          const sign2 = await crypto6.sign(client.key, data);
           return sign2;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto5, creds.client_email, data, endpoint);
+        return this.signBlob(crypto6, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto5, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto6, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto5.encodeBase64StringUtf8(data)
+            payload: crypto6.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -44794,7 +44794,7 @@ var require_firestore_client_config = __commonJS({
 var require_object_hash = __commonJS({
   "node_modules/object-hash/index.js"(exports2, module2) {
     "use strict";
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     exports2 = module2.exports = objectHash;
     function objectHash(object, options) {
       options = applyDefaults(object, options);
@@ -44812,7 +44812,7 @@ var require_object_hash = __commonJS({
     exports2.keysMD5 = function(object) {
       return objectHash(object, { algorithm: "md5", encoding: "hex", excludeValues: true });
     };
-    var hashes = crypto5.getHashes ? crypto5.getHashes().slice() : ["sha1", "md5"];
+    var hashes = crypto6.getHashes ? crypto6.getHashes().slice() : ["sha1", "md5"];
     hashes.push("passthrough");
     var encodings = ["buffer", "hex", "binary", "base64"];
     function applyDefaults(object, sourceOptions) {
@@ -44858,7 +44858,7 @@ var require_object_hash = __commonJS({
     function hash(object, options) {
       var hashingStream;
       if (options.algorithm !== "passthrough") {
-        hashingStream = crypto5.createHash(options.algorithm);
+        hashingStream = crypto6.createHash(options.algorithm);
       } else {
         hashingStream = new PassThrough3();
       }
@@ -53466,22 +53466,22 @@ var require_crypto5 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NodeCrypto = void 0;
-    var crypto5 = require("crypto");
+    var crypto6 = require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto5.createHash("sha256").update(str).digest("base64");
+        return crypto6.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count) {
-        return crypto5.randomBytes(count).toString("base64");
+        return crypto6.randomBytes(count).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto5.createVerify("RSA-SHA256");
+        const verifier = crypto6.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto5.createSign("RSA-SHA256");
+        const signer = crypto6.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -53499,7 +53499,7 @@ var require_crypto5 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto5.createHash("sha256").update(str).digest("hex");
+        return crypto6.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -53511,7 +53511,7 @@ var require_crypto5 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto5.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto6.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports2.NodeCrypto = NodeCrypto;
@@ -54195,10 +54195,10 @@ var require_oauth2client2 = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto5 = (0, crypto_1.createCrypto)();
-        const randomString = crypto5.randomBytesBase64(96);
+        const crypto6 = (0, crypto_1.createCrypto)();
+        const randomString = crypto6.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto5.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto6.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -54639,7 +54639,7 @@ var require_oauth2client2 = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -54652,7 +54652,7 @@ var require_oauth2client2 = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto5.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto6.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -54663,7 +54663,7 @@ var require_oauth2client2 = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto5.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto6.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -54680,7 +54680,7 @@ var require_oauth2client2 = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto5.verify(cert2, signed, signature);
+        const verified = await crypto6.verify(cert2, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt);
         }
@@ -57472,14 +57472,14 @@ var require_awsrequestsigner2 = __commonJS({
       }
     };
     exports2.AwsRequestSigner = AwsRequestSigner;
-    async function sign2(crypto5, key, msg) {
-      return await crypto5.signWithHmacSha256(key, msg);
+    async function sign2(crypto6, key, msg) {
+      return await crypto6.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto5, key, dateStamp, region, serviceName) {
-      const kDate = await sign2(crypto5, `AWS4${key}`, dateStamp);
-      const kRegion = await sign2(crypto5, kDate, region);
-      const kService = await sign2(crypto5, kRegion, serviceName);
-      const kSigning = await sign2(crypto5, kService, "aws4_request");
+    async function getSigningKey(crypto6, key, dateStamp, region, serviceName) {
+      const kDate = await sign2(crypto6, `AWS4${key}`, dateStamp);
+      const kRegion = await sign2(crypto6, kDate, region);
+      const kService = await sign2(crypto6, kRegion, serviceName);
+      const kSigning = await sign2(crypto6, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -59193,24 +59193,24 @@ var require_googleauth2 = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto5 = (0, crypto_1.createCrypto)();
+        const crypto6 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign2 = await crypto5.sign(client.key, data);
+          const sign2 = await crypto6.sign(client.key, data);
           return sign2;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto5, creds.client_email, data, endpoint);
+        return this.signBlob(crypto6, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto5, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto6, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto5.encodeBase64StringUtf8(data)
+            payload: crypto6.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -134823,8 +134823,8 @@ var require_crypto_signer = __commonJS({
        * @inheritDoc
        */
       sign(buffer) {
-        const crypto5 = require("node:crypto");
-        const sign2 = crypto5.createSign("RSA-SHA256");
+        const crypto6 = require("node:crypto");
+        const sign2 = crypto6.createSign("RSA-SHA256");
         sign2.update(buffer);
         return Promise.resolve(sign2.sign(this.credential.privateKey));
       }
@@ -146540,8 +146540,14 @@ __export(api_entry_exports, {
 module.exports = __toCommonJS(api_entry_exports);
 
 // server/app.ts
-var import_express = __toESM(require_express2(), 1);
+var import_express6 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
+
+// server/routes/vehicles.ts
+var import_express = __toESM(require_express2(), 1);
+
+// server/middleware.ts
+var import_crypto = __toESM(require("crypto"), 1);
 
 // node_modules/firebase-admin/lib/esm/app/index.js
 var import_app = __toESM(require_app(), 1);
@@ -146673,372 +146679,6 @@ try {
   console.warn("[Server Auth] Could not initialize Firebase Admin SDK:", e2);
 }
 
-// server/utils.ts
-var import_crypto = __toESM(require("crypto"), 1);
-function normalizeDigits(str) {
-  if (!str) return "";
-  return String(str).replace(/[٠۰]/g, "0").replace(/[١۱]/g, "1").replace(/[٢۲]/g, "2").replace(/[٣۳]/g, "3").replace(/[٤۴]/g, "4").replace(/[٥۵]/g, "5").replace(/[٦۶]/g, "6").replace(/[٧۷]/g, "7").replace(/[٨۸]/g, "8").replace(/[٩۹]/g, "9");
-}
-function cleanPin(raw) {
-  return normalizeDigits(String(raw || "")).replace(/\D/g, "");
-}
-var LEGACY_PIN_SALT = "ark_garage_secure_pin_salt_2026";
-var PIN_LOOKUP_SALT = "ark_garage_secure_pin_lookup_salt_v2";
-function hashPinWithUniqueSalt(cleanPinStr, saltHex) {
-  if (!cleanPinStr) return "";
-  const salt = saltHex ? Buffer.from(saltHex, "hex") : import_crypto.default.randomBytes(16);
-  const actualSaltHex = salt.toString("hex");
-  const N = 16384;
-  const r2 = 8;
-  const p = 1;
-  const derived = import_crypto.default.scryptSync(cleanPinStr, salt, 32, { N, r: r2, p }).toString("hex");
-  return `$scrypt$N=${N},r=${r2},p=${p}$${actualSaltHex}$${derived}`;
-}
-function computeLookupHash(cleanPinStr) {
-  if (!cleanPinStr) return "";
-  return import_crypto.default.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString("hex");
-}
-function legacyHashPin(cleanPinStr) {
-  if (!cleanPinStr) return "";
-  return import_crypto.default.scryptSync(cleanPinStr, LEGACY_PIN_SALT, 32).toString("hex");
-}
-function isHashedPin(pin) {
-  if (!pin) return false;
-  return typeof pin === "string" && pin.length === 64 && /^[0-9a-f]{64}$/i.test(pin);
-}
-function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(a.toLowerCase());
-  const bufB = Buffer.from(b.toLowerCase());
-  if (bufA.length !== bufB.length) return false;
-  return import_crypto.default.timingSafeEqual(bufA, bufB);
-}
-function verifyScryptHash(inputCleanPin, scryptStr) {
-  try {
-    const parts = scryptStr.split("$");
-    if (parts.length >= 5 && parts[1] === "scrypt") {
-      const paramStr = parts[2];
-      const saltHex = parts[3];
-      const expectedHash = parts[4];
-      const params = {};
-      paramStr.split(",").forEach((p2) => {
-        const [k, v] = p2.split("=");
-        if (k && v) params[k] = parseInt(v, 10);
-      });
-      const N = params.N || 16384;
-      const r2 = params.r || 8;
-      const p = params.p || 1;
-      const salt = Buffer.from(saltHex, "hex");
-      const derived = import_crypto.default.scryptSync(inputCleanPin, salt, 32, { N, r: r2, p }).toString("hex");
-      return safeCompare(derived, expectedHash);
-    }
-  } catch (e2) {
-    console.error("[Server Auth] Error verifying scrypt hash:", e2);
-  }
-  return false;
-}
-function verifySingleFieldValue(inputCleanPin, storedVal) {
-  if (!inputCleanPin || storedVal === void 0 || storedVal === null) return { matches: false, isLegacy: false };
-  const strVal = String(storedVal).trim();
-  if (!strVal) return { matches: false, isLegacy: false };
-  if (strVal.startsWith("$scrypt$")) {
-    if (verifyScryptHash(inputCleanPin, strVal)) {
-      return { matches: true, isLegacy: false };
-    }
-  }
-  if (isHashedPin(strVal)) {
-    const inputLegacyHash = legacyHashPin(inputCleanPin);
-    if (safeCompare(inputLegacyHash, strVal)) {
-      return { matches: true, isLegacy: true };
-    }
-  }
-  const cleanStored = cleanPin(strVal);
-  if (cleanStored && safeCompare(cleanStored, inputCleanPin)) {
-    return { matches: true, isLegacy: true };
-  }
-  return { matches: false, isLegacy: false };
-}
-function verifyPinMatch(inputCleanPin, storedPin) {
-  return verifySingleFieldValue(inputCleanPin, storedPin);
-}
-function verifyDocMatch(inputCleanPin, docData) {
-  if (!docData) return { matches: false, isLegacy: false };
-  const candidateFields = [docData.pin, docData.ownerPin, docData.adminPin, docData.pinLookupHash];
-  for (const fieldVal of candidateFields) {
-    const check2 = verifySingleFieldValue(inputCleanPin, fieldVal);
-    if (check2.matches) {
-      return check2;
-    }
-  }
-  return { matches: false, isLegacy: false };
-}
-async function saveEntityPin(collName, docId, cleanInputPin) {
-  if (!cleanInputPin || !docId) return;
-  const newScrypt = hashPinWithUniqueSalt(cleanInputPin);
-  const lookupHash = computeLookupHash(cleanInputPin);
-  const privatePinPayload = {
-    pin: newScrypt,
-    pinLookupHash: lookupHash,
-    entityType: collName,
-    entityId: docId,
-    updatedAt: /* @__PURE__ */ new Date()
-  };
-  try {
-    if (!adminDb) {
-      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
-    }
-    const pinDocId = collName === "admin_settings" ? "auth_pin" : docId;
-    await adminDb.doc(`private_pins/${pinDocId}`).set(privatePinPayload, { merge: true });
-  } catch (e2) {
-    console.error(`[Server Auth] Error saving private pin for ${collName}/${docId}:`, e2);
-    throw e2;
-  }
-}
-async function migratePinToHash(collName, docId, cleanInputPin) {
-  try {
-    if (!adminDb) {
-      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
-    }
-    await saveEntityPin(collName, docId, cleanInputPin);
-    const targetDocRef = collName === "admin_settings" ? adminDb.doc("admin_settings/auth_pin") : adminDb.collection(collName).doc(docId);
-    const docSnap = await targetDocRef.get();
-    if (docSnap.exists) {
-      const data = docSnap.data() || {};
-      const updates = {};
-      if ("pin" in data) updates.pin = null;
-      if ("ownerPin" in data) updates.ownerPin = null;
-      if ("adminPin" in data) updates.adminPin = null;
-      if ("pinLookupHash" in data) updates.pinLookupHash = null;
-      if (Object.keys(updates).length > 0) {
-        await targetDocRef.set(updates, { merge: true });
-      }
-    }
-    console.log(`[Server Auth] Auto-migrated credentials to private_pins for ${collName}/${docId}`);
-  } catch (e2) {
-    console.error(`[Server Auth] Error auto-migrating PIN for ${collName}/${docId}:`, e2);
-  }
-}
-var RATE_LIMIT_WINDOW_MS = 6e4;
-var RATE_LIMIT_MAX_ATTEMPTS = 20;
-var memoryFallback = /* @__PURE__ */ new Map();
-function checkRateLimitInMemory(ip) {
-  const now = Date.now();
-  const entry = memoryFallback.get(ip);
-  if (!entry || now > entry.resetAt) {
-    memoryFallback.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
-  entry.count += 1;
-  return true;
-}
-async function checkRateLimit(ip) {
-  if (!adminDb) return checkRateLimitInMemory(ip);
-  const docId = import_crypto.default.createHash("sha256").update(ip).digest("hex");
-  const ref = adminDb.doc(`rate_limits/${docId}`);
-  try {
-    return await adminDb.runTransaction(async (t2) => {
-      const snap = await t2.get(ref);
-      const now = Date.now();
-      const data = snap.exists ? snap.data() || {} : null;
-      if (!data || now > data.resetAt) {
-        t2.set(ref, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS, expiresAt: new Date(now + RATE_LIMIT_WINDOW_MS) });
-        return true;
-      }
-      if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) {
-        return false;
-      }
-      t2.update(ref, { count: data.count + 1 });
-      return true;
-    });
-  } catch (e2) {
-    console.error("[Server Auth] Rate limit transaction failed, failing closed to in-memory:", e2);
-    return checkRateLimitInMemory(ip);
-  }
-}
-async function resetRateLimit(ip) {
-  memoryFallback.delete(ip);
-  if (!adminDb) return;
-  const docId = import_crypto.default.createHash("sha256").update(ip).digest("hex");
-  try {
-    await adminDb.doc(`rate_limits/${docId}`).delete();
-  } catch (e2) {
-    console.error("[Server Auth] Failed to reset Firestore rate limit doc:", e2);
-  }
-}
-async function getAdminPin() {
-  try {
-    if (!adminDb) {
-      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
-    }
-    const privSnap = await adminDb.doc("private_pins/auth_pin").get();
-    if (privSnap.exists && privSnap.data()?.pin) {
-      return String(privSnap.data().pin);
-    }
-    const snap = await adminDb.doc("admin_settings/auth_pin").get();
-    return snap.exists ? String(snap.data()?.pin || "") : "";
-  } catch (e2) {
-    console.error("[Server Auth] Error reading admin pin:", e2);
-    return "";
-  }
-}
-async function queryAccountWherePin(collName, normPin) {
-  const lookupHash = computeLookupHash(normPin);
-  const legacyHash = legacyHashPin(normPin);
-  const matches = [];
-  const seenIds = /* @__PURE__ */ new Set();
-  try {
-    if (!adminDb) {
-      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
-    }
-    try {
-      const privSnap = await adminDb.collection("private_pins").where("entityType", "==", collName).where("pinLookupHash", "==", lookupHash).limit(5).get();
-      for (const privDoc of privSnap.docs) {
-        const privData = privDoc.data() || {};
-        const entityId = privData.entityId || privDoc.id;
-        const check2 = verifyDocMatch(normPin, privData);
-        if (check2.matches && !seenIds.has(entityId)) {
-          seenIds.add(entityId);
-          const entitySnap = await adminDb.collection(collName).doc(entityId).get();
-          if (entitySnap.exists) {
-            matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check2.isLegacy });
-          }
-        }
-      }
-    } catch (privErr) {
-    }
-    if (matches.length > 0) {
-      return matches;
-    }
-    const candidateQueries = [
-      { field: "pinLookupHash", value: lookupHash },
-      { field: "pin", value: legacyHash },
-      { field: "pin", value: normPin }
-    ];
-    if (collName === "garages") {
-      candidateQueries.push(
-        { field: "ownerPin", value: normPin },
-        { field: "adminPin", value: normPin }
-      );
-    }
-    for (const { field, value } of candidateQueries) {
-      if (!value) continue;
-      try {
-        const snap = await adminDb.collection(collName).where(field, "==", value).limit(5).get();
-        for (const d of snap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check2 = verifyDocMatch(normPin, d.data());
-            if (check2.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
-            }
-          }
-        }
-      } catch (e2) {
-      }
-    }
-    if (matches.length === 0) {
-      try {
-        const fallbackSnap = await adminDb.collection(collName).limit(50).get();
-        for (const d of fallbackSnap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check2 = verifyDocMatch(normPin, d.data());
-            if (check2.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
-            }
-          }
-        }
-      } catch (e2) {
-      }
-    }
-  } catch (e2) {
-    console.error(`[Server Auth] Error querying collection ${collName} where pin:`, e2);
-  }
-  return matches;
-}
-async function queryDelegatesWherePhone(normPhone) {
-  try {
-    if (!adminDb) {
-      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
-    }
-    const snap = await adminDb.collection("delegates").where("phone", "==", normPhone).limit(5).get();
-    return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
-  } catch (e2) {
-    console.error("[Server Auth] Error querying delegates where phone:", e2);
-    return [];
-  }
-}
-async function checkPinAvailabilityAcrossAll(normPin, excludeId) {
-  if (!normPin) return { taken: false };
-  const adminPinStored = await getAdminPin();
-  if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
-    if (!excludeId || excludeId !== "auth_pin") {
-      return {
-        taken: true,
-        role: "\u0645\u0633\u0624\u0648\u0644 \u0627\u0644\u0646\u0638\u0627\u0645 (\u0627\u0644\u0622\u062F\u0645\u0646 \u0627\u0644\u0631\u0626\u064A\u0633\u064A)",
-        roleKey: "admin",
-        name: "\u0627\u0644\u0622\u062F\u0645\u0646",
-        accountId: "auth_pin"
-      };
-    }
-  }
-  const collectionsToCheck = [
-    { name: "supervisors", roleKey: "supervisor", label: "\u0645\u0634\u0631\u0641 \u0646\u0638\u0627\u0645" },
-    { name: "delegates", roleKey: "delegate", label: "\u0645\u0646\u062F\u0648\u0628 \u0634\u062D\u0646" },
-    { name: "staff", roleKey: "staff", label: "\u0645\u0648\u0638\u0641 \u062C\u0631\u0627\u062C" },
-    { name: "garages", roleKey: "garage", label: "\u0635\u0627\u062D\u0628 \u062C\u0631\u0627\u062C" }
-  ];
-  for (const coll of collectionsToCheck) {
-    try {
-      const docs = await queryAccountWherePin(coll.name, normPin);
-      for (const dDoc of docs) {
-        if (excludeId && dDoc.id === excludeId) continue;
-        const docData = dDoc.data || {};
-        return {
-          taken: true,
-          role: coll.label,
-          roleKey: coll.roleKey,
-          name: docData.name || docData.ownerName || docData.garageName || "\u0645\u0633\u062A\u062E\u062F\u0645 \u0622\u062E\u0631",
-          accountId: dDoc.id,
-          account: docData
-        };
-      }
-    } catch (e2) {
-      console.error(`[Server Auth] Error checking pin in collection ${coll.name}:`, e2);
-    }
-  }
-  return { taken: false };
-}
-function calculateVehicleCost(vehicleData, garageData, now = Date.now()) {
-  if (vehicleData.isSubscriber) return 0;
-  const entryTime = vehicleData.entryTime?.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
-  if (!entryTime || isNaN(entryTime.getTime())) return 0;
-  const diffMs = now - entryTime.getTime();
-  if (diffMs < 5 * 60 * 1e3) return 0;
-  const type = vehicleData.type || "hourly";
-  if (type === "overnight") {
-    const overnightRate2 = Number(garageData.overnightRate || 0);
-    const days = Math.max(1, Math.ceil(diffMs / (1e3 * 60 * 60 * 24)));
-    return Number((days * overnightRate2).toFixed(2));
-  }
-  const hourlyRate = Number(garageData.hourlyRate || 0);
-  const overnightRate = Number(garageData.overnightRate || 0);
-  const hours = Math.max(1, Math.ceil(diffMs / (1e3 * 60 * 60)));
-  let total = hours * hourlyRate;
-  if (overnightRate > 0 && diffMs >= 1e3 * 60 * 60 * 24) {
-    const fullDays = Math.floor(diffMs / (1e3 * 60 * 60 * 24));
-    const remMs = diffMs % (1e3 * 60 * 60 * 24);
-    const remHours = Math.ceil(remMs / (1e3 * 60 * 60));
-    const blended = fullDays * overnightRate + Math.min(overnightRate, remHours * hourlyRate);
-    total = Math.min(total, blended);
-  }
-  return Number(total.toFixed(2));
-}
-
-// server/middleware.ts
-var import_crypto2 = __toESM(require("crypto"), 1);
-
 // server/validation.ts
 var ValidationError = class extends Error {
   constructor(message2, code = "INVALID_INPUT", statusCode = 400) {
@@ -147141,6 +146781,15 @@ function validateDateRange(startDate, endDate, fieldPrefix = "subscriber") {
   }
   return { startDate: start, endDate: end };
 }
+function validatePlate(val, fieldName = "Plate Number") {
+  const str = validateString(val, fieldName, { required: true, min: 1, max: 64 });
+  const cleanStr = str.replace(/[<>'"]/g, "").trim();
+  const plateRaw = cleanStr.replace(/\s+/g, "");
+  if (!plateRaw) {
+    throw new ValidationError("Plate number cannot be blank", "INVALID_PLATE", 400);
+  }
+  return { plateNumber: cleanStr, plateRaw };
+}
 function sanitizePayload(body, allowedKeys, rejectUnknown = true) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new ValidationError("Request body must be a JSON object", "INVALID_BODY", 400);
@@ -147198,7 +146847,7 @@ function sendApiError(res, statusCode, code, message2, correlationId, details) {
 }
 var correlationMiddleware = (req, res, next) => {
   const headerId = req.headers["x-correlation-id"];
-  const correlationId = typeof headerId === "string" && headerId.trim() ? headerId.trim() : import_crypto2.default.randomUUID();
+  const correlationId = typeof headerId === "string" && headerId.trim() ? headerId.trim() : import_crypto.default.randomUUID();
   req.correlationId = correlationId;
   res.setHeader("X-Correlation-ID", correlationId);
   next();
@@ -147237,7 +146886,7 @@ var financialRateLimiter = (maxRequests = 30, windowMs = 6e4) => {
       entry.count += 1;
       return next();
     }
-    const docId = import_crypto2.default.createHash("sha256").update(`fin:${key}`).digest("hex");
+    const docId = import_crypto.default.createHash("sha256").update(`fin:${key}`).digest("hex");
     const ref = adminDb.doc(`rate_limits/${docId}`);
     try {
       const allowed = await adminDb.runTransaction(async (t2) => {
@@ -147429,13 +147078,26 @@ var requireAuth = async (req, res, next) => {
 };
 
 // server/idempotency.ts
-var import_crypto3 = __toESM(require("crypto"), 1);
+var import_crypto2 = __toESM(require("crypto"), 1);
 var IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1e3;
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === "object") {
+    return Object.keys(value).sort().reduce((out, key) => {
+      out[key] = stableValue(value[key]);
+      return out;
+    }, {});
+  }
+  return value;
+}
+function createRequestFingerprint(value) {
+  return import_crypto2.default.createHash("sha256").update(JSON.stringify(stableValue(value))).digest("hex");
+}
 function scopedKey(idempotencyKey, endpoint, actorUid) {
   const raw = `${endpoint}:${actorUid || "system"}:${idempotencyKey}`;
-  return import_crypto3.default.createHash("sha256").update(raw).digest("hex");
+  return import_crypto2.default.createHash("sha256").update(raw).digest("hex");
 }
-async function checkIdempotencyInTransaction(t2, idempotencyKey, endpoint, actorUid) {
+async function checkIdempotencyInTransaction(t2, idempotencyKey, endpoint, actorUid, requestFingerprint) {
   if (!idempotencyKey || !adminDb) {
     return { isDuplicate: false };
   }
@@ -147444,6 +147106,14 @@ async function checkIdempotencyInTransaction(t2, idempotencyKey, endpoint, actor
   const keySnap = await t2.get(keyRef);
   if (keySnap.exists) {
     const data = keySnap.data() || {};
+    const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt || 0);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      t2.delete(keyRef);
+      return { isDuplicate: false };
+    }
+    if (requestFingerprint && data.requestFingerprint && data.requestFingerprint !== requestFingerprint) {
+      throw new Error("IDEMPOTENCY_KEY_REUSE");
+    }
     return {
       isDuplicate: true,
       cachedResult: data.result
@@ -147451,7 +147121,7 @@ async function checkIdempotencyInTransaction(t2, idempotencyKey, endpoint, actor
   }
   return { isDuplicate: false };
 }
-function storeIdempotencyInTransaction(t2, idempotencyKey, result, endpoint, actorUid) {
+function storeIdempotencyInTransaction(t2, idempotencyKey, result, endpoint, actorUid, requestFingerprint) {
   if (!idempotencyKey || !adminDb) return;
   const docId = scopedKey(idempotencyKey, endpoint, actorUid);
   const keyRef = adminDb.doc(`idempotency_records/${docId}`);
@@ -147460,9 +147130,38 @@ function storeIdempotencyInTransaction(t2, idempotencyKey, result, endpoint, act
     result,
     endpoint,
     actorUid: actorUid || "system",
+    requestFingerprint: requestFingerprint || null,
     createdAt: /* @__PURE__ */ new Date(),
     expiresAt: new Date(now + IDEMPOTENCY_TTL_MS)
   });
+}
+
+// server/events.ts
+var import_crypto3 = __toESM(require("crypto"), 1);
+function recordDomainEventInTransaction(t2, adminDb2, params) {
+  const timestampIso = (/* @__PURE__ */ new Date()).toISOString();
+  const eventId = `evt_${Date.now()}_${import_crypto3.default.randomBytes(6).toString("hex")}`;
+  const safePayload = { ...params.payload };
+  delete safePayload.pin;
+  delete safePayload.password;
+  delete safePayload.token;
+  const event = {
+    eventId,
+    schemaVersion: 1,
+    garageId: params.garageId,
+    aggregateType: params.aggregateType,
+    aggregateId: params.aggregateId,
+    eventType: params.eventType,
+    occurredAt: timestampIso,
+    recordedAt: timestampIso,
+    actorUid: params.actorUid || "system",
+    actorRole: params.actorRole || "unknown",
+    idempotencyKey: params.idempotencyKey || void 0,
+    payload: safePayload
+  };
+  const eventRef = adminDb2.doc(`garages/${params.garageId}/events/${eventId}`);
+  t2.set(eventRef, event);
+  return event;
 }
 
 // server/unlimitedFairUse.ts
@@ -147586,16 +147285,2313 @@ var manualAdminExtendFairUse = (currentFairUse, extraCars = 0) => {
   };
 };
 
-// server/app.ts
+// server/utils.ts
+var import_crypto4 = __toESM(require("crypto"), 1);
+function normalizeDigits(str) {
+  if (!str) return "";
+  return String(str).replace(/[٠۰]/g, "0").replace(/[١۱]/g, "1").replace(/[٢۲]/g, "2").replace(/[٣۳]/g, "3").replace(/[٤۴]/g, "4").replace(/[٥۵]/g, "5").replace(/[٦۶]/g, "6").replace(/[٧۷]/g, "7").replace(/[٨۸]/g, "8").replace(/[٩۹]/g, "9");
+}
+function cleanPin(raw) {
+  return normalizeDigits(String(raw || "")).replace(/\D/g, "");
+}
+var LEGACY_PIN_SALT = "ark_garage_secure_pin_salt_2026";
+var PIN_LOOKUP_SALT = "ark_garage_secure_pin_lookup_salt_v2";
+function hashPinWithUniqueSalt(cleanPinStr, saltHex) {
+  if (!cleanPinStr) return "";
+  const salt = saltHex ? Buffer.from(saltHex, "hex") : import_crypto4.default.randomBytes(16);
+  const actualSaltHex = salt.toString("hex");
+  const N = 16384;
+  const r2 = 8;
+  const p = 1;
+  const derived = import_crypto4.default.scryptSync(cleanPinStr, salt, 32, { N, r: r2, p }).toString("hex");
+  return `$scrypt$N=${N},r=${r2},p=${p}$${actualSaltHex}$${derived}`;
+}
+function computeLookupHash(cleanPinStr) {
+  if (!cleanPinStr) return "";
+  return import_crypto4.default.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString("hex");
+}
+function legacyHashPin(cleanPinStr) {
+  if (!cleanPinStr) return "";
+  return import_crypto4.default.scryptSync(cleanPinStr, LEGACY_PIN_SALT, 32).toString("hex");
+}
+function isHashedPin(pin) {
+  if (!pin) return false;
+  return typeof pin === "string" && pin.length === 64 && /^[0-9a-f]{64}$/i.test(pin);
+}
+function safeCompare(a, b) {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a.toLowerCase());
+  const bufB = Buffer.from(b.toLowerCase());
+  if (bufA.length !== bufB.length) return false;
+  return import_crypto4.default.timingSafeEqual(bufA, bufB);
+}
+function verifyScryptHash(inputCleanPin, scryptStr) {
+  try {
+    const parts = scryptStr.split("$");
+    if (parts.length >= 5 && parts[1] === "scrypt") {
+      const paramStr = parts[2];
+      const saltHex = parts[3];
+      const expectedHash = parts[4];
+      const params = {};
+      paramStr.split(",").forEach((p2) => {
+        const [k, v] = p2.split("=");
+        if (k && v) params[k] = parseInt(v, 10);
+      });
+      const N = params.N || 16384;
+      const r2 = params.r || 8;
+      const p = params.p || 1;
+      const salt = Buffer.from(saltHex, "hex");
+      const derived = import_crypto4.default.scryptSync(inputCleanPin, salt, 32, { N, r: r2, p }).toString("hex");
+      return safeCompare(derived, expectedHash);
+    }
+  } catch (e2) {
+    console.error("[Server Auth] Error verifying scrypt hash:", e2);
+  }
+  return false;
+}
+function verifySingleFieldValue(inputCleanPin, storedVal) {
+  if (!inputCleanPin || storedVal === void 0 || storedVal === null) return { matches: false, isLegacy: false };
+  const strVal = String(storedVal).trim();
+  if (!strVal) return { matches: false, isLegacy: false };
+  if (strVal.startsWith("$scrypt$")) {
+    if (verifyScryptHash(inputCleanPin, strVal)) {
+      return { matches: true, isLegacy: false };
+    }
+  }
+  if (isHashedPin(strVal)) {
+    const inputLegacyHash = legacyHashPin(inputCleanPin);
+    if (safeCompare(inputLegacyHash, strVal)) {
+      return { matches: true, isLegacy: true };
+    }
+  }
+  const cleanStored = cleanPin(strVal);
+  if (cleanStored && safeCompare(cleanStored, inputCleanPin)) {
+    return { matches: true, isLegacy: true };
+  }
+  return { matches: false, isLegacy: false };
+}
+function verifyPinMatch(inputCleanPin, storedPin) {
+  return verifySingleFieldValue(inputCleanPin, storedPin);
+}
+function verifyDocMatch(inputCleanPin, docData) {
+  if (!docData) return { matches: false, isLegacy: false };
+  const candidateFields = [docData.pin, docData.ownerPin, docData.adminPin, docData.pinLookupHash];
+  for (const fieldVal of candidateFields) {
+    const check2 = verifySingleFieldValue(inputCleanPin, fieldVal);
+    if (check2.matches) {
+      return check2;
+    }
+  }
+  return { matches: false, isLegacy: false };
+}
+async function saveEntityPin(collName, docId, cleanInputPin) {
+  if (!cleanInputPin || !docId) return;
+  const newScrypt = hashPinWithUniqueSalt(cleanInputPin);
+  const lookupHash = computeLookupHash(cleanInputPin);
+  const privatePinPayload = {
+    pin: newScrypt,
+    pinLookupHash: lookupHash,
+    entityType: collName,
+    entityId: docId,
+    updatedAt: /* @__PURE__ */ new Date()
+  };
+  try {
+    if (!adminDb) {
+      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
+    }
+    const pinDocId = collName === "admin_settings" ? "auth_pin" : docId;
+    await adminDb.doc(`private_pins/${pinDocId}`).set(privatePinPayload, { merge: true });
+  } catch (e2) {
+    console.error(`[Server Auth] Error saving private pin for ${collName}/${docId}:`, e2);
+    throw e2;
+  }
+}
+async function migratePinToHash(collName, docId, cleanInputPin) {
+  try {
+    if (!adminDb) {
+      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
+    }
+    await saveEntityPin(collName, docId, cleanInputPin);
+    const targetDocRef = collName === "admin_settings" ? adminDb.doc("admin_settings/auth_pin") : adminDb.collection(collName).doc(docId);
+    const docSnap = await targetDocRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data() || {};
+      const updates = {};
+      if ("pin" in data) updates.pin = null;
+      if ("ownerPin" in data) updates.ownerPin = null;
+      if ("adminPin" in data) updates.adminPin = null;
+      if ("pinLookupHash" in data) updates.pinLookupHash = null;
+      if (Object.keys(updates).length > 0) {
+        await targetDocRef.set(updates, { merge: true });
+      }
+    }
+    console.log(`[Server Auth] Auto-migrated credentials to private_pins for ${collName}/${docId}`);
+  } catch (e2) {
+    console.error(`[Server Auth] Error auto-migrating PIN for ${collName}/${docId}:`, e2);
+  }
+}
+var RATE_LIMIT_WINDOW_MS = 6e4;
+var RATE_LIMIT_MAX_ATTEMPTS = 20;
+var memoryFallback = /* @__PURE__ */ new Map();
+function checkRateLimitInMemory(ip) {
+  const now = Date.now();
+  const entry = memoryFallback.get(ip);
+  if (!entry || now > entry.resetAt) {
+    memoryFallback.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
+  entry.count += 1;
+  return true;
+}
+async function checkRateLimit(ip) {
+  if (!adminDb) return checkRateLimitInMemory(ip);
+  const docId = import_crypto4.default.createHash("sha256").update(ip).digest("hex");
+  const ref = adminDb.doc(`rate_limits/${docId}`);
+  try {
+    return await adminDb.runTransaction(async (t2) => {
+      const snap = await t2.get(ref);
+      const now = Date.now();
+      const data = snap.exists ? snap.data() || {} : null;
+      if (!data || now > data.resetAt) {
+        t2.set(ref, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS, expiresAt: new Date(now + RATE_LIMIT_WINDOW_MS) });
+        return true;
+      }
+      if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+        return false;
+      }
+      t2.update(ref, { count: data.count + 1 });
+      return true;
+    });
+  } catch (e2) {
+    console.error("[Server Auth] Rate limit transaction failed, failing closed to in-memory:", e2);
+    return checkRateLimitInMemory(ip);
+  }
+}
+async function resetRateLimit(ip) {
+  memoryFallback.delete(ip);
+  if (!adminDb) return;
+  const docId = import_crypto4.default.createHash("sha256").update(ip).digest("hex");
+  try {
+    await adminDb.doc(`rate_limits/${docId}`).delete();
+  } catch (e2) {
+    console.error("[Server Auth] Failed to reset Firestore rate limit doc:", e2);
+  }
+}
+async function getAdminPin() {
+  try {
+    if (!adminDb) {
+      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
+    }
+    const privSnap = await adminDb.doc("private_pins/auth_pin").get();
+    if (privSnap.exists && privSnap.data()?.pin) {
+      return String(privSnap.data().pin);
+    }
+    const snap = await adminDb.doc("admin_settings/auth_pin").get();
+    return snap.exists ? String(snap.data()?.pin || "") : "";
+  } catch (e2) {
+    console.error("[Server Auth] Error reading admin pin:", e2);
+    return "";
+  }
+}
+async function queryAccountWherePin(collName, normPin) {
+  const lookupHash = computeLookupHash(normPin);
+  const legacyHash = legacyHashPin(normPin);
+  const matches = [];
+  const seenIds = /* @__PURE__ */ new Set();
+  try {
+    if (!adminDb) {
+      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
+    }
+    try {
+      const privSnap = await adminDb.collection("private_pins").where("entityType", "==", collName).where("pinLookupHash", "==", lookupHash).limit(5).get();
+      for (const privDoc of privSnap.docs) {
+        const privData = privDoc.data() || {};
+        const entityId = privData.entityId || privDoc.id;
+        const check2 = verifyDocMatch(normPin, privData);
+        if (check2.matches && !seenIds.has(entityId)) {
+          seenIds.add(entityId);
+          const entitySnap = await adminDb.collection(collName).doc(entityId).get();
+          if (entitySnap.exists) {
+            matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check2.isLegacy });
+          }
+        }
+      }
+    } catch (privErr) {
+    }
+    if (matches.length > 0) {
+      return matches;
+    }
+    const candidateQueries = [
+      { field: "pinLookupHash", value: lookupHash },
+      { field: "pin", value: legacyHash },
+      { field: "pin", value: normPin }
+    ];
+    if (collName === "garages") {
+      candidateQueries.push(
+        { field: "ownerPin", value: normPin },
+        { field: "adminPin", value: normPin }
+      );
+    }
+    for (const { field, value } of candidateQueries) {
+      if (!value) continue;
+      try {
+        const snap = await adminDb.collection(collName).where(field, "==", value).limit(5).get();
+        for (const d of snap.docs) {
+          if (!seenIds.has(d.id)) {
+            const check2 = verifyDocMatch(normPin, d.data());
+            if (check2.matches) {
+              seenIds.add(d.id);
+              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
+            }
+          }
+        }
+      } catch (e2) {
+      }
+    }
+    if (matches.length === 0) {
+      try {
+        const fallbackSnap = await adminDb.collection(collName).limit(50).get();
+        for (const d of fallbackSnap.docs) {
+          if (!seenIds.has(d.id)) {
+            const check2 = verifyDocMatch(normPin, d.data());
+            if (check2.matches) {
+              seenIds.add(d.id);
+              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
+            }
+          }
+        }
+      } catch (e2) {
+      }
+    }
+  } catch (e2) {
+    console.error(`[Server Auth] Error querying collection ${collName} where pin:`, e2);
+  }
+  return matches;
+}
+async function queryDelegatesWherePhone(normPhone) {
+  try {
+    if (!adminDb) {
+      throw new Error("ADMIN_SDK_NOT_INITIALIZED");
+    }
+    const snap = await adminDb.collection("delegates").where("phone", "==", normPhone).limit(5).get();
+    return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+  } catch (e2) {
+    console.error("[Server Auth] Error querying delegates where phone:", e2);
+    return [];
+  }
+}
+async function checkPinAvailabilityAcrossAll(normPin, excludeId) {
+  if (!normPin) return { taken: false };
+  const adminPinStored = await getAdminPin();
+  if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
+    if (!excludeId || excludeId !== "auth_pin") {
+      return {
+        taken: true,
+        role: "\u0645\u0633\u0624\u0648\u0644 \u0627\u0644\u0646\u0638\u0627\u0645 (\u0627\u0644\u0622\u062F\u0645\u0646 \u0627\u0644\u0631\u0626\u064A\u0633\u064A)",
+        roleKey: "admin",
+        name: "\u0627\u0644\u0622\u062F\u0645\u0646",
+        accountId: "auth_pin"
+      };
+    }
+  }
+  const collectionsToCheck = [
+    { name: "supervisors", roleKey: "supervisor", label: "\u0645\u0634\u0631\u0641 \u0646\u0638\u0627\u0645" },
+    { name: "delegates", roleKey: "delegate", label: "\u0645\u0646\u062F\u0648\u0628 \u0634\u062D\u0646" },
+    { name: "staff", roleKey: "staff", label: "\u0645\u0648\u0638\u0641 \u062C\u0631\u0627\u062C" },
+    { name: "garages", roleKey: "garage", label: "\u0635\u0627\u062D\u0628 \u062C\u0631\u0627\u062C" }
+  ];
+  for (const coll of collectionsToCheck) {
+    try {
+      const docs = await queryAccountWherePin(coll.name, normPin);
+      for (const dDoc of docs) {
+        if (excludeId && dDoc.id === excludeId) continue;
+        const docData = dDoc.data || {};
+        return {
+          taken: true,
+          role: coll.label,
+          roleKey: coll.roleKey,
+          name: docData.name || docData.ownerName || docData.garageName || "\u0645\u0633\u062A\u062E\u062F\u0645 \u0622\u062E\u0631",
+          accountId: dDoc.id,
+          account: docData
+        };
+      }
+    } catch (e2) {
+      console.error(`[Server Auth] Error checking pin in collection ${coll.name}:`, e2);
+    }
+  }
+  return { taken: false };
+}
+function calculateVehicleCost(vehicleData, garageData, now = Date.now()) {
+  if (vehicleData.isSubscriber) return 0;
+  const entryTime = vehicleData.entryTime?.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
+  if (!entryTime || isNaN(entryTime.getTime())) return 0;
+  const diffMs = now - entryTime.getTime();
+  if (diffMs < 5 * 60 * 1e3) return 0;
+  const type = vehicleData.type || "hourly";
+  if (type === "overnight") {
+    const overnightRate2 = Number(garageData.overnightRate || 0);
+    const days = Math.max(1, Math.ceil(diffMs / (1e3 * 60 * 60 * 24)));
+    return Number((days * overnightRate2).toFixed(2));
+  }
+  const hourlyRate = Number(garageData.hourlyRate || 0);
+  const overnightRate = Number(garageData.overnightRate || 0);
+  const hours = Math.max(1, Math.ceil(diffMs / (1e3 * 60 * 60)));
+  let total = hours * hourlyRate;
+  if (overnightRate > 0 && diffMs >= 1e3 * 60 * 60 * 24) {
+    const fullDays = Math.floor(diffMs / (1e3 * 60 * 60 * 24));
+    const remMs = diffMs % (1e3 * 60 * 60 * 24);
+    const remHours = Math.ceil(remMs / (1e3 * 60 * 60));
+    const blended = fullDays * overnightRate + Math.min(overnightRate, remHours * hourlyRate);
+    total = Math.min(total, blended);
+  }
+  return Number(total.toFixed(2));
+}
+
+// server/routes/helpers.ts
 function mapDomainErrorToStatus(err) {
   if (err instanceof ValidationError) {
     return { statusCode: err.statusCode, code: err.code, message: err.message };
   }
   const errMsg = String(err?.message || err || "");
-  if (errMsg.includes("GARAGE_NOT_FOUND") || errMsg.includes("VEHICLE_NOT_FOUND") || errMsg.includes("REQUEST_NOT_FOUND") || errMsg.includes("PACKAGE_NOT_FOUND")) {
+  if (errMsg.includes("GARAGE_NOT_FOUND") || errMsg.includes("VEHICLE_NOT_FOUND") || errMsg.includes("REQUEST_NOT_FOUND") || errMsg.includes("PACKAGE_NOT_FOUND") || errMsg.includes("SUBSCRIBER_NOT_FOUND")) {
     return { statusCode: 404, code: "NOT_FOUND", message: "The requested resource was not found." };
   }
-  if (errMsg.includes("REQUEST_ALREADY_PROCESSED") || errMsg.includes("VEHICLE_ALREADY_INSIDE") || errMsg.includes("VEHICLE_ALREADY_OUTSIDE") || errMsg.includes("INSUFFICIENT_BALANCE") || errMsg.includes("CAPACITY_LIMIT_REACHED") || errMsg.includes("FAIR_USE_LIMIT_REACHED") || errMsg.includes("DAILY_DELETION_LIMIT_REACHED") || errMsg.includes("DELEGATE_DAILY_GARAGE_LIMIT_REACHED") || errMsg.includes("reached_daily_deletion_limit") || errMsg.includes("PIN_ALREADY_TAKEN") || errMsg.includes("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION") || errMsg.includes("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN") || errMsg.includes("NO_REFERRAL_REWARDS_AVAILABLE") || errMsg.includes("SUBSCRIPTION_EXPIRED")) {
+  if (errMsg.includes("REQUEST_ALREADY_PROCESSED") || errMsg.includes("VEHICLE_ALREADY_INSIDE") || errMsg.includes("VEHICLE_ALREADY_OUTSIDE") || errMsg.includes("INSUFFICIENT_BALANCE") || errMsg.includes("CAPACITY_LIMIT_REACHED") || errMsg.includes("FAIR_USE_LIMIT_REACHED") || errMsg.includes("DAILY_DELETION_LIMIT_REACHED") || errMsg.includes("DELEGATE_DAILY_GARAGE_LIMIT_REACHED") || errMsg.includes("reached_daily_deletion_limit") || errMsg.includes("PIN_ALREADY_TAKEN") || errMsg.includes("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION") || errMsg.includes("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN") || errMsg.includes("NO_REFERRAL_REWARDS_AVAILABLE") || errMsg.includes("SUBSCRIPTION_EXPIRED") || errMsg.includes("SUBSCRIBER_ALREADY_EXISTS")) {
+    return { statusCode: 409, code: "CONFLICT", message: "The requested operation conflicts with the current state." };
+  }
+  if (errMsg.includes("FORBIDDEN") || errMsg.includes("UNAUTHORIZED_GARAGE_ACCESS") || errMsg.includes("GARAGE_SCOPE_MISMATCH") || errMsg.includes("ADMIN_ONLY") || errMsg.includes("GARAGE_CANNOT_RECHARGE_OTHERS") || errMsg.includes("ADMIN_OR_SUPERVISOR_ONLY")) {
+    return { statusCode: 403, code: "FORBIDDEN", message: "You are not authorized to perform this operation." };
+  }
+  if (errMsg.includes("UNAUTHORIZED") || errMsg.includes("INVALID_ID_TOKEN") || errMsg.includes("SESSION_INACTIVE")) {
+    return { statusCode: 401, code: "UNAUTHORIZED", message: "Authentication is required." };
+  }
+  return { statusCode: 500, code: "INTERNAL_ERROR", message: "An internal server error occurred." };
+}
+function canManageGarageScopedData(req, garageId) {
+  if (req.user?.role === "admin") return true;
+  return (req.user?.role === "garage" || req.user?.role === "staff") && req.user?.garageId === garageId;
+}
+
+// server/routes/vehicles.ts
+var router = (0, import_express.Router)();
+router.post("/check-in", requireAuth, async (req, res) => {
+  const requestStartedAt = Date.now();
+  try {
+    const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = "";
+    if (callerRole === "garage" || callerRole === "staff") {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === "admin") {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
+    }
+    const staffId = req.user?.uid;
+    if (!garageId || !plateNumber || !plateRaw) {
+      return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const getCairoDateKey = () => {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    };
+    const today = getCairoDateKey();
+    let isSubscriberAuthoritative = false;
+    try {
+      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+      const [subSnapRaw, subSnapPlate] = await Promise.all([
+        subscriberCollection.where("plateNumberRaw", "==", plateRaw).get(),
+        subscriberCollection.where("plateNumber", "==", plateNumber).get()
+      ]);
+      for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
+        const subData = doc.data() || {};
+        const startDate = subData.startDate || "";
+        const endDate = subData.endDate || "";
+        if (startDate && endDate && today >= startDate && today <= endDate) {
+          isSubscriberAuthoritative = true;
+          break;
+        }
+      }
+    } catch (subErr) {
+      console.warn("[Server Check-In] Subscriber lookup warning:", subErr);
+    }
+    let resultData = {};
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/vehicles/check-in", req.user?.uid);
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || {};
+          return;
+        }
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+      const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
+        t2.get(garageRef),
+        t2.get(vehicleRef),
+        t2.get(dailyStatsRef)
+      ]);
+      if (!garageSnap.exists) throw new Error("GARAGE_NOT_FOUND");
+      const garageData = garageSnap.data() || {};
+      if (isSubscriberAuthoritative) {
+        throw new Error("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN");
+      }
+      const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
+      const expDateRaw = garageData.balanceExpiry;
+      if (!expDateRaw) throw new Error("SUBSCRIPTION_EXPIRED");
+      const expDate = expDateRaw.toDate ? expDateRaw.toDate() : new Date(expDateRaw);
+      if (isNaN(expDate.getTime()) || expDate.getTime() < Date.now()) {
+        throw new Error("SUBSCRIPTION_EXPIRED");
+      }
+      const isNewDay = garageData.lastTransactionDate !== today;
+      const capacity = Number(garageData.dailyCapacity || 0);
+      const used = isNewDay ? 0 : Number(garageData.todayCount || 0);
+      const isUnlimited = capacity === 0 || String(garageData.activePackageName || "").includes("\u0645\u0641\u062A\u0648\u062D");
+      let updatedFairUse = null;
+      let didAutoExtend = false;
+      if (isUnlimited) {
+        const evalResult = evaluateFairUseCheckIn(
+          garageData.unlimitedFairUse,
+          garageData.durationDays || 30,
+          garageData.activePackageName || ""
+        );
+        if (!evalResult.allowed) {
+          throw new Error("FAIR_USE_LIMIT_REACHED");
+        }
+        updatedFairUse = evalResult.updatedFairUse;
+        didAutoExtend = evalResult.autoExtended;
+      } else if (used >= capacity) {
+        throw new Error("CAPACITY_LIMIT_REACHED");
+      }
+      if (vehicleSnap.exists && vehicleSnap.data()?.status === "inside") {
+        throw new Error("VEHICLE_ALREADY_INSIDE");
+      }
+      t2.set(vehicleRef, {
+        id: plateRaw,
+        plate: plateNumber,
+        plateNumber,
+        plateNumberRaw: plateRaw,
+        type: type || "hourly",
+        isSubscriber: isSubscriberAuthoritative,
+        entryTime: /* @__PURE__ */ new Date(),
+        status: "inside",
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        enteredByUid: req.user?.uid || null
+      }, { merge: true });
+      const garageUpdate = {
+        carsInside: (garageData.carsInside || 0) + 1,
+        todayCount: isNewDay ? 1 : used + 1,
+        todayRevenue: isNewDay ? 0 : garageData.todayRevenue || 0,
+        lastTransactionDate: today
+      };
+      if (updatedFairUse) {
+        garageUpdate.unlimitedFairUse = updatedFairUse;
+      }
+      t2.set(garageRef, garageUpdate, { merge: true });
+      if (didAutoExtend && updatedFairUse) {
+        const autoExtLogRef = adminDb.collection("activity_logs").doc();
+        t2.set(autoExtLogRef, {
+          garageId,
+          garageName: garageData.name || "",
+          staffId: "system",
+          staffName: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0639\u0627\u062F\u0644",
+          actionType: "fair_use_auto_extended",
+          plateNumber: `\u062A\u0645\u062F\u064A\u062F \u062A\u0644\u0642\u0627\u0626\u064A \u0644\u0633\u0639\u0629 \u0627\u0644\u0628\u0627\u0642\u0629 (+${updatedFairUse.stepAmount} \u0633\u064A\u0627\u0631\u0629)`,
+          timestamp: /* @__PURE__ */ new Date(),
+          details: {
+            currentAllowance: updatedFairUse.currentAllowance,
+            maxAllowance: updatedFairUse.maxAllowance,
+            cycleCarsCount: updatedFairUse.cycleCarsCount,
+            tierType: updatedFairUse.tierType
+          }
+        });
+      }
+      if (!dailyStatsSnap.exists) {
+        t2.set(dailyStatsRef, {
+          dateId: today,
+          count: 1,
+          limit: isUnlimited ? 0 : capacity,
+          revenue: 0,
+          createdAt: /* @__PURE__ */ new Date()
+        });
+      } else {
+        t2.set(dailyStatsRef, { count: (dailyStatsSnap.data()?.count || 0) + 1 }, { merge: true });
+      }
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        actionType: "check_in",
+        plateNumber,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: 0
+      });
+      resultData = {
+        isSubscriber: isSubscriberAuthoritative,
+        vehicle: {
+          id: plateRaw,
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          type: type || "hourly",
+          status: "inside",
+          entryTime: (/* @__PURE__ */ new Date()).toISOString(),
+          staffId: staffId || null,
+          staffName: resolvedStaffName,
+          isSubscriber: isSubscriberAuthoritative
+        },
+        carsInside: Number(garageUpdate.carsInside || 0),
+        dailyCount: Number(garageUpdate.todayCount || 0),
+        dailyCapacity: isUnlimited ? 0 : capacity
+      };
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId,
+        aggregateType: "vehicle",
+        aggregateId: plateRaw,
+        eventType: "vehicle_entered",
+        actorUid: req.user?.uid || staffId || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          type: type || "hourly",
+          isSubscriber: isSubscriberAuthoritative,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/vehicles/check-in", req.user?.uid);
+      }
+    });
+    const durationMs = Date.now() - requestStartedAt;
+    res.setHeader("Server-Timing", `check-in;dur=${durationMs}`);
+    console.info("[Server Check-In] completed", {
+      correlationId: req.correlationId,
+      durationMs,
+      garageId,
+      isSubscriber: isSubscriberAuthoritative
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (err) {
+    console.error("[Server] Check-in error:", err);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router.post("/check-out", requireAuth, async (req, res) => {
+  try {
+    const { garageId: bodyGarageId, vehicleId } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = "";
+    if (callerRole === "garage" || callerRole === "staff") {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === "admin") {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
+    }
+    const staffId = req.user?.uid;
+    if (!garageId || !vehicleId) {
+      return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const getCairoDateKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    let finalCost = 0;
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/vehicles/check-out", req.user?.uid);
+        if (duplicate.isDuplicate) {
+          finalCost = Number(duplicate.cachedResult?.cost || 0);
+          return;
+        }
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const today = getCairoDateKey();
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+      const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
+        t2.get(garageRef),
+        t2.get(vehicleRef),
+        t2.get(dailyStatsRef)
+      ]);
+      if (!garageSnap.exists) throw new Error("GARAGE_NOT_FOUND");
+      if (!vehicleSnap.exists) throw new Error("VEHICLE_NOT_FOUND");
+      const garageData = garageSnap.data() || {};
+      const vehicleData = vehicleSnap.data() || {};
+      const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
+      if (vehicleData.status === "outside") {
+        throw new Error("VEHICLE_ALREADY_OUTSIDE");
+      }
+      const cost = calculateVehicleCost(vehicleData, garageData);
+      finalCost = cost;
+      t2.set(vehicleRef, {
+        status: "outside",
+        exitTime: /* @__PURE__ */ new Date(),
+        totalCost: cost
+      }, { merge: true });
+      const isNewDay = garageData.lastTransactionDate !== today;
+      t2.set(garageRef, {
+        totalRevenue: (garageData.totalRevenue || 0) + cost,
+        totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
+        todayRevenue: isNewDay ? cost : (garageData.todayRevenue || 0) + cost,
+        todayCount: isNewDay ? 0 : garageData.todayCount || 0,
+        lastTransactionDate: today,
+        carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
+      }, { merge: true });
+      if (!dailyStatsSnap.exists) {
+        t2.set(dailyStatsRef, {
+          dateId: today,
+          count: 0,
+          revenue: cost,
+          createdAt: /* @__PURE__ */ new Date()
+        });
+      } else {
+        t2.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + cost }, { merge: true });
+      }
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: staffId || null,
+        staffName: resolvedStaffName,
+        actionType: "check_out",
+        plateNumber: vehicleData.plateNumber,
+        plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+        entryTime: vehicleData.entryTime,
+        type: vehicleData.type || "hourly",
+        isSubscriber: !!vehicleData.isSubscriber,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: cost
+      });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId,
+        aggregateType: "vehicle",
+        aggregateId: vehicleId,
+        eventType: "vehicle_exited",
+        actorUid: req.user?.uid || staffId || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          plateNumber: vehicleData.plateNumber || vehicleId,
+          plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+          type: vehicleData.type || "hourly",
+          isSubscriber: !!vehicleData.isSubscriber,
+          cost,
+          entryTime: vehicleData.entryTime,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t2, idempotencyKey, { cost }, "/api/vehicles/check-out", req.user?.uid);
+      }
+    });
+    return res.json({ success: true, data: { cost: finalCost } });
+  } catch (err) {
+    console.error("[Server] Check-out error:", err);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router.post("/delete", requireAuth, async (req, res) => {
+  try {
+    const { garageId: bodyGarageId, vehicleId, refundAmount } = req.body || {};
+    const callerRole = req.user?.role;
+    let garageId = "";
+    if (callerRole === "garage" || callerRole === "staff") {
+      if (!req.user?.garageId) {
+        return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
+      }
+      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+        return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
+      }
+      garageId = req.user.garageId;
+    } else if (callerRole === "admin") {
+      garageId = bodyGarageId;
+    } else {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
+    }
+    const staffId = req.user?.uid;
+    if (!garageId || !vehicleId) {
+      return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const getCairoDateKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/vehicles/delete", req.user?.uid);
+        if (duplicate.isDuplicate) return;
+      }
+      const todayYMD = getCairoDateKey();
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
+      const [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
+        t2.get(garageRef),
+        t2.get(vehicleRef),
+        t2.get(dailyStatsRef)
+      ]);
+      if (!garageDoc.exists) throw new Error("GARAGE_NOT_FOUND");
+      if (!vehicleDoc.exists) throw new Error("VEHICLE_NOT_FOUND");
+      const garageData = garageDoc.data() || {};
+      const vehicleData = vehicleDoc.data() || {};
+      const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
+      if (callerRole !== "admin") {
+        const entrantUid = vehicleData.enteredByUid || vehicleData.staffUid || vehicleData.staffId;
+        const callerUid = req.user?.uid;
+        const callerEntityId = req.user?.entityId;
+        if (entrantUid && entrantUid !== callerUid && entrantUid !== callerEntityId) {
+          throw new Error("CORRECTION_FORBIDDEN: Only the staff member who entered the vehicle can correct or delete it");
+        }
+      }
+      const todayDeletions = garageData.lastDeletionDate === todayYMD ? garageData.dailyDeletionCount || 0 : 0;
+      if (todayDeletions >= 3 && callerRole !== "admin") {
+        throw new Error("reached_daily_deletion_limit");
+      }
+      const isSameRefundDay = garageData.lastRefundDate === todayYMD;
+      const requestedRefund = Math.max(0, Number(refundAmount || 0));
+      const maxEligibleRefund = vehicleData.status === "outside" && typeof vehicleData.totalCost === "number" ? Math.max(0, vehicleData.totalCost) : 0;
+      const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
+      let enteredToday = false;
+      if (vehicleData.status === "inside" && vehicleData.entryTime) {
+        const entryTime = vehicleData.entryTime.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
+        if (!isNaN(entryTime.getTime())) {
+          const entryDateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(entryTime);
+          enteredToday = entryDateKey === todayYMD;
+        }
+      }
+      t2.delete(vehicleRef);
+      const updates = {
+        isLocked: false,
+        dailyDeletionCount: todayDeletions + 1,
+        lastDeletionDate: todayYMD,
+        dailyRefundCount: isSameRefundDay ? (garageData.dailyRefundCount || 0) + 1 : 1,
+        lastRefundDate: todayYMD
+      };
+      if (refundAmt > 0) {
+        updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
+        updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
+      }
+      if (vehicleData.status === "inside") updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
+      if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
+      t2.set(garageRef, updates, { merge: true });
+      if (dailyStatsDoc.exists) {
+        const statsUpdates = {};
+        if (enteredToday) {
+          const prevCount = dailyStatsDoc.data()?.count || 0;
+          if (prevCount > 0) statsUpdates.count = prevCount - 1;
+        }
+        if (refundAmt > 0) {
+          const prevRev = dailyStatsDoc.data()?.revenue || 0;
+          statsUpdates.revenue = Math.max(0, Number((prevRev - refundAmt).toFixed(2)));
+        }
+        if (Object.keys(statsUpdates).length > 0) {
+          t2.set(dailyStatsRef, statsUpdates, { merge: true });
+        }
+      }
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: staffId || vehicleData.staffId || null,
+        staffName: resolvedStaffName,
+        actionType: "delete_refund",
+        plateNumber: `\u0645\u0633\u062D \u0644\u0648\u062D\u0629: ${vehicleData.plateNumber || vehicleId}`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: refundAmt
+      });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId,
+        aggregateType: "vehicle",
+        aggregateId: vehicleId,
+        eventType: refundAmt > 0 ? "vehicle_refunded" : "vehicle_deleted",
+        actorUid: req.user?.uid || staffId || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          plateNumber: vehicleData.plateNumber || vehicleId,
+          plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
+          refundAmount: refundAmt,
+          previousStatus: vehicleData.status,
+          previousCost: vehicleData.totalCost || 0,
+          staffId: staffId || null,
+          staffName: resolvedStaffName
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/vehicles/delete", req.user?.uid);
+      }
+    });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[Server] Delete error:", err);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+var vehicles_default = router;
+
+// server/routes/subscribers.ts
+var import_express2 = __toESM(require_express2(), 1);
+var router2 = (0, import_express2.Router)();
+router2.post("/add", requireAuth, async (req, res) => {
+  try {
+    const callerRole = req.user?.role || "garage";
+    const { garageId, subscriberData } = req.body || {};
+    if (!garageId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const validatedGarageId = validateId(garageId, "garageId", true);
+    if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
+    const dates = validateDateRange(subscriberData.startDate, subscriberData.endDate);
+    const { plateNumber, plateRaw } = validatePlate(subscriberData.plateNumberRaw || subscriberData.plateNumber);
+    const { costUnits: _costUnits, id: _id, createdAt: _createdAt, plateNumber: _clientPlate, plateNumberRaw: _clientPlateRaw, ...subscriberFields } = subscriberData;
+    const subscriberCollection = adminDb.collection(`garages/${validatedGarageId}/subscribers`);
+    const subscriberId = `plate_${Buffer.from(plateRaw).toString("base64url")}`;
+    const docRef = subscriberCollection.doc(subscriberId);
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    let resultData = { id: subscriberId };
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/subscribers/add", req.user?.uid);
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || resultData;
+          return;
+        }
+      }
+      const deterministicSnap = await t2.get(docRef);
+      const legacyMatches = await t2.get(subscriberCollection.where("plateNumberRaw", "==", plateRaw).limit(1));
+      if (deterministicSnap.exists || !legacyMatches.empty) {
+        throw new Error("SUBSCRIBER_ALREADY_EXISTS");
+      }
+      t2.set(docRef, {
+        ...subscriberFields,
+        plateNumber,
+        plateNumberRaw: plateRaw,
+        ...dates,
+        garageId: validatedGarageId,
+        id: docRef.id,
+        createdAt: /* @__PURE__ */ new Date()
+      });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: validatedGarageId,
+        aggregateType: "subscriber",
+        aggregateId: subscriberId,
+        eventType: "subscriber_created",
+        actorUid: req.user?.uid || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          plateNumber,
+          plateNumberRaw: plateRaw,
+          startDate: dates.startDate,
+          endDate: dates.endDate
+        }
+      });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/subscribers/add", req.user?.uid);
+      }
+    });
+    return res.json({ success: true, id: resultData.id });
+  } catch (e2) {
+    console.error("[Server Subscribers] Error in add:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router2.post("/renew", requireAuth, async (req, res) => {
+  try {
+    const callerRole = req.user?.role || "garage";
+    const { garageId, subscriberId, newDates } = req.body || {};
+    if (!garageId || !subscriberId || !newDates || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const validatedGarageId = validateId(garageId, "garageId", true);
+    if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
+    const dates = validateDateRange(newDates.startDate, newDates.endDate);
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true));
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/subscribers/renew", req.user?.uid);
+        if (duplicate.isDuplicate) return;
+      }
+      const currentSnap = await t2.get(subscriberRef);
+      if (!currentSnap.exists) throw new Error("SUBSCRIBER_NOT_FOUND");
+      t2.update(subscriberRef, { startDate: dates.startDate, endDate: dates.endDate });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: validatedGarageId,
+        aggregateType: "subscriber",
+        aggregateId: subscriberId,
+        eventType: "subscriber_renewed",
+        actorUid: req.user?.uid || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          startDate: dates.startDate,
+          endDate: dates.endDate
+        }
+      });
+      if (idempotencyKey) storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/subscribers/renew", req.user?.uid);
+    });
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Subscribers] Error in renew:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router2.post("/update", requireAuth, async (req, res) => {
+  try {
+    const callerRole = req.user?.role || "garage";
+    const { garageId, subscriberId, subscriberData } = req.body || {};
+    if (!garageId || !subscriberId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const validatedGarageId = validateId(garageId, "garageId", true);
+    if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true));
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/subscribers/update", req.user?.uid);
+        if (duplicate.isDuplicate) return;
+      }
+      const currentSnap = await t2.get(subscriberRef);
+      if (!currentSnap.exists) throw new Error("SUBSCRIBER_NOT_FOUND");
+      const mergedData = { ...currentSnap.data() || {}, ...subscriberData };
+      const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
+      const safeUpdates = { ...subscriberData, ...dates, garageId: validatedGarageId };
+      delete safeUpdates.id;
+      delete safeUpdates.createdAt;
+      delete safeUpdates.costUnits;
+      t2.update(subscriberRef, safeUpdates);
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: validatedGarageId,
+        aggregateType: "subscriber",
+        aggregateId: subscriberId,
+        eventType: "subscriber_updated",
+        actorUid: req.user?.uid || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {
+          startDate: dates.startDate,
+          endDate: dates.endDate
+        }
+      });
+      if (idempotencyKey) storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/subscribers/update", req.user?.uid);
+    });
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Subscribers] Error in update:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router2.post("/delete", requireAuth, async (req, res) => {
+  try {
+    const callerRole = req.user?.role || "garage";
+    const { garageId, subscriberId } = req.body || {};
+    if (!garageId || !subscriberId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const validatedGarageId = validateId(garageId, "garageId", true);
+    if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true));
+    await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/subscribers/delete", req.user?.uid);
+        if (duplicate.isDuplicate) return;
+      }
+      const currentSnap = await t2.get(subscriberRef);
+      if (!currentSnap.exists) throw new Error("SUBSCRIBER_NOT_FOUND");
+      t2.delete(subscriberRef);
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: validatedGarageId,
+        aggregateType: "subscriber",
+        aggregateId: subscriberId,
+        eventType: "subscriber_deleted",
+        actorUid: req.user?.uid || "system",
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || void 0,
+        payload: {}
+      });
+      if (idempotencyKey) storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/subscribers/delete", req.user?.uid);
+    });
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Subscribers] Error in delete:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+var subscribers_default = router2;
+
+// server/routes/delegates.ts
+var import_express3 = __toESM(require_express2(), 1);
+var router3 = (0, import_express3.Router)();
+router3.post("/create", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = req.body || {};
+    const normName = validateString(name, "name", { min: 2, max: 100, required: true });
+    const normPhone = phone ? String(phone).trim() : "";
+    const normPin = cleanPin(pin);
+    if (!normPin || normPin.length < 4 || normPin.length > 10) {
+      return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be 4-10 digits" });
+    }
+    if (!adminDb) {
+      return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    }
+    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+    if (pinCheck.taken) {
+      return res.status(400).json({
+        success: false,
+        error: "PIN_ALREADY_TAKEN",
+        takenBy: { name: pinCheck.name || "", role: pinCheck.role }
+      });
+    }
+    const delRef = adminDb.collection("delegates").doc();
+    const delId = delRef.id;
+    await saveEntityPin("delegates", delId, normPin);
+    await delRef.set({
+      name: normName.trim(),
+      phone: normPhone,
+      commissionRate: commissionRate !== void 0 ? Number(commissionRate) : 10,
+      commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
+      defaultTrialDays: defaultTrialDays !== void 0 ? Number(defaultTrialDays) : 15,
+      balance: 0,
+      totalEarned: 0,
+      createdAt: /* @__PURE__ */ new Date()
+    });
+    return res.json({ success: true, id: delId });
+  } catch (e2) {
+    console.error("[Server Delegate] Error in create:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+router3.post("/update", requireAuth, async (req, res) => {
+  try {
+    if (!["admin", "supervisor"].includes(req.user?.role || "")) {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin or Supervisor role required" });
+    }
+    const { id, name, phone, commissionRate, commissions, defaultTrialDays } = req.body || {};
+    if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const unsupportedFields = Object.keys(req.body || {}).filter(
+      (field) => !["id", "name", "phone", "commissionRate", "commissions", "defaultTrialDays"].includes(field)
+    );
+    if (unsupportedFields.length > 0) {
+      return res.status(400).json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(",")}` });
+    }
+    const updates = { updatedAt: /* @__PURE__ */ new Date() };
+    if (name) updates.name = String(name).trim();
+    if (phone !== void 0) updates.phone = String(phone).trim();
+    if (commissionRate !== void 0) updates.commissionRate = Number(commissionRate);
+    if (commissions) updates.commissions = commissions;
+    if (defaultTrialDays !== void 0) updates.defaultTrialDays = Number(defaultTrialDays);
+    await adminDb.collection("delegates").doc(id).update(updates);
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Delegate] Error in update:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+router3.post("/settle-account", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const { id } = req.body || {};
+    if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const delRef = adminDb.collection("delegates").doc(id);
+    const now = /* @__PURE__ */ new Date();
+    let previousTotal = 0;
+    await adminDb.runTransaction(async (t2) => {
+      const snap = await t2.get(delRef);
+      if (!snap.exists) throw new Error("DELEGATE_NOT_FOUND");
+      const data = snap.data() || {};
+      previousTotal = Number(data.totalRechargedAmount || 0);
+      t2.update(delRef, {
+        lastSettledAt: now,
+        totalRechargedAmount: 0,
+        updatedAt: now
+      });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: `delegate_${id}`,
+        aggregateType: "delegate",
+        aggregateId: id,
+        eventType: "delegate_settled",
+        actorUid: req.user?.uid || "admin",
+        actorRole: "admin",
+        payload: {
+          delegateId: id,
+          previousRechargedAmount: previousTotal,
+          settledAt: now.toISOString()
+        }
+      });
+    });
+    return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
+  } catch (e2) {
+    console.error("[Server Delegate] Error settling account:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+router3.post("/delete", requireAuth, async (req, res) => {
+  try {
+    if (!["admin", "supervisor"].includes(req.user?.role || "")) {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin or Supervisor role required" });
+    }
+    const { id } = req.body || {};
+    if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    await adminDb.collection("delegates").doc(id).delete();
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Delegate] Error in delete:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+var delegates_default = router3;
+
+// server/routes/recharges.ts
+var import_express4 = __toESM(require_express2(), 1);
+var router4 = (0, import_express4.Router)();
+router4.post("/recharge-garage", requireAuth, financialRateLimiter(), async (req, res) => {
+  const ALLOWED_ROLES = ["admin"];
+  if (!ALLOWED_ROLES.includes(req.user?.role || "")) {
+    return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
+  }
+  try {
+    const sanitized = sanitizePayload(req.body, ["garageId", "packageId", "adminDetails", "idempotencyKey"], false);
+    const garageId = validateId(sanitized.garageId, "garageId", true);
+    const packageId = validateId(sanitized.packageId, "packageId", true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    const callerUid = req.user?.uid;
+    const callerRole = req.user?.role || "";
+    const adminDetails = sanitized.adminDetails || {};
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    if (callerRole === "delegate") {
+      const delegateGarageSnap = await adminDb.doc(`garages/${garageId}`).get();
+      const delegateGarageData = delegateGarageSnap.exists ? delegateGarageSnap.data() || {} : {};
+      const ownsGarage = delegateGarageData.createdByDelegateId === req.user?.entityId || delegateGarageData.referrerId === req.user?.entityId;
+      if (!ownsGarage) {
+        return sendApiError(res, 403, "GARAGE_SCOPE_MISMATCH", "GARAGE_SCOPE_MISMATCH", req.correlationId);
+      }
+    }
+    const pkgSnap = await adminDb.doc(`packages/${packageId}`).get();
+    if (!pkgSnap.exists) {
+      return sendApiError(res, 404, "NOT_FOUND", "PACKAGE_NOT_FOUND", req.correlationId);
+    }
+    const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
+    const rawDays = Number(packageObj.durationDays || packageObj.vehiclesCount || 30);
+    const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
+    const price = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
+    const packageName = String(packageObj.name || packageObj.packageName || "\u0628\u0627\u0642\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643");
+    const isUnlimited = Boolean(
+      packageObj.isUnlimited || packageName.includes("\u0645\u0641\u062A\u0648\u062D") || packageName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || packageName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F")
+    );
+    const effCapacity = isUnlimited ? 0 : Math.max(1, Number(packageObj.dailyCapacity || packageObj.carsCount || 40));
+    let resultData = null;
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/recharge-garage", callerUid);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      if (garageData.hasMonthlySubscribers === true && durationDays < 15) {
+        throw new Error("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION");
+      }
+      let baseDate = /* @__PURE__ */ new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
+        if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
+          baseDate = currentExpDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + durationDays);
+      const referrerGarageId = garageData.referredByGarageId;
+      let referrerRef = null;
+      let referrerSnap = null;
+      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== garageId && price > 0 && durationDays > 1;
+      if (isEligibleForReferral && referrerGarageId) {
+        referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
+        referrerSnap = await t2.get(referrerRef);
+      }
+      const newRevenue = Number(((garageData.totalAdminRevenue || 0) + price).toFixed(2));
+      const updateData = {
+        totalAdminRevenue: newRevenue,
+        isLocked: false,
+        isTrial: false,
+        dailyCapacity: effCapacity,
+        activePackageName: packageName,
+        packageName,
+        lastRechargeDate: /* @__PURE__ */ new Date(),
+        lastRechargeAmount: price,
+        lastRechargePackageName: packageName,
+        balanceExpiry: baseDate,
+        billingModel: "subscription",
+        unlimitedFairUse: isUnlimited ? initializeFairUse(durationDays, packageName) : null
+      };
+      t2.set(garageRef, updateData, { merge: true });
+      const logRef = adminDb.collection("activity_logs").doc();
+      const staffNameText = adminDetails.staffName || "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645 (Admin)";
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: adminDetails.staffId ? validateId(adminDetails.staffId, "staffId") : callerUid || "admin",
+        staffName: staffNameText,
+        actionType: "recharge",
+        plateNumber: `\u062A\u062C\u062F\u064A\u062F \u0627\u0634\u062A\u0631\u0627\u0643: ${packageName} (${durationDays} \u064A\u0648\u0645) - ${price} \u062C`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: price,
+        packageId: packageId || packageObj.id || "direct_recharge",
+        details: {
+          packageName,
+          durationDays,
+          carsCount: effCapacity,
+          revenueAmount: price,
+          originalRevenueAmount: price,
+          discountAmount: 0,
+          rechargedBy: staffNameText
+        }
+      });
+      if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
+        const referrerData = referrerSnap.data() || {};
+        t2.set(referrerRef, {
+          totalReferralRewardDays: (referrerData.totalReferralRewardDays || 0) + 1,
+          totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
+          lastReferralRewardAt: /* @__PURE__ */ new Date()
+        }, { merge: true });
+        const rewardLogRef = adminDb.collection("activity_logs").doc();
+        t2.set(rewardLogRef, {
+          garageId: referrerGarageId,
+          garageName: referrerData.name || "",
+          staffId: null,
+          staffName: "\u0627\u0644\u0646\u0638\u0627\u0645 \u2014 \u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629",
+          actionType: "recharge",
+          plateNumber: `\u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629 \u0645\u0646 ${garageData.name || ""} \u2014 \u0625\u0636\u0627\u0641\u0629 \u064A\u0648\u0645 \u0645\u062C\u0627\u0646\u064A \u0628\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u0643\u0627\u0641\u0622\u062A`,
+          timestamp: /* @__PURE__ */ new Date(),
+          amount: 0,
+          packageId: referrerData.packageId || "referral_reward",
+          details: {
+            type: "referral_reward",
+            referrerGarageId,
+            referredGarageId: garageId
+          }
+        });
+      }
+      resultData = {
+        newExpiry: baseDate.toISOString(),
+        totalAdminRevenue: newRevenue
+      };
+      storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/recharge-garage", callerUid);
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (error) {
+    console.error("[Server Transaction] Error in recharge-garage:", error);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+router4.post("/approve-recharge-request", requireAuth, financialRateLimiter(), async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
+  }
+  const callerUid = req.user?.uid;
+  try {
+    const sanitized = sanitizePayload(req.body, ["requestId", "idempotencyKey"], false);
+    const reqId = validateId(sanitized.requestId, "requestId", true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    let resultData = null;
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/approve-recharge-request", callerUid);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+      const requestRef = adminDb.doc(`recharge_requests/${reqId}`);
+      const requestSnap = await t2.get(requestRef);
+      if (!requestSnap.exists) {
+        throw new Error("REQUEST_NOT_FOUND");
+      }
+      const requestData = requestSnap.data() || {};
+      if (requestData.status && requestData.status !== "pending") {
+        throw new Error("REQUEST_ALREADY_PROCESSED");
+      }
+      const targetGarageId = validateId(requestData.garageId, "garageId", true);
+      const garageRef = adminDb.doc(`garages/${targetGarageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      const settingsSnap = await t2.get(adminDb.doc("system_config/global"));
+      const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
+      const subscriberFlatFee = systemConfig?.subscriberFlatFee !== void 0 ? Math.max(0, Number(systemConfig.subscriberFlatFee)) : systemConfig?.monthlySubscribersFlatFee !== void 0 ? Number(systemConfig.monthlySubscribersFlatFee) : 500;
+      const delegateMonthlyCommission = systemConfig?.delegateMonthlyCommission !== void 0 ? Number(systemConfig.delegateMonthlyCommission) : 100;
+      const referredByDelegate = Boolean(garageData.createdByDelegateId || garageData.referrerId);
+      const delegateReferrerId = garageData.createdByDelegateId || garageData.referrerId || null;
+      let durationDays = Number(requestData.durationDays || requestData.vehiclesCount || 30);
+      let basePrice = Number(requestData.revenueAmount !== void 0 ? requestData.revenueAmount : requestData.price || 0);
+      let pkgName = String(requestData.packageName || "");
+      const isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629") || requestData.dailyCapacity === 0;
+      let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
+      if (requestData.packageId) {
+        const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
+        const pkgSnap = await t2.get(pkgRef);
+        if (pkgSnap.exists) {
+          const pData = pkgSnap.data() || {};
+          if (pData.isActive === false) {
+            throw new Error("PACKAGE_INACTIVE");
+          }
+          if (pData.price !== void 0) {
+            basePrice = Number(pData.price);
+          }
+          if (pData.durationDays !== void 0) {
+            durationDays = Number(pData.durationDays);
+          }
+          if (pData.dailyCapacity !== void 0) {
+            effCapacity = pData.isUnlimited ? 0 : Number(pData.dailyCapacity);
+          }
+          if (pData.name) {
+            pkgName = String(pData.name);
+          }
+          if (!Number.isFinite(basePrice) || basePrice < 0 || !Number.isFinite(durationDays) || durationDays <= 0) {
+            throw new Error("INVALID_PACKAGE_CONFIGURATION");
+          }
+        } else if (requestData.requestType !== "balance_topup") {
+          throw new Error("PACKAGE_NOT_FOUND");
+        }
+      } else if (requestData.requestType !== "balance_topup") {
+        throw new Error("PACKAGE_NOT_FOUND");
+      }
+      const targetDelegateId = delegateReferrerId || requestData.delegateId || null;
+      let delegateRef = null;
+      let delegateSnap = null;
+      if (targetDelegateId) {
+        delegateRef = adminDb.doc(`delegates/${targetDelegateId}`);
+        delegateSnap = await t2.get(delegateRef);
+      }
+      let commission = 0;
+      if (referredByDelegate && targetDelegateId) {
+        const currentMonthKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
+        const monthlyStatsRef = adminDb.doc(`garage_monthly_stats/${targetGarageId}_${currentMonthKey}`);
+        const monthlyStatsSnap = await t2.get(monthlyStatsRef);
+        const monthlyStatsData = monthlyStatsSnap.exists ? monthlyStatsSnap.data() : {};
+        const prevDaysPurchased = Number(monthlyStatsData.totalDaysPurchased || 0);
+        const newDaysPurchased = prevDaysPurchased + durationDays;
+        const alreadyPaid = Boolean(monthlyStatsData.paid100EgpCommission);
+        if (!alreadyPaid && (durationDays >= 30 || newDaysPurchased >= 10)) {
+          commission = delegateMonthlyCommission > 0 ? delegateMonthlyCommission : 100;
+        }
+        t2.set(monthlyStatsRef, {
+          garageId: targetGarageId,
+          delegateId: targetDelegateId,
+          monthKey: currentMonthKey,
+          totalDaysPurchased: newDaysPurchased,
+          paid100EgpCommission: alreadyPaid || commission > 0,
+          updatedAt: /* @__PURE__ */ new Date()
+        }, { merge: true });
+      }
+      const effectiveOriginalRevenue = basePrice;
+      const discountAmount = Number(requestData.discountAmount || 0);
+      let effectiveRevenue = Math.max(0, basePrice - discountAmount);
+      if (garageData.hasMonthlySubscribers === true) {
+        effectiveRevenue += subscriberFlatFee;
+      }
+      let baseDate = /* @__PURE__ */ new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
+        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
+          baseDate = expDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + durationDays);
+      t2.set(garageRef, {
+        balanceExpiry: baseDate,
+        dailyCapacity: effCapacity,
+        activePackageName: pkgName || requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629",
+        packageName: pkgName || requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629",
+        billingModel: "subscription",
+        isLocked: false,
+        isTrial: false,
+        totalAdminRevenue: (garageData.totalAdminRevenue || 0) + effectiveRevenue,
+        lastRechargeDate: /* @__PURE__ */ new Date(),
+        lastRechargeAmount: effectiveRevenue,
+        lastRechargePackageName: requestData.packageName || null,
+        unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName || requestData.packageName || "") : null
+      }, { merge: true });
+      t2.set(requestRef, {
+        status: "approved",
+        commission,
+        referrerId: delegateReferrerId,
+        amount: effectiveRevenue,
+        revenueAmount: effectiveRevenue,
+        originalRevenueAmount: effectiveOriginalRevenue,
+        resolvedAt: /* @__PURE__ */ new Date()
+      }, { merge: true });
+      if (delegateRef && delegateSnap && delegateSnap.exists) {
+        const delData = delegateSnap.data() || {};
+        t2.set(delegateRef, {
+          totalRechargedAmount: (delData.totalRechargedAmount || 0) + effectiveRevenue,
+          totalCommissionEarned: (delData.totalCommissionEarned || 0) + commission
+        }, { merge: true });
+      }
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId: targetGarageId,
+        garageName: requestData.garageName || garageData.name || "",
+        staffId: delegateReferrerId || requestData.delegateId || null,
+        staffName: requestData.delegateName || null,
+        actionType: "recharge",
+        plateNumber: `\u0634\u062D\u0646 ${requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629"} (${durationDays} \u064A\u0648\u0645 - ${effCapacity === 0 ? "\u0645\u0641\u062A\u0648\u062D" : `${effCapacity} \u0633\u064A\u0627\u0631\u0629`})`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: effectiveRevenue,
+        packageId: requestData.packageId || null,
+        details: {
+          packageName: requestData.packageName,
+          durationDays,
+          carsCount: effCapacity,
+          revenueAmount: effectiveRevenue,
+          commission,
+          requestId: reqId
+        }
+      });
+      resultData = {
+        requestId: reqId,
+        status: "approved",
+        newExpiry: baseDate.toISOString(),
+        revenue: effectiveRevenue,
+        commission
+      };
+      storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/approve-recharge-request", callerUid);
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (error) {
+    console.error("[Server Transaction] Error in approve-recharge-request:", error);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+router4.post("/reject-recharge-request", requireAuth, financialRateLimiter(), async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
+  }
+  const callerUid = req.user?.uid;
+  try {
+    const sanitized = sanitizePayload(req.body, ["requestId", "idempotencyKey"], false);
+    const requestId = validateId(sanitized.requestId, "requestId", true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/reject-recharge-request", callerUid);
+      if (isDuplicate) {
+        return;
+      }
+      const requestRef = adminDb.doc(`recharge_requests/${requestId}`);
+      const requestSnap = await t2.get(requestRef);
+      if (!requestSnap.exists) {
+        throw new Error("REQUEST_NOT_FOUND");
+      }
+      const currentStatus = requestSnap.data()?.status;
+      if (currentStatus && currentStatus !== "pending") {
+        throw new Error("REQUEST_ALREADY_PROCESSED");
+      }
+      t2.set(requestRef, {
+        status: "rejected",
+        resolvedAt: /* @__PURE__ */ new Date()
+      }, { merge: true });
+      storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/transactions/reject-recharge-request", callerUid);
+    });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("[Server Transaction] Error in reject-recharge-request:", error);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+router4.post("/admin-topup-balance", requireAuth, financialRateLimiter(), async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
+  }
+  const callerUid = req.user?.uid;
+  try {
+    const sanitized = sanitizePayload(req.body, ["garageId", "amount", "idempotencyKey"], false);
+    const garageId = validateId(sanitized.garageId, "garageId", true);
+    const numAmount = validateNumber(sanitized.amount, "amount", { min: 1, max: 1e6, integerOnly: true });
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    let resultData = null;
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/admin-topup-balance", callerUid);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      const currentBalance = Number(garageData.balance || 0);
+      const newBalance = currentBalance + numAmount;
+      t2.set(garageRef, {
+        balance: newBalance,
+        totalAdminRevenue: (garageData.totalAdminRevenue || 0) + numAmount,
+        lastRechargeDate: /* @__PURE__ */ new Date(),
+        lastRechargeAmount: numAmount,
+        lastRechargePackageName: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u0628\u0627\u0634\u0631 (${numAmount} \u062C.\u0645)`
+      }, { merge: true });
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: callerUid || "admin",
+        staffName: "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645 (Admin)",
+        actionType: "balance_topup",
+        plateNumber: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u0628\u0627\u0634\u0631 (${numAmount} \u062C.\u0645)`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: numAmount,
+        details: {
+          action: "admin_balance_topup",
+          amount: numAmount,
+          previousBalance: currentBalance,
+          newBalance
+        }
+      });
+      resultData = { garageId, newBalance, addedAmount: numAmount };
+      storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/admin-topup-balance", callerUid);
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (error) {
+    console.error("[Server Transaction] Error in admin-topup-balance:", error);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+router4.post("/garage-self-subscribe", requireAuth, financialRateLimiter(), async (req, res) => {
+  const userRole = req.user?.role;
+  const userGarageId = req.user?.garageId || req.user?.entityId;
+  const callerUid = req.user?.uid;
+  try {
+    const sanitized = sanitizePayload(req.body, ["garageId", "packageId", "packageData", "idempotencyKey"], false);
+    const bodyGarageId = validateId(sanitized.garageId, "garageId", false);
+    const packageId = validateId(sanitized.packageId, "packageId", true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    const garageId = userRole === "garage" ? userGarageId : bodyGarageId || userGarageId;
+    if (userRole === "garage" && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
+      return sendApiError(res, 403, "FORBIDDEN", "UNAUTHORIZED_GARAGE_ACCESS", req.correlationId);
+    }
+    if (!["garage", "admin"].includes(userRole || "")) {
+      return sendApiError(res, 403, "FORBIDDEN", "FORBIDDEN: Role not authorized for self subscribe", req.correlationId);
+    }
+    if (!garageId) {
+      return sendApiError(res, 400, "INVALID_INPUT", "GARAGE_ID_REQUIRED", req.correlationId);
+    }
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    let resultData = null;
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/garage-self-subscribe", callerUid);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      const currentBalance = Number(garageData.balance || 0);
+      const settingsSnap = await t2.get(adminDb.doc("system_config/global"));
+      const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
+      const subscriberFlatFee = systemConfig?.subscriberFlatFee !== void 0 ? Math.max(0, Number(systemConfig.subscriberFlatFee)) : systemConfig?.monthlySubscribersFlatFee !== void 0 ? Number(systemConfig.monthlySubscribersFlatFee) : 500;
+      const DEFAULT_PACKAGES_MAP = {
+        daily_30: { id: "daily_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 15, durationDays: 1, dailyCapacity: 30 },
+        daily_50: { id: "daily_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 25, durationDays: 1, dailyCapacity: 50 },
+        daily_unlimited: { id: "daily_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 40, durationDays: 1, dailyCapacity: 0, isUnlimited: true },
+        biweekly_30: { id: "biweekly_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 120, durationDays: 15, dailyCapacity: 30 },
+        biweekly_50: { id: "biweekly_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 180, durationDays: 15, dailyCapacity: 50 },
+        biweekly_unlimited: { id: "biweekly_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 280, durationDays: 15, dailyCapacity: 0, isUnlimited: true },
+        monthly_30: { id: "monthly_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 200, durationDays: 30, dailyCapacity: 30 },
+        monthly_50: { id: "monthly_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 300, durationDays: 30, dailyCapacity: 50 },
+        monthly_unlimited: { id: "monthly_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 450, durationDays: 30, dailyCapacity: 0, isUnlimited: true }
+      };
+      let pkg = null;
+      if (packageId) {
+        const pkgRef = adminDb.doc(`packages/${packageId}`);
+        const pkgSnap = await t2.get(pkgRef);
+        if (pkgSnap.exists) {
+          pkg = { id: pkgSnap.id, ...pkgSnap.data() };
+        } else if (DEFAULT_PACKAGES_MAP[packageId]) {
+          pkg = { ...DEFAULT_PACKAGES_MAP[packageId] };
+        } else if (sanitized.packageData && typeof sanitized.packageData === "object") {
+          pkg = { id: packageId, ...sanitized.packageData };
+        }
+      }
+      if (!pkg) {
+        throw new Error("PACKAGE_NOT_FOUND");
+      }
+      const durationDays = Number(pkg.durationDays || pkg.vehiclesCount || 30);
+      let basePrice = Number(pkg.price || 0);
+      let discountAmount = 0;
+      if (pkg.discountType === "percentage" && pkg.discountValue > 0) {
+        discountAmount = Math.round(basePrice * Number(pkg.discountValue) / 100);
+      } else if (pkg.discountType === "fixed" && pkg.discountValue > 0) {
+        discountAmount = Math.min(basePrice, Number(pkg.discountValue));
+      }
+      let effectivePrice = Math.max(0, basePrice - discountAmount);
+      if (garageData.hasMonthlySubscribers === true) {
+        effectivePrice += subscriberFlatFee;
+      }
+      if (currentBalance < effectivePrice) {
+        throw new Error(`INSUFFICIENT_BALANCE: \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0627\u062D (${currentBalance} \u062C.\u0645) \u063A\u064A\u0631 \u0643\u0627\u0641\u064D \u0644\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u0628\u0627\u0642\u0629 (${effectivePrice} \u062C.\u0645)`);
+      }
+      const newBalance = currentBalance - effectivePrice;
+      let baseDate = /* @__PURE__ */ new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
+        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
+          baseDate = expDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + durationDays);
+      const pkgName = String(pkg.name || "\u0628\u0627\u0642\u0629 \u0627\u0634\u062A\u0631\u0627\u0643");
+      const isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629") || pkg.dailyCapacity === 0;
+      const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(pkg.dailyCapacity || 40));
+      t2.set(garageRef, {
+        balance: newBalance,
+        balanceExpiry: baseDate,
+        dailyCapacity: effCapacity,
+        activePackageName: pkgName,
+        packageName: pkgName,
+        billingModel: "subscription",
+        isLocked: false,
+        isTrial: false,
+        lastRechargeDate: /* @__PURE__ */ new Date(),
+        lastRechargeAmount: effectivePrice,
+        lastRechargePackageName: pkgName,
+        unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName) : null
+      }, { merge: true });
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: callerUid || "owner",
+        staffName: garageData.ownerName || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C",
+        actionType: "self_subscribe",
+        plateNumber: `\u062A\u0641\u0639\u064A\u0644 \u0628\u0627\u0642\u0629 \u0628\u0627\u0644\u0631\u0635\u064A\u062F: ${pkgName} (${durationDays} \u064A\u0648\u0645)`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: effectivePrice,
+        packageId: pkg.id || packageId,
+        details: {
+          packageName: pkgName,
+          durationDays,
+          carsCount: effCapacity,
+          cost: effectivePrice,
+          previousBalance: currentBalance,
+          remainingBalance: newBalance
+        }
+      });
+      resultData = {
+        garageId,
+        newBalance,
+        newExpiry: baseDate.toISOString(),
+        packageName: pkgName,
+        deductedAmount: effectivePrice
+      };
+      storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/garage-self-subscribe", callerUid);
+    });
+    return res.json({ success: true, data: resultData });
+  } catch (error) {
+    console.error("[Server Transaction] Error in garage-self-subscribe:", error);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+router4.post("/use-referral-reward", requireAuth, financialRateLimiter(), async (req, res) => {
+  try {
+    const sanitized = sanitizePayload(req.body, ["garageId", "idempotencyKey"], false);
+    const garageId = validateId(sanitized.garageId, "garageId", true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    const callerUid = req.user?.uid;
+    const callerRole = req.user?.role;
+    const callerGarageId = req.user?.garageId || (callerRole === "garage" ? req.user?.entityId : null);
+    if (callerRole !== "admin" && callerRole !== "garage") {
+      return sendApiError(res, 403, "FORBIDDEN", "ADMIN_OR_GARAGE_ONLY", req.correlationId);
+    }
+    if (callerRole === "garage" && callerGarageId !== garageId) {
+      return sendApiError(res, 403, "FORBIDDEN", "FORBIDDEN: Cannot claim reward for another garage", req.correlationId);
+    }
+    if (!adminDb) {
+      return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    }
+    let claimedDays = 0;
+    await adminDb.runTransaction(async (t2) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/use-referral-reward", callerUid);
+      if (isDuplicate) {
+        claimedDays = cachedResult?.daysClaimed || 0;
+        return;
+      }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      const rewardDays = Math.max(0, Number(garageData.totalReferralRewardDays || 0));
+      if (rewardDays <= 0) {
+        throw new Error("NO_REFERRAL_REWARDS_AVAILABLE");
+      }
+      claimedDays = rewardDays;
+      let baseDate = /* @__PURE__ */ new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
+        if (expDate > baseDate) {
+          baseDate = expDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + rewardDays);
+      t2.update(garageRef, {
+        balanceExpiry: baseDate,
+        totalReferralRewardDays: 0,
+        isLocked: false,
+        lastReferralClaimAt: /* @__PURE__ */ new Date()
+      });
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: callerUid || null,
+        staffName: callerRole === "admin" ? "\u0627\u0644\u0625\u062F\u0627\u0631\u0629" : "\u0635\u0627\u062D\u0628 \u0627\u0644\u062C\u0631\u0627\u062C (\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0631\u0635\u064A\u062F \u0627\u0644\u0645\u0643\u0627\u0641\u0622\u062A)",
+        actionType: "recharge",
+        plateNumber: `\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629 \u2014 \u062A\u0645\u062F\u064A\u062F \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 +${rewardDays} ${rewardDays === 1 ? "\u064A\u0648\u0645 \u0645\u062C\u0627\u0646\u064A" : rewardDays === 2 ? "\u064A\u0648\u0645\u0627\u0646 \u0645\u062C\u0627\u0646\u064A\u0627\u0646" : "\u0623\u064A\u0627\u0645 \u0645\u062C\u0627\u0646\u064A\u0629"}`,
+        timestamp: /* @__PURE__ */ new Date(),
+        amount: 0,
+        details: {
+          type: "use_referral_reward",
+          claimedDays: rewardDays,
+          newExpiry: baseDate.toISOString()
+        }
+      });
+      storeIdempotencyInTransaction(t2, idempotencyKey, { daysClaimed: claimedDays }, "/api/transactions/use-referral-reward", callerUid);
+    });
+    return res.json({ success: true, daysClaimed: claimedDays });
+  } catch (e2) {
+    console.error("[Server Reward] Error in use-referral-reward:", e2);
+    const { statusCode, code, message: message2 } = mapDomainErrorToStatus(e2);
+    return sendApiError(res, statusCode, code, message2, req.correlationId);
+  }
+});
+var recharges_default = router4;
+
+// server/routes/garages.ts
+var import_express5 = __toESM(require_express2(), 1);
+var router5 = (0, import_express5.Router)();
+router5.post("/create", requireAuth, financialRateLimiter(), async (req, res) => {
+  try {
+    const callerRole = req.user?.role;
+    const callerUid = req.user?.uid;
+    const callerName = req.user?.displayName || "";
+    if (!callerRole || !["admin", "delegate"].includes(callerRole)) {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Creation not permitted for role" });
+    }
+    const sanitized = sanitizePayload(req.body, ["name", "phone", "hourlyRate", "overnightRate", "pin", "billingModel", "isTrial", "trialDays", "defaultTrialDays", "dailyCapacity", "initialPackageId", "packages", "createdByDelegateId", "createdByDelegateName", "referrerId", "referrerName", "referredByGarageId", "referredByGarageName", "idempotencyKey"], false);
+    const name = validateString(sanitized.name, "name", { min: 2, max: 100, required: true });
+    const normPin = cleanPin(sanitized.pin);
+    if (!normPin || !/^\d{6}$/.test(normPin)) {
+      return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be exactly 6 digits" });
+    }
+    validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
+    if (!adminDb) {
+      return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    }
+    if (callerRole === "delegate") {
+      const delegateEntityId = req.user?.entityId || callerUid;
+      const cairoParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Africa/Cairo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(/* @__PURE__ */ new Date()).reduce((acc, part) => {
+        if (part.type !== "literal") acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const cairoDayStart = /* @__PURE__ */ new Date(`${cairoParts.year}-${cairoParts.month}-${cairoParts.day}T00:00:00+03:00`);
+      const delegateGaragesToday = await adminDb.collection("garages").where("createdByDelegateId", "==", delegateEntityId).where("createdAt", ">=", cairoDayStart).limit(3).get();
+      if (delegateGaragesToday.size >= 3) {
+        return res.status(409).json({ success: false, error: "DELEGATE_DAILY_GARAGE_LIMIT_REACHED" });
+      }
+    }
+    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+    if (pinCheck.taken) {
+      return res.status(400).json({
+        success: false,
+        error: "PIN_ALREADY_TAKEN",
+        takenBy: { name: pinCheck.name || "", role: pinCheck.role }
+      });
+    }
+    const isTrial = sanitized.isTrial === void 0 ? true : sanitized.isTrial === true || sanitized.isTrial === "true";
+    const rawTrialDays = sanitized.trialDays !== void 0 ? sanitized.trialDays : sanitized.defaultTrialDays;
+    const trialDays = rawTrialDays !== void 0 ? validateNumber(rawTrialDays, "trialDays", { min: 1, max: 365, required: false }) : 15;
+    const now = /* @__PURE__ */ new Date();
+    let balanceExpiry;
+    let dailyCapacity;
+    let activePackageName;
+    if (isTrial) {
+      balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 15) * 24 * 60 * 60 * 1e3);
+      dailyCapacity = 100;
+      activePackageName = `\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)`;
+    } else {
+      balanceExpiry = new Date(now.getTime() - 1e3);
+      dailyCapacity = 0;
+      activePackageName = "\u0628\u062F\u0648\u0646 \u0628\u0627\u0642\u0629";
+    }
+    const garageRef = adminDb.collection("garages").doc();
+    const garageId = garageRef.id;
+    await saveEntityPin("garages", garageId, normPin);
+    const garageDoc = {
+      name: name.trim(),
+      phone: sanitized.phone ? String(sanitized.phone).trim() : "",
+      hourlyRate: sanitized.hourlyRate !== void 0 ? validateNumber(sanitized.hourlyRate, "hourlyRate", { min: 0, max: 1e4, required: false }) : 0,
+      overnightRate: sanitized.overnightRate !== void 0 ? validateNumber(sanitized.overnightRate, "overnightRate", { min: 0, max: 1e4, required: false }) : 0,
+      billingModel: ["subscription", "trial"].includes(sanitized.billingModel) ? sanitized.billingModel : "subscription",
+      status: callerRole === "delegate" || sanitized.createdByDelegateId || sanitized.isPending ? "pending" : "approved",
+      hasMonthlySubscribers: false,
+      createdAt: now,
+      isTrial,
+      dailyCapacity,
+      activePackageName,
+      packageName: activePackageName,
+      balanceExpiry,
+      balance: 0,
+      carsInside: 0,
+      carsInsideCount: 0,
+      todayCount: 0,
+      todayRevenue: 0,
+      totalRevenue: 0,
+      totalAdminRevenue: 0,
+      totalVehiclesOut: 0,
+      dailyDeletionCount: 0,
+      dailyRefundCount: 0,
+      totalReferralRewardDays: 0,
+      totalGaragesReferredCount: 0,
+      isLocked: false,
+      isDeleting: false
+    };
+    if (callerRole === "delegate") {
+      const delegateEntityId = req.user?.entityId || callerUid;
+      garageDoc.createdByDelegateId = delegateEntityId;
+      garageDoc.createdByDelegateName = sanitized.createdByDelegateName || callerName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
+      garageDoc.referrerId = delegateEntityId;
+      garageDoc.referrerName = sanitized.referrerName || sanitized.createdByDelegateName || callerName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
+    } else if (sanitized.createdByDelegateId) {
+      garageDoc.createdByDelegateId = sanitized.createdByDelegateId;
+      garageDoc.createdByDelegateName = sanitized.createdByDelegateName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
+      garageDoc.referrerId = sanitized.referrerId || sanitized.createdByDelegateId;
+      garageDoc.referrerName = sanitized.referrerName || sanitized.createdByDelegateName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
+    }
+    if (sanitized.referredByGarageId) {
+      garageDoc.referredByGarageId = sanitized.referredByGarageId;
+      garageDoc.referredByGarageName = sanitized.referredByGarageName || "";
+    }
+    await garageRef.set(garageDoc);
+    const logRef = adminDb.collection("activity_logs").doc();
+    await logRef.set({
+      garageId,
+      garageName: garageDoc.name,
+      staffId: callerUid || null,
+      staffName: callerName || (isTrial ? "\u0627\u0644\u0646\u0638\u0627\u0645 (\u062A\u0641\u0639\u064A\u0644 \u062A\u062C\u0631\u064A\u0628\u064A)" : "\u0627\u0644\u0625\u062F\u0627\u0631\u0629 (\u0625\u0646\u0634\u0627\u0621 \u062C\u0631\u0627\u062C)"),
+      actionType: isTrial ? "recharge" : "create",
+      plateNumber: isTrial ? `\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)` : `\u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628 \u062C\u0631\u0627\u062C \u062C\u062F\u064A\u062F (\u0628\u062F\u0648\u0646 \u0628\u0627\u0642\u0629)`,
+      timestamp: now,
+      amount: 0,
+      details: {
+        packageName: isTrial ? `\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)` : activePackageName,
+        durationDays: isTrial ? trialDays : 0,
+        carsCount: dailyCapacity,
+        revenueAmount: 0,
+        isTrial: Boolean(isTrial)
+      }
+    });
+    return res.json({ success: true, id: garageId });
+  } catch (e2) {
+    console.error("[Server Garage] Error in create garage:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/update", requireAuth, async (req, res) => {
+  try {
+    const { id, ...data } = req.body || {};
+    if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const callerRole = req.user?.role;
+    if (callerRole !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const updates = { updatedAt: /* @__PURE__ */ new Date() };
+    const allowedKeys = [
+      "name",
+      "phone",
+      "hourlyRate",
+      "overnightRate",
+      "monthlySubscriptionFee",
+      "billingModel",
+      "commissionPerVehicle",
+      "status",
+      "isLocked",
+      "lockReason",
+      "isSuspended",
+      "isMaintenanceMode",
+      "maintenanceMessage",
+      "warningDaysThreshold",
+      "assignedDelegateId",
+      "currentSessionId",
+      "hasMonthlySubscribers",
+      "checkInSound",
+      "checkOutSound",
+      "ownerName",
+      "dailyCapacity",
+      "shimmerColor",
+      "activePackageName",
+      "trialDecision",
+      "trialDecisionAt"
+    ];
+    for (const key of allowedKeys) {
+      if (key in data && data[key] !== void 0) {
+        updates[key] = data[key];
+      }
+    }
+    await adminDb.collection("garages").doc(id).update(updates);
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Garage] Error in update:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+router5.post("/delete", requireAuth, financialRateLimiter(), async (req, res) => {
+  try {
+    const callerRole = req.user?.role;
+    if (callerRole !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const sanitized = sanitizePayload(req.body, ["garageId", "idempotencyKey"], false);
+    const garageId = validateId(sanitized.garageId, "garageId", true);
+    if (!adminDb) {
+      return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    }
+    const garageRef = adminDb.doc(`garages/${garageId}`);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) {
+      return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
+    }
+    const garageData = garageSnap.data() || {};
+    const subcollections = ["vehicles", "subscribers", "daily_counts", "daily_stats"];
+    for (const sub of subcollections) {
+      const subCollRef = adminDb.collection(`garages/${garageId}/${sub}`);
+      const subSnap = await subCollRef.get();
+      if (!subSnap.empty) {
+        const batch = adminDb.batch();
+        subSnap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    await garageRef.delete();
+    const logRef = adminDb.collection("activity_logs").doc();
+    await logRef.set({
+      garageId,
+      garageName: garageData.name || "",
+      staffId: req.user?.uid || null,
+      staffName: req.user?.displayName || "\u0627\u0644\u0625\u062F\u0627\u0631\u0629",
+      actionType: "garage_delete",
+      plateNumber: `\u062D\u0630\u0641 \u062C\u0631\u0627\u062C: ${garageData.name || garageId}`,
+      timestamp: /* @__PURE__ */ new Date(),
+      amount: 0,
+      details: {
+        deletedByRole: callerRole,
+        deletedByUid: req.user?.uid || null
+      }
+    });
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Garage] Error in delete garage:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/trial-decision", requireAuth, async (req, res) => {
+  try {
+    const { garageId, trialDecision } = req.body || {};
+    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const validatedGarageId = validateId(garageId, "garageId", true);
+    if (trialDecision !== null && trialDecision !== "continued" && trialDecision !== "declined") {
+      return res.status(400).json({ success: false, error: "INVALID_TRIAL_DECISION" });
+    }
+    const garageRef = adminDb.collection("garages").doc(validatedGarageId);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
+    const updates = {
+      trialDecision,
+      trialDecisionAt: trialDecision ? /* @__PURE__ */ new Date() : null,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    await garageRef.update(updates);
+    const logRef = adminDb.collection("activity_logs").doc();
+    await logRef.set({
+      garageId: validatedGarageId,
+      garageName: garageSnap.data()?.name || "",
+      staffId: req.user?.uid || null,
+      staffName: req.user?.displayName || "\u0645\u0633\u062A\u062E\u062F\u0645",
+      actionType: "update_trial_decision",
+      plateNumber: trialDecision ? `\u0642\u0631\u0627\u0631 \u0627\u0644\u062A\u062C\u0631\u0628\u0629: ${trialDecision}` : "\u0645\u0633\u062D \u0642\u0631\u0627\u0631 \u0627\u0644\u062A\u062C\u0631\u0628\u0629",
+      timestamp: /* @__PURE__ */ new Date(),
+      amount: 0,
+      details: { trialDecision }
+    });
+    return res.json({ success: true });
+  } catch (e2) {
+    console.error("[Server Garage] Error in trial decision:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/recalculate-cars-inside", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const { garageId } = req.body || {};
+    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const vehSnap = await adminDb.collection(`garages/${garageId}/vehicles`).where("status", "==", "inside").get();
+    const actualCount = vehSnap.size;
+    await adminDb.collection("garages").doc(garageId).update({ carsInside: actualCount });
+    return res.json({ success: true, count: actualCount });
+  } catch (e2) {
+    console.error("[Server Garage] Error in recalculate-cars-inside:", e2);
+    return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+  }
+});
+router5.post("/reconciliation", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    const garageId = validateId(req.body?.garageId, "garageId", true);
+    const garageRef = adminDb.doc(`garages/${garageId}`);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/vehicles`).where("status", "==", "inside").get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
+      adminDb.collection(`garages/${garageId}/events`).orderBy("occurredAt", "desc").limit(500).get()
+    ]);
+    const garageData = garageSnap.data() || {};
+    const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
+    let eventDerivedRevenue = 0;
+    let eventEntersCount = 0;
+    let eventExitsCount = 0;
+    let eventRefundsCount = 0;
+    for (const doc of eventsSnap.docs) {
+      const ev = doc.data() || {};
+      const evDate = ev.occurredAt ? new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ev.occurredAt)) : "";
+      if (evDate === today) {
+        if (ev.eventType === "vehicle_entered") eventEntersCount++;
+        if (ev.eventType === "vehicle_exited") {
+          eventExitsCount++;
+          eventDerivedRevenue += Number(ev.payload?.cost || 0);
+        }
+        if (ev.eventType === "vehicle_refunded") {
+          eventRefundsCount++;
+          eventDerivedRevenue -= Number(ev.payload?.refundAmount || 0);
+        }
+      }
+    }
+    const expected = {
+      carsInside: insideSnap.size,
+      todayCount: Number(stats.count || 0),
+      todayRevenue: Number(stats.revenue || 0)
+    };
+    const actual = {
+      carsInside: Number(garageData.carsInside || 0),
+      todayCount: garageData.lastTransactionDate === today ? Number(garageData.todayCount || 0) : 0,
+      todayRevenue: garageData.lastTransactionDate === today ? Number(garageData.todayRevenue || 0) : 0
+    };
+    const eventLedgerSummary = {
+      totalRecordedEvents: eventsSnap.size,
+      todayEnters: eventEntersCount,
+      todayExits: eventExitsCount,
+      todayRefunds: eventRefundsCount,
+      eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
+    };
+    const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key] - actual[key]]));
+    return res.json({
+      success: true,
+      data: {
+        garageId,
+        date: today,
+        expected,
+        actual,
+        eventLedgerSummary,
+        differences,
+        isConsistent: Object.values(differences).every((value) => value === 0)
+      }
+    });
+  } catch (e2) {
+    console.error("[Server Garage] Error in reconciliation:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/rebuild-projections", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const { garageId, date } = req.body || {};
+    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const targetDate = date || new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).orderBy("occurredAt", "asc").get();
+    let count = 0;
+    let exitsCount = 0;
+    let revenue = 0;
+    let eventWatermark = eventsSnap.size;
+    for (const doc of eventsSnap.docs) {
+      const ev = doc.data() || {};
+      const evDate = ev.occurredAt ? new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ev.occurredAt)) : "";
+      if (evDate === targetDate) {
+        if (ev.eventType === "vehicle_entered") count++;
+        if (ev.eventType === "vehicle_exited") {
+          exitsCount++;
+          revenue += Number(ev.payload?.cost || 0);
+        }
+        if (ev.eventType === "vehicle_refunded") {
+          revenue -= Number(ev.payload?.refundAmount || 0);
+        }
+      }
+    }
+    const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
+    const projectionData = {
+      count,
+      exitsCount,
+      revenue: Number(revenue.toFixed(2)),
+      rebuiltAt: (/* @__PURE__ */ new Date()).toISOString(),
+      eventWatermark,
+      rebuiltBy: req.user?.uid || "admin"
+    };
+    await projectionRef.set(projectionData, { merge: true });
+    return res.json({
+      success: true,
+      data: {
+        garageId,
+        date: targetDate,
+        projection: projectionData
+      }
+    });
+  } catch (e2) {
+    console.error("[Server Garage] Error in rebuild-projections:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/:id/extend-fair-use", requireAuth, financialRateLimiter(), async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    }
+    const garageId = validateId(req.params.id, "garageId");
+    const extraCars = Math.max(0, Number(req.body?.extraCars || 0));
+    let resultFairUse = null;
+    await adminDb.runTransaction(async (t2) => {
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t2.get(garageRef);
+      if (!garageSnap.exists) {
+        throw new Error("GARAGE_NOT_FOUND");
+      }
+      const garageData = garageSnap.data() || {};
+      const isUnlimited = Number(garageData.dailyCapacity || 0) === 0 || String(garageData.activePackageName || "").includes("\u0645\u0641\u062A\u0648\u062D");
+      if (!isUnlimited) {
+        throw new Error("NOT_AN_UNLIMITED_PACKAGE");
+      }
+      let fairUse = garageData.unlimitedFairUse;
+      if (!fairUse || !fairUse.isActive) {
+        fairUse = initializeFairUse(garageData.durationDays || 30, garageData.activePackageName || "");
+      }
+      resultFairUse = manualAdminExtendFairUse(fairUse, extraCars);
+      t2.set(garageRef, { unlimitedFairUse: resultFairUse }, { merge: true });
+      const logRef = adminDb.collection("activity_logs").doc();
+      t2.set(logRef, {
+        garageId,
+        garageName: garageData.name || "",
+        staffId: req.user?.uid || "admin",
+        staffName: "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645 (Admin)",
+        actionType: "fair_use_admin_extended",
+        plateNumber: `\u062A\u0645\u062F\u064A\u062F \u0627\u0633\u062A\u062B\u0646\u0627\u0626\u064A \u0644\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0639\u0627\u062F\u0644 (+${extraCars > 0 ? extraCars : fairUse.stepAmount} \u0633\u064A\u0627\u0631\u0629)`,
+        timestamp: /* @__PURE__ */ new Date(),
+        details: {
+          currentAllowance: resultFairUse.currentAllowance,
+          maxAllowance: resultFairUse.maxAllowance,
+          cycleCarsCount: resultFairUse.cycleCarsCount
+        }
+      });
+    });
+    return res.json({ success: true, unlimitedFairUse: resultFairUse });
+  } catch (err) {
+    console.error("[Server Admin] Error in extend-fair-use:", err);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+var garages_default = router5;
+
+// server/app.ts
+function mapDomainErrorToStatus2(err) {
+  if (err instanceof ValidationError) {
+    return { statusCode: err.statusCode, code: err.code, message: err.message };
+  }
+  const errMsg = String(err?.message || err || "");
+  if (errMsg.includes("GARAGE_NOT_FOUND") || errMsg.includes("VEHICLE_NOT_FOUND") || errMsg.includes("REQUEST_NOT_FOUND") || errMsg.includes("PACKAGE_NOT_FOUND") || errMsg.includes("SUBSCRIBER_NOT_FOUND")) {
+    return { statusCode: 404, code: "NOT_FOUND", message: "The requested resource was not found." };
+  }
+  if (errMsg.includes("REQUEST_ALREADY_PROCESSED") || errMsg.includes("VEHICLE_ALREADY_INSIDE") || errMsg.includes("VEHICLE_ALREADY_OUTSIDE") || errMsg.includes("INSUFFICIENT_BALANCE") || errMsg.includes("CAPACITY_LIMIT_REACHED") || errMsg.includes("PACKAGE_INACTIVE") || errMsg.includes("INVALID_PACKAGE_CONFIGURATION") || errMsg.includes("IDEMPOTENCY_KEY_REUSE") || errMsg.includes("FAIR_USE_LIMIT_REACHED") || errMsg.includes("DAILY_DELETION_LIMIT_REACHED") || errMsg.includes("DELEGATE_DAILY_GARAGE_LIMIT_REACHED") || errMsg.includes("reached_daily_deletion_limit") || errMsg.includes("PIN_ALREADY_TAKEN") || errMsg.includes("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION") || errMsg.includes("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN") || errMsg.includes("NO_REFERRAL_REWARDS_AVAILABLE") || errMsg.includes("SUBSCRIPTION_EXPIRED") || errMsg.includes("SUBSCRIBER_ALREADY_EXISTS")) {
     return { statusCode: 409, code: "CONFLICT", message: "The requested operation conflicts with the current state." };
   }
   if (errMsg.includes("FORBIDDEN") || errMsg.includes("UNAUTHORIZED_GARAGE_ACCESS") || errMsg.includes("GARAGE_SCOPE_MISMATCH") || errMsg.includes("ADMIN_ONLY") || errMsg.includes("GARAGE_CANNOT_RECHARGE_OTHERS") || errMsg.includes("ADMIN_OR_SUPERVISOR_ONLY")) {
@@ -147643,12 +149639,8 @@ function isAllowedOrigin(origin) {
   }
   return false;
 }
-function canManageGarageScopedData(req, garageId) {
-  if (req.user?.role === "admin") return true;
-  return (req.user?.role === "garage" || req.user?.role === "staff") && req.user?.garageId === garageId;
-}
 function createApp() {
-  const app2 = (0, import_express.default)();
+  const app2 = (0, import_express6.default)();
   app2.set("trust proxy", 1);
   app2.use((0, import_cors.default)({
     origin(origin, callback) {
@@ -147667,9 +149659,14 @@ function createApp() {
       "Idempotency-Key"
     ]
   }));
-  app2.use(import_express.default.json());
+  app2.use(import_express6.default.json());
   app2.use(correlationMiddleware);
   app2.use(requestTimeoutMiddleware(15e3));
+  app2.use("/api/vehicles", vehicles_default);
+  app2.use("/api/subscribers", subscribers_default);
+  app2.use("/api/delegates", delegates_default);
+  app2.use("/api/transactions", recharges_default);
+  app2.use("/api/garages", garages_default);
   app2.get("/api/health", (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
     const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "unknown";
@@ -147864,33 +149861,39 @@ function createApp() {
             if (effectiveUid && sessionId && adminDb) {
               try {
                 const entityDocRef = adminDb.doc(`delegates/${dDoc.id}`);
-                const snap = await entityDocRef.get();
-                if (snap.exists) {
-                  const data = snap.data() || {};
-                  const activeSessionId = data.currentSessionId;
-                  const rawLastActive = data.lastActive;
-                  const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-                  const SESSION_TIMEOUT_MS = 15 * 60 * 1e3;
-                  const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && Date.now() - lastActive < SESSION_TIMEOUT_MS;
-                  if (isAlive) {
-                    return res.json({ success: false, error: "SESSION_OCCUPIED" });
+                const securityDocRef = adminDb.doc(`delegate_sessions/${effectiveUid}`);
+                await adminDb.runTransaction(async (transaction) => {
+                  const snap = await transaction.get(entityDocRef);
+                  if (snap.exists) {
+                    const data = snap.data() || {};
+                    const activeSessionId = data.currentSessionId;
+                    const rawLastActive = data.lastActive;
+                    const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
+                    const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && Date.now() - lastActive < 15 * 60 * 1e3;
+                    if (isAlive) {
+                      throw new Error("SESSION_OCCUPIED");
+                    }
                   }
-                }
-                await entityDocRef.set({
-                  currentSessionId: sessionId,
-                  lastActive: /* @__PURE__ */ new Date()
-                }, { merge: true });
-                await adminDb.doc(`delegate_sessions/${effectiveUid}`).set({
-                  uid: effectiveUid,
-                  role: "delegate",
-                  entityId: dDoc.id,
-                  sessionId,
-                  isActive: true,
-                  lastActive: /* @__PURE__ */ new Date(),
-                  createdAt: /* @__PURE__ */ new Date()
-                }, { merge: true });
+                  const now = /* @__PURE__ */ new Date();
+                  transaction.set(entityDocRef, {
+                    currentSessionId: sessionId,
+                    lastActive: now
+                  }, { merge: true });
+                  transaction.set(securityDocRef, {
+                    uid: effectiveUid,
+                    role: "delegate",
+                    entityId: dDoc.id,
+                    sessionId,
+                    isActive: true,
+                    lastActive: now,
+                    createdAt: now
+                  }, { merge: true });
+                });
               } catch (sessErr) {
                 console.error("[Server Auth] Error claiming delegate session during phone verification:", sessErr);
+                if (sessErr?.message === "SESSION_OCCUPIED") {
+                  return res.json({ success: false, error: "SESSION_OCCUPIED" });
+                }
                 return res.status(500).json({ success: false, error: "\u062A\u0639\u0630\u0631 \u062A\u0647\u064A\u0626\u0629 \u0627\u0644\u062C\u0644\u0633\u0629 \u0627\u0644\u0622\u0645\u0646\u0629\u060C \u064A\u0631\u062C\u0649 \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629" });
               }
             }
@@ -148219,1028 +150222,6 @@ function createApp() {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  app2.post("/api/transactions/recharge-garage", requireAuth, financialRateLimiter(), async (req, res) => {
-    const ALLOWED_ROLES = ["admin"];
-    if (!ALLOWED_ROLES.includes(req.user?.role || "")) {
-      return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
-    }
-    try {
-      const sanitized = sanitizePayload(req.body, ["garageId", "packageId", "adminDetails", "idempotencyKey"], false);
-      const garageId = validateId(sanitized.garageId, "garageId", true);
-      const packageId = validateId(sanitized.packageId, "packageId", true);
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      const callerUid = req.user?.uid;
-      const callerRole = req.user?.role || "";
-      const adminDetails = sanitized.adminDetails || {};
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      if (callerRole === "delegate") {
-        const delegateGarageSnap = await adminDb.doc(`garages/${garageId}`).get();
-        const delegateGarageData = delegateGarageSnap.exists ? delegateGarageSnap.data() || {} : {};
-        const ownsGarage = delegateGarageData.createdByDelegateId === req.user?.entityId || delegateGarageData.referrerId === req.user?.entityId;
-        if (!ownsGarage) {
-          return sendApiError(res, 403, "GARAGE_SCOPE_MISMATCH", "GARAGE_SCOPE_MISMATCH", req.correlationId);
-        }
-      }
-      const pkgSnap = await adminDb.doc(`packages/${packageId}`).get();
-      if (!pkgSnap.exists) {
-        return sendApiError(res, 404, "NOT_FOUND", "PACKAGE_NOT_FOUND", req.correlationId);
-      }
-      const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
-      const rawDays = Number(packageObj.durationDays || packageObj.vehiclesCount || 30);
-      const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
-      const price = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
-      const packageName = String(packageObj.name || packageObj.packageName || "\u0628\u0627\u0642\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643");
-      const isUnlimited = Boolean(
-        packageObj.isUnlimited || packageName.includes("\u0645\u0641\u062A\u0648\u062D") || packageName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || packageName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F")
-      );
-      const effCapacity = isUnlimited ? 0 : Math.max(1, Number(packageObj.dailyCapacity || packageObj.carsCount || 40));
-      let resultData = null;
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/recharge-garage", callerUid);
-        if (isDuplicate) {
-          resultData = cachedResult;
-          return;
-        }
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const garageSnap = await t2.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error("GARAGE_NOT_FOUND");
-        }
-        const garageData = garageSnap.data() || {};
-        if (garageData.hasMonthlySubscribers === true && durationDays < 15) {
-          throw new Error("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION");
-        }
-        let baseDate = /* @__PURE__ */ new Date();
-        const currentExpiry = garageData.balanceExpiry;
-        if (currentExpiry) {
-          const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-          if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
-            baseDate = currentExpDate;
-          }
-        }
-        baseDate.setDate(baseDate.getDate() + durationDays);
-        const referrerGarageId = garageData.referredByGarageId;
-        let referrerRef = null;
-        let referrerSnap = null;
-        const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== garageId && price > 0 && durationDays > 1;
-        if (isEligibleForReferral && referrerGarageId) {
-          referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
-          referrerSnap = await t2.get(referrerRef);
-        }
-        const newRevenue = Number(((garageData.totalAdminRevenue || 0) + price).toFixed(2));
-        const updateData = {
-          totalAdminRevenue: newRevenue,
-          isLocked: false,
-          isTrial: false,
-          dailyCapacity: effCapacity,
-          activePackageName: packageName,
-          packageName,
-          lastRechargeDate: /* @__PURE__ */ new Date(),
-          lastRechargeAmount: price,
-          lastRechargePackageName: packageName,
-          balanceExpiry: baseDate,
-          billingModel: "subscription",
-          unlimitedFairUse: isUnlimited ? initializeFairUse(durationDays, packageName) : null
-        };
-        t2.set(garageRef, updateData, { merge: true });
-        const logRef = adminDb.collection("activity_logs").doc();
-        const staffNameText = validateString(adminDetails.staffName, "staffName", { max: 128 }) || "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645 (Admin)";
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: adminDetails.staffId ? validateId(adminDetails.staffId, "staffId") : callerUid || "admin",
-          staffName: staffNameText,
-          actionType: "recharge",
-          plateNumber: `\u062A\u062C\u062F\u064A\u062F \u0627\u0634\u062A\u0631\u0627\u0643: ${packageName} (${durationDays} \u064A\u0648\u0645) - ${price} \u062C`,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: price,
-          packageId: packageId || packageObj.id || "direct_recharge",
-          details: {
-            packageName,
-            durationDays,
-            carsCount: effCapacity,
-            revenueAmount: price,
-            originalRevenueAmount: price,
-            discountAmount: 0,
-            rechargedBy: staffNameText
-          }
-        });
-        if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
-          const referrerData = referrerSnap.data() || {};
-          t2.set(referrerRef, {
-            totalReferralRewardDays: (referrerData.totalReferralRewardDays || 0) + 1,
-            totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
-            lastReferralRewardAt: /* @__PURE__ */ new Date()
-          }, { merge: true });
-          const rewardLogRef = adminDb.collection("activity_logs").doc();
-          t2.set(rewardLogRef, {
-            garageId: referrerGarageId,
-            garageName: referrerData.name || "",
-            staffId: null,
-            staffName: "\u0627\u0644\u0646\u0638\u0627\u0645 \u2014 \u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629",
-            actionType: "recharge",
-            plateNumber: `\u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629 \u0645\u0646 ${garageData.name || ""} \u2014 \u0625\u0636\u0627\u0641\u0629 \u064A\u0648\u0645 \u0645\u062C\u0627\u0646\u064A \u0628\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u0643\u0627\u0641\u0622\u062A`,
-            timestamp: /* @__PURE__ */ new Date(),
-            amount: 0,
-            packageId: referrerData.packageId || "referral_reward",
-            details: {
-              type: "referral_reward",
-              referrerGarageId,
-              referredGarageId: garageId
-            }
-          });
-        }
-        resultData = {
-          newExpiry: baseDate.toISOString(),
-          totalAdminRevenue: newRevenue
-        };
-        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/recharge-garage", callerUid);
-      });
-      return res.json({ success: true, data: resultData });
-    } catch (error) {
-      console.error("[Server Transaction] Error in recharge-garage:", error);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/transactions/approve-recharge-request", requireAuth, financialRateLimiter(), async (req, res) => {
-    if (req.user?.role !== "admin") {
-      return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
-    }
-    const callerUid = req.user?.uid;
-    try {
-      const sanitized = sanitizePayload(req.body, ["requestId", "request", "idempotencyKey"], false);
-      const reqId = validateId(sanitized.requestId || sanitized.request?.id, "requestId", true);
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      let resultData = null;
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/approve-recharge-request", callerUid);
-        if (isDuplicate) {
-          resultData = cachedResult;
-          return;
-        }
-        const requestRef = adminDb.doc(`recharge_requests/${reqId}`);
-        const requestSnap = await t2.get(requestRef);
-        if (!requestSnap.exists) {
-          throw new Error("REQUEST_NOT_FOUND");
-        }
-        const requestData = requestSnap.data() || {};
-        if (requestData.status && requestData.status !== "pending") {
-          throw new Error("REQUEST_ALREADY_PROCESSED");
-        }
-        const targetGarageId = requestData.garageId || sanitized.request && sanitized.request.garageId;
-        if (!targetGarageId) {
-          throw new Error("GARAGE_ID_MISSING");
-        }
-        const garageRef = adminDb.doc(`garages/${targetGarageId}`);
-        const garageSnap = await t2.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error("GARAGE_NOT_FOUND");
-        }
-        const garageData = garageSnap.data() || {};
-        const globalSettingsSnap = await t2.get(adminDb.doc("system_config/global"));
-        const legacySettingsSnap = await t2.get(adminDb.doc("admin_settings/general"));
-        const systemConfig = globalSettingsSnap.exists ? { ...legacySettingsSnap.exists ? legacySettingsSnap.data() : {}, ...globalSettingsSnap.data() } : legacySettingsSnap.exists ? legacySettingsSnap.data() : {};
-        const delegateMonthlyCommission = Number(
-          systemConfig?.delegateMonthlyCommission ?? systemConfig?.referralFeePerRenewal ?? 100
-        );
-        const subscriberFlatFee = systemConfig?.subscriberFlatFee !== void 0 ? Math.max(0, Number(systemConfig.subscriberFlatFee)) : systemConfig?.monthlySubscribersFlatFee !== void 0 ? Number(systemConfig.monthlySubscribersFlatFee) : 500;
-        const delegateReferrerId = garageData.referrerId || garageData.createdByDelegateId || null;
-        const referredByDelegate = Boolean(delegateReferrerId);
-        const isBalanceTopup = requestData.requestType === "balance_topup" || requestData.packageId === "balance_topup";
-        if (isBalanceTopup) {
-          const topupAmount = Number(requestData.amount || requestData.revenueAmount || 0);
-          const currentBalance = Number(garageData.balance || 0);
-          const newGarageBalance = currentBalance + topupAmount;
-          const targetDelegateId = delegateReferrerId || requestData.delegateId || null;
-          let delegateRef = null;
-          let delegateSnap = null;
-          if (targetDelegateId) {
-            delegateRef = adminDb.doc(`delegates/${targetDelegateId}`);
-            delegateSnap = await t2.get(delegateRef);
-          }
-          t2.set(garageRef, {
-            balance: newGarageBalance,
-            totalAdminRevenue: (garageData.totalAdminRevenue || 0) + topupAmount,
-            lastRechargeDate: /* @__PURE__ */ new Date(),
-            lastRechargeAmount: topupAmount,
-            lastRechargePackageName: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u062D\u0641\u0638\u0629 (${topupAmount} \u062C.\u0645)`
-          }, { merge: true });
-          t2.set(requestRef, {
-            status: "approved",
-            amount: topupAmount,
-            revenueAmount: topupAmount,
-            originalRevenueAmount: topupAmount,
-            resolvedAt: /* @__PURE__ */ new Date()
-          }, { merge: true });
-          if (delegateRef && delegateSnap && delegateSnap.exists) {
-            const delData = delegateSnap.data() || {};
-            t2.set(delegateRef, {
-              totalRechargedAmount: (delData.totalRechargedAmount || 0) + topupAmount
-            }, { merge: true });
-          }
-          const logRef = adminDb.collection("activity_logs").doc();
-          t2.set(logRef, {
-            garageId: targetGarageId,
-            garageName: requestData.garageName || garageData.name || "",
-            staffId: delegateReferrerId || requestData.delegateId || null,
-            staffName: requestData.delegateName || null,
-            actionType: "balance_topup",
-            plateNumber: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u062D\u0641\u0638\u0629 (${topupAmount} \u062C.\u0645)`,
-            timestamp: /* @__PURE__ */ new Date(),
-            amount: topupAmount,
-            details: {
-              action: "balance_topup",
-              amount: topupAmount,
-              previousBalance: currentBalance,
-              newBalance: newGarageBalance,
-              delegateId: requestData.delegateId || null,
-              delegateName: requestData.delegateName || null,
-              requestId: reqId
-            }
-          });
-          resultData = {
-            requestId: reqId,
-            status: "approved",
-            newBalance: newGarageBalance,
-            revenue: topupAmount
-          };
-        } else {
-          const rawPackageData = requestData.packageData || {};
-          let basePrice = Number(rawPackageData.price || rawPackageData.priceAmount || requestData.amount || 0);
-          let durationDays = Number(requestData.durationDays || requestData.carsCount || 30);
-          let pkgName = String(requestData.packageName || rawPackageData.name || "\u0628\u0627\u0642\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643");
-          let isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629");
-          let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
-          if (requestData.packageId) {
-            const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
-            const pkgSnap = await t2.get(pkgRef);
-            if (pkgSnap.exists) {
-              const pData = pkgSnap.data() || {};
-              if (pData.price !== void 0) {
-                basePrice = Number(pData.price);
-              }
-              if (pData.durationDays !== void 0) {
-                durationDays = Number(pData.durationDays);
-              }
-              if (pData.dailyCapacity !== void 0) {
-                effCapacity = pData.isUnlimited ? 0 : Number(pData.dailyCapacity);
-              }
-              if (pData.name) {
-                pkgName = String(pData.name);
-              }
-            }
-          }
-          const targetDelegateId = delegateReferrerId || requestData.delegateId || null;
-          let delegateRef = null;
-          let delegateSnap = null;
-          if (targetDelegateId) {
-            delegateRef = adminDb.doc(`delegates/${targetDelegateId}`);
-            delegateSnap = await t2.get(delegateRef);
-          }
-          let commission = 0;
-          if (referredByDelegate && targetDelegateId) {
-            const currentMonthKey = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
-            const monthlyStatsRef = adminDb.doc(`garage_monthly_stats/${targetGarageId}_${currentMonthKey}`);
-            const monthlyStatsSnap = await t2.get(monthlyStatsRef);
-            const monthlyStatsData = monthlyStatsSnap.exists ? monthlyStatsSnap.data() : {};
-            const prevDaysPurchased = Number(monthlyStatsData.totalDaysPurchased || 0);
-            const newDaysPurchased = prevDaysPurchased + durationDays;
-            const alreadyPaid = Boolean(monthlyStatsData.paid100EgpCommission);
-            if (!alreadyPaid && (durationDays >= 30 || newDaysPurchased >= 10)) {
-              commission = delegateMonthlyCommission > 0 ? delegateMonthlyCommission : 100;
-            }
-            t2.set(monthlyStatsRef, {
-              garageId: targetGarageId,
-              delegateId: targetDelegateId,
-              monthKey: currentMonthKey,
-              totalDaysPurchased: newDaysPurchased,
-              paid100EgpCommission: alreadyPaid || commission > 0,
-              updatedAt: /* @__PURE__ */ new Date()
-            }, { merge: true });
-          }
-          const effectiveOriginalRevenue = basePrice;
-          const discountAmount = Number(requestData.discountAmount || 0);
-          let effectiveRevenue = Math.max(0, basePrice - discountAmount);
-          if (garageData.hasMonthlySubscribers === true) {
-            effectiveRevenue += subscriberFlatFee;
-          }
-          let baseDate = /* @__PURE__ */ new Date();
-          const currentExpiry = garageData.balanceExpiry;
-          if (currentExpiry) {
-            const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-            if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-              baseDate = expDate;
-            }
-          }
-          baseDate.setDate(baseDate.getDate() + durationDays);
-          t2.set(garageRef, {
-            balanceExpiry: baseDate,
-            dailyCapacity: effCapacity,
-            activePackageName: pkgName || requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629",
-            packageName: pkgName || requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629",
-            billingModel: "subscription",
-            isLocked: false,
-            isTrial: false,
-            totalAdminRevenue: (garageData.totalAdminRevenue || 0) + effectiveRevenue,
-            lastRechargeDate: /* @__PURE__ */ new Date(),
-            lastRechargeAmount: effectiveRevenue,
-            lastRechargePackageName: requestData.packageName || null,
-            unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName || requestData.packageName || "") : null
-          }, { merge: true });
-          t2.set(requestRef, {
-            status: "approved",
-            commission,
-            referrerId: delegateReferrerId,
-            amount: effectiveRevenue,
-            revenueAmount: effectiveRevenue,
-            originalRevenueAmount: effectiveOriginalRevenue,
-            resolvedAt: /* @__PURE__ */ new Date()
-          }, { merge: true });
-          if (delegateRef && delegateSnap && delegateSnap.exists) {
-            const delData = delegateSnap.data() || {};
-            t2.set(delegateRef, {
-              totalRechargedAmount: (delData.totalRechargedAmount || 0) + effectiveRevenue,
-              totalCommissionEarned: (delData.totalCommissionEarned || 0) + commission
-            }, { merge: true });
-          }
-          const logRef = adminDb.collection("activity_logs").doc();
-          t2.set(logRef, {
-            garageId: targetGarageId,
-            garageName: requestData.garageName || garageData.name || "",
-            staffId: delegateReferrerId || requestData.delegateId || null,
-            staffName: requestData.delegateName || null,
-            actionType: "recharge",
-            plateNumber: `\u0634\u062D\u0646 ${requestData.packageName || "\u0627\u0644\u0628\u0627\u0642\u0629"} (${durationDays} \u064A\u0648\u0645 - ${effCapacity === 0 ? "\u0645\u0641\u062A\u0648\u062D" : `${effCapacity} \u0633\u064A\u0627\u0631\u0629`})`,
-            timestamp: /* @__PURE__ */ new Date(),
-            amount: effectiveRevenue,
-            packageId: requestData.packageId || null,
-            details: {
-              packageName: requestData.packageName,
-              durationDays,
-              carsCount: effCapacity,
-              revenueAmount: effectiveRevenue,
-              commission,
-              requestId: reqId
-            }
-          });
-          resultData = {
-            requestId: reqId,
-            status: "approved",
-            newExpiry: baseDate.toISOString(),
-            revenue: effectiveRevenue,
-            commission
-          };
-        }
-        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/approve-recharge-request", callerUid);
-      });
-      return res.json({ success: true, data: resultData });
-    } catch (error) {
-      console.error("[Server Transaction] Error in approve-recharge-request:", error);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/transactions/reject-recharge-request", requireAuth, financialRateLimiter(), async (req, res) => {
-    if (req.user?.role !== "admin") {
-      return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
-    }
-    const callerUid = req.user?.uid;
-    try {
-      const sanitized = sanitizePayload(req.body, ["requestId", "idempotencyKey"], false);
-      const requestId = validateId(sanitized.requestId, "requestId", true);
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/reject-recharge-request", callerUid);
-        if (isDuplicate) {
-          return;
-        }
-        const requestRef = adminDb.doc(`recharge_requests/${requestId}`);
-        const requestSnap = await t2.get(requestRef);
-        if (!requestSnap.exists) {
-          throw new Error("REQUEST_NOT_FOUND");
-        }
-        const currentStatus = requestSnap.data()?.status;
-        if (currentStatus && currentStatus !== "pending") {
-          throw new Error("REQUEST_ALREADY_PROCESSED");
-        }
-        t2.set(requestRef, {
-          status: "rejected",
-          resolvedAt: /* @__PURE__ */ new Date()
-        }, { merge: true });
-        storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/transactions/reject-recharge-request", callerUid);
-      });
-      return res.json({ success: true });
-    } catch (error) {
-      console.error("[Server Transaction] Error in reject-recharge-request:", error);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/transactions/admin-topup-balance", requireAuth, financialRateLimiter(), async (req, res) => {
-    if (req.user?.role !== "admin") {
-      return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
-    }
-    const callerUid = req.user?.uid;
-    try {
-      const sanitized = sanitizePayload(req.body, ["garageId", "amount", "idempotencyKey"], false);
-      const garageId = validateId(sanitized.garageId, "garageId", true);
-      const numAmount = validateNumber(sanitized.amount, "amount", { min: 1, max: 1e6, integerOnly: true });
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      let resultData = null;
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/admin-topup-balance", callerUid);
-        if (isDuplicate) {
-          resultData = cachedResult;
-          return;
-        }
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const garageSnap = await t2.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error("GARAGE_NOT_FOUND");
-        }
-        const garageData = garageSnap.data() || {};
-        const currentBalance = Number(garageData.balance || 0);
-        const newBalance = currentBalance + numAmount;
-        t2.set(garageRef, {
-          balance: newBalance,
-          totalAdminRevenue: (garageData.totalAdminRevenue || 0) + numAmount,
-          lastRechargeDate: /* @__PURE__ */ new Date(),
-          lastRechargeAmount: numAmount,
-          lastRechargePackageName: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u0628\u0627\u0634\u0631 (${numAmount} \u062C.\u0645)`
-        }, { merge: true });
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: callerUid || "admin",
-          staffName: "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645 (Admin)",
-          actionType: "balance_topup",
-          plateNumber: `\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0645\u0628\u0627\u0634\u0631 (${numAmount} \u062C.\u0645)`,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: numAmount,
-          details: {
-            action: "admin_balance_topup",
-            amount: numAmount,
-            previousBalance: currentBalance,
-            newBalance
-          }
-        });
-        resultData = { garageId, newBalance, addedAmount: numAmount };
-        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/admin-topup-balance", callerUid);
-      });
-      return res.json({ success: true, data: resultData });
-    } catch (error) {
-      console.error("[Server Transaction] Error in admin-topup-balance:", error);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/transactions/garage-self-subscribe", requireAuth, financialRateLimiter(), async (req, res) => {
-    const userRole = req.user?.role;
-    const userGarageId = req.user?.garageId || req.user?.entityId;
-    const callerUid = req.user?.uid;
-    try {
-      const sanitized = sanitizePayload(req.body, ["garageId", "packageId", "packageData", "idempotencyKey"], false);
-      const bodyGarageId = validateId(sanitized.garageId, "garageId", false);
-      const packageId = validateId(sanitized.packageId, "packageId", true);
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      const garageId = userRole === "garage" ? userGarageId : bodyGarageId || userGarageId;
-      if (userRole === "garage" && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
-        return sendApiError(res, 403, "FORBIDDEN", "UNAUTHORIZED_GARAGE_ACCESS", req.correlationId);
-      }
-      if (!["garage", "admin"].includes(userRole || "")) {
-        return sendApiError(res, 403, "FORBIDDEN", "FORBIDDEN: Role not authorized for self subscribe", req.correlationId);
-      }
-      if (!garageId) {
-        return sendApiError(res, 400, "INVALID_INPUT", "GARAGE_ID_REQUIRED", req.correlationId);
-      }
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      let resultData = null;
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/garage-self-subscribe", callerUid);
-        if (isDuplicate) {
-          resultData = cachedResult;
-          return;
-        }
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const garageSnap = await t2.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error("GARAGE_NOT_FOUND");
-        }
-        const garageData = garageSnap.data() || {};
-        const currentBalance = Number(garageData.balance || 0);
-        const settingsSnap = await t2.get(adminDb.doc("system_config/global"));
-        const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
-        const subscriberFlatFee = systemConfig?.subscriberFlatFee !== void 0 ? Math.max(0, Number(systemConfig.subscriberFlatFee)) : systemConfig?.monthlySubscribersFlatFee !== void 0 ? Number(systemConfig.monthlySubscribersFlatFee) : 500;
-        const DEFAULT_PACKAGES_MAP = {
-          daily_30: { id: "daily_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 15, durationDays: 1, dailyCapacity: 30 },
-          daily_50: { id: "daily_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 25, durationDays: 1, dailyCapacity: 50 },
-          daily_unlimited: { id: "daily_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 40, durationDays: 1, dailyCapacity: 0, isUnlimited: true },
-          biweekly_30: { id: "biweekly_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 120, durationDays: 15, dailyCapacity: 30 },
-          biweekly_50: { id: "biweekly_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 180, durationDays: 15, dailyCapacity: 50 },
-          biweekly_unlimited: { id: "biweekly_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 280, durationDays: 15, dailyCapacity: 0, isUnlimited: true },
-          monthly_30: { id: "monthly_30", name: "\u0628\u0627\u0642\u0629 30 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 200, durationDays: 30, dailyCapacity: 30 },
-          monthly_50: { id: "monthly_50", name: "\u0628\u0627\u0642\u0629 50 \u0633\u064A\u0627\u0631\u0629/\u064A\u0648\u0645", price: 300, durationDays: 30, dailyCapacity: 50 },
-          monthly_unlimited: { id: "monthly_unlimited", name: "\u0628\u0627\u0642\u0629 \u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629", price: 450, durationDays: 30, dailyCapacity: 0, isUnlimited: true }
-        };
-        let pkg = null;
-        if (packageId) {
-          const pkgRef = adminDb.doc(`packages/${packageId}`);
-          const pkgSnap = await t2.get(pkgRef);
-          if (pkgSnap.exists) {
-            pkg = { id: pkgSnap.id, ...pkgSnap.data() };
-          } else if (DEFAULT_PACKAGES_MAP[packageId]) {
-            pkg = { ...DEFAULT_PACKAGES_MAP[packageId] };
-          } else if (sanitized.packageData && typeof sanitized.packageData === "object") {
-            pkg = { id: packageId, ...sanitized.packageData };
-          }
-        }
-        if (!pkg) {
-          throw new Error("PACKAGE_NOT_FOUND");
-        }
-        const durationDays = Number(pkg.durationDays || pkg.vehiclesCount || 30);
-        let basePrice = Number(pkg.price || 0);
-        let discountAmount = 0;
-        if (pkg.discountType === "percentage" && pkg.discountValue > 0) {
-          discountAmount = Math.round(basePrice * Number(pkg.discountValue) / 100);
-        } else if (pkg.discountType === "fixed" && pkg.discountValue > 0) {
-          discountAmount = Math.min(basePrice, Number(pkg.discountValue));
-        }
-        let effectivePrice = Math.max(0, basePrice - discountAmount);
-        if (garageData.hasMonthlySubscribers === true) {
-          effectivePrice += subscriberFlatFee;
-        }
-        if (currentBalance < effectivePrice) {
-          throw new Error(`INSUFFICIENT_BALANCE: \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0627\u062D (${currentBalance} \u062C.\u0645) \u063A\u064A\u0631 \u0643\u0627\u0641\u064D \u0644\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0641\u064A \u0647\u0630\u0647 \u0627\u0644\u0628\u0627\u0642\u0629 (${effectivePrice} \u062C.\u0645)`);
-        }
-        const newBalance = currentBalance - effectivePrice;
-        let baseDate = /* @__PURE__ */ new Date();
-        const currentExpiry = garageData.balanceExpiry;
-        if (currentExpiry) {
-          const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-          if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-            baseDate = expDate;
-          }
-        }
-        baseDate.setDate(baseDate.getDate() + durationDays);
-        const pkgName = String(pkg.name || "\u0628\u0627\u0642\u0629 \u0627\u0634\u062A\u0631\u0627\u0643");
-        const isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629") || pkg.dailyCapacity === 0;
-        const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(pkg.dailyCapacity || 40));
-        t2.set(garageRef, {
-          balance: newBalance,
-          balanceExpiry: baseDate,
-          dailyCapacity: effCapacity,
-          activePackageName: pkgName,
-          packageName: pkgName,
-          billingModel: "subscription",
-          isLocked: false,
-          isTrial: false,
-          lastRechargeDate: /* @__PURE__ */ new Date(),
-          lastRechargeAmount: effectivePrice,
-          lastRechargePackageName: pkgName,
-          unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName) : null
-        }, { merge: true });
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: callerUid || "owner",
-          staffName: garageData.ownerName || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C",
-          actionType: "self_subscribe",
-          plateNumber: `\u062A\u0641\u0639\u064A\u0644 \u0628\u0627\u0642\u0629 \u0628\u0627\u0644\u0631\u0635\u064A\u062F: ${pkgName} (${durationDays} \u064A\u0648\u0645)`,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: effectivePrice,
-          packageId: pkg.id || packageId,
-          details: {
-            packageName: pkgName,
-            durationDays,
-            carsCount: effCapacity,
-            cost: effectivePrice,
-            previousBalance: currentBalance,
-            remainingBalance: newBalance
-          }
-        });
-        resultData = {
-          garageId,
-          newBalance,
-          newExpiry: baseDate.toISOString(),
-          packageName: pkgName,
-          deductedAmount: effectivePrice
-        };
-        storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/transactions/garage-self-subscribe", callerUid);
-      });
-      return res.json({ success: true, data: resultData });
-    } catch (error) {
-      console.error("[Server Transaction] Error in garage-self-subscribe:", error);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(error);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/vehicles/check-in", requireAuth, async (req, res) => {
-    const requestStartedAt = Date.now();
-    try {
-      const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
-      const callerRole = req.user?.role;
-      let garageId = "";
-      if (callerRole === "garage" || callerRole === "staff") {
-        if (!req.user?.garageId) {
-          return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
-        }
-        if (bodyGarageId && bodyGarageId !== req.user.garageId) {
-          return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
-        }
-        garageId = req.user.garageId;
-      } else if (callerRole === "admin") {
-        garageId = bodyGarageId;
-      } else {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
-      }
-      const staffId = req.user?.uid;
-      if (!garageId || !plateNumber || !plateRaw) {
-        return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      const getCairoDateKey = () => {
-        return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
-      };
-      const today = getCairoDateKey();
-      let isSubscriberAuthoritative = false;
-      try {
-        const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
-        const [subSnapRaw, subSnapPlate] = await Promise.all([
-          subscriberCollection.where("plateNumberRaw", "==", plateRaw).get(),
-          subscriberCollection.where("plateNumber", "==", plateNumber).get()
-        ]);
-        for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
-          const subData = doc.data() || {};
-          const startDate = subData.startDate || "";
-          const endDate = subData.endDate || "";
-          if (startDate && endDate && today >= startDate && today <= endDate) {
-            isSubscriberAuthoritative = true;
-            break;
-          }
-        }
-      } catch (subErr) {
-        console.warn("[Server Check-In] Subscriber lookup warning:", subErr);
-      }
-      let resultData = {};
-      await adminDb.runTransaction(async (t2) => {
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
-        const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
-        const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
-          t2.get(garageRef),
-          t2.get(vehicleRef),
-          t2.get(dailyStatsRef)
-        ]);
-        if (!garageSnap.exists) throw new Error("GARAGE_NOT_FOUND");
-        const garageData = garageSnap.data() || {};
-        if (isSubscriberAuthoritative) {
-          throw new Error("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN");
-        }
-        const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
-        const expDateRaw = garageData.balanceExpiry;
-        if (!expDateRaw) throw new Error("SUBSCRIPTION_EXPIRED");
-        const expDate = expDateRaw.toDate ? expDateRaw.toDate() : new Date(expDateRaw);
-        if (isNaN(expDate.getTime()) || expDate.getTime() < Date.now()) {
-          throw new Error("SUBSCRIPTION_EXPIRED");
-        }
-        const isNewDay = garageData.lastTransactionDate !== today;
-        const capacity = Number(garageData.dailyCapacity || 0);
-        const used = isNewDay ? 0 : Number(garageData.todayCount || 0);
-        const isUnlimited = capacity === 0 || String(garageData.activePackageName || "").includes("\u0645\u0641\u062A\u0648\u062D");
-        let updatedFairUse = null;
-        let didAutoExtend = false;
-        if (isUnlimited) {
-          const evalResult = evaluateFairUseCheckIn(
-            garageData.unlimitedFairUse,
-            garageData.durationDays || 30,
-            garageData.activePackageName || ""
-          );
-          if (!evalResult.allowed) {
-            throw new Error("FAIR_USE_LIMIT_REACHED");
-          }
-          updatedFairUse = evalResult.updatedFairUse;
-          didAutoExtend = evalResult.autoExtended;
-        } else if (used >= capacity) {
-          throw new Error("CAPACITY_LIMIT_REACHED");
-        }
-        if (vehicleSnap.exists && vehicleSnap.data()?.status === "inside") {
-          throw new Error("VEHICLE_ALREADY_INSIDE");
-        }
-        t2.set(vehicleRef, {
-          id: plateRaw,
-          plate: plateNumber,
-          plateNumber,
-          plateNumberRaw: plateRaw,
-          type: type || "hourly",
-          isSubscriber: isSubscriberAuthoritative,
-          entryTime: /* @__PURE__ */ new Date(),
-          status: "inside",
-          staffId: staffId || null,
-          staffName: resolvedStaffName,
-          enteredByUid: req.user?.uid || null
-        }, { merge: true });
-        const garageUpdate = {
-          carsInside: (garageData.carsInside || 0) + 1,
-          todayCount: isNewDay ? 1 : used + 1,
-          todayRevenue: isNewDay ? 0 : garageData.todayRevenue || 0,
-          lastTransactionDate: today
-        };
-        if (updatedFairUse) {
-          garageUpdate.unlimitedFairUse = updatedFairUse;
-        }
-        t2.set(garageRef, garageUpdate, { merge: true });
-        if (didAutoExtend && updatedFairUse) {
-          const autoExtLogRef = adminDb.collection("activity_logs").doc();
-          t2.set(autoExtLogRef, {
-            garageId,
-            garageName: garageData.name || "",
-            staffId: "system",
-            staffName: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0639\u0627\u062F\u0644",
-            actionType: "fair_use_auto_extended",
-            plateNumber: `\u062A\u0645\u062F\u064A\u062F \u062A\u0644\u0642\u0627\u0626\u064A \u0644\u0633\u0639\u0629 \u0627\u0644\u0628\u0627\u0642\u0629 (+${updatedFairUse.stepAmount} \u0633\u064A\u0627\u0631\u0629)`,
-            timestamp: /* @__PURE__ */ new Date(),
-            details: {
-              currentAllowance: updatedFairUse.currentAllowance,
-              maxAllowance: updatedFairUse.maxAllowance,
-              cycleCarsCount: updatedFairUse.cycleCarsCount,
-              tierType: updatedFairUse.tierType
-            }
-          });
-        }
-        if (!dailyStatsSnap.exists) {
-          t2.set(dailyStatsRef, {
-            dateId: today,
-            count: 1,
-            limit: isUnlimited ? 0 : capacity,
-            revenue: 0,
-            createdAt: /* @__PURE__ */ new Date()
-          });
-        } else {
-          t2.set(dailyStatsRef, { count: (dailyStatsSnap.data()?.count || 0) + 1 }, { merge: true });
-        }
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: staffId || null,
-          staffName: resolvedStaffName,
-          actionType: "check_in",
-          plateNumber,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: 0
-        });
-        resultData = {
-          isSubscriber: isSubscriberAuthoritative,
-          vehicle: {
-            id: plateRaw,
-            plateNumber,
-            plateNumberRaw: plateRaw,
-            type: type || "hourly",
-            status: "inside",
-            entryTime: (/* @__PURE__ */ new Date()).toISOString(),
-            staffId: staffId || null,
-            staffName: resolvedStaffName,
-            isSubscriber: isSubscriberAuthoritative
-          },
-          carsInside: Number(garageUpdate.carsInside || 0),
-          dailyCount: Number(garageUpdate.todayCount || 0),
-          dailyCapacity: isUnlimited ? 0 : capacity
-        };
-      });
-      const durationMs = Date.now() - requestStartedAt;
-      res.setHeader("Server-Timing", `check-in;dur=${durationMs}`);
-      console.info("[Server Check-In] completed", {
-        correlationId: req.correlationId,
-        durationMs,
-        garageId,
-        isSubscriber: isSubscriberAuthoritative
-      });
-      return res.json({ success: true, data: resultData });
-    } catch (err) {
-      console.error("[Server] Check-in error:", err);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
-      return res.status(statusCode).json({ success: false, error: message2 });
-    }
-  });
-  app2.post("/api/vehicles/check-out", requireAuth, async (req, res) => {
-    try {
-      const { garageId: bodyGarageId, vehicleId } = req.body || {};
-      const callerRole = req.user?.role;
-      let garageId = "";
-      if (callerRole === "garage" || callerRole === "staff") {
-        if (!req.user?.garageId) {
-          return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
-        }
-        if (bodyGarageId && bodyGarageId !== req.user.garageId) {
-          return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
-        }
-        garageId = req.user.garageId;
-      } else if (callerRole === "admin") {
-        garageId = bodyGarageId;
-      } else {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
-      }
-      const staffId = req.user?.uid;
-      if (!garageId || !vehicleId) {
-        return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      const getCairoDateKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
-      let finalCost = 0;
-      await adminDb.runTransaction(async (t2) => {
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
-        const today = getCairoDateKey();
-        const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
-        const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
-          t2.get(garageRef),
-          t2.get(vehicleRef),
-          t2.get(dailyStatsRef)
-        ]);
-        if (!garageSnap.exists) throw new Error("GARAGE_NOT_FOUND");
-        if (!vehicleSnap.exists) throw new Error("VEHICLE_NOT_FOUND");
-        const garageData = garageSnap.data() || {};
-        const vehicleData = vehicleSnap.data() || {};
-        const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
-        if (vehicleData.status === "outside") {
-          throw new Error("VEHICLE_ALREADY_OUTSIDE");
-        }
-        const cost = calculateVehicleCost(vehicleData, garageData);
-        finalCost = cost;
-        t2.set(vehicleRef, {
-          status: "outside",
-          exitTime: /* @__PURE__ */ new Date(),
-          totalCost: cost
-        }, { merge: true });
-        const isNewDay = garageData.lastTransactionDate !== today;
-        t2.set(garageRef, {
-          totalRevenue: (garageData.totalRevenue || 0) + cost,
-          totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
-          todayRevenue: isNewDay ? cost : (garageData.todayRevenue || 0) + cost,
-          todayCount: isNewDay ? 0 : garageData.todayCount || 0,
-          lastTransactionDate: today,
-          carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
-        }, { merge: true });
-        if (!dailyStatsSnap.exists) {
-          t2.set(dailyStatsRef, {
-            dateId: today,
-            count: 0,
-            revenue: cost,
-            createdAt: /* @__PURE__ */ new Date()
-          });
-        } else {
-          t2.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + cost }, { merge: true });
-        }
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: staffId || null,
-          staffName: resolvedStaffName,
-          actionType: "check_out",
-          plateNumber: vehicleData.plateNumber,
-          plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
-          entryTime: vehicleData.entryTime,
-          type: vehicleData.type || "hourly",
-          isSubscriber: !!vehicleData.isSubscriber,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: cost
-        });
-      });
-      return res.json({ success: true, data: { cost: finalCost } });
-    } catch (err) {
-      console.error("[Server] Check-out error:", err);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
-      return res.status(statusCode).json({ success: false, error: message2 });
-    }
-  });
-  app2.post("/api/vehicles/delete", requireAuth, async (req, res) => {
-    try {
-      const { garageId: bodyGarageId, vehicleId, refundAmount } = req.body || {};
-      const callerRole = req.user?.role;
-      let garageId = "";
-      if (callerRole === "garage" || callerRole === "staff") {
-        if (!req.user?.garageId) {
-          return res.status(403).json({ success: false, error: "FORBIDDEN: Garage ID missing in session" });
-        }
-        if (bodyGarageId && bodyGarageId !== req.user.garageId) {
-          return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
-        }
-        garageId = req.user.garageId;
-      } else if (callerRole === "admin") {
-        garageId = bodyGarageId;
-      } else {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Role not authorized for vehicle operations" });
-      }
-      const staffId = req.user?.uid;
-      if (!garageId || !vehicleId) {
-        return res.status(400).json({ success: false, error: "MISSING_PARAMETERS" });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      const getCairoDateKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
-      await adminDb.runTransaction(async (t2) => {
-        const todayYMD = getCairoDateKey();
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
-        const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
-        const [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
-          t2.get(garageRef),
-          t2.get(vehicleRef),
-          t2.get(dailyStatsRef)
-        ]);
-        if (!garageDoc.exists) throw new Error("GARAGE_NOT_FOUND");
-        if (!vehicleDoc.exists) throw new Error("VEHICLE_NOT_FOUND");
-        const garageData = garageDoc.data() || {};
-        const vehicleData = vehicleDoc.data() || {};
-        const resolvedStaffName = req.user?.displayName || (callerRole === "admin" ? "\u0645\u062F\u064A\u0631 \u0627\u0644\u0646\u0638\u0627\u0645" : callerRole === "garage" ? garageData.name || "\u0645\u062F\u064A\u0631 \u0627\u0644\u062C\u0631\u0627\u062C" : "\u0645\u0648\u0638\u0641");
-        if (callerRole !== "admin") {
-          const entrantUid = vehicleData.enteredByUid || vehicleData.staffUid || vehicleData.staffId;
-          const callerUid = req.user?.uid;
-          const callerEntityId = req.user?.entityId;
-          if (entrantUid && entrantUid !== callerUid && entrantUid !== callerEntityId) {
-            throw new Error("CORRECTION_FORBIDDEN: Only the staff member who entered the vehicle can correct or delete it");
-          }
-        }
-        const todayDeletions = garageData.lastDeletionDate === todayYMD ? garageData.dailyDeletionCount || 0 : 0;
-        if (todayDeletions >= 3 && callerRole !== "admin") {
-          throw new Error("reached_daily_deletion_limit");
-        }
-        const isSameRefundDay = garageData.lastRefundDate === todayYMD;
-        const requestedRefund = Math.max(0, Number(refundAmount || 0));
-        const maxEligibleRefund = vehicleData.status === "outside" && typeof vehicleData.totalCost === "number" ? Math.max(0, vehicleData.totalCost) : 0;
-        const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
-        let enteredToday = false;
-        if (vehicleData.status === "inside" && vehicleData.entryTime) {
-          const entryTime = vehicleData.entryTime.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
-          if (!isNaN(entryTime.getTime())) {
-            const entryDateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(entryTime);
-            enteredToday = entryDateKey === todayYMD;
-          }
-        }
-        t2.delete(vehicleRef);
-        const updates = {
-          isLocked: false,
-          dailyDeletionCount: todayDeletions + 1,
-          lastDeletionDate: todayYMD,
-          dailyRefundCount: isSameRefundDay ? (garageData.dailyRefundCount || 0) + 1 : 1,
-          lastRefundDate: todayYMD
-        };
-        if (refundAmt > 0) {
-          updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
-          updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
-        }
-        if (vehicleData.status === "inside") updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
-        if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
-        t2.set(garageRef, updates, { merge: true });
-        if (dailyStatsDoc.exists) {
-          const statsUpdates = {};
-          if (enteredToday) {
-            const prevCount = dailyStatsDoc.data()?.count || 0;
-            if (prevCount > 0) statsUpdates.count = prevCount - 1;
-          }
-          if (refundAmt > 0) {
-            const prevRev = dailyStatsDoc.data()?.revenue || 0;
-            statsUpdates.revenue = Math.max(0, Number((prevRev - refundAmt).toFixed(2)));
-          }
-          if (Object.keys(statsUpdates).length > 0) {
-            t2.set(dailyStatsRef, statsUpdates, { merge: true });
-          }
-        }
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: staffId || vehicleData.staffId || null,
-          staffName: resolvedStaffName,
-          actionType: "delete_refund",
-          plateNumber: `\u0645\u0633\u062D \u0644\u0648\u062D\u0629: ${vehicleData.plateNumber || vehicleId}`,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: refundAmt
-        });
-      });
-      return res.json({ success: true });
-    } catch (err) {
-      console.error("[Server] Delete error:", err);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
-      return res.status(statusCode).json({ success: false, error: message2 });
-    }
-  });
   app2.post("/api/admin/update-pin", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
@@ -149411,140 +150392,7 @@ function createApp() {
       return res.json({ success: true, unlimitedFairUse: resultFairUse });
     } catch (err) {
       console.error("[Server Admin] Error in extend-fair-use:", err);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(err);
-      return res.status(statusCode).json({ success: false, error: message2 });
-    }
-  });
-  app2.post("/api/garages/create", requireAuth, financialRateLimiter(), async (req, res) => {
-    try {
-      const callerRole = req.user?.role;
-      const callerUid = req.user?.uid;
-      const callerName = req.user?.displayName || "";
-      if (!callerRole || !["admin", "delegate"].includes(callerRole)) {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Creation not permitted for role" });
-      }
-      const sanitized = sanitizePayload(req.body, ["name", "phone", "hourlyRate", "overnightRate", "pin", "billingModel", "isTrial", "trialDays", "defaultTrialDays", "dailyCapacity", "initialPackageId", "packages", "createdByDelegateId", "createdByDelegateName", "referrerId", "referrerName", "referredByGarageId", "referredByGarageName", "idempotencyKey"], false);
-      const name = validateString(sanitized.name, "name", { min: 2, max: 100, required: true });
-      const normPin = cleanPin(sanitized.pin);
-      if (!normPin || !/^\d{6}$/.test(normPin)) {
-        return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be exactly 6 digits" });
-      }
-      validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      }
-      if (callerRole === "delegate") {
-        const delegateEntityId = req.user?.entityId || callerUid;
-        const cairoParts = new Intl.DateTimeFormat("en-US", {
-          timeZone: "Africa/Cairo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit"
-        }).formatToParts(/* @__PURE__ */ new Date()).reduce((acc, part) => {
-          if (part.type !== "literal") acc[part.type] = part.value;
-          return acc;
-        }, {});
-        const cairoDayStart = /* @__PURE__ */ new Date(`${cairoParts.year}-${cairoParts.month}-${cairoParts.day}T00:00:00+03:00`);
-        const delegateGaragesToday = await adminDb.collection("garages").where("createdByDelegateId", "==", delegateEntityId).where("createdAt", ">=", cairoDayStart).limit(3).get();
-        if (delegateGaragesToday.size >= 3) {
-          return res.status(409).json({ success: false, error: "DELEGATE_DAILY_GARAGE_LIMIT_REACHED" });
-        }
-      }
-      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
-      if (pinCheck.taken) {
-        return res.status(400).json({
-          success: false,
-          error: "PIN_ALREADY_TAKEN",
-          takenBy: { name: pinCheck.name || "", role: pinCheck.role }
-        });
-      }
-      const isTrial = sanitized.isTrial === void 0 ? true : sanitized.isTrial === true || sanitized.isTrial === "true";
-      const rawTrialDays = sanitized.trialDays !== void 0 ? sanitized.trialDays : sanitized.defaultTrialDays;
-      const trialDays = rawTrialDays !== void 0 ? validateNumber(rawTrialDays, "trialDays", { min: 1, max: 365, required: false }) : 15;
-      const now = /* @__PURE__ */ new Date();
-      let balanceExpiry;
-      let dailyCapacity;
-      let activePackageName;
-      if (isTrial) {
-        balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 15) * 24 * 60 * 60 * 1e3);
-        dailyCapacity = 100;
-        activePackageName = `\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)`;
-      } else {
-        balanceExpiry = new Date(now.getTime() - 1e3);
-        dailyCapacity = 0;
-        activePackageName = "\u0628\u062F\u0648\u0646 \u0628\u0627\u0642\u0629";
-      }
-      const garageRef = adminDb.collection("garages").doc();
-      const garageId = garageRef.id;
-      await saveEntityPin("garages", garageId, normPin);
-      const garageDoc = {
-        name: name.trim(),
-        phone: sanitized.phone ? String(sanitized.phone).trim() : "",
-        hourlyRate: sanitized.hourlyRate !== void 0 ? validateNumber(sanitized.hourlyRate, "hourlyRate", { min: 0, max: 1e4, required: false }) : 0,
-        overnightRate: sanitized.overnightRate !== void 0 ? validateNumber(sanitized.overnightRate, "overnightRate", { min: 0, max: 1e4, required: false }) : 0,
-        billingModel: ["subscription", "trial"].includes(sanitized.billingModel) ? sanitized.billingModel : "subscription",
-        status: callerRole === "delegate" || sanitized.createdByDelegateId || sanitized.isPending ? "pending" : "approved",
-        hasMonthlySubscribers: false,
-        createdAt: now,
-        isTrial,
-        dailyCapacity,
-        activePackageName,
-        packageName: activePackageName,
-        balanceExpiry,
-        balance: 0,
-        carsInside: 0,
-        carsInsideCount: 0,
-        todayCount: 0,
-        todayRevenue: 0,
-        totalRevenue: 0,
-        totalAdminRevenue: 0,
-        totalVehiclesOut: 0,
-        dailyDeletionCount: 0,
-        dailyRefundCount: 0,
-        totalReferralRewardDays: 0,
-        totalGaragesReferredCount: 0,
-        isLocked: false,
-        isDeleting: false
-      };
-      if (callerRole === "delegate") {
-        const delegateEntityId = req.user?.entityId || callerUid;
-        garageDoc.createdByDelegateId = delegateEntityId;
-        garageDoc.createdByDelegateName = sanitized.createdByDelegateName || callerName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
-        garageDoc.referrerId = delegateEntityId;
-        garageDoc.referrerName = sanitized.referrerName || sanitized.createdByDelegateName || callerName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
-      } else if (sanitized.createdByDelegateId) {
-        garageDoc.createdByDelegateId = sanitized.createdByDelegateId;
-        garageDoc.createdByDelegateName = sanitized.createdByDelegateName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
-        garageDoc.referrerId = sanitized.referrerId || sanitized.createdByDelegateId;
-        garageDoc.referrerName = sanitized.referrerName || sanitized.createdByDelegateName || "\u0627\u0644\u0645\u0646\u062F\u0648\u0628";
-      }
-      if (sanitized.referredByGarageId) {
-        garageDoc.referredByGarageId = sanitized.referredByGarageId;
-        garageDoc.referredByGarageName = sanitized.referredByGarageName || "";
-      }
-      await garageRef.set(garageDoc);
-      const logRef = adminDb.collection("activity_logs").doc();
-      await logRef.set({
-        garageId,
-        garageName: garageDoc.name,
-        staffId: callerUid || null,
-        staffName: callerName || (isTrial ? "\u0627\u0644\u0646\u0638\u0627\u0645 (\u062A\u0641\u0639\u064A\u0644 \u062A\u062C\u0631\u064A\u0628\u064A)" : "\u0627\u0644\u0625\u062F\u0627\u0631\u0629 (\u0625\u0646\u0634\u0627\u0621 \u062C\u0631\u0627\u062C)"),
-        actionType: isTrial ? "recharge" : "create",
-        plateNumber: isTrial ? `\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)` : `\u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628 \u062C\u0631\u0627\u062C \u062C\u062F\u064A\u062F (\u0628\u062F\u0648\u0646 \u0628\u0627\u0642\u0629)`,
-        timestamp: now,
-        amount: 0,
-        details: {
-          packageName: isTrial ? `\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 (${trialDays} \u064A\u0648\u0645)` : activePackageName,
-          durationDays: isTrial ? trialDays : 0,
-          carsCount: dailyCapacity,
-          revenueAmount: 0,
-          isTrial: Boolean(isTrial)
-        }
-      });
-      return res.json({ success: true, id: garageId });
-    } catch (e2) {
-      console.error("[Server Garage] Error in create garage:", e2);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+      const { statusCode, message: message2 } = mapDomainErrorToStatus2(err);
       return res.status(statusCode).json({ success: false, error: message2 });
     }
   });
@@ -149582,48 +150430,6 @@ function createApp() {
       return res.json({ success: true, id: supId });
     } catch (e2) {
       console.error("[Server Supervisor] Error in create:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/delegates/create", requireAuth, async (req, res) => {
-    try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
-      }
-      const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = req.body || {};
-      const normName = validateString(name, "name", { min: 2, max: 100, required: true });
-      const normPhone = phone ? String(phone).trim() : "";
-      const normPin = cleanPin(pin);
-      if (!normPin || normPin.length < 4 || normPin.length > 10) {
-        return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be 4-10 digits" });
-      }
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      }
-      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
-      if (pinCheck.taken) {
-        return res.status(400).json({
-          success: false,
-          error: "PIN_ALREADY_TAKEN",
-          takenBy: { name: pinCheck.name || "", role: pinCheck.role }
-        });
-      }
-      const delRef = adminDb.collection("delegates").doc();
-      const delId = delRef.id;
-      await saveEntityPin("delegates", delId, normPin);
-      await delRef.set({
-        name: normName.trim(),
-        phone: normPhone,
-        commissionRate: commissionRate !== void 0 ? Number(commissionRate) : 10,
-        commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
-        defaultTrialDays: defaultTrialDays !== void 0 ? Number(defaultTrialDays) : 15,
-        balance: 0,
-        totalEarned: 0,
-        createdAt: /* @__PURE__ */ new Date()
-      });
-      return res.json({ success: true, id: delId });
-    } catch (e2) {
-      console.error("[Server Delegate] Error in create:", e2);
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
@@ -149724,131 +150530,6 @@ function createApp() {
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
-  app2.post("/api/transactions/use-referral-reward", requireAuth, financialRateLimiter(), async (req, res) => {
-    try {
-      const sanitized = sanitizePayload(req.body, ["garageId", "idempotencyKey"], false);
-      const garageId = validateId(sanitized.garageId, "garageId", true);
-      const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
-      const callerUid = req.user?.uid;
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === "garage" ? req.user?.entityId : null);
-      if (callerRole !== "admin" && callerRole !== "garage") {
-        return sendApiError(res, 403, "FORBIDDEN", "ADMIN_OR_GARAGE_ONLY", req.correlationId);
-      }
-      if (callerRole === "garage" && callerGarageId !== garageId) {
-        return sendApiError(res, 403, "FORBIDDEN", "FORBIDDEN: Cannot claim reward for another garage", req.correlationId);
-      }
-      if (!adminDb) {
-        return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
-      }
-      let claimedDays = 0;
-      await adminDb.runTransaction(async (t2) => {
-        const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/use-referral-reward", callerUid);
-        if (isDuplicate) {
-          claimedDays = cachedResult?.daysClaimed || 0;
-          return;
-        }
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const garageSnap = await t2.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error("GARAGE_NOT_FOUND");
-        }
-        const garageData = garageSnap.data() || {};
-        const rewardDays = Math.max(0, Number(garageData.totalReferralRewardDays || 0));
-        if (rewardDays <= 0) {
-          throw new Error("NO_REFERRAL_REWARDS_AVAILABLE");
-        }
-        claimedDays = rewardDays;
-        let baseDate = /* @__PURE__ */ new Date();
-        const currentExpiry = garageData.balanceExpiry;
-        if (currentExpiry) {
-          const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
-          if (expDate > baseDate) {
-            baseDate = expDate;
-          }
-        }
-        baseDate.setDate(baseDate.getDate() + rewardDays);
-        t2.update(garageRef, {
-          balanceExpiry: baseDate,
-          totalReferralRewardDays: 0,
-          isLocked: false,
-          lastReferralClaimAt: /* @__PURE__ */ new Date()
-        });
-        const logRef = adminDb.collection("activity_logs").doc();
-        t2.set(logRef, {
-          garageId,
-          garageName: garageData.name || "",
-          staffId: callerUid || null,
-          staffName: callerRole === "admin" ? "\u0627\u0644\u0625\u062F\u0627\u0631\u0629" : "\u0635\u0627\u062D\u0628 \u0627\u0644\u062C\u0631\u0627\u062C (\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0631\u0635\u064A\u062F \u0627\u0644\u0645\u0643\u0627\u0641\u0622\u062A)",
-          actionType: "recharge",
-          plateNumber: `\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0645\u0643\u0627\u0641\u0623\u0629 \u0625\u062D\u0627\u0644\u0629 \u2014 \u062A\u0645\u062F\u064A\u062F \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 +${rewardDays} ${rewardDays === 1 ? "\u064A\u0648\u0645 \u0645\u062C\u0627\u0646\u064A" : rewardDays === 2 ? "\u064A\u0648\u0645\u0627\u0646 \u0645\u062C\u0627\u0646\u064A\u0627\u0646" : "\u0623\u064A\u0627\u0645 \u0645\u062C\u0627\u0646\u064A\u0629"}`,
-          timestamp: /* @__PURE__ */ new Date(),
-          amount: 0,
-          details: {
-            type: "use_referral_reward",
-            claimedDays: rewardDays,
-            newExpiry: baseDate.toISOString()
-          }
-        });
-        storeIdempotencyInTransaction(t2, idempotencyKey, { daysClaimed: claimedDays }, "/api/transactions/use-referral-reward", callerUid);
-      });
-      return res.json({ success: true, daysClaimed: claimedDays });
-    } catch (e2) {
-      console.error("[Server Reward] Error in use-referral-reward:", e2);
-      const { statusCode, code, message: message2 } = mapDomainErrorToStatus(e2);
-      return sendApiError(res, statusCode, code, message2, req.correlationId);
-    }
-  });
-  app2.post("/api/garages/delete", requireAuth, financialRateLimiter(), async (req, res) => {
-    try {
-      const callerRole = req.user?.role;
-      if (callerRole !== "admin") {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
-      }
-      const sanitized = sanitizePayload(req.body, ["garageId", "idempotencyKey"], false);
-      const garageId = validateId(sanitized.garageId, "garageId", true);
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      }
-      const garageRef = adminDb.doc(`garages/${garageId}`);
-      const garageSnap = await garageRef.get();
-      if (!garageSnap.exists) {
-        return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
-      }
-      const garageData = garageSnap.data() || {};
-      const subcollections = ["vehicles", "subscribers", "daily_counts", "daily_stats"];
-      for (const sub of subcollections) {
-        const subCollRef = adminDb.collection(`garages/${garageId}/${sub}`);
-        const subSnap = await subCollRef.get();
-        if (!subSnap.empty) {
-          const batch = adminDb.batch();
-          subSnap.docs.forEach((d) => batch.delete(d.ref));
-          await batch.commit();
-        }
-      }
-      await garageRef.delete();
-      const logRef = adminDb.collection("activity_logs").doc();
-      await logRef.set({
-        garageId,
-        garageName: garageData.name || "",
-        staffId: req.user?.uid || null,
-        staffName: req.user?.displayName || "\u0627\u0644\u0625\u062F\u0627\u0631\u0629",
-        actionType: "garage_delete",
-        plateNumber: `\u062D\u0630\u0641 \u062C\u0631\u0627\u062C: ${garageData.name || garageId}`,
-        timestamp: /* @__PURE__ */ new Date(),
-        amount: 0,
-        details: {
-          deletedByRole: callerRole,
-          deletedByUid: req.user?.uid || null
-        }
-      });
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Garage] Error in delete garage:", e2);
-      const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
-      return res.status(statusCode).json({ success: false, error: message2 });
-    }
-  });
   app2.post("/api/supervisors/update", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
@@ -149878,65 +150559,6 @@ function createApp() {
       return res.json({ success: true });
     } catch (e2) {
       console.error("[Server Supervisor] Error in delete:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/delegates/update", requireAuth, async (req, res) => {
-    try {
-      if (!["admin", "supervisor"].includes(req.user?.role || "")) {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin or Supervisor role required" });
-      }
-      const { id, name, phone, commissionRate, commissions, defaultTrialDays } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const unsupportedFields = Object.keys(req.body || {}).filter(
-        (field) => !["id", "name", "phone", "commissionRate", "commissions", "defaultTrialDays"].includes(field)
-      );
-      if (unsupportedFields.length > 0) {
-        return res.status(400).json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(",")}` });
-      }
-      const updates = { updatedAt: /* @__PURE__ */ new Date() };
-      if (name) updates.name = String(name).trim();
-      if (phone !== void 0) updates.phone = String(phone).trim();
-      if (commissionRate !== void 0) updates.commissionRate = Number(commissionRate);
-      if (commissions) updates.commissions = commissions;
-      if (defaultTrialDays !== void 0) updates.defaultTrialDays = Number(defaultTrialDays);
-      await adminDb.collection("delegates").doc(id).update(updates);
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Delegate] Error in update:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/delegates/settle-account", requireAuth, async (req, res) => {
-    try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const now = /* @__PURE__ */ new Date();
-      await adminDb.collection("delegates").doc(id).update({
-        lastSettledAt: now,
-        totalRechargedAmount: 0,
-        updatedAt: now
-      });
-      return res.json({ success: true, settledAt: now.toISOString() });
-    } catch (e2) {
-      console.error("[Server Delegate] Error settling account:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/delegates/delete", requireAuth, async (req, res) => {
-    try {
-      if (!["admin", "supervisor"].includes(req.user?.role || "")) {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin or Supervisor role required" });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      await adminDb.collection("delegates").doc(id).delete();
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Delegate] Error in delete:", e2);
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
@@ -149980,70 +150602,6 @@ function createApp() {
       return res.json({ success: true });
     } catch (e2) {
       console.error("[Server Staff] Error in delete:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/garages/update", requireAuth, async (req, res) => {
-    try {
-      const { id, ...data } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const callerRole = req.user?.role;
-      if (callerRole !== "admin") {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
-      }
-      const updates = { updatedAt: /* @__PURE__ */ new Date() };
-      const allowedKeys = [
-        "name",
-        "phone",
-        "hourlyRate",
-        "overnightRate",
-        "monthlySubscriptionFee",
-        "billingModel",
-        "commissionPerVehicle",
-        "status",
-        "isLocked",
-        "lockReason",
-        "isSuspended",
-        "isMaintenanceMode",
-        "maintenanceMessage",
-        "warningDaysThreshold",
-        "assignedDelegateId",
-        "currentSessionId",
-        "hasMonthlySubscribers",
-        "checkInSound",
-        "checkOutSound",
-        "ownerName",
-        "dailyCapacity",
-        "shimmerColor",
-        "activePackageName",
-        "trialDecision",
-        "trialDecisionAt"
-      ];
-      for (const key of allowedKeys) {
-        if (key in data && data[key] !== void 0) {
-          updates[key] = data[key];
-        }
-      }
-      await adminDb.collection("garages").doc(id).update(updates);
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Garage] Error in update:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/garages/recalculate-cars-inside", requireAuth, async (req, res) => {
-    try {
-      if (req.user?.role !== "admin") {
-        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
-      }
-      const { garageId } = req.body || {};
-      if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const vehSnap = await adminDb.collection(`garages/${garageId}/vehicles`).where("status", "==", "inside").get();
-      const actualCount = vehSnap.size;
-      await adminDb.collection("garages").doc(garageId).update({ carsInside: actualCount });
-      return res.json({ success: true, count: actualCount });
-    } catch (e2) {
-      console.error("[Server Garage] Error in recalculate-cars-inside:", e2);
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
@@ -150170,81 +150728,7 @@ function createApp() {
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
-  app2.post("/api/subscribers/add", requireAuth, async (req, res) => {
-    try {
-      const { garageId, subscriberData } = req.body || {};
-      if (!garageId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const validatedGarageId = validateId(garageId, "garageId", true);
-      if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
-      const dates = validateDateRange(subscriberData.startDate, subscriberData.endDate);
-      const { costUnits: _costUnits, id: _id, createdAt: _createdAt, ...subscriberFields } = subscriberData;
-      const docRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc();
-      await docRef.set({
-        ...subscriberFields,
-        ...dates,
-        garageId: validatedGarageId,
-        id: docRef.id,
-        createdAt: /* @__PURE__ */ new Date()
-      });
-      return res.json({ success: true, id: docRef.id });
-    } catch (e2) {
-      console.error("[Server Subscribers] Error in add:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/subscribers/renew", requireAuth, async (req, res) => {
-    try {
-      const { garageId, subscriberId, newDates } = req.body || {};
-      if (!garageId || !subscriberId || !newDates || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const validatedGarageId = validateId(garageId, "garageId", true);
-      if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
-      const dates = validateDateRange(newDates.startDate, newDates.endDate);
-      await adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true)).update({
-        startDate: dates.startDate,
-        endDate: dates.endDate
-      });
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Subscribers] Error in renew:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/subscribers/update", requireAuth, async (req, res) => {
-    try {
-      const { garageId, subscriberId, subscriberData } = req.body || {};
-      if (!garageId || !subscriberId || !subscriberData || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const validatedGarageId = validateId(garageId, "garageId", true);
-      if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
-      const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true));
-      const currentSnap = await subscriberRef.get();
-      if (!currentSnap.exists) return res.status(404).json({ success: false, error: "SUBSCRIBER_NOT_FOUND" });
-      const mergedData = { ...currentSnap.data() || {}, ...subscriberData };
-      const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
-      const safeUpdates = { ...subscriberData, ...dates, garageId: validatedGarageId };
-      delete safeUpdates.id;
-      delete safeUpdates.createdAt;
-      delete safeUpdates.costUnits;
-      await subscriberRef.update(safeUpdates);
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Subscribers] Error in update:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/subscribers/delete", requireAuth, async (req, res) => {
-    try {
-      const { garageId, subscriberId } = req.body || {};
-      if (!garageId || !subscriberId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
-      const validatedGarageId = validateId(garageId, "garageId", true);
-      if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot manage subscribers for this garage" });
-      await adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, "subscriberId", true)).delete();
-      return res.json({ success: true });
-    } catch (e2) {
-      console.error("[Server Subscribers] Error in delete:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
-    }
-  });
-  app2.post("/api/recharge-requests/create", requireAuth, async (req, res) => {
+  app2.post("/api/recharge-requests/create", requireAuth, financialRateLimiter(), async (req, res) => {
     try {
       if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
       const callerRole = req.user?.role;
@@ -150263,38 +150747,70 @@ function createApp() {
         const canRequest = garageData.createdByDelegateId === delegateId || garageData.referrerId === delegateId;
         if (!canRequest) return res.status(403).json({ success: false, error: "GARAGE_SCOPE_MISMATCH" });
       }
-      const cleanData = sanitizePayload(req.body || {}, [
-        "requestType",
-        "garageId",
-        "garageName",
-        "delegateId",
-        "delegateName",
-        "packageId",
-        "packageName",
-        "amount",
-        "price",
-        "carsCount",
-        "revenueAmount",
-        "durationDays",
-        "dailyCapacity",
-        "originalRevenueAmount",
-        "couponCode",
-        "discountAmount",
-        "commission",
-        "referrerId",
-        "idempotencyKey"
-      ], false);
-      cleanData.garageId = garageId;
-      cleanData.createdByUid = req.user?.uid || null;
-      const docRef = await adminDb.collection("recharge_requests").add({
-        ...Object.fromEntries(Object.entries(cleanData).filter(([_, v]) => v !== void 0)),
-        status: "pending",
-        createdAt: /* @__PURE__ */ new Date()
+      const idempotencyKey = validateIdempotencyKey(
+        req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]
+      );
+      if (!idempotencyKey) {
+        return res.status(400).json({ success: false, error: "IDEMPOTENCY_KEY_REQUIRED" });
+      }
+      const requestType = req.body?.requestType === "balance_topup" ? "balance_topup" : "subscription";
+      const packageId = validateString(req.body?.packageId, "packageId", { required: false });
+      if (requestType !== "balance_topup" && !packageId) {
+        return res.status(400).json({ success: false, error: "PACKAGE_REQUIRED" });
+      }
+      const cleanData = {
+        requestType,
+        garageId,
+        packageId: packageId || null,
+        couponCode: validateString(req.body?.couponCode, "couponCode", { required: false }) || null,
+        createdByUid: req.user?.uid || null,
+        idempotencyKey
+      };
+      if (requestType === "balance_topup") {
+        const amount = validateNumber(req.body?.amount, "amount", { min: 1, max: 1e6, integerOnly: true });
+        cleanData.amount = amount;
+      }
+      const requestFingerprint = createRequestFingerprint({
+        requestType,
+        garageId,
+        packageId: packageId || null,
+        couponCode: cleanData.couponCode,
+        amount: cleanData.amount || null
       });
-      return res.json({ success: true, id: docRef.id });
+      let createdId = null;
+      await adminDb.runTransaction(async (t2) => {
+        const duplicate = await checkIdempotencyInTransaction(
+          t2,
+          idempotencyKey,
+          "/api/recharge-requests/create",
+          req.user?.uid,
+          requestFingerprint
+        );
+        if (duplicate.isDuplicate) {
+          createdId = duplicate.cachedResult?.id || null;
+          return;
+        }
+        const docRef = adminDb.collection("recharge_requests").doc();
+        createdId = docRef.id;
+        t2.set(docRef, {
+          ...cleanData,
+          status: "pending",
+          createdAt: /* @__PURE__ */ new Date()
+        });
+        storeIdempotencyInTransaction(
+          t2,
+          idempotencyKey,
+          { id: docRef.id },
+          "/api/recharge-requests/create",
+          req.user?.uid,
+          requestFingerprint
+        );
+      });
+      return res.json({ success: true, id: createdId });
     } catch (e2) {
       console.error("[Server RechargeRequests] Error in create:", e2);
-      return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
+      const { statusCode, message: message2 } = mapDomainErrorToStatus2(e2);
+      return res.status(statusCode).json({ success: false, error: message2 });
     }
   });
   app2.post("/api/activity-logs/add", requireAuth, async (_req, res) => {
