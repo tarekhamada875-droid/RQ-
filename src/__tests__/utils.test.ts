@@ -257,6 +257,16 @@ describe('getCleanPackageInfo', () => {
     const pkg30: any = { id: 'monthly_sub', name: 'باقة شهر (100 سيارة)', price: 750 };
     expect(getCleanPackageInfo(pkg30).durationDays).toBe(30);
   });
+
+  test('uses explicit dailyCapacity instead of inferring capacity from the name', () => {
+    const unlimited: any = { id: 'custom-unlimited', name: 'باقة مخصصة 40 سيارة', dailyCapacity: 0 };
+    const limited: any = { id: 'custom-limited', name: 'باقة مخصصة سعة مفتوحة', dailyCapacity: 70 };
+
+    expect(getCleanPackageInfo(unlimited).isUnlimited).toBe(true);
+    expect(getCleanPackageInfo(unlimited).dailyCapacity).toBeNull();
+    expect(getCleanPackageInfo(limited).isUnlimited).toBe(false);
+    expect(getCleanPackageInfo(limited).dailyCapacity).toBe(70);
+  });
 });
 
 describe('throttleSnapshot', () => {
