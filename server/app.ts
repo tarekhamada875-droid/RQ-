@@ -826,6 +826,67 @@ export function createApp() {
     }
   });
 
+  // Admin-only maintenance: invalidate every active login session without changing
+  // passwords, account records, vehicles, subscribers, balances, or subscriptions.
+  app.post('/api/auth/invalidate-all-sessions', requireAuth, async (req: AuthRequest, res: any) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
+      if (!adminDb) {
+        return res.status(503).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      }
+
+      const now = new Date();
+      const sessionCollections = [
+        { name: 'admin_sessions', entityCollection: 'admin_settings', fixedEntityId: 'auth_pin' },
+        { name: 'supervisor_sessions', entityCollection: 'supervisors' },
+        { name: 'delegate_sessions', entityCollection: 'delegates' },
+        { name: 'garage_sessions', entityCollection: 'garages' },
+        { name: 'staff_sessions', entityCollection: 'staff' }
+      ];
+
+      const snapshots = await Promise.all(sessionCollections.map((entry) => adminDb.collection(entry.name).get()));
+      let invalidatedSessions = 0;
+      let clearedEntityMarkers = 0;
+      let batch = adminDb.batch();
+      let batchWrites = 0;
+
+      const commitBatchIfNeeded = async (force = false) => {
+        if (batchWrites > 0 && (force || batchWrites >= 450)) {
+          await batch.commit();
+          batch = adminDb.batch();
+          batchWrites = 0;
+        }
+      };
+
+      for (let index = 0; index < sessionCollections.length; index += 1) {
+        const entry = sessionCollections[index];
+        for (const sessionDoc of snapshots[index].docs) {
+          const sessionData = sessionDoc.data() || {};
+          if (sessionData.isActive === true) invalidatedSessions += 1;
+          batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
+          batchWrites += 1;
+
+          const entityId = entry.fixedEntityId || sessionData.entityId;
+          if (entityId) {
+            const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
+            batch.set(entityRef, { currentSessionId: null, lastActive: now }, { merge: true });
+            batchWrites += 1;
+            clearedEntityMarkers += 1;
+          }
+          await commitBatchIfNeeded();
+        }
+      }
+
+      await commitBatchIfNeeded(true);
+      return res.json({ success: true, invalidatedSessions, clearedEntityMarkers });
+    } catch (e: any) {
+      console.error('[Server Auth] Error invalidating all sessions:', e);
+      return res.status(500).json({ success: false, error: 'SERVER_ERROR' });
+    }
+  });
+
   // Secure Server API: Release Admin Session (Backward compatibility)
   app.post('/api/auth/release-admin-session', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
