@@ -824,7 +824,8 @@ export const GarageDashboardView = memo((props: any) => {
                 const displayTodayCount = t.lastTransactionDate === todayStr ? (t.todayCount || 0) : 0;
                 const isDailyLimitReached = !isUnlimitedCapacity(t) && displayTodayCount >= getEffectiveDailyCapacity(t);
 
-                if (isDailyLimitReached || Ns) {
+                const isBalanceDepleted = Number(t.balance || 0) <= 0;
+                if (isBalanceDepleted || isDailyLimitReached || Ns) {
                   return (
                     <SmartActionPrompt
                       garage={t}
