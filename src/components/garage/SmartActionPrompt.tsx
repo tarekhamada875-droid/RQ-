@@ -18,6 +18,7 @@ interface SmartActionPromptProps {
   showToast?: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   isDailyLimitReached?: boolean;
   isExpired?: boolean;
+  packageDurationDays?: number;
   todayCount?: number;
   dailyCapacity?: number;
   onSubscribedSuccess?: (updatedGarageInfo?: any) => void;
@@ -31,6 +32,7 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
   showToast: _showToast,
   isDailyLimitReached = false,
   isExpired = false,
+  packageDurationDays = 30,
   todayCount = 0,
   dailyCapacity = 0,
   onSubscribedSuccess: _onSubscribedSuccess
@@ -130,8 +132,8 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
       <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight mb-2">
         {isBalanceDepleted
           ? 'الرصيد خلص'
-          : isExpired
-            ? 'باقة الجراج خلصت'
+            : isExpired
+            ? (packageDurationDays <= 2 ? 'انتهت الـ 24 ساعة' : 'باقة الجراج خلصت')
             : 'وصلت للحد الأقصى لسيارات النهاردة'}
       </h3>
 
