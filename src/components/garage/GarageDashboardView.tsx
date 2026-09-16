@@ -838,6 +838,7 @@ export const GarageDashboardView = memo((props: any) => {
                       showToast={V}
                       isDailyLimitReached={isDailyLimitReached}
                       isExpired={Ns}
+                      packageDurationDays={packageDays}
                       todayCount={displayTodayCount}
                       dailyCapacity={getEffectiveDailyCapacity(t)}
                     />
