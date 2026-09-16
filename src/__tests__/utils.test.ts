@@ -64,6 +64,12 @@ describe('isSubscriptionExpired', () => {
 });
 
 describe('getEffectiveDailyCapacity', () => {
+  test('uses the approved 100-car daily limit for trial garages', () => {
+    const garage = { isTrial: true, dailyCapacity: 0, activePackageName: 'الباقة التجريبية' };
+    expect(getEffectiveDailyCapacity(garage)).toBe(100);
+    expect(isUnlimitedCapacity(garage)).toBe(false);
+  });
+
   test('treats numeric zero capacity as unlimited regardless of package name', () => {
     const garage = { dailyCapacity: 0, activePackageName: 'باقة مخصصة' };
     expect(getEffectiveDailyCapacity(garage)).toBe(0);

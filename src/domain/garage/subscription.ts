@@ -125,8 +125,8 @@ export const isTrialActive = (garage: any): boolean => {
 export const getEffectiveDailyCapacity = (garage: any): number => {
   if (!garage) return 0;
   
-  // 1. Trial garages are unlimited
-  if (garage.isTrial === true) return 0;
+  // 1. Trial garages have the approved fixed 100-car daily capacity.
+  if (garage.isTrial === true) return 100;
 
   // 2. Check package name or activePackageName
   const pkgName = String(garage.activePackageName || garage.packageName || garage.lastPackageName || '');
