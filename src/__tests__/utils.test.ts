@@ -13,13 +13,27 @@ import {
 import { getCleanPackageInfo } from '../constants/packages';
 
 describe('getRemainingSubscriptionInfo', () => {
-  test('returns 1 day and isUrgentRed=false when 20 hours remain (e.g. 1-day package just charged)', () => {
+  test('returns 20 hours for a daily package with 20 hours remaining', () => {
     const future20Hours = new Date(Date.now() + 20 * 60 * 60 * 1000);
-    const info = getRemainingSubscriptionInfo({ balanceExpiry: future20Hours });
+    const info = getRemainingSubscriptionInfo({ balanceExpiry: future20Hours }, 1);
     expect(info.isUrgentRed).toBe(false);
-    expect(info.unit).toBe('days');
-    expect(info.displayCount).toBe(1);
+    expect(info.unit).toBe('hours');
+    expect(info.displayCount).toBe(20);
     expect(info.remainingHours).toBe(20);
+  });
+
+  test('switches a weekly package to hours during its final 24 hours', () => {
+    const future20Hours = new Date(Date.now() + 20 * 60 * 60 * 1000);
+    const info = getRemainingSubscriptionInfo({ balanceExpiry: future20Hours }, 7);
+    expect(info.unit).toBe('hours');
+    expect(info.displayCount).toBe(20);
+  });
+
+  test('keeps a weekly package in days while more than 24 hours remain', () => {
+    const future2Days = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    const info = getRemainingSubscriptionInfo({ balanceExpiry: future2Days }, 7);
+    expect(info.unit).toBe('days');
+    expect(info.displayCount).toBe(2);
   });
 
   test('returns hours and isUrgentRed=true when 5 hours remain', () => {
