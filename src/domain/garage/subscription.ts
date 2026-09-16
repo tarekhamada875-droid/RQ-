@@ -60,7 +60,7 @@ export interface RemainingSubscriptionInfo {
   displayCount: number;
 }
 
-export const getRemainingSubscriptionInfo = (garage: any): RemainingSubscriptionInfo => {
+export const getRemainingSubscriptionInfo = (garage: any, packageDurationDays = 30): RemainingSubscriptionInfo => {
   if (!garage) {
     return { days: 0, remainingHours: 0, remainingMs: 0, isUrgentRed: true, unit: 'days', displayCount: 0 };
   }
@@ -95,13 +95,17 @@ export const getRemainingSubscriptionInfo = (garage: any): RemainingSubscription
   const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
   const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
 
-  // If 5 hours or less remaining, trigger red state & countdown in hours
-  if (remainingHours <= 5) {
+  // Daily packages are 24-hour subscriptions. Multi-day packages switch to
+  // an hourly countdown during their final 24 hours so the display never
+  // says "1 day" while only a few hours remain.
+  const shouldShowHourlyCountdown = packageDurationDays <= 2 || remainingHours <= 24;
+
+  if (shouldShowHourlyCountdown) {
     return {
       days: remainingDays,
       remainingHours,
       remainingMs,
-      isUrgentRed: true,
+      isUrgentRed: remainingHours <= 5,
       unit: 'hours',
       displayCount: remainingHours
     };

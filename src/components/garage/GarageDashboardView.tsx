@@ -163,13 +163,13 @@ export const GarageDashboardView = memo((props: any) => {
       return packageIdToDays(t.activePackageId || t.packageId || '', t.activePackageName || t.packageName || t.lastPackageName || '');
     }, [t]),
     isDailyPackage = packageDays <= 2,
-    subInfo = useMemo(() => getRemainingSubscriptionInfo(t), [t, timeTicker]),
+    subInfo = useMemo(() => getRemainingSubscriptionInfo(t, packageDays), [t, packageDays, timeTicker]),
     at = useMemo(() => subInfo.days, [subInfo]),
     L = useMemo(() => at, [at]),
     isCountdownInHours = subInfo.unit === 'hours',
     countdownValue = subInfo.displayCount,
     isUrgentRed = subInfo.isUrgentRed,
-    We = isDailyPackage ? isUrgentRed : (L > 0 && L <= 3) || isUrgentRed,
+    We = isDailyPackage ? (isCountdownInHours && L === 1) : (L > 0 && L <= 3) || isUrgentRed,
     se = useMemo(
       () =>
         l.length > 0
