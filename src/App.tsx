@@ -426,9 +426,10 @@ export default function App() {
           >
             <div 
               onClick={() => setToast(null)}
-              className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"
+              role="alert"
+              className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"
             >
-              <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div 
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                     toast.type === 'error' 
@@ -442,8 +443,8 @@ export default function App() {
                     <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
                   )}
                 </div>
-                <div className="truncate text-right" dir="rtl">
-                  <p className="text-xs sm:text-sm font-bold text-slate-100 leading-snug truncate">
+                <div className="min-w-0 flex-1 text-center" dir="rtl">
+                  <p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">
                     {toast.message}
                   </p>
                 </div>
