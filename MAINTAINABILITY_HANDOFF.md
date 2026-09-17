@@ -37,7 +37,7 @@ The browser frontend is built with Vite and deployed to Cloudflare Pages at `htt
 
 ### M1 — Durable documentation and repository policy
 
-Status: **completed; commit pending**
+Status: **completed**
 
 - [x] Create this handoff file.
 - [x] Add a root README with setup, architecture, environment, commands, deployment, generated-file, security, and smoke-test guidance.
@@ -49,7 +49,7 @@ Validation completed: `npm test` passed 41 files and 248 tests; `npm run lint`, 
 
 ### M2 — Backend boundary refactor
 
-Status: **completed; commit pending**
+Status: **completed and production-verified**
 
 Extracted authentication and session routes from `server/app.ts` without changing route paths, middleware order, response contracts, CORS behavior, or authorization checks. Existing authentication and session tests remained the contract during the move.
 
@@ -67,7 +67,7 @@ Suggested target modules:
 
 Keep `server/app.ts` focused on application construction, middleware, route mounting, and global error handling.
 
-Validation completed: `npm run lint`, `npm test`, `npm run build`, `npm run maintainability:check`, and `git diff --check` passed. The generated `api/index.js` was regenerated with the refactor.
+Validation completed: `npm run lint`, `npm test`, `npm run build`, `npm run maintainability:check`, and `git diff --check` passed. The generated `api/index.js` was regenerated with the refactor. After commit `84c9e79` deployed, production smoke tests returned HTTP 200 for `/api/health`, HTTP 200 for `/api/system-config`, and HTTP 401 JSON for `/api/auth/verify-pin` without a Firebase token.
 
 ### M3 — UI component boundary refactor
 
@@ -153,11 +153,12 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 ### 2026-09-17 — M2 authentication/session extraction
 
 - Moved `/api/auth/*` handlers into `server/routes/auth.ts`.
-- Mounted the extracted router with `app.use('/api', authRouter)` so all production paths remain unchanged.
+- Mounted the extracted router at `/` so the handlers' existing full `/api/auth/*` paths remain unchanged.
 - Reduced `server/app.ts` from 1,669 to 887 lines.
 - Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
 - The generated `api/index.js` changed as expected and remains tracked for Vercel discovery.
-- A post-push smoke check briefly exposed that mounting under `/api` duplicated the full handler paths. The mount was corrected to `/`; local validation passed and live verification is pending the new Vercel deployment.
+- A post-push smoke check briefly exposed that mounting under `/api` duplicated the full handler paths. Commit `84c9e79` corrected the mount to `/` and deployed successfully.
+- Live verification passed: `/api/health` returned HTTP 200 and reported SHA `84c9e798f717bc98441fb49ee7360415c7272264`; `/api/system-config` returned HTTP 200 JSON; `/api/auth/verify-pin` returned the expected HTTP 401 JSON without a Firebase token.
 - Next milestone is M3: split the largest dashboard components by responsibility while preserving UI behavior.
 
 ### 2026-09-17 — M3 first garage dashboard split
