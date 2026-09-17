@@ -11,7 +11,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
 
       if (urlStr.includes('/api/auth/check-pin-availability')) {
         // Mock existing PINs in the system
-        if (body.pin === '888888') {
+        if (body.pin === '88888888') {
           return {
             ok: true,
             status: 200,
@@ -23,7 +23,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
           } as any;
         }
 
-        if (body.pin === '112233') {
+        if (body.pin === '11223344') {
           return {
             ok: true,
             status: 200,
@@ -46,7 +46,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
       }
 
       if (urlStr.includes('/api/garages/create')) {
-        if (body.pin === '888888' || body.pin === '112233') {
+        if (body.pin === '88888888' || body.pin === '11223344') {
           return {
             ok: false,
             status: 400,
@@ -77,18 +77,18 @@ describe('Garage Creation PIN Availability & Validation', () => {
   });
 
   test('allows newly generated unique PIN and confirms availability', async () => {
-    const uniquePin = '592814';
+    const uniquePin = '59281467';
     const check = await firestoreService.isPinTaken(uniquePin);
     expect(check.taken).toBe(false);
   });
 
   test('detects already taken PIN correctly with role information', async () => {
-    const adminPin = '888888';
+    const adminPin = '88888888';
     const checkAdmin = await firestoreService.isPinTaken(adminPin);
     expect(checkAdmin.taken).toBe(true);
     expect(checkAdmin.role).toContain('الآدمن');
 
-    const garagePin = '112233';
+    const garagePin = '11223344';
     const checkGarage = await firestoreService.isPinTaken(garagePin);
     expect(checkGarage.taken).toBe(true);
     expect(checkGarage.name).toBe('جراج التحرير');
@@ -100,7 +100,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
       phone: '01099999999',
       hourlyRate: 15,
       overnightRate: 50,
-      pin: '592814',
+      pin: '59281467',
       isTrial: true
     });
 
@@ -111,10 +111,10 @@ describe('Garage Creation PIN Availability & Validation', () => {
   test('rejects garage creation when PIN is already taken', async () => {
     const result = await firestoreService.createGarage({
       name: 'جراج مكرر',
-      phone: '01088888888',
+      phone: '0108888888888',
       hourlyRate: 15,
       overnightRate: 50,
-      pin: '112233',
+      pin: '11223344',
       isTrial: true
     });
 

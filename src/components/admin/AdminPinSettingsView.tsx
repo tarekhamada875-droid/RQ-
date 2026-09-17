@@ -29,7 +29,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     setAdminPinError('');
     setAdminPinSuccess('');
 
-    const attempt = normalizeDigits(currentPinAttempt);
+    const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (attempt.length < 4) {
       setAdminPinError('أدخل رمز الدخول الحالي للمتابعة.');
@@ -59,11 +59,11 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     setAdminPinError('');
     setAdminPinSuccess('');
 
-    const newPin = normalizeDigits(newAdminPinValue);
-    const attempt = normalizeDigits(currentPinAttempt);
+    const newPin = normalizeDigits(newAdminPinValue).replace(/\D/g, '');
+    const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
-    if (newPin.length < 4 || newPin.length > 6) {
-      setAdminPinError('رمز الدخول الجديد يجب أن يتكون من 4 إلى 6 أرقام.');
+    if (!/^\d{8}$/.test(newPin)) {
+      setAdminPinError('رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.');
       return;
     }
 
@@ -130,7 +130,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     const val = e.target.value.replace(/\D/g, '');
                     setCurrentPinAttempt(val);
                   }}
-                  maxLength={6}
+                  maxLength={10}
                   aria-label="رمز الدخول الحالي"
                   required
                   placeholder="••••"
@@ -185,7 +185,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 {t('رمز دخول الآدمن')}
               </h2>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-                {t('أدخل رمز دخول جديداً (من 4 إلى 6 أرقام)')}
+                {t('أدخل رمز دخول جديداً (8 أرقام)')}
               </p>
             </div>
 
@@ -200,11 +200,11 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     const val = e.target.value.replace(/\D/g, '');
                     setNewAdminPinValue(val);
                   }}
-                  maxLength={6}
-                  minLength={6}
+                  maxLength={8}
+                  minLength={8}
                   aria-label="رمز الدخول الجديد"
                   required
-                  placeholder="••••••"
+                  placeholder="••••••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.5em] font-mono"
                   autoFocus
                 />

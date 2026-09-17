@@ -305,21 +305,21 @@ export const getStorage = <T>(key: string, defaultValue: T): T => {
   }
 };
 
+export const NEW_PIN_LENGTH = 8;
+
 /**
- * Generates a safe 6-digit PIN that isn't easily guessable and is unique against a provided set of PINs.
+ * Generates an eight-digit PIN that is unique against the provided local set.
+ * The server remains authoritative for global uniqueness.
  */
 export const generateSafePin = (existingPins: Set<string> | string[] = new Set()): string => {
   const pins = existingPins instanceof Set ? existingPins : new Set(existingPins);
   const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  
   let pin = '';
   let attempts = 0;
-  
   while (attempts < 100) {
-    // Fisher-Yates partial sampling of 6 digits in O(6)
     const pool = [...digits];
     let candidate = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < NEW_PIN_LENGTH; i++) {
       const idx = i + Math.floor(Math.random() * (pool.length - i));
       const temp = pool[i];
       pool[i] = pool[idx];
@@ -332,15 +332,11 @@ export const generateSafePin = (existingPins: Set<string> | string[] = new Set()
     }
     attempts++;
   }
-  
-  // Fallback if loop finishes without finding unique or for simpler logic
   if (!pin) {
-    pin = Math.floor(100000 + Math.random() * 900000).toString();
+    pin = Math.floor(10000000 + Math.random() * 90000000).toString();
   }
-  
   return pin;
 };
-
 /**
  * Resolves the application shimmer accent color, always returning Amber Gold (#f59e0b).
  */
@@ -642,7 +638,7 @@ export const formatDisplayPin = (pin: string | undefined | null): string => {
   if (!pin) return '—';
   const str = String(pin).trim();
   if (isHashedPin(str)) {
-    return '•••••• (مشفر)';
+    return '•••••••• (مشفر)';
   }
   return str;
 };

@@ -36,6 +36,8 @@ import {
   validateNumber,
   validateString,
   validateIdempotencyKey,
+  validateNewPin,
+  isNewPinFormat,
   ValidationError
 } from './validation';
 import {
@@ -262,7 +264,7 @@ export function createApp() {
       // 1. Single Input PIN Verification (Canonical Path)
       if (rawInput) {
         const normInputPin = cleanPin(rawInput);
-        if (!normInputPin) {
+        if (!isNewPinFormat(normInputPin)) {
           return res.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
         }
 
@@ -273,8 +275,19 @@ export function createApp() {
           isLegacyMatch?: boolean;
         }> = [];
 
-        // Check Admin PIN
-        let adminPinStored = await getAdminPin();
+        // Role routing is defined by server-owned collections, never by a
+        // client-supplied role. Independent private_pins lookups run in parallel.
+        const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
+          { name: 'garages', role: 'garage' },
+          { name: 'staff', role: 'staff' },
+          { name: 'delegates', role: 'delegate' },
+          { name: 'supervisors', role: 'supervisor' }
+        ];
+        const [adminPinStored, ...collectionResults] = await Promise.all([
+          getAdminPin(),
+          ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normInputPin))
+        ]);
+
         const adminCheck = verifyPinMatch(normInputPin, adminPinStored);
         if (adminCheck.matches) {
           matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
@@ -283,37 +296,26 @@ export function createApp() {
           }
         }
 
-        // Search collections
-        const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
-          { name: 'garages', role: 'garage' },
-          { name: 'staff', role: 'staff' },
-          { name: 'delegates', role: 'delegate' },
-          { name: 'supervisors', role: 'supervisor' }
-        ];
-
-        for (const coll of collectionsToCheck) {
-          try {
-            const docs = await queryAccountWherePin(coll.name, normInputPin);
-            for (const docSnap of docs) {
-              const data = { ...docSnap.data };
-              if (docSnap.isLegacyMatch) {
-                migratePinToHash(coll.name, docSnap.id, normInputPin);
-              }
-              // Sanitize: never return plaintext PIN, legacy hash, or lookup hash to client
-              delete data.pin;
-              delete data.ownerPin;
-              delete data.adminPin;
-              delete data.pinLookupHash;
-
-              matches.push({
-                role: coll.role,
-                id: docSnap.id,
-                account: { id: docSnap.id, ...data },
-                isLegacyMatch: docSnap.isLegacyMatch
-              });
+        for (let index = 0; index < collectionsToCheck.length; index += 1) {
+          const coll = collectionsToCheck[index];
+          const docs = collectionResults[index] || [];
+          for (const docSnap of docs) {
+            const data = { ...docSnap.data };
+            if (docSnap.isLegacyMatch) {
+              migratePinToHash(coll.name, docSnap.id, normInputPin);
             }
-          } catch (e) {
-            console.error(`[Server Auth] Query error in ${coll.name}:`, e);
+            // Sanitize: never return plaintext PIN, legacy hash, or lookup hash to client
+            delete data.pin;
+            delete data.ownerPin;
+            delete data.adminPin;
+            delete data.pinLookupHash;
+
+            matches.push({
+              role: coll.role,
+              id: docSnap.id,
+              account: { id: docSnap.id, ...data },
+              isLegacyMatch: docSnap.isLegacyMatch
+            });
           }
         }
 
@@ -939,10 +941,7 @@ export function createApp() {
       }
 
       const { currentPin, newPin } = req.body || {};
-      const normNewPin = cleanPin(newPin);
-      if (!normNewPin || normNewPin.length < 4 || normNewPin.length > 6) {
-        return res.status(400).json({ success: false, error: 'INVALID_NEW_PIN: PIN must be 4 to 6 digits' });
-      }
+      const normNewPin = validateNewPin(newPin, 'newPin');
 
       // Current PIN is mandatory — verifying it is the entire point of this
       // endpoint being separate from an admin-initiated reset. Do not make this
@@ -989,6 +988,9 @@ export function createApp() {
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server Admin] Error in update-pin:', e);
+      if (e instanceof ValidationError) {
+        return res.status(e.statusCode).json({ success: false, error: `INVALID_NEW_PIN: ${e.message}` });
+      }
       return res.status(500).json({ success: false, error: 'SERVER_ERROR' });
     }
   });
@@ -1149,10 +1151,7 @@ export function createApp() {
       }
       const { name, phone, pin, permissions } = req.body || {};
       const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-      const normPin = cleanPin(pin);
-      if (!normPin || normPin.length < 4 || normPin.length > 10) {
-        return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
-      }
+      const normPin = validateNewPin(pin);
 
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -1182,6 +1181,9 @@ export function createApp() {
       return res.json({ success: true, id: supId });
     } catch (e: any) {
       console.error('[Server Supervisor] Error in create:', e);
+      if (e instanceof ValidationError) {
+        return res.status(e.statusCode).json({ success: false, error: `INVALID_PIN: ${e.message}` });
+      }
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
     }
   });
@@ -1198,10 +1200,7 @@ export function createApp() {
       }
 
       const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-      const normPin = cleanPin(pin);
-      if (!normPin || normPin.length < 4 || normPin.length > 10) {
-        return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
-      }
+      const normPin = validateNewPin(pin);
 
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -1233,6 +1232,9 @@ export function createApp() {
       return res.json({ success: true, id: staffId });
     } catch (e: any) {
       console.error('[Server Staff] Error in create:', e);
+      if (e instanceof ValidationError) {
+        return res.status(e.statusCode).json({ success: false, error: `INVALID_PIN: ${e.message}` });
+      }
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
     }
   });
@@ -1245,10 +1247,7 @@ export function createApp() {
         return res.status(400).json({ success: false, error: 'INVALID_ENTITY_TYPE' });
       }
 
-      const normNewPin = cleanPin(newPin);
-      if (!normNewPin || (entityType === 'garages' ? !/^\d{6}$/.test(normNewPin) : normNewPin.length < 4 || normNewPin.length > 10)) {
-        return res.status(400).json({ success: false, error: entityType === 'garages' ? 'INVALID_NEW_PIN: Garage PIN must be exactly 6 digits' : 'INVALID_NEW_PIN: PIN must be 4 to 10 digits' });
-      }
+      const normNewPin = validateNewPin(newPin, 'newPin');
 
       if (!adminDb) {
         return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -1301,6 +1300,9 @@ export function createApp() {
       return res.json({ success: true });
     } catch (e: any) {
       console.error('[Server People] Error in update-pin:', e);
+      if (e instanceof ValidationError) {
+        return res.status(e.statusCode).json({ success: false, error: `INVALID_NEW_PIN: ${e.message}` });
+      }
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
     }
   });

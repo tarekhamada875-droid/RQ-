@@ -19,6 +19,46 @@ export class ValidationError extends Error {
   }
 }
 
+export const NEW_PIN_LENGTH = 8;
+
+/**
+ * Validates PINs written by current create/change flows. Login intentionally
+ * does not use this helper so isolated legacy credentials remain usable while
+ * they are migrated after successful verification.
+ */
+export function validateNewPin(val: any, fieldName = 'PIN'): string {
+  if (val === undefined || val === null) {
+    throw new ValidationError(`${fieldName} is required`, 'INVALID_PIN', 400);
+  }
+
+  const normalized = String(val)
+    .trim()
+    .replace(/[٠۰]/g, '0')
+    .replace(/[١۱]/g, '1')
+    .replace(/[٢۲]/g, '2')
+    .replace(/[٣۳]/g, '3')
+    .replace(/[٤۴]/g, '4')
+    .replace(/[٥۵]/g, '5')
+    .replace(/[٦۶]/g, '6')
+    .replace(/[٧۷]/g, '7')
+    .replace(/[٨۸]/g, '8')
+    .replace(/[٩۹]/g, '9');
+
+  if (!new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(normalized)) {
+    throw new ValidationError(
+      `${fieldName} must be exactly ${NEW_PIN_LENGTH} digits`,
+      'INVALID_PIN',
+      400
+    );
+  }
+
+  return normalized;
+}
+
+export function isNewPinFormat(val: string): boolean {
+  return new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(val);
+}
+
 /**
  * Validates and sanitizes a string ID (e.g. garageId, packageId, vehicleId, reqId)
  */

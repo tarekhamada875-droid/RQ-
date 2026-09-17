@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
 import { recordDomainEventInTransaction } from '../events';
-import { saveEntityPin, cleanPin, checkPinAvailabilityAcrossAll } from '../utils';
-import { validateString } from '../validation';
+import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
+import { validateString, validateNewPin, ValidationError } from '../validation';
 
 const router = Router();
 
@@ -16,10 +16,7 @@ router.post('/create', requireAuth, async (req: AuthRequest, res: any) => {
     const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = req.body || {};
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPhone = phone ? String(phone).trim() : '';
-    const normPin = cleanPin(pin);
-    if (!normPin || normPin.length < 4 || normPin.length > 10) {
-      return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be 4-10 digits' });
-    }
+    const normPin = validateNewPin(pin);
 
     if (!adminDb) {
       return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -53,6 +50,9 @@ router.post('/create', requireAuth, async (req: AuthRequest, res: any) => {
     return res.json({ success: true, id: delId });
   } catch (e: any) {
     console.error('[Server Delegate] Error in create:', e);
+    if (e instanceof ValidationError) {
+      return res.status(e.statusCode).json({ success: false, error: `INVALID_PIN: ${e.message}` });
+    }
     return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
   }
 });

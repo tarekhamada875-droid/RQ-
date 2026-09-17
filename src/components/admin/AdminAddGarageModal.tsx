@@ -82,12 +82,12 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   const sanitizeNumeric = (val: string) => normalizeDigits(val).replace(/\D/g, '');
 
   return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 dark:bg-slate-950/85 backdrop-blur-sm overflow-y-auto" 
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 dark:bg-slate-950/85 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
-      <div 
-        className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl transition-colors" 
+      <div
+        className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl relative z-10 my-auto overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl transition-colors"
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
@@ -102,7 +102,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">{t('تسجيل جراج جديد وتحديد التعريفة')}</span>
             </div>
           </h3>
-          <button 
+          <button
             type="button"
             onClick={onClose}
             className="w-10 h-10 bg-red-500 dark:bg-red-600 text-white rounded-xl flex shrink-0 items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none cursor-pointer"
@@ -110,7 +110,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <div className="p-5 sm:p-8 max-h-[80vh] max-h-[80dvh] overflow-y-auto custom-scrollbar-slate">
           <div className="transition-colors">
             {errorMessage && (
@@ -118,12 +118,16 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 {errorMessage}
               </div>
             )}
-            <form 
+            <form
               onSubmit={async (e) => {
                 e.preventDefault();
                 setErrorMessage(null);
                 const hourlyNum = Number(localForm.hourlyRate) || 0;
                 const overnightNum = Number(localForm.overnightRate) || 0;
+                if (!/^\d{8}$/.test(localPin)) {
+                  setErrorMessage('رمز الدخول يجب أن يكون 8 أرقام');
+                  return;
+                }
                 if (hourlyNum <= 0 && overnightNum <= 0) {
                   setErrorMessage('يجب إدخال سعر الساعة أو سعر المبيت على الأقل');
                   return;
@@ -131,11 +135,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 setGarageForm(localForm);
                 setPinInput(localPin);
                 await onSubmit(e);
-                const emptyForm = { 
-                  name: '', 
-                  hourlyRate: '', 
-                  overnightRate: '', 
-                  phone: '', 
+                const emptyForm = {
+                  name: '',
+                  hourlyRate: '',
+                  overnightRate: '',
+                  phone: '',
                   isTrial: false,
                   ownerPin: ''
                 };
@@ -148,13 +152,13 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             >
               <div className="space-y-2 text-center">
                 <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('اسم الجراج')}</label>
-                <input 
-                  name="name" 
-                  placeholder={t('اسم الجراج...')} 
+                <input
+                  name="name"
+                  placeholder={t('اسم الجراج...')}
                   value={localForm.name}
                   onChange={(e) => setLocalForm(prev => ({ ...prev, name: e.target.value }))}
-                  required 
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none text-lg transition-all" 
+                  required
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none text-lg transition-all"
                 />
               </div>
 
@@ -162,17 +166,17 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 <div className="space-y-2 text-center">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر الساعة')}</label>
                   <div className="relative">
-                    <input 
-                      name="hourlyRate" 
-                      type="text" 
-                      inputMode="numeric" 
-                      placeholder="10" 
+                    <input
+                      name="hourlyRate"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="10"
                       value={localForm.hourlyRate}
                       onChange={(e) => {
                         const val = sanitizeNumeric(e.target.value);
                         setLocalForm(prev => ({ ...prev, hourlyRate: val }));
                       }}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all" 
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all"
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م')}</span>
                   </div>
@@ -180,17 +184,17 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 <div className="space-y-2 text-center">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر المبيت')}</label>
                   <div className="relative">
-                    <input 
-                      name="overnightRate" 
-                      type="text" 
-                      inputMode="numeric" 
-                      placeholder="50" 
+                    <input
+                      name="overnightRate"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="50"
                       value={localForm.overnightRate}
                       onChange={(e) => {
                         const val = sanitizeNumeric(e.target.value);
                         setLocalForm(prev => ({ ...prev, overnightRate: val }));
                       }}
-                      className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all" 
+                      className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono text-xl transition-all"
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م')}</span>
                   </div>
@@ -200,12 +204,12 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <input type="hidden" name="billingModel" value="subscription" />
 
               {/* Free Trial Toggle */}
-              <div 
+              <div
                 id="trial-toggle-container"
                 onClick={() => setLocalForm(prev => ({ ...prev, isTrial: !prev.isTrial }))}
                 className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none ${
-                  localForm.isTrial 
-                    ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/50 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/5' 
+                  localForm.isTrial
+                    ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/50 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/5'
                     : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
@@ -222,12 +226,12 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   </span>
                 </div>
 
-                <div 
+                <div
                   className="relative shrink-0"
                   onClick={(e) => e.stopPropagation()}
                   dir="ltr"
                 >
-                  <input 
+                  <input
                     type="checkbox"
                     id="admin-trial-checkbox"
                     name="isTrial"
@@ -237,7 +241,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   />
                   <input type="hidden" name="isTrial" value={localForm.isTrial ? 'true' : 'false'} />
                   <input type="hidden" name="trialDays" value={trialDays} />
-                  
+
                   <button
                     type="button"
                     role="switch"
@@ -247,7 +251,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                       localForm.isTrial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
                     }`}
                   >
-                    <span 
+                    <span
                       className={`inline-block w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
                         localForm.isTrial ? 'translate-x-5' : 'translate-x-0'
                       }`}
@@ -259,35 +263,37 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رقم الموبايل (اختياري)')}</label>
-                  <input 
-                    name="phone" 
-                    placeholder="01xxxxxxxxx" 
+                  <input
+                    name="phone"
+                    placeholder="01xxxxxxxxx"
                     value={localForm.phone}
                     onChange={(e) => {
                       const val = sanitizeNumeric(e.target.value);
                       setLocalForm(prev => ({ ...prev, phone: val }));
                     }}
-                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider text-center transition-all" 
-                    dir="ltr" 
+                    className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider text-center transition-all"
+                    dir="ltr"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رمز الدخول (PIN)')}</label>
                   <div className="relative">
-                    <input 
-                      name="pin" 
+                    <input
+                      name="pin"
                       type="tel"
                       inputMode="numeric"
                       value={localPin}
                       onChange={(e) => {
-                        const val = sanitizeNumeric(e.target.value).slice(0, 6);
+                        const val = sanitizeNumeric(e.target.value).slice(0, 8);
                         setLocalPin(val);
                       }}
-                      placeholder="123456" 
-                      maxLength={6}
-                      required 
-                      className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.5em] text-center transition-all pl-14" 
-                      dir="ltr" 
+                      placeholder="12345678"
+                      minLength={8}
+                      maxLength={8}
+                      pattern="[0-9]{8}"
+                      required
+                      className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.5em] text-center transition-all pl-14"
+                      dir="ltr"
                     />
                     <button
                       type="button"
@@ -324,8 +330,8 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 </select>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
                 className="w-full bg-slate-900 dark:bg-emerald-600 text-white py-5 rounded-xl font-bold text-lg hover:bg-slate-800 dark:hover:bg-emerald-700 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 mt-4 uppercase tracking-widest transition-all duration-150 outline-none cursor-pointer shadow-sm"
               >

@@ -4,14 +4,14 @@
  */
 
 import React, { useState, useEffect, memo } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Shield, 
-  RefreshCw, 
-  Trash2, 
-  Check, 
-  Loader2, 
+import {
+  Users,
+  Plus,
+  Shield,
+  RefreshCw,
+  Trash2,
+  Check,
+  Loader2,
   Briefcase
 } from 'lucide-react';
 import { Delegate, Supervisor, Garage } from '../../types';
@@ -68,7 +68,11 @@ export const AdminPeopleView = memo(({
     const cleanName = (delegateForm.name || '').trim();
     const cleanPhone = normalizeDigits(delegateForm.phone || '').trim();
     const cleanPin = normalizeDigits(delegateForm.pin || '').replace(/\D/g, '');
-    if (!cleanName || !cleanPhone || !cleanPin) return;
+    if (!cleanName || !cleanPhone) return;
+    if (!/^\d{8}$/.test(cleanPin)) {
+      setDelegatePinError(adminLang === 'en' ? 'PIN must be exactly 8 digits.' : 'رمز الدخول يجب أن يكون 8 أرقام بالضبط.');
+      return;
+    }
 
     setIsSubmittingDelegate(true);
     try {
@@ -103,7 +107,11 @@ export const AdminPeopleView = memo(({
     const cleanName = (supervisorForm.name || '').trim();
     const cleanPhone = normalizeDigits(supervisorForm.phone || '').trim();
     const cleanPin = normalizeDigits(supervisorForm.pin || '').replace(/\D/g, '');
-    if (!cleanName || !cleanPhone || !cleanPin) return;
+    if (!cleanName || !cleanPhone) return;
+    if (!/^\d{8}$/.test(cleanPin)) {
+      setSupervisorPinError(adminLang === 'en' ? 'PIN must be exactly 8 digits.' : 'رمز الدخول يجب أن يكون 8 أرقام بالضبط.');
+      return;
+    }
 
     setIsSubmittingSupervisor(true);
     try {
@@ -192,38 +200,40 @@ export const AdminPeopleView = memo(({
               <form onSubmit={handleCreateDelegate} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('اسم المندوب')}</label>
-                  <input 
+                  <input
                     value={delegateForm.name}
                     onChange={(e) => setDelegateForm({ ...delegateForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                    placeholder={t('الاسم الثلاثي...')} 
-                    required 
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all" 
+                    placeholder={t('الاسم الثلاثي...')}
+                    required
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رقم الموبايل')}</label>
-                  <input 
+                  <input
                     value={delegateForm.phone}
                     onChange={(e) => setDelegateForm({ ...delegateForm, phone: e.target.value.replace(/\D/g, '') })}
-                    placeholder="01xxxxxxxxx" 
-                    required 
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all" 
+                    placeholder="01xxxxxxxxx"
+                    required
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رمز الدخول (6 أرقام)')}</label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رمز الدخول (8 أرقام)')}</label>
                   <div className="relative">
-                    <input 
+                    <input
                       type="tel"
                       inputMode="numeric"
                       value={delegateForm.pin}
-                      onChange={(e) => setDelegateForm({ ...delegateForm, pin: e.target.value.replace(/\D/g, '') })}
-                      placeholder="••••••" 
-                      maxLength={6}
-                      required 
-                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center tracking-[0.3em] transition-all px-10" 
+                      onChange={(e) => setDelegateForm({ ...delegateForm, pin: normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8) })}
+                      placeholder="••••••••"
+                      minLength={8}
+                      maxLength={8}
+                      pattern="[0-9]{8}"
+                      required
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center tracking-[0.3em] transition-all px-10"
                     />
                     <button
                       type="button"
@@ -243,8 +253,8 @@ export const AdminPeopleView = memo(({
                   type="button"
                   onClick={() => setDelegateForm({ ...delegateForm, canCreateGarage: !delegateForm.canCreateGarage })}
                   className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                    delegateForm.canCreateGarage 
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 text-emerald-700 dark:text-emerald-400' 
+                    delegateForm.canCreateGarage
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 text-emerald-700 dark:text-emerald-400'
                       : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500'
                   }`}
                 >
@@ -254,8 +264,8 @@ export const AdminPeopleView = memo(({
                   </div>
                 </button>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmittingDelegate}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-3.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
                 >
@@ -290,8 +300,8 @@ export const AdminPeopleView = memo(({
                     const isDelegateActive = d.isActive !== false;
 
                     return (
-                      <div 
-                        key={d.id} 
+                      <div
+                        key={d.id}
                         className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl flex flex-col justify-between h-32 transition-all shadow-xs text-right"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -304,7 +314,7 @@ export const AdminPeopleView = memo(({
                             </h4>
                           </div>
                         </div>
-                        
+
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-1 text-[11px]">
                           <div className="flex items-center justify-between">
                             <span className="text-slate-500 dark:text-slate-400 font-bold">{t('الحالة:')}</span>
@@ -324,8 +334,8 @@ export const AdminPeopleView = memo(({
                   }
 
                   return (
-                    <div 
-                      key={d.id} 
+                    <div
+                      key={d.id}
                       onClick={() => onSelectDelegate(d)}
                       className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl hover:border-emerald-500 cursor-pointer group flex flex-col justify-between h-36 transition-all shadow-xs"
                     >
@@ -342,7 +352,7 @@ export const AdminPeopleView = memo(({
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-1 font-mono">
                           <span className="text-slate-400">{t('PIN:')}</span>
@@ -383,38 +393,40 @@ export const AdminPeopleView = memo(({
               <form onSubmit={handleCreateSupervisor} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('اسم المشرف')}</label>
-                  <input 
+                  <input
                     value={supervisorForm.name}
                     onChange={(e) => setSupervisorForm({ ...supervisorForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                    placeholder={t('الاسم...')} 
-                    required 
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500 transition-all" 
+                    placeholder={t('الاسم...')}
+                    required
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رقم الموبايل')}</label>
-                  <input 
+                  <input
                     value={supervisorForm.phone}
                     onChange={(e) => setSupervisorForm({ ...supervisorForm, phone: e.target.value.replace(/\D/g, '') })}
-                    placeholder="01xxxxxxxxx" 
-                    required 
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500 transition-all" 
+                    placeholder="01xxxxxxxxx"
+                    required
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500 transition-all"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رمز الدخول (6 أرقام)')}</label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('رمز الدخول (8 أرقام)')}</label>
                   <div className="relative">
-                    <input 
+                    <input
                       type="tel"
                       inputMode="numeric"
                       value={supervisorForm.pin}
-                      onChange={(e) => setSupervisorForm({ ...supervisorForm, pin: e.target.value.replace(/\D/g, '') })}
-                      placeholder="••••••" 
-                      maxLength={6}
-                      required 
-                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-purple-500 text-center tracking-[0.3em] transition-all px-10" 
+                      onChange={(e) => setSupervisorForm({ ...supervisorForm, pin: normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8) })}
+                      placeholder="••••••••"
+                      minLength={8}
+                      maxLength={8}
+                      pattern="[0-9]{8}"
+                      required
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-purple-500 text-center tracking-[0.3em] transition-all px-10"
                     />
                     <button
                       type="button"
@@ -430,8 +442,8 @@ export const AdminPeopleView = memo(({
                   )}
                 </div>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmittingSupervisor}
                   className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white py-3.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
                 >
@@ -461,8 +473,8 @@ export const AdminPeopleView = memo(({
 
               <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {supervisors.map((s) => (
-                  <div 
-                    key={s.id} 
+                  <div
+                    key={s.id}
                     className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl flex flex-col justify-between h-36"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -493,14 +505,19 @@ export const AdminPeopleView = memo(({
                             type="tel"
                             inputMode="numeric"
                             value={editingSupervisorPinValue}
-                            maxLength={6}
-                            onChange={(e) => setEditingSupervisorPinValue(e.target.value.replace(/\D/g, ''))}
+                            minLength={8}
+                            maxLength={8}
+                            pattern="[0-9]{8}"
+                            onChange={(e) => setEditingSupervisorPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8))}
                             className="w-14 text-center font-mono font-black text-[10px] bg-white dark:bg-slate-900 border rounded px-1"
                             autoFocus
                           />
                           <button
                             onClick={async () => {
-                              if (editingSupervisorPinValue.length < 4) return;
+                              if (!/^\d{8}$/.test(editingSupervisorPinValue)) {
+                                alert(adminLang === 'en' ? 'PIN must be exactly 8 digits.' : 'رمز الدخول يجب أن يكون 8 أرقام بالضبط.');
+                                return;
+                              }
                               setIsUpdatingSupervisorPin(true);
                               try {
                                 const cleanPin = editingSupervisorPinValue.trim();
@@ -560,8 +577,8 @@ export const AdminPeopleView = memo(({
       <AdminConfirmDialog
         isOpen={!!supervisorToDelete}
         title={adminLang === 'en' ? 'Delete Supervisor' : t('حذف المشرف')}
-        message={adminLang === 'en' 
-          ? `Are you sure you want to delete supervisor "${supervisorToDelete?.name}"?` 
+        message={adminLang === 'en'
+          ? `Are you sure you want to delete supervisor "${supervisorToDelete?.name}"?`
           : `${t('هل أنت متأكد من حذف المشرف')} "${supervisorToDelete?.name}"؟`}
         type="danger"
         confirmText={adminLang === 'en' ? 'Delete' : t('حذف')}

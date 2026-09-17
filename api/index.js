@@ -146688,6 +146688,24 @@ var ValidationError = class extends Error {
     this.statusCode = statusCode;
   }
 };
+var NEW_PIN_LENGTH = 8;
+function validateNewPin(val, fieldName = "PIN") {
+  if (val === void 0 || val === null) {
+    throw new ValidationError(`${fieldName} is required`, "INVALID_PIN", 400);
+  }
+  const normalized = String(val).trim().replace(/[٠۰]/g, "0").replace(/[١۱]/g, "1").replace(/[٢۲]/g, "2").replace(/[٣۳]/g, "3").replace(/[٤۴]/g, "4").replace(/[٥۵]/g, "5").replace(/[٦۶]/g, "6").replace(/[٧۷]/g, "7").replace(/[٨۸]/g, "8").replace(/[٩۹]/g, "9");
+  if (!new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(normalized)) {
+    throw new ValidationError(
+      `${fieldName} must be exactly ${NEW_PIN_LENGTH} digits`,
+      "INVALID_PIN",
+      400
+    );
+  }
+  return normalized;
+}
+function isNewPinFormat(val) {
+  return new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(val);
+}
 function validateId(val, fieldName = "ID", required = true) {
   if (val === void 0 || val === null || val === "") {
     if (required) {
@@ -147229,7 +147247,8 @@ var evaluateFairUseCheckIn = (currentFairUse, durationDays = 30, packageName = "
     threshold: Number(currentFairUse?.threshold || config.threshold),
     extensionsCount: Math.max(0, Number(currentFairUse?.extensionsCount || 0)),
     isNearMaxLimit: Boolean(currentFairUse?.isNearMaxLimit),
-    isMaxLimitReached: Boolean(currentFairUse?.isMaxLimitReached)
+    isMaxLimitReached: Boolean(currentFairUse?.isMaxLimitReached),
+    ...currentFairUse?.lastExtendedAt !== void 0 ? { lastExtendedAt: currentFairUse.lastExtendedAt } : {}
   };
   const nextCount = fairUse.cycleCarsCount + 1;
   if (nextCount > fairUse.maxAllowance) {
@@ -147256,25 +147275,30 @@ var evaluateFairUseCheckIn = (currentFairUse, durationDays = 30, packageName = "
   const remainingToMax = fairUse.maxAllowance - nextCount;
   const isNearMaxLimit = remainingToMax <= fairUse.threshold;
   const isMaxLimitReached = nextCount >= fairUse.maxAllowance;
+  const updatedFairUse = {
+    ...fairUse,
+    cycleCarsCount: nextCount,
+    currentAllowance: newAllowance,
+    extensionsCount,
+    isNearMaxLimit,
+    isMaxLimitReached
+  };
+  if (autoExtended) {
+    updatedFairUse.lastExtendedAt = /* @__PURE__ */ new Date();
+  } else if (updatedFairUse.lastExtendedAt === void 0) {
+    delete updatedFairUse.lastExtendedAt;
+  }
   return {
     allowed: true,
     autoExtended,
-    updatedFairUse: {
-      ...fairUse,
-      cycleCarsCount: nextCount,
-      currentAllowance: newAllowance,
-      extensionsCount,
-      isNearMaxLimit,
-      isMaxLimitReached,
-      lastExtendedAt: autoExtended ? /* @__PURE__ */ new Date() : fairUse.lastExtendedAt
-    }
+    updatedFairUse
   };
 };
 var manualAdminExtendFairUse = (currentFairUse, extraCars = 0) => {
   const step = extraCars > 0 ? extraCars : currentFairUse.stepAmount;
   const newMax = currentFairUse.maxAllowance + step;
   const newCurrent = Math.max(currentFairUse.currentAllowance, currentFairUse.cycleCarsCount) + step;
-  return {
+  const updatedFairUse = {
     ...currentFairUse,
     maxAllowance: newMax,
     currentAllowance: newCurrent,
@@ -147283,6 +147307,7 @@ var manualAdminExtendFairUse = (currentFairUse, extraCars = 0) => {
     isNearMaxLimit: false,
     lastExtendedAt: /* @__PURE__ */ new Date()
   };
+  return updatedFairUse;
 };
 
 // server/utils.ts
@@ -147487,8 +147512,7 @@ async function getAdminPin() {
     if (privSnap.exists && privSnap.data()?.pin) {
       return String(privSnap.data().pin);
     }
-    const snap = await adminDb.doc("admin_settings/auth_pin").get();
-    return snap.exists ? String(snap.data()?.pin || "") : "";
+    return "";
   } catch (e2) {
     console.error("[Server Auth] Error reading admin pin:", e2);
     return "";
@@ -147496,7 +147520,6 @@ async function getAdminPin() {
 }
 async function queryAccountWherePin(collName, normPin) {
   const lookupHash = computeLookupHash(normPin);
-  const legacyHash = legacyHashPin(normPin);
   const matches = [];
   const seenIds = /* @__PURE__ */ new Set();
   try {
@@ -147522,48 +147545,6 @@ async function queryAccountWherePin(collName, normPin) {
     if (matches.length > 0) {
       return matches;
     }
-    const candidateQueries = [
-      { field: "pinLookupHash", value: lookupHash },
-      { field: "pin", value: legacyHash },
-      { field: "pin", value: normPin }
-    ];
-    if (collName === "garages") {
-      candidateQueries.push(
-        { field: "ownerPin", value: normPin },
-        { field: "adminPin", value: normPin }
-      );
-    }
-    for (const { field, value } of candidateQueries) {
-      if (!value) continue;
-      try {
-        const snap = await adminDb.collection(collName).where(field, "==", value).limit(5).get();
-        for (const d of snap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check2 = verifyDocMatch(normPin, d.data());
-            if (check2.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
-            }
-          }
-        }
-      } catch (e2) {
-      }
-    }
-    if (matches.length === 0) {
-      try {
-        const fallbackSnap = await adminDb.collection(collName).limit(50).get();
-        for (const d of fallbackSnap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check2 = verifyDocMatch(normPin, d.data());
-            if (check2.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check2.isLegacy });
-            }
-          }
-        }
-      } catch (e2) {
-      }
-    }
   } catch (e2) {
     console.error(`[Server Auth] Error querying collection ${collName} where pin:`, e2);
   }
@@ -147583,7 +147564,16 @@ async function queryDelegatesWherePhone(normPhone) {
 }
 async function checkPinAvailabilityAcrossAll(normPin, excludeId) {
   if (!normPin) return { taken: false };
-  const adminPinStored = await getAdminPin();
+  const collectionsToCheck = [
+    { name: "supervisors", roleKey: "supervisor", label: "\u0645\u0634\u0631\u0641 \u0646\u0638\u0627\u0645" },
+    { name: "delegates", roleKey: "delegate", label: "\u0645\u0646\u062F\u0648\u0628 \u0634\u062D\u0646" },
+    { name: "staff", roleKey: "staff", label: "\u0645\u0648\u0638\u0641 \u062C\u0631\u0627\u062C" },
+    { name: "garages", roleKey: "garage", label: "\u0635\u0627\u062D\u0628 \u062C\u0631\u0627\u062C" }
+  ];
+  const [adminPinStored, ...collectionResults] = await Promise.all([
+    getAdminPin(),
+    ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin))
+  ]);
   if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
     if (!excludeId || excludeId !== "auth_pin") {
       return {
@@ -147595,29 +147585,20 @@ async function checkPinAvailabilityAcrossAll(normPin, excludeId) {
       };
     }
   }
-  const collectionsToCheck = [
-    { name: "supervisors", roleKey: "supervisor", label: "\u0645\u0634\u0631\u0641 \u0646\u0638\u0627\u0645" },
-    { name: "delegates", roleKey: "delegate", label: "\u0645\u0646\u062F\u0648\u0628 \u0634\u062D\u0646" },
-    { name: "staff", roleKey: "staff", label: "\u0645\u0648\u0638\u0641 \u062C\u0631\u0627\u062C" },
-    { name: "garages", roleKey: "garage", label: "\u0635\u0627\u062D\u0628 \u062C\u0631\u0627\u062C" }
-  ];
-  for (const coll of collectionsToCheck) {
-    try {
-      const docs = await queryAccountWherePin(coll.name, normPin);
-      for (const dDoc of docs) {
-        if (excludeId && dDoc.id === excludeId) continue;
-        const docData = dDoc.data || {};
-        return {
-          taken: true,
-          role: coll.label,
-          roleKey: coll.roleKey,
-          name: docData.name || docData.ownerName || docData.garageName || "\u0645\u0633\u062A\u062E\u062F\u0645 \u0622\u062E\u0631",
-          accountId: dDoc.id,
-          account: docData
-        };
-      }
-    } catch (e2) {
-      console.error(`[Server Auth] Error checking pin in collection ${coll.name}:`, e2);
+  for (let index = 0; index < collectionsToCheck.length; index += 1) {
+    const coll = collectionsToCheck[index];
+    const docs = collectionResults[index] || [];
+    for (const dDoc of docs) {
+      if (excludeId && dDoc.id === excludeId) continue;
+      const docData = dDoc.data || {};
+      return {
+        taken: true,
+        role: coll.label,
+        roleKey: coll.roleKey,
+        name: docData.name || docData.ownerName || docData.garageName || "\u0645\u0633\u062A\u062E\u062F\u0645 \u0622\u062E\u0631",
+        accountId: dDoc.id,
+        account: docData
+      };
     }
   }
   return { taken: false };
@@ -148352,10 +148333,7 @@ router3.post("/create", requireAuth, async (req, res) => {
     const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = req.body || {};
     const normName = validateString(name, "name", { min: 2, max: 100, required: true });
     const normPhone = phone ? String(phone).trim() : "";
-    const normPin = cleanPin(pin);
-    if (!normPin || normPin.length < 4 || normPin.length > 10) {
-      return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be 4-10 digits" });
-    }
+    const normPin = validateNewPin(pin);
     if (!adminDb) {
       return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
     }
@@ -148383,6 +148361,9 @@ router3.post("/create", requireAuth, async (req, res) => {
     return res.json({ success: true, id: delId });
   } catch (e2) {
     console.error("[Server Delegate] Error in create:", e2);
+    if (e2 instanceof ValidationError) {
+      return res.status(e2.statusCode).json({ success: false, error: `INVALID_PIN: ${e2.message}` });
+    }
     return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
   }
 });
@@ -148504,10 +148485,10 @@ router4.post("/recharge-garage", requireAuth, financialRateLimiter(), async (req
     const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
     const price = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
     const packageName = String(packageObj.name || packageObj.packageName || "\u0628\u0627\u0642\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643");
-    const isUnlimited = Boolean(
-      packageObj.isUnlimited || packageName.includes("\u0645\u0641\u062A\u0648\u062D") || packageName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || packageName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F")
-    );
-    const effCapacity = isUnlimited ? 0 : Math.max(1, Number(packageObj.dailyCapacity || packageObj.carsCount || 40));
+    const hasExplicitCapacity = typeof packageObj.dailyCapacity === "number" || typeof packageObj.dailyCapacity === "string" && packageObj.dailyCapacity.trim() !== "";
+    const configuredCapacity = hasExplicitCapacity ? Number(packageObj.dailyCapacity) : NaN;
+    const isUnlimited = hasExplicitCapacity ? Number.isFinite(configuredCapacity) && configuredCapacity === 0 : Boolean(packageObj.isUnlimited) || /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(packageName);
+    const effCapacity = isUnlimited ? 0 : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : Number(packageObj.carsCount || 40));
     let resultData = null;
     await adminDb.runTransaction(async (t2) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/transactions/recharge-garage", callerUid);
@@ -148661,8 +148642,10 @@ router4.post("/approve-recharge-request", requireAuth, financialRateLimiter(), a
       let durationDays = Number(requestData.durationDays || requestData.vehiclesCount || 30);
       let basePrice = Number(requestData.revenueAmount !== void 0 ? requestData.revenueAmount : requestData.price || 0);
       let pkgName = String(requestData.packageName || "");
-      const isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629") || requestData.dailyCapacity === 0;
-      let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(requestData.dailyCapacity || 40));
+      const requestHasExplicitCapacity = typeof requestData.dailyCapacity === "number" || typeof requestData.dailyCapacity === "string" && requestData.dailyCapacity.trim() !== "";
+      const requestedCapacity = requestHasExplicitCapacity ? Number(requestData.dailyCapacity) : NaN;
+      const isUnlimitedPkg = requestHasExplicitCapacity ? Number.isFinite(requestedCapacity) && requestedCapacity === 0 : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
+      let effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number.isFinite(requestedCapacity) && requestedCapacity > 0 ? requestedCapacity : 40);
       if (requestData.packageId) {
         const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
         const pkgSnap = await t2.get(pkgRef);
@@ -148678,7 +148661,8 @@ router4.post("/approve-recharge-request", requireAuth, financialRateLimiter(), a
             durationDays = Number(pData.durationDays);
           }
           if (pData.dailyCapacity !== void 0) {
-            effCapacity = pData.isUnlimited ? 0 : Number(pData.dailyCapacity);
+            const packageCapacity = Number(pData.dailyCapacity);
+            effCapacity = Number.isFinite(packageCapacity) ? packageCapacity : effCapacity;
           }
           if (pData.name) {
             pkgName = String(pData.name);
@@ -148993,8 +148977,10 @@ router4.post("/garage-self-subscribe", requireAuth, financialRateLimiter(), asyn
       }
       baseDate.setDate(baseDate.getDate() + durationDays);
       const pkgName = String(pkg.name || "\u0628\u0627\u0642\u0629 \u0627\u0634\u062A\u0631\u0627\u0643");
-      const isUnlimitedPkg = pkgName.includes("\u0645\u0641\u062A\u0648\u062D") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F") || pkgName.includes("\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629") || pkgName.includes("\u0628\u062F\u0648\u0646 \u062D\u062F\u0648\u062F") || pkgName.includes("\u0633\u0639\u0629 \u0645\u0641\u062A\u0648\u062D\u0629") || pkg.dailyCapacity === 0;
-      const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number(pkg.dailyCapacity || 40));
+      const hasExplicitCapacity = typeof pkg.dailyCapacity === "number" || typeof pkg.dailyCapacity === "string" && pkg.dailyCapacity.trim() !== "";
+      const configuredCapacity = hasExplicitCapacity ? Number(pkg.dailyCapacity) : NaN;
+      const isUnlimitedPkg = hasExplicitCapacity ? Number.isFinite(configuredCapacity) && configuredCapacity === 0 : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
+      const effCapacity = isUnlimitedPkg ? 0 : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : 40);
       t2.set(garageRef, {
         balance: newBalance,
         balanceExpiry: baseDate,
@@ -149135,10 +149121,7 @@ router5.post("/create", requireAuth, financialRateLimiter(), async (req, res) =>
     }
     const sanitized = sanitizePayload(req.body, ["name", "phone", "hourlyRate", "overnightRate", "pin", "billingModel", "isTrial", "trialDays", "defaultTrialDays", "dailyCapacity", "initialPackageId", "packages", "createdByDelegateId", "createdByDelegateName", "referrerId", "referrerName", "referredByGarageId", "referredByGarageName", "idempotencyKey"], false);
     const name = validateString(sanitized.name, "name", { min: 2, max: 100, required: true });
-    const normPin = cleanPin(sanitized.pin);
-    if (!normPin || !/^\d{6}$/.test(normPin)) {
-      return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be exactly 6 digits" });
-    }
+    const normPin = validateNewPin(sanitized.pin);
     validateIdempotencyKey(sanitized.idempotencyKey || req.headers["idempotency-key"]);
     if (!adminDb) {
       return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
@@ -149721,11 +149704,20 @@ function createApp() {
       const sessionId = typeof credentials.sessionId === "string" ? credentials.sessionId.trim() : "";
       if (rawInput) {
         const normInputPin = cleanPin(rawInput);
-        if (!normInputPin) {
+        if (!isNewPinFormat(normInputPin)) {
           return res.json({ success: false, error: "\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u062E\u0648\u0644 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D\u0629" });
         }
         const matches = [];
-        let adminPinStored = await getAdminPin();
+        const collectionsToCheck = [
+          { name: "garages", role: "garage" },
+          { name: "staff", role: "staff" },
+          { name: "delegates", role: "delegate" },
+          { name: "supervisors", role: "supervisor" }
+        ];
+        const [adminPinStored, ...collectionResults] = await Promise.all([
+          getAdminPin(),
+          ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normInputPin))
+        ]);
         const adminCheck = verifyPinMatch(normInputPin, adminPinStored);
         if (adminCheck.matches) {
           matches.push({ role: "admin", id: "admin", isLegacyMatch: adminCheck.isLegacy });
@@ -149733,33 +149725,24 @@ function createApp() {
             migratePinToHash("admin_settings", "auth_pin", normInputPin);
           }
         }
-        const collectionsToCheck = [
-          { name: "garages", role: "garage" },
-          { name: "staff", role: "staff" },
-          { name: "delegates", role: "delegate" },
-          { name: "supervisors", role: "supervisor" }
-        ];
-        for (const coll of collectionsToCheck) {
-          try {
-            const docs = await queryAccountWherePin(coll.name, normInputPin);
-            for (const docSnap of docs) {
-              const data = { ...docSnap.data };
-              if (docSnap.isLegacyMatch) {
-                migratePinToHash(coll.name, docSnap.id, normInputPin);
-              }
-              delete data.pin;
-              delete data.ownerPin;
-              delete data.adminPin;
-              delete data.pinLookupHash;
-              matches.push({
-                role: coll.role,
-                id: docSnap.id,
-                account: { id: docSnap.id, ...data },
-                isLegacyMatch: docSnap.isLegacyMatch
-              });
+        for (let index = 0; index < collectionsToCheck.length; index += 1) {
+          const coll = collectionsToCheck[index];
+          const docs = collectionResults[index] || [];
+          for (const docSnap of docs) {
+            const data = { ...docSnap.data };
+            if (docSnap.isLegacyMatch) {
+              migratePinToHash(coll.name, docSnap.id, normInputPin);
             }
-          } catch (e2) {
-            console.error(`[Server Auth] Query error in ${coll.name}:`, e2);
+            delete data.pin;
+            delete data.ownerPin;
+            delete data.adminPin;
+            delete data.pinLookupHash;
+            matches.push({
+              role: coll.role,
+              id: docSnap.id,
+              account: { id: docSnap.id, ...data },
+              isLegacyMatch: docSnap.isLegacyMatch
+            });
           }
         }
         if (matches.length > 1) {
@@ -150187,6 +150170,58 @@ function createApp() {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
+  app2.post("/api/auth/invalidate-all-sessions", requireAuth, async (req, res) => {
+    try {
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+      }
+      if (!adminDb) {
+        return res.status(503).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+      }
+      const now = /* @__PURE__ */ new Date();
+      const sessionCollections = [
+        { name: "admin_sessions", entityCollection: "admin_settings", fixedEntityId: "auth_pin" },
+        { name: "supervisor_sessions", entityCollection: "supervisors" },
+        { name: "delegate_sessions", entityCollection: "delegates" },
+        { name: "garage_sessions", entityCollection: "garages" },
+        { name: "staff_sessions", entityCollection: "staff" }
+      ];
+      const snapshots = await Promise.all(sessionCollections.map((entry) => adminDb.collection(entry.name).get()));
+      let invalidatedSessions = 0;
+      let clearedEntityMarkers = 0;
+      let batch = adminDb.batch();
+      let batchWrites = 0;
+      const commitBatchIfNeeded = async (force = false) => {
+        if (batchWrites > 0 && (force || batchWrites >= 450)) {
+          await batch.commit();
+          batch = adminDb.batch();
+          batchWrites = 0;
+        }
+      };
+      for (let index = 0; index < sessionCollections.length; index += 1) {
+        const entry = sessionCollections[index];
+        for (const sessionDoc of snapshots[index].docs) {
+          const sessionData = sessionDoc.data() || {};
+          if (sessionData.isActive === true) invalidatedSessions += 1;
+          batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
+          batchWrites += 1;
+          const entityId = entry.fixedEntityId || sessionData.entityId;
+          if (entityId) {
+            const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
+            batch.set(entityRef, { currentSessionId: null, lastActive: now }, { merge: true });
+            batchWrites += 1;
+            clearedEntityMarkers += 1;
+          }
+          await commitBatchIfNeeded();
+        }
+      }
+      await commitBatchIfNeeded(true);
+      return res.json({ success: true, invalidatedSessions, clearedEntityMarkers });
+    } catch (e2) {
+      console.error("[Server Auth] Error invalidating all sessions:", e2);
+      return res.status(500).json({ success: false, error: "SERVER_ERROR" });
+    }
+  });
   app2.post("/api/auth/release-admin-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId } = req.body || {};
@@ -150228,10 +150263,7 @@ function createApp() {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
       }
       const { currentPin, newPin } = req.body || {};
-      const normNewPin = cleanPin(newPin);
-      if (!normNewPin || normNewPin.length < 4 || normNewPin.length > 6) {
-        return res.status(400).json({ success: false, error: "INVALID_NEW_PIN: PIN must be 4 to 6 digits" });
-      }
+      const normNewPin = validateNewPin(newPin, "newPin");
       const normCurrent = cleanPin(currentPin);
       if (!normCurrent) {
         return res.status(400).json({ success: false, error: "CURRENT_PIN_REQUIRED" });
@@ -150264,6 +150296,9 @@ function createApp() {
       return res.json({ success: true });
     } catch (e2) {
       console.error("[Server Admin] Error in update-pin:", e2);
+      if (e2 instanceof ValidationError) {
+        return res.status(e2.statusCode).json({ success: false, error: `INVALID_NEW_PIN: ${e2.message}` });
+      }
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
@@ -150403,10 +150438,7 @@ function createApp() {
       }
       const { name, phone, pin, permissions } = req.body || {};
       const normName = validateString(name, "name", { min: 2, max: 100, required: true });
-      const normPin = cleanPin(pin);
-      if (!normPin || normPin.length < 4 || normPin.length > 10) {
-        return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be 4-10 digits" });
-      }
+      const normPin = validateNewPin(pin);
       if (!adminDb) {
         return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
       }
@@ -150430,6 +150462,9 @@ function createApp() {
       return res.json({ success: true, id: supId });
     } catch (e2) {
       console.error("[Server Supervisor] Error in create:", e2);
+      if (e2 instanceof ValidationError) {
+        return res.status(e2.statusCode).json({ success: false, error: `INVALID_PIN: ${e2.message}` });
+      }
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
@@ -150442,10 +150477,7 @@ function createApp() {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Cannot add staff to this garage" });
       }
       const normName = validateString(name, "name", { min: 2, max: 100, required: true });
-      const normPin = cleanPin(pin);
-      if (!normPin || normPin.length < 4 || normPin.length > 10) {
-        return res.status(400).json({ success: false, error: "INVALID_PIN: PIN must be 4-10 digits" });
-      }
+      const normPin = validateNewPin(pin);
       if (!adminDb) {
         return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
       }
@@ -150471,6 +150503,9 @@ function createApp() {
       return res.json({ success: true, id: staffId });
     } catch (e2) {
       console.error("[Server Staff] Error in create:", e2);
+      if (e2 instanceof ValidationError) {
+        return res.status(e2.statusCode).json({ success: false, error: `INVALID_PIN: ${e2.message}` });
+      }
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });
@@ -150480,10 +150515,7 @@ function createApp() {
       if (!entityType || !entityId || !["garages", "supervisors", "delegates", "staff"].includes(entityType)) {
         return res.status(400).json({ success: false, error: "INVALID_ENTITY_TYPE" });
       }
-      const normNewPin = cleanPin(newPin);
-      if (!normNewPin || (entityType === "garages" ? !/^\d{6}$/.test(normNewPin) : normNewPin.length < 4 || normNewPin.length > 10)) {
-        return res.status(400).json({ success: false, error: entityType === "garages" ? "INVALID_NEW_PIN: Garage PIN must be exactly 6 digits" : "INVALID_NEW_PIN: PIN must be 4 to 10 digits" });
-      }
+      const normNewPin = validateNewPin(newPin, "newPin");
       if (!adminDb) {
         return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
       }
@@ -150527,6 +150559,9 @@ function createApp() {
       return res.json({ success: true });
     } catch (e2) {
       console.error("[Server People] Error in update-pin:", e2);
+      if (e2 instanceof ValidationError) {
+        return res.status(e2.statusCode).json({ success: false, error: `INVALID_NEW_PIN: ${e2.message}` });
+      }
       return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });
     }
   });

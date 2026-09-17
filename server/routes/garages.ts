@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { requireAuth, financialRateLimiter, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { saveEntityPin, cleanPin, checkPinAvailabilityAcrossAll } from '../utils';
-import { sanitizePayload, validateId, validateString, validateNumber, validateIdempotencyKey } from '../validation';
+import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
+import { sanitizePayload, validateId, validateString, validateNumber, validateIdempotencyKey, validateNewPin } from '../validation';
 import { manualAdminExtendFairUse, initializeFairUse } from '../unlimitedFairUse';
 import { mapDomainErrorToStatus } from './helpers';
 
@@ -22,10 +22,7 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     const sanitized = sanitizePayload(req.body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'trialDays', 'defaultTrialDays', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
 
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
-    const normPin = cleanPin(sanitized.pin);
-    if (!normPin || !/^\d{6}$/.test(normPin)) {
-      return res.status(400).json({ success: false, error: 'INVALID_PIN: PIN must be exactly 6 digits' });
-    }
+    const normPin = validateNewPin(sanitized.pin);
 
     validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
 

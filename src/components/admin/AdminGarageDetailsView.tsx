@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { Timestamp } from 'firebase/firestore';
-import { normalizeDigits, safeDate, getRemainingDays, canChangeGarageRates, formatDisplayPin, isHashedPin } from '../../utils';
+import { normalizeDigits, safeDate, getRemainingDays, canChangeGarageRates, formatDisplayPin, isHashedPin, generateSafePin } from '../../utils';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { Garage, Staff, Package } from '../../types';
 import { BALANCE_PRESET_AMOUNTS } from '../../constants/packages';
@@ -224,17 +224,7 @@ export const AdminGarageDetailsView = memo(({
     ? Math.max(0, selectedGarageForDetails.carsInside)
     : (selectedGarageForDetails.activePlates ? Object.keys(selectedGarageForDetails.activePlates).length : 0);
 
-  const generateNewStaffPin = () => {
-    let newPin = '';
-    let isUnique = false;
-    let attempts = 0;
-    while (!isUnique && attempts < 50) {
-      newPin = Math.floor(100000 + Math.random() * 900000).toString();
-      isUnique = !staffList.some(s => s.pin === newPin);
-      attempts++;
-    }
-    return newPin;
-  };
+  const generateNewStaffPin = () => generateSafePin(staffList.map((staff) => staff.pin));
 
   const openAddStaffModal = () => {
     setStaffForm({ name: '', pin: generateNewStaffPin() });
@@ -912,15 +902,17 @@ export const AdminGarageDetailsView = memo(({
                                 type="tel"
                                 inputMode="numeric"
                                 value={editingStaffPinValue}
-                                maxLength={6}
-                                onChange={(e) => setEditingStaffPinValue(e.target.value.replace(/\D/g, ''))}
+                                minLength={8}
+                                maxLength={8}
+                                pattern="[0-9]{8}"
+                                onChange={(e) => setEditingStaffPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8))}
                                 className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black"
                                 placeholder="••••"
                                 autoFocus
                               />
                               <button
                                 onClick={async () => {
-                                  if (editingStaffPinValue.length < 4) return;
+                                  if (!/^\d{8}$/.test(editingStaffPinValue)) return;
                                   setIsUpdatingStaffPin(true);
                                   try {
                                     const pinCheck = await firestoreService.isPinTaken(editingStaffPinValue, s.id);
@@ -1232,8 +1224,8 @@ export const AdminGarageDetailsView = memo(({
 
             <form onSubmit={async (e) => {
               e.preventDefault();
-              if (garagePinInput.length < 4) {
-                setPinError(adminLang === 'en' ? 'PIN must be at least 4 digits' : 'يجب أن يكون الرمز 4 أرقام على الأقل');
+              if (!/^\d{8}$/.test(garagePinInput)) {
+                setPinError(adminLang === 'en' ? 'PIN must be exactly 8 digits' : 'يجب أن يكون الرمز 8 أرقام بالضبط');
                 return;
               }
               setIsUpdatingGaragePin(true);
@@ -1263,16 +1255,17 @@ export const AdminGarageDetailsView = memo(({
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                    {t('رمز الدخول الجديد (4-6 أرقام):')}
+                    {t('رمز الدخول الجديد (8 أرقام):')}
                   </label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
+                    pattern="[0-9]{8}"
+                    minLength={8}
+                    maxLength={8}
                     value={garagePinInput}
                     onChange={(e) => {
-                      setGaragePinInput(e.target.value.replace(/\D/g, ''));
+                      setGaragePinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8));
                       setPinError('');
                     }}
                     placeholder="••••"
@@ -1290,7 +1283,7 @@ export const AdminGarageDetailsView = memo(({
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={isUpdatingGaragePin || garagePinInput.length < 4}
+                  disabled={isUpdatingGaragePin || !/^\d{8}$/.test(garagePinInput)}
                   className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   {isUpdatingGaragePin ? (

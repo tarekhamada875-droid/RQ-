@@ -65,7 +65,7 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
 
     for (let i = 0; i < 1000; i++) {
       const newPin = generateSafePin(existingPins);
-      expect(newPin).toHaveLength(6);
+      expect(newPin).toHaveLength(8);
       expect(existingPins.has(newPin)).toBe(false);
       existingPins.add(newPin);
     }

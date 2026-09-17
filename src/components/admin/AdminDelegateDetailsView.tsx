@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Delegate, ActivityLog, RechargeRequest } from '../../types';
 import { firestoreService } from '../../services';
 import { Spinner } from '../ui/Spinner';
-import { safeDate, formatDisplayPin } from '../../utils';
+import { safeDate, formatDisplayPin, normalizeDigits } from '../../utils';
 import { 
   calculateApprovedCommission, 
   calculateApprovedRechargeTotal, 
@@ -378,15 +378,17 @@ export const AdminDelegateDetailsView = memo(({
                         type="tel"
                         inputMode="numeric"
                         value={pinInput}
-                        maxLength={6}
-                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                        minLength={8}
+                        maxLength={8}
+                        pattern="[0-9]{8}"
+                        onChange={(e) => setPinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8))}
                         className="w-16 bg-transparent text-blue-600 dark:text-blue-400 text-sm font-black text-center focus:outline-none focus:ring-0 border-0 p-0 font-mono"
                         placeholder="••••"
                       />
                       <button
                         onClick={async () => {
-                          if (pinInput.length < 4) {
-                            alert(adminLang === 'en' ? 'PIN must be at least 4 digits' : 'يجب أن يكون الرمز 4 أرقام على الأقل');
+                          if (!/^\d{8}$/.test(pinInput)) {
+                            alert(adminLang === 'en' ? 'PIN must be exactly 8 digits' : 'يجب أن يكون الرمز 8 أرقام بالضبط');
                             return;
                           }
                           setIsUpdatingPin(true);

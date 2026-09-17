@@ -265,9 +265,8 @@ export async function getAdminPin(): Promise<string> {
       return String(privSnap.data().pin);
     }
 
-    // 2. Fallback to legacy admin_settings document
-    const snap = await adminDb.doc('admin_settings/auth_pin').get();
-    return snap.exists ? String(snap.data()?.pin || '') : '';
+    // Legacy public credentials are intentionally not read by production login.
+    return '';
   } catch (e) {
     console.error('[Server Auth] Error reading admin pin:', e);
     return '';
@@ -276,7 +275,6 @@ export async function getAdminPin(): Promise<string> {
 
 export async function queryAccountWherePin(collName: string, normPin: string): Promise<Array<{ id: string; data: any; isLegacyMatch: boolean }>> {
   const lookupHash = computeLookupHash(normPin);
-  const legacyHash = legacyHashPin(normPin);
   const matches: Array<{ id: string; data: any; isLegacyMatch: boolean }> = [];
   const seenIds = new Set<string>();
 
@@ -315,51 +313,6 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
       return matches;
     }
 
-    // Phase 2: Legacy fallback queries for unmigrated accounts
-    const candidateQueries: Array<{ field: string; value: string }> = [
-      { field: 'pinLookupHash', value: lookupHash },
-      { field: 'pin', value: legacyHash },
-      { field: 'pin', value: normPin }
-    ];
-
-    if (collName === 'garages') {
-      candidateQueries.push(
-        { field: 'ownerPin', value: normPin },
-        { field: 'adminPin', value: normPin }
-      );
-    }
-
-    for (const { field, value } of candidateQueries) {
-      if (!value) continue;
-      try {
-        const snap = await adminDb.collection(collName).where(field, '==', value).limit(5).get();
-        for (const d of snap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check = verifyDocMatch(normPin, d.data());
-            if (check.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check.isLegacy });
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    // Phase 3: Bounded collection scan for legacy unhashed records (ensures zero lockout)
-    if (matches.length === 0) {
-      try {
-        const fallbackSnap = await adminDb.collection(collName).limit(50).get();
-        for (const d of fallbackSnap.docs) {
-          if (!seenIds.has(d.id)) {
-            const check = verifyDocMatch(normPin, d.data());
-            if (check.matches) {
-              seenIds.add(d.id);
-              matches.push({ id: d.id, data: d.data(), isLegacyMatch: check.isLegacy });
-            }
-          }
-        }
-      } catch (e) {}
-    }
   } catch (e) {
     console.error(`[Server Auth] Error querying collection ${collName} where pin:`, e);
   }
@@ -393,8 +346,24 @@ export async function checkPinAvailabilityAcrossAll(
 }> {
   if (!normPin) return { taken: false };
 
-  // 1. Check Admin PIN
-  const adminPinStored = await getAdminPin();
+  const collectionsToCheck: Array<{
+    name: string;
+    roleKey: 'supervisor' | 'delegate' | 'staff' | 'garage';
+    label: string;
+  }> = [
+    { name: 'supervisors', roleKey: 'supervisor', label: 'مشرف نظام' },
+    { name: 'delegates', roleKey: 'delegate', label: 'مندوب شحن' },
+    { name: 'staff', roleKey: 'staff', label: 'موظف جراج' },
+    { name: 'garages', roleKey: 'garage', label: 'صاحب جراج' }
+  ];
+
+  // Perform independent private_pins lookups in parallel. Eight-digit values
+  // are private-only; shorter legacy values retain the isolated migration path.
+  const [adminPinStored, ...collectionResults] = await Promise.all([
+    getAdminPin(),
+    ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin))
+  ]);
+
   if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
     if (!excludeId || excludeId !== 'auth_pin') {
       return {
@@ -407,35 +376,20 @@ export async function checkPinAvailabilityAcrossAll(
     }
   }
 
-  // 2. Check collections
-  const collectionsToCheck: Array<{
-    name: string;
-    roleKey: 'supervisor' | 'delegate' | 'staff' | 'garage';
-    label: string;
-  }> = [
-    { name: 'supervisors', roleKey: 'supervisor', label: 'مشرف نظام' },
-    { name: 'delegates', roleKey: 'delegate', label: 'مندوب شحن' },
-    { name: 'staff', roleKey: 'staff', label: 'موظف جراج' },
-    { name: 'garages', roleKey: 'garage', label: 'صاحب جراج' }
-  ];
-
-  for (const coll of collectionsToCheck) {
-    try {
-      const docs = await queryAccountWherePin(coll.name, normPin);
-      for (const dDoc of docs) {
-        if (excludeId && dDoc.id === excludeId) continue;
-        const docData = dDoc.data || {};
-        return {
-          taken: true,
-          role: coll.label,
-          roleKey: coll.roleKey,
-          name: docData.name || docData.ownerName || docData.garageName || 'مستخدم آخر',
-          accountId: dDoc.id,
-          account: docData
-        };
-      }
-    } catch (e) {
-      console.error(`[Server Auth] Error checking pin in collection ${coll.name}:`, e);
+  for (let index = 0; index < collectionsToCheck.length; index += 1) {
+    const coll = collectionsToCheck[index];
+    const docs = collectionResults[index] || [];
+    for (const dDoc of docs) {
+      if (excludeId && dDoc.id === excludeId) continue;
+      const docData = dDoc.data || {};
+      return {
+        taken: true,
+        role: coll.label,
+        roleKey: coll.roleKey,
+        name: docData.name || docData.ownerName || docData.garageName || 'مستخدم آخر',
+        accountId: dDoc.id,
+        account: docData
+      };
     }
   }
 
@@ -485,4 +439,3 @@ export function calculateVehicleCost(
 
   return Number(total.toFixed(2));
 }
-
