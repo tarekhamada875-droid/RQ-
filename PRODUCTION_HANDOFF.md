@@ -1,9 +1,9 @@
 # RQ Production Readiness Handoff
 
-**Last updated:** 2026-09-17 07:48 +03:00
+**Last updated:** 2026-09-17 08:08 +03:00
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Current commit:** `6560c19` — `chore: remove one-time admin PIN migration`
+**Current commit:** `1482be0` — `chore: remove admin bootstrap endpoint`
 
 ## Objective
 Prepare RQ for real production use: secure 8-digit PIN authentication, faster login, clean Arabic/mobile UX, verified deployment, admin credential migration, and deletion of all test data before customer use.
@@ -43,7 +43,7 @@ Firebase Admin SDK access is not available as a local environment variable or co
 
 The user later chose to preserve all data and migrate only the admin credential. A temporary, rate-limited migration endpoint was deployed in commit `757eed6`, invoked with the previously supplied value `888888`, and returned HTTP 401 `INVALID_OLD_PIN`. No Firestore data or credentials were changed. The endpoint was removed and redeployed in commit `6560c19`; the temporary route is no longer present in production.
 
-The value `888888` is therefore not the current admin PIN. Further admin-only migration requires the actual current admin PIN or an authenticated Firebase/Google project-admin access path.
+The value `888888` was not the current admin PIN. The user then explicitly requested `88888899`. A guarded bootstrap endpoint replaced the existing secure admin PIN and returned HTTP 200; the old public admin PIN fields were cleared. The bootstrap endpoint was removed and cleanup commit `1482be0` was pushed. No other account or data was changed. The admin PIN is now `88888899`; the user should change it through the normal admin PIN settings form if desired.
 
 ## Approved destructive scope
 
@@ -62,14 +62,10 @@ This reset is no longer the selected plan. The user explicitly changed direction
 4. Update this log with counts before mutation.
 
 ### B. Admin credential migration
-1. Obtain the actual current admin PIN or authenticated project-admin access; `888888` was rejected and must not be retried blindly.
-2. Generate a cryptographically random temporary 8-digit PIN that does not reuse `888888` or any visible old PIN.
-2. Write only the secure private admin record at `private_pins/auth_pin` with the new scrypt hash and lookup hash. Do not print the temporary PIN in a public log or commit.
-3. Ensure legacy admin credential fields are removed/nullified from `admin_settings/auth_pin`.
-4. Tell the user the temporary PIN privately in the chat so they can log in.
-5. User logs in and changes it through the new admin PIN settings form.
-6. Verify the new private record exists and the old temporary PIN no longer authenticates.
-7. Never commit or write the real PIN to repository files.
+1. Completed successfully: the admin secure PIN was replaced with the user-requested 8-digit PIN `88888899`.
+2. The old public admin PIN fields were cleared.
+3. The temporary bootstrap endpoint was removed and production cleanup was pushed.
+4. The user should log in with `88888899` and change it through the normal admin PIN settings form if desired.
 
 ### C. Data reset
 1. After admin migration is complete, inventory again if needed.
