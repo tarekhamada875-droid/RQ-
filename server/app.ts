@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import crypto from 'crypto';
 import vehiclesRouter from './routes/vehicles';
 import subscribersRouter from './routes/subscribers';
 import delegatesRouter from './routes/delegates';
@@ -529,30 +528,6 @@ export function createApp() {
     } catch (error) {
       console.error('[Server Auth] Error in check-pin-availability:', error);
       return res.status(500).json({ taken: false });
-    }
-  });
-
-  // Temporary one-time migration endpoint. Remove immediately after admin migration.
-  app.post('/api/auth/migrate-admin-pin-once', financialRateLimiter(3, 60000), async (req, res) => {
-    try {
-      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-      const oldPin = cleanPin(req.body?.oldPin);
-      if (!oldPin) return res.status(400).json({ success: false, error: 'INVALID_OLD_PIN' });
-
-      const adminRef = adminDb.doc('admin_settings/auth_pin');
-      const adminSnap = await adminRef.get();
-      const storedLegacyPin = adminSnap.exists ? adminSnap.data()?.pin : null;
-      if (!verifyPinMatch(oldPin, storedLegacyPin).matches) {
-        return res.status(401).json({ success: false, error: 'INVALID_OLD_PIN' });
-      }
-
-      const temporaryPin = String(crypto.randomInt(10000000, 100000000));
-      await saveEntityPin('admin_settings', 'auth_pin', temporaryPin);
-      await adminRef.set({ pin: null, pinLookupHash: null }, { merge: true });
-      return res.json({ success: true, temporaryPin });
-    } catch (error) {
-      console.error('[Server Auth] One-time admin PIN migration failed:', error);
-      return res.status(500).json({ success: false, error: 'ADMIN_PIN_MIGRATION_FAILED' });
     }
   });
 
