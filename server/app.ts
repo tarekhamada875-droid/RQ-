@@ -191,7 +191,7 @@ export function createApp() {
   app.use('/api/garages', garagesRouter);
   const authRouter = express.Router();
   registerAuthRoutes(authRouter);
-  app.use('/api', authRouter);
+  app.use('/', authRouter);
 
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {

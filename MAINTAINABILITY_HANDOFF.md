@@ -54,7 +54,7 @@ Status: **completed; commit pending**
 Extracted authentication and session routes from `server/app.ts` without changing route paths, middleware order, response contracts, CORS behavior, or authorization checks. Existing authentication and session tests remained the contract during the move.
 
 - [x] Added `server/routes/auth.ts` with the authentication and session handlers.
-- [x] Mounted the router under `/api`, preserving existing `/api/auth/*` paths.
+- [x] Mounted the router at `/`, preserving the handlers' existing full `/api/auth/*` paths.
 - [x] Removed stale authentication-only imports from `server/app.ts`.
 - [x] Reduced `server/app.ts` from 1,669 lines to 887 lines.
 
@@ -157,6 +157,7 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 - Reduced `server/app.ts` from 1,669 to 887 lines.
 - Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
 - The generated `api/index.js` changed as expected and remains tracked for Vercel discovery.
+- A post-push smoke check briefly exposed that mounting under `/api` duplicated the full handler paths. The mount was corrected to `/`; local validation passed and live verification is pending the new Vercel deployment.
 - Next milestone is M3: split the largest dashboard components by responsibility while preserving UI behavior.
 
 ### 2026-09-17 — M3 first garage dashboard split

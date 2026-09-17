@@ -150290,7 +150290,7 @@ function createApp() {
   app2.use("/api/garages", garages_default);
   const authRouter = import_express6.default.Router();
   registerAuthRoutes(authRouter);
-  app2.use("/api", authRouter);
+  app2.use("/", authRouter);
   app2.get("/api/health", (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
     const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "unknown";
