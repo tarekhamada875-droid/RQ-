@@ -531,6 +531,31 @@ export function createApp() {
     }
   });
 
+  // Temporary one-time admin bootstrap. Remove immediately after use.
+  app.post('/api/auth/bootstrap-admin-pin-once', financialRateLimiter(3, 60000), async (req, res) => {
+    try {
+      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+      const requestedPin = cleanPin(req.body?.pin);
+      if (requestedPin !== '88888899') {
+        return res.status(400).json({ success: false, error: 'INVALID_BOOTSTRAP_PIN' });
+      }
+
+      const privateRef = adminDb.doc('private_pins/auth_pin');
+      const privateSnap = await privateRef.get();
+      if (privateSnap.exists && privateSnap.data()?.pin) {
+        return res.status(409).json({ success: false, error: 'ADMIN_PIN_ALREADY_INITIALIZED' });
+      }
+
+      const adminRef = adminDb.doc('admin_settings/auth_pin');
+      await saveEntityPin('admin_settings', 'auth_pin', requestedPin);
+      await adminRef.set({ pin: null, pinLookupHash: null }, { merge: true });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[Server Auth] One-time admin bootstrap failed:', error);
+      return res.status(500).json({ success: false, error: 'ADMIN_BOOTSTRAP_FAILED' });
+    }
+  });
+
   // Secure Server API: Verify Admin PIN for Admin Logout
   app.post('/api/auth/verify-admin-pin', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
