@@ -71,9 +71,16 @@ Validation completed: `npm run lint`, `npm test`, `npm run build`, `npm run main
 
 ### M3 — UI component boundary refactor
 
-Status: **pending**
+Status: **in progress; first screen split completed**
 
 Split the largest dashboards by responsibility rather than by arbitrary line count. Preserve visual behavior, Arabic translations, mobile layout, and existing test contracts.
+
+- [x] Extracted garage dashboard overlays and modal rendering into `GarageDashboardOverlays.tsx`.
+- [x] Kept data fetching, state ownership, and callbacks in `GarageDashboardView.tsx`.
+- [x] Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines.
+- [ ] Split `AdminGarageDetailsView.tsx`.
+- [ ] Split `DelegateDashboardView.tsx`.
+- [ ] Split `SubscribersView.tsx`.
 
 Suggested first targets:
 
@@ -151,6 +158,13 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 - Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
 - The generated `api/index.js` changed as expected and remains tracked for Vercel discovery.
 - Next milestone is M3: split the largest dashboard components by responsibility while preserving UI behavior.
+
+### 2026-09-17 — M3 first garage dashboard split
+
+- Added `src/components/garage/GarageDashboardOverlays.tsx` for the locked-garage overlay and dashboard modal rendering.
+- Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines without changing parent state ownership.
+- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
+- Remaining M3 work is intentionally staged: admin garage details, delegate dashboard, and subscribers view.
 
 ## Handoff rule
 

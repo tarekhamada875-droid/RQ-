@@ -24,7 +24,6 @@ import {
   FileText,
 } from "lucide-react";
 import { Announcement } from "../../types";
-import { TrialExpiryModal } from "../modals/TrialExpiryModal";
 import { FlipNumber } from "../ui/FlipNumber";
 import { AnimatedCounter } from "../AnimatedCounter";
 import { useTheme } from "../../utils/ThemeContext";
@@ -44,16 +43,7 @@ import { firestoreService } from '../../services';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { RegistrationCard } from "./RegistrationCard";
 import { VehicleItem } from "./VehicleItem";
-import { SubscribersView } from "./SubscribersView";
-import { GarageReportsView } from "./GarageReportsView";
-import { RechargeHistoryView } from "./RechargeHistoryView";
-import { PackagesModal } from "../modals/PackagesModal";
-import { RewardsModal } from "../modals/RewardsModal";
-import { StaffStatsModal } from "../modals/StaffStatsModal";
-import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
-import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
-import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
-import { AnnouncementModal } from "./modals/AnnouncementModal";
+import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
 
 // Helper functions (mapped to actual modules)
@@ -1028,144 +1018,41 @@ export const GarageDashboardView = memo((props: any) => {
           }
         </main>
       }
-      {ne && (
-        <div className="fixed inset-0 z-[90] bg-slate-900/95 flex items-center justify-center p-6 text-center">
-          {
-            <div className="max-w-sm w-full">
-              {
-                <div className="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-6">
-                  {<AlertTriangle className="w-10 h-10 text-red-500" />}
-                </div>
-              }
-              {
-                <h2 className="text-2xl font-black text-white mb-3">
-                  الجراج مغلق حالياً
-                </h2>
-              }
-              {
-                <div className="space-y-4 mb-8">
-                  {
-                    <p className="text-base md:text-lg font-bold text-slate-400 dark:text-slate-300 leading-relaxed px-4">
-                      {t.lockReason ||
-                        "تم تعليق الخدمة مؤقتاً، يرجى التواصل مع الإدارة."}
-                    </p>
-                  }
-                  {
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 inline-block">
-                      {
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                          رقم الإدارة
-                        </p>
-                      }
-                      {
-                        <p
-                          className="text-xl font-black text-white font-mono tracking-widest"
-                          dir="ltr"
-                        >
-                          {I}
-                        </p>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          }
-        </div>
-      )}
-      {R && t?.hasMonthlySubscribers && (
-        <SubscribersView
-          garage={t}
-          onClose={() => j(!1)}
-          showToast={V}
-          onToggleMenu={() => O(!_)}
-        />
-      )}
-      {z && (
-        <RechargeHistoryView
-          garage={t}
-          onClose={() => {
-            (X(!1), Te(!1));
-          }}
-          showToast={V}
-          onToggleMenu={() => O(!_)}
-        />
-      )}
-      {Y && (
-        <PackagesModal
-          packages={F}
-          onClose={() => {
-            Q(!1);
-            setPackagesInitialDuration(undefined);
-          }}
-          garageHourlyRate={t.hourlyRate}
-          walletNumber={I}
-          onToggleMenu={() => O(!_)}
-          subscriptionPrices={A}
-          hasMonthlySubscribers={t.hasMonthlySubscribers}
-          referrerId={t.referrerId || t.createdByDelegateId || null}
-          garage={t}
-          garageId={t.id}
-          garageBalance={t.balance || 0}
-          showToast={V}
-          initialDurationFilter={packagesInitialDuration}
-        />
-      )}
-      {os && (
-        <RewardsModal
-          garage={t}
-          onClose={() => is(!1)}
-          onToggleMenu={() => O(!_)}
-          referralBonusBalance={t.referralBonusBalance || 0}
-          showToast={V}
-        />
-      )}
-      {ce && !e && (
-        <StaffStatsModal
-          staffList={q}
-          vehiclesInside={l}
-          todayExitedVehicles={c}
-          onClose={() => te(!1)}
-          now={a}
-          onToggleMenu={() => O(!_)}
-        />
-      )}
-      {Oe && !e && (
-        <GarageReportsView
-          garage={t}
-          vehiclesInside={l}
-          todayExitedVehicles={c}
-          staffList={q}
-          onClose={() => ot(!1)}
-          onToggleMenu={() => O(!_)}
-        />
-      )}
-      {zt && (
-        <AppearanceSettingsModal
-          garage={t}
-          currentStaff={e}
-          onClose={() => Xt(!1)}
-          showToast={V}
-          onToggleMenu={() => O(!_)}
-        />
-      )}
-      {showTermsModal && (
-        <TermsAndConditionsModal
-          onClose={() => setShowTermsModal(false)}
-        />
-      )}
-      <RechargeNotificationModal
-        isOpen={ze && !!Re}
-        rechargeLog={Re}
-        onClose={$e}
-      />
-      <AnnouncementModal
-        announcement={selectedAnnouncement}
-        onClose={() => setSelectedAnnouncement(null)}
-      />
-      <TrialExpiryModal
+      <GarageDashboardOverlays
         garage={t}
+        adminPhone={I}
+        isLocked={ne}
+        isSubscribersOpen={R}
+        isRechargeHistoryOpen={z}
+        isPackagesOpen={Y}
+        isRewardsOpen={os}
+        isStaffStatsOpen={ce}
+        isReportsOpen={Oe}
+        isAppearanceOpen={zt}
+        showTermsModal={showTermsModal}
         showToast={V}
+        onToggleMenu={() => O(!_)}
+        onCloseSubscribers={() => j(!1)}
+        onCloseRechargeHistory={() => { X(!1); Te(!1); }}
+        onClosePackages={() => { Q(!1); setPackagesInitialDuration(undefined); }}
+        onCloseRewards={() => is(!1)}
+        onCloseStaffStats={() => te(!1)}
+        onCloseReports={() => ot(!1)}
+        onCloseAppearance={() => Xt(!1)}
+        onCloseTerms={() => setShowTermsModal(false)}
+        packages={F}
+        subscriptionPrices={A}
+        packagesInitialDuration={packagesInitialDuration}
+        currentStaff={e}
+        staffList={q}
+        vehiclesInside={l}
+        todayExitedVehicles={c}
+        now={a}
+        isRechargeNotificationOpen={ze}
+        rechargeLog={Re}
+        onCloseRechargeNotification={$e}
+        selectedAnnouncement={selectedAnnouncement}
+        onCloseAnnouncement={() => setSelectedAnnouncement(null)}
       />
     </div>
   );
