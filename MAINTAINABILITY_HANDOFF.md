@@ -100,7 +100,7 @@ Success criteria: API routes remain JSON-backed in production, `/api/health` rep
 
 ### M5 — Final validation and handoff
 
-Status: **pending**
+Status: **completed; production API is healthy on Vercel**
 
 Run:
 
@@ -120,6 +120,16 @@ curl -i -X POST -H 'content-type: application/json' --data '{}' https://parqv2.v
 ```
 
 Expected results are HTTP 200 JSON for health and system configuration, and HTTP 401 JSON for authentication without a Firebase token.
+
+### 2026-09-17 — M5 final validation
+
+- Local release gate passed on commit `f53a710`: 41 test files and 248 tests passed; TypeScript validation, production build, maintainability check, and `git diff --check` passed.
+- Vercel frontend `https://parqv2.vercel.app/` returned HTTP 200 HTML.
+- Vercel `/api/health` returned HTTP 200 JSON with deployed version `f53a7101673f3a43f4a3037ca7bf6aa8435735d8` and `adminSdk: true`.
+- Vercel `/api/system-config` returned HTTP 200 JSON.
+- Vercel `POST /api/auth/verify-pin` without a Firebase token returned the expected HTTP 401 JSON response.
+- Cloudflare Pages `https://rq-acg.pages.dev/` returned HTTP 200 HTML for the frontend, but its `/api/health` and `/api/system-config` paths fell back to the SPA HTML and `POST /api/auth/verify-pin` returned HTTP 405. This confirms Cloudflare Pages is currently frontend-only; production API traffic must use Vercel unless a Cloudflare Functions/Pages API deployment is added.
+- No source or working-tree changes were left by validation; the latest pushed commit remains `f53a710`.
 
 ## Change safety rules
 
