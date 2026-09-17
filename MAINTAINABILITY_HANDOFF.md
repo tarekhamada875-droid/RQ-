@@ -49,9 +49,14 @@ Validation completed: `npm test` passed 41 files and 248 tests; `npm run lint`, 
 
 ### M2 — Backend boundary refactor
 
-Status: **pending**
+Status: **completed; commit pending**
 
-Extract authentication and session routes from `server/app.ts` without changing behavior. Preserve route paths, middleware order, response contracts, CORS behavior, and authorization checks. Add or retain focused tests before moving the next route group.
+Extracted authentication and session routes from `server/app.ts` without changing route paths, middleware order, response contracts, CORS behavior, or authorization checks. Existing authentication and session tests remained the contract during the move.
+
+- [x] Added `server/routes/auth.ts` with the authentication and session handlers.
+- [x] Mounted the router under `/api`, preserving existing `/api/auth/*` paths.
+- [x] Removed stale authentication-only imports from `server/app.ts`.
+- [x] Reduced `server/app.ts` from 1,669 lines to 887 lines.
 
 Suggested target modules:
 
@@ -62,7 +67,7 @@ Suggested target modules:
 
 Keep `server/app.ts` focused on application construction, middleware, route mounting, and global error handling.
 
-Validation required after each extraction: full tests, typecheck, build, API smoke checks, and a clean diff review.
+Validation completed: `npm run lint`, `npm test`, `npm run build`, `npm run maintainability:check`, and `git diff --check` passed. The generated `api/index.js` was regenerated with the refactor.
 
 ### M3 — UI component boundary refactor
 
@@ -137,6 +142,15 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 - Validation passed: 41 test files, 248 tests, TypeScript, production build, maintainability check, and diff check.
 - The secret scanner was corrected to ignore SDK source literals and public Firebase client-key formats while rejecting embedded PEM blocks and service-account credentials.
 - Next milestone is M2: extract authentication/session responsibilities from `server/app.ts` without changing production contracts.
+
+### 2026-09-17 — M2 authentication/session extraction
+
+- Moved `/api/auth/*` handlers into `server/routes/auth.ts`.
+- Mounted the extracted router with `app.use('/api', authRouter)` so all production paths remain unchanged.
+- Reduced `server/app.ts` from 1,669 to 887 lines.
+- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
+- The generated `api/index.js` changed as expected and remains tracked for Vercel discovery.
+- Next milestone is M3: split the largest dashboard components by responsibility while preserving UI behavior.
 
 ## Handoff rule
 

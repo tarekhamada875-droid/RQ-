@@ -149565,110 +149565,9 @@ router5.post("/:id/extend-fair-use", requireAuth, financialRateLimiter(), async 
 });
 var garages_default = router5;
 
-// server/app.ts
-function mapDomainErrorToStatus2(err) {
-  if (err instanceof ValidationError) {
-    return { statusCode: err.statusCode, code: err.code, message: err.message };
-  }
-  const errMsg = String(err?.message || err || "");
-  if (errMsg.includes("GARAGE_NOT_FOUND") || errMsg.includes("VEHICLE_NOT_FOUND") || errMsg.includes("REQUEST_NOT_FOUND") || errMsg.includes("PACKAGE_NOT_FOUND") || errMsg.includes("SUBSCRIBER_NOT_FOUND")) {
-    return { statusCode: 404, code: "NOT_FOUND", message: "The requested resource was not found." };
-  }
-  if (errMsg.includes("REQUEST_ALREADY_PROCESSED") || errMsg.includes("VEHICLE_ALREADY_INSIDE") || errMsg.includes("VEHICLE_ALREADY_OUTSIDE") || errMsg.includes("INSUFFICIENT_BALANCE") || errMsg.includes("CAPACITY_LIMIT_REACHED") || errMsg.includes("PACKAGE_INACTIVE") || errMsg.includes("INVALID_PACKAGE_CONFIGURATION") || errMsg.includes("IDEMPOTENCY_KEY_REUSE") || errMsg.includes("FAIR_USE_LIMIT_REACHED") || errMsg.includes("DAILY_DELETION_LIMIT_REACHED") || errMsg.includes("DELEGATE_DAILY_GARAGE_LIMIT_REACHED") || errMsg.includes("reached_daily_deletion_limit") || errMsg.includes("PIN_ALREADY_TAKEN") || errMsg.includes("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION") || errMsg.includes("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN") || errMsg.includes("NO_REFERRAL_REWARDS_AVAILABLE") || errMsg.includes("SUBSCRIPTION_EXPIRED") || errMsg.includes("SUBSCRIBER_ALREADY_EXISTS")) {
-    return { statusCode: 409, code: "CONFLICT", message: "The requested operation conflicts with the current state." };
-  }
-  if (errMsg.includes("FORBIDDEN") || errMsg.includes("UNAUTHORIZED_GARAGE_ACCESS") || errMsg.includes("GARAGE_SCOPE_MISMATCH") || errMsg.includes("ADMIN_ONLY") || errMsg.includes("GARAGE_CANNOT_RECHARGE_OTHERS") || errMsg.includes("ADMIN_OR_SUPERVISOR_ONLY")) {
-    return { statusCode: 403, code: "FORBIDDEN", message: "You are not authorized to perform this operation." };
-  }
-  if (errMsg.includes("UNAUTHORIZED") || errMsg.includes("INVALID_ID_TOKEN") || errMsg.includes("SESSION_INACTIVE")) {
-    return { statusCode: 401, code: "UNAUTHORIZED", message: "Authentication is required." };
-  }
-  return { statusCode: 500, code: "INTERNAL_ERROR", message: "An internal server error occurred." };
-}
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  const normalizedOrigin = origin.replace(/\/+$/, "");
-  if (process.env.ALLOWED_ORIGINS) {
-    const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim().replace(/\/+$/, "")).filter(Boolean);
-    if (customOrigins.includes(normalizedOrigin)) return true;
-  }
-  if (process.env.APP_URL) {
-    const canonicalAppUrl = process.env.APP_URL.replace(/\/+$/, "");
-    if (normalizedOrigin === canonicalAppUrl) return true;
-    const pairedAppUrl = canonicalAppUrl.includes("ais-dev-") ? canonicalAppUrl.replace("ais-dev-", "ais-pre-") : canonicalAppUrl.includes("ais-pre-") ? canonicalAppUrl.replace("ais-pre-", "ais-dev-") : "";
-    if (pairedAppUrl && normalizedOrigin === pairedAppUrl) return true;
-  }
-  const exactOrigins = /* @__PURE__ */ new Set([
-    "https://parqv2.vercel.app",
-    "https://parq1.vercel.app",
-    "https://aistudio.google.com",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173"
-  ]);
-  if (exactOrigins.has(normalizedOrigin)) return true;
-  try {
-    const parsed = new URL(normalizedOrigin);
-    const hostname = parsed.hostname.toLowerCase();
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return true;
-    }
-    if (hostname === "parqv2.pages.dev" || hostname === "parq1.pages.dev" || hostname === "rq-acg.pages.dev") {
-      return true;
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
-function createApp() {
-  const app2 = (0, import_express6.default)();
-  app2.set("trust proxy", 1);
-  app2.use((0, import_cors.default)({
-    origin(origin, callback) {
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(null, false);
-    },
-    credentials: false,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Correlation-ID",
-      "Idempotency-Key"
-    ]
-  }));
-  app2.use(import_express6.default.json());
-  app2.use(correlationMiddleware);
-  app2.use(requestTimeoutMiddleware(15e3));
-  app2.use("/api/vehicles", vehicles_default);
-  app2.use("/api/subscribers", subscribers_default);
-  app2.use("/api/delegates", delegates_default);
-  app2.use("/api/transactions", recharges_default);
-  app2.use("/api/garages", garages_default);
-  app2.get("/api/health", (_req, res) => {
-    const isReady = !!(adminDb && adminAuth);
-    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "unknown";
-    if (!isReady) {
-      return res.status(503).json({
-        status: "error",
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        adminSdk: false,
-        version
-      });
-    }
-    res.json({
-      status: "ok",
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      adminSdk: true,
-      version
-    });
-  });
-  app2.post("/api/auth/verify-pin", requireFirebaseUser, async (req, res) => {
+// server/routes/auth.ts
+function registerAuthRoutes(router6) {
+  router6.post("/api/auth/verify-pin", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -149899,7 +149798,7 @@ function createApp() {
       return res.status(500).json({ success: false, error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0627\u0644\u062E\u0627\u062F\u0645" });
     }
   });
-  app2.post("/api/auth/check-pin-availability", requireFirebaseUser, financialRateLimiter(10, 6e4), async (req, res) => {
+  router6.post("/api/auth/check-pin-availability", requireFirebaseUser, financialRateLimiter(10, 6e4), async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -149920,7 +149819,7 @@ function createApp() {
       return res.status(500).json({ taken: false });
     }
   });
-  app2.post("/api/auth/verify-admin-pin", requireFirebaseUser, async (req, res) => {
+  router6.post("/api/auth/verify-admin-pin", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -149947,7 +149846,7 @@ function createApp() {
       return res.status(500).json({ valid: false });
     }
   });
-  app2.post("/api/auth/claim-admin-session", requireFirebaseUser, async (req, res) => {
+  router6.post("/api/auth/claim-admin-session", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -150032,7 +149931,7 @@ function createApp() {
       return sendApiError(res, 500, "INTERNAL_ERROR", "\u062D\u062F\u062B \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062E\u0627\u062F\u0645", req.correlationId);
     }
   });
-  app2.post("/api/auth/validate-or-refresh-session", requireFirebaseUser, async (req, res) => {
+  router6.post("/api/auth/validate-or-refresh-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId, role, entityId } = req.body || {};
       if (!uid || !sessionId || !role) {
@@ -150106,7 +150005,7 @@ function createApp() {
       return res.status(500).json({ success: false, valid: false, code: "INTERNAL_ERROR", error: "SERVER_ERROR" });
     }
   });
-  app2.post("/api/auth/release-session", requireFirebaseUser, async (req, res) => {
+  router6.post("/api/auth/release-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId, role, entityId } = req.body || {};
       const verifiedUid = req.user?.uid || "";
@@ -150170,7 +150069,7 @@ function createApp() {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  app2.post("/api/auth/invalidate-all-sessions", requireAuth, async (req, res) => {
+  router6.post("/api/auth/invalidate-all-sessions", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
@@ -150222,7 +150121,7 @@ function createApp() {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  app2.post("/api/auth/release-admin-session", requireFirebaseUser, async (req, res) => {
+  router6.post("/api/auth/release-admin-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId } = req.body || {};
       const verifiedUid = req.user?.uid || "";
@@ -150257,7 +150156,7 @@ function createApp() {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  app2.post("/api/admin/update-pin", requireAuth, async (req, res) => {
+  router6.post("/api/admin/update-pin", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
@@ -150301,6 +150200,114 @@ function createApp() {
       }
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
+  });
+}
+
+// server/app.ts
+function mapDomainErrorToStatus2(err) {
+  if (err instanceof ValidationError) {
+    return { statusCode: err.statusCode, code: err.code, message: err.message };
+  }
+  const errMsg = String(err?.message || err || "");
+  if (errMsg.includes("GARAGE_NOT_FOUND") || errMsg.includes("VEHICLE_NOT_FOUND") || errMsg.includes("REQUEST_NOT_FOUND") || errMsg.includes("PACKAGE_NOT_FOUND") || errMsg.includes("SUBSCRIBER_NOT_FOUND")) {
+    return { statusCode: 404, code: "NOT_FOUND", message: "The requested resource was not found." };
+  }
+  if (errMsg.includes("REQUEST_ALREADY_PROCESSED") || errMsg.includes("VEHICLE_ALREADY_INSIDE") || errMsg.includes("VEHICLE_ALREADY_OUTSIDE") || errMsg.includes("INSUFFICIENT_BALANCE") || errMsg.includes("CAPACITY_LIMIT_REACHED") || errMsg.includes("PACKAGE_INACTIVE") || errMsg.includes("INVALID_PACKAGE_CONFIGURATION") || errMsg.includes("IDEMPOTENCY_KEY_REUSE") || errMsg.includes("FAIR_USE_LIMIT_REACHED") || errMsg.includes("DAILY_DELETION_LIMIT_REACHED") || errMsg.includes("DELEGATE_DAILY_GARAGE_LIMIT_REACHED") || errMsg.includes("reached_daily_deletion_limit") || errMsg.includes("PIN_ALREADY_TAKEN") || errMsg.includes("MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION") || errMsg.includes("MONTHLY_SUBSCRIBER_NOT_CHECKED_IN") || errMsg.includes("NO_REFERRAL_REWARDS_AVAILABLE") || errMsg.includes("SUBSCRIPTION_EXPIRED") || errMsg.includes("SUBSCRIBER_ALREADY_EXISTS")) {
+    return { statusCode: 409, code: "CONFLICT", message: "The requested operation conflicts with the current state." };
+  }
+  if (errMsg.includes("FORBIDDEN") || errMsg.includes("UNAUTHORIZED_GARAGE_ACCESS") || errMsg.includes("GARAGE_SCOPE_MISMATCH") || errMsg.includes("ADMIN_ONLY") || errMsg.includes("GARAGE_CANNOT_RECHARGE_OTHERS") || errMsg.includes("ADMIN_OR_SUPERVISOR_ONLY")) {
+    return { statusCode: 403, code: "FORBIDDEN", message: "You are not authorized to perform this operation." };
+  }
+  if (errMsg.includes("UNAUTHORIZED") || errMsg.includes("INVALID_ID_TOKEN") || errMsg.includes("SESSION_INACTIVE")) {
+    return { statusCode: 401, code: "UNAUTHORIZED", message: "Authentication is required." };
+  }
+  return { statusCode: 500, code: "INTERNAL_ERROR", message: "An internal server error occurred." };
+}
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const normalizedOrigin = origin.replace(/\/+$/, "");
+  if (process.env.ALLOWED_ORIGINS) {
+    const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim().replace(/\/+$/, "")).filter(Boolean);
+    if (customOrigins.includes(normalizedOrigin)) return true;
+  }
+  if (process.env.APP_URL) {
+    const canonicalAppUrl = process.env.APP_URL.replace(/\/+$/, "");
+    if (normalizedOrigin === canonicalAppUrl) return true;
+    const pairedAppUrl = canonicalAppUrl.includes("ais-dev-") ? canonicalAppUrl.replace("ais-dev-", "ais-pre-") : canonicalAppUrl.includes("ais-pre-") ? canonicalAppUrl.replace("ais-pre-", "ais-dev-") : "";
+    if (pairedAppUrl && normalizedOrigin === pairedAppUrl) return true;
+  }
+  const exactOrigins = /* @__PURE__ */ new Set([
+    "https://parqv2.vercel.app",
+    "https://parq1.vercel.app",
+    "https://aistudio.google.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173"
+  ]);
+  if (exactOrigins.has(normalizedOrigin)) return true;
+  try {
+    const parsed = new URL(normalizedOrigin);
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return true;
+    }
+    if (hostname === "parqv2.pages.dev" || hostname === "parq1.pages.dev" || hostname === "rq-acg.pages.dev") {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+function createApp() {
+  const app2 = (0, import_express6.default)();
+  app2.set("trust proxy", 1);
+  app2.use((0, import_cors.default)({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    credentials: false,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Correlation-ID",
+      "Idempotency-Key"
+    ]
+  }));
+  app2.use(import_express6.default.json());
+  app2.use(correlationMiddleware);
+  app2.use(requestTimeoutMiddleware(15e3));
+  app2.use("/api/vehicles", vehicles_default);
+  app2.use("/api/subscribers", subscribers_default);
+  app2.use("/api/delegates", delegates_default);
+  app2.use("/api/transactions", recharges_default);
+  app2.use("/api/garages", garages_default);
+  const authRouter = import_express6.default.Router();
+  registerAuthRoutes(authRouter);
+  app2.use("/api", authRouter);
+  app2.get("/api/health", (_req, res) => {
+    const isReady = !!(adminDb && adminAuth);
+    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || "unknown";
+    if (!isReady) {
+      return res.status(503).json({
+        status: "error",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        adminSdk: false,
+        version
+      });
+    }
+    res.json({
+      status: "ok",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      adminSdk: true,
+      version
+    });
   });
   app2.get("/api/system-config", async (_req, res) => {
     try {
