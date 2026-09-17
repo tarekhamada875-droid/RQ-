@@ -79,7 +79,7 @@ Split the largest dashboards by responsibility rather than by arbitrary line cou
 - [x] Kept data fetching, state ownership, and callbacks in `GarageDashboardView.tsx`.
 - [x] Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines.
 - [x] Split `AdminGarageDetailsView.tsx` by extracting the settings and staff accordion.
-- [ ] Split `DelegateDashboardView.tsx`.
+- [x] Split `DelegateDashboardView.tsx` by extracting add-garage and wallet top-up overlays.
 - [ ] Split `SubscribersView.tsx`.
 
 Suggested first targets:
@@ -175,6 +175,14 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 - Reduced `AdminGarageDetailsView.tsx` from approximately 1,313 to 1,110 lines; the extracted component is 255 lines.
 - Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
 - Remaining M3 work is `DelegateDashboardView.tsx` and `SubscribersView.tsx`; the admin screen still contains financial cards and modal sections that can be split in a later pass if needed.
+
+### 2026-09-17 — M3 delegate dashboard overlay split
+
+- Added `src/components/delegate/DelegateDashboardOverlays.tsx` for add-garage and wallet top-up modal rendering.
+- Kept parent state, data filtering, service callbacks, and submission logic in `DelegateDashboardView.tsx`.
+- Reduced `DelegateDashboardView.tsx` from approximately 1,009 to 655 lines; the extracted component is 405 lines.
+- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
+- Remaining M3 work is `SubscribersView.tsx`; further delegate splitting can be considered later for the performance and garage-list tabs.
 
 ## Handoff rule
 
