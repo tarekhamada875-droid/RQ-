@@ -15,7 +15,8 @@
     "test": "vitest run",
     "lint": "tsc --noEmit",
     "ci:check": "tsx tools/ci-check.ts",
-    "release:smoke": "tsx tools/release-smoke.ts"
+    "release:smoke": "tsx tools/release-smoke.ts",
+    "maintainability:check": "tsx tools/maintainability-check.ts"
   },
   "dependencies": {
     "@csstools/postcss-color-mix-function": "^4.0.11",

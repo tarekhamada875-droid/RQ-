@@ -46,6 +46,9 @@ jobs:
           test -f dist/server.cjs
           test -f api/index.js
 
+      - name: Maintainability checks
+        run: npm run maintainability:check
+
       - name: Live release smoke check
         env:
           SMOKE_BASE_URL: https://parqv2.vercel.app
