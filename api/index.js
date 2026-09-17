@@ -149927,11 +149927,6 @@ function createApp() {
       if (requestedPin !== "88888899") {
         return res.status(400).json({ success: false, error: "INVALID_BOOTSTRAP_PIN" });
       }
-      const privateRef = adminDb.doc("private_pins/auth_pin");
-      const privateSnap = await privateRef.get();
-      if (privateSnap.exists && privateSnap.data()?.pin) {
-        return res.status(409).json({ success: false, error: "ADMIN_PIN_ALREADY_INITIALIZED" });
-      }
       const adminRef = adminDb.doc("admin_settings/auth_pin");
       await saveEntityPin("admin_settings", "auth_pin", requestedPin);
       await adminRef.set({ pin: null, pinLookupHash: null }, { merge: true });
