@@ -80,7 +80,7 @@ Split the largest dashboards by responsibility rather than by arbitrary line cou
 - [x] Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines.
 - [x] Split `AdminGarageDetailsView.tsx` by extracting the settings and staff accordion.
 - [x] Split `DelegateDashboardView.tsx` by extracting add-garage and wallet top-up overlays.
-- [ ] Split `SubscribersView.tsx`.
+- [x] Split `SubscribersView.tsx` by extracting subscriber add/edit, delete, and renewal modals.
 
 Suggested first targets:
 
@@ -183,6 +183,14 @@ Expected results are HTTP 200 JSON for health and system configuration, and HTTP
 - Reduced `DelegateDashboardView.tsx` from approximately 1,009 to 655 lines; the extracted component is 405 lines.
 - Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
 - Remaining M3 work is `SubscribersView.tsx`; further delegate splitting can be considered later for the performance and garage-list tabs.
+
+### 2026-09-17 — M3 subscribers modal split
+
+- Added `src/components/garage/SubscriberModals.tsx` for subscriber add/edit, delete confirmation, and renewal option rendering.
+- Kept subscriber loading, filtering, persistence, Firestore mutations, and parent state ownership in `SubscribersView.tsx`.
+- Reduced `SubscribersView.tsx` from approximately 950 to 597 lines; the extracted component is 371 lines.
+- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
+- Planned M3 dashboard component splits are complete. Remaining work is M4 generated bundle investigation and M5 final validation/handoff.
 
 ## Handoff rule
 
