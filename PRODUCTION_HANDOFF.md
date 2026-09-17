@@ -3,7 +3,7 @@
 **Last updated:** 2026-09-17 07:48 +03:00
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Current commit:** `06a0272` — `feat: enforce secure eight-digit PIN authentication`
+**Current commit:** `6560c19` — `chore: remove one-time admin PIN migration`
 
 ## Objective
 Prepare RQ for real production use: secure 8-digit PIN authentication, faster login, clean Arabic/mobile UX, verified deployment, admin credential migration, and deletion of all test data before customer use.
@@ -41,13 +41,17 @@ Prepare RQ for real production use: secure 8-digit PIN authentication, faster lo
 
 Firebase Admin SDK access is not available as a local environment variable or configured Firebase connector. Firebase Console was opened for project `gen-lang-client-0091669619`, but Google sign-in is required. The user must complete Google sign-in in the browser takeover. After sign-in, inspect Firestore and continue.
 
+The user later chose to preserve all data and migrate only the admin credential. A temporary, rate-limited migration endpoint was deployed in commit `757eed6`, invoked with the previously supplied value `888888`, and returned HTTP 401 `INVALID_OLD_PIN`. No Firestore data or credentials were changed. The endpoint was removed and redeployed in commit `6560c19`; the temporary route is no longer present in production.
+
+The value `888888` is therefore not the current admin PIN. Further admin-only migration requires the actual current admin PIN or an authenticated Firebase/Google project-admin access path.
+
 ## Approved destructive scope
 
 The user explicitly confirmed this exact reset scope:
 
 > Delete all current test data from `garages`, `delegates`, `staff`, `supervisors`, `vehicles`, `subscribers`, `transactions/recharges`, sessions, and related test records, while preserving package definitions and application configuration.
 
-This reset is irreversible. Do not expand the scope beyond the confirmation above. Before deletion, inventory document counts and record the counts in this handoff log. Prefer a bounded script/batch deletion if Firebase Admin access is available; otherwise use Firebase Console carefully and document each collection processed.
+This reset is no longer the selected plan. The user explicitly changed direction and requested that all data be preserved. Do not delete any records unless the user separately reconfirms a reset. Before any future mutation, inventory document counts and record the counts in this handoff log.
 
 ## Remaining sequence
 
@@ -58,7 +62,8 @@ This reset is irreversible. Do not expand the scope beyond the confirmation abov
 4. Update this log with counts before mutation.
 
 ### B. Admin credential migration
-1. Generate a cryptographically random temporary 8-digit PIN that does not reuse `888888` or any visible old PIN.
+1. Obtain the actual current admin PIN or authenticated project-admin access; `888888` was rejected and must not be retried blindly.
+2. Generate a cryptographically random temporary 8-digit PIN that does not reuse `888888` or any visible old PIN.
 2. Write only the secure private admin record at `private_pins/auth_pin` with the new scrypt hash and lookup hash. Do not print the temporary PIN in a public log or commit.
 3. Ensure legacy admin credential fields are removed/nullified from `admin_settings/auth_pin`.
 4. Tell the user the temporary PIN privately in the chat so they can log in.
