@@ -149920,22 +149920,6 @@ function createApp() {
       return res.status(500).json({ taken: false });
     }
   });
-  app2.post("/api/auth/bootstrap-admin-pin-once", financialRateLimiter(3, 6e4), async (req, res) => {
-    try {
-      if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
-      const requestedPin = cleanPin(req.body?.pin);
-      if (requestedPin !== "88888899") {
-        return res.status(400).json({ success: false, error: "INVALID_BOOTSTRAP_PIN" });
-      }
-      const adminRef = adminDb.doc("admin_settings/auth_pin");
-      await saveEntityPin("admin_settings", "auth_pin", requestedPin);
-      await adminRef.set({ pin: null, pinLookupHash: null }, { merge: true });
-      return res.json({ success: true });
-    } catch (error) {
-      console.error("[Server Auth] One-time admin bootstrap failed:", error);
-      return res.status(500).json({ success: false, error: "ADMIN_BOOTSTRAP_FAILED" });
-    }
-  });
   app2.post("/api/auth/verify-admin-pin", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
