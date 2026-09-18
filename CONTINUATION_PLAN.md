@@ -320,3 +320,14 @@ The active vehicle listener remains unchanged and continues to provide realtime 
 Validation passed: full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint: make the summary freshness contract explicit by adding a controlled rebuild/refresh mechanism or a projection worker, then migrate only aggregate KPI reads with a fallback to legacy fields and production reconciliation telemetry.
+
+
+## Progress update — Freshness-aware report KPI migration completed
+
+Garage reports now request the protected dashboard summary during their existing refresh flow. If the summary belongs to the current Cairo day and was rebuilt within five minutes, report totals use the summary's net revenue and exit count. If the summary is missing, stale, future-dated, or unavailable, the reports view falls back to its existing Firestore transaction and garage-field calculations without changing user behavior.
+
+The active vehicle realtime listener and live garage dashboard occupancy remain unchanged. This migration is intentionally limited to the reports overlay and has an explicit stale-data safety boundary.
+
+Added regression tests for fresh, stale, missing, future, and non-current-day summaries. Validation passed: 269 tests, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint: add an automated summary refresh/freshness mechanism so the report can use the compact read model consistently without waiting for manual rebuilds, then measure actual read reduction before migrating more screens.

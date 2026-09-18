@@ -9,7 +9,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { Garage, Vehicle, Staff } from '../../types';
-import { firestoreService } from '../../services';
+import { firestoreService, garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 
 interface GarageReportsViewProps {
@@ -32,6 +32,7 @@ export const GarageReportsView = memo(({
   const [localGarage, setLocalGarage] = useState<Garage>(() => garage);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
+  const [dashboardSummary, setDashboardSummary] = useState<GarageDashboardSummary | null>(null);
   const [isStaffPerformanceCollapsed, setIsStaffPerformanceCollapsed] = useState(true);
 
   // Sync state whenever props update in real time
@@ -48,12 +49,14 @@ export const GarageReportsView = memo(({
     if (!garage?.id) return;
     setIsRefreshing(true);
     try {
-      const [freshGarage, freshExited] = await Promise.all([
+      const [freshGarage, freshExited, freshSummary] = await Promise.all([
         firestoreService.getGarageById(garage.id),
-        firestoreService.getTodayTransactionsOnce(garage.id)
+        firestoreService.getTodayTransactionsOnce(garage.id),
+        garageService.getDashboardSummary(garage.id).catch(() => null)
       ]);
       if (freshGarage) setLocalGarage(freshGarage);
       if (freshExited) setLocalTodayExitedVehicles(freshExited);
+      setDashboardSummary(freshSummary);
       setLastRefreshed(new Date());
     } catch (err) {
       console.error('Failed to refresh reports from Firestore:', err);
@@ -119,12 +122,14 @@ export const GarageReportsView = memo(({
     // Financial calculations
     const today = getCairoDateKey();
     const isTodayValid = localGarage.lastTransactionDate === today;
-    const todayRevenue = totalExited > 0 
-      ? actualCalculatedTodayRevenue 
-      : (isTodayValid ? (localGarage.todayRevenue || 0) : 0);
+    const freshSummaryIsUsable = isFreshGarageDashboardSummary(dashboardSummary);
+    const effectiveTotalExited = freshSummaryIsUsable ? dashboardSummary.exitsToday : totalExited;
+    const todayRevenue = freshSummaryIsUsable
+      ? dashboardSummary.netRevenue
+      : (totalExited > 0 ? actualCalculatedTodayRevenue : (isTodayValid ? (localGarage.todayRevenue || 0) : 0));
 
     return {
-      totalExited,
+      totalExited: effectiveTotalExited,
       hourlyExited,
       overnightExited,
       todayRevenue,
@@ -132,7 +137,7 @@ export const GarageReportsView = memo(({
         .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.revenue - a.revenue)
     };
-  }, [localTodayExitedVehicles, localGarage, staffList]);
+  }, [dashboardSummary, localTodayExitedVehicles, localGarage, staffList]);
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col transition-colors select-none" dir="rtl">
