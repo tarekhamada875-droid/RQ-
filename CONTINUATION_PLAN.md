@@ -331,3 +331,12 @@ The active vehicle realtime listener and live garage dashboard occupancy remain 
 Added regression tests for fresh, stale, missing, future, and non-current-day summaries. Validation passed: 269 tests, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint: add an automated summary refresh/freshness mechanism so the report can use the compact read model consistently without waiting for manual rebuilds, then measure actual read reduction before migrating more screens.
+
+
+## Progress update — Live bucket-backed summary reads completed
+
+The garage summary read endpoint now computes current-day aggregate KPIs directly from the small set of sharded projection buckets and the garage's current `carsInside` value. It returns a fresh `source: live_projection_buckets` summary with the current Cairo date and response timestamp. If no bucket exists yet, it falls back to the stored rebuild summary or returns `DASHBOARD_SUMMARY_NOT_READY`, allowing the frontend's existing legacy calculation fallback to remain safe during rollout.
+
+This removes the manual-rebuild freshness dependency for garages receiving new projection events. It does not create a shared summary write hotspot and does not change the active vehicle listener. Full tests, TypeScript validation, production build, CI gate, maintainability check, and diff validation passed.
+
+Next checkpoint: measure actual Firestore reads for the reports overlay. The reports view still loads exited vehicles for staff-performance detail, so further read reduction requires separating aggregate KPI loading from optional staff detail rather than blindly removing that query.

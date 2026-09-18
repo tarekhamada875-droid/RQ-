@@ -37,6 +37,7 @@ export interface GarageDashboardSummary {
   projectionVersion: number;
   dateId?: string;
   rebuiltAt?: string;
+  source?: 'live_projection_buckets' | 'rebuild';
 }
 
 export function isFreshGarageDashboardSummary(summary: GarageDashboardSummary | null | undefined, now = Date.now(), maxAgeMs = 5 * 60 * 1000): summary is GarageDashboardSummary {

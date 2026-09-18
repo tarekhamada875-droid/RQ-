@@ -481,9 +481,27 @@ router.get('/:id/dashboard-summary', requireAuth, async (req: AuthRequest, res: 
     const isAdmin = callerRole === 'admin';
     const isGarageScoped = (callerRole === 'garage' || callerRole === 'staff') && req.user?.garageId === garageId;
     if (!isAdmin && !isGarageScoped) return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage summary scope required' });
-    const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
-    if (!summarySnap.exists) return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' });
-    return res.json({ success: true, data: { garageId, summary: summarySnap.data() || {} } });
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const [bucketSnap, garageSnap, summarySnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', today).get(),
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get()
+    ]);
+    if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
+    if (bucketSnap.empty) {
+      if (!summarySnap.exists) return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' });
+      return res.json({ success: true, data: { garageId, summary: summarySnap.data() || {} } });
+    }
+    const liveSummary = aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {}));
+    const summary = {
+      ...liveSummary,
+      activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
+      garageId,
+      dateId: today,
+      rebuiltAt: new Date().toISOString(),
+      source: 'live_projection_buckets'
+    };
+    return res.json({ success: true, data: { garageId, summary, bucketCount: bucketSnap.size } });
   } catch (e: any) {
     console.error('[Server Garage] Error reading dashboard summary:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);
