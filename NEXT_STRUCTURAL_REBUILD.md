@@ -538,3 +538,10 @@ Commission-earned payloads are validated for delegate ID, numeric commission amo
 Added the pure `server/financialReporting.ts` calculator for event-derived financial reporting. It derives gross recharge total, commission total, refund total, company net revenue, historical settled total, and current unsettled totals per delegate. Commission is counted from `commission_earned` events rather than recharge payloads, avoiding double counting. Settlement cutoffs exclude prior delegate recharge events from the current cycle, and fully settled delegates are represented explicitly with a zero current balance.
 
 Added regression tests for date ranges, gross/commission/refund/net totals, settlement cutoffs, deterministic replay, and the zero-current-cycle edge case. The complete repository validation gate passed after correcting that edge case.
+
+
+## 2026-09-18 — Protected financial reporting endpoint
+
+Added `GET /api/reports/financial`, restricted to authenticated administrators. The endpoint reads the Firestore event collection group and settlement records, then delegates calculation to the pure financial reporting module. It supports optional `start`, `end`, and `delegateId` filters and returns the report totals together with the applied filters and generation timestamp. Invalid date boundaries, reversed ranges, invalid delegate IDs, unauthenticated requests, and non-admin requests are rejected without reading financial data.
+
+The reporting endpoint and delegate-filter tests passed with the full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check.

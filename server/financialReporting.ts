@@ -15,6 +15,7 @@ export interface SettlementRecord {
 export interface FinancialReportOptions {
   start?: string | Date;
   end?: string | Date;
+  delegateId?: string;
 }
 
 export interface FinancialReport {
@@ -28,6 +29,7 @@ export interface FinancialReport {
 
 function asDate(value: string | Date | undefined): Date | null {
   if (!value) return null;
+  if (typeof value === 'object' && 'toDate' in value && typeof (value as any).toDate === 'function') return asDate((value as any).toDate());
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -71,6 +73,7 @@ export function calculateFinancialReport(
   for (const event of events) {
     if (!inRange(event.occurredAt, options)) continue;
     const payload = event.payload || {};
+    if (options.delegateId && String(payload.delegateId || '') !== options.delegateId) continue;
     if (event.eventType === 'recharge_approved') {
       grossRechargeTotal += Number(payload.amount || 0);
     }

@@ -36,4 +36,11 @@ describe('financial reporting projections', () => {
     const settlements = [{ settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 1000 }];
     expect(calculateFinancialReport(events, settlements)).toEqual(calculateFinancialReport([...events], [...settlements]));
   });
+
+  it('supports delegate-scoped totals without leaking another delegate\'s recharge', () => {
+    const report = calculateFinancialReport(events, [], { delegateId: 'del-1' });
+    expect(report.grossRechargeTotal).toBe(1999);
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 1999 });
+    expect(report.commissionTotal).toBe(100);
+  });
 });

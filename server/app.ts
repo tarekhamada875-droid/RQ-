@@ -5,6 +5,7 @@ import subscribersRouter from './routes/subscribers';
 import delegatesRouter from './routes/delegates';
 import rechargesRouter from './routes/recharges';
 import garagesRouter from './routes/garages';
+import reportsRouter from './routes/reports';
 import { registerAuthRoutes } from './routes/auth';
 import {
   adminDb,
@@ -189,6 +190,7 @@ export function createApp() {
   app.use('/api/delegates', delegatesRouter);
   app.use('/api/transactions', rechargesRouter);
   app.use('/api/garages', garagesRouter);
+  app.use('/api/reports', reportsRouter);
   const authRouter = express.Router();
   registerAuthRoutes(authRouter);
   app.use('/', authRouter);

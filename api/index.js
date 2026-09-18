@@ -17051,7 +17051,7 @@ var require_get_intrinsic = __commonJS({
     var max = require_max();
     var min = require_min();
     var pow = require_pow();
-    var round = require_round();
+    var round2 = require_round();
     var sign2 = require_sign();
     var $Function = Function;
     var getEvalledConstructor = function(expressionSyntax) {
@@ -17165,7 +17165,7 @@ var require_get_intrinsic = __commonJS({
       "%Math.max%": max,
       "%Math.min%": min,
       "%Math.pow%": pow,
-      "%Math.round%": round,
+      "%Math.round%": round2,
       "%Math.sign%": sign2,
       "%Reflect.getPrototypeOf%": $ReflectGPO
     };
@@ -20858,27 +20858,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router6;
+    module2.exports = Router7;
     module2.exports.Route = Route;
-    function Router6(options) {
-      if (!(this instanceof Router6)) {
-        return new Router6(options);
+    function Router7(options) {
+      if (!(this instanceof Router7)) {
+        return new Router7(options);
       }
       const opts = options || {};
-      function router6(req, res, next) {
-        router6.handle(req, res, next);
+      function router7(req, res, next) {
+        router7.handle(req, res, next);
       }
-      Object.setPrototypeOf(router6, this);
-      router6.caseSensitive = opts.caseSensitive;
-      router6.mergeParams = opts.mergeParams;
-      router6.params = {};
-      router6.strict = opts.strict;
-      router6.stack = [];
-      return router6;
+      Object.setPrototypeOf(router7, this);
+      router7.caseSensitive = opts.caseSensitive;
+      router7.mergeParams = opts.mergeParams;
+      router7.params = {};
+      router7.strict = opts.strict;
+      router7.stack = [];
+      return router7;
     }
-    Router6.prototype = function() {
+    Router7.prototype = function() {
     };
-    Router6.prototype.param = function param(name, fn) {
+    Router7.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20898,7 +20898,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router6.prototype.handle = function handle(req, res, callback) {
+    Router7.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -21025,7 +21025,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router6.prototype.use = function use(handler) {
+    Router7.prototype.use = function use(handler) {
       let offset = 0;
       let path2 = "/";
       if (typeof handler !== "function") {
@@ -21058,7 +21058,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router6.prototype.route = function route(path2) {
+    Router7.prototype.route = function route(path2) {
       const route2 = new Route(path2);
       const layer = new Layer(path2, {
         sensitive: this.caseSensitive,
@@ -21073,7 +21073,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router6.prototype[method] = function(path2) {
+      Router7.prototype[method] = function(path2) {
         const route = this.route(path2);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21256,13 +21256,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = require("node:path").resolve;
     var once = require_once();
-    var Router6 = require_router();
+    var Router7 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router6 = null;
+      var router7 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21271,13 +21271,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router6 === null) {
-            router6 = new Router6({
+          if (router7 === null) {
+            router7 = new Router7({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router6;
+          return router7;
         }
       });
     };
@@ -21348,15 +21348,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router6 = this.router;
+      var router7 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router6.use(path2, fn2);
+          return router7.use(path2, fn2);
         }
         debug(".use app under %s", path2);
         fn2.mountpath = path2;
         fn2.parent = this;
-        router6.use(path2, function mounted_app(req, res, next) {
+        router7.use(path2, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -24004,7 +24004,7 @@ var require_express = __commonJS({
     var EventEmitter = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router6 = require_router();
+    var Router7 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -24026,8 +24026,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router6.Route;
-    exports2.Router = Router6;
+    exports2.Route = Router7.Route;
+    exports2.Router = Router7;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -33419,7 +33419,7 @@ var require_bignumber = __commonJS({
             intCheck(b, 2, ALPHABET.length, "Base");
             if (b == 10 && alphabetHasNormalDecimalDigits) {
               x2 = new BigNumber2(v);
-              return round(x2, DECIMAL_PLACES + x2.e + 1, ROUNDING_MODE);
+              return round2(x2, DECIMAL_PLACES + x2.e + 1, ROUNDING_MODE);
             }
             str = String(v);
             if (isNum = typeof v == "number") {
@@ -33911,7 +33911,7 @@ var require_bignumber = __commonJS({
             }
             if (base == BASE) {
               for (i2 = 1, s2 = qc[0]; s2 >= 10; s2 /= 10, i2++) ;
-              round(q, dp + (q.e = i2 + e2 * LOG_BASE - 1) + 1, rm, more);
+              round2(q, dp + (q.e = i2 + e2 * LOG_BASE - 1) + 1, rm, more);
             } else {
               q.e = e2;
               q.r = +more;
@@ -33930,7 +33930,7 @@ var require_bignumber = __commonJS({
             str = coeffToString(n.c);
             str = id == 1 || id == 2 && (ne <= TO_EXP_NEG || ne >= TO_EXP_POS) ? toExponential(str, ne) : toFixedPoint(str, ne, "0");
           } else {
-            n = round(new BigNumber2(n), i2, rm);
+            n = round2(new BigNumber2(n), i2, rm);
             e2 = n.e;
             str = coeffToString(n.c);
             len = str.length;
@@ -34003,7 +34003,7 @@ var require_bignumber = __commonJS({
             x2.c = x2.e = null;
           };
         })();
-        function round(x2, sd, rm, r2) {
+        function round2(x2, sd, rm, r2) {
           var d, i2, j, k, n, ni, rd, xc = x2.c, pows10 = POWS_TEN;
           if (xc) {
             out: {
@@ -34110,7 +34110,7 @@ var require_bignumber = __commonJS({
             intCheck(dp, 0, MAX);
             if (rm == null) rm = ROUNDING_MODE;
             else intCheck(rm, 0, 8);
-            return round(new BigNumber2(x2), dp + x2.e + 1, rm);
+            return round2(new BigNumber2(x2), dp + x2.e + 1, rm);
           }
           if (!(c = x2.c)) return null;
           n = ((v = c.length - 1) - bitFloor(this.e / LOG_BASE)) * LOG_BASE;
@@ -34173,7 +34173,7 @@ var require_bignumber = __commonJS({
               nIsOdd = i2 % 2;
             } else {
               n = n.times(half);
-              round(n, n.e + 1, 1);
+              round2(n, n.e + 1, 1);
               if (n.e > 14) {
                 nIsOdd = isOdd(n);
               } else {
@@ -34191,13 +34191,13 @@ var require_bignumber = __commonJS({
           }
           if (isModExp) return y;
           if (nIsNeg) y = ONE.div(y);
-          return m2 ? y.mod(m2) : k ? round(y, POW_PRECISION, ROUNDING_MODE, more) : y;
+          return m2 ? y.mod(m2) : k ? round2(y, POW_PRECISION, ROUNDING_MODE, more) : y;
         };
         P.integerValue = function(rm) {
           var n = new BigNumber2(this);
           if (rm == null) rm = ROUNDING_MODE;
           else intCheck(rm, 0, 8);
-          return round(n, n.e + 1, rm);
+          return round2(n, n.e + 1, rm);
         };
         P.isEqualTo = P.eq = function(y, b) {
           return compare(this, new BigNumber2(y, b)) === 0;
@@ -34430,7 +34430,7 @@ var require_bignumber = __commonJS({
             intCheck(sd, 1, MAX);
             if (rm == null) rm = ROUNDING_MODE;
             else intCheck(rm, 0, 8);
-            return round(new BigNumber2(x2), sd, rm);
+            return round2(new BigNumber2(x2), sd, rm);
           }
           if (!(c = x2.c)) return null;
           v = c.length - 1;
@@ -34479,7 +34479,7 @@ var require_bignumber = __commonJS({
                 n = n.slice(s2 - 3, s2 + 1);
                 if (n == "9999" || !rep && n == "4999") {
                   if (!rep) {
-                    round(t2, t2.e + DECIMAL_PLACES + 2, 0);
+                    round2(t2, t2.e + DECIMAL_PLACES + 2, 0);
                     if (t2.times(t2).eq(x2)) {
                       r2 = t2;
                       break;
@@ -34490,7 +34490,7 @@ var require_bignumber = __commonJS({
                   rep = 1;
                 } else {
                   if (!+n || !+n.slice(1) && n.charAt(0) == "5") {
-                    round(r2, r2.e + DECIMAL_PLACES + 2, 1);
+                    round2(r2, r2.e + DECIMAL_PLACES + 2, 1);
                     m2 = !r2.times(r2).eq(x2);
                   }
                   break;
@@ -34498,7 +34498,7 @@ var require_bignumber = __commonJS({
               }
             }
           }
-          return round(r2, r2.e + DECIMAL_PLACES + 1, ROUNDING_MODE, m2);
+          return round2(r2, r2.e + DECIMAL_PLACES + 1, ROUNDING_MODE, m2);
         };
         P.toExponential = function(dp, rm) {
           if (dp != null) {
@@ -34614,7 +34614,7 @@ var require_bignumber = __commonJS({
             if (b == null) {
               str = e2 <= TO_EXP_NEG || e2 >= TO_EXP_POS ? toExponential(coeffToString(n.c), e2) : toFixedPoint(coeffToString(n.c), e2, "0");
             } else if (b === 10 && alphabetHasNormalDecimalDigits) {
-              n = round(new BigNumber2(n), DECIMAL_PLACES + e2 + 1, ROUNDING_MODE);
+              n = round2(new BigNumber2(n), DECIMAL_PLACES + e2 + 1, ROUNDING_MODE);
               str = toFixedPoint(coeffToString(n.c), n.e, "0");
             } else {
               intCheck(b, 2, ALPHABET.length, "Base");
@@ -97926,7 +97926,7 @@ var require_expression = __commonJS({
     exports2.switchOn = switchOn;
     exports2.pow = pow;
     exports2.rand = rand;
-    exports2.round = round;
+    exports2.round = round2;
     exports2.trunc = trunc;
     exports2.collectionId = collectionId;
     exports2.length = length;
@@ -100547,7 +100547,7 @@ var require_expression = __commonJS({
     function rand() {
       return new FunctionExpression("rand", []);
     }
-    function round(expr, decimalPlaces) {
+    function round2(expr, decimalPlaces) {
       if (decimalPlaces === void 0) {
         return (0, pipeline_util_1.fieldOrExpression)(expr).round();
       } else {
@@ -146540,7 +146540,7 @@ __export(api_entry_exports, {
 module.exports = __toCommonJS(api_entry_exports);
 
 // server/app.ts
-var import_express6 = __toESM(require_express2(), 1);
+var import_express7 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 
 // server/routes/vehicles.ts
@@ -149734,9 +149734,128 @@ router5.post("/:id/extend-fair-use", requireAuth, financialRateLimiter(), async 
 });
 var garages_default = router5;
 
+// server/routes/reports.ts
+var import_express6 = __toESM(require_express2(), 1);
+
+// server/financialReporting.ts
+function asDate(value) {
+  if (!value) return null;
+  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") return asDate(value.toDate());
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function inRange(value, options) {
+  const date = asDate(value);
+  if (!date) return false;
+  const start = asDate(options.start);
+  const end = asDate(options.end);
+  return (!start || date >= start) && (!end || date < end);
+}
+function round(value) {
+  return Number(value.toFixed(2));
+}
+function calculateFinancialReport(events, settlements, options = {}) {
+  let grossRechargeTotal = 0;
+  let commissionTotal = 0;
+  let refundTotal = 0;
+  let historicalSettledTotal = 0;
+  const currentUnsettledByDelegate = {};
+  const latestSettlementByDelegate = {};
+  for (const settlement of settlements) {
+    if (!inRange(settlement.settledAt, options)) continue;
+    const delegateId = settlement.delegateId || "";
+    historicalSettledTotal += Number(settlement.previousCycleTotal || 0);
+    if (delegateId && currentUnsettledByDelegate[delegateId] === void 0) currentUnsettledByDelegate[delegateId] = 0;
+    const settledAt = asDate(settlement.settledAt);
+    if (delegateId && settledAt && (!latestSettlementByDelegate[delegateId] || settledAt > latestSettlementByDelegate[delegateId])) {
+      latestSettlementByDelegate[delegateId] = settledAt;
+    }
+  }
+  for (const event of events) {
+    if (!inRange(event.occurredAt, options)) continue;
+    const payload = event.payload || {};
+    if (options.delegateId && String(payload.delegateId || "") !== options.delegateId) continue;
+    if (event.eventType === "recharge_approved") {
+      grossRechargeTotal += Number(payload.amount || 0);
+    }
+    if (event.eventType === "commission_earned") {
+      commissionTotal += Number(payload.commissionAmount || 0);
+    }
+    if (event.eventType === "vehicle_refunded") {
+      refundTotal += Number(payload.refundAmount || 0);
+    }
+    if (event.eventType === "recharge_approved" && event.aggregateId) {
+      const delegateId = String(payload.delegateId || "");
+      if (delegateId) {
+        const occurredAt = asDate(event.occurredAt);
+        const cutoff = latestSettlementByDelegate[delegateId];
+        if (!cutoff || occurredAt && occurredAt > cutoff) {
+          currentUnsettledByDelegate[delegateId] = (currentUnsettledByDelegate[delegateId] || 0) + Number(payload.amount || 0);
+        }
+      }
+    }
+  }
+  return {
+    grossRechargeTotal: round(grossRechargeTotal),
+    commissionTotal: round(commissionTotal),
+    refundTotal: round(refundTotal),
+    companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),
+    historicalSettledTotal: round(historicalSettledTotal),
+    currentUnsettledByDelegate: Object.fromEntries(Object.entries(currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)]))
+  };
+}
+
+// server/routes/reports.ts
+var router6 = (0, import_express6.Router)();
+function parseBoundary(value, field) {
+  if (value === void 0 || value === "") return void 0;
+  if (typeof value !== "string" || Number.isNaN(new Date(value).getTime())) {
+    const error = new Error(`INVALID_${field.toUpperCase()}`);
+    error.statusCode = 400;
+    error.code = `INVALID_${field.toUpperCase()}`;
+    throw error;
+  }
+  return value;
+}
+router6.get("/financial", requireAuth, async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return sendApiError(res, 403, "FORBIDDEN", "ADMIN_ONLY", req.correlationId);
+  }
+  try {
+    if (!adminDb) return sendApiError(res, 500, "INTERNAL_ERROR", "ADMIN_SDK_NOT_INITIALIZED", req.correlationId);
+    const start = parseBoundary(req.query.start, "start");
+    const end = parseBoundary(req.query.end, "end");
+    const delegateId = req.query.delegateId ? validateId(req.query.delegateId, "delegateId", true) : void 0;
+    if (start && end && new Date(start) >= new Date(end)) {
+      return sendApiError(res, 400, "INVALID_RANGE", "START_MUST_PRECEDE_END", req.correlationId);
+    }
+    const [eventsSnap, settlementsSnap] = await Promise.all([
+      adminDb.collectionGroup("events").get(),
+      adminDb.collection("settlements").get()
+    ]);
+    const events = eventsSnap.docs.map((doc) => doc.data() || {});
+    const settlements = settlementsSnap.docs.map((doc) => doc.data() || {});
+    const report = calculateFinancialReport(events, settlements, { start, end, delegateId });
+    return res.json({
+      success: true,
+      data: {
+        report,
+        filters: { start: start || null, end: end || null, delegateId: delegateId || null },
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      }
+    });
+  } catch (error) {
+    console.error("[Server Reports] Error generating financial report:", error);
+    const status = error?.statusCode || 500;
+    const code = error?.code || "INTERNAL_ERROR";
+    return sendApiError(res, status, code, error?.message || "REPORT_GENERATION_FAILED", req.correlationId);
+  }
+});
+var reports_default = router6;
+
 // server/routes/auth.ts
-function registerAuthRoutes(router6) {
-  router6.post("/api/auth/verify-pin", requireFirebaseUser, async (req, res) => {
+function registerAuthRoutes(router7) {
+  router7.post("/api/auth/verify-pin", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -149967,7 +150086,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ success: false, error: "\u062D\u062F\u062B \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0627\u0644\u062E\u0627\u062F\u0645" });
     }
   });
-  router6.post("/api/auth/check-pin-availability", requireFirebaseUser, financialRateLimiter(10, 6e4), async (req, res) => {
+  router7.post("/api/auth/check-pin-availability", requireFirebaseUser, financialRateLimiter(10, 6e4), async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -149988,7 +150107,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ taken: false });
     }
   });
-  router6.post("/api/auth/verify-admin-pin", requireFirebaseUser, async (req, res) => {
+  router7.post("/api/auth/verify-admin-pin", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -150015,7 +150134,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ valid: false });
     }
   });
-  router6.post("/api/auth/claim-admin-session", requireFirebaseUser, async (req, res) => {
+  router7.post("/api/auth/claim-admin-session", requireFirebaseUser, async (req, res) => {
     try {
       const clientIp = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
       if (!await checkRateLimit(clientIp)) {
@@ -150100,7 +150219,7 @@ function registerAuthRoutes(router6) {
       return sendApiError(res, 500, "INTERNAL_ERROR", "\u062D\u062F\u062B \u062E\u0637\u0623 \u0641\u064A \u0627\u0644\u062E\u0627\u062F\u0645", req.correlationId);
     }
   });
-  router6.post("/api/auth/validate-or-refresh-session", requireFirebaseUser, async (req, res) => {
+  router7.post("/api/auth/validate-or-refresh-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId, role, entityId } = req.body || {};
       if (!uid || !sessionId || !role) {
@@ -150174,7 +150293,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ success: false, valid: false, code: "INTERNAL_ERROR", error: "SERVER_ERROR" });
     }
   });
-  router6.post("/api/auth/release-session", requireFirebaseUser, async (req, res) => {
+  router7.post("/api/auth/release-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId, role, entityId } = req.body || {};
       const verifiedUid = req.user?.uid || "";
@@ -150238,7 +150357,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  router6.post("/api/auth/invalidate-all-sessions", requireAuth, async (req, res) => {
+  router7.post("/api/auth/invalidate-all-sessions", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
@@ -150290,7 +150409,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  router6.post("/api/auth/release-admin-session", requireFirebaseUser, async (req, res) => {
+  router7.post("/api/auth/release-admin-session", requireFirebaseUser, async (req, res) => {
     try {
       const { uid, sessionId } = req.body || {};
       const verifiedUid = req.user?.uid || "";
@@ -150325,7 +150444,7 @@ function registerAuthRoutes(router6) {
       return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   });
-  router6.post("/api/admin/update-pin", requireAuth, async (req, res) => {
+  router7.post("/api/admin/update-pin", requireAuth, async (req, res) => {
     try {
       if (req.user?.role !== "admin") {
         return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
@@ -150430,7 +150549,7 @@ function isAllowedOrigin(origin) {
   return false;
 }
 function createApp() {
-  const app2 = (0, import_express6.default)();
+  const app2 = (0, import_express7.default)();
   app2.set("trust proxy", 1);
   app2.use((0, import_cors.default)({
     origin(origin, callback) {
@@ -150449,7 +150568,7 @@ function createApp() {
       "Idempotency-Key"
     ]
   }));
-  app2.use(import_express6.default.json());
+  app2.use(import_express7.default.json());
   app2.use(correlationMiddleware);
   app2.use(requestTimeoutMiddleware(15e3));
   app2.use("/api/vehicles", vehicles_default);
@@ -150457,7 +150576,8 @@ function createApp() {
   app2.use("/api/delegates", delegates_default);
   app2.use("/api/transactions", recharges_default);
   app2.use("/api/garages", garages_default);
-  const authRouter = import_express6.default.Router();
+  app2.use("/api/reports", reports_default);
+  const authRouter = import_express7.default.Router();
   registerAuthRoutes(authRouter);
   app2.use("/", authRouter);
   app2.get("/api/health", (_req, res) => {
