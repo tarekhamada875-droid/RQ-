@@ -351,3 +351,14 @@ The completed-transaction subscription was intentionally not removed globally be
 Validation passed: full test suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint: instrument summary and report reads in production, then evaluate whether optional staff detail can be paginated or loaded through a bounded server endpoint without affecting checkout protection.
+
+
+## Progress update — Summary performance telemetry completed
+
+Added privacy-safe in-memory telemetry for dashboard summary reads. Each authenticated summary request records only aggregate counters: request success/failure, live bucket source, stored rebuild fallback, not-ready responses, average duration, and maximum duration. No garage IDs, user IDs, plate numbers, or payload data are recorded. Aggregate counters are sampled to structured logs every 100 requests.
+
+The summary endpoint now also returns `Server-Timing: dashboard-summary`, `X-Summary-Source`, and, for live bucket responses, `X-Summary-Bucket-Count`. This provides production-observable latency and source/fallback behavior without adding Firestore writes or a telemetry collection read/write hotspot.
+
+Validation passed: telemetry tests, full test suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint: deploy and observe summary telemetry under real traffic, then use the source mix and latency data to decide whether further read migration or shard-count tuning is justified.
