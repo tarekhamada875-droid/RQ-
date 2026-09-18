@@ -148144,6 +148144,9 @@ router.post("/delete", requireAuth, async (req, res) => {
           plateNumber: vehicleData.plateNumber || vehicleId,
           plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
           refundAmount: refundAmt,
+          accountingDate: todayYMD,
+          accountingPolicy: "refund_on_refund_date",
+          originalCheckoutAt: vehicleData.exitTime?.toDate ? vehicleData.exitTime.toDate().toISOString() : vehicleData.exitTime || null,
           previousStatus: vehicleData.status,
           previousCost: vehicleData.totalCost || 0,
           staffId: staffId || null,
@@ -149469,6 +149472,8 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
     const garageData = garageSnap.data() || {};
     const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
     let eventDerivedRevenue = 0;
+    let eventGrossRevenue = 0;
+    let eventRefundRevenue = 0;
     let eventEntersCount = 0;
     let eventExitsCount = 0;
     let eventRefundsCount = 0;
@@ -149478,11 +149483,15 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
         if (ev.eventType === "vehicle_entered") eventEntersCount++;
         if (ev.eventType === "vehicle_exited") {
           eventExitsCount++;
-          eventDerivedRevenue += Number(ev.payload?.cost || 0);
+          const cost = Number(ev.payload?.cost || 0);
+          eventGrossRevenue += cost;
+          eventDerivedRevenue += cost;
         }
         if (ev.eventType === "vehicle_refunded") {
           eventRefundsCount++;
-          eventDerivedRevenue -= Number(ev.payload?.refundAmount || 0);
+          const refund = Number(ev.payload?.refundAmount || 0);
+          eventRefundRevenue += refund;
+          eventDerivedRevenue -= refund;
         }
       }
     }
@@ -149501,6 +149510,8 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
       todayEnters: eventEntersCount,
       todayExits: eventExitsCount,
       todayRefunds: eventRefundsCount,
+      eventGrossRevenue: Number(eventGrossRevenue.toFixed(2)),
+      eventRefundRevenue: Number(eventRefundRevenue.toFixed(2)),
       eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
     };
     const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key] - actual[key]]));
@@ -149547,7 +149558,8 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
     const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).where("occurredAt", ">=", dayStart.toISOString()).where("occurredAt", "<", nextDayStart.toISOString()).orderBy("occurredAt", "asc").get();
     let count = 0;
     let exitsCount = 0;
-    let revenue = 0;
+    let grossRevenue = 0;
+    let refundRevenue = 0;
     const lastEvent = eventsSnap.docs.at(-1);
     const lastEventData = lastEvent?.data() || {};
     const eventWatermark = {
@@ -149561,10 +149573,10 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
         if (ev.eventType === "vehicle_entered") count++;
         if (ev.eventType === "vehicle_exited") {
           exitsCount++;
-          revenue += Number(ev.payload?.cost || 0);
+          grossRevenue += Number(ev.payload?.cost || 0);
         }
         if (ev.eventType === "vehicle_refunded") {
-          revenue -= Number(ev.payload?.refundAmount || 0);
+          refundRevenue += Number(ev.payload?.refundAmount || 0);
         }
       }
     }
@@ -149572,7 +149584,10 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
     const projectionData = {
       count,
       exitsCount,
-      revenue: Number(revenue.toFixed(2)),
+      grossRevenue: Number(grossRevenue.toFixed(2)),
+      refundRevenue: Number(refundRevenue.toFixed(2)),
+      netRevenue: Number((grossRevenue - refundRevenue).toFixed(2)),
+      revenue: Number((grossRevenue - refundRevenue).toFixed(2)),
       rebuiltAt: (/* @__PURE__ */ new Date()).toISOString(),
       eventWatermark,
       rebuiltBy: req.user?.uid || "admin"

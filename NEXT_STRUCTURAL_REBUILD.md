@@ -501,3 +501,10 @@ Remaining Phase A decisions before further projection work:
 - Define whether refunds affect the original checkout date, refund date, or separate gross/refund/net projections.
 - Add explicit projection replay idempotency semantics and tests around the new watermark.
 - Add integration tests against Firestore transaction/query mocks for settlement duplicate retries, reconciliation mismatch detection, and date-bounded rebuild behavior.
+
+
+## 2026-09-18 — Explicit refund accounting policy
+
+The existing operational behavior is now documented and represented in the ledger: refunds are recognized on the **refund date**. The original checkout event remains part of the original day’s gross revenue, while the refund event reduces net revenue on the day the refund is applied. Refund events now carry `accountingDate`, `accountingPolicy: refund_on_refund_date`, and the original checkout timestamp when available. Rebuilt daily projections expose `grossRevenue`, `refundRevenue`, and `netRevenue`; the existing `revenue` field remains the net value for backward compatibility.
+
+The full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check passed after this change. No production data was modified.

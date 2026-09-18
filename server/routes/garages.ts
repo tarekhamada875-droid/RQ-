@@ -357,6 +357,8 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
     const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
 
     let eventDerivedRevenue = 0;
+    let eventGrossRevenue = 0;
+    let eventRefundRevenue = 0;
     let eventEntersCount = 0;
     let eventExitsCount = 0;
     let eventRefundsCount = 0;
@@ -367,11 +369,15 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
         if (ev.eventType === 'vehicle_entered') eventEntersCount++;
         if (ev.eventType === 'vehicle_exited') {
           eventExitsCount++;
-          eventDerivedRevenue += Number(ev.payload?.cost || 0);
+          const cost = Number(ev.payload?.cost || 0);
+          eventGrossRevenue += cost;
+          eventDerivedRevenue += cost;
         }
         if (ev.eventType === 'vehicle_refunded') {
           eventRefundsCount++;
-          eventDerivedRevenue -= Number(ev.payload?.refundAmount || 0);
+          const refund = Number(ev.payload?.refundAmount || 0);
+          eventRefundRevenue += refund;
+          eventDerivedRevenue -= refund;
         }
       }
     }
@@ -391,6 +397,8 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
       todayEnters: eventEntersCount,
       todayExits: eventExitsCount,
       todayRefunds: eventRefundsCount,
+      eventGrossRevenue: Number(eventGrossRevenue.toFixed(2)),
+      eventRefundRevenue: Number(eventRefundRevenue.toFixed(2)),
       eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
     };
 
@@ -446,7 +454,8 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
 
     let count = 0;
     let exitsCount = 0;
-    let revenue = 0;
+    let grossRevenue = 0;
+    let refundRevenue = 0;
     const lastEvent = eventsSnap.docs.at(-1);
     const lastEventData = lastEvent?.data() || {};
     const eventWatermark = {
@@ -461,10 +470,10 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
         if (ev.eventType === 'vehicle_entered') count++;
         if (ev.eventType === 'vehicle_exited') {
           exitsCount++;
-          revenue += Number(ev.payload?.cost || 0);
+          grossRevenue += Number(ev.payload?.cost || 0);
         }
         if (ev.eventType === 'vehicle_refunded') {
-          revenue -= Number(ev.payload?.refundAmount || 0);
+          refundRevenue += Number(ev.payload?.refundAmount || 0);
         }
       }
     }
@@ -473,7 +482,10 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
     const projectionData = {
       count,
       exitsCount,
-      revenue: Number(revenue.toFixed(2)),
+      grossRevenue: Number(grossRevenue.toFixed(2)),
+      refundRevenue: Number(refundRevenue.toFixed(2)),
+      netRevenue: Number((grossRevenue - refundRevenue).toFixed(2)),
+      revenue: Number((grossRevenue - refundRevenue).toFixed(2)),
       rebuiltAt: new Date().toISOString(),
       eventWatermark,
       rebuiltBy: req.user?.uid || 'admin'
