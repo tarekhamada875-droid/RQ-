@@ -149327,6 +149327,38 @@ function calculateDailyProjection(events, targetDate) {
   };
 }
 
+// server/dashboardSummary.ts
+var rounded = (value) => Number(value.toFixed(2));
+function aggregateProjectionBuckets(buckets) {
+  const totals = buckets.reduce((result, bucket) => ({
+    activeVehicleCount: result.activeVehicleCount + Number(bucket.activeVehicleCount || 0),
+    entriesToday: result.entriesToday + Number(bucket.entriesToday || 0),
+    exitsToday: result.exitsToday + Number(bucket.exitsToday || 0),
+    grossRevenue: result.grossRevenue + Number(bucket.grossRevenue || 0),
+    refundTotal: result.refundTotal + Number(bucket.refundTotal || 0),
+    netRevenue: result.netRevenue + Number(bucket.netRevenue || 0)
+  }), { activeVehicleCount: 0, entriesToday: 0, exitsToday: 0, grossRevenue: 0, refundTotal: 0, netRevenue: 0 });
+  return {
+    activeVehicleCount: totals.activeVehicleCount,
+    entriesToday: totals.entriesToday,
+    exitsToday: totals.exitsToday,
+    grossRevenue: rounded(totals.grossRevenue),
+    refundTotal: rounded(totals.refundTotal),
+    netRevenue: rounded(totals.netRevenue),
+    projectionVersion: 1
+  };
+}
+function reconcileDashboardSummary(summary, eventProjection) {
+  const differences = {
+    entriesToday: summary.entriesToday - eventProjection.count,
+    exitsToday: summary.exitsToday - eventProjection.exitsCount,
+    grossRevenue: rounded(summary.grossRevenue - eventProjection.grossRevenue),
+    refundTotal: rounded(summary.refundTotal - eventProjection.refundRevenue),
+    netRevenue: rounded(summary.netRevenue - eventProjection.netRevenue)
+  };
+  return { summary, eventProjection, differences, consistent: Object.values(differences).every((value) => value === 0) };
+}
+
 // server/routes/garages.ts
 var router5 = (0, import_express5.Router)();
 function cairoDayBounds(date) {
@@ -149704,6 +149736,39 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
     });
   } catch (e2) {
     console.error("[Server Garage] Error in reconciliation:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
+router5.post("/dashboard-summary/rebuild", requireAuth, async (req, res) => {
+  try {
+    if (req.user?.role !== "admin") return res.status(403).json({ success: false, error: "FORBIDDEN: Admin role required" });
+    const { garageId, date } = req.body || {};
+    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const targetDate = date || new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    const { start: dayStart, end: nextDayStart } = cairoDayBounds(targetDate);
+    const [bucketSnap, eventsSnap, garageSnap, dailyStatsSnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/projection_buckets`).where("dateId", "==", targetDate).get(),
+      adminDb.collection(`garages/${garageId}/events`).where("occurredAt", ">=", dayStart.toISOString()).where("occurredAt", "<", nextDayStart.toISOString()).orderBy("occurredAt", "asc").get(),
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`).get()
+    ]);
+    if (!garageSnap.exists) return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
+    const eventProjection = calculateDailyProjection(eventsSnap.docs.map((doc) => doc.data() || {}), targetDate);
+    const summary = aggregateProjectionBuckets(bucketSnap.docs.map((doc) => doc.data() || {}));
+    const reconciliation = reconcileDashboardSummary(summary, eventProjection);
+    const legacy = garageSnap.data() || {};
+    const dailyStats = dailyStatsSnap.data() || {};
+    const legacyDifferences = {
+      activeVehicleCount: summary.activeVehicleCount - Number(legacy.carsInside || 0),
+      entriesToday: summary.entriesToday - Number(dailyStats.count || 0),
+      grossRevenue: Number((summary.grossRevenue - Number(dailyStats.revenue || 0)).toFixed(2))
+    };
+    const summaryData = { ...summary, garageId, dateId: targetDate, rebuiltAt: (/* @__PURE__ */ new Date()).toISOString(), rebuiltBy: req.user?.uid || "admin", eventProjection, reconciliation, legacyDifferences };
+    await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).set(summaryData, { merge: true });
+    return res.json({ success: true, data: { summary: summaryData, bucketCount: bucketSnap.size, eventCount: eventsSnap.size, consistentWithEvents: reconciliation.consistent, legacyDifferences } });
+  } catch (e2) {
+    console.error("[Server Garage] Error rebuilding dashboard summary:", e2);
     const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
     return res.status(statusCode).json({ success: false, error: message2 });
   }

@@ -298,3 +298,14 @@ The bucket write is intentionally additive and does not read the bucket first. E
 Validation passed: focused bucket and event tests, full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint is Stage 3: create a rebuildable dashboard summary and reconciliation comparison against event-derived totals and legacy garage/daily-stat aggregates.
+
+
+## Progress update — Stage 3 completed
+
+Added the pure `server/dashboardSummary.ts` calculator and tests. Added admin-only `POST /api/garages/dashboard-summary/rebuild`, which reads the target Cairo day's projection buckets, immutable events, garage document, and daily statistics; aggregates the compact summary; compares it with the event-derived projection; compares it with legacy garage/daily-stat totals; and writes the rebuildable read model to `garages/{garageId}/dashboard_summary/current`.
+
+The endpoint returns bucket count, event count, event consistency, and legacy differences. It is diagnostic/rebuild infrastructure only; existing dashboards and authoritative writes have not been switched over yet.
+
+Validation passed: dashboard summary tests, full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint is Stage 4: add a read-only summary service/client and switch only aggregate KPI reads to the summary after authenticated production verification. Keep the active vehicle realtime query unchanged. Remove legacy shared aggregate writes only after several reconciliation cycles show zero differences.
