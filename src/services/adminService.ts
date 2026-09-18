@@ -15,7 +15,31 @@ import type {
 import { safeDate } from '../utils';
 import { listenerTracker } from '../utils/listenerTracker';
 
+export interface FinancialReportData {
+  grossRechargeTotal: number;
+  commissionTotal: number;
+  refundTotal: number;
+  companyNetRevenue: number;
+  historicalSettledTotal: number;
+  currentUnsettledByDelegate: Record<string, number>;
+}
+
+export interface FinancialReportFilters {
+  start?: string;
+  end?: string;
+  delegateId?: string;
+}
+
 export const adminService = {
+  getFinancialReport: async (filters: FinancialReportFilters = {}): Promise<FinancialReportData> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    const response = await apiFetch(`/api/reports/financial${params.toString() ? `?${params.toString()}` : ''}`);
+    return response.data.report as FinancialReportData;
+  },
+
   // Supervisors
   addSupervisor: async (data: Omit<Supervisor, 'id'>) => {
     try {

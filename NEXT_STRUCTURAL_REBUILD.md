@@ -545,3 +545,10 @@ Added regression tests for date ranges, gross/commission/refund/net totals, sett
 Added `GET /api/reports/financial`, restricted to authenticated administrators. The endpoint reads the Firestore event collection group and settlement records, then delegates calculation to the pure financial reporting module. It supports optional `start`, `end`, and `delegateId` filters and returns the report totals together with the applied filters and generation timestamp. Invalid date boundaries, reversed ranges, invalid delegate IDs, unauthenticated requests, and non-admin requests are rejected without reading financial data.
 
 The reporting endpoint and delegate-filter tests passed with the full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check.
+
+
+## 2026-09-18 — Admin financial reporting dashboard
+
+Integrated the protected financial report endpoint into the admin frontend. Added a typed `adminService.getFinancialReport` method, a new `AdminFinancialReportsView`, date-range filters, delegate filtering, loading and error states, summary cards for gross recharge, commissions, refunds, and company net revenue, plus historical settlement and current unsettled delegate sections. The view is available through the new admin navigation tab `financial_reports` and preserves the existing admin theme and language direction.
+
+The frontend test suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check all passed. The UI does not modify financial data; it only reads the protected reporting endpoint.

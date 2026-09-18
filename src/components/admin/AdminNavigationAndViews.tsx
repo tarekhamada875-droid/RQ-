@@ -24,6 +24,7 @@ import { AdminWalletView } from './AdminWalletView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
+import { AdminFinancialReportsView } from './AdminFinancialReportsView';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -134,6 +135,20 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             </button>
 
             {/* Tab 2: Garages */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('financial_reports')}
+              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                activeTab === 'financial_reports'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>{t('التقرير المالي')}</span>
+            </button>
+
+            {/* Tab 3: Garages */}
             <button
               type="button"
               onClick={() => setActiveTab('garages')}
@@ -283,6 +298,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage}
         />
+      ) : activeTab === 'financial_reports' ? (
+        <AdminFinancialReportsView delegates={delegates} t={t} />
       ) : activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors' ? (
         <AdminPeopleView
           delegates={delegates}
