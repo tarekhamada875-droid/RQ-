@@ -139,3 +139,5 @@ If any preview or production check fails:
 - 2026-09-17: M1 completed. Added `api/index.ts`; `npm run lint` and `git diff --check` passed. Production `vercel.json` and tracked `api/index.js` remain unchanged.
 
 - 2026-09-18: Vercel production deployment for `cb64d36` failed with `conflicting_file_path` because `api/index.ts` and tracked generated `api/index.js` share the same route path. The source wrapper was removed; the tracked generated `api/index.js` plus `/api/*` rewrite remains the production baseline. Direct source migration remains pending until it is tested through a separate preview-safe layout.
+
+- 2026-09-18: Removed conflicting `api/index.ts` in commit `6908365`. Local lint, CI, maintainability, and diff checks passed. Vercel now serves the exact commit `690836501234786ae432943ca2f259ec6b0daa75`; `npm run release:smoke` passed against production and Cloudflare frontend returned HTTP 200. The generated `api/index.js` remains the active production entrypoint.
