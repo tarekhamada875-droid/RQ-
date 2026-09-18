@@ -149166,6 +149166,49 @@ var recharges_default = router4;
 
 // server/routes/garages.ts
 var import_express5 = __toESM(require_express2(), 1);
+
+// server/projections.ts
+function cairoDate(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+function calculateDailyProjection(events, targetDate) {
+  let count = 0;
+  let exitsCount = 0;
+  let grossRevenue = 0;
+  let refundRevenue = 0;
+  for (const event of events) {
+    if (cairoDate(event.occurredAt) !== targetDate) continue;
+    if (event.eventType === "vehicle_entered") count += 1;
+    if (event.eventType === "vehicle_exited") {
+      exitsCount += 1;
+      grossRevenue += Number(event.payload?.cost || 0);
+    }
+    if (event.eventType === "vehicle_refunded") {
+      refundRevenue += Number(event.payload?.refundAmount || 0);
+    }
+  }
+  const roundedGross = Number(grossRevenue.toFixed(2));
+  const roundedRefund = Number(refundRevenue.toFixed(2));
+  const netRevenue = Number((roundedGross - roundedRefund).toFixed(2));
+  return {
+    count,
+    exitsCount,
+    grossRevenue: roundedGross,
+    refundRevenue: roundedRefund,
+    netRevenue,
+    revenue: netRevenue
+  };
+}
+
+// server/routes/garages.ts
 var router5 = (0, import_express5.Router)();
 function cairoDayBounds(date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("INVALID_DATE");
@@ -149556,10 +149599,6 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
     const targetDate = date || new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
     const { start: dayStart, end: nextDayStart } = cairoDayBounds(targetDate);
     const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).where("occurredAt", ">=", dayStart.toISOString()).where("occurredAt", "<", nextDayStart.toISOString()).orderBy("occurredAt", "asc").get();
-    let count = 0;
-    let exitsCount = 0;
-    let grossRevenue = 0;
-    let refundRevenue = 0;
     const lastEvent = eventsSnap.docs.at(-1);
     const lastEventData = lastEvent?.data() || {};
     const eventWatermark = {
@@ -149567,27 +149606,13 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
       lastProcessedEventId: lastEventData.eventId || lastEvent?.id || null,
       projectionVersion: 1
     };
-    for (const doc of eventsSnap.docs) {
-      const ev = doc.data() || {};
-      if (ev.occurredAt) {
-        if (ev.eventType === "vehicle_entered") count++;
-        if (ev.eventType === "vehicle_exited") {
-          exitsCount++;
-          grossRevenue += Number(ev.payload?.cost || 0);
-        }
-        if (ev.eventType === "vehicle_refunded") {
-          refundRevenue += Number(ev.payload?.refundAmount || 0);
-        }
-      }
-    }
+    const projection = calculateDailyProjection(
+      eventsSnap.docs.map((doc) => doc.data() || {}),
+      targetDate
+    );
     const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
     const projectionData = {
-      count,
-      exitsCount,
-      grossRevenue: Number(grossRevenue.toFixed(2)),
-      refundRevenue: Number(refundRevenue.toFixed(2)),
-      netRevenue: Number((grossRevenue - refundRevenue).toFixed(2)),
-      revenue: Number((grossRevenue - refundRevenue).toFixed(2)),
+      ...projection,
       rebuiltAt: (/* @__PURE__ */ new Date()).toISOString(),
       eventWatermark,
       rebuiltBy: req.user?.uid || "admin"

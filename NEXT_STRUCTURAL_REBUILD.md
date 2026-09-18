@@ -508,3 +508,10 @@ Remaining Phase A decisions before further projection work:
 The existing operational behavior is now documented and represented in the ledger: refunds are recognized on the **refund date**. The original checkout event remains part of the original day’s gross revenue, while the refund event reduces net revenue on the day the refund is applied. Refund events now carry `accountingDate`, `accountingPolicy: refund_on_refund_date`, and the original checkout timestamp when available. Rebuilt daily projections expose `grossRevenue`, `refundRevenue`, and `netRevenue`; the existing `revenue` field remains the net value for backward compatibility.
 
 The full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check passed after this change. No production data was modified.
+
+
+## 2026-09-18 — Deterministic projection rebuilds
+
+Projection calculation was extracted into the pure `server/projections.ts` module. It rebuilds one Cairo calendar day from event history, ignores malformed or out-of-range timestamps, and derives gross, refund, and net revenue without reading or accumulating prior projection values. The rebuild route now uses this calculator, so repeated rebuilds are deterministic apart from operational metadata such as rebuild time and actor.
+
+Added regression tests for date scoping, replay determinism, no accumulation of prior values, and malformed timestamps. Focused tests, the full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check all passed.

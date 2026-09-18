@@ -5,6 +5,7 @@ import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
 import { sanitizePayload, validateId, validateString, validateNumber, validateIdempotencyKey, validateNewPin } from '../validation';
 import { manualAdminExtendFairUse, initializeFairUse } from '../unlimitedFairUse';
 import { mapDomainErrorToStatus } from './helpers';
+import { calculateDailyProjection } from '../projections';
 
 const router = Router();
 
@@ -452,10 +453,6 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
       .orderBy('occurredAt', 'asc')
       .get();
 
-    let count = 0;
-    let exitsCount = 0;
-    let grossRevenue = 0;
-    let refundRevenue = 0;
     const lastEvent = eventsSnap.docs.at(-1);
     const lastEventData = lastEvent?.data() || {};
     const eventWatermark = {
@@ -464,28 +461,14 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
       projectionVersion: 1
     };
 
-    for (const doc of eventsSnap.docs) {
-      const ev = doc.data() || {};
-      if (ev.occurredAt) {
-        if (ev.eventType === 'vehicle_entered') count++;
-        if (ev.eventType === 'vehicle_exited') {
-          exitsCount++;
-          grossRevenue += Number(ev.payload?.cost || 0);
-        }
-        if (ev.eventType === 'vehicle_refunded') {
-          refundRevenue += Number(ev.payload?.refundAmount || 0);
-        }
-      }
-    }
+    const projection = calculateDailyProjection(
+      eventsSnap.docs.map((doc: any) => doc.data() || {}),
+      targetDate
+    );
 
     const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
     const projectionData = {
-      count,
-      exitsCount,
-      grossRevenue: Number(grossRevenue.toFixed(2)),
-      refundRevenue: Number(refundRevenue.toFixed(2)),
-      netRevenue: Number((grossRevenue - refundRevenue).toFixed(2)),
-      revenue: Number((grossRevenue - refundRevenue).toFixed(2)),
+      ...projection,
       rebuiltAt: new Date().toISOString(),
       eventWatermark,
       rebuiltBy: req.user?.uid || 'admin'
