@@ -531,3 +531,10 @@ The full test suite, TypeScript check, production build, CI production gate, mai
 Recharge approval and rejection routes now write transactional `recharge_approved` and `recharge_rejected` events. When a recharge earns delegate commission, the same authoritative transaction also writes a delegate-scoped `commission_earned` event under `delegates/{delegateId}/events`. These events carry the source request, amounts, package context, commission amount, and actor information while retaining existing operational totals and idempotency behavior.
 
 Commission-earned payloads are validated for delegate ID, numeric commission amount, source recharge ID, and earning timestamp. Focused event tests and the complete repository validation gate passed, including the full Vitest suite, TypeScript check, production build, CI production gate, maintainability check, and diff check.
+
+
+## 2026-09-18 — Event-derived financial reporting projection
+
+Added the pure `server/financialReporting.ts` calculator for event-derived financial reporting. It derives gross recharge total, commission total, refund total, company net revenue, historical settled total, and current unsettled totals per delegate. Commission is counted from `commission_earned` events rather than recharge payloads, avoiding double counting. Settlement cutoffs exclude prior delegate recharge events from the current cycle, and fully settled delegates are represented explicitly with a zero current balance.
+
+Added regression tests for date ranges, gross/commission/refund/net totals, settlement cutoffs, deterministic replay, and the zero-current-cycle edge case. The complete repository validation gate passed after correcting that edge case.
