@@ -340,3 +340,14 @@ The garage summary read endpoint now computes current-day aggregate KPIs directl
 This removes the manual-rebuild freshness dependency for garages receiving new projection events. It does not create a shared summary write hotspot and does not change the active vehicle listener. Full tests, TypeScript validation, production build, CI gate, maintainability check, and diff validation passed.
 
 Next checkpoint: measure actual Firestore reads for the reports overlay. The reports view still loads exited vehicles for staff-performance detail, so further read reduction requires separating aggregate KPI loading from optional staff detail rather than blindly removing that query.
+
+
+## Progress update — Report read reduction completed
+
+Removed the redundant one-shot `getTodayTransactionsOnce` query from the reports overlay refresh. Aggregate report KPIs continue to use the live bucket summary. The exited-vehicle detail dataset is now materialized only when the staff-performance section is expanded, using the already-required completed-transaction subscription.
+
+The completed-transaction subscription was intentionally not removed globally because checkout protection uses it for recent-exit warnings. This change therefore reduces duplicate report-open reads without changing checkout behavior or removing required realtime state.
+
+Validation passed: full test suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint: instrument summary and report reads in production, then evaluate whether optional staff detail can be paginated or loaded through a bounded server endpoint without affecting checkout protection.

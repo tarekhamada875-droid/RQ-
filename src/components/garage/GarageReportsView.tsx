@@ -28,17 +28,17 @@ export const GarageReportsView = memo(({
   onClose,
 }: GarageReportsViewProps) => {
   // Manual toggle state
-  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<Vehicle[]>(() => todayExitedVehicles);
+  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<Vehicle[]>([]);
   const [localGarage, setLocalGarage] = useState<Garage>(() => garage);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
   const [dashboardSummary, setDashboardSummary] = useState<GarageDashboardSummary | null>(null);
   const [isStaffPerformanceCollapsed, setIsStaffPerformanceCollapsed] = useState(true);
 
-  // Sync state whenever props update in real time
+  // Keep the detail dataset empty while the staff section is collapsed.
   useEffect(() => {
-    setLocalTodayExitedVehicles(todayExitedVehicles);
-  }, [todayExitedVehicles]);
+    if (!isStaffPerformanceCollapsed) setLocalTodayExitedVehicles(todayExitedVehicles);
+  }, [todayExitedVehicles, isStaffPerformanceCollapsed]);
 
   useEffect(() => {
     setLocalGarage(garage);
@@ -49,13 +49,11 @@ export const GarageReportsView = memo(({
     if (!garage?.id) return;
     setIsRefreshing(true);
     try {
-      const [freshGarage, freshExited, freshSummary] = await Promise.all([
+      const [freshGarage, freshSummary] = await Promise.all([
         firestoreService.getGarageById(garage.id),
-        firestoreService.getTodayTransactionsOnce(garage.id),
         garageService.getDashboardSummary(garage.id).catch(() => null)
       ]);
       if (freshGarage) setLocalGarage(freshGarage);
-      if (freshExited) setLocalTodayExitedVehicles(freshExited);
       setDashboardSummary(freshSummary);
       setLastRefreshed(new Date());
     } catch (err) {
@@ -73,6 +71,13 @@ export const GarageReportsView = memo(({
   // Manual Trigger
   const handleRefresh = () => {
     refreshFromFirestore();
+  };
+
+  const handleStaffPerformanceToggle = () => {
+    setIsStaffPerformanceCollapsed((collapsed) => {
+      if (collapsed) setLocalTodayExitedVehicles(todayExitedVehicles);
+      return !collapsed;
+    });
   };
 
   const formatLastRefreshed = (date: Date) => {
@@ -214,7 +219,7 @@ export const GarageReportsView = memo(({
         {/* Row 2: Staff Shift Performance List */}
         <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-sm">
           <button
-            onClick={() => setIsStaffPerformanceCollapsed(!isStaffPerformanceCollapsed)}
+            onClick={handleStaffPerformanceToggle}
             className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
           >
             <div className="flex items-center gap-1.5">
