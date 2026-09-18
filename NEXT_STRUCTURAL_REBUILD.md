@@ -524,3 +524,10 @@ Financial event validation now includes explicit payload aliases for delegate se
 Delegate settlement now creates a permanent `settlements/{settlementId}` record in the same Firestore transaction as the delegate balance reset and domain event. The record stores the delegate, cutoff time, previous cycle total, settling administrator, settlement timestamp, and idempotency key. Duplicate idempotent requests return the stored settlement result and do not create a second business effect.
 
 The full test suite, TypeScript check, production build, CI production gate, maintainability check, and diff check passed. No production data was modified.
+
+
+## 2026-09-18 — Recharge and commission event coverage
+
+Recharge approval and rejection routes now write transactional `recharge_approved` and `recharge_rejected` events. When a recharge earns delegate commission, the same authoritative transaction also writes a delegate-scoped `commission_earned` event under `delegates/{delegateId}/events`. These events carry the source request, amounts, package context, commission amount, and actor information while retaining existing operational totals and idempotency behavior.
+
+Commission-earned payloads are validated for delegate ID, numeric commission amount, source recharge ID, and earning timestamp. Focused event tests and the complete repository validation gate passed, including the full Vitest suite, TypeScript check, production build, CI production gate, maintainability check, and diff check.

@@ -132,5 +132,19 @@ describe('approved business rules', () => {
         }
       })).toThrow('INVALID_DELEGATE_SETTLEMENT_PAYLOAD');
     });
+
+    it('accepts a typed commission-earned event payload', () => {
+      const event = recordDomainEventInTransaction({ set: () => undefined }, { doc: (path: string) => ({ path }) }, {
+        garageId: 'global',
+        aggregateType: 'delegate',
+        aggregateId: 'del_99',
+        eventType: 'commission_earned',
+        actorUid: 'admin_1',
+        actorRole: 'admin',
+        eventCollectionPath: 'delegates/del_99/events',
+        payload: { delegateId: 'del_99', commissionAmount: 100, sourceRechargeId: 'req_1', earnedAt: '2026-09-15T00:00:00.000Z' }
+      });
+      expect(event.eventType).toBe('commission_earned');
+    });
   });
 });

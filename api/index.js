@@ -147167,43 +147167,36 @@ var EVENT_AGGREGATE_TYPES = {
   subscriber_deleted: "subscriber",
   recharge_approved: "recharge",
   recharge_rejected: "recharge",
-  delegate_settled: "delegate"
+  delegate_settled: "delegate",
+  commission_earned: "delegate"
 };
 var SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 function redactSensitive(value) {
   if (Array.isArray(value)) return value.map(redactSensitive);
   if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.entries(value).flatMap(
-    ([key, child]) => SENSITIVE_KEYS.test(key) ? [] : [[key, redactSensitive(child)]]
-  ));
+  return Object.fromEntries(Object.entries(value).flatMap(([key, child]) => SENSITIVE_KEYS.test(key) ? [] : [[key, redactSensitive(child)]]));
 }
 function validateEventParams(params) {
-  if (EVENT_AGGREGATE_TYPES[params.eventType] !== params.aggregateType) {
-    throw new Error("INVALID_EVENT_AGGREGATE");
-  }
-  if (!params.aggregateId || !params.eventType || !params.actorUid || !params.actorRole) {
-    throw new Error("INVALID_EVENT_ENVELOPE");
-  }
-  const payload = JSON.stringify(params.payload);
-  if (payload.length > 32e3) throw new Error("EVENT_PAYLOAD_TOO_LARGE");
+  if (EVENT_AGGREGATE_TYPES[params.eventType] !== params.aggregateType) throw new Error("INVALID_EVENT_AGGREGATE");
+  if (!params.aggregateId || !params.eventType || !params.actorUid || !params.actorRole) throw new Error("INVALID_EVENT_ENVELOPE");
+  if (JSON.stringify(params.payload).length > 32e3) throw new Error("EVENT_PAYLOAD_TOO_LARGE");
   if (params.eventType === "delegate_settled") {
-    const financial = params.payload;
-    if (!financial.delegateId || !financial.settlementId || typeof financial.previousRechargedAmount !== "number" || !financial.settledAt) {
-      throw new Error("INVALID_DELEGATE_SETTLEMENT_PAYLOAD");
-    }
+    const p = params.payload;
+    if (!p.delegateId || !p.settlementId || typeof p.previousRechargedAmount !== "number" || !p.settledAt) throw new Error("INVALID_DELEGATE_SETTLEMENT_PAYLOAD");
   }
   if (params.eventType === "vehicle_refunded") {
-    const refund = params.payload;
-    if (typeof refund.refundAmount !== "number" || !refund.accountingDate || refund.accountingPolicy !== "refund_on_refund_date") {
-      throw new Error("INVALID_REFUND_PAYLOAD");
-    }
+    const p = params.payload;
+    if (typeof p.refundAmount !== "number" || !p.accountingDate || p.accountingPolicy !== "refund_on_refund_date") throw new Error("INVALID_REFUND_PAYLOAD");
+  }
+  if (params.eventType === "commission_earned") {
+    const p = params.payload;
+    if (!p.delegateId || typeof p.commissionAmount !== "number" || !p.sourceRechargeId || !p.earnedAt) throw new Error("INVALID_COMMISSION_PAYLOAD");
   }
 }
 function recordDomainEventInTransaction(t2, adminDb2, params) {
   validateEventParams(params);
   const timestamp = /* @__PURE__ */ new Date();
   const eventId = `evt_${Date.now()}_${import_crypto3.default.randomBytes(6).toString("hex")}`;
-  const safePayload = redactSensitive(params.payload);
   const event = {
     eventId,
     schemaVersion: 1,
@@ -147216,7 +147209,7 @@ function recordDomainEventInTransaction(t2, adminDb2, params) {
     actorUid: params.actorUid || "system",
     actorRole: params.actorRole || "unknown",
     idempotencyKey: params.idempotencyKey || void 0,
-    payload: safePayload
+    payload: redactSensitive(params.payload)
   };
   const eventPath = params.eventCollectionPath || `garages/${params.garageId}/events`;
   t2.set(adminDb2.doc(`${eventPath}/${eventId}`), event);
@@ -148850,6 +148843,29 @@ router4.post("/approve-recharge-request", requireAuth, financialRateLimiter(), a
           requestId: reqId
         }
       });
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: targetGarageId,
+        aggregateType: "recharge",
+        aggregateId: reqId,
+        eventType: "recharge_approved",
+        actorUid: callerUid || "system",
+        actorRole: "admin",
+        idempotencyKey: idempotencyKey || void 0,
+        payload: { requestId: reqId, amount: effectiveRevenue, originalAmount: effectiveOriginalRevenue, durationDays, packageId: requestData.packageId || null, delegateId: targetDelegateId, commission }
+      });
+      if (commission > 0 && targetDelegateId) {
+        recordDomainEventInTransaction(t2, adminDb, {
+          garageId: "global",
+          aggregateType: "delegate",
+          aggregateId: targetDelegateId,
+          eventType: "commission_earned",
+          actorUid: callerUid || "system",
+          actorRole: "admin",
+          idempotencyKey: idempotencyKey || void 0,
+          eventCollectionPath: `delegates/${targetDelegateId}/events`,
+          payload: { delegateId: targetDelegateId, commissionAmount: commission, sourceRechargeId: reqId, earnedAt: (/* @__PURE__ */ new Date()).toISOString() }
+        });
+      }
       resultData = {
         requestId: reqId,
         status: "approved",
@@ -148896,6 +148912,17 @@ router4.post("/reject-recharge-request", requireAuth, financialRateLimiter(), as
         status: "rejected",
         resolvedAt: /* @__PURE__ */ new Date()
       }, { merge: true });
+      const requestData = requestSnap.data() || {};
+      recordDomainEventInTransaction(t2, adminDb, {
+        garageId: validateId(requestData.garageId, "garageId", true),
+        aggregateType: "recharge",
+        aggregateId: requestId,
+        eventType: "recharge_rejected",
+        actorUid: callerUid || "system",
+        actorRole: "admin",
+        idempotencyKey: idempotencyKey || void 0,
+        payload: { requestId, rejectedAt: (/* @__PURE__ */ new Date()).toISOString(), reason: requestData.rejectionReason || null }
+      });
       storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/transactions/reject-recharge-request", callerUid);
     });
     return res.json({ success: true });

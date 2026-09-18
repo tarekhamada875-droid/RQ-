@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, financialRateLimiter, AuthRequest, sendApiError } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
 import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
+import { recordDomainEventInTransaction } from '../events';
 import { initializeFairUse } from '../unlimitedFairUse';
 import { sanitizePayload, validateId, validateNumber, validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
@@ -398,6 +399,30 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
         }
       });
 
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId: targetGarageId,
+        aggregateType: 'recharge',
+        aggregateId: reqId,
+        eventType: 'recharge_approved',
+        actorUid: callerUid || 'system',
+        actorRole: 'admin',
+        idempotencyKey: idempotencyKey || undefined,
+        payload: { requestId: reqId, amount: effectiveRevenue, originalAmount: effectiveOriginalRevenue, durationDays, packageId: requestData.packageId || null, delegateId: targetDelegateId, commission }
+      });
+      if (commission > 0 && targetDelegateId) {
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: 'global',
+          aggregateType: 'delegate',
+          aggregateId: targetDelegateId,
+          eventType: 'commission_earned',
+          actorUid: callerUid || 'system',
+          actorRole: 'admin',
+          idempotencyKey: idempotencyKey || undefined,
+          eventCollectionPath: `delegates/${targetDelegateId}/events`,
+          payload: { delegateId: targetDelegateId, commissionAmount: commission, sourceRechargeId: reqId, earnedAt: new Date().toISOString() }
+        });
+      }
+
       resultData = {
         requestId: reqId,
         status: 'approved',
@@ -453,6 +478,18 @@ router.post('/reject-recharge-request', requireAuth, financialRateLimiter(), asy
         status: 'rejected',
         resolvedAt: new Date()
       }, { merge: true });
+
+      const requestData = requestSnap.data() || {};
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId: validateId(requestData.garageId, 'garageId', true),
+        aggregateType: 'recharge',
+        aggregateId: requestId,
+        eventType: 'recharge_rejected',
+        actorUid: callerUid || 'system',
+        actorRole: 'admin',
+        idempotencyKey: idempotencyKey || undefined,
+        payload: { requestId, rejectedAt: new Date().toISOString(), reason: requestData.rejectionReason || null }
+      });
 
       storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/transactions/reject-recharge-request', callerUid);
     });
