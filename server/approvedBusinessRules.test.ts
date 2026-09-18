@@ -52,7 +52,8 @@ describe('approved business rules', () => {
           type: 'hourly',
           pin: '123456',
           password: 'secretPassword',
-          token: 'bearer_token_123'
+          token: 'bearer_token_123',
+          nested: { authorization: 'Bearer secret', safe: true }
         }
       });
 
@@ -68,6 +69,8 @@ describe('approved business rules', () => {
       expect(writtenDoc.payload.pin).toBeUndefined();
       expect(writtenDoc.payload.password).toBeUndefined();
       expect(writtenDoc.payload.token).toBeUndefined();
+      expect(writtenDoc.payload.nested.authorization).toBeUndefined();
+      expect(writtenDoc.payload.nested.safe).toBe(true);
     });
 
     it('records delegate_settled financial domain event correctly', () => {
@@ -88,6 +91,7 @@ describe('approved business rules', () => {
         eventType: 'delegate_settled',
         actorUid: 'admin_1',
         actorRole: 'admin',
+        eventCollectionPath: 'delegates/del_99/events',
         payload: {
           delegateId: 'del_99',
           previousRechargedAmount: 1500,
@@ -98,6 +102,18 @@ describe('approved business rules', () => {
       expect(event.eventType).toBe('delegate_settled');
       expect(writtenDoc.payload.previousRechargedAmount).toBe(1500);
       expect(writtenDoc.payload.delegateId).toBe('del_99');
+    });
+
+    it('rejects an event whose aggregate type does not match its event type', () => {
+      expect(() => recordDomainEventInTransaction({ set: () => undefined }, { doc: (path: string) => ({ path }) }, {
+        garageId: 'gar_test_123',
+        aggregateType: 'delegate',
+        aggregateId: 'del_99',
+        eventType: 'vehicle_entered',
+        actorUid: 'admin_1',
+        actorRole: 'admin',
+        payload: {}
+      })).toThrow('INVALID_EVENT_AGGREGATE');
     });
   });
 });

@@ -481,3 +481,23 @@ scoped realtime operational state
 safe garage-by-garage migration
 ```
 EOF
+
+
+## 2026-09-18 — Phase A ledger hardening pass
+
+Implemented and locally validated:
+
+- Delegate settlement events now write to `delegates/{delegateId}/events` instead of a fake `garages/delegate_{id}/events` path.
+- Delegate settlement now accepts body or header idempotency keys, checks and stores the result inside the same Firestore transaction, and returns the cached result for duplicate retries.
+- Event creation now validates event/aggregate compatibility, rejects oversized payloads, and recursively removes sensitive fields from nested payloads.
+- Reconciliation now queries the complete Cairo calendar day instead of the latest 500 events and reports `operationalStateConsistent`, `dailyStatsConsistent`, `eventLedgerConsistent`, and `overallConsistent` separately.
+- Projection rebuild now queries only the requested Cairo calendar day and stores a stable `{ lastProcessedOccurredAt, lastProcessedEventId, projectionVersion }` watermark.
+- Added regression coverage for nested sensitive-field redaction and invalid event/aggregate combinations.
+
+Validation completed: focused event tests, full Vitest suite, TypeScript check, production build, CI production gate, maintainability check, and `git diff --check` all passed.
+
+Remaining Phase A decisions before further projection work:
+
+- Define whether refunds affect the original checkout date, refund date, or separate gross/refund/net projections.
+- Add explicit projection replay idempotency semantics and tests around the new watermark.
+- Add integration tests against Firestore transaction/query mocks for settlement duplicate retries, reconciliation mismatch detection, and date-bounded rebuild behavior.

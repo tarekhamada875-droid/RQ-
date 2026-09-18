@@ -147156,13 +147156,42 @@ function storeIdempotencyInTransaction(t2, idempotencyKey, result, endpoint, act
 
 // server/events.ts
 var import_crypto3 = __toESM(require("crypto"), 1);
+var EVENT_AGGREGATE_TYPES = {
+  vehicle_entered: "vehicle",
+  vehicle_exited: "vehicle",
+  vehicle_refunded: "vehicle",
+  vehicle_deleted: "vehicle",
+  subscriber_created: "subscriber",
+  subscriber_renewed: "subscriber",
+  subscriber_updated: "subscriber",
+  subscriber_deleted: "subscriber",
+  recharge_approved: "recharge",
+  recharge_rejected: "recharge",
+  delegate_settled: "delegate"
+};
+var SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
+function redactSensitive(value) {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).flatMap(
+    ([key, child]) => SENSITIVE_KEYS.test(key) ? [] : [[key, redactSensitive(child)]]
+  ));
+}
+function validateEventParams(params) {
+  if (EVENT_AGGREGATE_TYPES[params.eventType] !== params.aggregateType) {
+    throw new Error("INVALID_EVENT_AGGREGATE");
+  }
+  if (!params.aggregateId || !params.eventType || !params.actorUid || !params.actorRole) {
+    throw new Error("INVALID_EVENT_ENVELOPE");
+  }
+  const payload = JSON.stringify(params.payload);
+  if (payload.length > 32e3) throw new Error("EVENT_PAYLOAD_TOO_LARGE");
+}
 function recordDomainEventInTransaction(t2, adminDb2, params) {
-  const timestampIso = (/* @__PURE__ */ new Date()).toISOString();
+  validateEventParams(params);
+  const timestamp = /* @__PURE__ */ new Date();
   const eventId = `evt_${Date.now()}_${import_crypto3.default.randomBytes(6).toString("hex")}`;
-  const safePayload = { ...params.payload };
-  delete safePayload.pin;
-  delete safePayload.password;
-  delete safePayload.token;
+  const safePayload = redactSensitive(params.payload);
   const event = {
     eventId,
     schemaVersion: 1,
@@ -147170,14 +147199,15 @@ function recordDomainEventInTransaction(t2, adminDb2, params) {
     aggregateType: params.aggregateType,
     aggregateId: params.aggregateId,
     eventType: params.eventType,
-    occurredAt: timestampIso,
-    recordedAt: timestampIso,
+    occurredAt: timestamp.toISOString(),
+    recordedAt: timestamp.toISOString(),
     actorUid: params.actorUid || "system",
     actorRole: params.actorRole || "unknown",
     idempotencyKey: params.idempotencyKey || void 0,
     payload: safePayload
   };
-  const eventRef = adminDb2.doc(`garages/${params.garageId}/events/${eventId}`);
+  const eventPath = params.eventCollectionPath || `garages/${params.garageId}/events`;
+  const eventRef = adminDb2.doc(`${eventPath}/${eventId}`);
   t2.set(eventRef, event);
   return event;
 }
@@ -148400,10 +148430,20 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
     }
     const { id } = req.body || {};
     if (!id || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers["x-idempotency-key"] || req.headers["idempotency-key"]);
+    const requestFingerprint = createRequestFingerprint({ id });
     const delRef = adminDb.collection("delegates").doc(id);
     const now = /* @__PURE__ */ new Date();
     let previousTotal = 0;
+    let duplicateResult = null;
     await adminDb.runTransaction(async (t2) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t2, idempotencyKey, "/api/delegates/settle-account", req.user?.uid, requestFingerprint);
+        if (duplicate.isDuplicate) {
+          duplicateResult = duplicate.cachedResult;
+          return;
+        }
+      }
       const snap = await t2.get(delRef);
       if (!snap.exists) throw new Error("DELEGATE_NOT_FOUND");
       const data = snap.data() || {};
@@ -148414,19 +148454,32 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
         updatedAt: now
       });
       recordDomainEventInTransaction(t2, adminDb, {
-        garageId: `delegate_${id}`,
+        garageId: "global",
         aggregateType: "delegate",
         aggregateId: id,
         eventType: "delegate_settled",
         actorUid: req.user?.uid || "admin",
         actorRole: "admin",
+        idempotencyKey: idempotencyKey || void 0,
+        eventCollectionPath: `delegates/${id}/events`,
         payload: {
           delegateId: id,
           previousRechargedAmount: previousTotal,
           settledAt: now.toISOString()
         }
       });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(
+          t2,
+          idempotencyKey,
+          { success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
+          "/api/delegates/settle-account",
+          req.user?.uid,
+          requestFingerprint
+        );
+      }
     });
+    if (duplicateResult) return res.json(duplicateResult);
     return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
   } catch (e2) {
     console.error("[Server Delegate] Error settling account:", e2);
@@ -149111,6 +149164,11 @@ var recharges_default = router4;
 // server/routes/garages.ts
 var import_express5 = __toESM(require_express2(), 1);
 var router5 = (0, import_express5.Router)();
+function cairoDayBounds(date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("INVALID_DATE");
+  const start = /* @__PURE__ */ new Date(`${date}T00:00:00+03:00`);
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1e3) };
+}
 router5.post("/create", requireAuth, financialRateLimiter(), async (req, res) => {
   try {
     const callerRole = req.user?.role;
@@ -149402,10 +149460,11 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
     const garageSnap = await garageRef.get();
     if (!garageSnap.exists) return res.status(404).json({ success: false, error: "GARAGE_NOT_FOUND" });
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
+    const { start: dayStart, end: nextDayStart } = cairoDayBounds(today);
     const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
       adminDb.collection(`garages/${garageId}/vehicles`).where("status", "==", "inside").get(),
       adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
-      adminDb.collection(`garages/${garageId}/events`).orderBy("occurredAt", "desc").limit(500).get()
+      adminDb.collection(`garages/${garageId}/events`).where("occurredAt", ">=", dayStart.toISOString()).where("occurredAt", "<", nextDayStart.toISOString()).orderBy("occurredAt", "desc").get()
     ]);
     const garageData = garageSnap.data() || {};
     const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
@@ -149415,8 +149474,7 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
     let eventRefundsCount = 0;
     for (const doc of eventsSnap.docs) {
       const ev = doc.data() || {};
-      const evDate = ev.occurredAt ? new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ev.occurredAt)) : "";
-      if (evDate === today) {
+      if (ev.occurredAt) {
         if (ev.eventType === "vehicle_entered") eventEntersCount++;
         if (ev.eventType === "vehicle_exited") {
           eventExitsCount++;
@@ -149446,6 +149504,14 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
       eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
     };
     const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key] - actual[key]]));
+    const eventLedgerDifferences = {
+      todayCount: Number(stats.count || 0) - eventEntersCount,
+      todayExits: Number(stats.exitsCount || 0) - eventExitsCount,
+      todayRevenue: Number(stats.revenue || 0) - Number(eventDerivedRevenue.toFixed(2))
+    };
+    const operationalStateConsistent = differences.carsInside === 0;
+    const dailyStatsConsistent = differences.todayCount === 0 && differences.todayRevenue === 0;
+    const eventLedgerConsistent = Object.values(eventLedgerDifferences).every((value) => value === 0);
     return res.json({
       success: true,
       data: {
@@ -149455,7 +149521,12 @@ router5.post("/reconciliation", requireAuth, async (req, res) => {
         actual,
         eventLedgerSummary,
         differences,
-        isConsistent: Object.values(differences).every((value) => value === 0)
+        eventLedgerDifferences,
+        operationalStateConsistent,
+        dailyStatsConsistent,
+        eventLedgerConsistent,
+        overallConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent,
+        isConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent
       }
     });
   } catch (e2) {
@@ -149472,15 +149543,21 @@ router5.post("/rebuild-projections", requireAuth, async (req, res) => {
     const { garageId, date } = req.body || {};
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: "INVALID_REQUEST" });
     const targetDate = date || new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(/* @__PURE__ */ new Date());
-    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).orderBy("occurredAt", "asc").get();
+    const { start: dayStart, end: nextDayStart } = cairoDayBounds(targetDate);
+    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).where("occurredAt", ">=", dayStart.toISOString()).where("occurredAt", "<", nextDayStart.toISOString()).orderBy("occurredAt", "asc").get();
     let count = 0;
     let exitsCount = 0;
     let revenue = 0;
-    let eventWatermark = eventsSnap.size;
+    const lastEvent = eventsSnap.docs.at(-1);
+    const lastEventData = lastEvent?.data() || {};
+    const eventWatermark = {
+      lastProcessedOccurredAt: lastEventData.occurredAt || null,
+      lastProcessedEventId: lastEventData.eventId || lastEvent?.id || null,
+      projectionVersion: 1
+    };
     for (const doc of eventsSnap.docs) {
       const ev = doc.data() || {};
-      const evDate = ev.occurredAt ? new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ev.occurredAt)) : "";
-      if (evDate === targetDate) {
+      if (ev.occurredAt) {
         if (ev.eventType === "vehicle_entered") count++;
         if (ev.eventType === "vehicle_exited") {
           exitsCount++;

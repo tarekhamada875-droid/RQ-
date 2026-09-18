@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
 import { recordDomainEventInTransaction } from '../events';
+import { checkIdempotencyInTransaction, storeIdempotencyInTransaction, createRequestFingerprint } from '../idempotency';
 import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
-import { validateString, validateNewPin, ValidationError } from '../validation';
+import { validateString, validateNewPin, validateIdempotencyKey, ValidationError } from '../validation';
 
 const router = Router();
 
@@ -95,12 +96,21 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
     }
     const { id } = req.body || {};
     if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
+    const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+    const requestFingerprint = createRequestFingerprint({ id });
     const delRef = adminDb.collection('delegates').doc(id);
     const now = new Date();
     let previousTotal = 0;
+    let duplicateResult: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/delegates/settle-account', req.user?.uid, requestFingerprint);
+        if (duplicate.isDuplicate) {
+          duplicateResult = duplicate.cachedResult;
+          return;
+        }
+      }
       const snap = await t.get(delRef);
       if (!snap.exists) throw new Error('DELEGATE_NOT_FOUND');
       const data = snap.data() || {};
@@ -111,20 +121,33 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
         updatedAt: now
       });
       recordDomainEventInTransaction(t, adminDb, {
-        garageId: `delegate_${id}`,
+        garageId: 'global',
         aggregateType: 'delegate',
         aggregateId: id,
         eventType: 'delegate_settled',
         actorUid: req.user?.uid || 'admin',
         actorRole: 'admin',
+        idempotencyKey: idempotencyKey || undefined,
+        eventCollectionPath: `delegates/${id}/events`,
         payload: {
           delegateId: id,
           previousRechargedAmount: previousTotal,
           settledAt: now.toISOString()
         }
       });
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(
+          t,
+          idempotencyKey,
+          { success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
+          '/api/delegates/settle-account',
+          req.user?.uid,
+          requestFingerprint
+        );
+      }
     });
 
+    if (duplicateResult) return res.json(duplicateResult);
     return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
   } catch (e: any) {
     console.error('[Server Delegate] Error settling account:', e);

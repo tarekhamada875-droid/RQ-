@@ -8,6 +8,12 @@ import { mapDomainErrorToStatus } from './helpers';
 
 const router = Router();
 
+function cairoDayBounds(date: string): { start: Date; end: Date } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('INVALID_DATE');
+  const start = new Date(`${date}T00:00:00+03:00`);
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
 // Secure Server API: Authoritative Garage Creation
 router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
   try {
@@ -337,10 +343,15 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
     if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const { start: dayStart, end: nextDayStart } = cairoDayBounds(today);
     const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
       adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
       adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
-      adminDb.collection(`garages/${garageId}/events`).orderBy('occurredAt', 'desc').limit(500).get()
+      adminDb.collection(`garages/${garageId}/events`)
+        .where('occurredAt', '>=', dayStart.toISOString())
+        .where('occurredAt', '<', nextDayStart.toISOString())
+        .orderBy('occurredAt', 'desc')
+        .get()
     ]);
     const garageData = garageSnap.data() || {};
     const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
@@ -352,8 +363,7 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
 
     for (const doc of eventsSnap.docs) {
       const ev = doc.data() || {};
-      const evDate = ev.occurredAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ev.occurredAt)) : '';
-      if (evDate === today) {
+      if (ev.occurredAt) {
         if (ev.eventType === 'vehicle_entered') eventEntersCount++;
         if (ev.eventType === 'vehicle_exited') {
           eventExitsCount++;
@@ -385,6 +395,14 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
     };
 
     const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key as keyof typeof expected] - actual[key as keyof typeof actual]]));
+    const eventLedgerDifferences = {
+      todayCount: Number(stats.count || 0) - eventEntersCount,
+      todayExits: Number(stats.exitsCount || 0) - eventExitsCount,
+      todayRevenue: Number(stats.revenue || 0) - Number(eventDerivedRevenue.toFixed(2))
+    };
+    const operationalStateConsistent = differences.carsInside === 0;
+    const dailyStatsConsistent = differences.todayCount === 0 && differences.todayRevenue === 0;
+    const eventLedgerConsistent = Object.values(eventLedgerDifferences).every((value) => value === 0);
     return res.json({
       success: true,
       data: {
@@ -394,7 +412,12 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
         actual,
         eventLedgerSummary,
         differences,
-        isConsistent: Object.values(differences).every((value) => value === 0)
+        eventLedgerDifferences,
+        operationalStateConsistent,
+        dailyStatsConsistent,
+        eventLedgerConsistent,
+        overallConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent,
+        isConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent
       }
     });
   } catch (e: any) {
@@ -414,17 +437,27 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
     const targetDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`).orderBy('occurredAt', 'asc').get();
+    const { start: dayStart, end: nextDayStart } = cairoDayBounds(targetDate);
+    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`)
+      .where('occurredAt', '>=', dayStart.toISOString())
+      .where('occurredAt', '<', nextDayStart.toISOString())
+      .orderBy('occurredAt', 'asc')
+      .get();
 
     let count = 0;
     let exitsCount = 0;
     let revenue = 0;
-    let eventWatermark = eventsSnap.size;
+    const lastEvent = eventsSnap.docs.at(-1);
+    const lastEventData = lastEvent?.data() || {};
+    const eventWatermark = {
+      lastProcessedOccurredAt: lastEventData.occurredAt || null,
+      lastProcessedEventId: lastEventData.eventId || lastEvent?.id || null,
+      projectionVersion: 1
+    };
 
     for (const doc of eventsSnap.docs) {
       const ev = doc.data() || {};
-      const evDate = ev.occurredAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ev.occurredAt)) : '';
-      if (evDate === targetDate) {
+      if (ev.occurredAt) {
         if (ev.eventType === 'vehicle_entered') count++;
         if (ev.eventType === 'vehicle_exited') {
           exitsCount++;
