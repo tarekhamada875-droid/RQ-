@@ -287,3 +287,14 @@ The delta primitives passed focused tests and the full repository gate. Vehicle 
 Validation passed: focused delta tests, full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint is Stage 2: add deterministic sharded projection-bucket primitives and a rebuildable dashboard summary. Do not remove shared garage writes until bucket and summary reconciliation is implemented and validated.
+
+
+## Progress update — Stage 2 completed
+
+Added deterministic sharded projection buckets under `garages/{garageId}/projection_buckets/{dateId}_{shard}`. The shard is selected by SHA-256 hashing the operation ID, with a bounded adaptive policy of 2 shards for low-rate garages, 8 for medium-rate garages, and 16 for high-rate garages. Vehicle check-in, checkout, and refund/delete transactions now write additive `FieldValue.increment` deltas to the appropriate bucket in the same transaction as the existing authoritative writes and immutable event.
+
+The bucket write is intentionally additive and does not read the bucket first. Existing garage and daily-stat totals remain active so the new bucket model can be reconciled before any hot-path writes are removed. The bucket stores the operation ID, projection version, Cairo date key, shard, additive counters, and update timestamp.
+
+Validation passed: focused bucket and event tests, full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint is Stage 3: create a rebuildable dashboard summary and reconciliation comparison against event-derived totals and legacy garage/daily-stat aggregates.

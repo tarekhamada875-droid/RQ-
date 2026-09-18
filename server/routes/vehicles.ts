@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
 import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
@@ -7,9 +8,19 @@ import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
 import { calculateVehicleCost } from '../utils';
 import { validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
-import { createOperationId, createVehicleDelta, nextOperationVersion } from '../deltaProjection';
+import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from '../deltaProjection';
 
 const router = Router();
+
+function writeProjectionBucket(transaction: any, garageId: string, dateId: string, operationId: string, delta: ProjectionDelta): void {
+  if (!adminDb || Object.keys(delta).length === 0) return;
+  const configuredRate = Number(process.env.PROJECTION_OPERATIONS_PER_SECOND || 1);
+  const shardCount = projectionShardCount(Number.isFinite(configuredRate) ? configuredRate : 1);
+  const bucket = projectionBucketUpdate(operationId, dateId, delta, shardCount);
+  const bucketRef = adminDb.doc(projectionBucketPath(garageId, dateId, operationId, shardCount));
+  const increments = Object.fromEntries(Object.entries(delta).map(([field, value]) => [field, FieldValue.increment(Number(value || 0))]));
+  transaction.set(bucketRef, { ...increments, operationId: bucket.operationId, projectionVersion: bucket.projectionVersion, dateId: bucket.dateId, shard: bucket.shard, updatedAt: new Date() }, { merge: true });
+}
 
 // Secure Server API: Vehicle Check-In
 router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
@@ -238,6 +249,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
           projectionDelta: createVehicleDelta('vehicle_entered')
         }
       });
+      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_entered'));
 
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid);
@@ -395,6 +407,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
           projectionDelta: createVehicleDelta('vehicle_exited', cost)
         }
       });
+      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_exited', cost));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t, idempotencyKey, { cost }, '/api/vehicles/check-out', req.user?.uid);
       }
@@ -564,6 +577,7 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
           projectionDelta: refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted')
         }
       });
+      writeProjectionBucket(t, garageId, todayYMD, operationId, refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted'));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/vehicles/delete', req.user?.uid);
       }

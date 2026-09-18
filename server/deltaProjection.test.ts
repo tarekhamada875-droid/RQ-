@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createOperationId, nextOperationVersion, projectionShard, createVehicleDelta } from './deltaProjection';
+import { createOperationId, nextOperationVersion, projectionShard, createVehicleDelta, projectionBucketPath, projectionBucketUpdate, projectionShardCount } from './deltaProjection';
 
 describe('delta projection primitives', () => {
   it('creates stable scoped operation IDs when a client key is supplied', () => {
@@ -24,5 +24,22 @@ describe('delta projection primitives', () => {
     expect(createVehicleDelta('vehicle_entered')).toEqual({ activeVehicleCount: 1, entriesToday: 1 });
     expect(createVehicleDelta('vehicle_exited', 125.5)).toEqual({ activeVehicleCount: -1, exitsToday: 1, grossRevenue: 125.5, netRevenue: 125.5 });
     expect(createVehicleDelta('vehicle_refunded', 25)).toEqual({ refundTotal: 25, netRevenue: -25 });
+  });
+
+  it('selects bounded shard counts from estimated operation rate', () => {
+    expect(projectionShardCount(1)).toBe(2);
+    expect(projectionShardCount(8)).toBe(8);
+    expect(projectionShardCount(30)).toBe(16);
+  });
+
+  it('creates deterministic day-scoped bucket paths and updates', () => {
+    const operationId = 'op_garage-1_client-42';
+    expect(projectionBucketPath('garage-1', '2026-09-18', operationId, 8)).toMatch(/^garages\/garage-1\/projection_buckets\/2026-09-18_\d+$/);
+    expect(projectionBucketUpdate(operationId, '2026-09-18', { entriesToday: 1 })).toMatchObject({
+      operationId,
+      projectionVersion: 1,
+      dateId: '2026-09-18',
+      entriesToday: 1
+    });
   });
 });

@@ -146546,23 +146546,6 @@ var import_cors = __toESM(require_lib3(), 1);
 // server/routes/vehicles.ts
 var import_express = __toESM(require_express2(), 1);
 
-// server/middleware.ts
-var import_crypto = __toESM(require("crypto"), 1);
-
-// node_modules/firebase-admin/lib/esm/app/index.js
-var import_app = __toESM(require_app(), 1);
-var AppErrorCode = import_app.default.AppErrorCode;
-var FirebaseAppError = import_app.default.FirebaseAppError;
-var FirebaseError = import_app.default.FirebaseError;
-var SDK_VERSION = import_app.default.SDK_VERSION;
-var applicationDefault = import_app.default.applicationDefault;
-var cert = import_app.default.cert;
-var deleteApp = import_app.default.deleteApp;
-var getApp = import_app.default.getApp;
-var getApps = import_app.default.getApps;
-var initializeApp = import_app.default.initializeApp;
-var refreshToken = import_app.default.refreshToken;
-
 // node_modules/firebase-admin/lib/esm/firestore/index.js
 var import_firestore = __toESM(require_firestore(), 1);
 var AggregateField = import_firestore.default.AggregateField;
@@ -146594,6 +146577,23 @@ var getFirestore = import_firestore.default.getFirestore;
 var initializeFirestore = import_firestore.default.initializeFirestore;
 var setLogFunction = import_firestore.default.setLogFunction;
 var v1 = import_firestore.default.v1;
+
+// server/middleware.ts
+var import_crypto = __toESM(require("crypto"), 1);
+
+// node_modules/firebase-admin/lib/esm/app/index.js
+var import_app = __toESM(require_app(), 1);
+var AppErrorCode = import_app.default.AppErrorCode;
+var FirebaseAppError = import_app.default.FirebaseAppError;
+var FirebaseError = import_app.default.FirebaseError;
+var SDK_VERSION = import_app.default.SDK_VERSION;
+var applicationDefault = import_app.default.applicationDefault;
+var cert = import_app.default.cert;
+var deleteApp = import_app.default.deleteApp;
+var getApp = import_app.default.getApp;
+var getApps = import_app.default.getApps;
+var initializeApp = import_app.default.initializeApp;
+var refreshToken = import_app.default.refreshToken;
 
 // node_modules/firebase-admin/lib/esm/auth/index.js
 var import_auth = __toESM(require_auth2(), 1);
@@ -147699,6 +147699,26 @@ function nextOperationVersion(previous) {
   const value = Number(previous);
   return Number.isInteger(value) && value >= 0 ? value + 1 : 1;
 }
+function projectionShard(operationId, shardCount) {
+  if (!Number.isInteger(shardCount) || shardCount < 1) throw new Error("INVALID_SHARD_COUNT");
+  const digest2 = import_crypto5.default.createHash("sha256").update(operationId).digest();
+  return digest2.readUInt32BE(0) % shardCount;
+}
+function projectionShardCount(estimatedOperationsPerSecond = 1) {
+  if (!Number.isFinite(estimatedOperationsPerSecond) || estimatedOperationsPerSecond < 0) throw new Error("INVALID_OPERATION_RATE");
+  if (estimatedOperationsPerSecond <= 3) return 2;
+  if (estimatedOperationsPerSecond <= 12) return 8;
+  return 16;
+}
+function projectionBucketPath(garageId, dateId, operationId, shardCount = 8) {
+  if (!garageId || !/^\d{4}-\d{2}-\d{2}$/.test(dateId)) throw new Error("INVALID_PROJECTION_BUCKET_SCOPE");
+  const shard = projectionShard(operationId, shardCount);
+  return `garages/${garageId}/projection_buckets/${dateId}_${shard}`;
+}
+function projectionBucketUpdate(operationId, dateId, delta, shardCount = 8) {
+  const shard = projectionShard(operationId, shardCount);
+  return { operationId, projectionVersion: 1, dateId, shard, ...delta };
+}
 function createVehicleDelta(eventType, amount = 0) {
   if (eventType === "vehicle_entered") return { activeVehicleCount: 1, entriesToday: 1 };
   if (eventType === "vehicle_exited") return { activeVehicleCount: -1, exitsToday: 1, grossRevenue: Number(amount.toFixed(2)), netRevenue: Number(amount.toFixed(2)) };
@@ -147709,6 +147729,15 @@ function createVehicleDelta(eventType, amount = 0) {
 
 // server/routes/vehicles.ts
 var router = (0, import_express.Router)();
+function writeProjectionBucket(transaction, garageId, dateId, operationId, delta) {
+  if (!adminDb || Object.keys(delta).length === 0) return;
+  const configuredRate = Number(process.env.PROJECTION_OPERATIONS_PER_SECOND || 1);
+  const shardCount = projectionShardCount(Number.isFinite(configuredRate) ? configuredRate : 1);
+  const bucket = projectionBucketUpdate(operationId, dateId, delta, shardCount);
+  const bucketRef = adminDb.doc(projectionBucketPath(garageId, dateId, operationId, shardCount));
+  const increments = Object.fromEntries(Object.entries(delta).map(([field, value]) => [field, FieldValue.increment(Number(value || 0))]));
+  transaction.set(bucketRef, { ...increments, operationId: bucket.operationId, projectionVersion: bucket.projectionVersion, dateId: bucket.dateId, shard: bucket.shard, updatedAt: /* @__PURE__ */ new Date() }, { merge: true });
+}
 router.post("/check-in", requireAuth, async (req, res) => {
   const requestStartedAt = Date.now();
   try {
@@ -147912,6 +147941,7 @@ router.post("/check-in", requireAuth, async (req, res) => {
           projectionDelta: createVehicleDelta("vehicle_entered")
         }
       });
+      writeProjectionBucket(t2, garageId, today, operationId, createVehicleDelta("vehicle_entered"));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t2, idempotencyKey, resultData, "/api/vehicles/check-in", req.user?.uid);
       }
@@ -148048,6 +148078,7 @@ router.post("/check-out", requireAuth, async (req, res) => {
           projectionDelta: createVehicleDelta("vehicle_exited", cost)
         }
       });
+      writeProjectionBucket(t2, garageId, today, operationId, createVehicleDelta("vehicle_exited", cost));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t2, idempotencyKey, { cost }, "/api/vehicles/check-out", req.user?.uid);
       }
@@ -148192,6 +148223,7 @@ router.post("/delete", requireAuth, async (req, res) => {
           projectionDelta: refundAmt > 0 ? createVehicleDelta("vehicle_refunded", refundAmt) : createVehicleDelta("vehicle_deleted")
         }
       });
+      writeProjectionBucket(t2, garageId, todayYMD, operationId, refundAmt > 0 ? createVehicleDelta("vehicle_refunded", refundAmt) : createVehicleDelta("vehicle_deleted"));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t2, idempotencyKey, { success: true }, "/api/vehicles/delete", req.user?.uid);
       }
