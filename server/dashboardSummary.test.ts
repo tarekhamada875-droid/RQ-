@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateProjectionBuckets, reconcileDashboardSummary } from './dashboardSummary';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
 
 describe('dashboard summary projections', () => {
   it('aggregates sharded additive bucket records without reading history', () => {
@@ -24,5 +24,20 @@ describe('dashboard summary projections', () => {
     });
     expect(reconciliation.consistent).toBe(true);
     expect(reconciliation.differences).toEqual({ entriesToday: 0, exitsToday: 0, grossRevenue: 0, refundTotal: 0, netRevenue: 0 });
+  });
+
+  it('accepts only real calendar date keys', () => {
+    expect(isValidDateKey('2026-09-18')).toBe(true);
+    expect(isValidDateKey('2026-02-29')).toBe(false);
+    expect(isValidDateKey('2026-13-01')).toBe(false);
+    expect(isValidDateKey('2026-9-18')).toBe(false);
+  });
+
+  it('rejects stale, future, or differently dated stored summaries', () => {
+    const now = Date.parse('2026-09-18T12:00:00.000Z');
+    expect(isFreshDashboardSummary({ dateId: '2026-09-18', rebuiltAt: '2026-09-18T11:58:00.000Z' }, '2026-09-18', now)).toBe(true);
+    expect(isFreshDashboardSummary({ dateId: '2026-09-18', rebuiltAt: '2026-09-18T11:54:59.000Z' }, '2026-09-18', now)).toBe(false);
+    expect(isFreshDashboardSummary({ dateId: '2026-09-17', rebuiltAt: '2026-09-18T11:59:00.000Z' }, '2026-09-18', now)).toBe(false);
+    expect(isFreshDashboardSummary({ dateId: '2026-09-18', rebuiltAt: '2026-09-18T12:01:00.000Z' }, '2026-09-18', now)).toBe(false);
   });
 });

@@ -6,13 +6,13 @@ import { sanitizePayload, validateId, validateString, validateNumber, validateId
 import { manualAdminExtendFairUse, initializeFairUse } from '../unlimitedFairUse';
 import { mapDomainErrorToStatus } from './helpers';
 import { calculateDailyProjection } from '../projections';
-import { aggregateProjectionBuckets, reconcileDashboardSummary } from '../dashboardSummary';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
 
 const router = Router();
 
 function cairoDayBounds(date: string): { start: Date; end: Date } {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('INVALID_DATE');
+  if (!isValidDateKey(date)) throw new Error('INVALID_DATE');
   const start = new Date(`${date}T00:00:00+03:00`);
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
@@ -497,11 +497,16 @@ router.get('/:id/dashboard-summary', requireAuth, async (req: AuthRequest, res: 
         telemetrySource = 'not_ready';
         return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' });
       }
+      const storedSummary = summarySnap.data() || {};
+      if (!isFreshDashboardSummary(storedSummary, today)) {
+        telemetrySource = 'not_ready';
+        return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' });
+      }
       telemetrySource = 'stored_rebuild';
       telemetrySuccess = true;
       res.setHeader('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
       res.setHeader('X-Summary-Source', telemetrySource);
-      return res.json({ success: true, data: { garageId, summary: summarySnap.data() || {} } });
+      return res.json({ success: true, data: { garageId, summary: storedSummary } });
     }
     const liveSummary = aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {}));
     const summary = {
@@ -537,6 +542,7 @@ router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: a
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
     const targetDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    if (!isValidDateKey(targetDate)) return res.status(400).json({ success: false, error: 'INVALID_DATE' });
     const { start: dayStart, end: nextDayStart } = cairoDayBounds(targetDate);
     const eventsSnap = await adminDb.collection(`garages/${garageId}/events`)
       .where('occurredAt', '>=', dayStart.toISOString())

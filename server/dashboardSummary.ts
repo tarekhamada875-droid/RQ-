@@ -28,6 +28,28 @@ export interface DashboardReconciliation {
 
 const rounded = (value: number) => Number(value.toFixed(2));
 
+export interface StoredDashboardSummary {
+  dateId?: string;
+  rebuiltAt?: string;
+}
+
+export function isValidDateKey(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+export function isFreshDashboardSummary(
+  summary: StoredDashboardSummary | null | undefined,
+  today: string,
+  now = Date.now(),
+  maxAgeMs = 5 * 60 * 1000
+): boolean {
+  if (!summary?.dateId || summary.dateId !== today || !isValidDateKey(summary.dateId)) return false;
+  const rebuiltAt = Date.parse(summary.rebuiltAt || '');
+  return Number.isFinite(rebuiltAt) && rebuiltAt <= now && now - rebuiltAt <= maxAgeMs;
+}
+
 export function aggregateProjectionBuckets(buckets: ProjectionBucketRecord[]): DashboardSummary {
   const totals = buckets.reduce((result, bucket) => ({
     activeVehicleCount: result.activeVehicleCount + Number(bucket.activeVehicleCount || 0),
