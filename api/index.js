@@ -147186,6 +147186,18 @@ function validateEventParams(params) {
   }
   const payload = JSON.stringify(params.payload);
   if (payload.length > 32e3) throw new Error("EVENT_PAYLOAD_TOO_LARGE");
+  if (params.eventType === "delegate_settled") {
+    const financial = params.payload;
+    if (!financial.delegateId || !financial.settlementId || typeof financial.previousRechargedAmount !== "number" || !financial.settledAt) {
+      throw new Error("INVALID_DELEGATE_SETTLEMENT_PAYLOAD");
+    }
+  }
+  if (params.eventType === "vehicle_refunded") {
+    const refund = params.payload;
+    if (typeof refund.refundAmount !== "number" || !refund.accountingDate || refund.accountingPolicy !== "refund_on_refund_date") {
+      throw new Error("INVALID_REFUND_PAYLOAD");
+    }
+  }
 }
 function recordDomainEventInTransaction(t2, adminDb2, params) {
   validateEventParams(params);
@@ -147207,8 +147219,7 @@ function recordDomainEventInTransaction(t2, adminDb2, params) {
     payload: safePayload
   };
   const eventPath = params.eventCollectionPath || `garages/${params.garageId}/events`;
-  const eventRef = adminDb2.doc(`${eventPath}/${eventId}`);
-  t2.set(eventRef, event);
+  t2.set(adminDb2.doc(`${eventPath}/${eventId}`), event);
   return event;
 }
 
@@ -148438,6 +148449,7 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
     const delRef = adminDb.collection("delegates").doc(id);
     const now = /* @__PURE__ */ new Date();
     let previousTotal = 0;
+    let settlementId = "";
     let duplicateResult = null;
     await adminDb.runTransaction(async (t2) => {
       if (idempotencyKey) {
@@ -148451,6 +148463,18 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
       if (!snap.exists) throw new Error("DELEGATE_NOT_FOUND");
       const data = snap.data() || {};
       previousTotal = Number(data.totalRechargedAmount || 0);
+      const settlementRef = adminDb.collection("settlements").doc();
+      settlementId = settlementRef.id;
+      t2.set(settlementRef, {
+        settlementId,
+        delegateId: id,
+        cutoffTime: now,
+        previousCycleTotal: previousTotal,
+        settledByUid: req.user?.uid || "admin",
+        settledAt: now,
+        idempotencyKey: idempotencyKey || null,
+        createdAt: now
+      });
       t2.update(delRef, {
         lastSettledAt: now,
         totalRechargedAmount: 0,
@@ -148467,6 +148491,7 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
         eventCollectionPath: `delegates/${id}/events`,
         payload: {
           delegateId: id,
+          settlementId,
           previousRechargedAmount: previousTotal,
           settledAt: now.toISOString()
         }
@@ -148475,7 +148500,7 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
         storeIdempotencyInTransaction(
           t2,
           idempotencyKey,
-          { success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
+          { success: true, settlementId, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
           "/api/delegates/settle-account",
           req.user?.uid,
           requestFingerprint
@@ -148483,7 +148508,7 @@ router3.post("/settle-account", requireAuth, async (req, res) => {
       }
     });
     if (duplicateResult) return res.json(duplicateResult);
-    return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
+    return res.json({ success: true, settlementId, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
   } catch (e2) {
     console.error("[Server Delegate] Error settling account:", e2);
     return res.status(500).json({ success: false, error: e2?.message || "SERVER_ERROR" });

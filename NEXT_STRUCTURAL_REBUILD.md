@@ -515,3 +515,12 @@ The full Vitest suite, TypeScript validation, production build, CI production ga
 Projection calculation was extracted into the pure `server/projections.ts` module. It rebuilds one Cairo calendar day from event history, ignores malformed or out-of-range timestamps, and derives gross, refund, and net revenue without reading or accumulating prior projection values. The rebuild route now uses this calculator, so repeated rebuilds are deterministic apart from operational metadata such as rebuild time and actor.
 
 Added regression tests for date scoping, replay determinism, no accumulation of prior values, and malformed timestamps. Focused tests, the full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and diff check all passed.
+
+
+## 2026-09-18 — Typed financial events and settlement records
+
+Financial event validation now includes explicit payload aliases for delegate settlements and vehicle refunds. Delegate settlement events require a delegate ID, permanent settlement ID, numeric previous-cycle amount, and settlement timestamp. Refund events require the refund amount, accounting date, and the documented refund-date accounting policy.
+
+Delegate settlement now creates a permanent `settlements/{settlementId}` record in the same Firestore transaction as the delegate balance reset and domain event. The record stores the delegate, cutoff time, previous cycle total, settling administrator, settlement timestamp, and idempotency key. Duplicate idempotent requests return the stored settlement result and do not create a second business effect.
+
+The full test suite, TypeScript check, production build, CI production gate, maintainability check, and diff check passed. No production data was modified.

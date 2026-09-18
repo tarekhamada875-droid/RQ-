@@ -94,6 +94,7 @@ describe('approved business rules', () => {
         eventCollectionPath: 'delegates/del_99/events',
         payload: {
           delegateId: 'del_99',
+          settlementId: 'set_del_99_1',
           previousRechargedAmount: 1500,
           settledAt: '2026-09-15T00:00:00.000Z'
         }
@@ -114,6 +115,22 @@ describe('approved business rules', () => {
         actorRole: 'admin',
         payload: {}
       })).toThrow('INVALID_EVENT_AGGREGATE');
+    });
+
+    it('rejects a delegate settlement event without a permanent settlement id', () => {
+      expect(() => recordDomainEventInTransaction({ set: () => undefined }, { doc: (path: string) => ({ path }) }, {
+        garageId: 'global',
+        aggregateType: 'delegate',
+        aggregateId: 'del_99',
+        eventType: 'delegate_settled',
+        actorUid: 'admin_1',
+        actorRole: 'admin',
+        payload: {
+          delegateId: 'del_99',
+          previousRechargedAmount: 1500,
+          settledAt: '2026-09-15T00:00:00.000Z'
+        }
+      })).toThrow('INVALID_DELEGATE_SETTLEMENT_PAYLOAD');
     });
   });
 });

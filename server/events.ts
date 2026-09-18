@@ -14,6 +14,20 @@ export type DomainEventType =
   | 'delegate_settled';
 
 type AggregateType = 'vehicle' | 'subscriber' | 'delegate' | 'recharge';
+export type EventPayload = Record<string, unknown>;
+
+export interface DelegateSettledPayload extends EventPayload {
+  delegateId: string;
+  settlementId: string;
+  previousRechargedAmount: number;
+  settledAt: string;
+}
+
+export interface VehicleRefundedPayload extends EventPayload {
+  refundAmount: number;
+  accountingDate: string;
+  accountingPolicy: 'refund_on_refund_date';
+}
 
 export interface DomainEvent {
   eventId: string;
@@ -27,7 +41,7 @@ export interface DomainEvent {
   actorUid: string;
   actorRole: string;
   idempotencyKey?: string;
-  payload: Record<string, unknown>;
+  payload: EventPayload;
 }
 
 export interface CreateEventParams {
@@ -38,7 +52,7 @@ export interface CreateEventParams {
   actorUid: string;
   actorRole: string;
   idempotencyKey?: string;
-  payload: Record<string, unknown>;
+  payload: EventPayload;
   /** Override the default garages/{garageId}/events collection for non-garage aggregates. */
   eventCollectionPath?: string;
 }
@@ -76,11 +90,22 @@ function validateEventParams(params: CreateEventParams): void {
   }
   const payload = JSON.stringify(params.payload);
   if (payload.length > 32_000) throw new Error('EVENT_PAYLOAD_TOO_LARGE');
+
+  if (params.eventType === 'delegate_settled') {
+    const financial = params.payload as Partial<DelegateSettledPayload>;
+    if (!financial.delegateId || !financial.settlementId || typeof financial.previousRechargedAmount !== 'number' || !financial.settledAt) {
+      throw new Error('INVALID_DELEGATE_SETTLEMENT_PAYLOAD');
+    }
+  }
+  if (params.eventType === 'vehicle_refunded') {
+    const refund = params.payload as Partial<VehicleRefundedPayload>;
+    if (typeof refund.refundAmount !== 'number' || !refund.accountingDate || refund.accountingPolicy !== 'refund_on_refund_date') {
+      throw new Error('INVALID_REFUND_PAYLOAD');
+    }
+  }
 }
 
-/**
- * Creates and writes an immutable domain event atomically inside a Firestore transaction.
- */
+/** Creates and writes an immutable domain event atomically inside a Firestore transaction. */
 export function recordDomainEventInTransaction(
   t: any,
   adminDb: any,
@@ -89,7 +114,7 @@ export function recordDomainEventInTransaction(
   validateEventParams(params);
   const timestamp = new Date();
   const eventId = `evt_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
-  const safePayload = redactSensitive(params.payload) as Record<string, unknown>;
+  const safePayload = redactSensitive(params.payload) as EventPayload;
 
   const event: DomainEvent = {
     eventId,
@@ -107,8 +132,6 @@ export function recordDomainEventInTransaction(
   };
 
   const eventPath = params.eventCollectionPath || `garages/${params.garageId}/events`;
-  const eventRef = adminDb.doc(`${eventPath}/${eventId}`);
-  t.set(eventRef, event);
-
+  t.set(adminDb.doc(`${eventPath}/${eventId}`), event);
   return event;
 }

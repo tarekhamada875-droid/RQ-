@@ -101,6 +101,7 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
     const delRef = adminDb.collection('delegates').doc(id);
     const now = new Date();
     let previousTotal = 0;
+    let settlementId = '';
     let duplicateResult: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
@@ -115,6 +116,18 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
       if (!snap.exists) throw new Error('DELEGATE_NOT_FOUND');
       const data = snap.data() || {};
       previousTotal = Number(data.totalRechargedAmount || 0);
+      const settlementRef = adminDb.collection('settlements').doc();
+      settlementId = settlementRef.id;
+      t.set(settlementRef, {
+        settlementId,
+        delegateId: id,
+        cutoffTime: now,
+        previousCycleTotal: previousTotal,
+        settledByUid: req.user?.uid || 'admin',
+        settledAt: now,
+        idempotencyKey: idempotencyKey || null,
+        createdAt: now
+      });
       t.update(delRef, {
         lastSettledAt: now,
         totalRechargedAmount: 0,
@@ -131,6 +144,7 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
         eventCollectionPath: `delegates/${id}/events`,
         payload: {
           delegateId: id,
+          settlementId,
           previousRechargedAmount: previousTotal,
           settledAt: now.toISOString()
         }
@@ -139,7 +153,7 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
         storeIdempotencyInTransaction(
           t,
           idempotencyKey,
-          { success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
+          { success: true, settlementId, settledAt: now.toISOString(), previousRechargedAmount: previousTotal },
           '/api/delegates/settle-account',
           req.user?.uid,
           requestFingerprint
@@ -148,7 +162,7 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
     });
 
     if (duplicateResult) return res.json(duplicateResult);
-    return res.json({ success: true, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
+    return res.json({ success: true, settlementId, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
   } catch (e: any) {
     console.error('[Server Delegate] Error settling account:', e);
     return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
