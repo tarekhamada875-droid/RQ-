@@ -7,6 +7,7 @@ import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
 import { calculateVehicleCost } from '../utils';
 import { validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
+import { createOperationId, createVehicleDelta, nextOperationVersion } from '../deltaProjection';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     };
 
     const today = getCairoDateKey();
+    const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let isSubscriberAuthoritative = false;
     try {
@@ -139,7 +141,9 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
         status: 'inside',
         staffId: staffId || null,
         staffName: resolvedStaffName,
-        enteredByUid: req.user?.uid || null
+        enteredByUid: req.user?.uid || null,
+        operationId,
+        operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion)
       }, { merge: true });
 
       const garageUpdate: any = {
@@ -228,7 +232,10 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
           type: type || 'hourly',
           isSubscriber: isSubscriberAuthoritative,
           staffId: staffId || null,
-          staffName: resolvedStaffName
+          staffName: resolvedStaffName,
+          operationId,
+          operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
+          projectionDelta: createVehicleDelta('vehicle_entered')
         }
       });
 
@@ -283,6 +290,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
 
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let finalCost = 0;
 
@@ -323,7 +331,9 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
       t.set(vehicleRef, {
         status: 'outside',
         exitTime: new Date(),
-        totalCost: cost
+        totalCost: cost,
+        operationId,
+        operationVersion: nextOperationVersion(vehicleData.operationVersion)
       }, { merge: true });
 
       const isNewDay = garageData.lastTransactionDate !== today;
@@ -379,7 +389,10 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
           cost,
           entryTime: vehicleData.entryTime,
           staffId: staffId || null,
-          staffName: resolvedStaffName
+          staffName: resolvedStaffName,
+          operationId,
+          operationVersion: nextOperationVersion(vehicleData.operationVersion),
+          projectionDelta: createVehicleDelta('vehicle_exited', cost)
         }
       });
       if (idempotencyKey) {
@@ -432,6 +445,7 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
         if (duplicate.isDuplicate) return;
       }
       const todayYMD = getCairoDateKey();
+      const operationId = createOperationId(garageId, idempotencyKey || undefined);
       const garageRef = adminDb.doc(`garages/${garageId}`);
       const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
@@ -544,7 +558,10 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
           previousStatus: vehicleData.status,
           previousCost: vehicleData.totalCost || 0,
           staffId: staffId || null,
-          staffName: resolvedStaffName
+          staffName: resolvedStaffName,
+          operationId,
+          operationVersion: nextOperationVersion(vehicleData.operationVersion),
+          projectionDelta: refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted')
         }
       });
       if (idempotencyKey) {
