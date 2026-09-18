@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getTraceContext } from './operationTrace';
 
 export type DomainEventType =
   | 'vehicle_entered'
@@ -47,6 +48,8 @@ export interface DomainEvent {
   actorUid: string;
   actorRole: string;
   idempotencyKey?: string;
+  correlationId?: string;
+  operationId?: string;
   payload: EventPayload;
 }
 
@@ -58,6 +61,8 @@ export interface CreateEventParams {
   actorUid: string;
   actorRole: string;
   idempotencyKey?: string;
+  correlationId?: string;
+  operationId?: string;
   payload: EventPayload;
   eventCollectionPath?: string;
 }
@@ -97,6 +102,7 @@ export function recordDomainEventInTransaction(t: any, adminDb: any, params: Cre
   validateEventParams(params);
   const timestamp = new Date();
   const eventId = `evt_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+  const trace = getTraceContext();
   const event: DomainEvent = {
     eventId,
     schemaVersion: 1,
@@ -109,6 +115,8 @@ export function recordDomainEventInTransaction(t: any, adminDb: any, params: Cre
     actorUid: params.actorUid || 'system',
     actorRole: params.actorRole || 'unknown',
     idempotencyKey: params.idempotencyKey || undefined,
+    ...(params.correlationId || trace?.correlationId ? { correlationId: params.correlationId || trace?.correlationId } : {}),
+    ...(params.operationId || trace?.operationId ? { operationId: params.operationId || trace?.operationId } : {}),
     payload: redactSensitive(params.payload) as EventPayload
   };
   const eventPath = params.eventCollectionPath || `garages/${params.garageId}/events`;

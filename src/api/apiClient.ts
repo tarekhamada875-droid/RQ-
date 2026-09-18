@@ -69,6 +69,10 @@ export async function apiFetch<T = any>(
     : Math.random().toString(36).substring(2) + Date.now().toString(36);
   
   headers['X-Correlation-ID'] = correlationId;
+  const operationId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `ui_${crypto.randomUUID()}`
+    : `ui_${Math.random().toString(36).substring(2)}_${Date.now().toString(36)}`;
+  headers['X-Operation-ID'] = operationId;
 
   // 3. Keep the body limited to business inputs. Never treat body uid, role, or firebaseIdToken as authorization.
   // We remove redundant identity fields from body unless it is an auth endpoint

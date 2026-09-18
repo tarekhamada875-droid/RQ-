@@ -22,6 +22,7 @@ import {
   requestTimeoutMiddleware,
   financialRateLimiter
 } from './middleware';
+import { operationTraceMiddleware } from './operationTrace';
 import {
   validateId,
   validateNumber,
@@ -176,6 +177,7 @@ export function createApp() {
       'Content-Type',
       'Authorization',
       'X-Correlation-ID',
+      'X-Operation-ID',
       'Idempotency-Key'
     ]
   }));
@@ -183,6 +185,7 @@ export function createApp() {
   app.use(express.json());
   app.use(correlationMiddleware);
   app.use(requestTimeoutMiddleware(15000));
+  app.use(operationTraceMiddleware);
 
   // Mount Modular Routers
   app.use('/api/vehicles', vehiclesRouter);
