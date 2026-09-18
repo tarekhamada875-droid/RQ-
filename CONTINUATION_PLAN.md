@@ -309,3 +309,14 @@ The endpoint returns bucket count, event count, event consistency, and legacy di
 Validation passed: dashboard summary tests, full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
 
 Next checkpoint is Stage 4: add a read-only summary service/client and switch only aggregate KPI reads to the summary after authenticated production verification. Keep the active vehicle realtime query unchanged. Remove legacy shared aggregate writes only after several reconciliation cycles show zero differences.
+
+
+## Progress update — Stage 4 read foundation completed
+
+Added `GET /api/garages/:id/dashboard-summary`, restricted to admins or the authenticated garage/staff session belonging to that garage. Added a typed `garageService.getDashboardSummary` client method.
+
+The active vehicle listener remains unchanged and continues to provide realtime occupancy. Aggregate KPI rendering has not yet been switched to the summary because the current summary is rebuilt on demand and may be stale; substituting it into the live screen before establishing an automatic freshness contract would be unsafe. This checkpoint intentionally delivers the scoped read API and client foundation first.
+
+Validation passed: full Vitest suite, TypeScript validation, production build, CI production gate, maintainability check, and `git diff --check`.
+
+Next checkpoint: make the summary freshness contract explicit by adding a controlled rebuild/refresh mechanism or a projection worker, then migrate only aggregate KPI reads with a fallback to legacy fields and production reconciliation telemetry.

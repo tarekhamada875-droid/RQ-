@@ -27,6 +27,18 @@ export type GarageDeletionProgress = {
   percentage: number;
 };
 
+export interface GarageDashboardSummary {
+  activeVehicleCount: number;
+  entriesToday: number;
+  exitsToday: number;
+  grossRevenue: number;
+  refundTotal: number;
+  netRevenue: number;
+  projectionVersion: number;
+  dateId?: string;
+  rebuiltAt?: string;
+}
+
 const mapGaragePage = (snapshot: any, pageSize: number): {
   garages: Garage[];
   lastDoc: any;
@@ -44,6 +56,11 @@ const mapGaragePage = (snapshot: any, pageSize: number): {
 };
 
 export const garageService = {
+  getDashboardSummary: async (garageId: string): Promise<GarageDashboardSummary> => {
+    const response = await apiFetch<{ data: { summary: GarageDashboardSummary } }>(`/api/garages/${encodeURIComponent(garageId)}/dashboard-summary`);
+    return response.data.summary;
+  },
+
   subscribeToGarages: (callback: (garages: Garage[]) => void) => {
     const trackerUnsub = listenerTracker.register('garages');
     let timeoutId: any = null;

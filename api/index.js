@@ -149773,6 +149773,23 @@ router5.post("/dashboard-summary/rebuild", requireAuth, async (req, res) => {
     return res.status(statusCode).json({ success: false, error: message2 });
   }
 });
+router5.get("/:id/dashboard-summary", requireAuth, async (req, res) => {
+  try {
+    if (!adminDb) return res.status(500).json({ success: false, error: "ADMIN_SDK_NOT_INITIALIZED" });
+    const garageId = validateId(req.params.id, "garageId", true);
+    const callerRole = req.user?.role;
+    const isAdmin = callerRole === "admin";
+    const isGarageScoped = (callerRole === "garage" || callerRole === "staff") && req.user?.garageId === garageId;
+    if (!isAdmin && !isGarageScoped) return res.status(403).json({ success: false, error: "FORBIDDEN: Garage summary scope required" });
+    const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
+    if (!summarySnap.exists) return res.status(404).json({ success: false, error: "DASHBOARD_SUMMARY_NOT_READY" });
+    return res.json({ success: true, data: { garageId, summary: summarySnap.data() || {} } });
+  } catch (e2) {
+    console.error("[Server Garage] Error reading dashboard summary:", e2);
+    const { statusCode, message: message2 } = mapDomainErrorToStatus(e2);
+    return res.status(statusCode).json({ success: false, error: message2 });
+  }
+});
 router5.post("/rebuild-projections", requireAuth, async (req, res) => {
   try {
     if (req.user?.role !== "admin") {
