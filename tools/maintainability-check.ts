@@ -14,8 +14,8 @@ if (!existsSync(apiEntry) || statSync(apiEntry).size === 0) {
 }
 
 const gitignore = readFileSync(resolve(root, '.gitignore'), 'utf8');
-if (/^api\/index\.js\s*$/m.test(gitignore)) {
-  fail('.gitignore must not ignore api/index.js while the Vercel entry point is tracked.');
+if (!/^api\/index\.js\s*$/m.test(gitignore)) {
+  fail('.gitignore must ignore generated api/index.js so the Vercel build artifact is not committed.');
 }
 
 const vercelConfig = JSON.parse(readFileSync(resolve(root, 'vercel.json'), 'utf8')) as {
