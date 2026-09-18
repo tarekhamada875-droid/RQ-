@@ -137,3 +137,5 @@ If any preview or production check fails:
 
 - 2026-09-17: M0 checkpoint created; production baseline recorded.
 - 2026-09-17: M1 completed. Added `api/index.ts`; `npm run lint` and `git diff --check` passed. Production `vercel.json` and tracked `api/index.js` remain unchanged.
+
+- 2026-09-18: Vercel production deployment for `cb64d36` failed with `conflicting_file_path` because `api/index.ts` and tracked generated `api/index.js` share the same route path. The source wrapper was removed; the tracked generated `api/index.js` plus `/api/*` rewrite remains the production baseline. Direct source migration remains pending until it is tested through a separate preview-safe layout.
