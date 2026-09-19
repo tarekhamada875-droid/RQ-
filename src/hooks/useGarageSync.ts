@@ -56,7 +56,7 @@ export function useGarageSync({
         const parsed = JSON.parse(jsonStr);
         if (Array.isArray(parsed)) return parsed;
       }
-    } catch (e) {}
+    } catch {}
     return [];
   });
 

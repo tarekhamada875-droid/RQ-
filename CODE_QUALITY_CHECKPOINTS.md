@@ -168,6 +168,16 @@ For logging changes, first preserve the old message meaning in the new structure
 - Post-cleanup validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 - Checkpoint status: **1.7 in progress**; `npm run lint:eslint` remains intentionally outside the production gate until the baseline is reduced and the remaining findings are classified or fixed.
 
+### 2026-09-19 — no-unused-vars cleanup
+
+- Baseline at `5450a4a`: **68** `@typescript-eslint/no-unused-vars` findings.
+- Added an explicit underscore convention to `eslint.config.js` for intentionally unused compatibility parameters, caught errors, and object-rest exclusion bindings.
+- Removed **30** unused catch bindings with line-asserted edits; renamed six intentional security/data-shaping exclusions (`uid`, `role`, `firebaseIdToken`, and PIN fields) to underscore-prefixed bindings without changing payload behavior.
+- Re-ran ESLint: **0 remaining `no-unused-vars` findings**. ESLint still reports **653 total findings** from other rule families, so the full ESLint command is not yet green.
+- Focused regression validation passed: **6 test files, 34 tests** covering the API client, authentication, session policy, and PIN flows.
+- Final full validation after restoring one legitimately used logout error binding passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
+- Checkpoint status: unused-variable cleanup is complete; Phase 1.7 remains in progress for the remaining safe rule groups, and Phase 1.8 remains open.
+
 ### 2026-09-19 — Release smoke deployment-race correction
 
 - The first post-merge quality-phase production gate failed only because the smoke check ran while Railway was still serving the previous commit (`bf4a8dd`) approximately 21 seconds before the new deployment (`dd618e4`) became live; all code-quality checks had already passed.

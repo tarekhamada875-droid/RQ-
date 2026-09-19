@@ -88,7 +88,7 @@ export async function apiFetch<T = any>(
       if (isAuthEndpoint) {
         safeBody = JSON.stringify(options.body);
       } else {
-        const { uid, role, firebaseIdToken, ...rest } = options.body;
+        const { uid: _uid, role: _role, firebaseIdToken: _firebaseIdToken, ...rest } = options.body;
         safeBody = JSON.stringify(rest);
       }
     } else {

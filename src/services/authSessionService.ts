@@ -48,7 +48,7 @@ export const getCanonicalSessionId = (): string => {
       localStorage.setItem('rq_canonical_session_id', sid);
     }
     return sid;
-  } catch (e) {
+  } catch {
     return 'fallback_session_' + Date.now();
   }
 };

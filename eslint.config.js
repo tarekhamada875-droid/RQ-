@@ -26,6 +26,17 @@ export default tseslint.config(
         ...globals.es2022,
       },
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
   },
   {
     files: ['src/**/*.{ts,tsx}'],

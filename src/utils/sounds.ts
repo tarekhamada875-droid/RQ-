@@ -81,7 +81,7 @@ class SoundManager {
   resume() {
     try {
       this.initContext();
-    } catch (e) {
+    } catch {
       // Ignore
     }
   }

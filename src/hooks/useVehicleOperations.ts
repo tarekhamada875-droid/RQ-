@@ -235,7 +235,7 @@ export function useVehicleOperations({
           try {
             const detailed = JSON.parse(message);
             message = detailed.error || message;
-          } catch (e) {}
+          } catch {}
         }
 
         if (message === 'ALREADY_INSIDE' || message.includes('مسجلة بالفعل')) {
@@ -338,7 +338,7 @@ export function useVehicleOperations({
           } else {
             errMsg = message || 'حدث خطأ أثناء الخروج';
           }
-        } catch (e) {
+        } catch {
           errMsg = error?.message || 'حدث خطأ أثناء الخروج';
         }
         

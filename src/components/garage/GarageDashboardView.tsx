@@ -142,7 +142,7 @@ export const GarageDashboardView = memo((props: any) => {
         }
         try {
           Rn.play('checkIn');
-        } catch (e) {}
+        } catch {}
       }
       prevBalanceRef.current = t.balance;
     }

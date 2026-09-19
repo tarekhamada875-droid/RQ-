@@ -221,7 +221,7 @@ export async function requireFirebaseUser(req: AuthRequest, res: Response, next:
     const decoded = await adminAuth.verifyIdToken(token);
     req.user = { uid: decoded.uid, role: 'anonymous' };
     next();
-  } catch (err) {
+  } catch {
     return sendApiError(
       res,
       401,

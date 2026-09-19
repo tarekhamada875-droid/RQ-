@@ -477,7 +477,7 @@ export function useAdminAndGarageManagement({
       setSelectedGarageForDetails(null);
       setView('admin_dashboard');
       showToast(APP_TEXT.ADMIN.DELETE_CONFIRM);
-    } catch (error) {
+    } catch {
       showToast('فشل في حذف الجراج', 'error');
     } finally {
       setIsLoading(false);
@@ -489,7 +489,7 @@ export function useAdminAndGarageManagement({
   const updateGarageRate = useCallback(async (g: Garage, field: 'hourlyRate' | 'overnightRate', value: number) => {
     try {
       await firestoreService.updateGarage(g.id, { [field]: value });
-    } catch (error) {}
+    } catch {}
   }, []);
 
   const addDelegate = useCallback((data: any) => firestoreService.addDelegate(data), []);

@@ -258,7 +258,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
       } else {
         setSelectedDuration('custom');
       }
-    } catch (e) {
+    } catch {
       setSelectedDuration('custom');
     }
 
@@ -377,7 +377,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
           const detailed = JSON.parse(msg);
           errorMsg = `خطأ: ${detailed.error || 'غير معروف'}`;
         }
-      } catch (e) {
+      } catch {
         // ignore parsing error
       }
 
@@ -396,7 +396,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
     try {
       await firestoreService.deleteSubscriber(garage.id, subscriberToDelete);
       showToast('تم حذف المشترك بنجاح', 'success');
-    } catch (error) {
+    } catch {
       showToast('حدث خطأ أثناء الحذف', 'error');
     } finally {
       setSubscriberToDelete(null);

@@ -366,7 +366,7 @@ export function registerAuthRoutes(router: Router) {
         await resetRateLimit(clientIp);
       }
       return res.json({ valid: matches });
-    } catch (error) {
+    } catch {
       return res.status(500).json({ valid: false });
     }
   });
