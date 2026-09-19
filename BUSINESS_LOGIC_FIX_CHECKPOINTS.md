@@ -31,9 +31,9 @@
 ## Phase 0 — Safety and shared foundations
 
 - [x] 0.1 Create this checkpoint plan.
-- [ ] 0.2 Add or update focused regression tests before/alongside each behavior change.
-- [ ] 0.3 Run full validation after each phase: tests, TypeScript, build, maintainability, diff check.
-- [ ] 0.4 Keep this file updated with commit SHA, validation output, and next action.
+- [x] 0.2 Add or update focused regression tests before/alongside each behavior change.
+- [x] 0.3 Run full validation after each phase: tests, TypeScript, build, maintainability, diff check.
+- [x] 0.4 Keep this file updated with commit SHA, validation output, and next action.
 
 ## Phase 1 — Critical authentication and authorization
 
@@ -101,10 +101,10 @@
 
 ## Phase 7 — Final verification and handoff
 
-- [ ] 7.1 Run complete test suite.
-- [ ] 7.2 Run TypeScript/lint, production build, maintainability checks, and diff checks.
+- [x] 7.1 Run complete test suite.
+- [x] 7.2 Run TypeScript/lint, production build, maintainability checks, and diff checks.
 - [ ] 7.3 Run API smoke checks for Cloudflare frontend and Railway backend.
-- [ ] 7.4 Commit and push each coherent phase to `main`.
+- [x] 7.4 Commit and push each coherent phase to `main`.
 - [ ] 7.5 Record final commit SHAs, remaining caveats, and deployment status here.
 
 ## Progress log
@@ -202,6 +202,15 @@
 - Added regression coverage for strict boolean deletion-state handling.
 - Validation passed: 14 vehicle/business/idempotency tests, TypeScript, and diff checks.
 - Remaining lifecycle work: review any non-check-in mutations that should be blocked and any additional tenant-specific collections discovered in production data.
+
+### 2026-09-19 — Full repository quality gates verified
+
+- Full test suite passed: 52 test files and 286 tests.
+- TypeScript validation passed with `npm run lint`.
+- Production frontend, Railway server, and Cloud Run bundles built successfully.
+- Maintainability check and `git diff --check` passed.
+- The audit report is now tracked as repository documentation instead of remaining as an untracked working-tree artifact.
+- Remaining release verification: Cloudflare/Railway API smoke checks and final handoff status.
 
 ### 2026-09-19 — Canonical financial events verified
 
