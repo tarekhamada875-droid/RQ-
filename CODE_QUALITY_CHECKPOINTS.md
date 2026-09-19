@@ -255,3 +255,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Targeted ESLint and TypeScript validation passed with no findings in the edited file.
 - Full validation passed: **52 test files, 287 tests**, production build, maintainability check, and `git diff --check`.
 - Current ESLint Hook findings: **24** total (`exhaustive-deps` **14**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-19 — GarageDashboard announcement dependency stabilization
+
+- Extracted `garageId` before the announcement subscription effect in `src/components/garage/GarageDashboardView.tsx`, replacing the complex optional-chain dependency with the equivalent stable scalar dependency.
+- The effect’s two React Hooks warnings are resolved; the file’s remaining warnings concern separate countdown/trial semantics, and its existing `no-explicit-any` errors were not changed.
+- Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Current ESLint Hook findings: **22** total (`exhaustive-deps` **12**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.

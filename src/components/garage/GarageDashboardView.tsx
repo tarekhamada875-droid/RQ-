@@ -111,13 +111,15 @@ export const GarageDashboardView = memo((props: any) => {
     (announcement) => !dismissedAnnouncements[announcement.id]
   ) ?? null;
 
+  const garageId = t?.id;
+
   useEffect(() => {
     const unsub = me.onAnnouncementsChange((list) => {
-      const relevant = list.filter(a => a.isActive && (a.target === 'all' || a.targetGarageId === (t == null ? void 0 : t.id)));
+      const relevant = list.filter(a => a.isActive && (a.target === 'all' || a.targetGarageId === garageId));
       setActiveAnnouncements(relevant);
     });
     return () => unsub();
-  }, [t == null ? void 0 : t.id]);
+  }, [garageId]);
   useEffect(() => {
     const _e = Qt.onAuthStateChanged((st) => {
       He(!!st);
