@@ -155,8 +155,19 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
           revenueAmount: price,
           originalRevenueAmount: price,
             discountAmount,
-          rechargedBy: staffNameText
+            rechargedBy: staffNameText
         }
+      });
+
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'recharge',
+        aggregateId: idempotencyKey || `direct_${garageId}_${Date.now()}`,
+        eventType: 'recharge_approved',
+        actorUid: callerUid || 'admin',
+        actorRole: callerRole,
+        idempotencyKey: idempotencyKey || undefined,
+        payload: { source: 'direct_admin_recharge', packageId, packageName, amount: price, originalAmount: basePrice, discountAmount, durationDays, dailyCapacity: effCapacity }
       });
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
@@ -638,6 +649,17 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
         }
       });
 
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'wallet',
+        aggregateId: garageId,
+        eventType: 'wallet_topup_approved',
+        actorUid: callerUid || 'admin',
+        actorRole: 'admin',
+        idempotencyKey,
+        payload: { amount: numAmount, previousBalance: currentBalance, newBalance, source: 'admin_direct_topup' }
+      });
+
       resultData = { garageId, newBalance, addedAmount: numAmount };
 
       storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/admin-topup-balance', callerUid, requestFingerprint);
@@ -799,6 +821,27 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
           previousBalance: currentBalance,
           remainingBalance: newBalance
         }
+      });
+
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'wallet',
+        aggregateId: garageId,
+        eventType: 'wallet_debited',
+        actorUid: callerUid || 'system',
+        actorRole: userRole || 'garage',
+        idempotencyKey,
+        payload: { amount: effectivePrice, previousBalance: currentBalance, newBalance, reason: 'package_purchase', packageId: pkg.id || packageId }
+      });
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'recharge',
+        aggregateId: idempotencyKey,
+        eventType: 'package_purchased',
+        actorUid: callerUid || 'system',
+        actorRole: userRole || 'garage',
+        idempotencyKey,
+        payload: { packageId: pkg.id || packageId, packageName: pkgName, amount: effectivePrice, durationDays, dailyCapacity: effCapacity, previousBalance: currentBalance, remainingBalance: newBalance }
       });
 
       resultData = {

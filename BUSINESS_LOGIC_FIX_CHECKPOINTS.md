@@ -53,7 +53,7 @@
 - [x] 2.3 Ensure package purchase atomically checks balance, deducts the final price, and activates the package.
 - [x] 2.4 Apply the same discount/coupon calculation to self-subscription, delegate request approval, and admin purchase paths.
 - [x] 2.5 Require idempotency keys for direct recharge, admin wallet top-up, and self-subscription; bind keys to request fingerprints.
-- [ ] 2.6 Emit canonical financial events for every wallet credit, wallet debit, package purchase, commission, and refund.
+- [x] 2.6 Emit canonical financial events for every wallet credit, wallet debit, package purchase, commission, and refund.
 - [ ] 2.7 Correct financial reports to include all canonical events and historical reconciliation requirements.
 - [x] 2.8 Fix delegate request persistence so authorized `delegateId` and display metadata survive creation and pending-state reads.
 - [ ] 2.9 Reject inactive/invalid packages on every purchase path; validate package schema and discount/capacity ranges.
@@ -202,6 +202,16 @@
 - Added regression coverage for strict boolean deletion-state handling.
 - Validation passed: 14 vehicle/business/idempotency tests, TypeScript, and diff checks.
 - Remaining lifecycle work: review any non-check-in mutations that should be blocked and any additional tenant-specific collections discovered in production data.
+
+### 2026-09-19 — Canonical financial events verified
+
+- Added `wallet_debited` and `package_purchased` domain event types with the correct wallet/recharge aggregate mappings.
+- Admin wallet top-ups now emit `wallet_topup_approved` inside the same transaction as the balance credit.
+- Garage self-subscription now emits both `wallet_debited` and `package_purchased` inside the same transaction as the balance deduction and package activation.
+- Direct admin package recharge now emits `recharge_approved` inside its transaction.
+- Existing delegate approval, commission-earned, vehicle-refund, and delegate-settlement events remain part of the canonical ledger.
+- Validation passed: 17 financial/event tests, TypeScript, and diff checks.
+- Remaining finance work: historical reconciliation and complete package schema/range validation.
 
 ## Continuation instructions
 

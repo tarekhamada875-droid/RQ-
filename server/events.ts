@@ -12,6 +12,8 @@ export type DomainEventType =
   | 'subscriber_deleted'
   | 'recharge_approved'
   | 'wallet_topup_approved'
+  | 'wallet_debited'
+  | 'package_purchased'
   | 'recharge_rejected'
   | 'delegate_settled'
   | 'commission_earned';
@@ -71,7 +73,7 @@ export interface CreateEventParams {
 const EVENT_AGGREGATE_TYPES: Record<DomainEventType, AggregateType> = {
   vehicle_entered: 'vehicle', vehicle_exited: 'vehicle', vehicle_refunded: 'vehicle', vehicle_deleted: 'vehicle',
   subscriber_created: 'subscriber', subscriber_renewed: 'subscriber', subscriber_updated: 'subscriber', subscriber_deleted: 'subscriber',
-  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', recharge_rejected: 'recharge', delegate_settled: 'delegate', commission_earned: 'delegate'
+  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', wallet_debited: 'wallet', package_purchased: 'recharge', recharge_rejected: 'recharge', delegate_settled: 'delegate', commission_earned: 'delegate'
 };
 const SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 
