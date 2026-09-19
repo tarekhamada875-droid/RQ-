@@ -62,7 +62,7 @@
 ## Phase 3 — Trial, subscription, and garage state
 
 - [x] 3.1 Make trial decision mutation admin-only.
-- [ ] 3.2 Enforce lock/suspension on server-side check-in only; allow checkout; never clear admin lock during deletion/correction.
+- [x] 3.2 Enforce lock/suspension on server-side check-in only; allow checkout; never clear admin lock during deletion/correction.
 - [x] 3.3 Remove wallet-balance blocking for active paid packages as well as active trials.
 - [x] 3.4 Standardize default trial duration to 2 days in API, UI, delegates, admin views, and reports.
 - [ ] 3.5 Fix malformed subscription expiry handling in client helpers.
@@ -77,7 +77,7 @@
 - [ ] 4.4 Canonicalize and validate vehicle plates at the server boundary.
 - [ ] 4.5 Align correction/deletion ownership identity between client and server.
 - [ ] 4.6 Make vehicle operation idempotency end-to-end and fingerprint-aware across retries.
-- [ ] 4.7 Stop counting zero-value corrections as refunds; use a distinct correction/deletion event.
+- [x] 4.7 Stop counting zero-value corrections as refunds; use a distinct correction/deletion event.
 - [ ] 4.8 Add subscriber pagination/search and remove or clearly label the 50-record cap.
 
 ## Phase 5 — Permanent deletion and lifecycle
@@ -124,8 +124,15 @@
 - Persisted server-derived delegate request metadata and filtered financial settlements by selected delegate.
 - Added server-side vehicle plate normalization, check-in lock/suspension enforcement, fail-closed subscriber lookup behavior, and immutable subscriber plate updates.
 - Validation passed: 19 focused tests, TypeScript, production build, and `git diff --check`.
-- The lock/suspension checkpoint remains open because vehicle deletion still needs its lock-clearing side effect removed, and subscriber lookup still needs to move inside the authoritative transaction.
+- The lock/suspension behavior is now complete; authoritative subscriber lookup still needs to move inside the check-in transaction.
 - Next action: add regression tests for this batch, then implement financial idempotency/canonical events and session authorization.
+
+### 2026-09-19 — Lock/refund follow-up verified by inspection
+
+- Removed the vehicle-deletion side effect that set `isLocked` to false.
+- Zero-value corrections no longer increment refund counters; positive refunds retain refund accounting.
+- The check-in route now rejects locked/suspended garages while checkout remains on its separate path.
+- Next action: add route-level regression coverage and continue with idempotency/session enforcement.
 
 ## Continuation instructions
 

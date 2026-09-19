@@ -522,12 +522,13 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
       t.delete(vehicleRef);
 
       const updates: any = {
-        isLocked: false,
         dailyDeletionCount: todayDeletions + 1,
-        lastDeletionDate: todayYMD,
-        dailyRefundCount: isSameRefundDay ? ((garageData.dailyRefundCount || 0) + 1) : 1,
-        lastRefundDate: todayYMD
+        lastDeletionDate: todayYMD
       };
+      if (refundAmt > 0) {
+        updates.dailyRefundCount = isSameRefundDay ? ((garageData.dailyRefundCount || 0) + 1) : 1;
+        updates.lastRefundDate = todayYMD;
+      }
 
       if (refundAmt > 0) {
         updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
