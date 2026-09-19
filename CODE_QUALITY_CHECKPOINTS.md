@@ -234,3 +234,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Production build passed on a standalone retry; the combined 120-second validation wrapper ended during the build before completion, so the build was re-run with a longer bounded window and completed successfully. Maintainability check and `git diff --check` passed.
 - React Hooks findings remain under review: **28** total (`exhaustive-deps` **18**, `set-state-in-effect` **9**, `purity` **1**). The remaining findings require semantic decisions and are not being mass-edited.
 - Next action: commit and push this verified safe subset, then continue only with individually reviewed hook findings.
+
+### 2026-09-19 — dependency-only React Hooks cleanup
+
+- Removed two unnecessary `react-hooks/exhaustive-deps` dependencies from `useGarageSubscription` and `useAdminAndGarageManagement`, preserving the callback inputs as explicitly named compatibility exclusions.
+- Targeted validation passed: TypeScript, zero Hook or unused-variable findings in both edited files, and **6 test files / 21 tests**.
+- Full validation passed: **52 test files, 287 tests**, `npm run lint`, production build, `npm run maintainability:check`, and `git diff --check`.
+- React Hooks remain under review with **28** findings (`exhaustive-deps` **18**, `set-state-in-effect` **9**, `purity` **1**); only individually understood findings will be changed next.

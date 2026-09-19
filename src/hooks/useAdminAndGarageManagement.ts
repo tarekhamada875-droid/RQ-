@@ -39,7 +39,7 @@ interface UseAdminAndGarageManagementProps {
 
 export function useAdminAndGarageManagement({
   allGarages,
-  packages,
+  packages: _packages,
   delegate,
   currentSupervisor,
   loginPhone,
@@ -451,7 +451,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, currentSupervisor, delegate, allGarages, packages, showToast, closeKeyboard, setIsLoading]);
+  }, [isOnline, currentSupervisor, delegate, allGarages, showToast, closeKeyboard, setIsLoading]);
 
   // Delete garage
   const deleteGarage = useCallback(async (g: Garage | null) => {

@@ -262,3 +262,8 @@
 - Reviewed and corrected a small set of mechanically safe React Hooks findings without changing product rules, financial behavior, authorization behavior, API contracts, or deployment topology. The changes covered unconditional hook ordering, initialization ordering, local-storage initialization, and redundant memo dependencies.
 - Focused validation passed: **8 test files, 31 tests**. The complete suite passed **52 test files, 287 tests**; TypeScript, production build, maintainability, and diff checks also passed after the build was re-run with a longer bounded window.
 - Business-logic phases remain unchanged. Remaining Hooks findings are intentionally deferred for individual semantic review.
+
+### 2026-09-19 — Dependency-only Hooks regression checkpoint
+
+- Removed only two unnecessary callback dependencies and preserved the public hook inputs through explicit underscore-prefixed compatibility bindings. No product, financial, authorization, API, or deployment behavior changed.
+- Focused validation passed: **6 test files, 21 tests**. Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability, and diff checks.

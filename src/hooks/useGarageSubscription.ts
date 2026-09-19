@@ -18,8 +18,8 @@ export function useGarageSubscription({
   allGarages,
   delegate,
   subscriberFlatFee,
-  systemReferralFee,
-  delegateCommissions,
+  systemReferralFee: _systemReferralFee,
+  delegateCommissions: _delegateCommissions,
   isOnline,
   showToast,
 }: UseGarageSubscriptionProps) {
@@ -103,7 +103,7 @@ export function useGarageSubscription({
     if (lockResult === null) {
       showToast('جاري إرسال الطلب... يرجى الانتظار', 'info');
     }
-  }, [isOnline, allGarages, delegate, subscriberFlatFee, systemReferralFee, delegateCommissions, showToast]);
+  }, [isOnline, allGarages, delegate, subscriberFlatFee, showToast]);
 
   const handleDelegateBalanceTopupRequest = useCallback(async (
     garageId: string,
