@@ -132,6 +132,8 @@
 - Removed the vehicle-deletion side effect that set `isLocked` to false.
 - Zero-value corrections no longer increment refund counters; positive refunds retain refund accounting.
 - The check-in route now rejects locked/suspended garages while checkout remains on its separate path.
+- Post-commit validation passed on `d764ebd`: 18 focused tests, TypeScript, and diff checks.
+- The audit report remains an untracked read-only artifact; it is intentionally not mixed into the source fix commits.
 - Next action: add route-level regression coverage and continue with idempotency/session enforcement.
 
 ## Continuation instructions
