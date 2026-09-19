@@ -489,7 +489,9 @@ export function useAdminAndGarageManagement({
   const updateGarageRate = useCallback(async (g: Garage, field: 'hourlyRate' | 'overnightRate', value: number) => {
     try {
       await firestoreService.updateGarage(g.id, { [field]: value });
-    } catch {}
+    } catch {
+      // The caller has no recovery UI for this background rate update.
+    }
   }, []);
 
   const addDelegate = useCallback((data: any) => firestoreService.addDelegate(data), []);

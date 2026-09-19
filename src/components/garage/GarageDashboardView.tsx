@@ -142,7 +142,9 @@ export const GarageDashboardView = memo((props: any) => {
         }
         try {
           Rn.play('checkIn');
-        } catch {}
+        } catch {
+          // Audio feedback is optional and must not interrupt the balance update.
+        }
       }
       prevBalanceRef.current = t.balance;
     }
@@ -265,16 +267,17 @@ export const GarageDashboardView = memo((props: any) => {
     );
     useEffect(() => {
       if (De && !e && t?.hasMonthlySubscribers) {
-        const _e = me.subscribeToSubscribers(t.id, (st) => {
-          const Ue = new Date();
-          Ue.setHours(0, 0, 0, 0);
-          let Zt = 0;
-          (st.forEach((wt) => {
-            const Es = new Date(wt.endDate);
-            Math.ceil((Es.getTime() - Ue.getTime()) / (1e3 * 60 * 60 * 24)) <=
-              3 && Zt++;
-          }),
-            Se(Zt));
+          const _e = me.subscribeToSubscribers(t.id, (st) => {
+            const Ue = new Date();
+            Ue.setHours(0, 0, 0, 0);
+            let Zt = 0;
+            st.forEach((wt) => {
+              const Es = new Date(wt.endDate);
+              if (Math.ceil((Es.getTime() - Ue.getTime()) / (1e3 * 60 * 60 * 24)) <= 3) {
+                Zt++;
+              }
+            });
+            Se(Zt);
         });
         return () => _e();
       }
@@ -300,7 +303,9 @@ export const GarageDashboardView = memo((props: any) => {
   useEffect(() => {
     const _e = new IntersectionObserver(
       (st) => {
-        st[0].isIntersecting && W < l.length && ke((Ue) => Ue + 10);
+        if (st[0].isIntersecting && W < l.length) {
+          ke((Ue) => Ue + 10);
+        }
       },
       {
         threshold: 0.1,
@@ -308,18 +313,21 @@ export const GarageDashboardView = memo((props: any) => {
         rootMargin: "100px",
       },
     );
-    return (Wt.current && _e.observe(Wt.current), () => _e.disconnect());
+    if (Wt.current) {
+      _e.observe(Wt.current);
+    }
+    return () => _e.disconnect();
   }, [l.length, W, ie]);
   const ys = (_e) => {
-    (O(!1),
-      j(_e === "subscribers"),
-      ot(_e === "reports"),
-      Q(_e === "packages"),
-      is(_e === "rewards"),
-      X(_e === "history"),
-      te(_e === "staff"),
-      Xt(_e === "appearance"),
-      setShowTermsModal(_e === "terms"));
+    O(!1);
+    j(_e === "subscribers");
+    ot(_e === "reports");
+    Q(_e === "packages");
+    is(_e === "rewards");
+    X(_e === "history");
+    te(_e === "staff");
+    Xt(_e === "appearance");
+    setShowTermsModal(_e === "terms");
   };
   return (
     <div
@@ -674,7 +682,8 @@ export const GarageDashboardView = memo((props: any) => {
                       {
                         <button
                           onClick={() => {
-                            (O(!1), E());
+                            O(!1);
+                            E();
                           }}
                           className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-black text-sm outline-none"
                         >
@@ -830,7 +839,9 @@ export const GarageDashboardView = memo((props: any) => {
                       walletNumber={I}
                       onOpenPackages={(dur) => {
                         setPackagesInitialDuration(dur);
-                        Q && Q(true);
+                        if (Q) {
+                          Q(true);
+                        }
                       }}
                       showToast={V}
                       isDailyLimitReached={isDailyLimitReached}
@@ -854,7 +865,8 @@ export const GarageDashboardView = memo((props: any) => {
                     garage={t}
                     handleCheckIn={T}
                     onCheckOut={(_e) => {
-                      (d(_e), h(!0));
+                      d(_e);
+                      h(!0);
                     }}
                     closeKeyboard={m}
                     inputRef={D}
@@ -961,7 +973,9 @@ export const GarageDashboardView = memo((props: any) => {
                           key={_e.id || _e.plateNumber}
                           vehicle={_e}
                           onCheckOut={(st) => {
-                            (m(), d(st), h(!0));
+                            m();
+                            d(st);
+                            h(!0);
                           }}
                         />
                       ))}

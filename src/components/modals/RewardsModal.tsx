@@ -31,7 +31,9 @@ export const RewardsModal: React.FC<RewardsModalProps> = memo(({
         try {
           localStorage.setItem(`acknowledged_recharge_${garage.id}`, `reward_claim_${Date.now()}`);
           localStorage.setItem(`acknowledged_recharge_time_${garage.id}`, String(Date.now()));
-        } catch {}
+        } catch {
+          // Local acknowledgement is best effort and must not block reward application.
+        }
         const daysText = result.daysClaimed === 1
           ? 'يوم مجاني'
           : result.daysClaimed === 2
@@ -141,4 +143,3 @@ export const RewardsModal: React.FC<RewardsModalProps> = memo(({
 });
 
 RewardsModal.displayName = 'RewardsModal';
-

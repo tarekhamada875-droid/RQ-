@@ -235,7 +235,9 @@ export function useVehicleOperations({
           try {
             const detailed = JSON.parse(message);
             message = detailed.error || message;
-          } catch {}
+          } catch {
+            // Keep the original error message when the server detail is malformed.
+          }
         }
 
         if (message === 'ALREADY_INSIDE' || message.includes('مسجلة بالفعل')) {

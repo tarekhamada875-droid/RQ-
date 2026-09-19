@@ -89,7 +89,9 @@ export function useGarageApp() {
         localStorage.removeItem('app_wallet_number');
         setWalletNumber('');
       }
-    } catch {}
+    } catch {
+      // Storage access can be unavailable; continue with the in-memory wallet state.
+    }
   }, [setWalletNumber]);
 
   // Real-time synchronization of system wallet number and subscription prices
