@@ -56,7 +56,7 @@
 - [x] 2.6 Emit canonical financial events for every wallet credit, wallet debit, package purchase, commission, and refund.
 - [ ] 2.7 Correct financial reports to include all canonical events and historical reconciliation requirements.
 - [x] 2.8 Fix delegate request persistence so authorized `delegateId` and display metadata survive creation and pending-state reads.
-- [ ] 2.9 Reject inactive/invalid packages on every purchase path; validate package schema and discount/capacity ranges.
+- [x] 2.9 Reject inactive/invalid packages on every purchase path; validate package schema and discount/capacity ranges.
 - [x] 2.10 Fix delegate-scoped settlement filtering in financial reports.
 
 ## Phase 3 — Trial, subscription, and garage state
@@ -212,6 +212,15 @@
 - Existing delegate approval, commission-earned, vehicle-refund, and delegate-settlement events remain part of the canonical ledger.
 - Validation passed: 17 financial/event tests, TypeScript, and diff checks.
 - Remaining finance work: historical reconciliation and complete package schema/range validation.
+
+### 2026-09-19 — Package catalog validation verified
+
+- Added a shared server-side package catalog validator for active status, name, duration, price, discount type/value, capacity range, and unlimited capacity.
+- Direct admin recharge, garage self-subscription, and delegate approval now derive package economics from the validated server catalog rather than trusting client package metadata.
+- Delegate approvals without a valid catalog package ID now reject with `PACKAGE_NOT_FOUND`.
+- Added focused tests for valid discounts, inactive packages, invalid ranges, and unlimited capacity.
+- Validation passed: 20 package/financial tests, TypeScript, and diff checks.
+- Remaining finance work: historical reconciliation and production data backfill/reconciliation.
 
 ## Continuation instructions
 

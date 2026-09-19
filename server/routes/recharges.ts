@@ -6,6 +6,7 @@ import { recordDomainEventInTransaction } from '../events';
 import { initializeFairUse } from '../unlimitedFairUse';
 import { sanitizePayload, validateId, validateNumber, validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
+import { validatePackageCatalogRecord } from '../packageCatalog';
 
 const router = Router();
 
@@ -50,27 +51,14 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
       return sendApiError(res, 409, 'PACKAGE_INACTIVE', 'PACKAGE_INACTIVE', req.correlationId);
     }
 
-    const rawDays = Number(packageObj.durationDays || packageObj.vehiclesCount || 30);
-    const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
-    const basePrice = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
-    const discountValue = Number(packageObj.discountValue || 0);
-    const discountAmount = packageObj.discountType === 'percentage'
-      ? Math.min(basePrice, Math.max(0, Math.round((basePrice * Math.min(100, discountValue)) / 100)))
-      : packageObj.discountType === 'fixed'
-        ? Math.min(basePrice, Math.max(0, discountValue))
-        : 0;
-    const price = basePrice - discountAmount;
-    const packageName = String(packageObj.name || packageObj.packageName || 'باقة الاشتراك');
-    const hasExplicitCapacity =
-      typeof packageObj.dailyCapacity === 'number' ||
-      (typeof packageObj.dailyCapacity === 'string' && packageObj.dailyCapacity.trim() !== '');
-    const configuredCapacity = hasExplicitCapacity ? Number(packageObj.dailyCapacity) : NaN;
-    const isUnlimited = hasExplicitCapacity
-      ? Number.isFinite(configuredCapacity) && configuredCapacity === 0
-      : Boolean(packageObj.isUnlimited) || /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(packageName);
-    const effCapacity = isUnlimited
-      ? 0
-      : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : Number(packageObj.carsCount || 40));
+    const validatedPackage = validatePackageCatalogRecord(packageObj, packageObj.id);
+    const durationDays = validatedPackage.durationDays;
+    const basePrice = validatedPackage.basePrice;
+    const discountAmount = validatedPackage.discountAmount;
+    const price = validatedPackage.finalPrice;
+    const packageName = validatedPackage.name;
+    const isUnlimited = validatedPackage.isUnlimited;
+    const effCapacity = validatedPackage.dailyCapacity;
 
     let resultData: any = null;
 
@@ -326,52 +314,25 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       let pkgName = String(requestData.packageName || '');
       let packageDiscountAmount = 0;
 
-      const requestHasExplicitCapacity =
-        typeof requestData.dailyCapacity === 'number' ||
-        (typeof requestData.dailyCapacity === 'string' && requestData.dailyCapacity.trim() !== '');
-      const requestedCapacity = requestHasExplicitCapacity ? Number(requestData.dailyCapacity) : NaN;
-      const isUnlimitedPkg = requestHasExplicitCapacity
-        ? Number.isFinite(requestedCapacity) && requestedCapacity === 0
-        : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
+      if (!requestData.packageId) {
+        throw new Error('PACKAGE_NOT_FOUND');
+      }
 
-      let effCapacity = isUnlimitedPkg
-        ? 0
-        : Math.max(1, Number.isFinite(requestedCapacity) && requestedCapacity > 0 ? requestedCapacity : 40);
+      let isUnlimitedPkg = false;
+      let effCapacity = 40;
 
       if (requestData.packageId) {
         const pkgRef = adminDb.doc(`packages/${requestData.packageId}`);
         const pkgSnap = await t.get(pkgRef);
         if (pkgSnap.exists) {
           const pData = pkgSnap.data() || {};
-          if (pData.isActive === false) {
-            throw new Error('PACKAGE_INACTIVE');
-          }
-          if (pData.price !== undefined) {
-            basePrice = Number(pData.price);
-          }
-          const discountValue = Number(pData.discountValue || 0);
-          if (pData.discountType === 'percentage' && discountValue > 0) {
-            if (discountValue > 100) throw new Error('INVALID_PACKAGE_CONFIGURATION');
-            packageDiscountAmount = Math.round((basePrice * discountValue) / 100);
-          } else if (pData.discountType === 'fixed' && discountValue > 0) {
-            packageDiscountAmount = Math.min(basePrice, discountValue);
-          }
-          if (pData.durationDays !== undefined) {
-            durationDays = Number(pData.durationDays);
-          }
-          if (pData.dailyCapacity !== undefined) {
-            const packageCapacity = Number(pData.dailyCapacity);
-            if (!Number.isFinite(packageCapacity) || packageCapacity < 0) {
-              throw new Error('INVALID_PACKAGE_CONFIGURATION');
-            }
-            effCapacity = packageCapacity;
-          }
-          if (pData.name) {
-            pkgName = String(pData.name);
-          }
-          if (!Number.isFinite(basePrice) || basePrice < 0 || !Number.isFinite(durationDays) || durationDays <= 0) {
-            throw new Error('INVALID_PACKAGE_CONFIGURATION');
-          }
+          const validatedPackage = validatePackageCatalogRecord(pData, requestData.packageId);
+          basePrice = validatedPackage.basePrice;
+          durationDays = validatedPackage.durationDays;
+          packageDiscountAmount = validatedPackage.discountAmount;
+          pkgName = validatedPackage.name;
+          effCapacity = validatedPackage.dailyCapacity;
+          isUnlimitedPkg = validatedPackage.isUnlimited;
         } else if (requestData.requestType !== 'balance_topup') {
           throw new Error('PACKAGE_NOT_FOUND');
         }
@@ -739,21 +700,10 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
         throw new Error('PACKAGE_INACTIVE');
       }
 
-      const durationDays = Number(pkg.durationDays || pkg.vehiclesCount || 30);
-      let basePrice = Number(pkg.price || 0);
-
-      if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 365 || !Number.isFinite(basePrice) || basePrice < 0) {
-        throw new Error('INVALID_PACKAGE_CONFIGURATION');
-      }
-
-      let discountAmount = 0;
-      if (pkg.discountType === 'percentage' && pkg.discountValue > 0) {
-        discountAmount = Math.round((basePrice * Number(pkg.discountValue)) / 100);
-      } else if (pkg.discountType === 'fixed' && pkg.discountValue > 0) {
-        discountAmount = Math.min(basePrice, Number(pkg.discountValue));
-      }
-
-      let effectivePrice = Math.max(0, basePrice - discountAmount);
+      const validatedPackage = validatePackageCatalogRecord(pkg, pkg.id || packageId);
+      const durationDays = validatedPackage.durationDays;
+      const effectivePriceBeforeSubscriberFee = validatedPackage.finalPrice;
+      let effectivePrice = effectivePriceBeforeSubscriberFee;
       if (garageData.hasMonthlySubscribers === true) {
         effectivePrice += subscriberFlatFee;
       }
@@ -774,18 +724,9 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
       }
       baseDate.setDate(baseDate.getDate() + durationDays);
 
-      const pkgName = String(pkg.name || 'باقة اشتراك');
-      const hasExplicitCapacity =
-        typeof pkg.dailyCapacity === 'number' ||
-        (typeof pkg.dailyCapacity === 'string' && pkg.dailyCapacity.trim() !== '');
-      const configuredCapacity = hasExplicitCapacity ? Number(pkg.dailyCapacity) : NaN;
-      const isUnlimitedPkg = hasExplicitCapacity
-        ? Number.isFinite(configuredCapacity) && configuredCapacity === 0
-        : /مفتوح|غير محدود|غير محدودة|بدون حدود|سعة مفتوحة/.test(pkgName);
-
-      const effCapacity = isUnlimitedPkg
-        ? 0
-        : Math.max(1, Number.isFinite(configuredCapacity) && configuredCapacity > 0 ? configuredCapacity : 40);
+      const pkgName = validatedPackage.name;
+      const isUnlimitedPkg = validatedPackage.isUnlimited;
+      const effCapacity = validatedPackage.dailyCapacity;
 
       t.set(garageRef, {
         balance: newBalance,
