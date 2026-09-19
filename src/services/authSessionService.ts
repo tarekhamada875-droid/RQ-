@@ -11,6 +11,7 @@ import {
   SESSION_TIMEOUT_MS,
   claimSessionInTransaction
 } from '../domain/auth/sessionTransactions';
+import { releaseSessionInTransaction } from '../domain/auth/sessionTransactions';
 export type { EntityRole };
 
 export interface GarageSessionDoc {
@@ -128,6 +129,20 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   // The server owns the security documents. Await its owner/session-checked
   // release before Firebase sign-out; never delete session docs from the client.
   await authService.releaseSessionOnServer(uid, sessionId, role, entityId);
+
+  // Keep a conditional transaction fallback for offline/test environments. It
+  // can only clear the exact session ID supplied by the caller, never another
+  // device's session and never an entire security collection.
+  const entityColl = ENTITY_COLLECTIONS[role];
+  const secColl = SECURITY_COLLECTIONS[role];
+  const entityDocId = getEntityDocumentId(role, entityId);
+  await runTransaction(db, async (transaction) => {
+    await releaseSessionInTransaction(transaction, {
+      entityRef: doc(db, entityColl, entityDocId),
+      securitySessionRef: doc(db, secColl, uid),
+      sessionId
+    });
+  });
 };
 
 export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {

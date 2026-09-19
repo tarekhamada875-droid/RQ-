@@ -166,6 +166,15 @@
 - Validation passed: 14 session/auth tests, TypeScript, and diff checks.
 - Next action: canonical financial events and permanent deletion/lifecycle rules remain the highest-impact open areas.
 
+### 2026-09-19 — CI regression fixed
+
+- The GitHub failure was caused by the server-only logout change bypassing the existing owner-checked Firestore transaction used by the delegate session test.
+- Restored a conditional `releaseSessionInTransaction` fallback after the server release. It can clear only the exact caller-owned session and does not perform blanket client security-document deletion.
+- The exact failing test now passes: `claimDelegateSession.test.ts` — 7/7.
+- Full local production gate passed: TypeScript, full test suite, production build, maintainability checks, and diff checks.
+- The Node 20 and `ubuntu-latest` messages are GitHub runner deprecation warnings, not the failing cause.
+- Next action: push this regression fix, then continue with canonical financial events and deletion/lifecycle rules.
+
 ## Continuation instructions
 
 1. Read this file first.
