@@ -16,4 +16,9 @@ describe('request idempotency fingerprints', () => {
     expect(createRequestFingerprint({ items: ['a', 'b'] }))
       .not.toBe(createRequestFingerprint({ items: ['b', 'a'] }));
   });
+
+  it('binds a financial request to both its target and amount', () => {
+    expect(createRequestFingerprint({ garageId: 'garage-a', amount: 100 }))
+      .not.toBe(createRequestFingerprint({ garageId: 'garage-b', amount: 100 }));
+  });
 });

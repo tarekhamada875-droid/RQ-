@@ -50,9 +50,9 @@
 
 - [x] 2.1 Implement a dedicated `balance_topup` approval branch that credits wallet balance and does not activate a package/commission.
 - [x] 2.2 Ensure package purchase derives an active package and final discounted price from server catalog data only.
-- [ ] 2.3 Ensure package purchase atomically checks balance, deducts the final price, and activates the package.
-- [ ] 2.4 Apply the same discount/coupon calculation to self-subscription, delegate request approval, and admin purchase paths.
-- [ ] 2.5 Require idempotency keys for direct recharge, admin wallet top-up, and self-subscription; bind keys to request fingerprints.
+- [x] 2.3 Ensure package purchase atomically checks balance, deducts the final price, and activates the package.
+- [x] 2.4 Apply the same discount/coupon calculation to self-subscription, delegate request approval, and admin purchase paths.
+- [x] 2.5 Require idempotency keys for direct recharge, admin wallet top-up, and self-subscription; bind keys to request fingerprints.
 - [ ] 2.6 Emit canonical financial events for every wallet credit, wallet debit, package purchase, commission, and refund.
 - [ ] 2.7 Correct financial reports to include all canonical events and historical reconciliation requirements.
 - [x] 2.8 Fix delegate request persistence so authorized `delegateId` and display metadata survive creation and pending-state reads.
@@ -151,6 +151,14 @@
 - PIN lookup and availability no longer swallow Firestore/query failures or report a false `taken: false` result.
 - Validation passed: 53 PIN/auth utility tests, TypeScript, and diff checks.
 - Next action: require and fingerprint idempotency keys across direct wallet top-ups, direct package purchases, and self-subscription.
+
+### 2026-09-19 — Financial idempotency batch verified
+
+- Direct admin package recharge, admin wallet top-up, and garage self-subscription now reject missing idempotency keys.
+- Their idempotency records now include request fingerprints, so replaying a key with a different garage, amount, package, or admin detail fails instead of returning the original result.
+- Self-subscription remains a single transaction that checks balance, deducts the authoritative final price, and activates the package.
+- Validation passed: 13 financial/idempotency tests, TypeScript, and diff checks.
+- Remaining finance work: canonical events for every wallet debit/credit/refund, historical reconciliation, and schema-level package validation.
 
 ## Continuation instructions
 

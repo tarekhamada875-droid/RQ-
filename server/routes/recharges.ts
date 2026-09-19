@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, financialRateLimiter, AuthRequest, sendApiError } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
+import { checkIdempotencyInTransaction, storeIdempotencyInTransaction, createRequestFingerprint } from '../idempotency';
 import { recordDomainEventInTransaction } from '../events';
 import { initializeFairUse } from '../unlimitedFairUse';
 import { sanitizePayload, validateId, validateNumber, validateIdempotencyKey } from '../validation';
@@ -20,9 +20,11 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
     const garageId = validateId(sanitized.garageId, 'garageId', true);
     const packageId = validateId(sanitized.packageId, 'packageId', true);
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+    if (!idempotencyKey) return sendApiError(res, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REQUIRED', req.correlationId);
     const callerUid = req.user?.uid;
     const callerRole = req.user?.role || '';
     const adminDetails = sanitized.adminDetails || {};
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId, adminDetails });
 
     if (!adminDb) {
       return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
@@ -73,7 +75,7 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
     let resultData: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/recharge-garage', callerUid);
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
       if (isDuplicate) {
         resultData = cachedResult;
         return;
@@ -189,7 +191,7 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
         totalAdminRevenue: newRevenue
       };
 
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/recharge-garage', callerUid);
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
     });
 
     return res.json({ success: true, data: resultData });
@@ -584,6 +586,8 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
     const garageId = validateId(sanitized.garageId, 'garageId', true);
     const numAmount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1000000, integerOnly: true });
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+    if (!idempotencyKey) return sendApiError(res, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REQUIRED', req.correlationId);
+    const requestFingerprint = createRequestFingerprint({ garageId, amount: numAmount });
 
     if (!adminDb) {
       return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
@@ -592,7 +596,7 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
     let resultData: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/admin-topup-balance', callerUid);
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/admin-topup-balance', callerUid, requestFingerprint);
       if (isDuplicate) {
         resultData = cachedResult;
         return;
@@ -636,7 +640,7 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
 
       resultData = { garageId, newBalance, addedAmount: numAmount };
 
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/admin-topup-balance', callerUid);
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/admin-topup-balance', callerUid, requestFingerprint);
     });
 
     return res.json({ success: true, data: resultData });
@@ -657,8 +661,9 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
     const bodyGarageId = validateId(sanitized.garageId, 'garageId', false);
     const packageId = validateId(sanitized.packageId, 'packageId', true);
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
-
+    if (!idempotencyKey) return sendApiError(res, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REQUIRED', req.correlationId);
     const garageId = userRole === 'garage' ? userGarageId : (bodyGarageId || userGarageId);
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId });
     if (userRole === 'garage' && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
       return sendApiError(res, 403, 'FORBIDDEN', 'UNAUTHORIZED_GARAGE_ACCESS', req.correlationId);
     }
@@ -675,7 +680,7 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
     let resultData: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/garage-self-subscribe', callerUid);
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
       if (isDuplicate) {
         resultData = cachedResult;
         return;
@@ -804,7 +809,7 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
         deductedAmount: effectivePrice
       };
 
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/garage-self-subscribe', callerUid);
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
     });
 
     return res.json({ success: true, data: resultData });
