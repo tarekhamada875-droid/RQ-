@@ -12,6 +12,10 @@ import { createOperationId, createVehicleDelta, nextOperationVersion, projection
 
 const router = Router();
 
+export function isGarageDeletionActive(garageData: Record<string, any>): boolean {
+  return garageData?.isDeleting === true;
+}
+
 function writeProjectionBucket(transaction: any, garageId: string, dateId: string, operationId: string, delta: ProjectionDelta): void {
   if (!adminDb || Object.keys(delta).length === 0) return;
   const configuredRate = Number(process.env.PROJECTION_OPERATIONS_PER_SECOND || 1);
@@ -108,6 +112,9 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
 
       if (subscriberLookupFailed) {
         throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE');
+      }
+      if (isGarageDeletionActive(garageData)) {
+        throw new Error('GARAGE_DELETION_IN_PROGRESS');
       }
       if (garageData.isLocked === true || garageData.isSuspended === true) {
         throw new Error('GARAGE_CHECK_IN_LOCKED');

@@ -84,7 +84,7 @@
 
 - [x] 5.1 Implement permanent garage deletion across all garage subcollections, events, projections, summaries, daily data, subscribers, vehicles, and related references.
 - [x] 5.2 Make garage deletion paginated/resumable/idempotent and safe over Firestore batch limits.
-- [ ] 5.3 Block or safely transition deletion when concurrent mutations are active.
+- [x] 5.3 Block or safely transition deletion when concurrent mutations are active.
 - [x] 5.4 Prevent delegate deletion when unsettled commission exists.
 - [ ] 5.5 Define and implement delegate-linked garage/request/session/history cleanup or deactivation policy consistent with permanent deletion.
 
@@ -193,6 +193,15 @@
 - The garage document is deleted only after cleanup pages complete; the deletion audit log is written afterward.
 - Validation passed: 12 business/idempotency tests, TypeScript, and diff checks.
 - Remaining lifecycle work: concurrent-mutation locking and any additional tenant-specific collections discovered in production data.
+
+### 2026-09-19 — Check-in deletion lock verified
+
+- The check-in transaction now rejects `GARAGE_DELETION_IN_PROGRESS` after reading the authoritative garage document when `isDeleting === true`.
+- Because check-in reads the garage document inside its transaction, a deletion marker written concurrently causes the transaction to retry and then reject, preventing a check-in from racing through after deletion begins.
+- The error maps to a conflict response rather than an internal server error.
+- Added regression coverage for strict boolean deletion-state handling.
+- Validation passed: 14 vehicle/business/idempotency tests, TypeScript, and diff checks.
+- Remaining lifecycle work: review any non-check-in mutations that should be blocked and any additional tenant-specific collections discovered in production data.
 
 ## Continuation instructions
 
