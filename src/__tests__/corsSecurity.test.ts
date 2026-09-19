@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { isAllowedOrigin } from '../../server/app';
+import { app, isAllowedOrigin } from '../../server/app';
 
 describe('CORS Origin Validation', () => {
   const originalEnv = process.env.ALLOWED_ORIGINS;
@@ -37,6 +37,28 @@ describe('CORS Origin Validation', () => {
     expect(isAllowedOrigin('https://parqv2-anything.vercel.app')).toBe(false);
     expect(isAllowedOrigin('https://some-random-app.vercel.app')).toBe(false);
     expect(isAllowedOrigin('https://evil-attacker.vercel.app')).toBe(false);
+  });
+
+  it('allows the authenticated session header in the Railway CORS preflight', async () => {
+    const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
+      const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
+    });
+    try {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      const response = await fetch(`http://127.0.0.1:${port}/api/health`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://rq-acg.pages.dev',
+          'Access-Control-Request-Method': 'GET',
+          'Access-Control-Request-Headers': 'authorization,x-session-id'
+        }
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('x-session-id');
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
   });
 
   it('allows canonical backend APP_URL and paired preview domain but rejects arbitrary Cloud Run origins', () => {
