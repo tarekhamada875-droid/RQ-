@@ -269,3 +269,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - The missing `exhaustive-deps` warning is resolved. The same effect still has the pre-existing `set-state-in-effect` warning because it intentionally changes the tab state from an effect; that behavior was not refactored in this safe slice.
 - Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Current ESLint Hook findings: **21** total (`exhaustive-deps` **11**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-19 — RechargeHistoryView resolver dependency stabilization
+
+- Wrapped `resolvePackagePrice` in `useCallback` with the package catalog as its dependency, stabilized the catalog fallback, and declared the resolver in the `displayLogs` memo dependencies in `src/components/garage/RechargeHistoryView.tsx`.
+- The resolver’s React Hooks warning is resolved without changing package-price fallback logic.
+- Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Current ESLint Hook findings: **20** total (`exhaustive-deps` **10**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.

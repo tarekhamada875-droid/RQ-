@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { ChevronRight, Zap, Clock, User } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { ActivityLog, Garage } from '../../types';
@@ -16,7 +16,7 @@ interface RechargeHistoryViewProps {
 export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToast }: RechargeHistoryViewProps) => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const systemPackages = useAppStore(state => state.packages) || [];
+  const systemPackages = useAppStore(state => state.packages);
 
   // Subscribe to activity logs for this garage in real-time
   useEffect(() => {
@@ -51,7 +51,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
     };
   }, [garage.id]);
 
-  const resolvePackagePrice = (
+  const resolvePackagePrice = useCallback((
     rawPkgName: string,
     logRevenue: number | undefined,
     logAmount: number | undefined,
@@ -94,7 +94,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
       return lastAmt;
     }
 
-    const matched = systemPackages.find(p => 
+    const matched = (systemPackages || []).find(p =>
       p.name === cleanName || 
       (logPackageId && p.id === logPackageId) || 
       (logPackageId && p.id.toLowerCase() === logPackageId.toLowerCase())
@@ -138,7 +138,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
     }
 
     return 50;
-  };
+  }, [systemPackages]);
 
   const displayLogs = useMemo(() => {
     const list = [...logs];
@@ -187,7 +187,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
       }
     }
     return list.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-  }, [logs, garage]);
+  }, [logs, garage, resolvePackagePrice]);
 
   const latestRecharge = useMemo(() => {
     return displayLogs[0] || null;
