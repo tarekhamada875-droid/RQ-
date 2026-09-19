@@ -449,3 +449,18 @@ Do not cut over to Railway if any of the following is true:
 [4]: https://firebase.google.com/docs/firestore/ttl "Firebase Firestore TTL policies"
 
 [5]: https://firebase.google.com/docs/firestore/security/rules-conditions "Firebase Firestore Security Rules conditions"
+
+
+## Validation log
+
+### 2026-09-19 — Railway staging backend connectivity
+
+- Railway public URL: `https://rq-production-af02.up.railway.app`
+- Deployment version reported by `/api/health`: `e276db9ecb71fe71595f988cb692603fe42b620f`
+- `GET /api/health`: **HTTP 200 JSON**, `status: ok`, `adminSdk: true`.
+- `GET /api/system-config`: **HTTP 200 JSON** and successfully read the existing Firestore `system_config/global` document.
+- Unauthenticated `POST /api/auth/verify-pin`: **HTTP 401 JSON**, as expected.
+- Cloudflare CORS preflight from `https://rq-acg.pages.dev`: **HTTP 204** with the correct allowed origin and headers.
+- No Cloudflare frontend setting was changed.
+- No Firebase data, rules, indexes, users, or application records were changed.
+- Railway backend is ready for authenticated staging/UI validation, but **not yet approved for frontend cutover**.
