@@ -286,6 +286,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                       onChange={(e) => {
                         const val = sanitizeNumeric(e.target.value).slice(0, 8);
                         setLocalPin(val);
+                        setPinInput(val);
                       }}
                       placeholder="12345678"
                       minLength={8}

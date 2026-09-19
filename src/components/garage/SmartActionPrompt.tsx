@@ -48,7 +48,10 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
   // 2. Analyze Available Packages and Balance Eligibility
   const currentBalance = Number(garage?.balance || 0);
   const hasMonthlySubs = Boolean(garage?.hasMonthlySubscribers);
-  const isBalanceDepleted = currentBalance <= 0;
+  // Trial access is granted by balanceExpiry and intentionally has no wallet
+  // balance. Only show the wallet-depleted state for non-trial garages.
+  const isActiveTrial = garage?.isTrial === true && !isExpired;
+  const isBalanceDepleted = currentBalance <= 0 && !isActiveTrial;
 
   const {
     hasEnoughBalanceForAny,
