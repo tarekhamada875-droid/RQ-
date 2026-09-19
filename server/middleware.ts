@@ -263,6 +263,10 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
+    const requestSessionId = String(req.headers['x-session-id'] || '').trim();
+    if (!requestSessionId) {
+      return sendApiError(res, 401, 'SESSION_REVOKED', 'SESSION_REVOKED: Missing session identity', req.correlationId);
+    }
 
     // Determine Role based on Active Session
     let foundRole = '';
@@ -289,7 +293,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
           // Check session freshness (15-minute inactivity timeout)
           const rawLastActive = secData.lastActive;
           const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-          if (lastActive > 0 && (Date.now() - lastActive > SESSION_TIMEOUT_MS)) {
+          if (!lastActive || Date.now() - lastActive > SESSION_TIMEOUT_MS) {
             return sendApiError(
               res,
               401,
@@ -298,6 +302,21 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
               req.correlationId
             );
           }
+
+          if (secData.sessionId !== requestSessionId) continue;
+
+          const entityCollMap: Record<string, string> = {
+            admin: 'admin_settings',
+            supervisor: 'supervisors',
+            delegate: 'delegates',
+            garage: 'garages',
+            staff: 'staff'
+          };
+          const entityColl = entityCollMap[role];
+          const entityId = role === 'admin' ? 'auth_pin' : secData.entityId || '';
+          if (!entityColl || !entityId) continue;
+          const entitySnap = await adminDb.doc(`${entityColl}/${entityId}`).get();
+          if (!entitySnap.exists || entitySnap.data()?.currentSessionId !== requestSessionId) continue;
 
           foundRole = role;
           foundEntityId = secData.entityId || '';
@@ -319,7 +338,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
               }
             }
           }
-          break; // Found active session
+          break; // Found active session owned by this request session
         }
       }
     }

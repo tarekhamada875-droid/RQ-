@@ -11,7 +11,6 @@ import {
   refreshEntitySession, 
   type EntityRole 
 } from '../services/authSessionService';
-import { deleteDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 interface UseGarageSessionProps {
@@ -107,16 +106,6 @@ export function useGarageSession({
         }
       }
 
-      if (auth.currentUser) {
-        const myUid = auth.currentUser.uid;
-        await Promise.all([
-          deleteDoc(doc(db, 'admin_sessions', myUid)),
-          deleteDoc(doc(db, 'supervisor_sessions', myUid)),
-          deleteDoc(doc(db, 'delegate_sessions', myUid)),
-          deleteDoc(doc(db, 'garage_sessions', myUid)),
-          deleteDoc(doc(db, 'staff_sessions', myUid)),
-        ]).catch(err => console.warn('Clean security sessions failed:', err));
-      }
       await signOut(auth);
     } catch (e) {
       console.error('Logout error:', e);

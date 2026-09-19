@@ -66,6 +66,9 @@ export function registerAuthRoutes(router: Router) {
       }
 
       const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
+      if (!sessionId) {
+        return sendApiError(res, 400, 'SESSION_ID_REQUIRED', 'SESSION_ID_REQUIRED', req.correlationId);
+      }
 
       // 1. Single Input PIN Verification (Canonical Path)
       if (rawInput) {

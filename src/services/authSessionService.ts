@@ -9,8 +9,7 @@ import {
 } from '../domain/auth/sessionPolicy';
 import {
   SESSION_TIMEOUT_MS,
-  claimSessionInTransaction,
-  releaseSessionInTransaction
+  claimSessionInTransaction
 } from '../domain/auth/sessionTransactions';
 export type { EntityRole };
 
@@ -126,28 +125,9 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
   recentClaims.delete(claimKey);
 
-  // Authoritative server release
-  authService.releaseSessionOnServer(uid, sessionId, role, entityId).catch((err) => {
-    console.error('[AuthSessionService] Server session release failed:', err);
-  });
-  if (role === 'admin') {
-    authService.releaseAdminSessionOnServer(uid, sessionId).catch((err) => {
-      console.error('[AuthSessionService] Admin server session release failed:', err);
-    });
-  }
-
-  const entityColl = ENTITY_COLLECTIONS[role];
-  const secColl = SECURITY_COLLECTIONS[role];
-  const entityDocId = getEntityDocumentId(role, entityId);
-
-  const entityRef = doc(db, entityColl, entityDocId);
-  const securitySessionRef = doc(db, secColl, uid);
-
-  await runTransaction(db, async (transaction) => {
-    await releaseSessionInTransaction(transaction, { entityRef, securitySessionRef, sessionId });
-  }).catch((err) => {
-    console.warn('releaseEntitySession failed:', err);
-  });
+  // The server owns the security documents. Await its owner/session-checked
+  // release before Firebase sign-out; never delete session docs from the client.
+  await authService.releaseSessionOnServer(uid, sessionId, role, entityId);
 };
 
 export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {

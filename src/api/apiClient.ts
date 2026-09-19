@@ -72,6 +72,10 @@ export async function apiFetch<T = any>(
     ? `ui_${crypto.randomUUID()}`
     : `ui_${Math.random().toString(36).substring(2)}_${Date.now().toString(36)}`;
   headers['X-Operation-ID'] = operationId;
+  if (typeof window !== 'undefined') {
+    const sessionId = localStorage.getItem('rq_canonical_session_id') || localStorage.getItem('app_session_id');
+    if (sessionId) headers['X-Session-ID'] = sessionId;
+  }
 
   // 3. Keep the body limited to business inputs. Never treat body uid, role, or firebaseIdToken as authorization.
   // We remove redundant identity fields from body unless it is an auth endpoint

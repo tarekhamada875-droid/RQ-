@@ -37,13 +37,13 @@
 
 ## Phase 1 — Critical authentication and authorization
 
-- [ ] 1.1 Enforce entity/session ownership and current session ID in `requireAuth` on every protected API request.
-- [ ] 1.2 Make logout one awaited, server-authoritative, owner-checked release; remove unsafe client-side security-document deletion.
+- [x] 1.1 Enforce entity/session ownership and current session ID in `requireAuth` on every protected API request.
+- [x] 1.2 Make logout one awaited, server-authoritative, owner-checked release; remove unsafe client-side security-document deletion.
 - [ ] 1.3 Make PIN uniqueness atomic with a reservation/index keyed by normalized lookup hash.
 - [ ] 1.4 Make PIN lookup/availability fail closed on Firestore/query errors.
 - [ ] 1.5 Treat missing/malformed `lastActive` as invalid/expired under a bounded migration policy.
 - [ ] 1.6 Prevent one Firebase UID from retaining conflicting active role sessions; remove fixed-priority role selection.
-- [ ] 1.7 Require `sessionId` for session-bearing login and return truthful `sessionClaimed` status.
+- [x] 1.7 Require `sessionId` for session-bearing login and return truthful `sessionClaimed` status.
 - [ ] 1.8 Make legacy PIN migration awaited/idempotent or make migration state explicit.
 
 ## Phase 2 — Wallet, packages, and financial correctness
@@ -135,6 +135,15 @@
 - Post-commit validation passed on `d764ebd`: 18 focused tests, TypeScript, and diff checks.
 - The audit report remains an untracked read-only artifact; it is intentionally not mixed into the source fix commits.
 - Next action: add route-level regression coverage and continue with idempotency/session enforcement.
+
+### 2026-09-19 — Session enforcement batch verified
+
+- Protected API middleware now requires the canonical `X-Session-ID`, validates security-session freshness and identity, and checks the entity `currentSessionId` before authorizing the request.
+- The frontend sends its canonical session ID with API requests.
+- PIN login now requires a session ID before reporting success.
+- Logout no longer deletes security-session documents from the client and awaits the server owner/session-checked release before Firebase sign-out.
+- Validation passed: 34 authentication/session tests, TypeScript, and diff checks.
+- Commit pending at the end of this checkpoint update; next action is atomic PIN uniqueness/error handling, followed by remaining financial idempotency and canonical events.
 
 ## Continuation instructions
 
