@@ -50,7 +50,7 @@ export const adminService = {
       return { id: res.id };
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل');
+        throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       throw error;
     }
@@ -102,7 +102,7 @@ export const adminService = {
       }
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل');
+        throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       handleFirestoreError(error, OperationType.UPDATE, `supervisors/${id}`);
       throw error;
@@ -119,7 +119,7 @@ export const adminService = {
       return { id: res.id };
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل');
+        throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       throw error;
     }
@@ -142,7 +142,7 @@ export const adminService = {
       }
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل');
+        throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       handleFirestoreError(error, OperationType.UPDATE, `staff/${id}`);
       throw error;
@@ -208,13 +208,13 @@ export const adminService = {
     } catch (error: any) {
       console.error('[AdminService] updateAdminPin error:', error);
       if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل');
+        throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       if (error.message === 'CURRENT_PIN_REQUIRED') {
-        throw new Error('رمز الدخول الحالي مطلوب');
+        throw new Error('رمز الدخول الحالي مطلوب', { cause: error });
       }
       if (error.message === 'CURRENT_PIN_INCORRECT') {
-        throw new Error('رمز الدخول الحالي غير صحيح');
+        throw new Error('رمز الدخول الحالي غير صحيح', { cause: error });
       }
       throw error;
     }

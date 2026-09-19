@@ -107,7 +107,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
         }
       } catch (subErr) {
         console.warn('[Server Check-In] Subscriber lookup failed inside transaction:', subErr);
-        throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE');
+        throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
       }
       if (isGarageDeletionActive(garageData)) {
         throw new Error('GARAGE_DELETION_IN_PROGRESS');
