@@ -13,6 +13,18 @@ The repository is currently operationally healthy and regression-safe. The compl
 
 Do not treat the items in this file as known production failures. They are maintainability improvements and must be implemented without changing business behavior, authentication behavior, financial behavior, deployment topology, or public API contracts.
 
+## Mandatory safety protocol
+
+Before changing code, confirm `git status --short --branch`, record the current commit, and verify that `npm test -- --maxWorkers=1`, `npm run lint`, `npm run build`, and `npm run maintainability:check` are green. If the baseline is not green, stop and record the failure before starting new cleanup work.
+
+Work in one coherent phase at a time. Prefer a separate branch or a single small commit per phase, and never combine ESLint migration, logging migration, bundle changes, and business-logic changes in one commit. Review `git diff` manually before committing. Do not commit generated `dist` output, local environment files, credentials, service-account JSON, or unrelated working-tree changes.
+
+After every meaningful change, run the narrowest relevant tests first, then the full validation gate before pushing. If any test, typecheck, build, maintainability check, smoke check, or security review fails, stop the phase, restore the last green commit or revert only the failing phase, and document the failure here. Do not weaken a test or disable a lint rule merely to make the gate pass.
+
+Production verification must be read-only and safe. Health checks may be used, but do not create garages, add balance, buy packages, approve recharges, delete records, change passwords, or submit financial mutations during smoke testing. Any live test requiring a real account, write operation, or user confirmation must be explicitly paused for the owner.
+
+For logging changes, first preserve the old message meaning in the new structured fields, then compare local output before removing or downgrading the old log. For bundling changes, keep the previous build command available and verify server startup before considering the optimization complete. If an optimization has no clear benefit, leave the working implementation unchanged and mark the review complete with evidence.
+
 ## Checkpoint status legend
 
 - `[ ]` Not started
@@ -123,3 +135,8 @@ Do not treat the items in this file as known production failures. They are maint
 - `BUSINESS_LOGIC_AUDIT.md` is now tracked documentation in commit `9decb08`.
 - Remaining work is intentionally limited to ESLint/static analysis, structured logging, and a safe backend bundle review.
 - Next action: begin Phase 1.1 by inspecting the current package/tooling configuration.
+
+### 2026-09-19 — Safety protocol strengthened
+
+- Added explicit baseline, incremental-commit, rollback, secret-handling, and read-only smoke-test requirements.
+- Added stop conditions for failed validation and instructions not to weaken tests or silently change business behavior.
