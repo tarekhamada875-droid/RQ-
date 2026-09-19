@@ -124,7 +124,7 @@ export const vehicleService = {
     };
 
     // Bounded query filtered by startTime AND limited to 200 items max
-    let q = query(
+    const q = query(
       collection(db, 'activity_logs'),
       where('garageId', '==', garageId),
       where('timestamp', '>=', firestoreTimestamp),

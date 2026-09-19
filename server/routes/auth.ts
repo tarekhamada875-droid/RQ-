@@ -357,7 +357,7 @@ export function registerAuthRoutes(router: Router) {
         return res.json({ valid: false });
       }
 
-      let activeAdminPin = await getAdminPin();
+      const activeAdminPin = await getAdminPin();
       const { matches, isLegacy } = verifyPinMatch(normInput, activeAdminPin);
       if (matches && isLegacy) {
         migratePinToHash('admin_settings', 'auth_pin', normInput);

@@ -40,7 +40,7 @@ describe('Stage 4: Delegate Balance Settlements & Commission Ledgers', () => {
   });
 
   it('3. Accumulates delegate totalRechargedAmount and totalCommissionEarned on approval', () => {
-    let delegate = {
+    const delegate = {
       totalRechargedAmount: 1000,
       totalCommissionEarned: 100
     };
