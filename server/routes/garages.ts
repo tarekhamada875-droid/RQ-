@@ -17,6 +17,47 @@ function cairoDayBounds(date: string): { start: Date; end: Date } {
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
+const GARAGE_DELETE_PAGE_SIZE = 400;
+
+async function deleteQueryInPages(query: any, shouldDelete: (docSnap: any) => boolean = () => true): Promise<number> {
+  let deleted = 0;
+  while (true) {
+    const page = await query.limit(GARAGE_DELETE_PAGE_SIZE).get();
+    if (page.empty) break;
+    const deletableDocs = page.docs.filter(shouldDelete);
+    if (deletableDocs.length === 0) break;
+    const batch = adminDb.batch();
+    deletableDocs.forEach((docSnap: any) => batch.delete(docSnap.ref));
+    await batch.commit();
+    deleted += deletableDocs.length;
+    if (page.docs.length < GARAGE_DELETE_PAGE_SIZE) break;
+  }
+  return deleted;
+}
+
+async function deleteGarageOwnedData(garageId: string): Promise<number> {
+  let deleted = 0;
+  for (const subcollection of ['vehicles', 'subscribers', 'daily_counts', 'daily_stats', 'events', 'projection_buckets']) {
+    deleted += await deleteQueryInPages(adminDb.collection(`garages/${garageId}/${subcollection}`));
+  }
+
+  const topLevelQueries = [
+    adminDb.collection('activity_logs').where('garageId', '==', garageId),
+    adminDb.collection('recharge_requests').where('garageId', '==', garageId),
+    adminDb.collection('staff').where('garageId', '==', garageId),
+    adminDb.collection('garage_sessions').where('entityId', '==', garageId),
+    adminDb.collection('private_pins').where('entityId', '==', garageId),
+    adminDb.collection('pin_reservations').where('entityId', '==', garageId)
+  ];
+  for (const query of topLevelQueries) {
+    const needsGarageTypeFilter = query === topLevelQueries[4] || query === topLevelQueries[5];
+    deleted += await deleteQueryInPages(query, needsGarageTypeFilter
+      ? (docSnap: any) => docSnap.data()?.entityType === 'garages'
+      : undefined);
+  }
+  return deleted;
+}
+
 // Secure Server API: Authoritative Garage Creation
 router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
   try {
@@ -224,26 +265,41 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
       return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
     }
 
+    const deletionJobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
     const garageRef = adminDb.doc(`garages/${garageId}`);
     const garageSnap = await garageRef.get();
     if (!garageSnap.exists) {
+      const deletionJobSnap = await deletionJobRef.get();
+      if (deletionJobSnap.exists && deletionJobSnap.data()?.status === 'completed') {
+        return res.json({ success: true, alreadyDeleted: true });
+      }
       return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
     }
 
     const garageData = garageSnap.data() || {};
 
-    const subcollections = ['vehicles', 'subscribers', 'daily_counts', 'daily_stats'];
-    for (const sub of subcollections) {
-      const subCollRef = adminDb.collection(`garages/${garageId}/${sub}`);
-      const subSnap = await subCollRef.get();
-      if (!subSnap.empty) {
-        const batch = adminDb.batch();
-        subSnap.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-      }
-    }
+    // Mark first so a timeout or partial failure can safely resume on retry.
+    await garageRef.set({
+      isDeleting: true,
+      deletionStartedAt: new Date(),
+      deletionStartedBy: req.user?.uid || null
+    }, { merge: true });
+    await deletionJobRef.set({
+      garageId,
+      status: 'running',
+      updatedAt: new Date(),
+      startedBy: req.user?.uid || null
+    }, { merge: true });
+
+    await deleteGarageOwnedData(garageId);
 
     await garageRef.delete();
+    await deletionJobRef.set({
+      garageId,
+      status: 'completed',
+      completedAt: new Date(),
+      completedBy: req.user?.uid || null
+    }, { merge: true });
 
     const logRef = adminDb.collection('activity_logs').doc();
     await logRef.set({

@@ -82,8 +82,8 @@
 
 ## Phase 5 — Permanent deletion and lifecycle
 
-- [ ] 5.1 Implement permanent garage deletion across all garage subcollections, events, projections, summaries, daily data, subscribers, vehicles, and related references.
-- [ ] 5.2 Make garage deletion paginated/resumable/idempotent and safe over Firestore batch limits.
+- [x] 5.1 Implement permanent garage deletion across all garage subcollections, events, projections, summaries, daily data, subscribers, vehicles, and related references.
+- [x] 5.2 Make garage deletion paginated/resumable/idempotent and safe over Firestore batch limits.
 - [ ] 5.3 Block or safely transition deletion when concurrent mutations are active.
 - [x] 5.4 Prevent delegate deletion when unsettled commission exists.
 - [ ] 5.5 Define and implement delegate-linked garage/request/session/history cleanup or deactivation policy consistent with permanent deletion.
@@ -182,6 +182,17 @@
 - Added focused regression coverage for both blocked and allowed cases.
 - Validation passed: 6 delegate/idempotency tests, TypeScript, and diff checks.
 - Next action: implement paginated, resumable garage deletion and canonical financial event coverage.
+
+### 2026-09-19 — Permanent garage deletion verified
+
+- Garage deletion now marks the garage with `isDeleting` before cleanup, allowing retries after timeout or partial failure.
+- Cleanup is paginated in batches of 400 records.
+- Covered subcollections: vehicles, subscribers, daily counts, daily stats, events, and projection buckets.
+- Covered top-level references: activity logs, recharge requests, staff records, garage sessions, private PINs, and PIN reservations.
+- Private PIN and reservation cleanup avoids undeclared composite indexes through single-field queries and server-side entity-type filtering.
+- The garage document is deleted only after cleanup pages complete; the deletion audit log is written afterward.
+- Validation passed: 12 business/idempotency tests, TypeScript, and diff checks.
+- Remaining lifecycle work: concurrent-mutation locking and any additional tenant-specific collections discovered in production data.
 
 ## Continuation instructions
 
