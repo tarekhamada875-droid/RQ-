@@ -241,3 +241,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Targeted validation passed: TypeScript, zero Hook or unused-variable findings in both edited files, and **6 test files / 21 tests**.
 - Full validation passed: **52 test files, 287 tests**, `npm run lint`, production build, `npm run maintainability:check`, and `git diff --check`.
 - React Hooks remain under review with **28** findings (`exhaustive-deps` **18**, `set-state-in-effect` **9**, `purity` **1**); only individually understood findings will be changed next.
+
+### 2026-09-19 — PackagesModal dependency stabilization
+
+- Memoized the normalized `allPackages` value in `src/components/modals/PackagesModal.tsx`, removing the unstable dependency warning without changing package filtering or selection behavior.
+- Focused package regressions passed: **2 test files, 9 tests**. The edited file has no remaining React Hooks warnings; its four remaining ESLint findings are pre-existing `no-explicit-any` errors.
+- Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Current ESLint Hook findings: **25** total (`exhaustive-deps` **15**, `set-state-in-effect` **9**, `purity` **1**). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.

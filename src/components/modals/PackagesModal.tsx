@@ -41,7 +41,10 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
   showToast,
   initialDurationFilter
 }) => {
-  const allPackages = Array.isArray(packages) ? packages : [];
+  const allPackages = React.useMemo(
+    () => (Array.isArray(packages) ? packages : []),
+    [packages],
+  );
   const rawList = React.useMemo(() => {
     return filterPackagesForGarage(allPackages, hasMonthlySubscribers);
   }, [allPackages, hasMonthlySubscribers]);
@@ -540,6 +543,5 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
 });
 
 PackagesModal.displayName = 'PackagesModal';
-
 
 
