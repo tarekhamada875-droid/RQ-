@@ -17,10 +17,10 @@ export const BorderShimmer: React.FC<BorderShimmerProps> = memo(({
   dur = '4.0s',
   mode = 'continuous',
 }) => {
-  if (!isActive) return null;
-
   // Stable unique ID for SVG gradient definitions
   const uId = React.useId().replace(/:/g, '');
+
+  if (!isActive) return null;
 
   let y1Anim: { from?: string; to?: string; values?: string; keyTimes?: string } = {
     from: '-100%',

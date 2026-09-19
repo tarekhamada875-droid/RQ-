@@ -225,3 +225,12 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused validation passed: **6 test files, 73 tests** covering vehicle scope, cost utilities, operational resilience, package/subscriber flows, and garage services.
 - Full validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 - Phase 1.7 remains **in progress**. Next scheduled category: review the smaller React Hooks diagnostics; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-19 — safe React Hooks cleanup subset
+
+- Reviewed the remaining React Hooks diagnostics and fixed only mechanically safe findings: unconditional `useId` ordering in `BorderShimmer`, direct default-value initialization in `useLocalStorage`, declaration ordering for subscription prices in `useGarageApp`, and redundant memo dependencies in `AdminDelegateDetailsView`.
+- This slice removed the `react-hooks/rules-of-hooks`, `react-hooks/immutability`, and `react-hooks/refs` findings addressed above, plus two redundant dependency findings; no business behavior, API contract, authentication/session behavior, financial behavior, or deployment topology changed.
+- Focused validation passed: **8 test files, 31 tests**. TypeScript validation passed. The full suite passed **52 test files, 287 tests**.
+- Production build passed on a standalone retry; the combined 120-second validation wrapper ended during the build before completion, so the build was re-run with a longer bounded window and completed successfully. Maintainability check and `git diff --check` passed.
+- React Hooks findings remain under review: **28** total (`exhaustive-deps` **18**, `set-state-in-effect` **9**, `purity` **1**). The remaining findings require semantic decisions and are not being mass-edited.
+- Next action: commit and push this verified safe subset, then continue only with individually reviewed hook findings.

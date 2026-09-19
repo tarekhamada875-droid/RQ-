@@ -195,7 +195,7 @@ export const AdminDelegateDetailsView = memo(({
       return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
     }
     return calculateApprovedRechargeTotal(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, currentCycleDataset, delegate.totalRechargedAmount, historyTotal, selectedPeriodDataset]);
+  }, [activeDataset, activeMonthKey, delegate.totalRechargedAmount, historyTotal, selectedPeriodDataset]);
 
   const allTimeTotal = React.useMemo(() => {
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
@@ -208,7 +208,7 @@ export const AdminDelegateDetailsView = memo(({
       return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
     }
     return calculateApprovedCommission(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, currentCycleDataset, delegate.totalCommissionEarned, selectedPeriodDataset]);
+  }, [activeDataset, activeMonthKey, delegate.totalCommissionEarned, selectedPeriodDataset]);
 
   const allTimeCommission = React.useMemo(() => {
     const calculated = calculateApprovedCommission(activeDataset, 'all');

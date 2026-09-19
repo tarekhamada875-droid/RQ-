@@ -7,7 +7,7 @@ export function useLocalStorageState<T>(key: string, defaultValue: T): [T, React
     defaultValueRef.current = defaultValue;
   }, [defaultValue]);
 
-  const [state, setState] = useState<T>(() => getStorage(key, defaultValueRef.current));
+  const [state, setState] = useState<T>(() => getStorage(key, defaultValue));
   const isFirstRender = useRef(true);
 
   // Sync state changes to localStorage without triggering mount loops
@@ -61,4 +61,3 @@ export function useLocalStorageState<T>(key: string, defaultValue: T): [T, React
 
   return [state, setState];
 }
-
