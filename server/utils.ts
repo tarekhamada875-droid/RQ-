@@ -142,20 +142,49 @@ export async function saveEntityPin(collName: string, docId: string, cleanInputP
   if (!cleanInputPin || !docId) return;
   const newScrypt = hashPinWithUniqueSalt(cleanInputPin);
   const lookupHash = computeLookupHash(cleanInputPin);
-  const privatePinPayload = {
-    pin: newScrypt,
-    pinLookupHash: lookupHash,
-    entityType: collName,
-    entityId: docId,
-    updatedAt: new Date()
-  };
 
   try {
     if (!adminDb) {
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
     const pinDocId = collName === 'admin_settings' ? 'auth_pin' : docId;
-    await adminDb.doc(`private_pins/${pinDocId}`).set(privatePinPayload, { merge: true });
+    await adminDb.runTransaction(async (transaction: any) => {
+      const privateRef = adminDb.doc(`private_pins/${pinDocId}`);
+      const newReservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
+      const privateSnap = await transaction.get(privateRef);
+      const newReservationSnap = await transaction.get(newReservationRef);
+      const existingReservation = newReservationSnap.exists ? newReservationSnap.data() || {} : null;
+
+      if (existingReservation && (existingReservation.entityType !== collName || existingReservation.entityId !== pinDocId)) {
+        throw new Error('PIN_ALREADY_TAKEN');
+      }
+
+      const oldLookupHash = privateSnap.exists ? privateSnap.data()?.pinLookupHash : null;
+      if (oldLookupHash && oldLookupHash !== lookupHash) {
+        const oldReservationRef = adminDb.doc(`pin_reservations/${oldLookupHash}`);
+        const oldReservationSnap = await transaction.get(oldReservationRef);
+        if (oldReservationSnap.exists) {
+          const oldReservation = oldReservationSnap.data() || {};
+          if (oldReservation.entityType === collName && oldReservation.entityId === pinDocId) {
+            transaction.delete(oldReservationRef);
+          }
+        }
+      }
+
+      transaction.set(newReservationRef, {
+        lookupHash,
+        entityType: collName,
+        entityId: pinDocId,
+        updatedAt: new Date()
+      });
+      transaction.set(privateRef, {
+        pin: newScrypt,
+        pinLookupHash: lookupHash,
+        entityType: collName,
+        entityId: pinDocId,
+        updatedAt: new Date()
+      }, { merge: true });
+    });
   } catch (e) {
     console.error(`[Server Auth] Error saving private pin for ${collName}/${docId}:`, e);
     throw e;
@@ -269,7 +298,7 @@ export async function getAdminPin(): Promise<string> {
     return '';
   } catch (e) {
     console.error('[Server Auth] Error reading admin pin:', e);
-    return '';
+    throw e;
   }
 }
 
@@ -284,28 +313,24 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
     }
 
     // Phase 1: Query secure server-only private_pins collection
-    try {
-      const privSnap = await adminDb.collection('private_pins')
-        .where('entityType', '==', collName)
-        .where('pinLookupHash', '==', lookupHash)
-        .limit(5)
-        .get();
+    const privSnap = await adminDb.collection('private_pins')
+      .where('entityType', '==', collName)
+      .where('pinLookupHash', '==', lookupHash)
+      .limit(5)
+      .get();
 
-      for (const privDoc of privSnap.docs) {
-        const privData = privDoc.data() || {};
-        const entityId = privData.entityId || privDoc.id;
-        const check = verifyDocMatch(normPin, privData);
-        if (check.matches && !seenIds.has(entityId)) {
-          seenIds.add(entityId);
-          // Fetch actual public tenant document
-          const entitySnap = await adminDb.collection(collName).doc(entityId).get();
-          if (entitySnap.exists) {
-            matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check.isLegacy });
-          }
+    for (const privDoc of privSnap.docs) {
+      const privData = privDoc.data() || {};
+      const entityId = privData.entityId || privDoc.id;
+      const check = verifyDocMatch(normPin, privData);
+      if (check.matches && !seenIds.has(entityId)) {
+        seenIds.add(entityId);
+        // Fetch actual public tenant document
+        const entitySnap = await adminDb.collection(collName).doc(entityId).get();
+        if (entitySnap.exists) {
+          matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check.isLegacy });
         }
       }
-    } catch (privErr) {
-      // Bounded fallback if private_pins index is warming
     }
 
     // If match found in private_pins, return immediately
@@ -315,6 +340,7 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
 
   } catch (e) {
     console.error(`[Server Auth] Error querying collection ${collName} where pin:`, e);
+    throw e;
   }
 
   return matches;

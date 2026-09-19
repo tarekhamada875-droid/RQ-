@@ -39,8 +39,8 @@
 
 - [x] 1.1 Enforce entity/session ownership and current session ID in `requireAuth` on every protected API request.
 - [x] 1.2 Make logout one awaited, server-authoritative, owner-checked release; remove unsafe client-side security-document deletion.
-- [ ] 1.3 Make PIN uniqueness atomic with a reservation/index keyed by normalized lookup hash.
-- [ ] 1.4 Make PIN lookup/availability fail closed on Firestore/query errors.
+- [x] 1.3 Make PIN uniqueness atomic with a reservation/index keyed by normalized lookup hash.
+- [x] 1.4 Make PIN lookup/availability fail closed on Firestore/query errors.
 - [ ] 1.5 Treat missing/malformed `lastActive` as invalid/expired under a bounded migration policy.
 - [ ] 1.6 Prevent one Firebase UID from retaining conflicting active role sessions; remove fixed-priority role selection.
 - [x] 1.7 Require `sessionId` for session-bearing login and return truthful `sessionClaimed` status.
@@ -144,6 +144,13 @@
 - Logout no longer deletes security-session documents from the client and awaits the server owner/session-checked release before Firebase sign-out.
 - Validation passed: 34 authentication/session tests, TypeScript, and diff checks.
 - Commit pending at the end of this checkpoint update; next action is atomic PIN uniqueness/error handling, followed by remaining financial idempotency and canonical events.
+
+### 2026-09-19 — PIN integrity batch verified
+
+- `saveEntityPin` now reserves the normalized lookup hash and writes the private PIN in one Firestore transaction; rotations release the previous reservation only when owned by the same entity.
+- PIN lookup and availability no longer swallow Firestore/query failures or report a false `taken: false` result.
+- Validation passed: 53 PIN/auth utility tests, TypeScript, and diff checks.
+- Next action: require and fingerprint idempotency keys across direct wallet top-ups, direct package purchases, and self-subscription.
 
 ## Continuation instructions
 
