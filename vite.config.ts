@@ -18,6 +18,9 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         manifest: false, // We already have our own manifest.json in public/
         workbox: {
+          skipWaiting: true,
+          clientsClaim: true,
+          cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           runtimeCaching: [
             {
