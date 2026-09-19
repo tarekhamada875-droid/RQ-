@@ -171,6 +171,7 @@ export function createApp() {
     allowedHeaders: [
       'Content-Type',
       'Authorization',
+      'X-Backend-Operator-Token',
       'X-Session-ID',
       'X-Correlation-ID',
       'X-Operation-ID',

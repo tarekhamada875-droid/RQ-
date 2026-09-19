@@ -21,6 +21,7 @@ Firebase Authentication + Firestore
 
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
 - **Backend:** Express API deployed as a Railway service. Railway runs the API-only entrypoint and supplies `PORT`.
+- **Operator access:** A dedicated `BACKEND_OPERATOR_TOKEN` Railway variable may be supplied through the `X-Backend-Operator-Token` header for server-to-server operations. It does not replace browser Firebase authentication and must never be committed to the repository.
 - **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the backend uses Firebase Admin SDK credentials stored only in deployment secrets.
 - **Important split:** Cloudflare serves the SPA only. Railway owns `/api/*`; API calls must not be sent to the Cloudflare origin.
 

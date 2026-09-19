@@ -16,6 +16,37 @@ export interface AuthRequest extends Request {
   idempotencyKey?: string;
 }
 
+export const BACKEND_OPERATOR_TOKEN_HEADER = 'x-backend-operator-token';
+
+/**
+ * Validates the dedicated non-browser operator credential without changing the
+ * existing Firebase ID-token/session authentication contract.
+ */
+export function isValidBackendOperatorToken(
+  candidate: unknown,
+  configuredToken = process.env.BACKEND_OPERATOR_TOKEN
+) {
+  if (typeof candidate !== 'string' || !configuredToken || candidate.length !== configuredToken.length) {
+    return false;
+  }
+  const candidateBuffer = Buffer.from(candidate);
+  const configuredBuffer = Buffer.from(configuredToken);
+  return candidateBuffer.length === configuredBuffer.length && crypto.timingSafeEqual(candidateBuffer, configuredBuffer);
+}
+
+function authenticateBackendOperator(req: AuthRequest) {
+  const candidate = req.headers[BACKEND_OPERATOR_TOKEN_HEADER];
+  if (!isValidBackendOperatorToken(candidate)) return false;
+  req.user = {
+    uid: 'backend-operator',
+    role: 'admin',
+    entityId: 'backend-operator',
+    sessionId: 'backend-operator',
+    displayName: 'Backend Operator'
+  };
+  return true;
+}
+
 /**
  * Standardized error sender helper that provides both top-level string 'error'
  * for client backward-compatibility, and standard envelope fields (code, statusCode, timestamp, correlationId).
@@ -234,6 +265,10 @@ export async function requireFirebaseUser(req: AuthRequest, res: Response, next:
 
 export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    if (authenticateBackendOperator(req)) {
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
     let token = '';
 
