@@ -43,7 +43,7 @@ describe('apiClient getApiUrl resolution', () => {
       writable: true,
     });
     // In the static Pages deployment, relative /api URLs are SPA fallbacks,
-    // so use the known Vercel backend when no valid base URL is configured.
+    // so use the known Railway backend when no valid base URL is configured.
     expect(getApiUrl('/api/auth/verify-pin')).toBe('https://rq-production-af02.up.railway.app/api/auth/verify-pin');
   });
 });

@@ -24,13 +24,13 @@ The optimized CPU timings are not intended as network latency predictions. They 
 
 ## Live deployed HTTP timing
 
-Twenty unauthenticated requests were sent to `https://parqv2.vercel.app/api/health`:
+Twenty unauthenticated requests were sent to `https://rq-production-af02.up.railway.app/api/health`:
 
 | Samples | Minimum | Median | P95 | Mean |
 |---:|---:|---:|---:|---:|
 | 20 | 274.932 ms | 289.107 ms | 379.248 ms | 304.126 ms |
 
-This health endpoint timing includes network, TLS, Vercel routing, and function startup behavior. It is a baseline for the deployed backend, not a before/after comparison of the dashboard summary endpoint.
+This health endpoint timing includes network, TLS, Railway routing, and function startup behavior. It is a baseline for the deployed backend, not a before/after comparison of the dashboard summary endpoint.
 
 ## Interpretation
 

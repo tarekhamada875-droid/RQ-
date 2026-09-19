@@ -10,7 +10,7 @@ Prepare RQ for real production use: secure 8-digit PIN authentication, faster lo
 
 ## Completed
 
-1. Production connectivity was previously verified between GitHub, Cloudflare Pages frontend, and Vercel backend.
+1. Production connectivity was previously verified between GitHub, Cloudflare Pages frontend, and retired serverless backend.
 2. Fixed vehicle check-in failure caused by undefined fair-use timestamps.
 3. Simplified garage dashboard warnings and added a dedicated manual wallet-transfer card for zero-balance states.
 4. Corrected package capacity logic so explicit `dailyCapacity: 0` means unlimited regardless of package name.
@@ -31,10 +31,10 @@ Prepare RQ for real production use: secure 8-digit PIN authentication, faster lo
     - 4 focused test files passed.
     - 29 tests passed.
     - `npm run lint` / TypeScript passed.
-    - `npm run build` passed for frontend, server, Cloud Run, and Vercel API bundles.
+    - `npm run build` passed for frontend, server, Cloud Run, and retired serverless artifacts.
     - `git diff --check` passed.
 11. Commit `06a0272` was pushed to GitHub `main`.
-12. Vercel production deployment is `READY` at the exact same SHA `06a02722b707cbaad84792aedc3d6203bc52f16c`.
+12. retired serverless deployment is `READY` at the exact same SHA `06a02722b707cbaad84792aedc3d6203bc52f16c`.
 13. GitHub Production Gate completed successfully for this SHA.
 
 ## Current blocker / browser state

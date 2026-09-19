@@ -101,11 +101,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
 
   const normalizedOrigin = origin.replace(/\/+$/, '');
 
-  // Preview deployments: add the exact URL here as real ones come up
-  // (e.g. via `vercel` CLI output or the Vercel dashboard) rather than
-  // trusting anything that merely looks like one of our project names —
-  // Vercel project names are self-service, so a naming pattern alone can
-  // be deliberately matched by an unrelated project.
+  // Preview deployments must be added explicitly through ALLOWED_ORIGINS.
   if (process.env.ALLOWED_ORIGINS) {
     const customOrigins = process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
     if (customOrigins.includes(normalizedOrigin)) return true;
@@ -200,7 +196,7 @@ export function createApp() {
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
-    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
+    const version = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
     if (!isReady) {
       return res.status(503).json({
         status: 'error',

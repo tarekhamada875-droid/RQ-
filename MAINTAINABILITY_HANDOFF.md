@@ -1,207 +1,51 @@
-# RQ Maintainability Handoff
+# Maintainability Handoff
 
-**Purpose:** Durable execution plan for improving maintainability, onboarding, deployment safety, and feature velocity in `tarekhamada875-droid/RQ-`.
+**Status:** Active
+**Production frontend:** Cloudflare Pages — `https://rq-acg.pages.dev`
+**Production backend:** Railway Express — `https://rq-production-af02.up.railway.app`
+**Data/authentication:** Firebase Authentication and Firestore
 
-**Last updated:** 2026-09-17
-**Current branch:** `main`
-**Current commit at handoff update:** `afb417e` plus the uncommitted M1 maintainability changes described below.
+## Current source of truth
 
-## Resume first
+`main` is the production source of truth. The active deployment contract is documented in [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). The branch and pull-request policy is documented in [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md).
 
-```bash
-cd /home/ubuntu/RQ-
-git fetch origin
-git checkout main
-git pull --ff-only origin main
-git status --short
-git log -3 --oneline --decorate
-```
+The application is a React/Vite static PWA on Cloudflare Pages connected to an Express API on Railway. The browser Firebase SDK supports realtime data access, while the Railway API owns server-authoritative authentication, authorization, sensitive mutations, financial operations, idempotency, operation tracing, and Firebase Admin access.
 
-Read this file before changing architecture. Update the status and validation log after every completed milestone.
+## Current build contract
 
-## Current architecture
+- Cloudflare frontend build: `npm run build:web`, publish `dist`.
+- Railway build: `npm run build:railway`.
+- Railway start: `node dist/cloud-run.cjs`.
+- Railway health check: `/api/health`.
+- Railway process binding: `0.0.0.0:${PORT}`.
+- Firebase Admin credentials: Railway secrets only.
 
-The browser frontend is built with Vite and deployed to Cloudflare Pages at `https://rq-acg.pages.dev`. The backend is an Express application bundled as a Vercel serverless function and deployed at `https://parqv2.vercel.app`. Cloudflare Pages is configured with `VITE_BACKEND_API_URL=https://parqv2.vercel.app`.
+The `cloudRun.ts` filename is retained as a legacy API-only entrypoint name. It does not indicate a separate Cloud Run production deployment.
 
-`api/index.js` is a generated but currently required Vercel function bundle. It is tracked in Git because Vercel must discover the `/api` function during deployment. Do not edit it manually. Change `server/`, `serverless/`, or shared source files, run `npm run build`, and commit the regenerated bundle with the source change.
-
-## Baseline findings
-
-- `api/index.js`: approximately 6.7 MB and approximately 152,000 generated lines.
-- `server/app.ts`: 1,669 lines and contains too many route and business responsibilities.
-- Largest UI files include `AdminGarageDetailsView.tsx`, `GarageDashboardView.tsx`, `DelegateDashboardView.tsx`, and `SubscribersView.tsx`.
-- `package.json` declares npm as the package manager. `package-lock.json` is authoritative; `bun.lock` is legacy and should not be used for CI or deployment.
-- Automated baseline: 41 test files and 248 tests passed; TypeScript and production build passed.
-
-## Execution plan
-
-### M1 — Durable documentation and repository policy
-
-Status: **completed**
-
-- [x] Create this handoff file.
-- [x] Add a root README with setup, architecture, environment, commands, deployment, generated-file, security, and smoke-test guidance.
-- [x] Add contributor guidance for safe feature work and generated artifacts.
-- [x] Decide and document npm as the supported package manager; remove the unused Bun lockfile.
-- [x] Add CI checks for required generated artifacts, rewrite ordering, documentation, and embedded secrets.
-
-Validation completed: `npm test` passed 41 files and 248 tests; `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check` passed.
-
-### M2 — Backend boundary refactor
-
-Status: **completed and production-verified**
-
-Extracted authentication and session routes from `server/app.ts` without changing route paths, middleware order, response contracts, CORS behavior, or authorization checks. Existing authentication and session tests remained the contract during the move.
-
-- [x] Added `server/routes/auth.ts` with the authentication and session handlers.
-- [x] Mounted the router at `/`, preserving the handlers' existing full `/api/auth/*` paths.
-- [x] Removed stale authentication-only imports from `server/app.ts`.
-- [x] Reduced `server/app.ts` from 1,669 lines to 887 lines.
-
-Suggested target modules:
-
-- `server/routes/auth.ts`
-- `server/routes/sessions.ts`
-- `server/routes/systemConfig.ts`
-- `server/routes/admin.ts`
-
-Keep `server/app.ts` focused on application construction, middleware, route mounting, and global error handling.
-
-Validation completed: `npm run lint`, `npm test`, `npm run build`, `npm run maintainability:check`, and `git diff --check` passed. The generated `api/index.js` was regenerated with the refactor. After commit `84c9e79` deployed, production smoke tests returned HTTP 200 for `/api/health`, HTTP 200 for `/api/system-config`, and HTTP 401 JSON for `/api/auth/verify-pin` without a Firebase token.
-
-### M3 — UI component boundary refactor
-
-Status: **in progress; first screen split completed**
-
-Split the largest dashboards by responsibility rather than by arbitrary line count. Preserve visual behavior, Arabic translations, mobile layout, and existing test contracts.
-
-- [x] Extracted garage dashboard overlays and modal rendering into `GarageDashboardOverlays.tsx`.
-- [x] Kept data fetching, state ownership, and callbacks in `GarageDashboardView.tsx`.
-- [x] Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines.
-- [x] Split `AdminGarageDetailsView.tsx` by extracting the settings and staff accordion.
-- [x] Split `DelegateDashboardView.tsx` by extracting add-garage and wallet top-up overlays.
-- [x] Split `SubscribersView.tsx` by extracting subscriber add/edit, delete, and renewal modals.
-
-Suggested first targets:
-
-- `GarageDashboardView.tsx`: header, stats, vehicle operations, subscriber operations, and action panels.
-- `AdminGarageDetailsView.tsx`: garage identity, package/balance, PIN/security, and vehicle/subscriber sections.
-- `DelegateDashboardView.tsx`: summary, operations, recharge, and activity sections.
-
-Validation required after each screen: full tests, typecheck, build, and manual or browser verification of the affected routes.
-
-### M4 — Generated bundle strategy
-
-Status: **pending investigation**
-
-Do not remove tracked `api/index.js` until a replacement Vercel function layout has been deployed and verified. Investigate a small tracked `api/index.ts` or `api/index.js` wrapper and confirm whether Vercel bundles imports from `serverless/api-entry.ts` correctly. Keep the current known-good arrangement as the fallback.
-
-Success criteria: API routes remain JSON-backed in production, `/api/health` reports the deployed commit, and the generated bundle is no longer required as a large source-controlled artifact.
-
-### M5 — Final validation and handoff
-
-Status: **completed; production API is healthy on Vercel**
-
-Run:
+## Validation gate
 
 ```bash
 npm test
 npm run lint
 npm run build
+npm run maintainability:check
 git diff --check
 ```
 
-Then verify in production:
+Live smoke checks must target Railway directly and must confirm JSON responses, `status: ok`, and `adminSdk: true`. The Cloudflare origin should serve frontend HTML and must not be used as the API origin.
 
-```bash
-curl -i https://parqv2.vercel.app/api/health
-curl -i https://parqv2.vercel.app/api/system-config
-curl -i -X POST -H 'content-type: application/json' --data '{}' https://parqv2.vercel.app/api/auth/verify-pin
-```
+## Structural rules
 
-Expected results are HTTP 200 JSON for health and system configuration, and HTTP 401 JSON for authentication without a Firebase token.
+Keep business rules in focused domain modules and route modules. Keep `server/app.ts` focused on assembly and shared middleware. Preserve Firebase token verification, role and garage scoping, session lifecycle, CORS, idempotency, correlation IDs, operation traces, immutable events, and financial reconciliation.
 
-### 2026-09-17 — M5 final validation
+Firestore remains authoritative. Dashboard summaries, projection buckets, cached counters, and telemetry are rebuildable read models. Do not make Node process memory authoritative and do not remove compatibility writes until reconciliation proves the replacement read model equivalent.
 
-- Local release gate passed on commit `f53a710`: 41 test files and 248 tests passed; TypeScript validation, production build, maintainability check, and `git diff --check` passed.
-- Vercel frontend `https://parqv2.vercel.app/` returned HTTP 200 HTML.
-- Vercel `/api/health` returned HTTP 200 JSON with deployed version `f53a7101673f3a43f4a3037ca7bf6aa8435735d8` and `adminSdk: true`.
-- Vercel `/api/system-config` returned HTTP 200 JSON.
-- Vercel `POST /api/auth/verify-pin` without a Firebase token returned the expected HTTP 401 JSON response.
-- Cloudflare Pages `https://rq-acg.pages.dev/` returned HTTP 200 HTML for the frontend, but its `/api/health` and `/api/system-config` paths fell back to the SPA HTML and `POST /api/auth/verify-pin` returned HTTP 405. This confirms Cloudflare Pages is currently frontend-only; production API traffic must use Vercel unless a Cloudflare Functions/Pages API deployment is added.
-- No source or working-tree changes were left by validation; the latest pushed commit remains `f53a710`.
+Do not mutate or delete production Firestore records without explicit scope and confirmation. Do not commit secrets or restore retired provider-specific deployment artifacts.
 
-## Change safety rules
+## Historical note
 
-1. Never commit secrets, service-account JSON, private keys, or real credentials.
-2. Never delete production data or change authentication credentials without explicit user authorization.
-3. Do not edit generated `api/index.js` manually.
-4. Keep the frontend/backend deployment split intact unless the replacement has been tested end to end.
-5. Update this file after each milestone with the commit SHA, validation commands, and any remaining risk.
+Earlier commits contain a Vercel/serverless deployment experiment and generated provider bundles. Those files were retired when Railway became the production backend. Their history is preserved for auditability in Git and summarized in [`HISTORICAL_MIGRATION_ARCHIVE.md`](./HISTORICAL_MIGRATION_ARCHIVE.md); they are not active instructions.
 
-## Validation log
+## Last verified local baseline
 
-### 2026-09-17 — Baseline audit
-
-- Repository audit completed.
-- Confirmed largest tracked artifact is `api/index.js` at approximately 6.7 MB.
-- Confirmed `server/app.ts` is 1,669 lines.
-- Confirmed npm is declared as the package manager.
-- Confirmed current production API routing is healthy at commit `afb417e`.
-- No source changes made yet for the maintainability work.
-
-### 2026-09-17 — M1 documentation and repository policy
-
-- Added `README.md` with architecture, setup, deployment, API smoke tests, security rules, and generated-file policy.
-- Added `CONTRIBUTING.md` with feature-boundary, validation, security, and generated-bundle guidance.
-- Added `tools/maintainability-check.ts` and wired it to `npm run maintainability:check` and the Production Gate workflow.
-- Removed the unused `bun.lock`; npm remains the supported package manager.
-- Validation passed: 41 test files, 248 tests, TypeScript, production build, maintainability check, and diff check.
-- The secret scanner was corrected to ignore SDK source literals and public Firebase client-key formats while rejecting embedded PEM blocks and service-account credentials.
-- Next milestone is M2: extract authentication/session responsibilities from `server/app.ts` without changing production contracts.
-
-### 2026-09-17 — M2 authentication/session extraction
-
-- Moved `/api/auth/*` handlers into `server/routes/auth.ts`.
-- Mounted the extracted router at `/` so the handlers' existing full `/api/auth/*` paths remain unchanged.
-- Reduced `server/app.ts` from 1,669 to 887 lines.
-- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
-- The generated `api/index.js` changed as expected and remains tracked for Vercel discovery.
-- A post-push smoke check briefly exposed that mounting under `/api` duplicated the full handler paths. Commit `84c9e79` corrected the mount to `/` and deployed successfully.
-- Live verification passed: `/api/health` returned HTTP 200 and reported SHA `84c9e798f717bc98441fb49ee7360415c7272264`; `/api/system-config` returned HTTP 200 JSON; `/api/auth/verify-pin` returned the expected HTTP 401 JSON without a Firebase token.
-- Next milestone is M3: split the largest dashboard components by responsibility while preserving UI behavior.
-
-### 2026-09-17 — M3 first garage dashboard split
-
-- Added `src/components/garage/GarageDashboardOverlays.tsx` for the locked-garage overlay and dashboard modal rendering.
-- Reduced `GarageDashboardView.tsx` from 1,172 to 1,059 lines without changing parent state ownership.
-- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
-- Remaining M3 work is intentionally staged: admin garage details, delegate dashboard, and subscribers view.
-
-### 2026-09-17 — M3 admin garage settings/staff split
-
-- Added `src/components/admin/AdminGarageSettingsSection.tsx` for the pricing-rate and staff-management accordion.
-- Kept Firestore operations, state ownership, and callbacks explicit through parent-provided props.
-- Reduced `AdminGarageDetailsView.tsx` from approximately 1,313 to 1,110 lines; the extracted component is 255 lines.
-- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
-- Remaining M3 work is `DelegateDashboardView.tsx` and `SubscribersView.tsx`; the admin screen still contains financial cards and modal sections that can be split in a later pass if needed.
-
-### 2026-09-17 — M3 delegate dashboard overlay split
-
-- Added `src/components/delegate/DelegateDashboardOverlays.tsx` for add-garage and wallet top-up modal rendering.
-- Kept parent state, data filtering, service callbacks, and submission logic in `DelegateDashboardView.tsx`.
-- Reduced `DelegateDashboardView.tsx` from approximately 1,009 to 655 lines; the extracted component is 405 lines.
-- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
-- Remaining M3 work is `SubscribersView.tsx`; further delegate splitting can be considered later for the performance and garage-list tabs.
-
-### 2026-09-17 — M3 subscribers modal split
-
-- Added `src/components/garage/SubscriberModals.tsx` for subscriber add/edit, delete confirmation, and renewal option rendering.
-- Kept subscriber loading, filtering, persistence, Firestore mutations, and parent state ownership in `SubscribersView.tsx`.
-- Reduced `SubscribersView.tsx` from approximately 950 to 597 lines; the extracted component is 371 lines.
-- Validation passed: TypeScript, 41 test files, 248 tests, production build, maintainability check, and diff check.
-- Planned M3 dashboard component splits are complete. Remaining work is M4 generated bundle investigation and M5 final validation/handoff.
-
-## Handoff rule
-
-If work stops because of token, account, or session limits, the next agent must continue from the first unchecked item in this file, validate the completed milestone, commit it, and update this file before starting a new milestone.
+The current checkout has passed TypeScript validation, the full Vitest suite, and the production build. The live Railway health endpoint has returned `adminSdk: true` for the deployed `main` commit. Repeat the full gate after every source change.
