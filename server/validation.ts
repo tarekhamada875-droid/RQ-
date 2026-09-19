@@ -84,7 +84,7 @@ export function validateId(val: any, fieldName = 'ID', required = true): string 
   }
 
   // Prevent path traversal or script injection
-  const safeIdRegex = /^[a-zA-Z0-9_\-\.\:\@\s]+$/;
+  const safeIdRegex = /^[a-zA-Z0-9_.:@\s]+$/;
   if (!safeIdRegex.test(trimmed)) {
     throw new ValidationError(`Invalid characters in ${fieldName}`, `INVALID_CHARS_${fieldName.toUpperCase()}`, 400);
   }
@@ -287,7 +287,7 @@ export function validateIdempotencyKey(key: any): string | null {
   if (trimmed.length < 8 || trimmed.length > 128) {
     throw new ValidationError('Idempotency key must be between 8 and 128 characters', 'INVALID_IDEMPOTENCY_KEY_LENGTH', 400);
   }
-  if (!/^[a-zA-Z0-9_\-]+$/.test(trimmed)) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
     throw new ValidationError('Idempotency key contains invalid characters', 'INVALID_IDEMPOTENCY_KEY_CHARS', 400);
   }
   return trimmed;

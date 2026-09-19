@@ -15,6 +15,7 @@
     "clean": "rm -rf dist build",
     "test": "vitest run",
     "lint": "tsc --noEmit",
+    "lint:eslint": "eslint .",
     "ci:check": "tsx tools/ci-check.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
     "maintainability:check": "tsx tools/maintainability-check.ts"
@@ -51,14 +52,19 @@
     "@babel/parser": "^8.0.4",
     "@babel/traverse": "^8.0.4",
     "@csstools/postcss-cascade-layers": "^6.0.0",
+    "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@types/cors": "^2.8.19",
     "autoprefixer": "^10.5.6",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
     "jsdom": "^30.0.1",
     "lightningcss": "^1.33.0",
     "postcss": "^8.5.28",
+    "typescript-eslint": "^8.70.0",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.10"
   }

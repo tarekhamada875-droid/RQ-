@@ -4,12 +4,12 @@
 
 **Repository:** `tarekhamada875-droid/RQ-`
 **Production architecture:** Cloudflare Pages frontend + Railway backend
-**Current baseline:** `9decb08` (`docs: record repository quality gate status`)
+**Current baseline:** `bf4a8dd` (`Merge pull request #13 from tarekhamada875-droid/fix/skip-live-smoke-on-pr`)
 **Status:** In progress
 
 ## Important context
 
-The repository is currently operationally healthy and regression-safe. The complete test suite passed with **52 test files and 286 tests**. TypeScript validation, the production frontend/backend build, the maintainability check, and `git diff --check` also passed.
+The repository is currently operationally healthy and regression-safe. The complete test suite passed with **52 test files and 287 tests**. TypeScript validation, the production frontend/backend build, the maintainability check, and `git diff --check` also passed at the current baseline.
 
 Do not treat the items in this file as known production failures. They are maintainability improvements and must be implemented without changing business behavior, authentication behavior, financial behavior, deployment topology, or public API contracts.
 
@@ -34,13 +34,13 @@ For logging changes, first preserve the old message meaning in the new structure
 
 ## Phase 1 — ESLint and static analysis
 
-- [ ] 1.1 Inspect `package.json`, `tsconfig.json`, and the existing TypeScript/Vite configuration before adding tooling.
-- [ ] 1.2 Add ESLint using versions compatible with the current Node/npm setup and TypeScript/React codebase.
-- [ ] 1.3 Add a minimal, non-destructive baseline configuration first. Do not enable aggressive stylistic rules or automatic rewrites initially.
-- [ ] 1.4 Include TypeScript and React hooks rules where compatible with the current project.
-- [ ] 1.5 Add an explicit `npm run lint:eslint` script. Preserve the existing `npm run lint` TypeScript check unless a deliberate combined script is documented.
-- [ ] 1.6 Run ESLint in report-only/fix-free mode first and classify findings into real defects, safe cleanup, and intentional exceptions.
-- [ ] 1.7 Fix only safe findings in focused commits. Do not mass-run `eslint --fix` over the whole repository without reviewing the diff.
+- [x] 1.1 Inspect `package.json`, `tsconfig.json`, and the existing TypeScript/Vite configuration before adding tooling.
+- [x] 1.2 Add ESLint using versions compatible with the current Node/npm setup and TypeScript/React codebase.
+- [x] 1.3 Add a minimal, non-destructive baseline configuration first. Do not enable aggressive stylistic rules or automatic rewrites initially.
+- [x] 1.4 Include TypeScript and React hooks rules where compatible with the current project.
+- [x] 1.5 Add an explicit `npm run lint:eslint` script. Preserve the existing `npm run lint` TypeScript check unless a deliberate combined script is documented.
+- [x] 1.6 Run ESLint in report-only/fix-free mode first and classify findings into real defects, safe cleanup, and intentional exceptions.
+- [~] 1.7 Fix only safe findings in focused commits. Do not mass-run `eslint --fix` over the whole repository without reviewing the diff.
 - [ ] 1.8 Add the ESLint command to the production gate only after the initial result is understood and stable.
 
 ### ESLint acceptance criteria
@@ -140,3 +140,30 @@ For logging changes, first preserve the old message meaning in the new structure
 
 - Added explicit baseline, incremental-commit, rollback, secret-handling, and read-only smoke-test requirements.
 - Added stop conditions for failed validation and instructions not to weaken tests or silently change business behavior.
+
+### 2026-09-19 — Phase 1 baseline and tooling inspection
+
+- Baseline commit: `bf4a8dd`.
+- Confirmed a clean `main` worktree before starting Phase 1.
+- Inspected `package.json`, `tsconfig.json`, and `vite.config.ts`; no ESLint configuration or ESLint dependencies currently exist.
+- Validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
+- Checkpoint status: **1.1 complete**; next action is to add a minimal compatible ESLint baseline without automatic rewriting.
+
+### 2026-09-19 — Phase 1 ESLint baseline scan
+
+- Added `eslint.config.js` using ESLint flat config, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, and `globals`.
+- Added `npm run lint:eslint`; the existing `npm run lint` TypeScript check was preserved.
+- Archived migration scripts under `tools/archived-migrations/**` are excluded because they are not maintained application code.
+- Ran ESLint without `--fix`: **729 findings across 106 files**; the command exits non-zero by design until findings are reviewed.
+- Finding categories: **581** `@typescript-eslint/no-explicit-any`, **68** `@typescript-eslint/no-unused-vars`, **20** `react-hooks/exhaustive-deps`, **14** `preserve-caught-error`, **10** `no-empty`, **8** `react-hooks/set-state-in-effect`, **8** `@typescript-eslint/no-unused-expressions`, plus smaller rule groups.
+- No source files were auto-rewritten. The findings are now classified as a baseline for focused follow-up; no ESLint rule was disabled merely to force a green result.
+- Checkpoint status: **1.1–1.6 complete; 1.7 and 1.8 remain open** until safe findings are fixed, the command is green, and the production gate is updated deliberately.
+
+### 2026-09-19 — Phase 1 safe cleanup slice
+
+- Corrected seven mechanically safe findings: four unnecessary regular-expression escapes and three `prefer-const` declarations in the auth route, validation, vehicle service, and delegate commission test.
+- Targeted regression test passed: `src/__tests__/stage4DelegateCommission.test.ts` (**3 tests**).
+- ESLint baseline reduced from **729 to 722 findings**. Remaining `prefer-const` findings are timeout declarations assigned after subscription setup; they require a reviewed control-flow refactor rather than blind replacement.
+- The dominant categories remain `no-explicit-any` (**581**), `no-unused-vars` (**68**), and hook/dependency diagnostics; these need semantic review and were not mass-edited.
+- Post-cleanup validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
+- Checkpoint status: **1.7 in progress**; `npm run lint:eslint` remains intentionally outside the production gate until the baseline is reduced and the remaining findings are classified or fixed.
