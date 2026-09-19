@@ -1,5 +1,6 @@
 const baseUrl = (process.env.SMOKE_BASE_URL || '').replace(/\/+$/, '');
 const expectedVersion = (process.env.SMOKE_EXPECTED_VERSION || '').trim();
+const frontendUrl = (process.env.SMOKE_FRONTEND_URL || baseUrl).replace(/\/+$/, '');
 
 if (!baseUrl) {
   console.log('[SKIP] SMOKE_BASE_URL is not configured; live smoke check was not requested.');
@@ -24,10 +25,10 @@ if (expectedVersion && body.version !== expectedVersion) {
   process.exit(1);
 }
 
-const frontendResponse = await fetch(baseUrl, { headers: { Accept: 'text/html' } });
+const frontendResponse = await fetch(frontendUrl, { headers: { Accept: 'text/html' } });
 if (!frontendResponse.ok) {
-  console.error('[FAIL] Live frontend check failed:', { status: frontendResponse.status });
+  console.error('[FAIL] Live frontend check failed:', { frontendUrl, status: frontendResponse.status });
   process.exit(1);
 }
 
-console.log(`[PASS] Live backend and frontend are healthy at ${baseUrl} (version ${body.version}).`);
+console.log(`[PASS] Live backend ${baseUrl} and frontend ${frontendUrl} are healthy (version ${body.version}).`);

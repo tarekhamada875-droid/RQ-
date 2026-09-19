@@ -51,6 +51,7 @@ jobs:
 
       - name: Live release smoke check
         env:
-          SMOKE_BASE_URL: https://parqv2.vercel.app
+          SMOKE_BASE_URL: https://rq-production-af02.up.railway.app
+          SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
           SMOKE_EXPECTED_VERSION: ${{ github.sha }}
         run: npm run release:smoke
