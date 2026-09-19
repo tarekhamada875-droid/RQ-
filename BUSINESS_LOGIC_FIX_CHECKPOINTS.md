@@ -41,7 +41,7 @@
 - [x] 1.2 Make logout one awaited, server-authoritative, owner-checked release; remove unsafe client-side security-document deletion.
 - [x] 1.3 Make PIN uniqueness atomic with a reservation/index keyed by normalized lookup hash.
 - [x] 1.4 Make PIN lookup/availability fail closed on Firestore/query errors.
-- [ ] 1.5 Treat missing/malformed `lastActive` as invalid/expired under a bounded migration policy.
+- [x] 1.5 Treat missing/malformed `lastActive` as invalid/expired under a bounded migration policy.
 - [ ] 1.6 Prevent one Firebase UID from retaining conflicting active role sessions; remove fixed-priority role selection.
 - [x] 1.7 Require `sessionId` for session-bearing login and return truthful `sessionClaimed` status.
 - [ ] 1.8 Make legacy PIN migration awaited/idempotent or make migration state explicit.
@@ -159,6 +159,12 @@
 - Self-subscription remains a single transaction that checks balance, deducts the authoritative final price, and activates the package.
 - Validation passed: 13 financial/idempotency tests, TypeScript, and diff checks.
 - Remaining finance work: canonical events for every wallet debit/credit/refund, historical reconciliation, and schema-level package validation.
+
+### 2026-09-19 — Session timestamp hardening verified
+
+- Session refresh now expires sessions with missing or malformed `lastActive`, matching the protected-request middleware behavior.
+- Validation passed: 14 session/auth tests, TypeScript, and diff checks.
+- Next action: canonical financial events and permanent deletion/lifecycle rules remain the highest-impact open areas.
 
 ## Continuation instructions
 

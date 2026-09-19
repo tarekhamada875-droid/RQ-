@@ -528,7 +528,7 @@ export function registerAuthRoutes(router: Router) {
       const rawLastActive = secData.lastActive;
       const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
       const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
-      if (lastActive > 0 && (Date.now() - lastActive > SESSION_TIMEOUT_MS)) {
+      if (!lastActive || Date.now() - lastActive > SESSION_TIMEOUT_MS) {
         await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
         return res.json({ success: false, valid: false, code: 'SESSION_EXPIRED', error: 'SESSION_EXPIRED' });
       }
