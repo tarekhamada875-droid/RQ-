@@ -248,3 +248,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused package regressions passed: **2 test files, 9 tests**. The edited file has no remaining React Hooks warnings; its four remaining ESLint findings are pre-existing `no-explicit-any` errors.
 - Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Current ESLint Hook findings: **25** total (`exhaustive-deps` **15**, `set-state-in-effect` **9**, `purity` **1**). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-19 — RegistrationCard ref dependency stabilization
+
+- Added the stable `plateInputRef` object to the input synchronization effect dependency list in `src/components/garage/RegistrationCard.tsx`; runtime behavior is unchanged because the ref identity is stable.
+- Targeted ESLint and TypeScript validation passed with no findings in the edited file.
+- Full validation passed: **52 test files, 287 tests**, production build, maintainability check, and `git diff --check`.
+- Current ESLint Hook findings: **24** total (`exhaustive-deps` **14**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.

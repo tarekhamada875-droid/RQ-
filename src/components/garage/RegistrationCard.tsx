@@ -65,7 +65,7 @@ export const RegistrationCard = memo(({
     if (plateInputRef.current && plateInputRef.current.value !== newPlateNumber) {
       plateInputRef.current.value = newPlateNumber;
     }
-  }, [newPlateNumber]);
+  }, [newPlateNumber, plateInputRef]);
 
   React.useEffect(() => {
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
