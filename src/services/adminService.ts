@@ -265,7 +265,9 @@ export const adminService = {
       if (snapshot.empty) {
         try {
           localStorage.setItem('app_packages_cache', JSON.stringify([]));
-        } catch {}
+        } catch {
+          // Cache persistence is best effort; the live snapshot remains authoritative.
+        }
         callback([]);
         return;
       }
@@ -284,7 +286,9 @@ export const adminService = {
       
       try {
         localStorage.setItem('app_packages_cache', JSON.stringify(activePkgs));
-      } catch {}
+      } catch {
+        // Cache persistence is best effort; subscribers still receive the live packages.
+      }
       
       callback(activePkgs);
     }, (err) => {
@@ -298,7 +302,9 @@ export const adminService = {
             return;
           }
         }
-      } catch {}
+      } catch {
+        // Invalid or unavailable cache falls back to an empty package list.
+      }
       callback([]);
     });
   },

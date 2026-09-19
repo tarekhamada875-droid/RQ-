@@ -246,7 +246,9 @@ export function useGarageSession({
           ) {
             return;
           }
-        } catch {}
+        } catch {
+          // Invalid or unavailable storage should fall through to the login state.
+        }
 
         if (isMounted) {
           setView('login');

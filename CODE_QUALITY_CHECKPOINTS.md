@@ -194,6 +194,15 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused validation passed: **7 test files, 34 tests** covering API, authentication, PIN, delegate, vehicle, and session flows.
 - Full validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 
+### 2026-09-19 — no-empty and no-unused-expressions cleanup
+
+- Reviewed and resolved **10** intentional `no-empty` catches by documenting their best-effort or fallback behavior; no logging or business behavior was added.
+- Rewrote **8** compressed `@typescript-eslint/no-unused-expressions` statements in `GarageDashboardView.tsx` as explicit equivalent control-flow statements.
+- Targeted rule residuals: `no-empty` **0**, `@typescript-eslint/no-unused-expressions` **0**.
+- ESLint findings reduced from **639 to 621**; remaining findings are in other rule families.
+- Focused validation passed: **8 test files, 29 tests** covering garage, vehicle, session, reward, delete, and admin flows.
+- Full validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
+
 ### 2026-09-19 — Release smoke deployment-race correction
 
 - The first post-merge quality-phase production gate failed only because the smoke check ran while Railway was still serving the previous commit (`bf4a8dd`) approximately 21 seconds before the new deployment (`dd618e4`) became live; all code-quality checks had already passed.

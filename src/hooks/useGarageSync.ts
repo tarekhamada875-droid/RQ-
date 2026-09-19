@@ -56,7 +56,9 @@ export function useGarageSync({
         const parsed = JSON.parse(jsonStr);
         if (Array.isArray(parsed)) return parsed;
       }
-    } catch {}
+    } catch {
+      // A malformed cache is equivalent to having no cached vehicles.
+    }
     return [];
   });
 
