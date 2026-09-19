@@ -1,144 +1,590 @@
-# RQ- Complete Backend Overhaul Stages
+# RQ- Complete Backend Overhaul Master Plan
 
-**Status:** Planning baseline
+**Document status:** Implementation blueprint
 
-**Scope:** Replace the current backend architecture incrementally while preserving the permanent deployment boundary: Cloudflare Pages serves the frontend, Railway runs the backend, and Firebase Authentication and Cloud Firestore remain the identity and data platform.
+**Repository:** `tarekhamada875-droid/RQ-`
 
-**Primary objective:** Build a strict, contract-first, maintainable backend that minimizes Firestore reads, writes, deletes, index work, listener reconnect cost, and rule-evaluation cost without weakening authorization, financial correctness, or auditability.
+**Permanent deployment boundary:** Cloudflare Pages is the frontend, Railway is the backend, and Firebase Authentication plus Cloud Firestore remain the identity and data platform.
 
-**Migration rule:** Build the new architecture beside the current implementation. Do not perform an all-at-once rewrite, destructive migration, or production cutover without a rollback path.
+**Purpose:** Replace the current backend’s weak data boundaries with a strict, contract-first, cost-measured architecture that is safe for financial operations, secure under Firebase’s rules model, maintainable by future contributors, and scalable without uncontrolled Firestore reads, writes, deletes, listeners, or transaction contention.
 
-## 1. Architectural decision
+> This document describes what must be built. It does not claim that the overhaul is already implemented. The current backend remains the production system until each stage has passed its exit criteria and the migration is deliberately approved.
 
-The target system should keep Firebase and use Railway as the only server-side API boundary. Cloudflare Pages must continue to call Railway directly. The frontend must not call Firestore directly for protected business data after the migration; it should call typed Railway endpoints. Railway will authenticate Firebase ID tokens, enforce application authorization and sessions, execute domain commands, and access Firestore through server-side repositories.
+---
 
-The target flow is:
+## 1. Executive decision
 
-```text
-Cloudflare Pages React frontend
-        │ HTTPS + Firebase ID token + X-Session-ID
-        ▼
-Railway Node.js/TypeScript API
-        │ authentication, authorization, validation, commands
-        ▼
-Application services and domain invariants
-        │ repositories, transactions, idempotency, projections
-        ▼
-Cloud Firestore + Firebase Authentication
-```
+The project should not attempt a one-step rewrite of the current backend. It should build a **versioned backend platform beside the current implementation**, migrate one bounded capability at a time, compare the new behavior with the old behavior, and remove the old path only after the new path is authoritative and rollback has been proven.
 
-The backend must use the Firebase Admin SDK through a narrowly configured service identity. Firestore Security Rules protect direct client access and act as a second boundary, but they do not protect server-side Admin SDK calls. The Railway service therefore requires IAM restrictions, application authorization, audit logging, and secret isolation in addition to Firestore Rules. [1]
+The new platform should be a strict TypeScript application running on Railway. It should expose a versioned HTTP API to the Cloudflare Pages frontend. It should verify Firebase Authentication tokens, enforce application-level authorization and sessions, validate every external payload at runtime, execute domain commands, and access Firestore only through typed repositories and transaction services.
 
-## 2. Design principles
-
-### 2.1 Make invalid states difficult to represent
-
-Use strict TypeScript and runtime schemas at every external boundary. Data from `req.body`, query parameters, Firebase tokens, Firestore documents, webhooks, and third-party services enters the program as `unknown`. Parse it into a named schema before domain code receives it.
-
-Use these compiler rules in the new backend package:
-
-```json
-{
-  "strict": true,
-  "noImplicitAny": true,
-  "noUncheckedIndexedAccess": true,
-  "exactOptionalPropertyTypes": true,
-  "useUnknownInCatchVariables": true,
-  "noFallthroughCasesInSwitch": true
-}
-```
-
-Use Zod or an equivalent schema library for runtime validation. Infer TypeScript types from schemas where practical. Do not replace `any` with `as SomeType` without runtime evidence; that only hides the same defect.
-
-### 2.2 Separate authority from projection
-
-Every business fact must have one authoritative write location. Derived dashboards, counts, histories, summaries, and search documents are projections. A projection may be rebuilt from authoritative data and must never become the only source of truth for money, ownership, session validity, or deletion state.
-
-This distinction permits cost-efficient denormalization without creating contradictory business state.
-
-### 2.3 Optimize expected cost, not only document count
-
-For an operation class, model the expected daily Firestore cost as:
+The target architecture is:
 
 ```text
-C = cr·R + cw·W + cd·D + ci·I + cs·S + cb·B
+Cloudflare Pages
+  React frontend
+  Typed API client
+  UI state and server-state adapters
+  No protected business writes directly to Firestore
+                    │
+                    │ HTTPS
+                    │ Firebase ID token + canonical session header
+                    ▼
+Railway
+  Node.js + TypeScript API
+  Configuration and secret validation
+  Correlation IDs, structured logs, rate limits
+  Firebase token verification
+  Session and authorization policies
+  Contract validation
+  Commands and queries
+  Domain rules and invariants
+  Idempotency and transaction orchestration
+  Typed Firestore repositories
+                    │
+                    ▼
+Firebase
+  Firebase Authentication
+  Cloud Firestore
+  Emulator-tested Rules
+  IAM-protected Admin SDK access
+  Bounded indexes and query shapes
 ```
 
-where `R` is document reads, `W` is document writes, `D` is deletes, `I` is index-entry reads, `S` is stored data, and `B` is bandwidth. The coefficients are the current project prices for the selected region and billing plan. Firestore charges for documents and index entries read, writes, deletes, storage, and bandwidth; listeners can incur reads when result documents are added, updated, removed from a result set, or re-read after reconnects. [2]
+The target system has two types of data:
 
-For each endpoint, also record:
+1. **Authoritative state and events.** These determine ownership, access, balances, purchases, sessions, and other business facts.
+2. **Rebuildable read models.** These make dashboards and reports cheap and fast but can be regenerated from authoritative data.
 
-```text
-readAmplification  = documents_read / useful_entities_returned
-writeAmplification = documents_written / authoritative_business_events
-listenerExposure   = result_documents × expected_updates × reconnect_factor
+No read model, cache, or frontend state may become the hidden authority for money, identity, ownership, or authorization.
+
+---
+
+## 2. What this overhaul is intended to fix
+
+The current `no-explicit-any` findings, Hook findings, repeated route logic, and expensive Firestore access patterns are symptoms of weak boundaries. The central problems to remove are structural:
+
+- External request data is not always validated before business logic uses it.
+- Firestore documents can enter the application with an uncertain shape.
+- Frontend and backend response contracts are not defined once and shared.
+- Route handlers sometimes combine transport, authorization, business rules, persistence, and response formatting.
+- Financial values and financial events require stronger authority and replay guarantees.
+- Long-running lists and listeners can become expensive as usage grows.
+- Derived dashboards and reports can repeatedly reconstruct data that should have a bounded projection.
+- Authorization can require more rule lookups than necessary.
+- Large mutable documents can become contention hotspots.
+- Tests do not yet enforce a cost budget or prevent accidental N+1 reads.
+- Legacy compatibility logic spreads weak types into otherwise unrelated modules.
+
+The overhaul fixes these problems at their entry points rather than masking them with type assertions or broad ESLint exclusions.
+
+---
+
+## 3. Non-negotiable platform constraints
+
+The following constraints are architectural requirements, not preferences.
+
+### 3.1 Cloudflare Pages remains the frontend
+
+Cloudflare Pages serves the React application and static assets. It must not receive Firebase Admin credentials, Railway private credentials, or Firestore service-account keys. The browser may hold a Firebase client session and an ID token, but it must not be trusted as the authority for prices, balances, roles, ownership, or financial outcomes.
+
+The frontend calls Railway over HTTPS. CORS must allow only the approved Cloudflare Pages origins and explicitly approved local development origins. The backend must reject unknown origins for credentialed requests.
+
+### 3.2 Railway remains the backend
+
+Railway runs the API process, background repair workers if needed, migrations, and operational endpoints. Railway environment variables hold secrets and deployment configuration. Production secrets must not be committed to GitHub, embedded in Cloudflare assets, or returned through diagnostic endpoints.
+
+The Railway process must fail fast when required configuration is missing or malformed. Development defaults must never silently activate in production.
+
+### 3.3 Firebase remains the identity and database platform
+
+Firebase Authentication remains the initial identity provider. Cloud Firestore remains the primary operational database. Firebase Admin SDK access is server-side only.
+
+The backend must recognize that Admin SDK calls bypass Firestore Security Rules. Rules are therefore essential for direct client access, but they are not a complete authorization layer for Railway. Railway requires its own authentication, authorization, IAM, audit, and secret controls. [4]
+
+### 3.4 No big-bang production rewrite
+
+The current backend remains available until the v2 path has passed characterization, contract, emulator, security, cost, migration, and rollback tests. Financial writes are migrated last, not first.
+
+---
+
+## 4. Architecture rules for future contributors
+
+Every new backend capability must follow these rules.
+
+### Rule A: External data enters as `unknown`
+
+The types of `req.body`, query strings, headers, decoded custom claims, Firestore documents, webhook payloads, and third-party responses are not trusted automatically. They enter the system as `unknown` and are parsed into a named schema.
+
+```ts
+const input: unknown = request.body;
+const command = CreateGarageCommandSchema.parse(input);
 ```
 
-The goal is not zero reads or zero denormalization. The goal is to minimize `C` subject to correctness, security, latency, and operability constraints. A single summary write that prevents thousands of repeated reads is often cheaper. A projection that duplicates every large event on every mutation is often not.
+`as SomeType` is not validation. It is allowed only when a documented invariant has already established the shape, and it must not replace parsing at a trust boundary.
 
-### 2.4 Prefer deterministic algorithms
+### Rule B: Routes are adapters, not business logic
 
-Use algorithms whose work and cost can be bounded before execution. Every list endpoint must have a hard page size, a cursor, and a maximum traversal budget. Every bulk operation must be resumable, idempotent, and checkpointed. Every mutation must have a deterministic idempotency key or a server-generated operation ID.
+A route may authenticate, parse, authorize, call a use case, and map the result to HTTP. It must not calculate package prices, mutate wallet balances, construct arbitrary Firestore paths, or implement deletion traversal inline.
 
-Do not use offsets for pagination. Firestore charges for skipped documents when offsets are used; cursor-based pagination avoids paying for documents that are only skipped. [2]
+### Rule C: Repositories own Firestore
 
-## 3. Target codebase structure
+Only the infrastructure layer knows collection paths, converters, indexes, query order, pagination cursors, transaction reads, and Firestore-specific sentinel values. Domain services receive typed objects and repository interfaces.
 
-Create the new backend as an isolated package or directory first. Do not mix new domain code into legacy route handlers.
+### Rule D: Every mutation is replay-safe
+
+A state-changing command must define its idempotency behavior before implementation. Financial and lifecycle commands must reject ambiguous replay rather than guessing.
+
+### Rule E: Every list is bounded
+
+A list endpoint must have a maximum page size, a stable order, a cursor, and a server-side traversal limit. Offsets and unbounded listeners are prohibited for new code.
+
+### Rule F: Every denormalized document is rebuildable
+
+A projection must identify its authoritative source, version, rebuild algorithm, repair procedure, maximum size, and acceptable staleness.
+
+### Rule G: Every cost is observable
+
+High-volume repositories must expose read, write, delete, retry, and projection metrics in tests and in production telemetry.
+
+---
+
+## 5. Target repository structure
+
+The new implementation should be isolated from legacy handlers until the migration is mature.
 
 ```text
 server-v2/
-  app.ts                         # Railway process and HTTP composition
+  app.ts
+  bootstrap.ts
+
   config/
-    env.ts                       # typed, fail-fast environment parsing
+    env.ts
+    featureFlags.ts
+
   http/
-    routes/                      # thin transport adapters
-    middleware/                  # auth, correlation, errors, rate limits
-    contracts/                   # request/response schemas and OpenAPI metadata
+    routes/
+      authRoutes.ts
+      garageRoutes.ts
+      vehicleRoutes.ts
+      subscriberRoutes.ts
+      packageRoutes.ts
+      walletRoutes.ts
+      rechargeRoutes.ts
+      reportRoutes.ts
+      deletionRoutes.ts
+    middleware/
+      authenticateFirebase.ts
+      requireSession.ts
+      authorize.ts
+      requestContext.ts
+      rateLimit.ts
+      errorHandler.ts
+    contracts/
+      common.ts
+      auth.ts
+      garages.ts
+      vehicles.ts
+      packages.ts
+      wallet.ts
+      recharges.ts
+      reports.ts
+      deletion.ts
+
   application/
-    commands/                    # state-changing use cases
-    queries/                     # read use cases
-    policies/                    # authorization decisions
+    commands/
+      claimSession.ts
+      createGarage.ts
+      updateGarage.ts
+      checkInVehicle.ts
+      checkOutVehicle.ts
+      purchasePackage.ts
+      topUpWallet.ts
+      approveRecharge.ts
+      rejectRecharge.ts
+      deleteGarage.ts
+    queries/
+      getGarageDashboard.ts
+      listVehicles.ts
+      listSubscribers.ts
+      listActivity.ts
+      getFinancialReport.ts
+    policies/
+      garageAccessPolicy.ts
+      adminPolicy.ts
+      delegatePolicy.ts
+      sessionPolicy.ts
+
   domain/
     garage/
     vehicle/
     subscriber/
     package/
     wallet/
+    recharge/
     commission/
     session/
     deletion/
     reporting/
+    shared/
+      money.ts
+      businessDate.ts
+      invariants.ts
+
   infrastructure/
     firebase/
-      admin.ts
-      repositories/
+      adminApp.ts
+      firestore.ts
       converters/
-      transactions/
+      repositories/
+      transactionRunner.ts
+      emulator.ts
     idempotency/
     projections/
+    audit/
     telemetry/
+
   shared/
-    result.ts
     errors.ts
+    result.ts
     pagination.ts
-    money.ts
-    time.ts
+    hashing.ts
+    clock.ts
+    logging.ts
 ```
 
-A route should perform only transport work:
+The exact directory names may change, but the dependency direction must remain:
 
 ```text
-parse request → authenticate → authorize → call use case → map result to response
+HTTP → Application → Domain
+                  ↓
+             Interfaces
+                  ↑
+Infrastructure implements interfaces
 ```
 
-A use case should coordinate a business operation. A domain service should enforce a business invariant. A repository should own Firestore paths and query shapes. No React component, Express route, or report renderer should construct Firestore paths directly.
+Domain code must not import Express, Firebase, Firestore types, React, or environment variables.
 
-## 4. Data model strategy for low Firestore cost
+---
 
-### 4.1 Use bounded tenant-oriented paths
+## 6. Contract-first API platform
 
-Use predictable, tenant-scoped paths with bounded query surfaces:
+### 6.1 One contract, three uses
+
+Each endpoint contract must serve three purposes:
+
+1. Runtime validation of requests and responses.
+2. Compile-time TypeScript types for the backend and frontend.
+3. Documentation and compatibility checks.
+
+Use Zod or an equivalent runtime schema library. Generate OpenAPI metadata from the same schemas where practical. The frontend should consume a generated or centrally typed client rather than manually reconstructing URLs and payload types.
+
+### 6.2 Common response envelope
+
+Successful responses should use a stable envelope:
+
+```ts
+const SuccessResponse = <T extends z.ZodTypeAny>(data: T) => z.object({
+  ok: z.literal(true),
+  data,
+  requestId: z.string(),
+});
+```
+
+Errors should use a stable structure:
+
+```ts
+{
+  "ok": false,
+  "error": {
+    "code": "WALLET_INSUFFICIENT_BALANCE",
+    "message": "The wallet balance is not sufficient for this operation.",
+    "retryable": false,
+    "requestId": "..."
+  }
+}
+```
+
+The public message must be safe. Stack traces, Firestore paths, credentials, PIN values, and internal query details must remain server-side.
+
+### 6.3 Versioning
+
+Use `/v2` for the new contract. Do not silently change `/api` behavior while the migration is in progress. A v2 endpoint may call the legacy repository during an early adapter stage, but the contract must be new and typed so the migration can change persistence without changing the frontend again.
+
+### 6.4 Command and query separation
+
+A **command** changes state and must define authorization, idempotency, transaction boundaries, audit behavior, and retry behavior.
+
+A **query** reads state and must define consistency level, result bound, pagination, and cost target.
+
+Examples:
+
+```text
+Command: ApproveRecharge
+Query:   GetGarageDashboard
+Command: PurchasePackage
+Query:   ListGarageActivity
+Command: TopUpWallet
+Query:   GetFinancialReport
+```
+
+Do not make a query mutate state merely to update a cache. If a projection is missing, repair it through an explicit operation or a bounded fallback.
+
+---
+
+## 7. Canonical domain model
+
+The domain model must distinguish current state, immutable events, projections, and operational metadata.
+
+### 7.1 Garage aggregate
+
+The garage document contains small, frequently used operational state:
+
+```text
+id
+name
+normalizedName
+ownerUid
+status                 active | suspended | pending | deleting | deleted
+isLocked
+isTrial
+activePackageId
+packageExpiresAt
+balanceMinor
+balanceVersion
+carsInside
+currentSessionId
+stateVersion
+createdAt
+updatedAt
+```
+
+It must not contain unbounded vehicles, activity logs, report rows, or arrays that grow over time.
+
+### 7.2 Vehicle aggregate
+
+A vehicle document should represent current operational state:
+
+```text
+id
+garageId
+plateNormalized
+plateDisplay
+status                  inside | outside | archived
+subscriberId
+checkInAt
+checkOutAt
+currentVisitId
+stateVersion
+createdAt
+updatedAt
+```
+
+Historical visits belong in bounded visit/activity documents. A check-in must not scan all vehicles if a unique normalized plate path or bounded query can resolve the vehicle.
+
+### 7.3 Package catalog
+
+Package definitions are configuration, not transaction history:
+
+```text
+id
+name
+normalizedName
+priceMinor
+durationDays
+capacity
+isActive
+version
+createdAt
+updatedAt
+```
+
+A purchase event must copy the authoritative price, package ID, duration, discount, and rule version used at the moment of purchase. Later catalog changes must not rewrite historical financial facts.
+
+### 7.4 Wallet account and ledger
+
+The wallet account is a materialized current state. The ledger is append-only authority for movement.
+
+```text
+walletAccounts/{garageId}
+  balanceMinor
+  version
+  lastLedgerEventId
+  updatedAt
+
+walletLedger/{eventId}
+  eventId
+  garageId
+  kind
+  amountMinor
+  balanceBeforeMinor
+  balanceAfterMinor
+  referenceType
+  referenceId
+  actorUid
+  idempotencyKeyHash
+  businessDateKey
+  createdAt
+```
+
+Money must use integer minor units. Floating-point values must not enter financial domain calculations.
+
+The invariant is:
+
+```text
+balanceAfterMinor
+  = balanceBeforeMinor + signedAmountMinor
+```
+
+A reconciliation process must verify that the materialized balance equals the ledger-derived balance for a defined range. Any mismatch becomes an operational incident, not a silent correction.
+
+### 7.5 Session model
+
+Sessions must be explicit and owner-checked:
+
+```text
+sessions/{sessionId}
+  sessionId
+  uid
+  role
+  garageId
+  status                 active | revoked | expired
+  issuedAt
+  lastActiveAt
+  expiresAt
+  version
+```
+
+The protected request must carry the Firebase ID token and the canonical session ID. A session ID alone must never authorize a request.
+
+### 7.6 Audit events
+
+Every security-sensitive and financial command emits a bounded audit event:
+
+```text
+auditEvents/{eventId}
+  eventId
+  actorUid
+  actorRole
+  tenantId
+  operation
+  targetId
+  outcome
+  requestId
+  idempotencyKeyHash
+  createdAt
+```
+
+Do not copy sensitive request bodies or secrets into audit logs.
+
+---
+
+## 8. Firestore cost architecture
+
+### 8.1 Cost equation
+
+For each operation class, measure expected daily cost as:
+
+```text
+C = cr × R
+  + cw × W
+  + cd × D
+  + ci × I
+  + cs × S
+  + cb × B
+```
+
+Where:
+
+- `R` is document reads.
+- `W` is document writes.
+- `D` is document deletes.
+- `I` is index-entry reads.
+- `S` is stored data.
+- `B` is outbound bandwidth.
+- `c*` are the current regional price coefficients.
+
+Firestore billing includes document reads, writes, deletes, index-entry reads, storage, and bandwidth. Query listeners can create additional reads when result documents change or reconnect behavior causes results to be read again. [2]
+
+A cost budget must include more than the first request. Model:
+
+```text
+expectedReads
+  = initialReads
+  + updateReadsPerHour × activeHours
+  + reconnectReads × reconnectRate
+  + retryReads × transactionRetryRate
+```
+
+For write operations:
+
+```text
+expectedWrites
+  = authoritativeWrites
+  + requiredAuditWrites
+  + requiredProjectionWrites
+  + retryOrRepairWrites
+```
+
+The design should minimize total expected cost, not merely the number of calls in the happy path.
+
+### 8.2 Cost rules
+
+New code must not:
+
+- Use `offset` for pagination.
+- Read an entire collection to find one entity.
+- Load all activity to render a recent-activity panel.
+- Re-read a static package catalog on every component render.
+- Maintain an unbounded realtime listener.
+- Write a large document for every small event.
+- Update unrelated hot fields in the same transaction.
+- Recompute a report from every historical event on every page load.
+- Use a count query repeatedly when a maintained bounded summary is cheaper.
+
+Use cursor pagination. Firestore charges reads for documents skipped by offsets, while cursors and limits avoid paying for skipped documents. [2]
+
+### 8.3 Read amplification
+
+For each screen, calculate:
+
+```text
+readAmplification = documentsRead / usefulEntitiesReturned
+```
+
+A dashboard returning one garage summary but reading hundreds of activity documents is a design failure even if the final response is small.
+
+### 8.4 Write amplification
+
+Calculate:
+
+```text
+writeAmplification = documentsWritten / authoritativeBusinessEvents
+```
+
+A financial operation may legitimately write a wallet account, ledger event, idempotency record, audit event, and bounded projection. That write set must be explicit. Repeated unrelated writes are not acceptable.
+
+### 8.5 Listener exposure
+
+Calculate:
+
+```text
+listenerExposure
+  = resultDocumentCount
+  × expectedChangeFrequency
+  × activeListenerCount
+  × reconnectFactor
+```
+
+A listener must have a lifecycle owner, a query limit, an unsubscribe path, and a reason that realtime delivery is worth its cost.
+
+---
+
+## 9. Firestore data layout and query design
+
+### 9.1 Tenant-scoped paths
+
+Use predictable tenant-scoped paths where the security and query model benefits from them:
 
 ```text
 /garages/{garageId}
@@ -146,7 +592,6 @@ Use predictable, tenant-scoped paths with bounded query surfaces:
 /garages/{garageId}/subscribers/{subscriberId}
 /garages/{garageId}/activity/{activityId}
 /garages/{garageId}/dailySummaries/{dateKey}
-/garages/{garageId}/readModels/{modelName}
 /garages/{garageId}/walletLedger/{eventId}
 /garages/{garageId}/idempotency/{keyHash}
 /sessions/{sessionId}
@@ -156,391 +601,794 @@ Use predictable, tenant-scoped paths with bounded query surfaces:
 /operations/{operationId}
 ```
 
-The exact final paths must be confirmed by an inventory of the current database. The important constraints are that a tenant query does not require a collection-wide scan, deletion can enumerate known subcollections, and authorization can derive ownership from a small number of documents.
+The final path map must be produced by Stage 0 inventory. The design must ensure that a tenant query is bounded and that deletion can enumerate known subcollections.
 
-### 4.2 Keep authoritative documents small
+### 9.2 Hot document policy
 
-A garage document should contain current identity and operational state that is needed on most requests. It should not contain unbounded activity, vehicle history, report rows, or large arrays. Large or unbounded data belongs in subcollections or immutable event documents.
+A document is a hot document when many concurrent commands update it. Hot documents require special treatment:
 
-Use a small set of stable fields for hot decisions:
+- Keep fields small.
+- Update only fields needed by the command.
+- Use `stateVersion` for optimistic concurrency.
+- Avoid unrelated counters in the same transaction.
+- Use shards only when observed contention justifies extra reads.
+- Record retry rates by document family.
 
-```text
-ownerUid
-status
-isLocked
-isSuspended
-isDeleting
-currentSessionId
-activePackageId
-packageExpiresAt
-balance
-balanceVersion
-carsInside
-stateVersion
-updatedAt
-```
+### 9.3 Index policy
 
-Do not update unrelated fields in the same hot document for every event. Hot documents create contention and multiply transaction retries.
-
-### 4.3 Use an immutable financial ledger plus a materialized balance
-
-Money operations should produce an append-only ledger event and update a materialized wallet account in the same Firestore transaction. The transaction must verify the expected account version, enforce non-negative balance where required, record the idempotency key, and create the canonical event exactly once.
+Every composite index must be justified by a query contract. The repository documentation must state:
 
 ```text
-wallet account:
-  balance
-  version
-  lastLedgerEventId
-  updatedAt
-
-wallet ledger event:
-  eventId
-  garageId
-  kind
-  amountMinorUnits
-  balanceBefore
-  balanceAfter
-  referenceType
-  referenceId
-  idempotencyKeyHash
-  actorUid
-  createdAt
+query name
+collection path
+filters
+orderBy tuple
+page limit
+expected result bound
+index required
+rule assumptions
+cost risk
 ```
 
-Store money as integer minor units, not floating-point values. Use explicit decimal conversion at the API boundary and integer arithmetic inside the domain. Enforce the invariant:
+Do not add indexes merely because a query fails. First confirm that the query is necessary, bounded, tenant-scoped, and not an accidental full scan.
+
+### 9.4 Small documents and large payloads
+
+Do not store unbounded arrays in hot documents. Do not duplicate full activity payloads into dashboard projections. Store only fields required by the read model. If a payload is large and not needed for Firestore queries, evaluate Firebase Storage with metadata in Firestore, while preserving the same Railway authorization boundary.
+
+---
+
+## 10. Transaction and batch algorithms
+
+### 10.1 Transaction protocol
+
+A transaction must follow this order:
 
 ```text
-balance_after = balance_before + sum(ledger_effects)
+1. Validate command input outside the transaction.
+2. Resolve deterministic document references.
+3. Read all decision documents.
+4. Verify preconditions and versions.
+5. Compute the new state using pure functions.
+6. Queue only bounded writes.
+7. Commit atomically.
+8. Emit or schedule repairable projections after commit.
 ```
 
-A reconciliation job must compare the materialized balance with the ledger for sampled and full historical ranges. Reports should read daily financial summaries for normal views and use the ledger for audit and reconciliation.
+Firestore transactions must read before writing. They may run more than once when concurrently read documents change, so transaction functions must be deterministic and must not mutate external application state. Transactions also have request-size, lock, idle, and total-time limits. [3]
 
-### 4.4 Denormalize only bounded, rebuildable read models
+### 10.2 Transaction boundaries
 
-Create read models for high-frequency screens such as the garage dashboard, admin queue summary, daily activity summary, and package catalog. A read model must state:
-
-- Its source events or authoritative documents.
-- Its rebuild algorithm.
-- Its maximum document size.
-- Its update trigger.
-- Its acceptable staleness.
-- Its owner and deletion policy.
-
-Prefer one bounded summary document per garage/day or garage/view rather than repeatedly reading every event. Do not duplicate full event payloads into every projection. Store IDs, totals, status, and the small fields needed by the screen.
-
-### 4.5 Bound listeners
-
-Realtime listeners should be used only for small, high-value result sets: the current garage document, a bounded pending queue, or a small recent-activity window. Every listener needs an explicit unsubscribe path, a query limit, a lifecycle owner, and a reconnect cost estimate.
-
-Do not listen to an entire activity collection or an unbounded report. Firestore bills reads as listener result documents change and can re-read results after reconnects. [2]
-
-## 5. Algorithms and consistency patterns
-
-### 5.1 Idempotency algorithm
-
-For every mutation, require a client-provided idempotency key or create one at the command boundary. Compute:
+Keep financial transactions small:
 
 ```text
-fingerprint = SHA-256(canonicalJson(method, route, actor, tenant, payload))
-keyRecord = (tenantId, actorId, idempotencyKey)
+idempotency record
+wallet account
+wallet ledger event
+purchase or recharge event
 ```
 
-In a transaction:
+Do not include report generation, notification delivery, network calls, or large list reads inside the transaction.
 
-1. Read the idempotency record.
-2. If it exists with a different fingerprint, reject with a conflict.
-3. If it exists with a completed result, return the stored result without replaying side effects.
-4. If it is pending and unexpired, reject or retry according to the operation policy.
-5. Otherwise create the pending record, perform the authoritative state change, append events, store the response summary, and mark the record complete.
-
-Do not store entire large responses in idempotency records. Store a bounded response envelope and a reference to the authoritative result.
-
-### 5.2 Optimistic concurrency and transaction sizing
-
-Use Firestore transactions when a value is read and then conditionally changed. Read all required documents before writes, keep the transaction short, and avoid network calls inside it. Firestore can retry a transaction when a read document changes, so transaction functions must be deterministic and must not mutate external application state. Transactions also have size, lock, idle, and total-time limits. [3]
-
-Use batched writes when no read-dependent decision is required. Batches provide atomicity, but each document write still counts as a write; batching improves consistency and round trips, not billing by itself. [3]
-
-Keep hot transactions to the minimum document set:
+Keep vehicle state transactions small:
 
 ```text
-wallet account + idempotency record + canonical financial event
+vehicle state
+garage counters if required
+visit/event record
+idempotency record if the command is replayable
 ```
 
-Do not include a large report, full vehicle list, or unrelated projection in the same transaction.
+If an external notification is required, record an outbox event in the transaction and deliver it after commit. Do not call an external service inside the transaction function.
 
-### 5.3 Sharded counters only for true hotspots
+### 10.3 Batched writes
 
-Use a single counter document when write frequency is low and contention is bounded. Use a fixed number of shard documents when many concurrent writers update one aggregate. Read the shards only for aggregate views, and maintain a small materialized total when the screen is read frequently.
+Use a batch when no read-dependent decision is required. Batches are atomic, but each document write still counts as a write; batching improves atomicity and round trips rather than reducing per-document billing. [3]
 
-Choose shard count from observed contention, not guesswork. Increase it only through a migration that supports old and new shard layouts. A sharded counter reduces contention but increases reads, so its expected cost must be measured.
+For deletion and backfills, use bounded batches and checkpoint progress in an operation document. Never place an entire garage history into one transaction or one unbounded batch.
 
-### 5.4 Cursor pagination
+### 10.4 Retry policy
 
-Every list query should return:
+Classify errors:
 
 ```text
-items
-nextCursor
-hasMore
-pageSize
+retryable: transaction contention, transient network, temporary service unavailable
+nonRetryable: validation, authorization, insufficient funds, conflict fingerprint
+operatorAction: invariant mismatch, schema corruption, projection gap, unknown state
 ```
 
-Use a stable ordering such as `(createdAt desc, documentId desc)` so equal timestamps do not create duplicates or omissions. The cursor must encode the complete ordering tuple. Reject unbounded requests and cap page sizes server-side.
+Retries must use bounded exponential backoff with jitter. A retry must reuse the same idempotency key and request fingerprint. The backend must not generate a new financial operation on each retry.
 
-### 5.5 Projection and repair algorithms
+---
 
-Use an event-to-projection worker or explicit post-transaction projection queue. Each projection update must be idempotent:
+## 11. Idempotency algorithm
+
+Every state-changing endpoint must document its idempotency policy. Financial and destructive commands must require a client-provided idempotency key or a server-generated operation token that the client can reuse after timeout.
+
+Compute a canonical request fingerprint:
 
 ```text
-projectionVersion = lastAppliedEventSequence
-if event.sequence <= projectionVersion: ignore
-if event.sequence == projectionVersion + 1: apply
-if event.sequence > projectionVersion + 1: mark gap and repair
+fingerprint = SHA-256(
+  canonicalJson({
+    method,
+    route,
+    actorUid,
+    tenantId,
+    normalizedPayload
+  })
+)
 ```
 
-Because Firestore does not provide a general relational join or a global transaction across arbitrary asynchronous workers, projections must track version, last event, and repair status. The authoritative ledger remains the recovery source.
+Canonicalization must sort object keys, normalize numeric money values, normalize IDs, and exclude transport noise such as request IDs.
 
-### 5.6 Deterministic time and money
-
-Use one server-side timezone boundary helper for Cairo business dates. Store timestamps as Firestore timestamps or UTC instants. Derive a `businessDateKey` at the command boundary and persist it on events and daily summaries. Never calculate a financial day by scattered fixed offsets.
-
-Use integer minor units for all money calculations. Define discount order, rounding, capacity, trial, refund, and commission rules as pure functions with property-based tests.
-
-## 6. Firebase Security Rules and IAM model
-
-### 6.1 Client access policy
-
-The preferred client policy is deny-by-default for business data. The frontend authenticates with Firebase, sends the ID token and canonical `X-Session-ID` to Railway, and does not directly write wallet, package, session, financial, deletion, or administrative documents.
-
-If the client must read a narrow document directly, the rule must validate tenant ownership, role, document shape, and query constraints. Every query must be designed so that all potential returned documents satisfy the rule; Firestore Rules are not post-query filters. [4]
-
-### 6.2 Server access policy
-
-The Railway Admin SDK bypasses Firestore Rules and authenticates with Google Application Default Credentials/IAM. [4] Therefore:
-
-- Use a dedicated service account for the Railway backend.
-- Grant only the required Firestore and Firebase Auth permissions.
-- Keep credentials in Railway secrets, never in Git or frontend variables.
-- Separate production and non-production projects where possible.
-- Log actor, tenant, operation, correlation ID, and result for sensitive commands.
-- Do not trust a client-supplied role, garage ID, balance, package price, or session ownership claim.
-
-### 6.3 Rule access-call budget
-
-Security Rules that call `get()`, `exists()`, or `getAfter()` consume access calls and can also incur billed reads. A single-document or query request has a 10-call limit; multi-document reads, transactions, and batches have a 20-call total limit while retaining a 10-call per-operation limit. [4]
-
-Design authorization so it can be proven from the target document and one small, stable ownership document. Avoid deeply nested rule lookups. Prefer server-mediated commands for complex authorization rather than making every client write depend on many rule reads.
-
-### 6.4 Rules testing
-
-Create Emulator Suite tests for every collection and operation. Test both the rule and the query shape. Include:
-
-- Owner can read only the owner’s tenant data.
-- Delegate scope cannot cross garages.
-- Client cannot mutate wallet balances or ledger events.
-- Client cannot forge session ownership.
-- Client cannot bypass deletion locks.
-- Admin-only operations reject normal users.
-- Invalid field additions and type changes are rejected.
-- Batch and transaction rule-call budgets remain within limits.
-
-## 7. API and contract design
-
-Use a versioned API with explicit request and response schemas. The new API should expose commands and queries rather than raw Firestore operations.
+Within a transaction:
 
 ```text
-GET  /v2/garages/{garageId}
-GET  /v2/garages/{garageId}/dashboard
-GET  /v2/garages/{garageId}/vehicles?cursor=...
-POST /v2/garages/{garageId}/vehicles/check-in
-POST /v2/garages/{garageId}/vehicles/check-out
-POST /v2/garages/{garageId}/wallet/top-ups
-POST /v2/garages/{garageId}/packages/purchases
-POST /v2/admin/recharges/{requestId}/approve
-POST /v2/garages/{garageId}/deletion
-GET  /v2/reports/financial?garageId=...&from=...&to=...
+1. Read (tenantId, actorUid, idempotencyKeyHash).
+2. If absent, create a pending record with fingerprint.
+3. If present with a different fingerprint, reject with conflict.
+4. If present and complete, return the stored bounded result.
+5. If present and pending, apply the operation-specific pending policy.
+6. Apply authoritative state changes.
+7. Append canonical event and audit record.
+8. Store a bounded result envelope.
+9. Mark the record complete.
 ```
 
-Every response should use a stable envelope:
+Do not store large response bodies in idempotency records. Store status, result reference, result code, and a bounded response summary.
 
-```json
-{
-  "ok": true,
-  "data": {},
-  "requestId": "..."
+Idempotency tests must prove:
+
+```text
+same key + same fingerprint → same result, one business effect
+same key + different fingerprint → conflict, zero second effect
+new key + same business data → separate operation only when allowed
+retry after timeout → no duplicate ledger event
+```
+
+---
+
+## 12. Financial architecture
+
+Financial operations receive the highest safety priority because a type error or replay bug can directly change money.
+
+### 12.1 Integer money
+
+Use integer minor units:
+
+```ts
+type MoneyMinor = number & { readonly __brand: 'MoneyMinor' };
+```
+
+At the API boundary, parse a decimal amount, validate precision and sign, convert to minor units deterministically, and reject values that cannot be represented exactly. Domain code performs only integer arithmetic.
+
+### 12.2 Ledger-first authority
+
+A wallet command must not only update `balance`. It must create an immutable event that explains the movement.
+
+For a debit:
+
+```text
+newBalance = oldBalance - debitMinor
+```
+
+For a credit:
+
+```text
+newBalance = oldBalance + creditMinor
+```
+
+The transaction must reject insufficient balance, invalid package state, stale version, duplicate idempotency key, or mismatched actor scope.
+
+### 12.3 Package purchase
+
+The command must snapshot the rule inputs used:
+
+```text
+packageId
+packageVersion
+listPriceMinor
+discountMinor
+finalPriceMinor
+durationDays
+capacity
+couponCode if applicable
+pricingRuleVersion
+```
+
+Changing the package catalog later must not alter the historical purchase.
+
+### 12.4 Commissions and refunds
+
+Commission and refund events must reference the original business event. A correction must be an explicit compensating event, never an in-place edit that destroys history.
+
+Use:
+
+```text
+originalEventId
+correctionReason
+correctionType
+actorUid
+approvedBy if required
+```
+
+### 12.5 Reconciliation
+
+Build a reconciliation command that compares:
+
+```text
+materialized wallet balance
+= sum of authoritative ledger effects
+```
+
+The command should support a bounded garage/date range, produce a discrepancy report, and never silently mutate balances. Automatic repair must require a separate, audited operator action.
+
+---
+
+## 13. Queries, read models, and reports
+
+### 13.1 Dashboard query
+
+A garage dashboard should read a small, bounded set:
+
+```text
+garage current state
+current package summary
+current vehicle summary or bounded page
+recent activity summary
+current alerts
+```
+
+It must not read the entire activity history, all vehicles, all subscribers, and all package definitions on every render.
+
+### 13.2 Daily summary projection
+
+For frequently used reports, maintain one bounded summary per garage and business date:
+
+```text
+dailySummaries/{dateKey}
+  checkIns
+  checkOuts
+  revenueMinor
+  walletCreditsMinor
+  walletDebitsMinor
+  commissionsMinor
+  activeSubscribers
+  projectionVersion
+  asOf
+```
+
+The summary is rebuildable from authoritative events. It is not the sole financial authority.
+
+### 13.3 Projection algorithm
+
+Each event must have a monotonic sequence or a deterministic deduplication key for the projection scope.
+
+```text
+if event.id already applied:
+  ignore
+else if event.sequence <= lastAppliedSequence:
+  ignore or repair according to ordering policy
+else if event.sequence == lastAppliedSequence + 1:
+  apply event and advance version
+else:
+  record a gap and schedule repair
+```
+
+Projection updates must be idempotent. A worker crash after applying a write but before recording completion must not double count the event.
+
+### 13.4 Report consistency labels
+
+Every report endpoint must state its consistency mode:
+
+```text
+strong: reads authoritative state inside the command boundary
+transactional: reads committed summary documents
+stale-acceptable: projection may lag within a defined window
+reconciled: derived from ledger/events for audit
+```
+
+The UI must be able to display an `asOf` timestamp for eventually consistent data.
+
+### 13.5 Search strategy
+
+Do not scan Firestore to implement arbitrary search. For supported search fields, maintain normalized values and queryable prefixes or use a dedicated approved search service later. Every search strategy must state its read bound and security model.
+
+---
+
+## 14. Firebase Security Rules and IAM
+
+### 14.1 Default client posture
+
+The preferred policy is deny-by-default for protected business data. The browser authenticates with Firebase but sends business commands to Railway. The browser must not directly write:
+
+- Wallet balances
+- Wallet ledger events
+- Package purchases
+- Recharge approvals
+- Session ownership
+- Deletion operations
+- Administrative decisions
+- Audit events
+- Projection control documents
+
+If a direct client read is retained for a narrow document, the rule must guarantee tenant ownership, role scope, field shape, and query compatibility.
+
+### 14.2 Rules are not filters
+
+Firestore Security Rules do not filter out unauthorized documents after a query. A query must be constructed so every document it could return satisfies the rule. [4]
+
+This means each query contract must document its rule predicate. A query that may return both authorized and unauthorized documents must be rejected by the design, not patched after the fact in frontend code.
+
+### 14.3 Rule access-call budget
+
+`get()`, `exists()`, and `getAfter()` in rules consume document access calls and can incur reads even when a request is rejected. Single-document and query requests have a 10-call limit. Multi-document reads, transactions, and batches have a 20-call total limit while retaining a 10-call per-operation limit. [4]
+
+The rule design should derive authorization from the target document and at most a small number of stable ownership documents. Complex authorization belongs in Railway application policies where it can be tested and observed without consuming rule-call budget on every client request.
+
+### 14.4 IAM
+
+Because Railway Admin SDK calls bypass Rules, configure a dedicated service identity with the least required permissions. Separate development, staging, and production credentials. Rotate secrets using Railway’s secret management. Audit every privileged operation at the application layer.
+
+---
+
+## 15. Authentication, sessions, and authorization
+
+### 15.1 Request authentication
+
+The backend must:
+
+1. Extract the Firebase ID token from the approved header.
+2. Verify the token with Firebase Admin SDK.
+3. Extract the authenticated UID and approved claims.
+4. Require the canonical session header for protected routes.
+5. Load and validate the session owner, role, tenant, status, and freshness.
+6. Apply the operation-specific authorization policy.
+
+A client-supplied `garageId`, role, or delegate scope is an input to validate, not an authority to trust.
+
+### 15.2 Policy objects
+
+Authorization should be explicit:
+
+```ts
+interface AuthorizationContext {
+  uid: string;
+  role: Role;
+  sessionId: string;
+  tenantId?: string;
+  claimsVersion: number;
+}
+
+interface PolicyDecision {
+  allowed: boolean;
+  reasonCode: string;
 }
 ```
 
-Every error should include a stable machine-readable code, a safe human message, and the request ID. Do not expose Firestore paths, stack traces, tokens, or private credentials.
+Policies must be pure where possible and tested against a matrix of owner, delegate, admin, suspended, locked, expired, and missing-session cases.
 
-Generate an OpenAPI document from the contract schemas. Generate or hand-maintain a typed frontend client from that contract. The frontend should not know Firestore collection names.
+### 15.3 Session cache policy
 
-## 8. Staged implementation plan
+Caching token verification or low-risk configuration can reduce reads, but session revocation and security-sensitive changes must not be hidden by a long cache. Cache only with an explicit TTL and invalidation rule. Never cache a positive authorization decision across tenants or roles without a versioned key.
 
-### Stage 0 — Freeze, inventory, and cost baseline
+---
 
-Record the current route list, auth/session behavior, Firestore collections, indexes, security rules, listeners, scheduled work, and deployment variables. Capture representative read/write/delete counts for dashboard loads, check-in, checkout, package purchase, recharge approval, reports, and deletion. Record latency, document sizes, listener result counts, and transaction retries.
+## 16. Operational APIs and lifecycle commands
 
-**Exit criteria:** a versioned behavior catalog exists; current production remains unchanged; each high-value operation has a cost baseline and a characterization test.
+### 16.1 Vehicle operations
 
-### Stage 1 — Create the v2 workspace and strict foundations
+Check-in and checkout must use normalized plate identity, explicit garage scope, current vehicle state, and idempotency. The command must handle duplicate requests deterministically.
 
-Create `server-v2` or a separate backend package. Add strict TypeScript, typed environment parsing, structured errors, request IDs, safe logging, schema validation, test fixtures, and CI commands. Do not connect it to production traffic.
+The check-in transaction should read only the vehicle or plate reservation, relevant subscriber state, garage lock/status, and idempotency record. It should not scan the whole garage.
 
-**Exit criteria:** the new package builds with no explicit `any` in new code; an invalid environment fails at startup; unit tests cover schema errors, error mapping, money arithmetic, pagination, and idempotency fingerprints.
+### 16.2 Subscriber operations
 
-### Stage 2 — Define contracts and domain invariants
+Use normalized lookup fields, duplicate constraints, and allowlists for updates. Do not permit arbitrary client field merges. Every update command must specify mutable fields and reject unknown fields.
 
-Define schemas and types for authentication, sessions, garages, vehicles, subscribers, packages, wallet operations, recharges, commissions, reports, and deletion. Write pure domain functions for price, discount, trial, capacity, commission, refund, and business-date rules.
+### 16.3 Deletion
 
-Use property-based tests for invariants such as conservation of wallet value, idempotent replay, non-negative balance, stable pagination, and monotonic ledger sequences.
+Deletion is an operation, not a single request:
 
-**Exit criteria:** contract fixtures are shared by backend tests and the generated frontend client; the domain test suite can run without Firebase.
+```text
+requested → locked → enumerating → deleting → verifying → completed
+                                      │
+                                      └→ failed/retryable
+```
 
-### Stage 3 — Build Firebase repositories and converters
+Create an operation document with:
 
-Implement repository interfaces and Firebase Admin implementations. Each converter must validate Firestore input and produce a typed domain object. Each repository must expose bounded methods instead of arbitrary collection access.
+```text
+operationId
+garageId
+phase
+cursor
+attemptCount
+lastError
+startedAt
+updatedAt
+completedAt
+```
 
-Add query explain/cost review for high-volume queries. Use cursors, limits, selective projections where supported, and indexes that match actual query shapes. Do not use offsets or unbounded listeners.
+Mark the garage unavailable before deletion begins. Enumerate known subcollections in bounded pages. Delete batches within service limits. Retry from the cursor. Verify references before final completion. Keep an audit record and a retention policy for the operation metadata.
 
-**Exit criteria:** repository tests run against the Firebase Emulator Suite; every query has a documented result bound and authorization assumption.
+### 16.4 Outbox for external effects
 
-### Stage 4 — Build authentication, sessions, and authorization
+Notifications, emails, analytics, or other external calls must not execute inside Firestore transactions. Write an outbox event atomically with the business state, then deliver it asynchronously with idempotency and retry.
 
-Verify Firebase ID tokens in Railway. Reuse the existing canonical `X-Session-ID` behavior while replacing route-specific checks with one typed authorization policy layer. Model session ownership, expiry, role, tenant, and revocation explicitly.
+---
 
-Use a small session document and avoid reading multiple role documents on every request. Cache only safe, short-lived verification results and invalidate on revocation-sensitive operations.
+## 17. Staged build plan
 
-**Exit criteria:** emulator and integration tests prove owner isolation, role isolation, session freshness, logout, revocation, and replay resistance.
+Each stage below includes what must be built, why it exists, and the gate that permits the next stage.
 
-### Stage 5 — Build wallet, ledger, packages, and idempotency
+### Stage 0 — Freeze and inventory the current system
 
-Implement financial commands before migrating financial routes. Use integer minor units, authoritative package catalog data, transactionally updated wallet accounts, append-only ledger events, idempotency records, and reconciliation queries.
+Build a versioned inventory of:
 
-Do not migrate the frontend to the new financial endpoints until duplicate requests, conflicting idempotency keys, insufficient balances, concurrent purchases, refunds, commission events, and failure recovery are tested.
+- All frontend API calls.
+- All Railway routes and middleware.
+- Firebase collections, subcollections, indexes, and Rules.
+- Direct frontend Firestore reads and writes.
+- Realtime listeners and their result sizes.
+- Authentication and session flows.
+- Wallet, recharge, purchase, commission, refund, and reporting behavior.
+- Deletion and cleanup references.
+- Environment variables and deployment dependencies.
 
-**Exit criteria:** model-based tests prove ledger conservation and exactly-once command effects under retries; a reconciliation report matches the current system for a controlled fixture set.
+Instrument representative flows in a non-production environment. Capture document reads, writes, deletes, listener updates, transaction retries, response size, latency, and error code.
 
-### Stage 6 — Build operational commands
+**Exit criteria:** a route-to-data map exists; every high-value operation has a characterization test; no production behavior changes; cost baselines are recorded.
 
-Migrate garage profile changes, vehicle check-in/out, subscriber updates, corrections, delegates, trial decisions, lock/suspension, and deletion locks. Use short transactions for state decisions. Keep activity events separate from hot state documents.
+### Stage 1 — Create the strict v2 foundation
 
-For permanent deletion, create a resumable operation document with a phase, cursor, attempt count, and last error. Delete known subcollections in bounded batches. Mark the tenant unavailable before cleanup and make every retry idempotent.
+Build the isolated `server-v2` package, strict TypeScript configuration, typed environment parser, request context, correlation ID, structured logger, error model, and test harness.
 
-**Exit criteria:** every command has a typed request, authorization policy, idempotency policy, transaction boundary, audit event, and rollback or repair procedure.
+Add a rule that new v2 code cannot use explicit `any`. Add an ESLint configuration for the new package rather than trying to make the legacy tree green immediately.
 
-### Stage 7 — Build read models and reports
+**Exit criteria:** v2 builds with strict TypeScript; malformed environment configuration fails fast; error responses are stable; unit tests run without Firebase.
 
-Define dashboard and report read models from authoritative events and state. Use daily summaries for common date ranges and ledger/event scans only for audit or reconciliation. Use bounded pagination and server-side aggregation. Avoid loading all activity into the browser.
+### Stage 2 — Define shared contracts and domain mathematics
 
-For each report, specify whether it is strongly consistent, transactionally current, or eventually consistent. Display the as-of timestamp when a projection is eventually consistent.
+Build schemas for common envelopes, auth/session data, garages, vehicles, subscribers, packages, wallet operations, recharges, reports, and deletion commands.
 
-**Exit criteria:** representative dashboard and report workloads meet read-budget targets and reconcile against authoritative fixtures.
+Build pure functions for:
 
-### Stage 8 — Connect the existing Cloudflare frontend through an adapter
+- Money parsing and integer arithmetic.
+- Package pricing.
+- Discount ordering.
+- Trial eligibility.
+- Capacity rules.
+- Commission calculation.
+- Refund/correction effects.
+- Business date calculation.
+- Cursor encoding and decoding.
+- Idempotency fingerprinting.
 
-Add a typed API adapter that can route one feature at a time to v2. Keep the current UI and user flows initially. Remove direct business Firestore calls from migrated features. Keep the old endpoint behind a feature flag for rollback.
+Use table-driven tests and property-based tests. The domain layer must run without Express or Firebase.
 
-**Exit criteria:** the frontend can switch each migrated feature between legacy and v2 without changing user-visible contracts; Cloudflare-to-Railway CORS and session headers remain correct.
+**Exit criteria:** contracts are shared by backend tests and the frontend client generation path; invariant tests cover normal, boundary, replay, and invalid cases.
 
-### Stage 9 — Shadow, compare, and migrate data
+### Stage 3 — Build typed Firebase infrastructure
 
-Run v2 reads in shadow mode for safe read endpoints. Compare normalized responses, not raw document ordering. For writes, use a controlled dual-write only when the operation has a deterministic idempotency key and a repair plan; never create two independent financial authorities.
+Implement Admin SDK bootstrap, emulator configuration, Firestore converters, repository interfaces, repository implementations, transaction runner, batch writer, cursor utilities, and query-cost test doubles.
 
-Backfill projections from authoritative data in resumable batches. Record source version, destination version, batch cursor, checksum, and error state. Pause when read/write budget or error rate exceeds the stage threshold.
+Every converter must reject malformed documents. Every repository method must have a bounded result contract. Every query must declare its expected index and rule assumptions.
 
-**Exit criteria:** v2 and legacy results agree within documented eventual-consistency windows; all backfills are resumable and verified.
+**Exit criteria:** emulator tests prove typed reads/writes; cost tests fail on unbounded queries, offsets, and accidental N+1 repository calls; repositories do not expose arbitrary collection access.
 
-### Stage 10 — Progressive production cutover
+### Stage 4 — Build authentication and policy enforcement
 
-Route internal/admin traffic first, then a small garage cohort, then larger cohorts. Monitor request errors, authorization denials, transaction retries, read/write counts, latency, listener reconnects, projection lag, reconciliation differences, and rollback events.
+Implement Firebase token verification, canonical session validation, authorization context, owner/delegate/admin policy modules, rate limits, and safe audit context.
 
-Keep the legacy path available until the final cohort has completed a stable observation window. Do not delete legacy data or collections during the traffic migration.
+Reuse the current session behavior where it is correct, but move the policy decision into one typed layer. Test missing, expired, revoked, stale, cross-tenant, and role-mismatch cases.
 
-**Exit criteria:** all cohorts meet SLO and cost budgets; financial reconciliation is continuously green; rollback has been tested in a non-production environment and remains possible.
+**Exit criteria:** emulator and integration tests prove tenant isolation and session ownership; protected routes cannot be called with a token alone when a session is required.
 
-### Stage 11 — Retire legacy paths and enforce the new architecture
+### Stage 5 — Build the financial core
 
-Remove old frontend Firestore access, old route handlers, duplicate projection writers, and compatibility shims only after traffic is fully migrated and data retention requirements are satisfied. Update Rules, IAM, indexes, runbooks, and the project continuation documents.
+Build wallet accounts, immutable ledger events, purchase events, recharge events, commission events, idempotency records, reconciliation, and financial audit events.
 
-Enable the complete lint and type gates for new code. Keep narrow documented exceptions only where external SDK boundaries or test doubles require them.
+Use integer minor units, short Firestore transactions, request fingerprints, and bounded response storage. Build the reconciliation command before migrating financial writes.
 
-**Exit criteria:** one authoritative write path exists for each business fact; all production routes use typed contracts; the repository has no unowned compatibility layer.
+**Exit criteria:** concurrent debit tests, insufficient-balance tests, duplicate replay tests, conflict-fingerprint tests, refund tests, and reconciliation tests pass. No financial command is migrated before this stage is complete.
 
-## 9. Cost budgets and observability
+### Stage 6 — Build garage, vehicle, subscriber, and lifecycle commands
 
-Define budgets per user action before implementation. Example starting budgets should be measured and then adjusted from real data:
+Migrate low-risk state commands first, then vehicle operations, subscriber operations, delegates, lock/suspension, and deletion. Use explicit update allowlists. Keep current state separate from history.
 
-| Operation | Read budget target | Write budget target | Notes |
-|---|---:|---:|---|
-| Garage dashboard open | One garage state plus bounded summaries | Zero | Avoid loading full history or all vehicles unless requested. |
-| Vehicle check-in | Small fixed transaction set | Small fixed event/state set | Do not scan all subscribers or vehicles. |
-| Vehicle checkout | Small fixed transaction set | Small fixed event/state set | Use authoritative vehicle ID. |
-| Package purchase | Catalog read plus wallet/idempotency reads | Wallet, ledger, purchase, projection writes | Exact count must be measured. |
-| Recharge approval | Request, package, wallet/idempotency reads | Approval, ledger, audit, projection writes | Must be exactly-once under replay. |
-| Financial report | Bounded summary reads | Zero | Use ledger only for explicit reconciliation. |
-| Deletion page | Bounded page reads | Bounded batch deletes | Resumable with a cursor. |
+Build resumable deletion operations with bounded page cursors and repair handling.
 
-Instrument each request with:
+**Exit criteria:** every command has a contract, policy, idempotency decision, transaction boundary, audit behavior, emulator test, and rollback note.
+
+### Stage 7 — Build projections and reports
+
+Build dashboard summaries, daily financial summaries, pending queues, recent activity windows, and other bounded read models. Each projection stores version and `asOf` information.
+
+Build repair and rebuild commands. Make projection updates idempotent. Make report consistency visible to the caller.
+
+**Exit criteria:** dashboards and reports meet measured read budgets; projection lag and repair behavior are observable; authoritative reconciliation remains correct.
+
+### Stage 8 — Build the Cloudflare frontend adapter
+
+Generate or hand-maintain a typed client from v2 contracts. Add a feature adapter that can route a frontend feature to legacy or v2 based on a flag. Preserve the current UI while replacing direct business-data access feature by feature.
+
+Start with read-only package catalog, garage summary, and bounded lists. Do not move financial writes yet.
+
+**Exit criteria:** Cloudflare-to-Railway authentication, CORS, session headers, error mapping, and typed responses work in a deployed test environment.
+
+### Stage 9 — Shadow and compare
+
+For read endpoints, run v2 in shadow mode and compare normalized results with legacy. Ignore ordering only when the contract defines ordering as irrelevant. Record meaningful differences with request ID, tenant, endpoint, and data version.
+
+For writes, avoid independent dual authority. If dual-write is necessary for a non-financial projection, use one idempotency key and an explicit repair queue. For money, one system must be authoritative at all times.
+
+**Exit criteria:** differences are understood and within defined eventual-consistency windows; no unexplained financial or authorization mismatch remains.
+
+### Stage 10 — Progressive cutover
+
+Use feature flags and cohorts:
+
+```text
+internal test users
+→ one controlled garage cohort
+→ small percentage of garages
+→ larger cohorts
+→ all traffic
+```
+
+Monitor error rates, authorization denials, Firestore reads/writes/deletes, transaction retries, listener counts, projection lag, financial reconciliation, latency, and rollback events.
+
+**Exit criteria:** each cohort meets correctness, SLO, and cost budgets; rollback is tested and available; production support has a runbook.
+
+### Stage 11 — Retire legacy paths
+
+Remove legacy routes, direct frontend Firestore business access, duplicate writers, unused indexes, and compatibility shims only after migration completion, retention review, and rollback-window expiration.
+
+Enable strict gates for all new and migrated code. Keep only explicitly documented external-boundary exceptions.
+
+**Exit criteria:** each business fact has one authoritative write path; all production routes use typed contracts; old paths are either removed or formally retired.
+
+---
+
+## 18. Test architecture
+
+### 18.1 Unit tests
+
+Pure domain functions must cover money, pricing, trials, commissions, business dates, pagination, fingerprinting, and state transitions. These tests must be fast and independent of Firebase.
+
+### 18.2 Contract tests
+
+For every endpoint, test valid requests, invalid requests, unknown fields, missing fields, response shape, error code, pagination envelope, and version compatibility.
+
+### 18.3 Emulator tests
+
+Use Firebase Emulator Suite for repositories, transactions, converters, and Rules. Do not rely only on mocks for Firestore semantics.
+
+### 18.4 Security Rules tests
+
+Prove owner isolation, delegate scope, admin-only writes, denial of financial writes, denial of session forgery, field allowlists, invalid types, and query compatibility. Include transaction and batch rule access-call budgets.
+
+### 18.5 Property-based tests
+
+Generate values for:
+
+- Positive and negative money effects.
+- Repeated idempotency requests.
+- Equal timestamp pagination.
+- Concurrent version conflicts.
+- Trial and package boundary dates.
+- Commission and refund combinations.
+
+The key properties are:
+
+```text
+ledger conservation
+idempotent replay
+monotonic state version
+stable cursor pagination
+no unauthorized tenant access
+no duplicate projection effect
+```
+
+### 18.6 Cost tests
+
+Repositories should expose a test instrument that counts reads, writes, deletes, listener subscriptions, and transaction attempts. Tests should fail if a dashboard exceeds its budget or if a new method performs N+1 reads.
+
+### 18.7 Migration tests
+
+Test backfill restart, cursor persistence, partial batch failure, duplicate source events, projection repair, rollback flag behavior, and legacy/v2 response normalization.
+
+---
+
+## 19. Observability and operations
+
+Every request should carry:
 
 ```text
 requestId
 actorUid
 tenantId
+sessionId hash, not raw secret
 route
 operation
+resultCode
 latencyMs
 firestoreReads
 firestoreWrites
 firestoreDeletes
 transactionRetries
 projectionLagMs
-resultCode
 ```
 
-Do not log tokens, PINs, passwords, authorization headers, private credentials, or full financial payloads. Aggregate metrics by route and operation rather than logging every document.
+Never log Firebase ID tokens, PINs, passwords, authorization headers, service credentials, or unredacted financial payloads.
 
-## 10. Testing strategy
+Create dashboards for:
 
-The overhaul must use several test layers. Unit tests prove pure domain mathematics. Contract tests prove request and response schemas. Repository tests run against the Firebase Emulator Suite. Security-rule tests prove client access. Integration tests prove Railway middleware, repositories, and use cases together. Property-based tests explore money, pagination, idempotency, and concurrent retry invariants. Cost tests count repository calls and reject accidental N+1 behavior.
+- Error rate by route and code.
+- P95 and P99 latency.
+- Firestore reads, writes, deletes, and index reads.
+- Transaction retry rate.
+- Hot document contention.
+- Projection lag and repair count.
+- Idempotency conflicts.
+- Authorization denials.
+- Deletion operation failures.
+- Reconciliation discrepancies.
 
-A change is not complete when it compiles. It is complete when it has:
+Create runbooks for:
 
-1. A domain or contract test.
-2. A repository or emulator test where Firebase behavior matters.
-3. A Rules test where client access matters.
-4. A cost-bound test for high-volume queries.
-5. A migration or rollback note if data shape changes.
-6. Full TypeScript, tests, build, maintainability, diff, and safe smoke checks.
+- Credential rotation.
+- Failed deployment rollback.
+- Ledger discrepancy.
+- Projection rebuild.
+- Stuck deletion operation.
+- Excessive Firestore reads.
+- Session revocation incident.
+- Firebase Rule deployment rollback.
 
-## 11. Non-negotiable constraints
+---
 
-- Cloudflare Pages remains the frontend deployment.
-- Railway remains the backend deployment.
-- Firebase Authentication remains the identity provider unless a separate approved migration is created.
-- Firestore remains the primary database.
-- The frontend does not receive Admin SDK credentials.
-- The frontend does not write financial, session, deletion, or administrative state directly.
-- Security Rules remain deny-by-default and are tested in the Emulator Suite.
-- Railway server authorization remains necessary because Admin SDK calls bypass Firestore Rules. [4]
-- No migration may create two competing financial authorities.
-- No bulk operation may depend on one unbounded transaction or one unbounded query.
-- No production cutover may occur without a rollback path and read-only smoke verification.
+## 20. Cost budgets
 
-## 12. First implementation slice
+The following are starting budget categories, not final numeric promises. Stage 0 must measure current behavior and Stage 3 must validate the target numbers against real data.
 
-The first code slice should not be a broad rewrite. It should create the new foundation without changing production behavior:
+| Operation | Target shape | Cost rule |
+|---|---|---|
+| Dashboard open | Small fixed reads plus bounded lists | Never scan full activity or all history. |
+| Vehicle check-in | Small transaction with normalized lookup | No collection-wide plate scan. |
+| Vehicle checkout | Small transaction by authoritative vehicle/visit ID | No historical scan. |
+| Package catalog | One bounded query or cached server result | Do not fetch catalog per component render. |
+| Package purchase | Fixed decision reads and explicit financial writes | Exactly-once effect under replay. |
+| Wallet top-up | Fixed wallet/idempotency reads and ledger writes | No mutable-only balance change. |
+| Recharge approval | Fixed request/package/wallet reads and bounded writes | Fingerprinted idempotency required. |
+| Financial report | Daily summary reads for common views | Ledger scan only for reconciliation. |
+| Activity history | Cursor page with explicit limit | No offset and no unbounded listener. |
+| Garage deletion | Bounded page reads and batch deletes | Resumable, checkpointed, retryable. |
 
-1. Add `server-v2` with strict TypeScript and typed environment parsing.
-2. Add shared schemas for `Garage`, `Package`, `WalletAccount`, `FinancialEvent`, `Session`, and common API envelopes.
-3. Add pure money, discount, trial, pagination, and idempotency modules.
-4. Add Firebase Emulator Suite setup and repository interfaces.
-5. Add cost-counting test doubles that fail on unbounded reads, missing limits, offsets, or N+1 repository calls.
-6. Add a health endpoint and a typed read-only package-catalog endpoint on a non-production Railway environment.
-7. Do not migrate writes until the contract, repository, Rules, and cost tests pass.
+Each target must be refined with real document sizes, active users, listener duration, retry rate, and expected daily operation volume.
 
-This first slice creates the foundation for the overhaul while the current system remains available. It also gives future contributors a clear place to add typed code instead of extending the legacy `any` boundaries.
+---
+
+## 21. Migration and rollback mechanics
+
+### 21.1 Feature flags
+
+Flags must be server-controlled or securely delivered. A browser-only flag must not decide financial authority. A flag record must include version, owner, rollout cohort, created time, and rollback behavior.
+
+### 21.2 Read shadowing
+
+Read shadowing must not double the user-visible response latency. Use asynchronous comparison where possible. Redact sensitive values in comparison logs. Normalize timestamps, ordering, and compatibility fields before diffing.
+
+### 21.3 Write authority
+
+For every write capability, document:
+
+```text
+current authority
+new authority
+projection writer
+read source during migration
+rollback direction
+duplicate protection
+reconciliation method
+```
+
+There must never be two independent systems that both believe they own wallet balance or financial event creation.
+
+### 21.4 Backfills
+
+A backfill operation must have:
+
+```text
+operationId
+source version
+target version
+collection or tenant scope
+cursor
+batch size
+checksum
+processed count
+error count
+last error
+startedAt
+updatedAt
+completedAt
+```
+
+It must be safe to stop and resume. It must not use offsets. It must have a maximum read/write budget per batch.
+
+### 21.5 Rollback
+
+Rollback must be tested before production cutover. It should switch traffic to the previous read/write path without deleting v2 data. If v2 has become authoritative for a financial operation, rollback must use a designed reconciliation path rather than blindly replaying old commands.
+
+---
+
+## 22. Definition of done for a migrated capability
+
+A capability is migrated only when all of the following are true:
+
+1. Its request and response schemas are versioned.
+2. Its domain rules are isolated and unit-tested.
+3. Its authorization policy is explicit and tested.
+4. Its repository methods are bounded and cost-documented.
+5. Its idempotency behavior is specified.
+6. Its transaction or batch boundary is documented.
+7. Its Firestore converters validate stored data.
+8. Its Security Rules and IAM assumptions are tested.
+9. Its audit behavior is defined.
+10. Its read model, if any, is rebuildable.
+11. Its migration and rollback path are tested.
+12. Its frontend adapter uses the typed contract.
+13. Its metrics and runbook exist.
+14. Full tests, TypeScript, build, maintainability, and diff checks pass.
+
+---
+
+## 23. First implementation slice
+
+The first code change after approving this plan should create infrastructure without changing production behavior:
+
+1. Create `server-v2` with strict TypeScript.
+2. Add typed environment parsing and startup validation.
+3. Add common response/error contracts.
+4. Add schemas for `Garage`, `Package`, `WalletAccount`, `FinancialEvent`, and `Session`.
+5. Add pure money, business-date, pagination, and idempotency modules.
+6. Add Firebase Admin emulator configuration.
+7. Add repository interfaces and cost-counting test doubles.
+8. Add Emulator Suite setup for one read-only package catalog and garage summary query.
+9. Add a non-production `/v2/health` endpoint.
+10. Add a non-production read-only package catalog endpoint.
+11. Add CI gates for new v2 code.
+
+Do not migrate financial writes in the first slice. Do not change the Cloudflare production frontend in the first slice. Do not delete or rename current collections in the first slice.
+
+The first slice is successful when a future contributor can add a new typed endpoint without touching the legacy `any` boundaries, and when its expected Firestore read/write behavior can be tested before deployment.
+
+---
+
+## 24. Final expected result
+
+When the overhaul is complete, the system should have:
+
+- One clear Railway API boundary.
+- One typed contract for each endpoint.
+- One authorization decision path per operation class.
+- One authoritative source for each business fact.
+- One replay-safe command implementation for each mutation.
+- A ledger and reconciliation process for money.
+- Bounded queries and cursor pagination.
+- Small, rebuildable projections for dashboards and reports.
+- Firebase Rules that are restrictive, query-compatible, and emulator-tested.
+- Railway IAM and application policies that protect Admin SDK access.
+- Cost instrumentation that reveals read, write, delete, index, listener, and retry behavior.
+- A frontend that depends on the API contract rather than Firestore structure.
+- A migration history and rollback path that future maintainers can understand.
+- Strict typing at new boundaries instead of a growing `any` surface.
+
+The intended result is not a more complicated backend for its own sake. It is a backend in which **correctness, cost, security, and maintainability are explicit properties of the design rather than assumptions hidden inside route handlers and frontend effects**.
+
+---
 
 ## References
 
