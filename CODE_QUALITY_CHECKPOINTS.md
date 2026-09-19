@@ -153,7 +153,6 @@ For logging changes, first preserve the old message meaning in the new structure
 
 - Added `eslint.config.js` using ESLint flat config, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, and `globals`.
 - Added `npm run lint:eslint`; the existing `npm run lint` TypeScript check was preserved.
-- Archived migration scripts under `tools/archived-migrations/**` are excluded because they are not maintained application code.
 - Ran ESLint without `--fix`: **729 findings across 106 files**; the command exits non-zero by design until findings are reviewed.
 - Finding categories: **581** `@typescript-eslint/no-explicit-any`, **68** `@typescript-eslint/no-unused-vars`, **20** `react-hooks/exhaustive-deps`, **14** `preserve-caught-error`, **10** `no-empty`, **8** `react-hooks/set-state-in-effect`, **8** `@typescript-eslint/no-unused-expressions`, plus smaller rule groups.
 - No source files were auto-rewritten. The findings are now classified as a baseline for focused follow-up; no ESLint rule was disabled merely to force a green result.

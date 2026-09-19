@@ -42,9 +42,9 @@ Firestore remains authoritative. Dashboard summaries, projection buckets, cached
 
 Do not mutate or delete production Firestore records without explicit scope and confirmation. Do not commit secrets or restore retired provider-specific deployment artifacts.
 
-## Historical note
+## Architecture direction
 
-Earlier commits contain a Vercel/serverless deployment experiment and generated provider bundles. Those files were retired when Railway became the production backend. Their history is preserved for auditability in Git and summarized in [`HISTORICAL_MIGRATION_ARCHIVE.md`](./HISTORICAL_MIGRATION_ARCHIVE.md); they are not active instructions.
+The current production architecture remains Cloudflare Pages → Railway → Firebase. The planned replacement of legacy backend boundaries is documented in [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md). Its first required implementation step is Stage 0 inventory; do not change production data or traffic before that stage passes.
 
 ## Last verified local baseline
 

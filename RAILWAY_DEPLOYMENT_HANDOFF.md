@@ -29,6 +29,6 @@ curl -i https://rq-production-af02.up.railway.app/api/system-config
 
 The Railway health response must be JSON with `status: ok` and `adminSdk: true`. API endpoints must never return the Cloudflare SPA HTML. Authenticated workflow validation must use a controlled test account and must not mutate production data without explicit scope.
 
-## Historical provider material
+## Architecture direction
 
-The repository previously contained Vercel/serverless deployment artifacts. Those artifacts are retired. Their history is preserved in Git and summarized in `HISTORICAL_MIGRATION_ARCHIVE.md`; do not restore them or use old Vercel URLs as active configuration.
+The current production deployment remains Cloudflare Pages → Railway → Firebase. The planned replacement of legacy backend boundaries is documented in `BACKEND_COMPLETE_OVERHAUL_STAGES.md`; do not change production traffic or data until its staged migration gates pass.

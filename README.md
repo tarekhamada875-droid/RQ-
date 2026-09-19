@@ -110,4 +110,4 @@ railway.json            Railway build, start, and health-check configuration
 Dockerfile              Container build alternative
 ```
 
-For deployment details, use [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). Older provider-migration material is retained only in [`HISTORICAL_MIGRATION_ARCHIVE.md`](./HISTORICAL_MIGRATION_ARCHIVE.md).
+For deployment details, use [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). For the planned backend replacement, use [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md).

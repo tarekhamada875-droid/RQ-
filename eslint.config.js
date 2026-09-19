@@ -10,7 +10,6 @@ export default tseslint.config(
       'node_modules/**',
       'coverage/**',
       '.git/**',
-      'tools/archived-migrations/**',
     ],
   },
   js.configs.recommended,

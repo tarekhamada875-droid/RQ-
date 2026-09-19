@@ -14,7 +14,7 @@ Railway API: https://rq-production-af02.up.railway.app
 Firebase Authentication + Firestore
 ```
 
-The active deployment contract is in [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). Do not use the retired Vercel/serverless deployment material as instructions.
+The active deployment contract is in [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). The backend replacement plan is in [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md); start with its Stage 0 inventory before implementing the replacement.
 
 ## Before making changes
 
@@ -55,4 +55,4 @@ The Railway service uses `railway.json`, `server/cloudRun.ts`, and `server/app.t
 
 ## Completion
 
-Push the focused branch and open a pull request into `main`. Merge only after CI and review pass, then delete the branch. Update the relevant active handoff document with the validated commit and deployment evidence. Retired provider history remains available in Git and [`HISTORICAL_MIGRATION_ARCHIVE.md`](./HISTORICAL_MIGRATION_ARCHIVE.md).
+Push the focused branch and open a pull request into `main`. Merge only after CI and review pass, then delete the branch. Update the relevant active handoff document with the validated commit and deployment evidence. Keep the current production deployment contract separate from the backend replacement work until the migration stages pass.
