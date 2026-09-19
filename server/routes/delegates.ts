@@ -8,6 +8,11 @@ import { validateString, validateNewPin, validateIdempotencyKey, ValidationError
 
 const router = Router();
 
+export function getUnsettledDelegateCycleTotal(delegateData: Record<string, any>): number {
+  const total = Number(delegateData?.totalRechargedAmount || 0);
+  return Number.isFinite(total) && total > 0 ? total : 0;
+}
+
 // Secure Server API: Create Delegate (Admin Only)
 router.post('/create', requireAuth, async (req: AuthRequest, res: any) => {
   try {
@@ -178,7 +183,20 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
     const { id } = req.body || {};
     if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
-    await adminDb.collection('delegates').doc(id).delete();
+    const delegateRef = adminDb.collection('delegates').doc(id);
+    const delegateSnap = await delegateRef.get();
+    if (!delegateSnap.exists) return res.status(404).json({ success: false, error: 'DELEGATE_NOT_FOUND' });
+    const delegateData = delegateSnap.data() || {};
+    const unsettledCycleTotal = getUnsettledDelegateCycleTotal(delegateData);
+    if (unsettledCycleTotal > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'DELEGATE_HAS_UNSETTLED_COMMISSION',
+        unsettledCycleTotal
+      });
+    }
+
+    await delegateRef.delete();
     return res.json({ success: true });
   } catch (e: any) {
     console.error('[Server Delegate] Error in delete:', e);

@@ -85,7 +85,7 @@
 - [ ] 5.1 Implement permanent garage deletion across all garage subcollections, events, projections, summaries, daily data, subscribers, vehicles, and related references.
 - [ ] 5.2 Make garage deletion paginated/resumable/idempotent and safe over Firestore batch limits.
 - [ ] 5.3 Block or safely transition deletion when concurrent mutations are active.
-- [ ] 5.4 Prevent delegate deletion when unsettled commission exists.
+- [x] 5.4 Prevent delegate deletion when unsettled commission exists.
 - [ ] 5.5 Define and implement delegate-linked garage/request/session/history cleanup or deactivation policy consistent with permanent deletion.
 
 ## Phase 6 — Reports, projections, and date correctness
@@ -174,6 +174,14 @@
 - Full local production gate passed: TypeScript, full test suite, production build, maintainability checks, and diff checks.
 - The Node 20 and `ubuntu-latest` messages are GitHub runner deprecation warnings, not the failing cause.
 - Next action: push this regression fix, then continue with canonical financial events and deletion/lifecycle rules.
+
+### 2026-09-19 — Delegate deletion guard verified
+
+- Server-side delegate deletion now loads the delegate record and rejects deletion with `DELEGATE_HAS_UNSETTLED_COMMISSION` when `totalRechargedAmount` for the current unsettled cycle is positive.
+- Missing, zero, or malformed cycle totals do not block deletion.
+- Added focused regression coverage for both blocked and allowed cases.
+- Validation passed: 6 delegate/idempotency tests, TypeScript, and diff checks.
+- Next action: implement paginated, resumable garage deletion and canonical financial event coverage.
 
 ## Continuation instructions
 
