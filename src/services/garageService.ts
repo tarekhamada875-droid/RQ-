@@ -151,7 +151,7 @@ export const garageService = {
       }
 
       return mapGaragePage(await getDocs(q), pageSize);
-    } catch (error) {
+    } catch {
       try {
         let fallbackQ = query(
           collection(db, 'garages'),

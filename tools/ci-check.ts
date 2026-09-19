@@ -13,7 +13,7 @@ function runStep(name: string, command: string) {
   try {
     execSync(command, { stdio: 'inherit' });
     console.log(`[PASS] ${name} succeeded.\n`);
-  } catch (err) {
+  } catch {
     console.error(`[FAIL] ${name} failed!\n`);
     failed = true;
   }
@@ -38,7 +38,7 @@ try {
   } else {
     console.log('[PASS] No hardcoded JWT or private key detected in server/app.ts.\n');
   }
-} catch (err) {
+} catch {
   console.error('[FAIL] Could not scan server code!\n');
   failed = true;
 }

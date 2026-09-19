@@ -93,7 +93,7 @@ export const adminService = {
           body: { entityType: 'supervisors', entityId: id, newPin: data.pin }
         });
       }
-      const { pin, ...otherFields } = data;
+      const { pin: _pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
         await apiFetch('/api/supervisors/update', {
           method: 'POST',
@@ -133,7 +133,7 @@ export const adminService = {
           body: { entityType: 'staff', entityId: id, newPin: data.pin }
         });
       }
-      const { pin, ...otherFields } = data;
+      const { pin: _pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
         await apiFetch('/api/staff/update', {
           method: 'POST',
@@ -265,7 +265,7 @@ export const adminService = {
       if (snapshot.empty) {
         try {
           localStorage.setItem('app_packages_cache', JSON.stringify([]));
-        } catch (e) {}
+        } catch {}
         callback([]);
         return;
       }
@@ -284,7 +284,7 @@ export const adminService = {
       
       try {
         localStorage.setItem('app_packages_cache', JSON.stringify(activePkgs));
-      } catch (e) {}
+      } catch {}
       
       callback(activePkgs);
     }, (err) => {
@@ -298,7 +298,7 @@ export const adminService = {
             return;
           }
         }
-      } catch (cacheErr) {}
+      } catch {}
       callback([]);
     });
   },
@@ -707,7 +707,7 @@ export const adminService = {
         if (apiRes?.success && apiRes?.config) {
           return apiRes.config as SystemConfig;
         }
-      } catch (apiErr) {
+      } catch {
         // Fallback to direct Firestore getDoc
       }
 

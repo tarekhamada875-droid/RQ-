@@ -21,7 +21,7 @@ function getCairoDayStartTimestamp(date = new Date()): Date {
     const cairoDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
     const startOfDay = new Date(`${cairoDateStr}T00:00:00+02:00`);
     return isNaN(startOfDay.getTime()) ? new Date(Date.now() - 24 * 3600 * 1000) : startOfDay;
-  } catch (e) {
+  } catch {
     return new Date(Date.now() - 24 * 3600 * 1000);
   }
 }

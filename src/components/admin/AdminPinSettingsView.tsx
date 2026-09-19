@@ -47,7 +47,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       } else {
         setAdminPinError('رمز الدخول الحالي غير صحيح.');
       }
-    } catch (err) {
+    } catch {
       setAdminPinError('تعذر التحقق من رمز الدخول. تحقق من الاتصال وحاول مرة أخرى.');
     } finally {
       setIsVerifyingCurrent(false);

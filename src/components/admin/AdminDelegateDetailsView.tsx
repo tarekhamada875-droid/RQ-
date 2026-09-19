@@ -129,7 +129,7 @@ export const AdminDelegateDetailsView = memo(({
           setConfirmDialog(prev => ({ ...prev, isOpen: false }));
           setSelectedDelegate(null);
           setView('admin_dashboard');
-        } catch (err) {
+        } catch {
           setConfirmDialog({
             isOpen: true,
             title: t('خطأ'),
@@ -240,7 +240,7 @@ export const AdminDelegateDetailsView = memo(({
           await firestoreService.settleDelegateAccount(delegate.id);
           setSettledAtOverride(new Date());
           delegate.totalRechargedAmount = 0;
-        } catch (err) {
+        } catch {
           setConfirmDialog({
             isOpen: true,
             title: t('خطأ'),
@@ -406,7 +406,7 @@ export const AdminDelegateDetailsView = memo(({
                             await firestoreService.updateDelegate(delegate.id, { pin: cleanPin });
                             delegate.pin = cleanPin;
                             setIsEditingPin(false);
-                          } catch (err) {
+                          } catch {
                             alert(adminLang === 'en' ? 'Failed to update PIN' : 'فشل تحديث الرمز');
                           } finally {
                             setIsUpdatingPin(false);

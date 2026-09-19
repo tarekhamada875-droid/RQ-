@@ -246,7 +246,7 @@ export function useGarageSession({
           ) {
             return;
           }
-        } catch (e) {}
+        } catch {}
 
         if (isMounted) {
           setView('login');

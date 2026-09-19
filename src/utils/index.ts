@@ -300,7 +300,7 @@ export const getStorage = <T>(key: string, defaultValue: T): T => {
     if (typeof defaultValue === 'string') return saved as unknown as T;
     if (typeof defaultValue === 'boolean') return (saved === 'true') as unknown as T;
     return JSON.parse(saved);
-  } catch (e) {
+  } catch {
     return defaultValue;
   }
 };

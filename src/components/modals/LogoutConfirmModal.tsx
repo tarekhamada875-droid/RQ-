@@ -72,7 +72,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
           }, 1200);
         }
       }
-    } catch (err) {
+    } catch {
       setError(true);
       setIsLoggingOut(false);
     }

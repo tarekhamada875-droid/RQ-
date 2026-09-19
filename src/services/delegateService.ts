@@ -95,7 +95,7 @@ export const delegateService = {
           body: { entityType: 'delegates', entityId: id, newPin: data.pin }
         });
       }
-      const { pin, ...otherFields } = data;
+      const { pin: _pin, ...otherFields } = data;
       if (Object.keys(otherFields).length > 0) {
         await apiFetch('/api/delegates/update', {
           method: 'POST',
