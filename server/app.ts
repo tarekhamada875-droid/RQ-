@@ -201,7 +201,7 @@ export function createApp() {
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
-    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
+    const version = process.env.VERCEL_GIT_COMMIT_SHA || process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
     if (!isReady) {
       return res.status(503).json({
         status: 'error',

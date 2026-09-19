@@ -3,7 +3,7 @@
 **Status:** Authoritative migration document  
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Current branch:** `main`  
-**Current baseline commit:** `8cda064` — `Fix generated API bundle production gate`  
+**Current baseline commit:** `3e9442f` — `Document safe Railway backend migration`
 **Frontend:** React/Vite on Cloudflare Pages  
 **Current backend:** Express on Vercel  
 **Target backend:** Express service on Railway  
@@ -119,8 +119,8 @@ Recommended Railway settings:
 |---|---|
 | Source | `tarekhamada875-droid/RQ-` |
 | Branch for staging | Dedicated migration/staging branch or approved commit |
-| Build command | `npm run build:server` or `npm run build` according to the chosen artifact strategy |
-| Start command | `npm start` |
+| Build command | `npm run build:railway` (committed in `railway.json`) |
+| Start command | `node dist/cloud-run.cjs` (committed in `railway.json`) |
 | Runtime | Node.js 22 or the project’s supported Node version |
 | Port | Railway-provided `PORT`; the server must bind to `0.0.0.0` |
 | Healthcheck path | `/api/health` |
@@ -130,6 +130,8 @@ Recommended Railway settings:
 | Sleep/serverless mode | Do not enable during the first production pilot if cold-start behavior could affect operations |
 
 The existing `server.ts` already listens on `0.0.0.0` and uses `process.env.PORT`, which is compatible with Railway’s service model. Verify this in the deployed logs rather than assuming it.
+
+The repository now includes `railway.json`. It intentionally builds `server/cloudRun.ts`, which starts the API-only Express service. It does not build or serve the Cloudflare frontend from Railway. The existing `npm start` path remains available for local/full-server use; do not change the Cloudflare deployment as part of this phase.
 
 ### Phase 2 — Configure secrets safely
 
