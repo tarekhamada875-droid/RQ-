@@ -71,7 +71,7 @@
 
 ## Phase 4 — Vehicles and subscribers
 
-- [ ] 4.1 Make subscriber lookup authoritative and fail closed inside the check-in transaction.
+- [x] 4.1 Make subscriber lookup authoritative and fail closed inside the check-in transaction.
 - [x] 4.2 Make subscriber plate identity immutable in UI and API.
 - [ ] 4.3 Add server-side subscriber update allowlist and duplicate protection.
 - [ ] 4.4 Canonicalize and validate vehicle plates at the server boundary.
@@ -221,6 +221,14 @@
 - Added focused tests for valid discounts, inactive packages, invalid ranges, and unlimited capacity.
 - Validation passed: 20 package/financial tests, TypeScript, and diff checks.
 - Remaining finance work: historical reconciliation and production data backfill/reconciliation.
+
+### 2026-09-19 — Transactional subscriber authorization verified
+
+- Subscriber lookup now runs inside the vehicle check-in Firestore transaction using transaction-bound reads for both normalized and raw plate fields.
+- Lookup failures continue to fail closed with `SUBSCRIBER_LOOKUP_UNAVAILABLE`.
+- Subscriber state changes now conflict with and retry the check-in transaction instead of allowing a stale pre-transaction authorization decision.
+- Validation passed: 8 vehicle/resilience tests, TypeScript, and diff checks.
+- Remaining vehicle work: subscriber update allowlists/duplicate protection, full vehicle-operation idempotency, correction ownership alignment, and pagination/search.
 
 ## Continuation instructions
 

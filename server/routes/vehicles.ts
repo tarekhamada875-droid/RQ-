@@ -66,29 +66,8 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     const today = getCairoDateKey();
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
-    let isSubscriberAuthoritative = false;
-    let subscriberLookupFailed = false;
-    try {
-      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
-      const [subSnapRaw, subSnapPlate] = await Promise.all([
-        subscriberCollection.where('plateNumberRaw', '==', plateRaw).get(),
-        subscriberCollection.where('plateNumber', '==', plateNumber).get(),
-      ]);
-      for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
-        const subData = doc.data() || {};
-        const startDate = subData.startDate || '';
-        const endDate = subData.endDate || '';
-        if (startDate && endDate && today >= startDate && today <= endDate) {
-          isSubscriberAuthoritative = true;
-          break;
-        }
-      }
-    } catch (subErr) {
-      console.warn('[Server Check-In] Subscriber lookup warning:', subErr);
-      subscriberLookupFailed = true;
-    }
-
     let resultData: Record<string, any> = {};
+    let isSubscriberAuthoritative = false;
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', req.user?.uid);
@@ -110,7 +89,24 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garageData = garageSnap.data() || {};
 
-      if (subscriberLookupFailed) {
+      isSubscriberAuthoritative = false;
+      try {
+        const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+        const [subSnapRaw, subSnapPlate] = await Promise.all([
+          t.get(subscriberCollection.where('plateNumberRaw', '==', plateRaw)),
+          t.get(subscriberCollection.where('plateNumber', '==', plateNumber)),
+        ]);
+        for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
+          const subData = doc.data() || {};
+          const startDate = subData.startDate || '';
+          const endDate = subData.endDate || '';
+          if (startDate && endDate && today >= startDate && today <= endDate) {
+            isSubscriberAuthoritative = true;
+            break;
+          }
+        }
+      } catch (subErr) {
+        console.warn('[Server Check-In] Subscriber lookup failed inside transaction:', subErr);
         throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE');
       }
       if (isGarageDeletionActive(garageData)) {
