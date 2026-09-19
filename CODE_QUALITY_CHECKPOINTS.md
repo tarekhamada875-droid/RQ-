@@ -4,7 +4,7 @@
 
 **Repository:** `tarekhamada875-droid/RQ-`
 **Production architecture:** Cloudflare Pages frontend + Railway backend
-**Current baseline:** `19b93b9` (`Merge pull request #16 from tarekhamada875-droid/quality/remove-unused-vars`)
+**Current baseline:** `4e86fb2` (`Merge pull request #18 from tarekhamada875-droid/quality/empty-and-unused-expressions`)
 **Status:** In progress
 
 ## Important context
@@ -209,3 +209,19 @@ For logging changes, first preserve the old message meaning in the new structure
 - Updated `tools/release-smoke.ts` with bounded retry/backoff for transient deployment propagation and health-request races. It still fails when the expected version is not reached after the configured attempts.
 - Verified the live release smoke check against Railway and Cloudflare with the current commit: **passed**.
 - Verified the mismatch path with two attempts and a one-second delay: it waited, then failed with the expected version diagnostic.
+
+### 2026-09-19 — Checkpoint reconciliation after empty/expression phase
+
+- Updated the current baseline to merged `main` commit `4e86fb2`.
+- Marked the `no-empty` and `no-unused-expressions` cleanup complete: **18 findings reduced to 0**, with focused tests, full validation, and the post-merge production gate passing.
+- Phase 1.7 remains **in progress**; Phase 1.8 remains pending until the ESLint command is stable and green.
+- Next scheduled cleanup category: review the **6 `no-useless-assignment` findings**, then continue with the smaller hook diagnostics.
+
+### 2026-09-19 — no-useless-assignment cleanup
+
+- Reviewed and resolved all **6** `no-useless-assignment` findings without changing business rules, API payloads, authentication/session behavior, financial behavior, or deployment topology.
+- Replaced redundant initial assignments with type-only declarations in `src/__tests__/vehicleOperationsScopeEnforcement.test.ts`, `src/components/garage/RechargeHistoryView.tsx`, `src/components/modals/PlateLookupModal.tsx`, `src/domain/garage/subscription.ts`, and `src/hooks/useVehicleOperations.ts`; removed one dead future-start reassignment in `src/utils/index.ts`.
+- ESLint verification: **0** `no-useless-assignment` findings; **615** total findings remain, primarily the pre-existing `@typescript-eslint/no-explicit-any` (**580**) and hook diagnostics.
+- Focused validation passed: **6 test files, 73 tests** covering vehicle scope, cost utilities, operational resilience, package/subscriber flows, and garage services.
+- Full validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
+- Phase 1.7 remains **in progress**. Next scheduled category: review the smaller React Hooks diagnostics; Phase 1.8 remains pending until the complete ESLint command is stable and green.

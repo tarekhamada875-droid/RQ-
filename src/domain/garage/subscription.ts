@@ -65,7 +65,7 @@ export const getRemainingSubscriptionInfo = (garage: any, packageDurationDays = 
     return { days: 0, remainingHours: 0, remainingMs: 0, isUrgentRed: true, unit: 'days', displayCount: 0 };
   }
 
-  let expiryDate: Date | null = null;
+  let expiryDate: Date;
 
   if (garage.isTrial === true) {
     if (!garage.balanceExpiry) {

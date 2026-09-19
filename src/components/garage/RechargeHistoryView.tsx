@@ -212,7 +212,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
     const rawName = log.details?.packageName || log.plateNumber || garage.activePackageName || 'شحن باقة';
     const cleanInfo = getCleanPackageInfo({ name: rawName, id: log.packageId, durationDays: log.details?.durationDays });
 
-    let durationDays = 30;
+    let durationDays: number;
     if (typeof log.details?.durationDays === 'number' && log.details.durationDays > 0) {
       durationDays = log.details.durationDays;
     } else {

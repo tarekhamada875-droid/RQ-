@@ -321,7 +321,7 @@ export function useVehicleOperations({
         if (error?.message === 'Operation already in progress') return;
         
         console.error('CheckOut Error:', error);
-        let errMsg = 'حدث خطأ أثناء الخروج';
+        let errMsg: string;
         
         try {
           const message = error?.message || '';

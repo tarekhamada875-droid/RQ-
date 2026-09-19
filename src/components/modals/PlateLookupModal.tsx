@@ -432,7 +432,7 @@ export const PlateLookupModal: React.FC<PlateLookupModalProps> = memo(({
                           const exitTimeStr = exitDate ? exitDate.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' }) : null;
                           const exitDateStr = exitDate ? exitDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' }) : null;
 
-                          let timeSpanStr = `دخول: ${entryTimeStr}`;
+                          let timeSpanStr: string;
                           if (exitDateStr) {
                             if (entryDateStr === exitDateStr) {
                               timeSpanStr = `دخول: ${entryTimeStr} • خروج: ${exitTimeStr} (${entryDateStr})`;

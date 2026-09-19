@@ -249,3 +249,10 @@
 6. Never mark a checkpoint `[x]` without tests or direct verification.
 7. If a product decision is required, mark `[!]`, record the exact question, and continue with independent checkpoints.
 8. Do not erase this file; it is the continuation contract.
+
+### 2026-09-19 — Code-quality cleanup regression checkpoint
+
+- Completed the six-finding `no-useless-assignment` cleanup as a maintainability-only change; no business logic, financial behavior, authorization behavior, API contract, or deployment topology was changed.
+- Focused regression validation passed: **6 test files, 73 tests** covering vehicle scope, cost utilities, operational resilience, package/subscriber flows, and garage services.
+- Full validation passed: **52 test files, 287 tests**, TypeScript, production frontend/backend builds, maintainability check, and `git diff --check`.
+- Business-logic phases remain unchanged; the next code-quality action is a reviewed pass over the smaller React Hooks diagnostics.

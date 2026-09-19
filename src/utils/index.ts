@@ -236,9 +236,6 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
      if (vehicle.id && !vehicle.id.startsWith('temp_')) return garage.hourlyRate || 0;
   }
   
-  // If start is somehow still in the future or invalid, cap it at 'now'
-  if (start.getTime() > now.getTime()) start = now;
-  
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
     const overnightRate = garage.overnightRate || 0;

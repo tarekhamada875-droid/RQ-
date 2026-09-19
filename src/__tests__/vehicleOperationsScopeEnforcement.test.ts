@@ -22,7 +22,7 @@ describe('Vehicle Operations & Scope Enforcement Regression Suite', () => {
     // 2. Derive garageId & scope mismatch enforcement
     const callerRole = userSession.role;
     const bodyGarageId = body.garageId;
-    let targetGarageId = '';
+    let targetGarageId: string;
 
     if (callerRole === 'garage' || callerRole === 'staff') {
       if (!userSession.garageId) {
