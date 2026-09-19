@@ -23,6 +23,7 @@ import {
   financialRateLimiter
 } from './middleware';
 import { operationTraceMiddleware } from './operationTrace';
+import { handleOperatorMcpRequest } from './mcp/operator';
 import {
   validateId,
   validateNumber,
@@ -182,6 +183,14 @@ export function createApp() {
   app.use(correlationMiddleware);
   app.use(requestTimeoutMiddleware(15000));
   app.use(operationTraceMiddleware);
+
+  app.all('/mcp', (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'DELETE') {
+      res.status(405).json({ error: 'MCP_METHOD_NOT_ALLOWED' });
+      return;
+    }
+    handleOperatorMcpRequest(req, res).catch(next);
+  });
 
   // Mount Modular Routers
   app.use('/api/vehicles', vehiclesRouter);

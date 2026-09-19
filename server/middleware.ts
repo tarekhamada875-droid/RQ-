@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { adminAuth, adminDb } from './firebaseAdmin';
 import { validateIdempotencyKey } from './validation';
+import { isOperatorBearerToken } from './mcp/operator';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -259,6 +260,17 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
         'ADMIN_SDK_NOT_INITIALIZED',
         req.correlationId
       );
+    }
+
+    if (isOperatorBearerToken(token)) {
+      req.user = {
+        uid: 'mcp-operator',
+        role: 'admin',
+        entityId: 'mcp-operator',
+        displayName: 'MCP Operator'
+      };
+      next();
+      return;
     }
 
     const decoded = await adminAuth.verifyIdToken(token);

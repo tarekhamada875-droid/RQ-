@@ -24,6 +24,12 @@ The frontend uses React 19, TypeScript, Vite, and a PWA service worker. It is de
 
 The production communication rule is important: frontend API calls from Cloudflare must go directly to Railway. Do not introduce a proxy, change deployment topology, or silently route production API calls through another service. The CORS configuration must continue to allow the canonical session header `X-Session-ID`.
 
+## Privileged operator MCP
+
+The Railway API exposes a stateless Streamable HTTP MCP endpoint at `/mcp`. It is disabled unless `MCP_OPERATOR_TOKEN` is configured. The token is accepted only as a bearer credential and is mapped server-side to an audited `admin` operator identity; it is never sent to the browser or Cloudflare Pages. The MCP exposes `backend_request` for the existing backend routes, including operational, reporting, financial, administrative, and session-management actions. Authentication/PIN bootstrap routes are blocked from the MCP, while all other API mutations continue through the existing route validation, idempotency, authorization, and audit logic.
+
+Set `MCP_OPERATOR_TOKEN` as a long random Railway secret before connecting an MCP client. Keep `MCP_BACKEND_URL` at `http://127.0.0.1:8080` when the endpoint runs in the same Railway process.
+
 ## Current verified baseline
 
 The current `main` branch is clean and synchronized with `origin/main` at commit `1e5ebea`:
