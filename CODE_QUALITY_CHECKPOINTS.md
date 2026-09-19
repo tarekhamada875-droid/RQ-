@@ -262,3 +262,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - The effect’s two React Hooks warnings are resolved; the file’s remaining warnings concern separate countdown/trial semantics, and its existing `no-explicit-any` errors were not changed.
 - Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Current ESLint Hook findings: **22** total (`exhaustive-deps` **12**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-19 — AdminRequestsView auto-switch dependency correction
+
+- Added `requestSubTab` to the auto-switch effect dependencies in `src/components/admin/AdminRequestsView.tsx`, preserving the existing condition while ensuring the effect responds when the user changes tabs.
+- The missing `exhaustive-deps` warning is resolved. The same effect still has the pre-existing `set-state-in-effect` warning because it intentionally changes the tab state from an effect; that behavior was not refactored in this safe slice.
+- Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Current ESLint Hook findings: **21** total (`exhaustive-deps` **11**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.

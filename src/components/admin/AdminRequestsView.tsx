@@ -98,7 +98,7 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     if (requestSubTab === 'recharge' && rechargeRequests.length === 0 && pendingGarages.length > 0) {
       setRequestSubTab('creation');
     }
-  }, [rechargeRequests.length, pendingGarages.length]);
+  }, [pendingGarages.length, rechargeRequests.length, requestSubTab]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
