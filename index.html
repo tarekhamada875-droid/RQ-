@@ -36,9 +36,20 @@
 
       // Register clean service worker for PWA installability helper
       if ('serviceWorker' in navigator) {
+        var isReloadingForServiceWorker = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          if (isReloadingForServiceWorker) return;
+          isReloadingForServiceWorker = true;
+          window.location.reload();
+        });
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js').then(function(reg) {
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
             console.log('PWA ServiceWorker registered with scope:', reg.scope);
+            var updateOnForeground = function() {
+              if (document.visibilityState === 'visible') reg.update();
+            };
+            document.addEventListener('visibilitychange', updateOnForeground);
+            window.addEventListener('pageshow', updateOnForeground);
           }).catch(function(err) {
             console.warn('PWA ServiceWorker registration failed:', err);
           });
@@ -218,4 +229,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
