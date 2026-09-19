@@ -167,3 +167,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - The dominant categories remain `no-explicit-any` (**581**), `no-unused-vars` (**68**), and hook/dependency diagnostics; these need semantic review and were not mass-edited.
 - Post-cleanup validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 - Checkpoint status: **1.7 in progress**; `npm run lint:eslint` remains intentionally outside the production gate until the baseline is reduced and the remaining findings are classified or fixed.
+
+### 2026-09-19 — Release smoke deployment-race correction
+
+- The first post-merge quality-phase production gate failed only because the smoke check ran while Railway was still serving the previous commit (`bf4a8dd`) approximately 21 seconds before the new deployment (`dd618e4`) became live; all code-quality checks had already passed.
+- Updated `tools/release-smoke.ts` with bounded retry/backoff for transient deployment propagation and health-request races. It still fails when the expected version is not reached after the configured attempts.
+- Verified the live release smoke check against Railway and Cloudflare with the current commit: **passed**.
+- Verified the mismatch path with two attempts and a one-second delay: it waited, then failed with the expected version diagnostic.
