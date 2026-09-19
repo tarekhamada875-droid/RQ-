@@ -4,7 +4,7 @@
 
 **Repository:** `tarekhamada875-droid/RQ-`
 **Production architecture:** Cloudflare Pages frontend + Railway backend
-**Current baseline:** `bf4a8dd` (`Merge pull request #13 from tarekhamada875-droid/fix/skip-live-smoke-on-pr`)
+**Current baseline:** `19b93b9` (`Merge pull request #16 from tarekhamada875-droid/quality/remove-unused-vars`)
 **Status:** In progress
 
 ## Important context
@@ -177,6 +177,22 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused regression validation passed: **6 test files, 34 tests** covering the API client, authentication, session policy, and PIN flows.
 - Final full validation after restoring one legitimately used logout error binding passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 - Checkpoint status: unused-variable cleanup is complete; Phase 1.7 remains in progress for the remaining safe rule groups, and Phase 1.8 remains open.
+
+### 2026-09-19 — Checkpoint reconciliation after no-unused-vars phase
+
+- Updated the current baseline to merged `main` commit `19b93b9`.
+- Marked the `no-unused-vars` sub-phase complete: **68 initial findings reduced to 0**, with focused tests and the full production gate passing.
+- Phase 1.7 remains **in progress** because other safe ESLint categories remain; Phase 1.8 remains pending until `npm run lint:eslint` is stable and green.
+- Next scheduled cleanup category: review `preserve-caught-error` findings, then continue with other small semantic-safe rule groups.
+
+### 2026-09-19 — preserve-caught-error cleanup
+
+- Reviewed all **14** `preserve-caught-error` findings as intentional error translations or code-preserving rethrows.
+- Added `{ cause: caughtError }` to translated `Error` instances while preserving existing messages, error codes, and API behavior across vehicle routes, API client, admin/delegate services, vehicle service, and retry utilities.
+- TypeScript validation passed immediately after the edits.
+- ESLint findings reduced from **653 to 639**; `preserve-caught-error` residuals are now **0**. The full command remains outside production CI while other categories are reviewed.
+- Focused validation passed: **7 test files, 34 tests** covering API, authentication, PIN, delegate, vehicle, and session flows.
+- Full validation passed: `npm test -- --maxWorkers=1` (**52 test files, 287 tests**), `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`.
 
 ### 2026-09-19 — Release smoke deployment-race correction
 

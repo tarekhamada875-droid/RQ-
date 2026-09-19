@@ -107,7 +107,7 @@ export async function apiFetch<T = any>(
     });
   } catch (err: any) {
     console.error(`[ApiClient] Network error for ${endpoint}:`, err);
-    throw new Error('تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.');
+    throw new Error('تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.', { cause: err });
   }
 
   const serverCorrelationId = (response.headers && typeof response.headers.get === 'function' && response.headers.get('X-Correlation-ID')) || correlationId;
@@ -129,7 +129,7 @@ export async function apiFetch<T = any>(
     result = await response.json();
   } catch (parseErr) {
     console.error(`[ApiClient] JSON parse error for ${endpoint} (Correlation ID: ${serverCorrelationId}):`, parseErr);
-    throw new Error(`خطأ في معالجة استجابة الخادم (ID: ${serverCorrelationId})`);
+    throw new Error(`خطأ في معالجة استجابة الخادم (ID: ${serverCorrelationId})`, { cause: parseErr });
   }
 
   // 6. Only trigger global logout event on 401 Unauthorized or explicit session death errors

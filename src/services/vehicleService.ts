@@ -79,7 +79,7 @@ export const vehicleService = {
       return true;
     } catch (err: any) {
       if (err.message === 'reached_daily_deletion_limit') {
-        throw new Error('reached_daily_deletion_limit');
+        throw new Error('reached_daily_deletion_limit', { cause: err });
       }
       throw err;
     }

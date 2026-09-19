@@ -492,7 +492,7 @@ export const withRetry = async <T>(
     } catch (err: any) {
       lastError = err;
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new Error('انقطع الاتصال بالإنترنت أثناء تنفيذ العملية. يرجى إعادة الاتصال والمحاولة مرة أخرى.');
+        throw new Error('انقطع الاتصال بالإنترنت أثناء تنفيذ العملية. يرجى إعادة الاتصال والمحاولة مرة أخرى.', { cause: err });
       }
       if (isNonRetryable(err)) {
         throw err;
@@ -642,4 +642,3 @@ export const formatDisplayPin = (pin: string | undefined | null): string => {
   }
   return str;
 };
-
