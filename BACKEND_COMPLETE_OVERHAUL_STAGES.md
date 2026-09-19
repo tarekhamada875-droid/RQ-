@@ -1396,3 +1396,174 @@ The intended result is not a more complicated backend for its own sake. It is a 
 [2]: https://firebase.google.com/docs/firestore/pricing "Understand Cloud Firestore billing"
 [3]: https://firebase.google.com/docs/firestore/manage-data/transactions "Transactions and batched writes"
 [4]: https://firebase.google.com/docs/firestore/security/rules-conditions "Firestore Rules, server libraries, and access-call limits"
+
+
+---
+
+## 25. Expert-default decisions
+
+This section makes the technical decisions explicit so implementation does not pause for an external architecture committee. These are the recommended defaults for this repository and deployment topology. Stage 0 measures the current system to calibrate quantities, but it does not reopen the fundamental architecture unless a hard platform constraint disproves an assumption.
+
+### Decision 1 — Keep the platform boundary fixed
+
+Use Cloudflare Pages for the React frontend, Railway for the Node.js/TypeScript API and workers, Firebase Authentication for identity, and Cloud Firestore for operational persistence. Do not introduce PostgreSQL, Cloud Run, Vercel Functions, another backend host, or a second authentication provider during this overhaul.
+
+This decision minimizes migration surface, preserves the current deployment model, and avoids moving cost and operational complexity into an unrequested platform change.
+
+### Decision 2 — Make Railway the protected business-data boundary
+
+The browser may authenticate with Firebase and may retain only the narrow direct reads that are proven safe and necessary. All protected commands and all sensitive business reads should move behind Railway. The frontend must not calculate or submit authoritative prices, balances, roles, ownership decisions, commissions, or financial outcomes.
+
+Railway verifies the Firebase token, validates the session, applies the policy, validates the command, executes the domain operation, and returns a typed result.
+
+### Decision 3 — Use a modular monolith before microservices
+
+Build one well-separated Railway service with domain modules rather than multiple independently deployed services. The system is not yet at a scale where network boundaries between microservices provide more benefit than they create in deployment, tracing, consistency, and cost complexity.
+
+The modules must have strict dependency direction so they can be extracted later if measured workload justifies it. Until then, a modular monolith provides lower latency, simpler Firestore transactions, easier local testing, and one authorization boundary.
+
+### Decision 4 — Use contract-first TypeScript with runtime parsing
+
+Use Zod schemas, strict TypeScript, generated or centrally typed API clients, and Firestore converters. New code must not use explicit `any`. Unknown data must be parsed before domain code uses it.
+
+Do not use a global lint disable, mass `as` casting, or an `any` replacement with `unknown` that simply moves unchecked access to another line. The root fix is schema ownership at every external boundary.
+
+### Decision 5 — Use commands and queries, not generic CRUD
+
+Expose business operations such as `approveRecharge`, `purchasePackage`, `checkInVehicle`, and `deleteGarage`. Do not expose generic endpoints that accept arbitrary collection names, arbitrary field merges, or client-selected financial results.
+
+Queries should return purpose-built read models. Commands should enforce invariants and produce events. This makes authorization, idempotency, cost, and testing explicit.
+
+### Decision 6 — Use Firestore as an aggregate/event store with projections
+
+Firestore remains authoritative for current aggregate state and immutable business events. Read models are denormalized projections. A projection may be stale within a declared limit and may be rebuilt from authority.
+
+Do not use a relational database migration as a substitute for fixing application boundaries. Do not create a second database simply to avoid designing Firestore documents correctly.
+
+### Decision 7 — Use a materialized wallet balance plus immutable ledger
+
+The wallet account stores the current integer balance for fast authorization and display. Every movement also creates an immutable ledger event in the same transaction. The ledger is the audit and reconciliation source; the balance is the operational projection.
+
+This is the default because it gives constant-time balance checks without sacrificing historical explanation. If contention measurements later prove that one wallet document is a hotspot, introduce a controlled contention strategy only after preserving a deterministic balance authority and reconciliation process.
+
+### Decision 8 — Use integer minor units for all money
+
+The backend converts accepted decimal input into integer minor units at the boundary. All package prices, wallet amounts, discounts, commissions, refunds, and balances use integer arithmetic. Floating-point arithmetic is prohibited in financial domain code.
+
+Every financial event records the applied price, discount, rule version, actor, reference operation, and idempotency hash. Historical events are immutable.
+
+### Decision 9 — Require idempotency for every mutation
+
+All state-changing endpoints receive an idempotency key. Financial, deletion, session-claim, check-in, checkout, approval, and purchase commands reject missing keys. The server computes a canonical fingerprint and rejects reuse of a key with a different meaning.
+
+A retry returns the original bounded result. It never creates a second ledger event, second purchase, second vehicle visit, or second deletion operation.
+
+### Decision 10 — Keep transactions short and deterministic
+
+Use Firestore transactions only for read-dependent decisions. Read all decision documents first, compute the result using pure functions, and write a small bounded set. Never call external services, send notifications, mutate process state, or generate nondeterministic values inside a transaction callback.
+
+Use batched writes for independent writes. Use an outbox document for effects that must occur after commit.
+
+### Decision 11 — Prefer cursor pagination everywhere
+
+Every list uses a stable ordering tuple, a cursor, a hard page limit, and a maximum traversal budget. Offset pagination is not permitted in new code. The cursor includes all fields required to resume the exact ordering.
+
+The default page size should be conservative, such as 25 or 50 records, and may be increased only for a specific screen with measured payload and read budgets.
+
+### Decision 12 — Use bounded listeners only for high-value realtime state
+
+Use listeners for small, frequently changing state such as the current garage summary or a bounded pending queue. Use ordinary cursor queries for history and reports. Every listener has an owner, a limit, an unsubscribe path, and an estimated reconnect cost.
+
+Do not create listeners for full activity histories, unlimited vehicles, or report collections.
+
+### Decision 13 — Use bounded denormalization, not maximal normalization
+
+Duplicate small fields when the duplication removes repeated reads from a high-frequency screen. Do not duplicate large payloads or unbounded arrays. Every projection records its source, version, rebuild method, repair method, maximum size, and staleness budget.
+
+The default dashboard should read a small garage summary, a bounded current-vehicle page, a bounded recent-activity window, and explicit alert summaries. It must not reconstruct the garage from all historical documents.
+
+### Decision 14 — Use daily summaries for common reports
+
+Maintain bounded daily summaries for high-frequency operational and financial views. Use immutable ledger and event data for audit, reconciliation, corrections, and unusual date ranges.
+
+Reports must state whether their result is authoritative, transactional, projected, or reconciled. An `asOf` timestamp is required for eventually consistent projections.
+
+### Decision 15 — Use server-side authorization even when Rules exist
+
+Firestore Rules protect direct client access. Railway authorization protects Admin SDK operations because Admin SDK calls bypass Firestore Rules. Both layers are required.
+
+The preferred Rules design uses deny-by-default, tenant-scoped paths, small ownership lookups, field allowlists, and query-compatible predicates. Complex role decisions belong in Railway policy code, not in deeply nested Rule lookups.
+
+### Decision 16 — Use Firebase Emulator Suite as a required development dependency
+
+Repository, transaction, converter, and Rules tests must run against the Emulator Suite. Mocks may test application orchestration, but they are not sufficient evidence for Firestore concurrency, Rules query compatibility, or atomicity.
+
+A v2 feature is not complete without emulator coverage when it reads or writes Firebase data.
+
+### Decision 17 — Use a modular monolith with one financial authority during migration
+
+During migration, the legacy and v2 systems may coexist, but they may not independently create financial truth. For a financial capability, select one writer and make the other system read-only or adapter-based. Use reconciliation and a controlled cutover to change authority.
+
+Dual writes may be used for rebuildable non-financial projections only when they share an idempotency key and have a repair queue.
+
+### Decision 18 — Use progressive migration with rollback
+
+Build v2 beside legacy, migrate read-only capabilities first, shadow-compare responses, migrate low-risk commands, migrate financial commands last, and retire legacy paths only after the rollback window expires.
+
+Do not change production data shape, traffic authority, or Security Rules as part of the foundation slice.
+
+### Decision 19 — Measure quantities, do not ask for architectural permission
+
+Stage 0 must measure collection names, document sizes, query result sizes, reads, writes, deletes, listener updates, retries, latency, and scale assumptions. The measurements calibrate page sizes, summary frequency, retention, and shard count.
+
+The measurements do not require a new architecture approval. They are implementation inputs. The expert default remains the architecture in this document unless the measurements show a hard contradiction such as a platform limit, unacceptable contention, or an unmeetable security requirement.
+
+### Decision 20 — Optimize with a cost-and-correctness objective
+
+For each candidate design, calculate:
+
+```text
+objective = correctnessRisk + securityRisk + operationalComplexity
+          + weightedFirestoreCost
+          + latencyPenalty
+```
+
+Correctness and security are hard constraints, not variables that may be traded away for a small cost reduction. Among designs that satisfy those constraints, choose the one with the lowest measured total cost and the smallest long-term maintenance burden.
+
+The team should reject an optimization if it reduces reads by creating ambiguous authority, unrecoverable projections, excessive write amplification, or rules that cannot prove tenant isolation.
+
+---
+
+## 26. Implementation authority and decision protocol
+
+The implementation agent may proceed without asking for architecture approval when the change follows the expert defaults in Section 25 and stays within the documented migration stage.
+
+The agent must stop and report only when one of these conditions occurs:
+
+- A proposed change would delete or mutate production data.
+- A proposed change would change financial authority.
+- A required secret, credential, IAM permission, or external approval is missing.
+- A Firebase platform limit or Rules limitation contradicts the selected design.
+- A migration comparison reveals an unexplained business or financial mismatch.
+- A product decision is required, such as changing prices, retention, permissions, or visible behavior.
+
+Normal implementation choices do not require a new approval when they preserve the contracts and defaults in this document. The agent should record the choice, tests, cost estimate, and rollback note in the relevant stage log.
+
+The default implementation sequence is therefore:
+
+```text
+Stage 0 inventory
+→ Stage 1 strict foundation
+→ Stage 2 contracts and pure domain mathematics
+→ Stage 3 Firebase repositories and emulator
+→ Stage 4 auth and policy
+→ Stage 5 financial core
+→ Stage 6 operational commands
+→ Stage 7 projections and reports
+→ Stage 8 typed Cloudflare adapter
+→ Stage 9 shadow comparison
+→ Stage 10 progressive cutover
+→ Stage 11 retirement
+```
+
+No one needs to approve the existence of this architecture again. The work still requires normal code review, automated tests, deployment controls, and explicit confirmation before consequential production actions such as destructive data operations or changing financial authority.
