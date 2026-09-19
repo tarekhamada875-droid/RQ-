@@ -50,6 +50,7 @@ jobs:
         run: npm run maintainability:check
 
       - name: Live release smoke check
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SMOKE_BASE_URL: https://rq-production-af02.up.railway.app
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
