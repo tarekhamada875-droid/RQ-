@@ -44,10 +44,20 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
       return sendApiError(res, 404, 'NOT_FOUND', 'PACKAGE_NOT_FOUND', req.correlationId);
     }
     const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
+    if (packageObj.isActive === false) {
+      return sendApiError(res, 409, 'PACKAGE_INACTIVE', 'PACKAGE_INACTIVE', req.correlationId);
+    }
 
     const rawDays = Number(packageObj.durationDays || packageObj.vehiclesCount || 30);
     const durationDays = Math.max(1, Math.min(365, isNaN(rawDays) ? 30 : rawDays));
-    const price = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
+    const basePrice = Math.max(0, Number(packageObj.price || packageObj.priceAmount || 0));
+    const discountValue = Number(packageObj.discountValue || 0);
+    const discountAmount = packageObj.discountType === 'percentage'
+      ? Math.min(basePrice, Math.max(0, Math.round((basePrice * Math.min(100, discountValue)) / 100)))
+      : packageObj.discountType === 'fixed'
+        ? Math.min(basePrice, Math.max(0, discountValue))
+        : 0;
+    const price = basePrice - discountAmount;
     const packageName = String(packageObj.name || packageObj.packageName || 'باقة الاشتراك');
     const hasExplicitCapacity =
       typeof packageObj.dailyCapacity === 'number' ||
@@ -142,7 +152,7 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
           carsCount: effCapacity,
           revenueAmount: price,
           originalRevenueAmount: price,
-          discountAmount: 0,
+            discountAmount,
           rechargedBy: staffNameText
         }
       });
@@ -235,6 +245,56 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
 
       const garageData = garageSnap.data() || {};
 
+      // A balance-top-up request is a wallet credit, not a package purchase.
+      // Keep it on its own state transition so it cannot grant subscription
+      // time, package capacity, monthly statistics, or delegate commission.
+      if (requestData.requestType === 'balance_topup') {
+        const amount = validateNumber(requestData.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
+        const previousBalance = Number(garageData.balance || 0);
+        const newBalance = previousBalance + amount;
+
+        t.set(garageRef, { balance: newBalance }, { merge: true });
+        t.set(requestRef, {
+          status: 'approved',
+          amount,
+          revenueAmount: amount,
+          resolvedAt: new Date()
+        }, { merge: true });
+
+        const logRef = adminDb.collection('activity_logs').doc();
+        t.set(logRef, {
+          garageId: targetGarageId,
+          garageName: garageData.name || '',
+          staffId: callerUid || 'admin',
+          staffName: 'مدير النظام (Admin)',
+          actionType: 'balance_topup',
+          plateNumber: `اعتماد شحن رصيد (${amount} ج.م)`,
+          timestamp: new Date(),
+          amount,
+          details: {
+            action: 'approved_balance_topup',
+            requestId: reqId,
+            previousBalance,
+            newBalance
+          }
+        });
+
+        recordDomainEventInTransaction(t, adminDb, {
+          garageId: targetGarageId,
+          aggregateType: 'wallet',
+          aggregateId: reqId,
+          eventType: 'wallet_topup_approved',
+          actorUid: callerUid || 'system',
+          actorRole: 'admin',
+          idempotencyKey: idempotencyKey || undefined,
+          payload: { requestId: reqId, amount, previousBalance, newBalance }
+        });
+
+        resultData = { requestId: reqId, status: 'approved', amount, previousBalance, newBalance };
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/approve-recharge-request', callerUid);
+        return;
+      }
+
       // System config for subscriber flat fee & commissions
       const settingsSnap = await t.get(adminDb.doc('system_config/global'));
       const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
@@ -251,6 +311,7 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       let durationDays = Number(requestData.durationDays || requestData.vehiclesCount || 30);
       let basePrice = Number(requestData.revenueAmount !== undefined ? requestData.revenueAmount : (requestData.price || 0));
       let pkgName = String(requestData.packageName || '');
+      let packageDiscountAmount = 0;
 
       const requestHasExplicitCapacity =
         typeof requestData.dailyCapacity === 'number' ||
@@ -275,12 +336,22 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
           if (pData.price !== undefined) {
             basePrice = Number(pData.price);
           }
+          const discountValue = Number(pData.discountValue || 0);
+          if (pData.discountType === 'percentage' && discountValue > 0) {
+            if (discountValue > 100) throw new Error('INVALID_PACKAGE_CONFIGURATION');
+            packageDiscountAmount = Math.round((basePrice * discountValue) / 100);
+          } else if (pData.discountType === 'fixed' && discountValue > 0) {
+            packageDiscountAmount = Math.min(basePrice, discountValue);
+          }
           if (pData.durationDays !== undefined) {
             durationDays = Number(pData.durationDays);
           }
           if (pData.dailyCapacity !== undefined) {
             const packageCapacity = Number(pData.dailyCapacity);
-            effCapacity = Number.isFinite(packageCapacity) ? packageCapacity : effCapacity;
+            if (!Number.isFinite(packageCapacity) || packageCapacity < 0) {
+              throw new Error('INVALID_PACKAGE_CONFIGURATION');
+            }
+            effCapacity = packageCapacity;
           }
           if (pData.name) {
             pkgName = String(pData.name);
@@ -329,7 +400,7 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       }
 
       const effectiveOriginalRevenue = basePrice;
-      const discountAmount = Number(requestData.discountAmount || 0);
+      const discountAmount = packageDiscountAmount;
       let effectiveRevenue = Math.max(0, basePrice - discountAmount);
       if (garageData.hasMonthlySubscribers === true) {
         effectiveRevenue += subscriberFlatFee;
@@ -625,37 +696,28 @@ router.post('/garage-self-subscribe', requireAuth, financialRateLimiter(), async
         ? Math.max(0, Number(systemConfig.subscriberFlatFee))
         : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
 
-      const DEFAULT_PACKAGES_MAP: Record<string, { id: string; name: string; price: number; durationDays: number; dailyCapacity: number; isUnlimited?: boolean }> = {
-        daily_30: { id: 'daily_30', name: 'باقة 30 سيارة/يوم', price: 15, durationDays: 1, dailyCapacity: 30 },
-        daily_50: { id: 'daily_50', name: 'باقة 50 سيارة/يوم', price: 25, durationDays: 1, dailyCapacity: 50 },
-        daily_unlimited: { id: 'daily_unlimited', name: 'باقة سعة مفتوحة', price: 40, durationDays: 1, dailyCapacity: 0, isUnlimited: true },
-        biweekly_30: { id: 'biweekly_30', name: 'باقة 30 سيارة/يوم', price: 120, durationDays: 15, dailyCapacity: 30 },
-        biweekly_50: { id: 'biweekly_50', name: 'باقة 50 سيارة/يوم', price: 180, durationDays: 15, dailyCapacity: 50 },
-        biweekly_unlimited: { id: 'biweekly_unlimited', name: 'باقة سعة مفتوحة', price: 280, durationDays: 15, dailyCapacity: 0, isUnlimited: true },
-        monthly_30: { id: 'monthly_30', name: 'باقة 30 سيارة/يوم', price: 200, durationDays: 30, dailyCapacity: 30 },
-        monthly_50: { id: 'monthly_50', name: 'باقة 50 سيارة/يوم', price: 300, durationDays: 30, dailyCapacity: 50 },
-        monthly_unlimited: { id: 'monthly_unlimited', name: 'باقة سعة مفتوحة', price: 450, durationDays: 30, dailyCapacity: 0, isUnlimited: true }
-      };
-
       let pkg: any = null;
       if (packageId) {
         const pkgRef = adminDb.doc(`packages/${packageId}`);
         const pkgSnap = await t.get(pkgRef);
         if (pkgSnap.exists) {
           pkg = { id: pkgSnap.id, ...pkgSnap.data() };
-        } else if (DEFAULT_PACKAGES_MAP[packageId]) {
-          pkg = { ...DEFAULT_PACKAGES_MAP[packageId] };
-        } else if (sanitized.packageData && typeof sanitized.packageData === 'object') {
-          pkg = { id: packageId, ...sanitized.packageData };
         }
       }
 
       if (!pkg) {
         throw new Error('PACKAGE_NOT_FOUND');
       }
+      if (pkg.isActive === false) {
+        throw new Error('PACKAGE_INACTIVE');
+      }
 
       const durationDays = Number(pkg.durationDays || pkg.vehiclesCount || 30);
       let basePrice = Number(pkg.price || 0);
+
+      if (!Number.isFinite(durationDays) || durationDays < 1 || durationDays > 365 || !Number.isFinite(basePrice) || basePrice < 0) {
+        throw new Error('INVALID_PACKAGE_CONFIGURATION');
+      }
 
       let discountAmount = 0;
       if (pkg.discountType === 'percentage' && pkg.discountValue > 0) {

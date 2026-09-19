@@ -814,11 +814,14 @@ export const GarageDashboardView = memo((props: any) => {
                 const displayTodayCount = t.lastTransactionDate === todayStr ? (t.todayCount || 0) : 0;
                 const isDailyLimitReached = !isUnlimitedCapacity(t) && displayTodayCount >= getEffectiveDailyCapacity(t);
 
-                // A trial is time-based access, not wallet credit. Do not replace
-                // the check-in screen with the wallet top-up prompt while the
-                // trial expiry is still in the future.
+                // Trials and paid packages are time-based access, not wallet
+                // credit. Wallet balance is only used to buy the next package;
+                // it must not block check-in while the current entitlement is active.
                 const isActiveTrial = t.isTrial === true && !Ns;
-                const isBalanceDepleted = Number(t.balance || 0) <= 0 && !isActiveTrial;
+                const hasActivePaidPackage = !Ns && (
+                  t.billingModel === 'subscription' || Boolean(t.activePackageName || t.packageName)
+                );
+                const isBalanceDepleted = Number(t.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
                 if (isBalanceDepleted || isDailyLimitReached || Ns) {
                   return (
                     <SmartActionPrompt

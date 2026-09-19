@@ -809,6 +809,12 @@ export function createApp() {
         createdByUid: req.user?.uid || null,
         idempotencyKey
       };
+      if (callerRole === 'delegate') {
+        const delegateId = req.user?.entityId || req.user?.uid || null;
+        cleanData.delegateId = delegateId;
+        cleanData.delegateName = req.user?.displayName || null;
+        cleanData.garageName = garageData.name || null;
+      }
       if (requestType === 'balance_topup') {
         const amount = validateNumber(req.body?.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
         cleanData.amount = amount;

@@ -74,7 +74,7 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     const rawTrialDays = sanitized.trialDays !== undefined ? sanitized.trialDays : sanitized.defaultTrialDays;
     const trialDays = rawTrialDays !== undefined
       ? validateNumber(rawTrialDays, 'trialDays', { min: 1, max: 365, required: false })
-      : 15;
+      : 2;
     const now = new Date();
 
     let balanceExpiry: Date;
@@ -82,7 +82,7 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     let activePackageName: string;
 
     if (isTrial) {
-      balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 15) * 24 * 60 * 60 * 1000);
+      balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 2) * 24 * 60 * 60 * 1000);
       dailyCapacity = 100;
       activePackageName = `الباقة التجريبية (${trialDays} يوم)`;
     } else {
@@ -272,6 +272,9 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
 // Secure Server API: Update Garage Trial Decision
 router.post('/trial-decision', requireAuth, async (req: AuthRequest, res: any) => {
   try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+    }
     const { garageId, trialDecision } = req.body || {};
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
     const validatedGarageId = validateId(garageId, 'garageId', true);

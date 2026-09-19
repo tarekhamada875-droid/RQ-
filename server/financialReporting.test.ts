@@ -43,4 +43,13 @@ describe('financial reporting projections', () => {
     expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 1999 });
     expect(report.commissionTotal).toBe(100);
   });
+
+  it('supports delegate-scoped totals without leaking another delegate\'s settlements', () => {
+    const report = calculateFinancialReport(events, [
+      { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 1000 },
+      { settlementId: 'set-2', delegateId: 'del-2', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 500 }
+    ], { delegateId: 'del-1' });
+    expect(report.historicalSettledTotal).toBe(1000);
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 0 });
+  });
 });

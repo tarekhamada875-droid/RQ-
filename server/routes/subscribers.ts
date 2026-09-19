@@ -136,12 +136,20 @@ router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
       }
       const currentSnap = await t.get(subscriberRef);
       if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
-      const mergedData = { ...(currentSnap.data() || {}), ...subscriberData };
+      const currentData = currentSnap.data() || {};
+      if (subscriberData.plateNumber !== undefined || subscriberData.plateNumberRaw !== undefined) {
+        const requestedPlate = validatePlate(subscriberData.plateNumberRaw || subscriberData.plateNumber);
+        const currentPlate = validatePlate(currentData.plateNumberRaw || currentData.plateNumber);
+        if (requestedPlate.plateRaw !== currentPlate.plateRaw) {
+          throw new Error('SUBSCRIBER_PLATE_IMMUTABLE');
+        }
+      }
+      const mergedData = { ...currentData, ...subscriberData };
       const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
-      const safeUpdates = { ...subscriberData, ...dates, garageId: validatedGarageId };
-      delete (safeUpdates as any).id;
-      delete (safeUpdates as any).createdAt;
-      delete (safeUpdates as any).costUnits;
+      const safeUpdates: Record<string, any> = { ...dates };
+      for (const key of ['ownerName', 'phone', 'notes']) {
+        if (key in subscriberData) safeUpdates[key] = subscriberData[key];
+      }
       t.update(subscriberRef, safeUpdates);
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,

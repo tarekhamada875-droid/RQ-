@@ -45,7 +45,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   setPinInput,
   allGarages,
   isLoading,
-  trialDays = 15,
+  trialDays = 2,
   onSubmit,
   t,
 }) => {

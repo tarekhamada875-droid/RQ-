@@ -6,7 +6,7 @@ import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '..
 import { recordDomainEventInTransaction } from '../events';
 import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
 import { calculateVehicleCost } from '../utils';
-import { validateIdempotencyKey } from '../validation';
+import { validateIdempotencyKey, validatePlate } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from '../deltaProjection';
 
@@ -26,7 +26,10 @@ function writeProjectionBucket(transaction: any, garageId: string, dateId: strin
 router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
   const requestStartedAt = Date.now();
   try {
-    const { garageId: bodyGarageId, plateNumber, plateRaw, type } = req.body || {};
+    const { garageId: bodyGarageId, plateNumber: rawPlateNumber, plateRaw: rawPlateRaw, type } = req.body || {};
+    const normalizedPlate = validatePlate(rawPlateNumber || rawPlateRaw);
+    const plateNumber = normalizedPlate.plateNumber;
+    const plateRaw = normalizedPlate.plateRaw;
     const callerRole = req.user?.role;
     let garageId = '';
 
@@ -60,6 +63,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let isSubscriberAuthoritative = false;
+    let subscriberLookupFailed = false;
     try {
       const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
       const [subSnapRaw, subSnapPlate] = await Promise.all([
@@ -77,6 +81,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
       }
     } catch (subErr) {
       console.warn('[Server Check-In] Subscriber lookup warning:', subErr);
+      subscriberLookupFailed = true;
     }
 
     let resultData: Record<string, any> = {};
@@ -101,6 +106,12 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garageData = garageSnap.data() || {};
 
+      if (subscriberLookupFailed) {
+        throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE');
+      }
+      if (garageData.isLocked === true || garageData.isSuspended === true) {
+        throw new Error('GARAGE_CHECK_IN_LOCKED');
+      }
       if (isSubscriberAuthoritative) {
         throw new Error('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN');
       }

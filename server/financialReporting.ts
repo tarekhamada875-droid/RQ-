@@ -62,6 +62,7 @@ export function calculateFinancialReport(
   for (const settlement of settlements) {
     if (!inRange(settlement.settledAt, options)) continue;
     const delegateId = settlement.delegateId || '';
+    if (options.delegateId && delegateId !== options.delegateId) continue;
     historicalSettledTotal += Number(settlement.previousCycleTotal || 0);
     if (delegateId && currentUnsettledByDelegate[delegateId] === undefined) currentUnsettledByDelegate[delegateId] = 0;
     const settledAt = asDate(settlement.settledAt);
