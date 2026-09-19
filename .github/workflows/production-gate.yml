@@ -44,7 +44,7 @@ jobs:
         run: |
           test -f dist/index.html
           test -f dist/server.cjs
-          test -f api/index.js
+          test -f dist/cloud-run.cjs
 
       - name: Maintainability checks
         run: npm run maintainability:check

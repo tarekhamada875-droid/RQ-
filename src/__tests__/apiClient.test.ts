@@ -35,15 +35,15 @@ describe('apiClient getApiUrl resolution', () => {
     expect(getApiUrl('/api/auth/verify-pin')).toBe('/api/auth/verify-pin');
   });
 
-  it('falls back to the Vercel API when the configured base is unusable', () => {
+  it('falls back to the Railway API when the configured base is unusable', () => {
     Object.defineProperty(window, 'location', {
       value: {
-        hostname: 'parqv2.vercel.app',
+        hostname: 'rq-production-af02.up.railway.app',
       },
       writable: true,
     });
     // In the static Pages deployment, relative /api URLs are SPA fallbacks,
     // so use the known Vercel backend when no valid base URL is configured.
-    expect(getApiUrl('/api/auth/verify-pin')).toBe('https://parqv2.vercel.app/api/auth/verify-pin');
+    expect(getApiUrl('/api/auth/verify-pin')).toBe('https://rq-production-af02.up.railway.app/api/auth/verify-pin');
   });
 });

@@ -126,8 +126,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   }
 
   const exactOrigins = new Set([
-    'https://parqv2.vercel.app',
-    'https://parq1.vercel.app',
+    'https://rq-production-af02.up.railway.app',
     'https://aistudio.google.com',
     'http://localhost:3000',
     'http://localhost:5173',

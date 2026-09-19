@@ -12,29 +12,18 @@ import { validateIdempotencyKey } from '../../server/validation';
 import { idempotencyMiddleware } from '../../server/middleware';
 
 describe('Phase 1 — Foundation & Routing Test Suite', () => {
-  it('1. Verifies Vercel routing configuration in vercel.json', () => {
-    const vercelJsonPath = path.resolve(process.cwd(), 'vercel.json');
-    expect(fs.existsSync(vercelJsonPath)).toBe(true);
-
-    const content = JSON.parse(fs.readFileSync(vercelJsonPath, 'utf-8'));
-    expect(Array.isArray(content.rewrites)).toBe(true);
-
-    const apiRewrite = content.rewrites.find((r: any) => r.source === '/api/(.*)');
-    expect(apiRewrite).toBeDefined();
-    expect(apiRewrite.destination).toBe('/api/index.js');
-
-    const spaRewrite = content.rewrites.find((r: any) => r.source === '/(.*)');
-    expect(spaRewrite).toBeDefined();
-    expect(spaRewrite.destination).toBe('/index.html');
+  it('1. Verifies Railway deployment configuration', () => {
+    const railwayPath = path.resolve(process.cwd(), 'railway.json');
+    expect(fs.existsSync(railwayPath)).toBe(true);
+    const content = JSON.parse(fs.readFileSync(railwayPath, 'utf-8'));
+    expect(content.deploy.healthcheckPath).toBe('/api/health');
+    expect(content.deploy.startCommand).toBe('node dist/cloud-run.cjs');
   });
 
-  it('2. Verifies Vercel API entrypoint exists and exports express app', async () => {
-    const apiIndexPath = path.resolve(process.cwd(), 'serverless/api-entry.ts');
-    expect(fs.existsSync(apiIndexPath)).toBe(true);
-
-    const apiModule = await import('../../serverless/api-entry');
-    expect(apiModule.default).toBeDefined();
-    expect(typeof apiModule.default).toBe('function');
+  it('2. Verifies the Railway API entry source exists', () => {
+    const apiEntryPath = path.resolve(process.cwd(), 'server/cloudRun.ts');
+    expect(fs.existsSync(apiEntryPath)).toBe(true);
+    expect(fs.readFileSync(apiEntryPath, 'utf8')).toContain("from './app'");
   });
 
   it('3. Verifies shared idempotency key transport helper', () => {

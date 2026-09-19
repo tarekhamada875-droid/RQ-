@@ -21,11 +21,11 @@ describe('CORS Origin Validation', () => {
     expect(isAllowedOrigin('')).toBe(true);
   });
 
-  it('allows production Vercel frontends and rejects unlisted preview/spoofed subdomains', () => {
+  it('allows production Cloudflare frontend and rejects unlisted preview/spoofed subdomains', () => {
     // Exact production frontends
-    expect(isAllowedOrigin('https://parqv2.vercel.app')).toBe(true);
-    expect(isAllowedOrigin('https://parqv2.vercel.app/')).toBe(true);
-    expect(isAllowedOrigin('https://parq1.vercel.app')).toBe(true);
+    expect(isAllowedOrigin('https://rq-acg.pages.dev')).toBe(true);
+    expect(isAllowedOrigin('https://rq-acg.pages.dev/')).toBe(true);
+    expect(isAllowedOrigin('https://rq-production-af02.up.railway.app')).toBe(true);
 
     // Unlisted preview domains are rejected until explicitly added to ALLOWED_ORIGINS
     expect(isAllowedOrigin('https://parqv2-preview-123.vercel.app')).toBe(false);

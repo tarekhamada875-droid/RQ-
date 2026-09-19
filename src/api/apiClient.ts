@@ -6,10 +6,9 @@ export interface ApiClientOptions {
   headers?: Record<string, string>;
 }
 
-// The production API remains on Vercel while the static frontend is served by
-// Cloudflare Pages. This is a public URL, not a secret; the environment
-// variable remains the preferred override for previews or future migrations.
-export const DEFAULT_BACKEND_API_URL = 'https://parqv2.vercel.app';
+// The static frontend is served by Cloudflare Pages and the API by Railway.
+// This public URL is only a fallback; VITE_BACKEND_API_URL remains preferred.
+export const DEFAULT_BACKEND_API_URL = 'https://rq-production-af02.up.railway.app';
 
 export const getApiUrl = (endpoint: string): string => {
   if (!endpoint.startsWith('/api')) {
@@ -29,7 +28,7 @@ export const getApiUrl = (endpoint: string): string => {
   const customBaseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.trim().replace(/\/+$/, '') : '';
 
   // Guard against placeholder or bare apex domains. In a deployed static
-  // frontend, fall back to the known Vercel API instead of accidentally
+  // frontend, fall back to the known Railway API instead of accidentally
   // sending requests to Cloudflare Pages, which only serves the SPA.
   if (!customBaseUrl || customBaseUrl === 'https://run.app' || customBaseUrl === 'http://run.app') {
     return `${DEFAULT_BACKEND_API_URL}${endpoint}`;
