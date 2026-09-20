@@ -44,6 +44,7 @@ export const SessionSchema = z.object({
   uid: IdSchema,
   role: z.enum(['admin', 'supervisor', 'delegate', 'garage', 'staff']),
   garageId: IdSchema.optional(),
+  delegateGarageIds: z.array(IdSchema).max(1000).default([]),
   expiresAt: IsoDateSchema,
   lastActiveAt: IsoDateSchema,
   revoked: z.boolean()

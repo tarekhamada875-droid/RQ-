@@ -5,7 +5,7 @@ import { validateSession } from '../domain/sessionPolicy.js';
 
 const now = new Date('2026-09-20T10:00:00.000Z');
 const baseSession: Session = {
-  id: 'session-1', uid: 'uid-1', role: 'garage', garageId: 'garage-1',
+  id: 'session-1', uid: 'uid-1', role: 'garage', garageId: 'garage-1', delegateGarageIds: [],
   expiresAt: '2026-09-20T12:00:00.000Z', lastActiveAt: '2026-09-20T09:55:00.000Z', revoked: false
 };
 

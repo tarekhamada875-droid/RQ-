@@ -28,7 +28,7 @@ export function validateSession(input: Readonly<{
     sessionId: session.id,
     role: session.role,
     garageId: session.garageId,
-    delegateGarageIds: []
+    delegateGarageIds: session.delegateGarageIds
   });
   return { valid: true, reason: 'valid', context };
 }

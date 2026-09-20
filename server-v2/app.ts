@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
@@ -7,6 +7,7 @@ import { DateKeySchema } from './contracts/summary.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
+import { requireV2Authorization } from './http/auth.js';
 
 const LimitSchema = z.coerce.number().int().min(1).max(100).default(25);
 
@@ -16,6 +17,8 @@ type V2AppOptions = Readonly<{
   garageSummary?: GarageSummaryRepository;
   pendingQueue?: PendingQueueRepository;
   activity?: ActivityRepository;
+  corsMiddleware?: RequestHandler;
+  authMiddleware?: RequestHandler;
 }>;
 
 function requestId(request: Request): string {
@@ -31,6 +34,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
   const activity = options.activity ?? new InMemoryActivityRepository([]);
   const app = express();
 
+  if (options.corsMiddleware) app.use(options.corsMiddleware);
   app.use(express.json({ limit: '64kb' }));
 
   app.get('/v2/health', (request, response) => {
@@ -40,6 +44,16 @@ export function createV2App(options: V2AppOptions = {}): Express {
       firebaseEmulator: environment.NODE_ENV !== 'production'
     }));
   });
+
+  if (options.authMiddleware) {
+    app.use('/v2/packages', options.authMiddleware);
+    app.use('/v2/garages/:garageId/summary', options.authMiddleware, requireV2Authorization('garage_read', (request) => {
+      const garageId = request.params.garageId;
+      return typeof garageId === 'string' ? garageId : undefined;
+    }));
+    app.use('/v2/pending', options.authMiddleware, requireV2Authorization('admin_only'));
+    app.use('/v2/activity', options.authMiddleware, requireV2Authorization('admin_only'));
+  }
 
   app.get('/v2/packages', async (request, response) => {
     const id = requestId(request);
