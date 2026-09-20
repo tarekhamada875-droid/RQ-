@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createReadFeatureAdapter, createV2ReadClient, V2ReadAdapterError, type ReadPage } from '../api/v2ReadAdapter';
+import { createReadFeatureAdapter, createV2ReadClient, parseV2ReadFlags, V2ReadAdapterError, type ReadPage } from '../api/v2ReadAdapter';
 import type { ActivityRecord, PendingQueueItem } from '../../server-v2/contracts/readModels';
 import type { GarageSummary } from '../../server-v2/contracts/summary';
 import type { Package } from '../../server-v2/contracts/entities';
@@ -11,6 +11,11 @@ const pending: PendingQueueItem = { id: 'pending-1', garageId: 'garage-1', kind:
 const activity: ActivityRecord = { id: 'activity-1', garageId: 'garage-1', type: 'entry', occurredAt: '2026-09-20T10:00:00.000Z', resultCode: 'OK', projectionVersion: 1 };
 
 describe('Cloudflare v2 read adapter', () => {
+  it('keeps all v2 flags disabled unless explicitly set to true', () => {
+    expect(parseV2ReadFlags({})).toEqual({ packageCatalog: false, garageSummary: false, pendingQueue: false, recentActivity: false });
+    expect(parseV2ReadFlags({ VITE_V2_READ_PACKAGE_CATALOG: 'TRUE', VITE_V2_READ_GARAGE_SUMMARY: 'false' })).toMatchObject({ packageCatalog: true, garageSummary: false });
+  });
+
   it('validates typed package, summary, and bounded-page responses', async () => {
     const transport = vi.fn(async (endpoint: string): Promise<unknown> => endpoint.includes('/packages') ? { data: [pkg] } : endpoint.includes('/summary') ? { data: summary } : endpoint.includes('/pending') ? { data: { items: [pending], projectionVersion: 1 } } : { data: { items: [activity], projectionVersion: 1 } });
     const client = createV2ReadClient(transport);

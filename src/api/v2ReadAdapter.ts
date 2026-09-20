@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 import { ActivityRecordSchema, type ActivityRecord } from '../../server-v2/contracts/readModels';
 import { GarageSummarySchema, type GarageSummary } from '../../server-v2/contracts/summary';
 import { PackageSchema, type Package } from '../../server-v2/contracts/entities';
@@ -60,6 +61,19 @@ export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClien
       return parse(endpoint, await transport(endpoint), (value) => { const data = pageData(value); return { items: data.items.map((item) => ActivityRecordSchema.parse(item)), ...(typeof data.nextCursor === 'string' ? { nextCursor: data.nextCursor } : {}), projectionVersion: data.projectionVersion as number }; });
     }
   };
+}
+
+export function createAuthenticatedV2ReadClient(): ReadFeatureClient {
+  return createV2ReadClient((endpoint) => apiFetch<unknown>(endpoint));
+}
+
+export function parseV2ReadFlags(env: Readonly<Record<string, string | undefined>>): V2ReadFlags {
+  const enabled = (key: string): boolean => env[key]?.trim().toLowerCase() === 'true';
+  return { packageCatalog: enabled('VITE_V2_READ_PACKAGE_CATALOG'), garageSummary: enabled('VITE_V2_READ_GARAGE_SUMMARY'), pendingQueue: enabled('VITE_V2_READ_PENDING_QUEUE'), recentActivity: enabled('VITE_V2_READ_RECENT_ACTIVITY') };
+}
+
+export function getV2ReadFlags(): V2ReadFlags {
+  return parseV2ReadFlags(import.meta.env);
 }
 
 export function createReadFeatureAdapter(flags: V2ReadFlags, v2: ReadFeatureClient, legacy: ReadFeatureClient): ReadFeatureClient {
