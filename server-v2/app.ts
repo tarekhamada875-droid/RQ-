@@ -21,6 +21,12 @@ type V2AppOptions = Readonly<{
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
   rateLimitMiddleware?: RequestHandler;
+  routeRateLimitMiddleware?: Readonly<{
+    packageCatalog?: RequestHandler;
+    garageSummary?: RequestHandler;
+    pending?: RequestHandler;
+    activity?: RequestHandler;
+  }>;
 }>;
 
 export function createV2App(options: V2AppOptions = {}): Express {
@@ -45,13 +51,17 @@ export function createV2App(options: V2AppOptions = {}): Express {
   });
 
   if (options.authMiddleware) {
-    app.use('/v2/packages', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []));
-    app.use('/v2/garages/:garageId/summary', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('garage_read', (request) => {
+    const packageRateLimit = options.routeRateLimitMiddleware?.packageCatalog ?? options.rateLimitMiddleware;
+    const garageRateLimit = options.routeRateLimitMiddleware?.garageSummary ?? options.rateLimitMiddleware;
+    const pendingRateLimit = options.routeRateLimitMiddleware?.pending ?? options.rateLimitMiddleware;
+    const activityRateLimit = options.routeRateLimitMiddleware?.activity ?? options.rateLimitMiddleware;
+    app.use('/v2/packages', options.authMiddleware, ...(packageRateLimit ? [packageRateLimit] : []));
+    app.use('/v2/garages/:garageId/summary', options.authMiddleware, ...(garageRateLimit ? [garageRateLimit] : []), requireV2Authorization('garage_read', (request) => {
       const garageId = request.params.garageId;
       return typeof garageId === 'string' ? garageId : undefined;
     }));
-    app.use('/v2/pending', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('admin_only'));
-    app.use('/v2/activity', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('admin_only'));
+    app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
+    app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
   } else if (options.rateLimitMiddleware) {
     app.use('/v2/packages', options.rateLimitMiddleware);
     app.use('/v2/garages/:garageId/summary', options.rateLimitMiddleware);

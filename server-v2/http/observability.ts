@@ -7,9 +7,11 @@ import { getV2RequestId } from './requestId.js';
 export type RequestContextSink = (context: RequestContext) => void;
 export type RateLimitKey = (request: Request) => string;
 
-export function createV2RequestContextMiddleware(sink: RequestContextSink = (context) => {
-  console.info(JSON.stringify(context));
-}): RequestHandler {
+export function createConsoleRequestContextSink(component = 'rq-v2'): RequestContextSink {
+  return (context) => console.info(JSON.stringify({ component, ...context }));
+}
+
+export function createV2RequestContextMiddleware(sink: RequestContextSink = createConsoleRequestContextSink()): RequestHandler {
   return (request: Request, response: Response, next: NextFunction) => {
     const startedAt = Date.now();
     const id = getV2RequestId(request);

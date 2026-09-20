@@ -37,6 +37,7 @@ The following isolated v2 foundations are present and tested:
 - Injectable v2 HTTP authentication, canonical-session lookup, role/garage authorization, CORS allowlisting, and Firebase Admin token/session adapters, all disabled unless explicitly supplied to the isolated app.
 - Injectable v2 request-ID propagation, audit-safe request-context capture, authenticated-UID rate limiting, rate-limit response headers, and HTTP lifecycle tests.
 - Fail-closed Railway preview bootstrap: `/api/v2` is mounted only when both `V2_PREVIEW_ENABLED` and `V2_PREVIEW_AUTH_ENABLED` are explicitly true; otherwise the legacy entrypoint is unchanged.
+- Structured Railway console telemetry sink and explicit package, garage-summary, pending, and activity read rate budgets are configured through typed environment settings.
 - Cloudflare frontend typed read adapter in `src/api/v2ReadAdapter.ts`, authenticated through the existing `apiFetch` path.
 - Environment flags documented in `.env.example`; all `VITE_V2_READ_*` flags default to false.
 - Preview-only smoke harness in `src/api/v2ReadSmoke.ts` and tests.
@@ -61,7 +62,7 @@ Do not claim Cloudflare-to-Railway end-to-end success until this is tested from 
 
 ### Production authentication wiring is not enabled
 
-The isolated v2 app now has injectable Firebase ID-token verification, canonical session lookup, revocation/expiry enforcement, role and garage authorization, CORS, request-context capture, authenticated-UID rate limiting, and consistent error mapping with emulator/HTTP tests. The Railway entrypoint has a fail-closed preview bootstrap, but no preview deployment has been activated.
+The isolated v2 app now has injectable Firebase ID-token verification, canonical session lookup, revocation/expiry enforcement, role and garage authorization, CORS, request-context capture, authenticated-UID rate limiting, structured console telemetry, explicit route budgets, and consistent error mapping with emulator/HTTP tests. The Railway entrypoint has a fail-closed preview bootstrap, but no preview deployment has been activated.
 
 ### Financial authority is not migrated
 
@@ -70,8 +71,8 @@ The existing backend remains the only production financial authority. Do not dua
 ## Recommended next implementation order
 
 1. Implement production Firestore repositories and converters, starting with package catalog, garage summaries, pending/activity models, and cost instrumentation.
-2. Add a production telemetry sink and explicit per-route rate budgets before preview activation.
-3. Deploy the guarded Railway preview with controlled environment flags and verify authenticated Cloudflare-to-Railway reads.
+2. Deploy the guarded Railway preview with controlled environment flags and verify authenticated Cloudflare-to-Railway reads.
+3. Connect one read-only frontend feature in a Cloudflare preview and compare normalized legacy/v2 results.
 4. Add Firebase emulator tests for converters, security boundaries, transactions, idempotency persistence, concurrent operations, and bounded queries.
 5. Connect one read-only frontend feature in a Cloudflare preview, preferably package catalog or garage summary, with a legacy provider and v2 flag disabled by default.
 6. Run real authenticated Cloudflare-to-Railway smoke tests and compare normalized v2/legacy results.

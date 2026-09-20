@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import { createV2AuthMiddleware, createV2CorsMiddleware } from './http/auth.js';
-import { createV2RequestContextMiddleware, createV2RateLimitMiddleware } from './http/observability.js';
+import { createConsoleRequestContextSink, createV2RequestContextMiddleware, createV2RateLimitMiddleware } from './http/observability.js';
 import { createV2FirebaseAuth } from './infrastructure/firebaseAuth.js';
 import { createV2Firebase } from './infrastructure/firebaseAdmin.js';
 import { FirestoreSessionRepository } from './infrastructure/firestoreSession.js';
@@ -32,7 +32,12 @@ export function createV2PreviewApp(environment: V2Environment): Express {
       getSession: (uid, sessionId) => sessions.getSession(uid, sessionId)
     }),
     corsMiddleware: createV2CorsMiddleware({ allowedOrigins: previewOrigins(environment.V2_CORS_ALLOWED_ORIGINS) }),
-    requestContextMiddleware: createV2RequestContextMiddleware(),
-    rateLimitMiddleware: createV2RateLimitMiddleware(new InMemoryRateLimiter(environment.V2_RATE_LIMIT_MAX_REQUESTS, environment.V2_RATE_LIMIT_WINDOW_MS))
+    requestContextMiddleware: createV2RequestContextMiddleware(createConsoleRequestContextSink('rq-v2-preview')),
+    routeRateLimitMiddleware: {
+      packageCatalog: createV2RateLimitMiddleware(new InMemoryRateLimiter(environment.V2_RATE_LIMIT_PACKAGE_READ_MAX_REQUESTS, environment.V2_RATE_LIMIT_WINDOW_MS)),
+      garageSummary: createV2RateLimitMiddleware(new InMemoryRateLimiter(environment.V2_RATE_LIMIT_GARAGE_SUMMARY_MAX_REQUESTS, environment.V2_RATE_LIMIT_WINDOW_MS)),
+      pending: createV2RateLimitMiddleware(new InMemoryRateLimiter(environment.V2_RATE_LIMIT_PENDING_READ_MAX_REQUESTS, environment.V2_RATE_LIMIT_WINDOW_MS)),
+      activity: createV2RateLimitMiddleware(new InMemoryRateLimiter(environment.V2_RATE_LIMIT_ACTIVITY_READ_MAX_REQUESTS, environment.V2_RATE_LIMIT_WINDOW_MS))
+    }
   });
 }
