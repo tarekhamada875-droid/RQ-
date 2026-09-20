@@ -4,7 +4,7 @@ import { parseEnvironment } from '../config/environment.js';
 import { createV2Firebase } from '../infrastructure/firebaseAdmin.js';
 import { FirestoreActivityRepository, FirestorePendingQueueRepository } from '../repositories/readModels.js';
 
-const projectId = 'rq-v2-emulator';
+const projectId = 'rq-v2-read-models-emulator';
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080';
 let firestore: Firestore;
 
