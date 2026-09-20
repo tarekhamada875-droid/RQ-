@@ -23,6 +23,12 @@ describe('Cloudflare v2 read adapter', () => {
     expect(await client.garageSummary('garage-1', '2026-09-20')).toEqual(summary);
     expect((await client.pendingQueue(10)).items).toEqual([pending]);
     expect((await client.recentActivity(10)).items).toEqual([activity]);
+    expect(transport.mock.calls.map(([endpoint]) => endpoint)).toEqual([
+      '/v2/packages',
+      '/v2/garages/garage-1/summary?date=2026-09-20',
+      '/v2/pending?limit=10',
+      '/v2/activity?limit=10'
+    ]);
   });
 
   it('maps invalid v2 responses to a typed adapter error', async () => {

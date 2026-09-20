@@ -37,7 +37,7 @@ function pageData(value: unknown): { items: ReadonlyArray<unknown>; nextCursor?:
 export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClient {
   return {
     async packageCatalog(): Promise<ReadonlyArray<Package>> {
-      const endpoint = '/api/v2/packages';
+      const endpoint = '/v2/packages';
       return parse(endpoint, await transport(endpoint), (value) => {
         const envelope = value !== null && typeof value === 'object' ? value as { data?: unknown } : {};
         const data = envelope.data ?? value;
@@ -46,18 +46,18 @@ export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClien
       });
     },
     async garageSummary(garageId: string, dateKey: string): Promise<GarageSummary> {
-      const endpoint = `/api/v2/garages/${encodeURIComponent(garageId)}/summary?date=${encodeURIComponent(dateKey)}`;
+      const endpoint = `/v2/garages/${encodeURIComponent(garageId)}/summary?date=${encodeURIComponent(dateKey)}`;
       return parse(endpoint, await transport(endpoint), (value) => {
         const envelope = value !== null && typeof value === 'object' ? value as { data?: unknown } : {};
         return GarageSummarySchema.parse(envelope.data ?? value);
       });
     },
     async pendingQueue(limit: number, cursor?: string): Promise<ReadPage<PendingQueueItem>> {
-      const endpoint = `/api/v2/pending?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const endpoint = `/v2/pending?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
       return parse(endpoint, await transport(endpoint), (value) => { const data = pageData(value); return { items: data.items.map((item) => PendingQueueItemSchema.parse(item)), ...(typeof data.nextCursor === 'string' ? { nextCursor: data.nextCursor } : {}), projectionVersion: data.projectionVersion as number }; });
     },
     async recentActivity(limit: number, cursor?: string): Promise<ReadPage<ActivityRecord>> {
-      const endpoint = `/api/v2/activity?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const endpoint = `/v2/activity?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
       return parse(endpoint, await transport(endpoint), (value) => { const data = pageData(value); return { items: data.items.map((item) => ActivityRecordSchema.parse(item)), ...(typeof data.nextCursor === 'string' ? { nextCursor: data.nextCursor } : {}), projectionVersion: data.projectionVersion as number }; });
     }
   };
