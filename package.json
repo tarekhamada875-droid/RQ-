@@ -14,7 +14,10 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist build",
     "test": "vitest run",
+    "test:v2": "vitest run --config server-v2/vitest.config.ts",
     "lint": "tsc --noEmit",
+    "lint:v2": "tsc -p server-v2/tsconfig.json",
+    "check:v2": "npm run lint:v2 && npm run test:v2 && ! grep -R -n -E '\\bany\\b' server-v2 --include='*.ts'",
     "lint:eslint": "eslint .",
     "ci:check": "tsx tools/ci-check.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
@@ -44,6 +47,7 @@
     "tsx": "^4.23.13",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
+    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
