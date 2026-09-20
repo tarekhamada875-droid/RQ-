@@ -3,6 +3,7 @@ import { ActivityRecordSchema, type ActivityRecord } from '../../server-v2/contr
 import { GarageSummarySchema, type GarageSummary } from '../../server-v2/contracts/summary';
 import { PackageSchema, type Package } from '../../server-v2/contracts/entities';
 import { PendingQueueItemSchema, type PendingQueueItem } from '../../server-v2/contracts/readModels';
+import { V2_EXTERNAL_PREFIX } from '../../server-v2/http/prefix';
 
 export type V2ReadFeature = 'packageCatalog' | 'garageSummary' | 'pendingQueue' | 'recentActivity';
 export type V2ReadFlags = Readonly<Record<V2ReadFeature, boolean>>;
@@ -37,7 +38,7 @@ function pageData(value: unknown): { items: ReadonlyArray<unknown>; nextCursor?:
 export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClient {
   return {
     async packageCatalog(): Promise<ReadonlyArray<Package>> {
-      const endpoint = '/v2/packages';
+      const endpoint = `${V2_EXTERNAL_PREFIX}/packages`;
       return parse(endpoint, await transport(endpoint), (value) => {
         const envelope = value !== null && typeof value === 'object' ? value as { data?: unknown } : {};
         const data = envelope.data ?? value;
@@ -46,18 +47,18 @@ export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClien
       });
     },
     async garageSummary(garageId: string, dateKey: string): Promise<GarageSummary> {
-      const endpoint = `/v2/garages/${encodeURIComponent(garageId)}/summary?date=${encodeURIComponent(dateKey)}`;
+      const endpoint = `${V2_EXTERNAL_PREFIX}/garages/${encodeURIComponent(garageId)}/summary?date=${encodeURIComponent(dateKey)}`;
       return parse(endpoint, await transport(endpoint), (value) => {
         const envelope = value !== null && typeof value === 'object' ? value as { data?: unknown } : {};
         return GarageSummarySchema.parse(envelope.data ?? value);
       });
     },
     async pendingQueue(limit: number, cursor?: string): Promise<ReadPage<PendingQueueItem>> {
-      const endpoint = `/v2/pending?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const endpoint = `${V2_EXTERNAL_PREFIX}/pending?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
       return parse(endpoint, await transport(endpoint), (value) => { const data = pageData(value); return { items: data.items.map((item) => PendingQueueItemSchema.parse(item)), ...(typeof data.nextCursor === 'string' ? { nextCursor: data.nextCursor } : {}), projectionVersion: data.projectionVersion as number }; });
     },
     async recentActivity(limit: number, cursor?: string): Promise<ReadPage<ActivityRecord>> {
-      const endpoint = `/v2/activity?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+      const endpoint = `${V2_EXTERNAL_PREFIX}/activity?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
       return parse(endpoint, await transport(endpoint), (value) => { const data = pageData(value); return { items: data.items.map((item) => ActivityRecordSchema.parse(item)), ...(typeof data.nextCursor === 'string' ? { nextCursor: data.nextCursor } : {}), projectionVersion: data.projectionVersion as number }; });
     }
   };

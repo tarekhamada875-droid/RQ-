@@ -71,7 +71,7 @@ describe('Firestore read-model repositories', () => {
     await expect(activity.listRecent(1)).rejects.toThrow('READ_MODEL_TIMESTAMP_INVALID');
   });
 
-  it('rejects invalid limits before any Firestore read', async () => {
+  it('rejects invalid limits before issuing a Firestore read', async () => {
     const pending = new FirestorePendingQueueRepository(firestore);
     const activity = new FirestoreActivityRepository(firestore);
     await expect(pending.listPending(0)).rejects.toThrow('PAGE_SIZE_OUT_OF_RANGE');

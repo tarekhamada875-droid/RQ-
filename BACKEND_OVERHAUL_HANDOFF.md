@@ -44,16 +44,15 @@ The following isolated v2 foundations are present and tested:
 
 Most v2 repositories are abstractions or in-memory implementations. There are no production Firestore repositories for all entities, no complete v2 HTTP command routes, and no production v2 bootstrap mounted into Railway.
 
-### Two read routes are missing
+### Read-model routes and external prefix
 
-The frontend adapter has methods for `/v2/pending` and `/v2/activity`, but `server-v2/app.ts` does not expose those routes yet. Implement them using the bounded read-model contracts and stable cursor envelopes.
+The isolated v2 app now exposes `/v2/pending` and `/v2/activity` with bounded cursor contracts, Firestore repositories, emulator tests, and stable envelopes. These internal routes are externally mounted under `/api/v2/...` by the guarded preview mount helper.
 
 ### Route prefix must be resolved before preview activation
 
-The isolated v2 app currently defines `/v2/...` routes. The frontend adapter also currently requests `/v2/...`. However, `src/api/apiClient.ts` only prefixes endpoints beginning with `/api` with the Railway URL; a `/v2/...` request from Cloudflare Pages would otherwise remain relative to the Cloudflare origin. Before enabling any flag, choose and implement one consistent boundary:
+The selected external boundary is `/api/v2/...`. The isolated v2 app keeps its internal `/v2/...` route definitions, while the frontend adapter requests `/api/v2/...` so the existing `src/api/apiClient.ts` reliably sends requests to Railway instead of leaving them relative to the Cloudflare origin.
 
-- Mount v2 under `/api/v2/...` in the Railway production/preview server and change the adapter to `/api/v2/...`; or
-- Extend the frontend URL resolver and CORS/deployment contract to route `/v2/...` to Railway.
+The mount helper is guarded and is not called by the legacy Railway entrypoint yet. The v2 flags remain disabled until authentication, CORS, preview deployment, and real Cloudflare-to-Railway testing are complete.
 
 Do not claim Cloudflare-to-Railway end-to-end success until this is tested from a real Cloudflare preview against a deployed Railway preview service.
 
@@ -68,16 +67,14 @@ The existing backend remains the only production financial authority. Do not dua
 ## Recommended next implementation order
 
 1. Implement production Firestore repositories and converters, starting with package catalog, garage summaries, pending/activity models, and cost instrumentation.
-2. Add `/v2/pending` and `/v2/activity` to the isolated app with contract tests for limits, cursors, ordering, and projection versions.
-3. Decide and fix the `/v2` versus `/api/v2` deployment prefix before any flag activation.
-4. Add v2 HTTP authentication middleware and CORS. Reuse existing Firebase verification/session rules only through typed adapters; do not trust body identity fields.
-5. Add a Railway preview bootstrap/service that can run v2 beside the legacy app without changing production authority.
-6. Add Firebase emulator tests for converters, security boundaries, transactions, idempotency persistence, concurrent operations, and bounded queries.
-7. Connect one read-only frontend feature in a Cloudflare preview, preferably package catalog or garage summary, with a legacy provider and v2 flag disabled by default.
-8. Run real authenticated Cloudflare-to-Railway smoke tests and compare normalized v2/legacy results.
-9. Implement lifecycle HTTP commands and transactional repositories.
-10. Implement the financial write path last, with one authority, reconciliation, repair queue, rollback, and explicit approval.
-11. Start Stage 9 shadow comparison, then Stage 10 cohort cutover, then Stage 11 legacy retirement.
+2. Add v2 HTTP authentication middleware and CORS. Reuse existing Firebase verification/session rules only through typed adapters; do not trust body identity fields.
+3. Add a Railway preview bootstrap/service that can run the guarded `/api/v2` mount beside the legacy app without changing production authority.
+4. Add Firebase emulator tests for converters, security boundaries, transactions, idempotency persistence, concurrent operations, and bounded queries.
+5. Connect one read-only frontend feature in a Cloudflare preview, preferably package catalog or garage summary, with a legacy provider and v2 flag disabled by default.
+6. Run real authenticated Cloudflare-to-Railway smoke tests and compare normalized v2/legacy results.
+7. Implement lifecycle HTTP commands and transactional repositories.
+8. Implement the financial write path last, with one authority, reconciliation, repair queue, rollback, and explicit approval.
+9. Start Stage 9 shadow comparison, then Stage 10 cohort cutover, then Stage 11 legacy retirement.
 
 ## Validation gates
 
