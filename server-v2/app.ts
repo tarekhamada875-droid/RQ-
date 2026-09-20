@@ -1,4 +1,4 @@
-import express, { type Express, type Request } from 'express';
+import express, { type Express, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
@@ -6,6 +6,7 @@ import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
+import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
 
 const LimitSchema = z.coerce.number().int().min(1).max(100).default(25);
 
@@ -13,6 +14,8 @@ type V2AppOptions = Readonly<{
   environment?: V2Environment;
   packageCatalog?: PackageCatalogRepository;
   garageSummary?: GarageSummaryRepository;
+  pendingQueue?: PendingQueueRepository;
+  activity?: ActivityRepository;
 }>;
 
 function requestId(request: Request): string {
@@ -24,6 +27,8 @@ export function createV2App(options: V2AppOptions = {}): Express {
   const environment = options.environment ?? parseEnvironment(process.env);
   const packageCatalog = options.packageCatalog ?? new InMemoryPackageCatalogRepository([]);
   const garageSummary = options.garageSummary ?? new InMemoryGarageSummaryRepository([]);
+  const pendingQueue = options.pendingQueue ?? new InMemoryPendingQueueRepository([]);
+  const activity = options.activity ?? new InMemoryActivityRepository([]);
   const app = express();
 
   app.use(express.json({ limit: '64kb' }));
@@ -81,6 +86,42 @@ export function createV2App(options: V2AppOptions = {}): Express {
     } catch {
       response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to read garage summary'));
     }
+  });
+
+  const readPage = async (
+    request: Request,
+    response: Response,
+    reader: (limit: number, cursor?: string) => Promise<unknown>,
+    errorMessage: string
+  ): Promise<void> => {
+    const id = requestId(request);
+    if (environment.NODE_ENV === 'production') {
+      response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 read models are not enabled in production'));
+      return;
+    }
+    const parsedLimit = LimitSchema.safeParse(request.query.limit ?? 25);
+    const parsedCursor = request.query.cursor === undefined ? { success: true as const, data: undefined } : z.string().safeParse(request.query.cursor);
+    if (!parsedLimit.success || !parsedCursor.success) {
+      response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'limit must be an integer between 1 and 100 and cursor must be a string'));
+      return;
+    }
+    try {
+      response.json(successResponse(id, await reader(parsedLimit.data, parsedCursor.data)));
+    } catch (error) {
+      if (error instanceof Error && (error.message === 'PAGE_SIZE_OUT_OF_RANGE' || error.message === 'Invalid page cursor')) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', error.message));
+        return;
+      }
+      response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', errorMessage));
+    }
+  };
+
+  app.get('/v2/pending', (request, response) => {
+    void readPage(request, response, (limit, cursor) => pendingQueue.listPending(limit, cursor), 'Unable to read pending queue');
+  });
+
+  app.get('/v2/activity', (request, response) => {
+    void readPage(request, response, (limit, cursor) => activity.listRecent(limit, cursor), 'Unable to read recent activity');
   });
 
   return app;

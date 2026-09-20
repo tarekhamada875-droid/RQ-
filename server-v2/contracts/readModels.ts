@@ -3,6 +3,26 @@ import { z } from 'zod';
 const Id = z.string().min(1).max(160);
 const Iso = z.string().datetime({ offset: true });
 
+export const LegacyPendingRequestSchema = z.object({
+  garageId: Id,
+  status: z.literal('pending'),
+  requestType: z.string().min(1).max(120).optional(),
+  kind: z.string().min(1).max(120).optional(),
+  priority: z.number().int().min(0).max(100).optional(),
+  createdAt: z.unknown()
+}).passthrough();
+
+export const LegacyActivityLogSchema = z.object({
+  garageId: Id,
+  actionType: z.string().min(1).max(120).optional(),
+  type: z.string().min(1).max(120).optional(),
+  resultCode: z.string().min(1).max(120).optional(),
+  status: z.string().min(1).max(120).optional(),
+  timestamp: z.unknown().optional(),
+  occurredAt: z.unknown().optional(),
+  createdAt: z.unknown().optional()
+}).passthrough();
+
 export const PendingQueueItemSchema = z.object({
   id: Id, garageId: Id, kind: z.enum(['recharge', 'approval', 'repair']), priority: z.number().int().min(0).max(100), createdAt: Iso, status: z.literal('pending')
 }).strict();
@@ -13,3 +33,10 @@ export const ActivityRecordSchema = z.object({
 
 export type PendingQueueItem = z.infer<typeof PendingQueueItemSchema>;
 export type ActivityRecord = z.infer<typeof ActivityRecordSchema>;
+
+export type ReadModelPage<T> = Readonly<{
+  items: ReadonlyArray<T>;
+  nextCursor?: string;
+  projectionVersion: number;
+  readCount: number;
+}>;
