@@ -1022,6 +1022,31 @@ Notifications, emails, analytics, or other external calls must not execute insid
 
 Each stage below includes what must be built, why it exists, and the gate that permits the next stage.
 
+### Live implementation status — 2026-09-20
+
+This status is maintained for handoff between agents. The current production backend remains authoritative; the v2 tree is an isolated, tested parallel foundation and is **not yet a replacement backend**.
+
+| Stage | Status | What is actually complete | What remains before exit |
+|---|---|---|---|
+| Stage 0 — Freeze and inventory | **Complete for current slice** | Repository, deployment boundary, existing auth, Railway API, Cloudflare frontend, and operator connector were inspected. | Re-run inventory when production schemas or deployment topology changes. |
+| Stage 1 — Strict v2 foundation | **Complete for current slice** | `server-v2` strict TypeScript config, environment parsing, API envelopes, isolated app, tests, CI gate, and no-explicit-`any` gate exist. | Add the final production bootstrap, route composition, and deployment wiring. |
+| Stage 2 — Contracts and domain mathematics | **Complete for current slice** | Typed entities, money, dates, pagination, pricing, capacity, trials, commissions, refunds, lifecycle rules, business events, and transaction retry primitives exist with tests. | Characterize any remaining legacy edge cases before production activation. |
+| Stage 3 — Typed Firebase infrastructure | **Partial** | Firestore converter boundary, package catalog/summary abstractions, and in-memory wallet repository test doubles exist. | Implement production Firestore repositories, converters, indexes, emulator tests, cost budgets, and transaction services for every entity. |
+| Stage 4 — Authentication and policy enforcement | **Partial** | Session, revocation, inactivity, role, garage-scope, audit context, redaction, and rate-limit policies are unit-tested. | Wire Firebase token verification, sessions, authorization, rate limits, CORS, and audit context into v2 HTTP middleware. |
+| Stage 5 — Financial core | **Partial** | Ledger contracts, wallet math, idempotency, reconciliation, business events, atomic in-memory wallet operations, and financial audit contracts exist. | Connect to Firestore transactions and real routes; make v2 the single financial authority only after reconciliation and rollback testing. |
+| Stage 6 — Lifecycle commands | **Partial** | Vehicle, subscriber, garage lock/suspension, deletion, and idempotency domain commands are modeled and tested. | Add authenticated HTTP routes, production repositories, transactional persistence, repair workers, and emulator/concurrency tests. |
+| Stage 7 — Projections and reports | **Partial** | Projections, bounded read models, daily financial rebuilds, reconciliation, report envelopes, and repair-needed states are modeled and tested. | Add production projection workers, `/v2/pending`, `/v2/activity`, rebuild/repair operations, lag telemetry, and real Firestore-backed reports. |
+| Stage 8 — Cloudflare frontend adapter | **In progress** | Typed read adapter, authenticated `apiFetch` transport, safe flags, route contract tests, and preview smoke harness exist. | Deploy v2 preview endpoints, wire a legacy provider, connect one UI read feature, test Cloudflare-to-Railway auth/CORS end-to-end, then enable flags only in preview. |
+| Stage 9 — Shadow and compare | **Not started** | No production shadow comparison is active. | Run normalized legacy/v2 read comparisons, classify differences, and prove no unexplained financial or authorization mismatch. |
+| Stage 10 — Progressive cutover | **Not started** | No cohort has been migrated. | Internal users → one garage → small cohorts → all traffic, with SLO, cost, reconciliation, and tested rollback gates. |
+| Stage 11 — Retire legacy paths | **Not started** | No legacy route or writer has been removed. | Remove legacy paths only after migration completion, retention review, and rollback-window expiration. |
+
+**Baseline code commit before this handoff update:** `68c1c29 fix: align frontend adapter with v2 route prefix`. After the handoff documentation commit, use `git log -1` for the latest commit.
+
+**Important safety boundary:** Keep all `VITE_V2_READ_*` flags false until the matching v2 Railway endpoints are deployed and verified. Do not mount v2 into production, migrate financial writes, delete legacy routes, or delete production data as part of foundation work.
+
+**Next implementation order:** (1) production Firestore repositories and emulator tests; (2) v2 read routes including pending/activity; (3) v2 authentication middleware and CORS; (4) Railway preview deployment; (5) one Cloudflare preview read feature; (6) authenticated end-to-end smoke tests; (7) transactional lifecycle commands; (8) shadow comparison; (9) progressive cutover; (10) legacy retirement.
+
 ### Stage 0 — Freeze and inventory the current system
 
 Build a versioned inventory of:

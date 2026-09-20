@@ -1,0 +1,123 @@
+# RQ Backend Overhaul — Agent Handoff
+
+**Last updated:** 2026-09-20 11:48 UTC+3  
+**Repository:** `tarekhamada875-droid/RQ-`  
+**Branch:** `main`  
+**Last published commit before this handoff update:** `68c1c29 fix: align frontend adapter with v2 route prefix`
+
+## Mission
+
+Continue the staged backend replacement described in [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md). The production system is still the existing Railway backend. The `server-v2` tree is a parallel, isolated foundation and must not be treated as production-ready merely because its unit tests pass.
+
+## User operating instructions
+
+The user requested preview validation before publication and prefers direct pushes to `main`; do not create long-lived feature branches. For every implementation slice:
+
+1. Inspect the existing behavior and the plan.
+2. Implement one bounded slice without changing production authority.
+3. Run the local preview gates.
+4. Review `git diff --check`, status, and the exact changed files.
+5. Push the validated slice directly to `main`.
+6. Report the commit and validation results.
+
+Do not enable v2 flags, mount v2 into production, migrate financial writes, delete legacy routes, or delete production data without the required migration, rollback, and safety gates.
+
+## Current completed work
+
+The following isolated v2 foundations are present and tested:
+
+- Strict `server-v2` TypeScript configuration, environment parsing, API envelopes, test configuration, CI gate, and explicit-`any` gate.
+- Typed entities, money, business dates, cursor pagination, pricing, capacity, trials, commissions, refunds, business events, and bounded transaction retry primitives.
+- Typed Firestore converter boundaries and in-memory repository test doubles.
+- Session expiry/revocation/inactivity policies, role and garage-scope authorization policies, request context, redaction, and rate-limit primitives.
+- Wallet ledger math, financial idempotency, reconciliation, audit-event contracts, and atomic in-memory wallet operations.
+- Vehicle, subscriber, garage lock/suspension, resumable garage deletion, and lifecycle idempotency domain commands.
+- Projection reducers, bounded pending/activity read models, daily financial summary rebuilds, report envelopes, reconciliation differences, projection lag, and repair-needed states.
+- Isolated v2 HTTP app routes currently present in `server-v2/app.ts`: `/v2/health`, `/v2/packages`, and `/v2/garages/:garageId/summary`.
+- Cloudflare frontend typed read adapter in `src/api/v2ReadAdapter.ts`, authenticated through the existing `apiFetch` path.
+- Environment flags documented in `.env.example`; all `VITE_V2_READ_*` flags default to false.
+- Preview-only smoke harness in `src/api/v2ReadSmoke.ts` and tests.
+
+## Important known gaps and contract issue
+
+### Production integration is not done
+
+Most v2 repositories are abstractions or in-memory implementations. There are no production Firestore repositories for all entities, no complete v2 HTTP command routes, and no production v2 bootstrap mounted into Railway.
+
+### Two read routes are missing
+
+The frontend adapter has methods for `/v2/pending` and `/v2/activity`, but `server-v2/app.ts` does not expose those routes yet. Implement them using the bounded read-model contracts and stable cursor envelopes.
+
+### Route prefix must be resolved before preview activation
+
+The isolated v2 app currently defines `/v2/...` routes. The frontend adapter also currently requests `/v2/...`. However, `src/api/apiClient.ts` only prefixes endpoints beginning with `/api` with the Railway URL; a `/v2/...` request from Cloudflare Pages would otherwise remain relative to the Cloudflare origin. Before enabling any flag, choose and implement one consistent boundary:
+
+- Mount v2 under `/api/v2/...` in the Railway production/preview server and change the adapter to `/api/v2/...`; or
+- Extend the frontend URL resolver and CORS/deployment contract to route `/v2/...` to Railway.
+
+Do not claim Cloudflare-to-Railway end-to-end success until this is tested from a real Cloudflare preview against a deployed Railway preview service.
+
+### Authentication middleware is not wired into the isolated v2 app
+
+The domain policies exist, but v2 still needs Firebase ID-token verification, canonical session lookup, revocation/expiry enforcement, role and garage authorization, request context, rate limiting, CORS, and consistent error mapping at HTTP boundaries.
+
+### Financial authority is not migrated
+
+The existing backend remains the only production financial authority. Do not dual-write money operations. Build and test the v2 Firestore transaction path first, then shadow/reconcile reads and migrate writes only through an explicit cutover plan.
+
+## Recommended next implementation order
+
+1. Implement production Firestore repositories and converters, starting with package catalog, garage summaries, pending/activity models, and cost instrumentation.
+2. Add `/v2/pending` and `/v2/activity` to the isolated app with contract tests for limits, cursors, ordering, and projection versions.
+3. Decide and fix the `/v2` versus `/api/v2` deployment prefix before any flag activation.
+4. Add v2 HTTP authentication middleware and CORS. Reuse existing Firebase verification/session rules only through typed adapters; do not trust body identity fields.
+5. Add a Railway preview bootstrap/service that can run v2 beside the legacy app without changing production authority.
+6. Add Firebase emulator tests for converters, security boundaries, transactions, idempotency persistence, concurrent operations, and bounded queries.
+7. Connect one read-only frontend feature in a Cloudflare preview, preferably package catalog or garage summary, with a legacy provider and v2 flag disabled by default.
+8. Run real authenticated Cloudflare-to-Railway smoke tests and compare normalized v2/legacy results.
+9. Implement lifecycle HTTP commands and transactional repositories.
+10. Implement the financial write path last, with one authority, reconciliation, repair queue, rollback, and explicit approval.
+11. Start Stage 9 shadow comparison, then Stage 10 cohort cutover, then Stage 11 legacy retirement.
+
+## Validation gates
+
+Run from the repository root:
+
+```bash
+npm run check:v2
+npm test
+npm run lint
+npm run build
+npm run maintainability:check
+git diff --check
+```
+
+A clean working tree and a pushed `main` commit are required after a completed slice. The latest completed slice before this handoff passed **295 repository tests**, **85 v2 tests**, full typecheck, production build, maintainability, and diff checks.
+
+## Key files
+
+| File | Purpose |
+|---|---|
+| `BACKEND_COMPLETE_OVERHAUL_STAGES.md` | Master plan and live stage-status matrix |
+| `BACKEND_OVERHAUL_HANDOFF.md` | This handoff document |
+| `server-v2/app.ts` | Isolated v2 HTTP app and current read routes |
+| `server-v2/contracts/` | Runtime-validated v2 contracts |
+| `server-v2/domain/` | Pure domain rules and command primitives |
+| `server-v2/repositories/` | Repository boundaries and test doubles |
+| `server-v2/test/` | Isolated v2 unit/contract tests |
+| `src/api/apiClient.ts` | Existing authenticated frontend transport and URL resolver |
+| `src/api/v2ReadAdapter.ts` | Typed frontend v2 read client and feature adapter |
+| `src/api/v2ReadSmoke.ts` | Preview-only read contract smoke harness |
+| `.env.example` | Environment and disabled-by-default v2 flags |
+| `AGENTS.md` | Repository conventions and safety rules |
+
+## Non-negotiable safety notes
+
+- Cloudflare Pages is frontend only; Railway is backend only.
+- Firebase Admin credentials and operator tokens must never enter frontend assets or Git.
+- The operator MCP token is for controlled server-to-server operations and does not replace browser Firebase authentication.
+- Do not use frontend-provided `uid`, `role`, or token fields as authorization.
+- Every new list must be bounded, ordered, cursor-based, and cost-instrumented.
+- Every mutation must be idempotent and transaction-safe before production use.
+- Every financial write must have one authoritative writer.
+- Do not delete or mutate production Firestore data during foundation work.
