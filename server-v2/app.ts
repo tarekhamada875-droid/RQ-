@@ -1,5 +1,4 @@
 import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
-import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
@@ -8,6 +7,7 @@ import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from 
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
 import { requireV2Authorization } from './http/auth.js';
+import { getV2RequestId } from './http/requestId.js';
 
 const LimitSchema = z.coerce.number().int().min(1).max(100).default(25);
 
@@ -19,12 +19,9 @@ type V2AppOptions = Readonly<{
   activity?: ActivityRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
+  requestContextMiddleware?: RequestHandler;
+  rateLimitMiddleware?: RequestHandler;
 }>;
-
-function requestId(request: Request): string {
-  const header = request.header('X-Request-ID');
-  return header && z.string().uuid().safeParse(header).success ? header : randomUUID();
-}
 
 export function createV2App(options: V2AppOptions = {}): Express {
   const environment = options.environment ?? parseEnvironment(process.env);
@@ -35,10 +32,11 @@ export function createV2App(options: V2AppOptions = {}): Express {
   const app = express();
 
   if (options.corsMiddleware) app.use(options.corsMiddleware);
+  if (options.requestContextMiddleware) app.use(options.requestContextMiddleware);
   app.use(express.json({ limit: '64kb' }));
 
   app.get('/v2/health', (request, response) => {
-    response.json(successResponse(requestId(request), {
+    response.json(successResponse(getV2RequestId(request), {
       status: 'ok',
       environment: environment.NODE_ENV,
       firebaseEmulator: environment.NODE_ENV !== 'production'
@@ -46,17 +44,22 @@ export function createV2App(options: V2AppOptions = {}): Express {
   });
 
   if (options.authMiddleware) {
-    app.use('/v2/packages', options.authMiddleware);
-    app.use('/v2/garages/:garageId/summary', options.authMiddleware, requireV2Authorization('garage_read', (request) => {
+    app.use('/v2/packages', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []));
+    app.use('/v2/garages/:garageId/summary', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('garage_read', (request) => {
       const garageId = request.params.garageId;
       return typeof garageId === 'string' ? garageId : undefined;
     }));
-    app.use('/v2/pending', options.authMiddleware, requireV2Authorization('admin_only'));
-    app.use('/v2/activity', options.authMiddleware, requireV2Authorization('admin_only'));
+    app.use('/v2/pending', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('admin_only'));
+    app.use('/v2/activity', options.authMiddleware, ...(options.rateLimitMiddleware ? [options.rateLimitMiddleware] : []), requireV2Authorization('admin_only'));
+  } else if (options.rateLimitMiddleware) {
+    app.use('/v2/packages', options.rateLimitMiddleware);
+    app.use('/v2/garages/:garageId/summary', options.rateLimitMiddleware);
+    app.use('/v2/pending', options.rateLimitMiddleware);
+    app.use('/v2/activity', options.rateLimitMiddleware);
   }
 
   app.get('/v2/packages', async (request, response) => {
-    const id = requestId(request);
+    const id = getV2RequestId(request);
     if (environment.NODE_ENV === 'production') {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 package catalog is not enabled in production'));
       return;
@@ -77,7 +80,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
   });
 
   app.get('/v2/garages/:garageId/summary', async (request, response) => {
-    const id = requestId(request);
+    const id = getV2RequestId(request);
     if (environment.NODE_ENV === 'production') {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 garage summary is not enabled in production'));
       return;
@@ -108,7 +111,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
     reader: (limit: number, cursor?: string) => Promise<unknown>,
     errorMessage: string
   ): Promise<void> => {
-    const id = requestId(request);
+    const id = getV2RequestId(request);
     if (environment.NODE_ENV === 'production') {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 read models are not enabled in production'));
       return;

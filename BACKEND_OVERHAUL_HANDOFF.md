@@ -35,6 +35,7 @@ The following isolated v2 foundations are present and tested:
 - Projection reducers, bounded pending/activity read models, daily financial summary rebuilds, report envelopes, reconciliation differences, projection lag, and repair-needed states.
 - Isolated v2 HTTP app routes currently present in `server-v2/app.ts`: `/v2/health`, `/v2/packages`, and `/v2/garages/:garageId/summary`.
 - Injectable v2 HTTP authentication, canonical-session lookup, role/garage authorization, CORS allowlisting, and Firebase Admin token/session adapters, all disabled unless explicitly supplied to the isolated app.
+- Injectable v2 request-ID propagation, audit-safe request-context capture, authenticated-UID rate limiting, rate-limit response headers, and HTTP lifecycle tests.
 - Cloudflare frontend typed read adapter in `src/api/v2ReadAdapter.ts`, authenticated through the existing `apiFetch` path.
 - Environment flags documented in `.env.example`; all `VITE_V2_READ_*` flags default to false.
 - Preview-only smoke harness in `src/api/v2ReadSmoke.ts` and tests.
@@ -59,7 +60,7 @@ Do not claim Cloudflare-to-Railway end-to-end success until this is tested from 
 
 ### Production authentication wiring is not enabled
 
-The isolated v2 app now has injectable Firebase ID-token verification, canonical session lookup, revocation/expiry enforcement, role and garage authorization, CORS, and consistent error mapping with emulator/HTTP tests. The guarded Railway mount still does not supply these dependencies, and production request-context logging/rate limiting remain before preview activation.
+The isolated v2 app now has injectable Firebase ID-token verification, canonical session lookup, revocation/expiry enforcement, role and garage authorization, CORS, request-context capture, authenticated-UID rate limiting, and consistent error mapping with emulator/HTTP tests. The guarded Railway mount still does not supply these dependencies or a production telemetry sink.
 
 ### Financial authority is not migrated
 
@@ -68,8 +69,8 @@ The existing backend remains the only production financial authority. Do not dua
 ## Recommended next implementation order
 
 1. Implement production Firestore repositories and converters, starting with package catalog, garage summaries, pending/activity models, and cost instrumentation.
-2. Add request-context logging/rate limiting around the v2 middleware and CORS boundary. Reuse existing Firebase verification/session rules only through typed adapters; do not trust body identity fields.
-3. Add a Railway preview bootstrap/service that can run the guarded `/api/v2` mount with the auth dependencies beside the legacy app without changing production authority.
+2. Add a Railway preview bootstrap/service that can run the guarded `/api/v2` mount with the auth, request-context, rate-limit, and CORS dependencies beside the legacy app without changing production authority.
+3. Add a production telemetry sink and explicit per-route rate budgets before preview activation.
 4. Add Firebase emulator tests for converters, security boundaries, transactions, idempotency persistence, concurrent operations, and bounded queries.
 5. Connect one read-only frontend feature in a Cloudflare preview, preferably package catalog or garage summary, with a legacy provider and v2 flag disabled by default.
 6. Run real authenticated Cloudflare-to-Railway smoke tests and compare normalized v2/legacy results.

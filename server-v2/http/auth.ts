@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
 import { errorResponse } from '../contracts/api.js';
@@ -6,6 +5,7 @@ import { AuthorizationContextSchema, type AuthorizationContext } from '../contra
 import type { Session } from '../contracts/entities.js';
 import { authorize, type AuthorizationOperation } from '../domain/authorizationPolicy.js';
 import { validateSession } from '../domain/sessionPolicy.js';
+import { getV2RequestId } from './requestId.js';
 
 const BearerSchema = z.string().regex(/^Bearer\s+\S+$/);
 const SessionHeaderSchema = z.string().min(1).max(160);
@@ -33,13 +33,8 @@ declare global {
   }
 }
 
-function requestId(request: Request): string {
-  const supplied = request.header('X-Request-ID');
-  return supplied && z.string().uuid().safeParse(supplied).success ? supplied : randomUUID();
-}
-
 function sendAuthError(response: Response, request: Request, message: string): void {
-  response.status(401).json(errorResponse(requestId(request), 'UNAUTHORIZED', message));
+  response.status(401).json(errorResponse(getV2RequestId(request), 'UNAUTHORIZED', message));
 }
 
 function bearerToken(request: Request): string | undefined {
@@ -49,7 +44,7 @@ function bearerToken(request: Request): string | undefined {
 
 export function createV2AuthMiddleware(dependencies: V2AuthDependencies): RequestHandler {
   return async (request: Request, response: Response, next: NextFunction) => {
-    const id = requestId(request);
+    const id = getV2RequestId(request);
     request.v2RequestId = id;
     const token = bearerToken(request);
     if (!token) {
@@ -93,12 +88,12 @@ export function requireV2Authorization(operation: AuthorizationOperation, target
   return (request: Request, response: Response, next: NextFunction) => {
     const context = request.v2Authorization;
     if (!context) {
-      response.status(401).json(errorResponse(request.v2RequestId ?? requestId(request), 'UNAUTHORIZED', 'Authentication required'));
+      response.status(401).json(errorResponse(request.v2RequestId ?? getV2RequestId(request), 'UNAUTHORIZED', 'Authentication required'));
       return;
     }
     const decision = authorize(context, operation, targetGarage?.(request));
     if (!decision.allowed) {
-      response.status(403).json(errorResponse(request.v2RequestId ?? requestId(request), 'FORBIDDEN', `Authorization denied: ${decision.reason}`));
+      response.status(403).json(errorResponse(request.v2RequestId ?? getV2RequestId(request), 'FORBIDDEN', `Authorization denied: ${decision.reason}`));
       return;
     }
     next();
@@ -110,7 +105,7 @@ export function createV2CorsMiddleware(options: V2CorsOptions): RequestHandler {
     const origin = request.header('Origin');
     if (origin) {
       if (!options.allowedOrigins.has(origin)) {
-        response.status(403).json(errorResponse(requestId(request), 'FORBIDDEN', 'Origin is not allowed'));
+        response.status(403).json(errorResponse(getV2RequestId(request), 'FORBIDDEN', 'Origin is not allowed'));
         return;
       }
       response.setHeader('Access-Control-Allow-Origin', origin);
