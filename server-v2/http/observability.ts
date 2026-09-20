@@ -16,10 +16,11 @@ export function createV2RequestContextMiddleware(sink: RequestContextSink = (con
     request.v2RequestId = id;
     response.setHeader('X-Request-ID', id);
     response.once('finish', () => {
+      const route = request.route?.path?.toString() ?? request.originalUrl.split('?')[0] ?? request.path;
       const context = createRequestContext({
         requestId: id,
-        route: request.route?.path?.toString() ?? request.path,
-        operation: `${request.method.toLowerCase()}.${request.route?.path?.toString() ?? request.path}`,
+        route,
+        operation: `${request.method.toLowerCase()}.${route}`,
         resultCode: String(response.statusCode),
         latencyMs: Math.max(0, Date.now() - startedAt),
         ...(request.v2Authorization ? { authorization: request.v2Authorization } : {})

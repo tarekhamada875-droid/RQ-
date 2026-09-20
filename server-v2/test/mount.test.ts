@@ -14,10 +14,10 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function start(enabled: boolean): Promise<string> {
+async function start(previewEnabled: boolean, authEnabled = false): Promise<string> {
   const root = express();
   const v2 = createV2App({ environment: parseEnvironment({ NODE_ENV: 'test', V2_PORT: '8081' }) });
-  mountV2Preview(root, v2, enabled);
+  mountV2Preview(root, v2, previewEnabled, authEnabled);
   server = root.listen(0);
   await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
   const address = server?.address() as AddressInfo;
@@ -30,8 +30,13 @@ describe('v2 external route boundary', () => {
     expect((await fetch(`${baseUrl}/api/v2/health`)).status).toBe(404);
   });
 
+  it('does not mount when preview is enabled without the authentication gate', async () => {
+    const baseUrl = await start(true, false);
+    expect((await fetch(`${baseUrl}/api/v2/health`)).status).toBe(404);
+  });
+
   it('maps external /api/v2 requests to the isolated internal /v2 app', async () => {
-    const baseUrl = await start(true);
+    const baseUrl = await start(true, true);
     const response = await fetch(`${baseUrl}/api/v2/health`);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, data: { status: 'ok' } });

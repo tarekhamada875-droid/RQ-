@@ -1,8 +1,8 @@
 import type { Express } from 'express';
 import { V2_INTERNAL_PREFIX } from './prefix.js';
 
-export function mountV2Preview(app: Express, v2App: Express, enabled: boolean): void {
-  if (!enabled) return;
+export function mountV2Preview(app: Express, v2App: Express, previewEnabled: boolean, authEnabled: boolean): void {
+  if (!previewEnabled || !authEnabled) return;
   app.use('/api', v2App);
 }
 

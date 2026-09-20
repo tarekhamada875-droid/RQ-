@@ -26,6 +26,12 @@ describe('v2 foundation', () => {
     expect(() => parseEnvironment({ NODE_ENV: 'production' })).toThrow('FIREBASE_PROJECT_ID');
   });
 
+  it('keeps the Railway v2 preview gates closed by default', () => {
+    const environment = parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-preview-test' });
+    expect(environment.V2_PREVIEW_ENABLED).toBe(false);
+    expect(environment.V2_PREVIEW_AUTH_ENABLED).toBe(false);
+  });
+
   it('uses integer money and deterministic operational primitives', () => {
     expect(parseMinorUnits('125.00')).toBe(12500);
     expect(formatMinorUnits(addMinorUnits(100, 25))).toBe('1.25');

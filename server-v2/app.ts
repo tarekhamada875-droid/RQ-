@@ -29,6 +29,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
   const garageSummary = options.garageSummary ?? new InMemoryGarageSummaryRepository([]);
   const pendingQueue = options.pendingQueue ?? new InMemoryPendingQueueRepository([]);
   const activity = options.activity ?? new InMemoryActivityRepository([]);
+  const v2ReadEnabled = environment.NODE_ENV !== 'production' || (environment.V2_PREVIEW_ENABLED && environment.V2_PREVIEW_AUTH_ENABLED);
   const app = express();
 
   if (options.corsMiddleware) app.use(options.corsMiddleware);
@@ -60,7 +61,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
 
   app.get('/v2/packages', async (request, response) => {
     const id = getV2RequestId(request);
-    if (environment.NODE_ENV === 'production') {
+    if (!v2ReadEnabled) {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 package catalog is not enabled in production'));
       return;
     }
@@ -81,7 +82,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
 
   app.get('/v2/garages/:garageId/summary', async (request, response) => {
     const id = getV2RequestId(request);
-    if (environment.NODE_ENV === 'production') {
+    if (!v2ReadEnabled) {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 garage summary is not enabled in production'));
       return;
     }
@@ -112,7 +113,7 @@ export function createV2App(options: V2AppOptions = {}): Express {
     errorMessage: string
   ): Promise<void> => {
     const id = getV2RequestId(request);
-    if (environment.NODE_ENV === 'production') {
+    if (!v2ReadEnabled) {
       response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 read models are not enabled in production'));
       return;
     }
