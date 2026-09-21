@@ -1,10 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 13:12 UTC+3
-**Repository:** `tarekhamada875-droid/RQ-`  
-**Branch:** `main`  
-**Latest validated commit:** `daf46eb feat: add firestore vehicle state repository`
-**Latest GitHub Production Gate:** `35587181364` — **success**
+**Last updated:** 2026-09-21 13:26 UTC+3
+**Repository:** `tarekhamada875-droid/RQ-`
+**Branch:** `main`
+**Latest published documentation commit:** `85eca6b docs: prepare backend overhaul continuation handoff`
+**Latest implementation commit:** `daf46eb feat: add firestore vehicle state repository`
+**Latest GitHub Production Gate:** `35587687383` — **success**
 
 ## Mission
 
@@ -26,6 +27,10 @@ The user has approved direct pushes to `main` and does not want long-lived branc
 6. Watch the GitHub Production Gate and report the commit, gate result, and any limitations.
 
 The user has given the agent discretion to choose the next safe slice. Do not ask for routine confirmation. Pause only for a real permission failure, a required user credential, a protected external action, or a choice that materially changes behavior or production risk.
+
+### Source-of-truth rule
+
+Use the repository and live configuration as the final authority. Treat this document as the ordered plan, not as proof that an endpoint, flag, deployment, or connector still exists. Before relying on a claim, verify the current `HEAD`, working tree, relevant source file, GitHub run, Railway response, Cloudflare setting, or MCP connector status. If a verified result differs from this document, update the document in the same implementation slice before continuing.
 
 ## Current production and preview state
 
@@ -69,7 +74,7 @@ VITE_BACKEND_API_URL=https://rq-production-af02.up.railway.app
 VITE_V2_READ_PACKAGE_CATALOG=true
 ```
 
-The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; production remains on the legacy provider. The v2 flag parser defaults every flag to false unless the exact value is `true`.
+The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; production remains on the legacy provider. The v2 flag parser defaults every flag to false unless the exact value is `true`. The preview flag being true does not authorize enabling the production flag.
 
 There is currently no Cloudflare preview deployment available for an authenticated browser smoke test. The user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a real non-production preview deployment has been tested.
 
@@ -155,7 +160,7 @@ manus-config config load --search railway
 manus-config connector list --user-custom-only
 ```
 
-Confirm that the working tree is clean, `HEAD` is `daf46eb` or newer, and the Railway operator connector is enabled. Do not recreate the connector if it already exists.
+Confirm that the working tree is clean, `HEAD` is `85eca6b` or newer, and the Railway operator connector is enabled. The implementation baseline is `daf46eb`; later commits may contain documentation or subsequent slices. Do not recreate the connector if it already exists.
 
 ### Second action: implement the subscriber repository
 
@@ -278,7 +283,7 @@ The operator token is server-to-server only. It is not a Firebase user token and
 2. Ask for the Railway backend base URL if it is not already known. The current URL is `https://rq-production-af02.up.railway.app`.
 3. Create the MCP server in a directory outside the repository, such as `/home/ubuntu/rq-backend-mcp/`.
 4. Install the MCP SDK and Zod outside the repository or use the existing environment. The server must use `StdioServerTransport` and read secrets only from environment variables.
-5. Require and validate these variables at startup:
+5. Require and validate these variables at startup. Never print their values in logs or tool output:
 
 ```text
 RQ_BACKEND_URL
@@ -286,9 +291,9 @@ BACKEND_OPERATOR_TOKEN
 RQ_BACKEND_TIMEOUT_MS (optional, default 10000, bounded 1000–60000)
 ```
 
-6. Implement a strict read-only allowlist. Reject every path not explicitly listed. Use `GET` only, attach `x-backend-operator-token`, generate a correlation ID, enforce an abort timeout, parse JSON safely, and cap raw non-JSON output.
+6. Implement a strict read-only allowlist. Reject every path not explicitly listed. Use `GET` only, attach `x-backend-operator-token`, generate a correlation ID, enforce an abort timeout, parse JSON safely, and cap raw non-JSON output. Do not add mutation methods or accept a caller-supplied base URL.
 7. Register only read tools. Do not expose POST, PUT, PATCH, DELETE, arbitrary URL access, shell execution, Firestore access, or token inspection.
-8. Register the external connector using `manus-config` only after inspecting current config:
+8. Register the external connector using `manus-config` only after inspecting current config. Do not edit `/home/ubuntu/.manus/config/config.json` directly:
 
 ```bash
 manus-config config load --search railway
