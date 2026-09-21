@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 14:07 UTC+3
+**Last updated:** 2026-09-21 15:21 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** `4f2d655 docs: update overhaul continuation state`
-**Latest implementation commit:** `06831b9 feat: add firestore garage state repository`
-**Latest GitHub Production Gate:** `35592418120` — **success**
+**Latest published documentation commit:** pending this documentation correction
+**Latest implementation commit:** `413da3a feat: add guarded vehicle check-out route`
+**Latest GitHub Production Gate:** `35598838365` — **success**
 
 ## Mission
 
@@ -57,7 +57,7 @@ GET /api/v2/health   -> 200
 GET /api/v2/packages -> 401 without Firebase authentication
 ```
 
-The critical fix in `a85035e` mounted v2 before the legacy `/api` 404 fallback. Do not reorder this middleware again.
+The critical fix in `a85035e` mounted v2 before the legacy `/api` 404 fallback. Do not reorder this middleware again. Vehicle check-in and check-out are mounted only in the authenticated, explicitly enabled v2 preview app; legacy `/api/vehicles/*` remains authoritative.
 
 ### Cloudflare Pages
 
@@ -76,7 +76,7 @@ VITE_V2_READ_PACKAGE_CATALOG=true
 
 The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; production remains on the legacy provider. The v2 flag parser defaults every flag to false unless the exact value is `true`. The preview flag being true does not authorize enabling the production flag.
 
-Cloudflare currently has only stale preview deployments from old feature branches; the current `main` commit `06831b9` has a successful production deployment but no current non-production preview deployment. The project is configured to create previews for branches, but the user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
+Cloudflare currently has only stale preview deployments from old feature branches; the current `main` commit has no current non-production preview deployment. The project is configured to create previews for branches, but the user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
 
 ### Latest frontend slice
 
@@ -92,7 +92,7 @@ The package adapter tests and TypeScript check passed. The full frontend test su
 
 ### Latest backend repository slice
 
-Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositories for vehicle, subscriber, and garage state:
+Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositories for vehicle, subscriber, and garage state. Commits `148277a` through `413da3a` added the strict vehicle lifecycle domain, pricing, transactional persistence, and guarded check-in/check-out routes:
 
 - `server-v2/repositories/firestoreVehicles.ts`.
 - `server-v2/test/firestoreVehicles.test.ts`.
@@ -101,20 +101,20 @@ Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositori
 - `server-v2/repositories/firestoreGarages.ts`.
 - `server-v2/test/firestoreGarages.test.ts`.
 
-The repositories read legacy Firestore collections and documents, map compatibility fields into strict v2 contracts, validate garage scope and bounds, use deterministic bounded reads where applicable, and record returned Firestore reads. They are read-only. No lifecycle HTTP route or legacy write path was changed.
+The read repositories read legacy Firestore collections and documents, map compatibility fields into strict v2 contracts, validate garage scope and bounds, use deterministic bounded reads where applicable, and record returned Firestore reads. Vehicle lifecycle writes are isolated behind authenticated v2 preview routes and do not replace legacy authority.
 
 Validation passed locally:
 
 ```text
 npm run check:v2
-27 test files passed
-125 tests passed
+33 test files passed
+162 tests passed
 strict v2 typecheck passed
 explicit-any gate passed
 git diff --check passed
 ```
 
-The GitHub Production Gates for `daf46eb`, `04a87e6`, and `06831b9` passed as runs `35587181364`, `35591497949`, and `35591911502`.
+The GitHub Production Gates for the vehicle lifecycle commits passed through run `35598838365`.
 
 ## What is complete
 
@@ -137,11 +137,11 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional write repositories do not exist yet.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in and check-out repositories now exist with Firestore emulator, idempotency, accounting, and concurrency tests. Subscriber, garage-management, deletion, and financial write repositories remain unmigrated.
 
 ### HTTP routes
 
-Only the guarded read routes are currently exposed: health, packages, garage summary, pending, and activity. Authenticated lifecycle routes for vehicle entry/exit, subscriber operations, garage lock/suspension, garage management, and deletion are not complete.
+Guarded v2 routes now include vehicle check-in and check-out in addition to health, packages, garage summary, pending, and activity. Subscriber operations, garage lock/suspension, garage management, deletion, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -155,7 +155,7 @@ The existing backend remains the only financial writer. Do not dual-write money 
 
 ### Completed implementation slices
 
-The repository context was re-established and the working tree is clean at `06831b9`. The subscriber and garage read-repository slices are complete, validated locally and in CI, and published directly to `main`.
+The repository context was re-established and the working tree is clean at `413da3a`. Subscriber and garage read repositories, vehicle check-in/check-out transactional persistence, pricing compatibility, and guarded vehicle lifecycle routes are complete, validated locally and in CI, and published directly to `main`.
 
 ### Current blocking validation
 
@@ -172,7 +172,7 @@ Compare the normalized v2 package catalog with the legacy Firestore result. Reco
 
 ### Next code slice after preview validation
 
-Only after the read repositories and authenticated preview checks are stable, implement one authenticated lifecycle route at a time. Start with vehicle check-in and check-out. Each route needs a strict request/response contract, Firebase authentication, canonical session authorization, garage scope enforcement, an idempotency record, a transaction boundary, audit behavior, emulator concurrency tests, and a rollback note.
+Vehicle check-in and check-out now satisfy the first lifecycle-route slice with strict contracts, Firebase authentication, canonical session authorization, garage scope enforcement, idempotency records, transaction boundaries, accounting behavior, and emulator concurrency tests. Next implement subscriber lifecycle commands, then garage lock/suspension and deletion operations, each with the same route, authorization, idempotency, transaction, audit, concurrency, and rollback requirements.
 
 Do not begin financial writes before the lifecycle routes, shadow comparison, and rollback procedures are complete.
 
