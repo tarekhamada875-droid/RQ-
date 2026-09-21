@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 15:21 UTC+3
+**Last updated:** 2026-09-21 16:01 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** pending this documentation correction
-**Latest implementation commit:** `413da3a feat: add guarded vehicle check-out route`
-**Latest GitHub Production Gate:** `35598838365` — **success**
+**Latest published documentation commit:** this update is pending publication
+**Latest implementation commit:** `2d19831 feat: add guarded subscriber create route`
+**Latest GitHub Production Gate:** `35602256564` — **success**
 
 ## Mission
 
@@ -90,9 +90,9 @@ Commit `35d5856 feat: gate package catalog reads through v2` added:
 
 The package adapter tests and TypeScript check passed. The full frontend test suite and production web build also passed. The GitHub Production Gate for `35d5856` was successful as run `35585634246`.
 
-### Latest backend repository slice
+### Latest backend repository and command slices
 
-Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositories for vehicle, subscriber, and garage state. Commits `148277a` through `413da3a` added the strict vehicle lifecycle domain, pricing, transactional persistence, and guarded check-in/check-out routes:
+Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositories for vehicle, subscriber, and garage state. Commits `148277a` through `413da3a` added the strict vehicle lifecycle domain, pricing, transactional persistence, and guarded check-in/check-out routes. Commit `d0b316b` added transactional subscriber creation, and commit `2d19831` added its guarded HTTP route:
 
 - `server-v2/repositories/firestoreVehicles.ts`.
 - `server-v2/test/firestoreVehicles.test.ts`.
@@ -100,21 +100,25 @@ Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositori
 - `server-v2/test/firestoreSubscribers.test.ts`.
 - `server-v2/repositories/firestoreGarages.ts`.
 - `server-v2/test/firestoreGarages.test.ts`.
+- `server-v2/contracts/vehiclePricing.ts` and `server-v2/domain/vehiclePricing.ts`.
+- `server-v2/repositories/firestoreVehicleCheckIn.ts` and `server-v2/repositories/firestoreVehicleCheckOut.ts`.
+- `server-v2/contracts/subscriberCommands.ts` and `server-v2/repositories/firestoreSubscriberCommands.ts`.
+- `server-v2/test/firestoreSubscriberCommands.test.ts` and `server-v2/test/subscriberCreateRoute.test.ts`.
 
-The read repositories read legacy Firestore collections and documents, map compatibility fields into strict v2 contracts, validate garage scope and bounds, use deterministic bounded reads where applicable, and record returned Firestore reads. Vehicle lifecycle writes are isolated behind authenticated v2 preview routes and do not replace legacy authority.
+The read repositories read legacy Firestore collections and documents, map compatibility fields into strict v2 contracts, validate garage scope and bounds, use deterministic bounded reads where applicable, and record returned Firestore reads. Vehicle lifecycle and subscriber-create writes are isolated behind authenticated v2 preview routes and do not replace legacy authority.
 
 Validation passed locally:
 
 ```text
 npm run check:v2
-33 test files passed
-162 tests passed
+35 test files passed
+172 tests passed
 strict v2 typecheck passed
 explicit-any gate passed
 git diff --check passed
 ```
 
-The GitHub Production Gates for the vehicle lifecycle commits passed through run `35598838365`.
+The GitHub Production Gates for the vehicle lifecycle and subscriber-create commits passed through run `35602256564`.
 
 ## What is complete
 
@@ -127,7 +131,7 @@ The following foundations exist and are tested:
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
 - Production vehicle, subscriber, and garage state repositories with emulator tests.
-- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. These are domain primitives only; they are not yet production HTTP commands.
+- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out and subscriber creation now have guarded transactional HTTP paths; subscriber renew/update/suspend/cancel/delete and garage lifecycle commands remain.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
 - Guarded Railway bootstrap under `/api/v2`.
@@ -137,11 +141,11 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in and check-out repositories now exist with Firestore emulator, idempotency, accounting, and concurrency tests. Subscriber, garage-management, deletion, and financial write repositories remain unmigrated.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber-create repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Subscriber renew/update/suspend/cancel/delete, garage-management, deletion, and financial write repositories remain unmigrated.
 
 ### HTTP routes
 
-Guarded v2 routes now include vehicle check-in and check-out in addition to health, packages, garage summary, pending, and activity. Subscriber operations, garage lock/suspension, garage management, deletion, and financial routes are not complete.
+Guarded v2 routes now include vehicle check-in, vehicle check-out, and subscriber creation in addition to health, packages, garage summary, pending, and activity. Subscriber renew/update/suspend/cancel/delete, garage lock/suspension, garage management, deletion, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -155,7 +159,7 @@ The existing backend remains the only financial writer. Do not dual-write money 
 
 ### Completed implementation slices
 
-The repository context was re-established and the working tree is clean at `413da3a`. Subscriber and garage read repositories, vehicle check-in/check-out transactional persistence, pricing compatibility, and guarded vehicle lifecycle routes are complete, validated locally and in CI, and published directly to `main`.
+The repository context is clean at `2d19831`. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create transactional persistence and route, and their emulator/concurrency tests are complete, validated locally and in CI, and published directly to `main`.
 
 ### Current blocking validation
 
@@ -170,9 +174,15 @@ GET /api/v2/packages?limit=100 -> authenticated success
 
 Compare the normalized v2 package catalog with the legacy Firestore result. Record any difference with the endpoint, request ID, tenant/garage scope, and data version. Do not enable the production flag after a single successful request; first verify fallback and rollback behavior.
 
-### Next code slice after preview validation
+### Exact next-agent runbook
 
-Vehicle check-in and check-out now satisfy the first lifecycle-route slice with strict contracts, Firebase authentication, canonical session authorization, garage scope enforcement, idempotency records, transaction boundaries, accounting behavior, and emulator concurrency tests. Next implement subscriber lifecycle commands, then garage lock/suspension and deletion operations, each with the same route, authorization, idempotency, transaction, audit, concurrency, and rollback requirements.
+Start from the repository root `/home/ubuntu/RQ-` on `main`. First verify `git status --short --branch`, `git log -3 --oneline`, and that `HEAD` is `2d19831` or a newer published commit. Read `server-v2/contracts/subscriber.ts`, `server-v2/domain/subscriberOperations.ts`, `server-v2/contracts/subscriberCommands.ts`, `server-v2/repositories/firestoreSubscriberCommands.ts`, `server-v2/app.ts`, `server-v2/preview.ts`, and the legacy source `server/routes/subscribers.ts` before editing.
+
+The next bounded implementation slice is **subscriber renew**. Do not start garage commands, financial writes, shadow comparison, or legacy deletion in the same slice. Add a strict renew input/result contract beside `subscriberCommands.ts`; extend `SubscriberCommandRepository` with `renew(input)`; implement the Firestore transaction in `firestoreSubscriberCommands.ts` using the same `idempotency_records` collection, canonical subscriber path `garages/{garageId}/subscribers/{subscriberId}`, and `business_events` audit collection. Re-read the subscriber inside the transaction, enforce garage scope and `SUBSCRIBER_NOT_FOUND`/`SUBSCRIBER_CANCELLED` rules through `executeSubscriberCommand`, update legacy-compatible `startDate`, `endDate`, `startAt`, `endAt`, and `updatedAt` fields, and return a stored replay result. Add emulator tests for successful renewal, invalid date range, cancelled subscriber, replay, changed-payload conflict, and concurrent renewal.
+
+Then add `POST /v2/garages/:garageId/subscribers/:subscriberId/renew` in `server-v2/app.ts`, protected by the existing `garage_write` authorization middleware and enabled only when `v2ReadEnabled` and the repository dependency are present. Wire the production repository in `server-v2/preview.ts`. Add route tests beside `subscriberCreateRoute.test.ts` for strict input, same-garage access, admin access, conflict mapping, and production-gate non-exposure. Run the focused tests and `tsc`, then `npm run check:v2`, `git diff --check`, and the explicit-`any` gate. Commit and push directly to `main`, locate the new Production Gate with `gh run list`, watch it with `gh run watch`, and update this handoff in the same slice with the resulting commit and run ID.
+
+After renew is green, repeat the same one-slice process in this order: subscriber update (preserve immutable plate), subscriber suspend, subscriber cancel/delete, garage lock/suspension, garage management, and resumable garage deletion. Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
 
 Do not begin financial writes before the lifecycle routes, shadow comparison, and rollback procedures are complete.
 
