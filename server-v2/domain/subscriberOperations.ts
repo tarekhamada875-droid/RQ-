@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { SubscriberOperationSchema, SubscriberStateSchema, type SubscriberOperation, type SubscriberState } from '../contracts/subscriber.js';
 
 type SubscriberCommandInput = Readonly<{
-  operation: 'create' | 'renew' | 'suspend' | 'cancel';
+  operation: 'create' | 'renew' | 'update' | 'suspend' | 'cancel';
   existing: SubscriberState | null;
   subscriberId: string;
   garageId: string;
@@ -43,6 +43,15 @@ export function executeSubscriberCommand(input: SubscriberCommandInput): Subscri
     const endAt = isoDate(input.endAt, 'END_DATE_REQUIRED');
     if (Date.parse(endAt) <= Date.parse(startAt)) throw new Error('INVALID_DATE_RANGE');
     return result(input, { ...existing, status: 'active', startAt, endAt, updatedAt: occurredAt }, ['status', 'startAt', 'endAt', 'updatedAt']);
+  }
+  if (input.operation === 'update') {
+    const startAt = input.startAt ? isoDate(input.startAt, 'INVALID_START_DATE') : existing.startAt;
+    const endAt = input.endAt ? isoDate(input.endAt, 'INVALID_END_DATE') : existing.endAt;
+    if (Date.parse(endAt) <= Date.parse(startAt)) throw new Error('INVALID_DATE_RANGE');
+    const allowedUpdates: SubscriberOperation['allowedUpdates'] = ['updatedAt'];
+    if (input.startAt) allowedUpdates.push('startAt');
+    if (input.endAt) allowedUpdates.push('endAt');
+    return result(input, { ...existing, startAt, endAt, updatedAt: occurredAt }, allowedUpdates);
   }
   if (input.operation === 'suspend') {
     if (existing.status !== 'active') throw new Error('SUBSCRIBER_NOT_ACTIVE');

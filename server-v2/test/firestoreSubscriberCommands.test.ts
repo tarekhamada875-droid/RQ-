@@ -111,4 +111,47 @@ describe('Firestore subscriber command repository', () => {
     expect(left).toEqual(right);
     expect((await firestore.collection('business_events').get()).size).toBe(2);
   });
+
+  it('updates allowed legacy fields without changing immutable plate identity', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const result = await repository.update({
+      garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw',
+      startAt: '2026-09-25T00:00:00.000Z', endAt: '2026-10-25T00:00:00.000Z',
+      ownerName: 'Updated Owner', phone: '+201000000000', notes: 'Updated notes',
+      actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-0001'
+    });
+    expect(result.subscriber).toMatchObject({ id: 'plate_YWJjLTEyMw', plate: 'abc-123', startAt: '2026-09-25T00:00:00.000Z', endAt: '2026-10-25T00:00:00.000Z' });
+    expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).data()).toMatchObject({ plateNumber: 'ABC123', plateNumberRaw: 'abc-123', startDate: '2026-09-25T00:00:00.000Z', endDate: '2026-10-25T00:00:00.000Z', ownerName: 'Updated Owner', phone: '+201000000000', notes: 'Updated notes' });
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('supports partial updates while enforcing date ranges and missing subscribers', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    await expect(repository.update({ garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', endAt: '2026-09-20T00:00:00.000Z', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-0002' })).rejects.toThrow('INVALID_DATE_RANGE');
+    await expect(repository.update({ garageId: 'garage-1', subscriberId: 'plate_missing', ownerName: 'Missing', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-0003' })).rejects.toThrow('SUBSCRIBER_NOT_FOUND');
+  });
+
+  it('replays updates and rejects changed-payload idempotency reuse', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const update = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', ownerName: 'Replay Owner', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-0004' };
+    const first = await repository.update(update);
+    await expect(repository.update(update)).resolves.toEqual(first);
+    await expect(repository.update({ ...update, ownerName: 'Changed Owner' })).rejects.toThrow('IDEMPOTENCY_KEY_REUSE');
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('serializes concurrent updates with one stored replay result', { timeout: 15000 }, async () => {
+    const first = new FirestoreSubscriberCommandRepository(firestore);
+    await first.create(input);
+    const update = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', ownerName: 'Concurrent Owner', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-0005' };
+    const [left, right] = await Promise.all([
+      first.update(update),
+      new FirestoreSubscriberCommandRepository(firestore).update(update)
+    ]);
+    expect(left).toEqual(right);
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
 });
