@@ -4,11 +4,13 @@ import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
 import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
+import { SubscriberCreateRequestSchema } from './contracts/subscriberCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
 import type { VehicleCheckInRepository } from './repositories/firestoreVehicleCheckIn.js';
 import type { VehicleCheckOutRepository } from './repositories/firestoreVehicleCheckOut.js';
+import type { SubscriberCommandRepository } from './repositories/firestoreSubscriberCommands.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -22,6 +24,7 @@ type V2AppOptions = Readonly<{
   activity?: ActivityRepository;
   vehicleCheckIn?: VehicleCheckInRepository;
   vehicleCheckOut?: VehicleCheckOutRepository;
+  subscriberCommands?: SubscriberCommandRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -73,6 +76,12 @@ export function createV2App(options: V2AppOptions = {}): Express {
     }
     if (options.vehicleCheckOut) {
       app.use('/v2/garages/:garageId/vehicles/:vehicleId/check-out', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
+        const garageId = request.params.garageId;
+        return typeof garageId === 'string' ? garageId : undefined;
+      }));
+    }
+    if (options.subscriberCommands) {
+      app.use('/v2/garages/:garageId/subscribers', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
         const garageId = request.params.garageId;
         return typeof garageId === 'string' ? garageId : undefined;
       }));
@@ -200,6 +209,36 @@ export function createV2App(options: V2AppOptions = {}): Express {
           return;
         }
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to check out vehicle'));
+      }
+    });
+  }
+
+  const subscriberCommands = options.subscriberCommands;
+  if (subscriberCommands && options.authMiddleware && v2ReadEnabled) {
+    app.post('/v2/garages/:garageId/subscribers', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const authorization = request.v2Authorization;
+      const parsed = SubscriberCreateRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID and subscriber request are required'));
+        return;
+      }
+      try {
+        const result = await subscriberCommands.create({
+          ...parsed.data,
+          garageId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString()
+        });
+        response.status(201).json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (new Set(['IDEMPOTENCY_KEY_REUSE', 'SUBSCRIBER_ALREADY_EXISTS']).has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to create subscriber'));
       }
     });
   }
