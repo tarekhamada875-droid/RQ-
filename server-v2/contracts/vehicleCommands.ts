@@ -42,7 +42,25 @@ export const VehicleCheckInResultSchema = z.object({
   dailyCapacity: z.number().int().nonnegative()
 }).strict();
 
+export const VehicleCheckOutInputSchema = z.object({
+  garageId: z.string().min(1).max(160),
+  vehicleId: z.string().min(1).max(160),
+  actorUid: z.string().min(1).max(160),
+  occurredAt: z.string().datetime({ offset: true }),
+  idempotencyKey: z.string().min(8).max(128)
+}).strict();
+
+export const VehicleCheckOutResultSchema = z.object({
+  operationId: z.string().min(1).max(160),
+  garageId: z.string().min(1).max(160),
+  vehicleId: z.string().min(1).max(160),
+  cost: z.number().nonnegative(),
+  currency: z.literal('EGP')
+}).strict();
+
 export type VehicleCheckInInput = z.infer<typeof VehicleCheckInInputSchema>;
 export type VehicleCheckInRequest = z.infer<typeof VehicleCheckInRequestSchema>;
 export type VehicleCheckInContext = z.infer<typeof VehicleCheckInContextSchema>;
 export type VehicleCheckInResult = z.infer<typeof VehicleCheckInResultSchema>;
+export type VehicleCheckOutInput = z.infer<typeof VehicleCheckOutInputSchema>;
+export type VehicleCheckOutResult = z.infer<typeof VehicleCheckOutResultSchema>;
