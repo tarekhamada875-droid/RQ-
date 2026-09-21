@@ -8,12 +8,16 @@ import {
   SubscriberRenewResultSchema,
   SubscriberUpdateInputSchema,
   SubscriberUpdateResultSchema,
+  SubscriberSuspendInputSchema,
+  SubscriberSuspendResultSchema,
   type SubscriberCreateInput,
   type SubscriberCreateResult,
   type SubscriberRenewInput,
   type SubscriberRenewResult,
   type SubscriberUpdateInput,
-  type SubscriberUpdateResult
+  type SubscriberUpdateResult,
+  type SubscriberSuspendInput,
+  type SubscriberSuspendResult
 } from '../contracts/subscriberCommands.js';
 import { executeSubscriberCommand } from '../domain/subscriberOperations.js';
 import { idempotencyFingerprint } from '../domain/operations.js';
@@ -26,7 +30,7 @@ const StoredResultSchema = z.object({
   createdAt: z.unknown()
 }).strict();
 
-type SubscriberOperationKind = 'create' | 'renew' | 'update';
+type SubscriberOperationKind = 'create' | 'renew' | 'update' | 'suspend';
 
 type LegacySubscriberUpdate = {
   updatedAt: Date;
@@ -62,10 +66,16 @@ function parseStoredUpdateResult(raw: unknown): SubscriberUpdateResult {
   return SubscriberUpdateResultSchema.parse(JSON.parse(stored.responseJson));
 }
 
+function parseStoredSuspendResult(raw: unknown): SubscriberSuspendResult {
+  const stored = StoredResultSchema.parse(raw);
+  return SubscriberSuspendResultSchema.parse(JSON.parse(stored.responseJson));
+}
+
 export interface SubscriberCommandRepository {
   create(input: SubscriberCreateInput): Promise<SubscriberCreateResult>;
   renew(input: SubscriberRenewInput): Promise<SubscriberRenewResult>;
   update(input: SubscriberUpdateInput): Promise<SubscriberUpdateResult>;
+  suspend(input: SubscriberSuspendInput): Promise<SubscriberSuspendResult>;
 }
 
 export class FirestoreSubscriberCommandRepository implements SubscriberCommandRepository {
@@ -245,6 +255,53 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
         occurredAt,
         idempotencyKey: command.idempotencyKey,
         payload: { updates: Object.keys(updates).filter((key) => key !== 'updatedAt') }
+      });
+      transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
+      this.costs.recordWrite(3);
+      return result;
+    });
+  }
+
+  async suspend(input: SubscriberSuspendInput): Promise<SubscriberSuspendResult> {
+    const command = SubscriberSuspendInputSchema.parse(input);
+    const fingerprint = idempotencyFingerprint('subscriber.suspend', command);
+    this.costs.recordTransactionAttempt();
+    return this.firestore.runTransaction(async (transaction) => {
+      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(command.actorUid, 'suspend', command.idempotencyKey));
+      const subscriberRef = this.firestore.doc(`garages/${command.garageId}/subscribers/${command.subscriberId}`);
+      const idempotencySnapshot = await transaction.get(idempotencyRef);
+      this.costs.recordRead(idempotencySnapshot.exists ? 1 : 0);
+      if (idempotencySnapshot.exists) {
+        const stored = StoredResultSchema.parse(idempotencySnapshot.data());
+        if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
+        return parseStoredSuspendResult(stored);
+      }
+      const subscriberSnapshot = await transaction.get(subscriberRef);
+      this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      const existing = subscriberSnapshot.exists
+        ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
+        : null;
+      const decision = executeSubscriberCommand({
+        operation: 'suspend',
+        existing,
+        subscriberId: command.subscriberId,
+        garageId: command.garageId,
+        plate: existing?.plate ?? 'unknown',
+        occurredAt: new Date(command.occurredAt)
+      });
+      const result = SubscriberSuspendResultSchema.parse({ operationId: decision.operation.operationId, subscriber: decision.subscriber });
+      const occurredAt = new Date(command.occurredAt);
+      transaction.update(subscriberRef, { status: 'suspended', updatedAt: occurredAt });
+      const eventRef = this.firestore.collection('business_events').doc();
+      transaction.create(eventRef, {
+        garageId: command.garageId,
+        aggregateType: 'subscriber',
+        aggregateId: command.subscriberId,
+        eventType: 'subscriber_suspended',
+        actorUid: command.actorUid,
+        occurredAt,
+        idempotencyKey: command.idempotencyKey,
+        payload: { status: 'suspended' }
       });
       transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
       this.costs.recordWrite(3);
