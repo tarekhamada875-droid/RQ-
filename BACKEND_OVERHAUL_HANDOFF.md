@@ -3,9 +3,9 @@
 **Last updated:** 2026-09-21 17:22 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** this update is pending publication
+**Latest published documentation commit:** `298ee55 docs: record subscriber renewal completion`
 **Latest implementation commit:** `a5a0d8f feat: add guarded subscriber renewal`
-**Latest GitHub Production Gate:** `35611392244` — **success**
+**Latest GitHub Production Gate:** `35611677555` — **success**
 
 ## Mission
 
