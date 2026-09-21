@@ -35,4 +35,5 @@ describe('Railway v2 preview bootstrap', () => {
     expect((await fetch(`${baseUrl}/api/v2/health`)).status).toBe(200);
     expect((await fetch(`${baseUrl}/api/v2/packages`)).status).toBe(401);
   });
+
 });

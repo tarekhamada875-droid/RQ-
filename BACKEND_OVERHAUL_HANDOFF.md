@@ -38,6 +38,7 @@ The following isolated v2 foundations are present and tested:
 - Injectable v2 request-ID propagation, audit-safe request-context capture, authenticated-UID rate limiting, rate-limit response headers, and HTTP lifecycle tests.
 - Fail-closed Railway preview bootstrap: `/api/v2` is mounted only when both `V2_PREVIEW_ENABLED` and `V2_PREVIEW_AUTH_ENABLED` are explicitly true; otherwise the legacy entrypoint is unchanged.
 - Structured Railway console telemetry sink and explicit package, garage-summary, pending, and activity read rate budgets are configured through typed environment settings.
+- Railway integration regression fixed: the guarded v2 app is inserted before the legacy `/api` 404 fallback; local production-mode smoke tests now return `200` for `/api/v2/health` and `401` for unauthenticated protected reads.
 - Cloudflare frontend typed read adapter in `src/api/v2ReadAdapter.ts`, authenticated through the existing `apiFetch` path.
 - Environment flags documented in `.env.example`; all `VITE_V2_READ_*` flags default to false.
 - Preview-only smoke harness in `src/api/v2ReadSmoke.ts` and tests.

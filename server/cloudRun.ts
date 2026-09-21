@@ -1,14 +1,16 @@
-import { app } from './app';
+import { createApp } from './app';
 import { firebaseConfig } from './firebaseAdmin';
 import { parseEnvironment } from '../server-v2/config/environment.js';
-import { mountConfiguredV2Preview } from '../server-v2/previewBootstrap.js';
+import { configuredV2Preview } from '../server-v2/previewBootstrap.js';
 
 const port = Number(process.env.PORT) || 8080;
 const environment = parseEnvironment({
   ...process.env,
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || firebaseConfig.projectId
 });
-const previewMounted = mountConfiguredV2Preview(app, environment);
+const previewApp = configuredV2Preview(environment);
+const previewMounted = Boolean(previewApp);
+const app = createApp(previewApp ? { apiPreviewApp: previewApp } : {});
 
 if (environment.V2_PREVIEW_ENABLED && !previewMounted) {
   console.warn('[RQ Cloud Run API] v2 preview remains disabled because V2_PREVIEW_AUTH_ENABLED is false');

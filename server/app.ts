@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import vehiclesRouter from './routes/vehicles';
 import subscribersRouter from './routes/subscribers';
@@ -153,7 +153,7 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   return false;
 }
 
-export function createApp() {
+export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   const app = express();
   app.set('trust proxy', 1);
 
@@ -872,6 +872,8 @@ export function createApp() {
   app.post('/api/activity-logs/add', requireAuth, async (_req: AuthRequest, res: any) => {
     return res.status(403).json({ success: false, error: 'SERVER_GENERATED_ONLY' });
   });
+
+  if (options.apiPreviewApp) app.use('/api', options.apiPreviewApp);
 
   // Vite development middleware vs Static Production serving
   
