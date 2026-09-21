@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 13:26 UTC+3
+**Last updated:** 2026-09-21 14:07 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `85eca6b docs: prepare backend overhaul continuation handoff`
-**Latest implementation commit:** `daf46eb feat: add firestore vehicle state repository`
-**Latest GitHub Production Gate:** `35587687383` — **success**
+**Latest implementation commit:** `06831b9 feat: add firestore garage state repository`
+**Latest GitHub Production Gate:** `35591911502` — **success**
 
 ## Mission
 
@@ -67,7 +67,7 @@ The Pages project is `rq`, with production domain `https://rq-acg.pages.dev`. It
 npm run build:web
 ```
 
-The preview environment now contains:
+The preview environment is configured with:
 
 ```text
 VITE_BACKEND_API_URL=https://rq-production-af02.up.railway.app
@@ -76,7 +76,7 @@ VITE_V2_READ_PACKAGE_CATALOG=true
 
 The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; production remains on the legacy provider. The v2 flag parser defaults every flag to false unless the exact value is `true`. The preview flag being true does not authorize enabling the production flag.
 
-There is currently no Cloudflare preview deployment available for an authenticated browser smoke test. The user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a real non-production preview deployment has been tested.
+Cloudflare currently has only stale preview deployments from old feature branches; the current `main` commit `06831b9` has a successful production deployment but no current non-production preview deployment. The project is configured to create previews for branches, but the user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
 
 ### Latest frontend slice
 
@@ -92,25 +92,29 @@ The package adapter tests and TypeScript check passed. The full frontend test su
 
 ### Latest backend repository slice
 
-Commit `daf46eb feat: add firestore vehicle state repository` added:
+Commits `daf46eb`, `04a87e6`, and `06831b9` added the production read repositories for vehicle, subscriber, and garage state:
 
 - `server-v2/repositories/firestoreVehicles.ts`.
 - `server-v2/test/firestoreVehicles.test.ts`.
+- `server-v2/repositories/firestoreSubscribers.ts`.
+- `server-v2/test/firestoreSubscribers.test.ts`.
+- `server-v2/repositories/firestoreGarages.ts`.
+- `server-v2/test/firestoreGarages.test.ts`.
 
-The repository reads the legacy collection `garages/{garageId}/vehicles`, filters `status == inside`, orders by `entryTime desc` and document ID, applies a maximum bounded limit of 200, maps legacy fields into strict `VehicleState`, and records returned Firestore reads. It is read-only. No lifecycle HTTP route or legacy write path was changed.
+The repositories read legacy Firestore collections and documents, map compatibility fields into strict v2 contracts, validate garage scope and bounds, use deterministic bounded reads where applicable, and record returned Firestore reads. They are read-only. No lifecycle HTTP route or legacy write path was changed.
 
 Validation passed locally:
 
 ```text
 npm run check:v2
-25 test files passed
-115 tests passed
+27 test files passed
+125 tests passed
 strict v2 typecheck passed
 explicit-any gate passed
 git diff --check passed
 ```
 
-The GitHub Production Gate for `daf46eb` passed as run `35587181364`.
+The GitHub Production Gates for `daf46eb`, `04a87e6`, and `06831b9` passed as runs `35587181364`, `35591497949`, and `35591911502`.
 
 ## What is complete
 
@@ -122,7 +126,7 @@ The following foundations exist and are tested:
 - Session expiry, revocation, inactivity, role, garage-scope, audit context, redaction, and rate-limit policies.
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
-- Production vehicle state repository with emulator tests.
+- Production vehicle, subscriber, and garage state repositories with emulator tests.
 - Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. These are domain primitives only; they are not yet production HTTP commands.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
@@ -133,7 +137,7 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-Remaining production Firestore repositories include subscribers and garage state. Vehicle state is now covered for bounded active reads, but its transactional write repository does not exist yet.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional write repositories do not exist yet.
 
 ### HTTP routes
 
@@ -141,7 +145,7 @@ Only the guarded read routes are currently exposed: health, packages, garage sum
 
 ### Authenticated Cloudflare preview smoke
 
-Railway authentication and CORS have been tested through local and live unauthenticated boundary checks. A real authenticated Cloudflare preview request still needs to be performed with a Firebase-authenticated browser session. The Railway operator MCP token cannot substitute for a Firebase user token.
+Railway authentication and CORS have been tested through local and live unauthenticated boundary checks. A real authenticated Cloudflare preview request still needs to be performed with a Firebase-authenticated browser session when a current non-production preview exists. The Railway operator MCP token cannot substitute for a Firebase user token.
 
 ### Financial authority
 
@@ -149,70 +153,15 @@ The existing backend remains the only financial writer. Do not dual-write money 
 
 ## Exact next actions for the next agent
 
-### First action: re-establish context
+### Completed implementation slices
 
-From `/home/ubuntu/RQ-`, run:
+The repository context was re-established and the working tree is clean at `06831b9`. The subscriber and garage read-repository slices are complete, validated locally and in CI, and published directly to `main`.
 
-```bash
-git status --short
-git log -8 --oneline
-manus-config config load --search railway
-manus-config connector list --user-custom-only
-```
+### Current blocking validation
 
-Confirm that the working tree is clean, `HEAD` is `85eca6b` or newer, and the Railway operator connector is enabled. The implementation baseline is `daf46eb`; later commits may contain documentation or subsequent slices. Do not recreate the connector if it already exists.
+Use the enabled Cloudflare connector to inspect the `rq` Pages project before claiming preview readiness. The project has preview support enabled, but the available preview deployments are stale builds from old feature branches. The current `main` commit has only a successful production deployment. Do not create a branch merely to manufacture a current preview URL, and do not use a stale preview to claim current authenticated end-to-end behavior.
 
-### Second action: implement the subscriber repository
-
-Build the next bounded slice as a production Firestore read repository for subscriber state. Use the existing strict contract in `server-v2/contracts/subscriber.ts` and the legacy collection shape under `garages/{garageId}/subscribers`.
-
-The repository should:
-
-- Map legacy subscriber fields into `SubscriberState` with strict Zod validation.
-- Preserve `id`, `garageId`, plate identity, status, start date, end date, and update time.
-- Read only one garage scope at a time.
-- Use a bounded, deterministic query with an explicit order and limit.
-- Record returned Firestore reads with the existing cost instrumentation.
-- Reject invalid garage IDs and limits before issuing a Firestore read.
-- Remain read-only. Do not add subscriber writes or HTTP routes in this slice.
-- Add emulator tests for mapping, malformed documents, active/status filtering, deterministic ordering, bounds, and cost accounting.
-
-Use the vehicle repository and `firestorePackageCatalog.test.ts` as style references. Keep the new files isolated under `server-v2/repositories/` and `server-v2/test/`.
-
-### Third action: validate and publish the subscriber slice
-
-Start the cached Firestore emulator directly if the Firebase CLI is unavailable:
-
-```bash
-java -jar /home/ubuntu/.cache/firebase/emulators/cloud-firestore-emulator-v1.22.0.jar \
-  --host 127.0.0.1 --port 8080 --project_id rq-v2-subscriber-emulator
-```
-
-Then run:
-
-```bash
-npm run check:v2
-git diff --check
-git status --short
-```
-
-Review the exact diff. Commit and push directly to `main`, then watch the latest GitHub Production Gate:
-
-```bash
-git add server-v2/repositories server-v2/test
-git commit -m "feat: add firestore subscriber state repository"
-git push origin main
-run_id=$(gh run list --repo tarekhamada875-droid/RQ- --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch "$run_id" --repo tarekhamada875-droid/RQ- --exit-status
-```
-
-### Fourth action: implement the garage state repository
-
-After the subscriber slice is green, inspect the legacy `garages` documents and strict `GarageSchema`. Add a bounded production repository for garage state and emulator tests. Preserve the separation between current state and projected summaries. Do not introduce garage management writes yet.
-
-### Fifth action: perform authenticated preview validation when a real preview exists
-
-Use the Cloudflare connector to inspect the `rq` Pages project. Keep the production environment unchanged. If a non-production preview URL exists, test the deployed frontend with a Firebase-authenticated browser session and verify:
+When a current non-production preview exists, use a Firebase-authenticated browser session to verify:
 
 ```text
 GET /api/v2/health   -> 200
@@ -221,7 +170,7 @@ GET /api/v2/packages?limit=100 -> authenticated success
 
 Compare the normalized v2 package catalog with the legacy Firestore result. Record any difference with the endpoint, request ID, tenant/garage scope, and data version. Do not enable the production flag after a single successful request; first verify fallback and rollback behavior.
 
-### Sixth action: begin lifecycle routes
+### Next code slice after preview validation
 
 Only after the read repositories and authenticated preview checks are stable, implement one authenticated lifecycle route at a time. Start with vehicle check-in and check-out. Each route needs a strict request/response contract, Firebase authentication, canonical session authorization, garage scope enforcement, an idempotency record, a transaction boundary, audit behavior, emulator concurrency tests, and a rollback note.
 
