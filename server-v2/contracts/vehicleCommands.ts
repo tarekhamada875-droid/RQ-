@@ -18,6 +18,10 @@ export const VehicleCheckInRequestSchema = z.object({
   idempotencyKey: z.string().min(8).max(128)
 }).strict();
 
+export const VehicleCheckOutRequestSchema = z.object({
+  idempotencyKey: z.string().min(8).max(128)
+}).strict();
+
 export const VehicleCheckInContextSchema = z.object({
   garageId: z.string().min(1).max(160),
   garageName: z.string().min(1).max(160),
@@ -60,6 +64,7 @@ export const VehicleCheckOutResultSchema = z.object({
 
 export type VehicleCheckInInput = z.infer<typeof VehicleCheckInInputSchema>;
 export type VehicleCheckInRequest = z.infer<typeof VehicleCheckInRequestSchema>;
+export type VehicleCheckOutRequest = z.infer<typeof VehicleCheckOutRequestSchema>;
 export type VehicleCheckInContext = z.infer<typeof VehicleCheckInContextSchema>;
 export type VehicleCheckInResult = z.infer<typeof VehicleCheckInResultSchema>;
 export type VehicleCheckOutInput = z.infer<typeof VehicleCheckOutInputSchema>;

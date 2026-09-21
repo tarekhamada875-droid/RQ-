@@ -3,11 +3,12 @@ import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
-import { VehicleCheckInRequestSchema } from './contracts/vehicleCommands.js';
+import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
 import type { VehicleCheckInRepository } from './repositories/firestoreVehicleCheckIn.js';
+import type { VehicleCheckOutRepository } from './repositories/firestoreVehicleCheckOut.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -20,6 +21,7 @@ type V2AppOptions = Readonly<{
   pendingQueue?: PendingQueueRepository;
   activity?: ActivityRepository;
   vehicleCheckIn?: VehicleCheckInRepository;
+  vehicleCheckOut?: VehicleCheckOutRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -65,6 +67,12 @@ export function createV2App(options: V2AppOptions = {}): Express {
     }));
     if (options.vehicleCheckIn) {
       app.use('/v2/garages/:garageId/vehicles/check-in', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
+        const garageId = request.params.garageId;
+        return typeof garageId === 'string' ? garageId : undefined;
+      }));
+    }
+    if (options.vehicleCheckOut) {
+      app.use('/v2/garages/:garageId/vehicles/:vehicleId/check-out', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
         const garageId = request.params.garageId;
         return typeof garageId === 'string' ? garageId : undefined;
       }));
@@ -156,6 +164,42 @@ export function createV2App(options: V2AppOptions = {}): Express {
           return;
         }
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to check in vehicle'));
+      }
+    });
+  }
+
+  const vehicleCheckOut = options.vehicleCheckOut;
+  if (vehicleCheckOut && options.authMiddleware && v2ReadEnabled) {
+    app.post('/v2/garages/:garageId/vehicles/:vehicleId/check-out', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const vehicleId = request.params.vehicleId;
+      const authorization = request.v2Authorization;
+      const parsed = VehicleCheckOutRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || typeof vehicleId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage, vehicle, and check-out request are required'));
+        return;
+      }
+      try {
+        const result = await vehicleCheckOut.checkOut({
+          garageId,
+          vehicleId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString(),
+          idempotencyKey: parsed.data.idempotencyKey
+        });
+        response.json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        const conflict = new Set([
+          'IDEMPOTENCY_KEY_REUSE', 'GARAGE_NOT_FOUND', 'VEHICLE_NOT_FOUND',
+          'VEHICLE_ALREADY_OUTSIDE', 'VEHICLE_NOT_INSIDE', 'INVALID_ENTRYAT'
+        ]);
+        if (conflict.has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to check out vehicle'));
       }
     });
   }
