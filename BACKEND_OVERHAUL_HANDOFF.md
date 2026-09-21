@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 17:22 UTC+3
+**Last updated:** 2026-09-21 17:47 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `65b4811 docs: record final production gate`
-**Latest implementation commit:** `a5a0d8f feat: add guarded subscriber renewal`
-**Latest GitHub Production Gate:** `35612583464` — **success**
+**Latest implementation commit:** `9378f63 feat: add guarded subscriber update`
+**Latest GitHub Production Gate:** `35614145141` — **success**
 
 ## Mission
 
@@ -131,7 +131,7 @@ The following foundations exist and are tested:
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
 - Production vehicle, subscriber, and garage state repositories with emulator tests.
-- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, and subscriber renewal now have guarded transactional HTTP paths; subscriber update/suspend/cancel/delete and garage lifecycle commands remain.
+- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, and subscriber update now have guarded transactional HTTP paths; subscriber suspend/cancel/delete and garage lifecycle commands remain.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
 - Guarded Railway bootstrap under `/api/v2`.
@@ -145,7 +145,7 @@ The bounded production read repositories are covered for vehicle, subscriber, an
 
 ### HTTP routes
 
-Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, and subscriber renewal in addition to health, packages, garage summary, pending, and activity. Subscriber update/suspend/cancel/delete, garage lock/suspension, garage management, deletion, and financial routes are not complete.
+Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, and subscriber update in addition to health, packages, garage summary, pending, and activity. Subscriber suspend/cancel/delete, garage lock/suspension, garage management, deletion, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -159,7 +159,7 @@ The existing backend remains the only financial writer. Do not dual-write money 
 
 ### Completed implementation slices
 
-The repository context is clean at `a5a0d8f`. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create and subscriber-renew transactional persistence and routes, and their emulator/concurrency tests are complete, validated locally and in CI, and published directly to `main`.
+The repository context is clean at `9378f63`. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, and subscriber-update transactional persistence and routes, and their emulator/concurrency tests are complete, validated locally and in CI, and published directly to `main`.
 
 ### Current blocking validation
 
@@ -176,11 +176,13 @@ Compare the normalized v2 package catalog with the legacy Firestore result. Reco
 
 ### Exact next-agent runbook
 
-Start from the repository root `/home/ubuntu/RQ-` on `main`. First verify `git status --short --branch`, `git log -3 --oneline`, and that `HEAD` is `a5a0d8f` or a newer published commit. Read the relevant subscriber contracts, command repository, app, preview, tests, and legacy source before editing.
+Start from the repository root `/home/ubuntu/RQ-` on `main`. First verify `git status --short --branch`, `git log -3 --oneline`, and that `HEAD` is `9378f63` or a newer published commit. Read the relevant subscriber contracts, command repository, app, preview, tests, and legacy source before editing.
 
 Subscriber renew is complete in `a5a0d8f`. It adds strict contracts, a Firestore transaction using `idempotency_records`, the canonical subscriber path, and `business_events`, re-reads the subscriber inside the transaction, enforces garage scope and the required not-found/cancelled/date-range rules through `executeSubscriberCommand`, updates legacy-compatible date fields, returns a stored replay result, and exposes the guarded authenticated route `POST /v2/garages/:garageId/subscribers/:subscriberId/renew`. Emulator and route tests cover successful renewal, invalid date range, cancelled and missing subscribers, replay, changed-payload conflict, concurrent renewal, same-garage authorization, cross-garage rejection, admin access, malformed requests, and production-gate non-exposure.
 
-The next bounded implementation slice is **subscriber update**. Preserve the legacy backend as authority, do not start garage commands, financial writes, shadow comparison, or legacy deletion in the same slice. Preserve immutable plate fields, add a strict update contract and result, use the same transactional idempotency and business-event patterns, require Firebase authentication and `garage_write`, enforce same-garage/admin scope, expose it only behind the authenticated preview gate, and add emulator/concurrency and guarded-route tests. Run the focused tests and `tsc`, then `npm run check:v2`, `git diff --check`, and the explicit-`any` gate. Commit and push directly to `main`, locate the new Production Gate with `gh run list`, watch it with `gh run watch`, and update this handoff with the resulting commit and run ID.
+Subscriber update is complete in `9378f63`. It adds strict partial-update contracts, preserves immutable plate identity, uses the transactional idempotency and audit-event patterns, validates merged date ranges, updates only approved legacy-compatible fields, and exposes the guarded authenticated route `POST /v2/garages/:garageId/subscribers/:subscriberId/update`. Emulator and route tests cover partial and full updates, replay, changed-payload conflict, concurrent update behavior, same-garage authorization, cross-garage rejection, admin access, malformed/empty requests, missing subscribers, invalid date ranges, and production-gate non-exposure.
+
+The next bounded implementation slice is **subscriber suspend**. Preserve the legacy backend as authority, do not start garage commands, financial writes, shadow comparison, or legacy deletion in the same slice. Add a strict suspend contract and result, use the same transactional idempotency and business-event patterns, require Firebase authentication and `garage_write`, enforce same-garage/admin scope, expose it only behind the authenticated preview gate, and add emulator/concurrency and guarded-route tests. Run the focused tests and `tsc`, then `npm run check:v2`, `git diff --check`, and the explicit-`any` gate. Commit and push directly to `main`, locate the new Production Gate with `gh run list`, watch it with `gh run watch`, and update this handoff with the resulting commit and run ID.
 
 After renew is green, repeat the same one-slice process in this order: subscriber update (preserve immutable plate), subscriber suspend, subscriber cancel/delete, garage lock/suspension, garage management, and resumable garage deletion. Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
 
