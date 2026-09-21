@@ -191,4 +191,41 @@ describe('Firestore subscriber command repository', () => {
     expect(left).toEqual(right);
     expect((await firestore.collection('business_events').get()).size).toBe(2);
   });
+
+  it('cancels without deleting the subscriber document and records one event', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const result = await repository.cancel({ garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'cancel-0001' });
+    expect(result.subscriber).toMatchObject({ id: 'plate_YWJjLTEyMw', status: 'cancelled' });
+    expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).data()).toMatchObject({ plateNumber: 'ABC123', plateNumberRaw: 'abc-123', status: 'cancelled' });
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('rejects missing and already-cancelled subscribers', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'cancel-0002' };
+    await repository.cancel(command);
+    await expect(repository.cancel({ ...command, idempotencyKey: 'cancel-0003' })).rejects.toThrow('SUBSCRIBER_ALREADY_CANCELLED');
+    await expect(repository.cancel({ ...command, subscriberId: 'plate_missing', idempotencyKey: 'cancel-0004' })).rejects.toThrow('SUBSCRIBER_NOT_FOUND');
+  });
+
+  it('replays cancel and rejects changed-payload idempotency reuse', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'cancel-0005' };
+    const first = await repository.cancel(command);
+    await expect(repository.cancel(command)).resolves.toEqual(first);
+    await expect(repository.cancel({ ...command, occurredAt: '2026-09-22T12:01:00.000Z' })).rejects.toThrow('IDEMPOTENCY_KEY_REUSE');
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('serializes concurrent cancels with one stored replay result', { timeout: 15000 }, async () => {
+    const first = new FirestoreSubscriberCommandRepository(firestore);
+    await first.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'cancel-0006' };
+    const [left, right] = await Promise.all([first.cancel(command), new FirestoreSubscriberCommandRepository(firestore).cancel(command)]);
+    expect(left).toEqual(right);
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
 });

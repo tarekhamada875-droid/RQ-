@@ -95,6 +95,23 @@ export const SubscriberSuspendResultSchema = z.object({
   subscriber: SubscriberStateSchema
 }).strict();
 
+export const SubscriberCancelInputSchema = z.object({
+  garageId: z.string().min(1).max(160),
+  subscriberId: z.string().min(1).max(160),
+  actorUid: z.string().min(1).max(160),
+  occurredAt: z.string().datetime({ offset: true }),
+  idempotencyKey: z.string().min(8).max(128)
+}).strict();
+
+export const SubscriberCancelRequestSchema = z.object({
+  idempotencyKey: z.string().min(8).max(128)
+}).strict();
+
+export const SubscriberCancelResultSchema = z.object({
+  operationId: z.string().min(1).max(160),
+  subscriber: SubscriberStateSchema
+}).strict();
+
 export type SubscriberCreateInput = z.infer<typeof SubscriberCreateInputSchema>;
 export type SubscriberCreateRequest = z.infer<typeof SubscriberCreateRequestSchema>;
 export type SubscriberCreateResult = z.infer<typeof SubscriberCreateResultSchema>;
@@ -107,3 +124,6 @@ export type SubscriberUpdateResult = z.infer<typeof SubscriberUpdateResultSchema
 export type SubscriberSuspendInput = z.infer<typeof SubscriberSuspendInputSchema>;
 export type SubscriberSuspendRequest = z.infer<typeof SubscriberSuspendRequestSchema>;
 export type SubscriberSuspendResult = z.infer<typeof SubscriberSuspendResultSchema>;
+export type SubscriberCancelInput = z.infer<typeof SubscriberCancelInputSchema>;
+export type SubscriberCancelRequest = z.infer<typeof SubscriberCancelRequestSchema>;
+export type SubscriberCancelResult = z.infer<typeof SubscriberCancelResultSchema>;

@@ -27,7 +27,8 @@ async function start(role: 'garage' | 'admin' = 'garage'): Promise<{ baseUrl: st
     create: async () => { throw new Error('unused'); },
     renew: async () => { throw new Error('unused'); },
     update: async () => { throw new Error('unused'); },
-    suspend: async (input) => { calls.push(input); return result; }
+    suspend: async (input) => { calls.push(input); return result; },
+    cancel: async () => { throw new Error('unused'); }
   };
   const app = createV2App({
     environment: parseEnvironment({ NODE_ENV: 'test', FIREBASE_PROJECT_ID: 'rq-v2-route-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' }),
@@ -76,7 +77,7 @@ describe('v2 subscriber-suspend route', () => {
   it('maps missing, inactive, and idempotency conflicts to 409', async () => {
     const subscriberCommands: SubscriberCommandRepository = {
       create: async () => { throw new Error('unused'); }, renew: async () => { throw new Error('unused'); }, update: async () => { throw new Error('unused'); },
-      suspend: async () => { throw new Error('SUBSCRIBER_NOT_ACTIVE'); }
+      suspend: async () => { throw new Error('SUBSCRIBER_NOT_ACTIVE'); }, cancel: async () => { throw new Error('unused'); }
     };
     const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'test', FIREBASE_PROJECT_ID: 'rq-v2-route-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' }), subscriberCommands, authMiddleware: (request, _response, next) => { request.v2Authorization = { uid: 'staff-1', sessionId: 'session-1', role: 'garage', garageId: 'garage-1', delegateGarageIds: [] }; next(); } });
     server = app.listen(0);
@@ -87,7 +88,7 @@ describe('v2 subscriber-suspend route', () => {
   });
 
   it('does not expose the route without the authenticated preview gate', async () => {
-    const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-v2-route-test' }), subscriberCommands: { create: async () => { throw new Error('unused'); }, renew: async () => { throw new Error('unused'); }, update: async () => { throw new Error('unused'); }, suspend: async () => result } });
+    const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-v2-route-test' }), subscriberCommands: { create: async () => { throw new Error('unused'); }, renew: async () => { throw new Error('unused'); }, update: async () => { throw new Error('unused'); }, suspend: async () => result, cancel: async () => { throw new Error('unused'); } } });
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
     const address = server?.address() as AddressInfo;
