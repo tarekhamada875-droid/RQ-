@@ -23,7 +23,8 @@ const result = {
 async function start(role: 'garage' | 'admin' = 'garage'): Promise<{ baseUrl: string; calls: unknown[] }> {
   const calls: unknown[] = [];
   const subscriberCommands: SubscriberCommandRepository = {
-    create: async (input) => { calls.push(input); return result; }
+    create: async (input) => { calls.push(input); return result; },
+    renew: async () => { throw new Error('unused'); }
   };
   const app = createV2App({
     environment: parseEnvironment({ NODE_ENV: 'test', FIREBASE_PROJECT_ID: 'rq-v2-route-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' }),
@@ -72,7 +73,7 @@ describe('v2 subscriber-create route', () => {
   });
 
   it('maps duplicate and idempotency conflicts to 409', async () => {
-    const repository: SubscriberCommandRepository = { create: async () => { throw new Error('SUBSCRIBER_ALREADY_EXISTS'); } };
+    const repository: SubscriberCommandRepository = { create: async () => { throw new Error('SUBSCRIBER_ALREADY_EXISTS'); }, renew: async () => { throw new Error('unused'); } };
     const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'test', FIREBASE_PROJECT_ID: 'rq-v2-route-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' }), subscriberCommands: repository, authMiddleware: (request, _response, next) => { request.v2Authorization = { uid: 'staff-1', sessionId: 'session-1', role: 'garage', garageId: 'garage-1', delegateGarageIds: [] }; next(); } });
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
@@ -82,7 +83,7 @@ describe('v2 subscriber-create route', () => {
   });
 
   it('does not expose the write route without the authenticated preview gate', async () => {
-    const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-v2-route-test' }), subscriberCommands: { create: async () => result } });
+    const app = createV2App({ environment: parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-v2-route-test' }), subscriberCommands: { create: async () => result, renew: async () => { throw new Error('unused'); } } });
     server = app.listen(0);
     await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
     const address = server?.address() as AddressInfo;

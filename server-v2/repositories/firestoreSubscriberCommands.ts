@@ -1,10 +1,20 @@
 import crypto from 'node:crypto';
 import { type Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { SubscriberCreateInputSchema, SubscriberCreateResultSchema, type SubscriberCreateInput, type SubscriberCreateResult } from '../contracts/subscriberCommands.js';
+import {
+  SubscriberCreateInputSchema,
+  SubscriberCreateResultSchema,
+  SubscriberRenewInputSchema,
+  SubscriberRenewResultSchema,
+  type SubscriberCreateInput,
+  type SubscriberCreateResult,
+  type SubscriberRenewInput,
+  type SubscriberRenewResult
+} from '../contracts/subscriberCommands.js';
 import { executeSubscriberCommand } from '../domain/subscriberOperations.js';
 import { idempotencyFingerprint } from '../domain/operations.js';
 import { CostCounter, type ReadCost } from './packageCatalog.js';
+import { mapLegacySubscriber } from './firestoreSubscribers.js';
 
 const StoredResultSchema = z.object({
   fingerprint: z.string().length(64),
@@ -12,21 +22,27 @@ const StoredResultSchema = z.object({
   createdAt: z.unknown()
 }).strict();
 
-function operationKey(input: SubscriberCreateInput): string {
-  return crypto.createHash('sha256').update(`${input.actorUid}:subscriber.create:${input.idempotencyKey}`).digest('hex');
+function operationKey(actorUid: string, operation: 'create' | 'renew', idempotencyKey: string): string {
+  return crypto.createHash('sha256').update(`${actorUid}:subscriber.${operation}:${idempotencyKey}`).digest('hex');
 }
 
 function subscriberId(plateRaw: string): string {
   return `plate_${Buffer.from(plateRaw).toString('base64url')}`;
 }
 
-function parseStoredResult(raw: unknown): SubscriberCreateResult {
+function parseStoredCreateResult(raw: unknown): SubscriberCreateResult {
   const stored = StoredResultSchema.parse(raw);
   return SubscriberCreateResultSchema.parse(JSON.parse(stored.responseJson));
 }
 
+function parseStoredRenewResult(raw: unknown): SubscriberRenewResult {
+  const stored = StoredResultSchema.parse(raw);
+  return SubscriberRenewResultSchema.parse(JSON.parse(stored.responseJson));
+}
+
 export interface SubscriberCommandRepository {
   create(input: SubscriberCreateInput): Promise<SubscriberCreateResult>;
+  renew(input: SubscriberRenewInput): Promise<SubscriberRenewResult>;
 }
 
 export class FirestoreSubscriberCommandRepository implements SubscriberCommandRepository {
@@ -37,7 +53,7 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
     const fingerprint = idempotencyFingerprint('subscriber.create', command);
     this.costs.recordTransactionAttempt();
     return this.firestore.runTransaction(async (transaction) => {
-      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(command));
+      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(command.actorUid, 'create', command.idempotencyKey));
       const subscribers = this.firestore.collection(`garages/${command.garageId}/subscribers`);
       const id = subscriberId(command.plateRaw);
       const subscriberRef = subscribers.doc(id);
@@ -53,7 +69,7 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       if (idempotencySnapshot.exists) {
         const stored = StoredResultSchema.parse(idempotencySnapshot.data());
         if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
-        return parseStoredResult(stored);
+        return parseStoredCreateResult(stored);
       }
       if (deterministicSnapshot.exists || !legacyMatches.empty) throw new Error('SUBSCRIBER_ALREADY_EXISTS');
       const decision = executeSubscriberCommand({
@@ -89,6 +105,62 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
         occurredAt,
         idempotencyKey: command.idempotencyKey,
         payload: { plateNumber: command.plate, plateNumberRaw: command.plateRaw, startAt: command.startAt, endAt: command.endAt }
+      });
+      transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
+      this.costs.recordWrite(3);
+      return result;
+    });
+  }
+
+  async renew(input: SubscriberRenewInput): Promise<SubscriberRenewResult> {
+    const command = SubscriberRenewInputSchema.parse(input);
+    const fingerprint = idempotencyFingerprint('subscriber.renew', command);
+    this.costs.recordTransactionAttempt();
+    return this.firestore.runTransaction(async (transaction) => {
+      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(command.actorUid, 'renew', command.idempotencyKey));
+      const subscriberRef = this.firestore.doc(`garages/${command.garageId}/subscribers/${command.subscriberId}`);
+      const idempotencySnapshot = await transaction.get(idempotencyRef);
+      this.costs.recordRead(idempotencySnapshot.exists ? 1 : 0);
+      if (idempotencySnapshot.exists) {
+        const stored = StoredResultSchema.parse(idempotencySnapshot.data());
+        if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
+        return parseStoredRenewResult(stored);
+      }
+      const subscriberSnapshot = await transaction.get(subscriberRef);
+      this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      const existing = subscriberSnapshot.exists
+        ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
+        : null;
+      const decision = executeSubscriberCommand({
+        operation: 'renew',
+        existing,
+        subscriberId: command.subscriberId,
+        garageId: command.garageId,
+        plate: existing?.plate ?? 'unknown',
+        startAt: new Date(command.startAt),
+        endAt: new Date(command.endAt),
+        occurredAt: new Date(command.occurredAt)
+      });
+      const result = SubscriberRenewResultSchema.parse({ operationId: decision.operation.operationId, subscriber: decision.subscriber });
+      const occurredAt = new Date(command.occurredAt);
+      transaction.update(subscriberRef, {
+        startDate: command.startAt,
+        endDate: command.endAt,
+        startAt: command.startAt,
+        endAt: command.endAt,
+        updatedAt: occurredAt,
+        status: 'active'
+      });
+      const eventRef = this.firestore.collection('business_events').doc();
+      transaction.create(eventRef, {
+        garageId: command.garageId,
+        aggregateType: 'subscriber',
+        aggregateId: command.subscriberId,
+        eventType: 'subscriber_renewed',
+        actorUid: command.actorUid,
+        occurredAt,
+        idempotencyKey: command.idempotencyKey,
+        payload: { startAt: command.startAt, endAt: command.endAt }
       });
       transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
       this.costs.recordWrite(3);

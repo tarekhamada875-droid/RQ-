@@ -19,6 +19,12 @@ const input = {
   actorUid: 'staff-1', occurredAt: '2026-09-21T12:00:00.000Z', idempotencyKey: 'subscriber-0001'
 };
 
+const renewal = {
+  garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw',
+  startAt: '2026-10-21T00:00:00.000Z', endAt: '2026-11-21T00:00:00.000Z',
+  actorUid: 'staff-1', occurredAt: '2026-10-21T12:00:00.000Z', idempotencyKey: 'renewal-0001'
+};
+
 describe('Firestore subscriber command repository', () => {
   beforeAll(() => {
     firestore = createV2Firebase(parseEnvironment({ NODE_ENV: 'test', FIREBASE_PROJECT_ID: projectId } as Record<string, string>)).firestore;
@@ -65,5 +71,44 @@ describe('Firestore subscriber command repository', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
     expect((await firestore.collection('business_events').get()).size).toBe(1);
+  });
+
+  it('renews a subscriber and updates legacy-compatible date fields atomically', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const result = await repository.renew(renewal);
+    expect(result.subscriber).toMatchObject({ status: 'active', startAt: renewal.startAt, endAt: renewal.endAt });
+    expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).data()).toMatchObject({ startDate: renewal.startAt, endDate: renewal.endAt, startAt: renewal.startAt, endAt: renewal.endAt, status: 'active' });
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+    expect((await firestore.collection('idempotency_records').get()).size).toBe(2);
+  });
+
+  it('rejects invalid date ranges, cancelled subscribers, and missing subscribers', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    await expect(repository.renew({ ...renewal, endAt: renewal.startAt })).rejects.toThrow('INVALID_DATE_RANGE');
+    await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').update({ status: 'cancelled' });
+    await expect(repository.renew({ ...renewal, idempotencyKey: 'renewal-0002' })).rejects.toThrow('SUBSCRIBER_CANCELLED');
+    await expect(repository.renew({ ...renewal, subscriberId: 'plate_missing', idempotencyKey: 'renewal-0003' })).rejects.toThrow('SUBSCRIBER_NOT_FOUND');
+  });
+
+  it('replays renewal and rejects changed-payload idempotency reuse', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const first = await repository.renew(renewal);
+    await expect(repository.renew(renewal)).resolves.toEqual(first);
+    await expect(repository.renew({ ...renewal, endAt: '2026-12-21T00:00:00.000Z' })).rejects.toThrow('IDEMPOTENCY_KEY_REUSE');
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('serializes concurrent renewals with one stored replay result', async () => {
+    const first = new FirestoreSubscriberCommandRepository(firestore);
+    await first.create(input);
+    const [left, right] = await Promise.all([
+      first.renew(renewal),
+      new FirestoreSubscriberCommandRepository(firestore).renew(renewal)
+    ]);
+    expect(left).toEqual(right);
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
   });
 });

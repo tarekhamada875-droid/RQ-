@@ -4,7 +4,7 @@ import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
 import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
-import { SubscriberCreateRequestSchema } from './contracts/subscriberCommands.js';
+import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema } from './contracts/subscriberCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -239,6 +239,35 @@ export function createV2App(options: V2AppOptions = {}): Express {
           return;
         }
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to create subscriber'));
+      }
+    });
+
+    app.post('/v2/garages/:garageId/subscribers/:subscriberId/renew', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const subscriberId = request.params.subscriberId;
+      const authorization = request.v2Authorization;
+      const parsed = SubscriberRenewRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || typeof subscriberId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage, subscriber, and renewal request are required'));
+        return;
+      }
+      try {
+        const result = await subscriberCommands.renew({
+          ...parsed.data,
+          garageId,
+          subscriberId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString()
+        });
+        response.json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (new Set(['IDEMPOTENCY_KEY_REUSE', 'SUBSCRIBER_NOT_FOUND', 'SUBSCRIBER_CANCELLED', 'INVALID_DATE_RANGE']).has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to renew subscriber'));
       }
     });
   }
