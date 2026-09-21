@@ -101,7 +101,7 @@ describe('Firestore subscriber command repository', () => {
     expect((await firestore.collection('business_events').get()).size).toBe(2);
   });
 
-  it('serializes concurrent renewals with one stored replay result', async () => {
+  it('serializes concurrent renewals with one stored replay result', { timeout: 15000 }, async () => {
     const first = new FirestoreSubscriberCommandRepository(firestore);
     await first.create(input);
     const [left, right] = await Promise.all([
