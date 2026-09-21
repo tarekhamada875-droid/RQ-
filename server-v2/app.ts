@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
+import { GarageLifecycleRequestSchema } from './contracts/garageLifecycle.js';
 import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
 import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema, SubscriberUpdateRequestSchema, SubscriberSuspendRequestSchema, SubscriberCancelRequestSchema } from './contracts/subscriberCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
@@ -11,6 +12,7 @@ import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type Activi
 import type { VehicleCheckInRepository } from './repositories/firestoreVehicleCheckIn.js';
 import type { VehicleCheckOutRepository } from './repositories/firestoreVehicleCheckOut.js';
 import type { SubscriberCommandRepository } from './repositories/firestoreSubscriberCommands.js';
+import type { GarageLifecycleRepository } from './repositories/firestoreGarageLifecycle.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -25,6 +27,7 @@ type V2AppOptions = Readonly<{
   vehicleCheckIn?: VehicleCheckInRepository;
   vehicleCheckOut?: VehicleCheckOutRepository;
   subscriberCommands?: SubscriberCommandRepository;
+  garageLifecycle?: GarageLifecycleRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -85,6 +88,12 @@ export function createV2App(options: V2AppOptions = {}): Express {
         const garageId = request.params.garageId;
         return typeof garageId === 'string' ? garageId : undefined;
       }));
+    }
+    if (options.garageLifecycle) {
+      app.use('/v2/garages/:garageId/lock', options.authMiddleware, requireV2Authorization('admin_only'));
+      app.use('/v2/garages/:garageId/unlock', options.authMiddleware, requireV2Authorization('admin_only'));
+      app.use('/v2/garages/:garageId/suspend', options.authMiddleware, requireV2Authorization('admin_only'));
+      app.use('/v2/garages/:garageId/unsuspend', options.authMiddleware, requireV2Authorization('admin_only'));
     }
     app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
     app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
@@ -357,6 +366,47 @@ export function createV2App(options: V2AppOptions = {}): Express {
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to cancel subscriber'));
       }
     });
+  }
+
+  const garageLifecycle = options.garageLifecycle;
+  if (garageLifecycle && options.authMiddleware && v2ReadEnabled) {
+    const lifecycleRoutes = [
+      ['lock', garageLifecycle.lock],
+      ['unlock', garageLifecycle.unlock],
+      ['suspend', garageLifecycle.suspend],
+      ['unsuspend', garageLifecycle.unsuspend]
+    ] as const;
+    for (const [operation, command] of lifecycleRoutes) {
+      app.post(`/v2/garages/:garageId/${operation}`, async (request, response) => {
+        const id = getV2RequestId(request);
+        const garageId = request.params.garageId;
+        const authorization = request.v2Authorization;
+        const parsed = GarageLifecycleRequestSchema.safeParse(request.body);
+        if (typeof garageId !== 'string' || !parsed.success || !authorization) {
+          response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID and lifecycle request are required'));
+          return;
+        }
+        try {
+          const result = await command.call(garageLifecycle, {
+            garageId,
+            actorUid: authorization.uid,
+            occurredAt: new Date().toISOString(),
+            idempotencyKey: parsed.data.idempotencyKey
+          });
+          response.json(successResponse(id, result));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+          if (new Set([
+            'IDEMPOTENCY_KEY_REUSE', 'GARAGE_NOT_FOUND', 'GARAGE_DELETION_IN_PROGRESS',
+            'GARAGE_ALREADY_LOCKED', 'GARAGE_ALREADY_UNLOCKED', 'GARAGE_ALREADY_SUSPENDED', 'GARAGE_ALREADY_ACTIVE'
+          ]).has(message)) {
+            response.status(409).json(errorResponse(id, 'CONFLICT', message));
+            return;
+          }
+          response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to execute garage lifecycle command'));
+        }
+      });
+    }
   }
 
   const readPage = async (
