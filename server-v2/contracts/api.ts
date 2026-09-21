@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const ErrorCodeSchema = z.enum([
   'BAD_REQUEST',
+  'CONFLICT',
   'CONFIGURATION_ERROR',
   'FORBIDDEN',
   'INTERNAL_ERROR',

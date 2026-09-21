@@ -3,9 +3,11 @@ import { z } from 'zod';
 import { parseEnvironment, type V2Environment } from './config/environment.js';
 import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
+import { VehicleCheckInRequestSchema } from './contracts/vehicleCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
+import type { VehicleCheckInRepository } from './repositories/firestoreVehicleCheckIn.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -17,6 +19,7 @@ type V2AppOptions = Readonly<{
   garageSummary?: GarageSummaryRepository;
   pendingQueue?: PendingQueueRepository;
   activity?: ActivityRepository;
+  vehicleCheckIn?: VehicleCheckInRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -60,6 +63,12 @@ export function createV2App(options: V2AppOptions = {}): Express {
       const garageId = request.params.garageId;
       return typeof garageId === 'string' ? garageId : undefined;
     }));
+    if (options.vehicleCheckIn) {
+      app.use('/v2/garages/:garageId/vehicles/check-in', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
+        const garageId = request.params.garageId;
+        return typeof garageId === 'string' ? garageId : undefined;
+      }));
+    }
     app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
     app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
   } else if (options.rateLimitMiddleware) {
@@ -115,6 +124,41 @@ export function createV2App(options: V2AppOptions = {}): Express {
       response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to read garage summary'));
     }
   });
+
+  const vehicleCheckIn = options.vehicleCheckIn;
+  if (vehicleCheckIn && options.authMiddleware && v2ReadEnabled) {
+    app.post('/v2/garages/:garageId/vehicles/check-in', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const authorization = request.v2Authorization;
+      const parsed = VehicleCheckInRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID and check-in request are required'));
+        return;
+      }
+      try {
+        const result = await vehicleCheckIn.checkIn({
+          ...parsed.data,
+          garageId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString()
+        });
+        response.status(201).json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        const conflict = new Set([
+          'IDEMPOTENCY_KEY_REUSE', 'GARAGE_NOT_FOUND', 'GARAGE_DELETION_IN_PROGRESS',
+          'GARAGE_CHECK_IN_LOCKED', 'SUBSCRIPTION_EXPIRED', 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN',
+          'FAIR_USE_LIMIT_REACHED', 'CAPACITY_LIMIT_REACHED', 'VEHICLE_ALREADY_INSIDE'
+        ]);
+        if (conflict.has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to check in vehicle'));
+      }
+    });
+  }
 
   const readPage = async (
     request: Request,

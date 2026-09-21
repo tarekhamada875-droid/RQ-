@@ -5,6 +5,7 @@ import { createV2FirebaseAuth } from './infrastructure/firebaseAuth.js';
 import { createV2Firebase } from './infrastructure/firebaseAdmin.js';
 import { FirestoreSessionRepository } from './infrastructure/firestoreSession.js';
 import { FirestorePackageCatalogRepository } from './repositories/firestorePackageCatalog.js';
+import { FirestoreVehicleCheckInRepository } from './repositories/firestoreVehicleCheckIn.js';
 import { FirestoreActivityRepository, FirestorePendingQueueRepository } from './repositories/readModels.js';
 import { createV2App } from './app.js';
 import { InMemoryRateLimiter } from './security/rateLimit.js';
@@ -25,6 +26,7 @@ export function createV2PreviewApp(environment: V2Environment): Express {
   return createV2App({
     environment,
     packageCatalog: new FirestorePackageCatalogRepository(firebase.firestore),
+    vehicleCheckIn: new FirestoreVehicleCheckInRepository(firebase.firestore),
     pendingQueue: new FirestorePendingQueueRepository(firebase.firestore),
     activity: new FirestoreActivityRepository(firebase.firestore),
     authMiddleware: createV2AuthMiddleware({
