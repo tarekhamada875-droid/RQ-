@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Garage, Vehicle, Package, Staff, RechargeRequest, Supervisor } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
+import { createAuthenticatedV2ReadClient, getV2ReadFlags, mapV2PackageToLegacyPackage } from '../api/v2ReadAdapter';
 
 interface UseGarageSyncProps {
   isSessionReady: boolean;
@@ -142,11 +143,34 @@ export function useGarageSync({
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const unsubPackages = firestoreService.subscribeToPackages((pkgs) => {
-      setPackages(Array.isArray(pkgs) ? pkgs : []);
-    });
+    let cancelled = false;
+    const useV2Catalog = getV2ReadFlags().packageCatalog;
+    let unsubPackages: (() => void) | undefined;
 
-    return () => unsubPackages();
+    const subscribeLegacy = () => {
+      if (cancelled) return;
+      unsubPackages = firestoreService.subscribeToPackages((pkgs) => {
+        if (!cancelled) setPackages(Array.isArray(pkgs) ? pkgs : []);
+      });
+    };
+
+    if (useV2Catalog) {
+      createAuthenticatedV2ReadClient().packageCatalog()
+        .then((catalog) => {
+          if (!cancelled) setPackages(catalog.map(mapV2PackageToLegacyPackage));
+        })
+        .catch((error) => {
+          console.warn('[GarageSync] v2 package catalog unavailable; using legacy listener:', error);
+          subscribeLegacy();
+        });
+    } else {
+      subscribeLegacy();
+    }
+
+    return () => {
+      cancelled = true;
+      unsubPackages?.();
+    };
   }, [isAuthReady, user]);
 
   // Sync global collections

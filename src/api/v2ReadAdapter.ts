@@ -4,6 +4,7 @@ import { GarageSummarySchema, type GarageSummary } from '../../server-v2/contrac
 import { PackageSchema, type Package } from '../../server-v2/contracts/entities';
 import { PendingQueueItemSchema, type PendingQueueItem } from '../../server-v2/contracts/readModels';
 import { V2_EXTERNAL_PREFIX } from '../../server-v2/http/prefix';
+import type { Package as LegacyPackage } from '../types';
 
 export type V2ReadFeature = 'packageCatalog' | 'garageSummary' | 'pendingQueue' | 'recentActivity';
 export type V2ReadFlags = Readonly<Record<V2ReadFeature, boolean>>;
@@ -38,11 +39,16 @@ function pageData(value: unknown): { items: ReadonlyArray<unknown>; nextCursor?:
 export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClient {
   return {
     async packageCatalog(): Promise<ReadonlyArray<Package>> {
-      const endpoint = `${V2_EXTERNAL_PREFIX}/packages`;
+      const endpoint = `${V2_EXTERNAL_PREFIX}/packages?limit=100`;
       return parse(endpoint, await transport(endpoint), (value) => {
         const envelope = value !== null && typeof value === 'object' ? value as { data?: unknown } : {};
-        const data = envelope.data ?? value;
-        if (!Array.isArray(data)) throw new Error('EXPECTED_ARRAY');
+        const candidate = envelope.data ?? value;
+        const data = Array.isArray(candidate)
+          ? candidate
+          : candidate !== null && typeof candidate === 'object' && Array.isArray((candidate as { items?: unknown }).items)
+            ? (candidate as { items: unknown[] }).items
+            : null;
+        if (!data) throw new Error('EXPECTED_PACKAGE_CATALOG');
         return data.map((item) => PackageSchema.parse(item));
       });
     },
@@ -66,6 +72,19 @@ export function createV2ReadClient(transport: V2ReadTransport): ReadFeatureClien
 
 export function createAuthenticatedV2ReadClient(): ReadFeatureClient {
   return createV2ReadClient((endpoint) => apiFetch<unknown>(endpoint));
+}
+
+/** Convert the canonical minor-unit v2 contract into the legacy UI model. */
+export function mapV2PackageToLegacyPackage(pkg: Package): LegacyPackage {
+  return {
+    id: pkg.id,
+    name: pkg.name,
+    price: pkg.priceMinor / 100,
+    vehiclesCount: pkg.vehicleLimit,
+    dailyCapacity: pkg.vehicleLimit,
+    durationDays: pkg.durationDays,
+    isActive: pkg.active
+  };
 }
 
 export function parseV2ReadFlags(env: Readonly<Record<string, string | undefined>>): V2ReadFlags {

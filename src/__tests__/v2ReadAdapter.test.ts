@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createReadFeatureAdapter, createV2ReadClient, parseV2ReadFlags, V2ReadAdapterError, type ReadPage } from '../api/v2ReadAdapter';
+import { createReadFeatureAdapter, createV2ReadClient, mapV2PackageToLegacyPackage, parseV2ReadFlags, V2ReadAdapterError, type ReadPage } from '../api/v2ReadAdapter';
 import type { ActivityRecord, PendingQueueItem } from '../../server-v2/contracts/readModels';
 import type { GarageSummary } from '../../server-v2/contracts/summary';
 import type { Package } from '../../server-v2/contracts/entities';
@@ -17,14 +17,14 @@ describe('Cloudflare v2 read adapter', () => {
   });
 
   it('validates typed package, summary, and bounded-page responses', async () => {
-    const transport = vi.fn(async (endpoint: string): Promise<unknown> => endpoint.includes('/packages') ? { data: [pkg] } : endpoint.includes('/summary') ? { data: summary } : endpoint.includes('/pending') ? { data: { items: [pending], projectionVersion: 1 } } : { data: { items: [activity], projectionVersion: 1 } });
+    const transport = vi.fn(async (endpoint: string): Promise<unknown> => endpoint.includes('/packages') ? { data: { items: [pkg], limit: 100 } } : endpoint.includes('/summary') ? { data: summary } : endpoint.includes('/pending') ? { data: { items: [pending], projectionVersion: 1 } } : { data: { items: [activity], projectionVersion: 1 } });
     const client = createV2ReadClient(transport);
     expect(await client.packageCatalog()).toEqual([pkg]);
     expect(await client.garageSummary('garage-1', '2026-09-20')).toEqual(summary);
     expect((await client.pendingQueue(10)).items).toEqual([pending]);
     expect((await client.recentActivity(10)).items).toEqual([activity]);
     expect(transport.mock.calls.map(([endpoint]) => endpoint)).toEqual([
-      '/api/v2/packages',
+      '/api/v2/packages?limit=100',
       '/api/v2/garages/garage-1/summary?date=2026-09-20',
       '/api/v2/pending?limit=10',
       '/api/v2/activity?limit=10'
@@ -34,6 +34,18 @@ describe('Cloudflare v2 read adapter', () => {
   it('maps invalid v2 responses to a typed adapter error', async () => {
     const client = createV2ReadClient(async () => ({ data: [{ id: 'bad' }] }));
     await expect(client.packageCatalog()).rejects.toBeInstanceOf(V2ReadAdapterError);
+  });
+
+  it('maps minor-unit v2 package values into the legacy UI model without changing meaning', () => {
+    expect(mapV2PackageToLegacyPackage(pkg)).toEqual({
+      id: 'pkg-1',
+      name: 'Daily',
+      price: 10,
+      vehiclesCount: 50,
+      dailyCapacity: 50,
+      durationDays: 1,
+      isActive: true
+    });
   });
 
   it('routes each read feature independently, with legacy as the safe default', async () => {
