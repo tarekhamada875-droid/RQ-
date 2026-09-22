@@ -2,7 +2,6 @@ name: Production Gate
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -32,7 +31,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
