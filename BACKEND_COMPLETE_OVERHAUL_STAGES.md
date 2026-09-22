@@ -1041,7 +1041,7 @@ This status is maintained for handoff between agents. The current production bac
 | Stage 10 — Progressive cutover | **Not started** | No cohort has been migrated. | Internal users → one garage → small cohorts → all traffic, with SLO, cost, reconciliation, and tested rollback gates. |
 | Stage 11 — Retire legacy paths | **Not started** | No legacy route or writer has been removed. | Remove legacy paths only after migration completion, retention review, and rollback-window expiration. |
 
-**Latest implementation commit:** `ec91f66 feat: add gated projection repair endpoint`, following the bounded rebuild slice in `5825c4b`. The full emulator-backed v2 check passes locally with 50 test files and 272 tests. The repair flag defaults false and is not enabled in production.
+**Latest implementation commit:** `1604a7f fix: mark projection rebuild replays`, following the gated repair endpoint in `ec91f66`. Production Gate `35711558351` passed, the full emulator-backed v2 check passes locally with 50 test files and 272 tests, and the repair flag defaults false and is not enabled in production. Current Cloudflare Pages deployment `f7da4593` is production-only; no current preview exists for authenticated frontend validation.
 
 **Important safety boundary:** Keep all production `VITE_V2_READ_*` flags false until the matching v2 Railway endpoints are deployed, authenticated, compared with legacy behavior, and rollback-tested. A preview-only package flag may be true as recorded in the handoff; it does not authorize enabling the production flag. Do not mount additional v2 behavior into production, migrate financial writes, delete legacy routes, or delete production data as part of foundation work.
 

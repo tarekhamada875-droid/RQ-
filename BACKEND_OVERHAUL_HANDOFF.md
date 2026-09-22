@@ -1,12 +1,12 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 12:35 UTC+3
+**Last updated:** 2026-09-22 12:42 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `322faee docs: define repeatable agent handoff protocol`
 **Latest implementation commit:** `ec91f66 feat: add gated projection repair endpoint`
 **Latest correction commit:** `4cc13b1 test: correct garage summary read cost assertions`
-**Latest verified implementation gate:** `35690669939` — **success**; the corrected garage-summary and projection persistence validations passed locally. The repair endpoint passed the full emulator-backed v2 check and is awaiting its Production Gate.
+**Latest verified implementation gate:** `35711558351` — **success** for `1604a7f`; all Production Gate jobs passed, including the repair route, full v2 validation, build, maintainability checks, artifact verification, and live release smoke. The latest Pages production deployment is `f7da4593` for the same commit.
 
 ## Mission
 
@@ -167,13 +167,13 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ## Exact next actions for the next agent
 
-### Agent continuation packet — 2026-09-22 12:35 UTC+3
+### Agent continuation packet — 2026-09-22 12:42 UTC+3
 
-The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, and the explicitly flagged admin repair endpoint in `ec91f66`. The route is `POST /api/v2/garages/:garageId/projection/rebuild`, requires Firebase/session authorization with admin role, validates a maximum 10,000-event window, writes idempotency and `projection_rebuilt` audit records, and is disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`; keep that flag false in production. Rebuilds overwrite only non-financial daily projection state. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 50 test files and 272 tests. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
+The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, and the explicitly flagged admin repair endpoint in `ec91f66`; replay reporting was corrected in `1604a7f`. The route is `POST /api/v2/garages/:garageId/projection/rebuild`, requires Firebase/session authorization with admin role, validates a maximum 10,000-event window, writes idempotency and `projection_rebuilt` audit records, reports `replayed: true` on idempotent reuse, and is disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`; keep that flag false in production. Rebuilds overwrite only non-financial daily projection state. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 50 test files and 272 tests. Production Gate `35711558351` passed. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
 
 The most recent implementation remains `4ae7345 feat: add guarded garage profile updates`. It adds `server-v2/contracts/garageProfile.ts`, `server-v2/repositories/firestoreGarageProfile.ts`, route wiring in `server-v2/app.ts`, and route/emulator tests. Its Production Gate `35690669939` passed. The later handoff evidence updates are `40ac356`, `9c580fe`, and `322faee`.
 
-The most recent permitted external inspection used the enabled Cloudflare connector. Project `rq` has preview deployments enabled for all branches and preview-only `VITE_V2_READ_PACKAGE_CATALOG=true`; production does not have that flag. No current preview for `main` exists. The newest preview is stale branch deployment `7ff4c62e` from `feat/backend-operator-mcp-auth`, commit `1c60a0d`, dated 2026-09-19; the current `main` build is production-only at `90c0d469`. Do not use the stale preview for authenticated current-build evidence, create a branch to manufacture a preview, change production flags, or claim Firebase-authenticated frontend-to-Railway success.
+The most recent permitted external inspection used the enabled Cloudflare connector at 2026-09-22 12:42 UTC+3. Project `rq` still has preview deployments enabled for all branches and preview-only `VITE_V2_READ_PACKAGE_CATALOG=true`; production does not have that flag. There is no current preview deployment: the latest deployment `f7da4593` is production for `main` commit `1604a7f`, and the first page of the deployment list contains only production deployments. Do not use an older preview for authenticated current-build evidence, create a branch to manufacture a preview, change production flags, or claim Firebase-authenticated frontend-to-Railway success.
 
 The next agent should proceed autonomously in this order: first verify `git status --short --branch`, `git log -3 --oneline`, and the relevant current files; next, if a current natural Cloudflare preview has appeared, perform the authenticated Firebase browser smoke test and normalized legacy/v2 comparison; otherwise keep that item blocked and do not manufacture a preview. For backend implementation, physical deletion remains deferred because it would mutate data. A future deletion slice may only begin as a non-production, explicitly approved exercise and must add strict contracts, authorization, idempotency, bounded cursor traversal, reference verification, retention metadata, repair/resume behavior, audit events, emulator/concurrency tests, and a rollback note before any actual delete operation. The existing `server-v2/repositories/firestoreGarageDeletion.ts` is intentionally non-destructive: it marks `isDeleting`, tracks a resumable job, and records `physicalDeletion: false`; do not silently convert it into a physical delete writer.
 
