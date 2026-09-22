@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { adminAuth, adminDb } from './firebaseAdmin';
 import { validateIdempotencyKey } from './validation';
+import { hasActiveSession } from './auth/sessionMarkers';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -321,7 +322,9 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
     const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 
     for (const { role, coll } of secCollMap) {
-      const secSnap = await adminDb.doc(`${coll}/${uid}`).get();
+      const legacySecSnap = await adminDb.doc(`${coll}/${uid}`).get();
+      const deviceSecSnap = await adminDb.doc(`${coll}/${uid}/sessions/${requestSessionId}`).get();
+      const secSnap = deviceSecSnap.exists ? deviceSecSnap : legacySecSnap;
       if (secSnap.exists) {
         const secData = secSnap.data() || {};
         if (secData.isActive) {
@@ -351,7 +354,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
           const entityId = role === 'admin' ? 'auth_pin' : secData.entityId || '';
           if (!entityColl || !entityId) continue;
           const entitySnap = await adminDb.doc(`${entityColl}/${entityId}`).get();
-          if (!entitySnap.exists || entitySnap.data()?.currentSessionId !== requestSessionId) continue;
+          if (!entitySnap.exists || !hasActiveSession(entitySnap.data() || {}, requestSessionId)) continue;
 
           foundRole = role;
           foundEntityId = secData.entityId || '';

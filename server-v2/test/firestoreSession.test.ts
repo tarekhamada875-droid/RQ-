@@ -38,6 +38,20 @@ describe('Firestore v2 session repository', () => {
     await expect(repository.getSession('uid-1', 'session-1')).resolves.toBeUndefined();
   });
 
+  it('accepts multiple active device sessions for one account independently', async () => {
+    await firestore.doc('garage_sessions/uid-1').set({ isActive: true, sessionId: 'session-phone', entityId: 'garage-1', lastActive: new Date('2026-09-20T09:55:00.000Z') });
+    await firestore.doc('garage_sessions/uid-1/sessions/session-phone').set({ isActive: true, sessionId: 'session-phone', entityId: 'garage-1', lastActive: new Date('2026-09-20T09:55:00.000Z') });
+    await firestore.doc('garage_sessions/uid-1/sessions/session-laptop').set({ isActive: true, sessionId: 'session-laptop', entityId: 'garage-1', lastActive: new Date('2026-09-20T09:56:00.000Z') });
+    await firestore.doc('garages/garage-1').set({ currentSessionId: 'session-laptop', activeSessionIds: ['session-phone', 'session-laptop'] });
+    const repository = new FirestoreSessionRepository(firestore);
+
+    await expect(repository.getSession('uid-1', 'session-phone')).resolves.toMatchObject({ id: 'session-phone', revoked: false });
+    await expect(repository.getSession('uid-1', 'session-laptop')).resolves.toMatchObject({ id: 'session-laptop', revoked: false });
+    await firestore.doc('garage_sessions/uid-1/sessions/session-phone').update({ isActive: false });
+    await expect(repository.getSession('uid-1', 'session-phone')).resolves.toBeUndefined();
+    await expect(repository.getSession('uid-1', 'session-laptop')).resolves.toMatchObject({ id: 'session-laptop', revoked: false });
+  });
+
   it('maps delegate garage scope from the delegate entity', async () => {
     await firestore.doc('delegate_sessions/uid-2').set({ isActive: true, sessionId: 'session-2', entityId: 'delegate-1', lastActive: new Date('2026-09-20T09:55:00.000Z') });
     await firestore.doc('delegates/delegate-1').set({ currentSessionId: 'session-2', garageIds: ['garage-1', 'garage-2'] });

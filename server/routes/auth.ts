@@ -25,6 +25,7 @@ import {
   isNewPinFormat,
   ValidationError
 } from '../validation';
+import { addActiveSession, hasActiveSession, removeActiveSession } from '../auth/sessionMarkers';
 
 export function registerAuthRoutes(router: Router) {
   router.post('/api/auth/verify-pin', requireFirebaseUser, async (req: AuthRequest, res) => {
@@ -159,27 +160,18 @@ export function registerAuthRoutes(router: Router) {
               if (entityColl && secColl && entityDocId) {
                 const entityDocRef = adminDb.doc(`${entityColl}/${entityDocId}`);
                 const secDocRef = adminDb.doc(`${secColl}/${effectiveUid}`);
+                const deviceSecDocRef = adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`);
 
                 await adminDb.runTransaction(async (transaction) => {
                   const snap = await transaction.get(entityDocRef);
                   if (snap.exists) {
                     const data = snap.data() || {};
-                    const activeSessionId = data.currentSessionId;
-                    const rawLastActive = data.lastActive;
-                    const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-                    const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
-                    const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
-                    
-                    if (isAlive) {
-                      throw new Error('SESSION_OCCUPIED');
-                    }
+                    const activeIds = addActiveSession(data, sessionId);
+                    const now = new Date();
+                    transaction.set(entityDocRef, { currentSessionId: sessionId, activeSessionIds: activeIds, lastActive: now }, { merge: true });
+                  } else {
+                    transaction.set(entityDocRef, { currentSessionId: sessionId, activeSessionIds: [sessionId], lastActive: new Date() }, { merge: true });
                   }
-
-                  // Update entity doc with session lock atomically
-                  transaction.set(entityDocRef, {
-                    currentSessionId: sessionId,
-                    lastActive: new Date()
-                  }, { merge: true });
 
                   // Provision security session doc with Admin SDK bypass atomically
                   const resolvedGarageId = match.role === 'staff'
@@ -187,6 +179,17 @@ export function registerAuthRoutes(router: Router) {
                     : (match.role === 'garage' ? entityDocId : '');
 
                   transaction.set(secDocRef, {
+                    uid: effectiveUid,
+                    role: match.role,
+                    entityId: entityDocId,
+                    garageId: resolvedGarageId,
+                    displayName: match.account?.name || (match.role === 'admin' ? 'مدير النظام' : (match.role === 'garage' ? (match.account?.name || 'مدير الجراج') : match.role)),
+                    sessionId,
+                    isActive: true,
+                    lastActive: new Date(),
+                    createdAt: new Date()
+                  }, { merge: true });
+                  transaction.set(deviceSecDocRef, {
                     uid: effectiveUid,
                     role: match.role,
                     entityId: entityDocId,
@@ -252,26 +255,21 @@ export function registerAuthRoutes(router: Router) {
               try {
                 const entityDocRef = adminDb.doc(`delegates/${dDoc.id}`);
                 const securityDocRef = adminDb.doc(`delegate_sessions/${effectiveUid}`);
+                const deviceSecurityDocRef = adminDb.doc(`delegate_sessions/${effectiveUid}/sessions/${sessionId}`);
                 await adminDb.runTransaction(async (transaction) => {
                   const snap = await transaction.get(entityDocRef);
                   if (snap.exists) {
                     const data = snap.data() || {};
-                    const activeSessionId = data.currentSessionId;
-                    const rawLastActive = data.lastActive;
-                    const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-                    const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && (Date.now() - lastActive < 15 * 60 * 1000);
-
-                    if (isAlive) {
-                      throw new Error('SESSION_OCCUPIED');
-                    }
+                    transaction.set(entityDocRef, {
+                      currentSessionId: sessionId,
+                      activeSessionIds: addActiveSession(data, sessionId),
+                      lastActive: new Date()
+                    }, { merge: true });
+                  } else {
+                    transaction.set(entityDocRef, { currentSessionId: sessionId, activeSessionIds: [sessionId], lastActive: new Date() }, { merge: true });
                   }
-
                   const now = new Date();
-                  transaction.set(entityDocRef, {
-                    currentSessionId: sessionId,
-                    lastActive: now
-                  }, { merge: true });
-                  transaction.set(securityDocRef, {
+                  const securityData = {
                     uid: effectiveUid,
                     role: 'delegate',
                     entityId: dDoc.id,
@@ -279,7 +277,9 @@ export function registerAuthRoutes(router: Router) {
                     isActive: true,
                     lastActive: now,
                     createdAt: now
-                  }, { merge: true });
+                  };
+                  transaction.set(securityDocRef, securityData, { merge: true });
+                  transaction.set(deviceSecurityDocRef, securityData, { merge: true });
                 });
               } catch (sessErr: any) {
                 console.error('[Server Auth] Error claiming delegate session during phone verification:', sessErr);
@@ -431,27 +431,16 @@ export function registerAuthRoutes(router: Router) {
       await adminDb.runTransaction(async (transaction) => {
         const entityDocRef = adminDb.doc('admin_settings/auth_pin');
         const secDocRef = adminDb.doc(`admin_sessions/${effectiveUid}`);
+        const deviceSecDocRef = adminDb.doc(`admin_sessions/${effectiveUid}/sessions/${sessionId}`);
 
         const snap = await transaction.get(entityDocRef);
         if (snap.exists) {
           const data = snap.data() || {};
-          const activeSessionId = data.currentSessionId;
-          const rawLastActive = data.lastActive;
-          const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-          const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
-          const isAlive = activeSessionId && activeSessionId !== sessionId && lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
-
-          if (isAlive) {
-            throw new Error('SESSION_OCCUPIED');
-          }
+          transaction.set(entityDocRef, { currentSessionId: sessionId, activeSessionIds: addActiveSession(data, sessionId), lastActive: new Date() }, { merge: true });
+        } else {
+          transaction.set(entityDocRef, { currentSessionId: sessionId, activeSessionIds: [sessionId], lastActive: new Date() }, { merge: true });
         }
-
-        transaction.set(entityDocRef, {
-          currentSessionId: sessionId,
-          lastActive: new Date()
-        }, { merge: true });
-
-        transaction.set(secDocRef, {
+        const securityData = {
           uid: effectiveUid,
           role: 'admin',
           entityId: 'auth_pin',
@@ -459,7 +448,9 @@ export function registerAuthRoutes(router: Router) {
           isActive: true,
           lastActive: new Date(),
           createdAt: new Date()
-        }, { merge: true });
+        };
+        transaction.set(secDocRef, securityData, { merge: true });
+        transaction.set(deviceSecDocRef, securityData, { merge: true });
       });
 
       return res.json({ success: true, sessionClaimed: true });
@@ -514,7 +505,9 @@ export function registerAuthRoutes(router: Router) {
         return res.json({ success: false, valid: false, code: 'INVALID_INPUT', error: 'INVALID_ROLE' });
       }
 
-      const secSnap = await adminDb.doc(`${secColl}/${effectiveUid}`).get();
+      const legacySecSnap = await adminDb.doc(`${secColl}/${effectiveUid}`).get();
+      const deviceSecSnap = await adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`).get();
+      const secSnap = deviceSecSnap.exists ? deviceSecSnap : legacySecSnap;
       if (!secSnap.exists) {
         return res.json({ success: false, valid: false, code: 'NOT_FOUND', error: 'SESSION_NOT_FOUND' });
       }
@@ -539,7 +532,8 @@ export function registerAuthRoutes(router: Router) {
         const entitySnap = await adminDb.doc(`${entityColl}/${targetEntityId}`).get();
         if (entitySnap.exists) {
           const entityData = entitySnap.data() || {};
-          if (entityData.currentSessionId && entityData.currentSessionId !== sessionId) {
+          if (!hasActiveSession(entityData, sessionId)) {
+            await adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`).update({ isActive: false }).catch(() => {});
             await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
             return res.json({ success: false, valid: false, code: 'SESSION_REVOKED', error: 'SESSION_REVOKED' });
           }
@@ -612,10 +606,14 @@ export function registerAuthRoutes(router: Router) {
       const targetEntityId = role === 'admin' ? 'auth_pin' : entityId;
 
       if (entityColl && targetEntityId) {
-        const entitySnap = await adminDb.doc(`${entityColl}/${targetEntityId}`).get();
-        if (entitySnap.exists && entitySnap.data()?.currentSessionId === sessionId) {
-          await adminDb.doc(`${entityColl}/${targetEntityId}`).update({
-            currentSessionId: null
+        const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
+        const entitySnap = await entityRef.get();
+        if (entitySnap.exists) {
+          const data = entitySnap.data() || {};
+          const remaining = removeActiveSession(data, sessionId);
+          await entityRef.update({
+            activeSessionIds: remaining,
+            ...(data.currentSessionId === sessionId ? { currentSessionId: remaining.at(-1) ?? null } : {})
           });
         }
       }
@@ -628,6 +626,7 @@ export function registerAuthRoutes(router: Router) {
             lastActive: new Date()
           });
         }
+        await adminDb.doc(`${secColl}/${uid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
       }
 
       return res.json({ success: true });
@@ -682,9 +681,16 @@ export function registerAuthRoutes(router: Router) {
           const entityId = entry.fixedEntityId || sessionData.entityId;
           if (entityId) {
             const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
-            batch.set(entityRef, { currentSessionId: null, lastActive: now }, { merge: true });
+            batch.set(entityRef, { currentSessionId: null, activeSessionIds: [], lastActive: now }, { merge: true });
             batchWrites += 1;
             clearedEntityMarkers += 1;
+          }
+          const deviceSessions = await adminDb.collection(`${entry.name}/${sessionDoc.id}/sessions`).get();
+          for (const deviceSession of deviceSessions.docs) {
+            if (deviceSession.data()?.isActive === true) invalidatedSessions += 1;
+            batch.update(deviceSession.ref, { isActive: false, lastActive: now });
+            batchWrites += 1;
+            await commitBatchIfNeeded();
           }
           await commitBatchIfNeeded();
         }

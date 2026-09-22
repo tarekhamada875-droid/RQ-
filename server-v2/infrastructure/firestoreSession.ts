@@ -26,6 +26,11 @@ function toIso(value: unknown, fallback: Date): string {
   return fallback.toISOString();
 }
 
+function entityHasSession(data: Record<string, unknown>, sessionId: string): boolean {
+  const activeSessionIds = Array.isArray(data.activeSessionIds) ? data.activeSessionIds : [];
+  return activeSessionIds.includes(sessionId) || data.currentSessionId === sessionId;
+}
+
 export interface V2SessionRepository {
   getSession(uid: string, sessionId: string): Promise<Session | undefined>;
 }
@@ -35,14 +40,16 @@ export class FirestoreSessionRepository implements V2SessionRepository {
 
   async getSession(uid: string, sessionId: string): Promise<Session | undefined> {
     for (const definition of ROLE_COLLECTIONS) {
-      const snapshot = await this.firestore.doc(`${definition.sessions}/${uid}`).get();
+      const legacySnapshot = await this.firestore.doc(`${definition.sessions}/${uid}`).get();
+      const deviceSnapshot = await this.firestore.doc(`${definition.sessions}/${uid}/sessions/${sessionId}`).get();
+      const snapshot = deviceSnapshot.exists ? deviceSnapshot : legacySnapshot;
       if (!snapshot.exists) continue;
       const data = snapshot.data() ?? {};
       if (data.isActive !== true || data.sessionId !== sessionId) continue;
       const entityId = ('fixedEntityId' in definition ? definition.fixedEntityId : undefined) ?? String(data.entityId ?? '');
       if (!entityId) continue;
       const entitySnapshot = await this.firestore.doc(`${definition.entities}/${entityId}`).get();
-      if (!entitySnapshot.exists || entitySnapshot.data()?.currentSessionId !== sessionId) continue;
+      if (!entitySnapshot.exists || !entityHasSession(entitySnapshot.data() ?? {}, sessionId)) continue;
       const entityData = entitySnapshot.data() ?? {};
       const now = new Date();
       const garageId = definition.role === 'garage'
