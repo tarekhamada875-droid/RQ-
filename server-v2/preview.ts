@@ -18,6 +18,7 @@ import { createV2App } from './app.js';
 import { InMemoryRateLimiter } from './security/rateLimit.js';
 import type { V2Environment } from './config/environment.js';
 import { createFirestoreShadowComparisonProvider } from './migration/firestoreShadowComparison.js';
+import { createConsoleShadowComparisonTelemetrySink } from './migration/shadowComparisonTelemetry.js';
 
 export function previewOrigins(value: string): ReadonlySet<string> {
   return new Set(value.split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -33,6 +34,7 @@ export function createV2PreviewApp(environment: V2Environment): Express {
   const sessions = new FirestoreSessionRepository(firebase.firestore);
   const packageCatalog = new FirestorePackageCatalogRepository(firebase.firestore);
   const garageSummary = new FirestoreGarageSummaryRepository(firebase.firestore);
+  const shadowTelemetry = createConsoleShadowComparisonTelemetrySink('rq-v2-shadow');
   return createV2App({
     environment,
     packageCatalog,
@@ -46,7 +48,7 @@ export function createV2PreviewApp(environment: V2Environment): Express {
     projection: new FirestoreProjectionRepository(firebase.firestore),
     pendingQueue: new FirestorePendingQueueRepository(firebase.firestore),
     activity: new FirestoreActivityRepository(firebase.firestore),
-    shadowComparison: createFirestoreShadowComparisonProvider({ firestore: firebase.firestore, packageCatalog, garageSummary, environment }),
+    shadowComparison: createFirestoreShadowComparisonProvider({ firestore: firebase.firestore, packageCatalog, garageSummary, environment, telemetry: shadowTelemetry }),
     authMiddleware: createV2AuthMiddleware({
       verifyIdToken: firebaseAuth.verifyIdToken,
       getSession: (uid, sessionId) => sessions.getSession(uid, sessionId)

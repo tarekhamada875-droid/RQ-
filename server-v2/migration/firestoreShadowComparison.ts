@@ -7,6 +7,7 @@ import type { V2Environment } from '../config/environment.js';
 import type { GarageSummaryRepository } from '../repositories/garageSummary.js';
 import type { PackageCatalogRepository } from '../repositories/packageCatalog.js';
 import { runShadowComparison, type ShadowComparisonOutcome } from './shadowComparisonCoordinator.js';
+import type { ShadowComparisonTelemetry } from './shadowComparisonTelemetry.js';
 
 const MAX_SCAN = 100;
 const LegacyRecordSchema = z.record(z.string(), z.unknown());
@@ -14,11 +15,12 @@ const DateKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 type LegacyRecord = z.infer<typeof LegacyRecordSchema>;
 
+type ShadowReadResult<T> = Readonly<{ value: T; firestoreReads: number }>;
 type ShadowReadDependencies = Readonly<{
-  readLegacyPackages: (limit: number) => Promise<ReadonlyArray<Package>>;
-  readV2Packages: (limit: number) => Promise<ReadonlyArray<Package>>;
-  readLegacySummary: (garageId: string, dateKey: string) => Promise<GarageSummary | null>;
-  readV2Summary: (garageId: string, dateKey: string) => Promise<GarageSummary | null>;
+  readLegacyPackages: (limit: number) => Promise<ReadonlyArray<Package> | ShadowReadResult<ReadonlyArray<Package>>>;
+  readV2Packages: (limit: number) => Promise<ReadonlyArray<Package> | ShadowReadResult<ReadonlyArray<Package>>>;
+  readLegacySummary: (garageId: string, dateKey: string) => Promise<GarageSummary | null | ShadowReadResult<GarageSummary | null>>;
+  readV2Summary: (garageId: string, dateKey: string) => Promise<GarageSummary | null | ShadowReadResult<GarageSummary | null>>;
 }>;
 
 type ShadowProviderOptions = Readonly<{
@@ -27,7 +29,21 @@ type ShadowProviderOptions = Readonly<{
   previewAuthEnabled: boolean;
   legacyFallbackAvailable?: boolean;
   dataVersion?: string | number;
+  telemetry?: ShadowComparisonTelemetry;
 }>;
+
+function unwrapRead<T>(result: T | ShadowReadResult<T>): ShadowReadResult<T> {
+  if (result !== null && typeof result === 'object' && 'value' in result && 'firestoreReads' in result) {
+    return { value: result.value, firestoreReads: Number.isFinite(result.firestoreReads) ? result.firestoreReads : 0 };
+  }
+  return { value: result as T, firestoreReads: 0 };
+}
+
+function repositoryReadCount(repository: PackageCatalogRepository | GarageSummaryRepository): number {
+  if (!('getCostSnapshot' in repository) || typeof repository.getCostSnapshot !== 'function') return 0;
+  const snapshot = repository.getCostSnapshot();
+  return Number.isFinite(snapshot.reads) ? snapshot.reads : 0;
+}
 
 function record(value: unknown, label: string): LegacyRecord {
   const parsed = LegacyRecordSchema.safeParse(value);
@@ -118,51 +134,55 @@ function canonicalBucketSummary(garageId: string, dateKey: string, garageRaw: un
   };
 }
 
-async function readLegacyPackages(firestore: Firestore, limit: number): Promise<ReadonlyArray<Package>> {
+async function readLegacyPackages(firestore: Firestore, limit: number): Promise<ShadowReadResult<ReadonlyArray<Package>>> {
   const snapshot = await firestore.collection('packages').orderBy(FieldPath.documentId()).limit(MAX_SCAN).get();
-  return snapshot.docs.map((document) => legacyPackageToCanonical(document.id, document.data())).filter((item) => item.active).slice(0, limit);
+  return { value: snapshot.docs.map((document) => legacyPackageToCanonical(document.id, document.data())).filter((item) => item.active).slice(0, limit), firestoreReads: snapshot.size };
 }
 
-async function readLegacySummary(firestore: Firestore, garageId: string, dateKey: string): Promise<GarageSummary | null> {
+async function readLegacySummary(firestore: Firestore, garageId: string, dateKey: string): Promise<ShadowReadResult<GarageSummary | null>> {
   const garageRef = firestore.doc(`garages/${garageId}`);
   const bucketsQuery = firestore.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', dateKey).orderBy(FieldPath.documentId()).limit(MAX_SCAN);
   const summaryRef = firestore.doc(`garages/${garageId}/dashboard_summary/current`);
   const [garageSnapshot, bucketsSnapshot, summarySnapshot] = await Promise.all([garageRef.get(), bucketsQuery.get(), summaryRef.get()]);
-  if (!garageSnapshot.exists) return null;
-  if (bucketsSnapshot.size > 0) return canonicalBucketSummary(garageId, dateKey, garageSnapshot.data(), bucketsSnapshot.docs.map((document) => document.data()));
-  return summarySnapshot.exists ? canonicalSummary(garageId, dateKey, summarySnapshot.data()) : null;
+  const firestoreReads = (garageSnapshot.exists ? 1 : 0) + bucketsSnapshot.size + (summarySnapshot.exists ? 1 : 0);
+  if (!garageSnapshot.exists) return { value: null, firestoreReads };
+  if (bucketsSnapshot.size > 0) return { value: canonicalBucketSummary(garageId, dateKey, garageSnapshot.data(), bucketsSnapshot.docs.map((document) => document.data())), firestoreReads };
+  return { value: summarySnapshot.exists ? canonicalSummary(garageId, dateKey, summarySnapshot.data()) : null, firestoreReads };
 }
 
 export function createShadowComparisonProvider(options: ShadowProviderOptions): ShadowComparisonProvider {
   return async (input): Promise<ShadowComparisonOutcome> => {
+    const startedAt = Date.now();
+    let firestoreReads = 0;
+    let outcome: ShadowComparisonOutcome | undefined;
     const dataVersion = options.dataVersion ?? 'legacy-v2-shadow-1';
-    if (input.endpoint === 'packages') {
-      return runShadowComparison({
-        comparison: { endpoint: '/api/v2/packages', requestId: input.requestId, dataVersion },
-        readLegacy: () => options.dependencies.readLegacyPackages(100),
-        readV2: () => options.dependencies.readV2Packages(100),
-        previewEnabled: options.previewEnabled,
-        previewAuthEnabled: options.previewAuthEnabled,
-        ...(options.legacyFallbackAvailable === undefined ? {} : { legacyFallbackAvailable: options.legacyFallbackAvailable })
-      });
+    try {
+      if (input.endpoint === 'packages') {
+        outcome = await runShadowComparison({
+          comparison: { endpoint: '/api/v2/packages', requestId: input.requestId, dataVersion },
+          readLegacy: async () => { const result = unwrapRead(await options.dependencies.readLegacyPackages(100)); firestoreReads += result.firestoreReads; return result.value; },
+          readV2: async () => { const result = unwrapRead(await options.dependencies.readV2Packages(100)); firestoreReads += result.firestoreReads; return result.value; },
+          previewEnabled: options.previewEnabled,
+          previewAuthEnabled: options.previewAuthEnabled,
+          ...(options.legacyFallbackAvailable === undefined ? {} : { legacyFallbackAvailable: options.legacyFallbackAvailable })
+        });
+      } else {
+        const garageId = input.garageId;
+        const dateKey = input.date;
+        if (!garageId || !dateKey || !DateKeySchema.safeParse(dateKey).success) throw new Error('INVALID_SHADOW_SUMMARY_REQUEST');
+        outcome = await runShadowComparison({
+          comparison: { endpoint: '/api/v2/garages/:garageId/summary', garageId, garageScope: garageId, requestId: input.requestId, dataVersion },
+          readLegacy: async () => { const result = unwrapRead(await options.dependencies.readLegacySummary(garageId, dateKey)); firestoreReads += result.firestoreReads; return result.value === null ? [] : [result.value]; },
+          readV2: async () => { const result = unwrapRead(await options.dependencies.readV2Summary(garageId, dateKey)); firestoreReads += result.firestoreReads; return result.value === null ? [] : [result.value]; },
+          previewEnabled: options.previewEnabled,
+          previewAuthEnabled: options.previewAuthEnabled,
+          ...(options.legacyFallbackAvailable === undefined ? {} : { legacyFallbackAvailable: options.legacyFallbackAvailable })
+        });
+      }
+      return outcome;
+    } finally {
+      if (outcome !== undefined) options.telemetry?.record({ outcome, latencyMs: Date.now() - startedAt, firestoreReads });
     }
-    const garageId = input.garageId;
-    const dateKey = input.date;
-    if (!garageId || !dateKey || !DateKeySchema.safeParse(dateKey).success) throw new Error('INVALID_SHADOW_SUMMARY_REQUEST');
-    return runShadowComparison({
-      comparison: { endpoint: '/api/v2/garages/:garageId/summary', garageId, garageScope: garageId, requestId: input.requestId, dataVersion },
-      readLegacy: async () => {
-        const summary = await options.dependencies.readLegacySummary(garageId, dateKey);
-        return summary === null ? [] : [summary];
-      },
-      readV2: async () => {
-        const summary = await options.dependencies.readV2Summary(garageId, dateKey);
-        return summary === null ? [] : [summary];
-      },
-      previewEnabled: options.previewEnabled,
-      previewAuthEnabled: options.previewAuthEnabled,
-      ...(options.legacyFallbackAvailable === undefined ? {} : { legacyFallbackAvailable: options.legacyFallbackAvailable })
-    });
   };
 }
 
@@ -171,17 +191,27 @@ export function createFirestoreShadowComparisonProvider(input: Readonly<{
   packageCatalog: PackageCatalogRepository;
   garageSummary: GarageSummaryRepository;
   environment: V2Environment;
+  telemetry?: ShadowComparisonTelemetry;
 }>): ShadowComparisonProvider {
   return createShadowComparisonProvider({
     dependencies: {
       readLegacyPackages: (limit) => readLegacyPackages(input.firestore, limit),
-      readV2Packages: (limit) => input.packageCatalog.listActive(limit),
+      readV2Packages: async (limit) => {
+        const before = repositoryReadCount(input.packageCatalog);
+        const value = await input.packageCatalog.listActive(limit);
+        return { value, firestoreReads: Math.max(0, repositoryReadCount(input.packageCatalog) - before) };
+      },
       readLegacySummary: (garageId, dateKey) => readLegacySummary(input.firestore, garageId, dateKey),
-      readV2Summary: (garageId, dateKey) => input.garageSummary.getSummary(garageId, dateKey)
+      readV2Summary: async (garageId, dateKey) => {
+        const before = repositoryReadCount(input.garageSummary);
+        const value = await input.garageSummary.getSummary(garageId, dateKey);
+        return { value, firestoreReads: Math.max(0, repositoryReadCount(input.garageSummary) - before) };
+      }
     },
     previewEnabled: input.environment.V2_PREVIEW_ENABLED,
     previewAuthEnabled: input.environment.V2_PREVIEW_AUTH_ENABLED,
-    legacyFallbackAvailable: true
+    legacyFallbackAvailable: true,
+    ...(input.telemetry === undefined ? {} : { telemetry: input.telemetry })
   });
 }
 

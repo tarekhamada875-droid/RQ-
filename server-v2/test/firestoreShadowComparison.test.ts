@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseEnvironment } from '../config/environment.js';
 import { createShadowComparisonProvider, shadowComparisonInternals } from '../migration/firestoreShadowComparison.js';
+import { InMemoryShadowComparisonTelemetry } from '../migration/shadowComparisonTelemetry.js';
 import type { GarageSummary } from '../contracts/summary.js';
 import type { Package } from '../contracts/entities.js';
 
@@ -13,7 +14,7 @@ const summaryValue: GarageSummary = {
   asOf: '2026-09-22T12:00:00.000Z'
 };
 
-function provider(overrides: Partial<Parameters<typeof createShadowComparisonProvider>[0]['dependencies']> = {}) {
+function provider(overrides: Partial<Parameters<typeof createShadowComparisonProvider>[0]['dependencies']> = {}, telemetry?: InMemoryShadowComparisonTelemetry) {
   const environment = parseEnvironment({ NODE_ENV: 'test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' });
   return createShadowComparisonProvider({
     dependencies: {
@@ -25,7 +26,8 @@ function provider(overrides: Partial<Parameters<typeof createShadowComparisonPro
     },
     previewEnabled: environment.V2_PREVIEW_ENABLED,
     previewAuthEnabled: environment.V2_PREVIEW_AUTH_ENABLED,
-    legacyFallbackAvailable: true
+    legacyFallbackAvailable: true,
+    ...(telemetry === undefined ? {} : { telemetry })
   });
 }
 
@@ -70,5 +72,15 @@ describe('Firestore shadow comparison provider', () => {
     expect(result.mode).toBe('blocked');
     expect(result.reason).toBe('legacy_read_failed');
     expect(result.error).toBe('legacy_read_failed');
+  });
+
+  it('records aggregate outcome and read costs without recording payloads', async () => {
+    const telemetry = new InMemoryShadowComparisonTelemetry();
+    const result = await provider({
+      readLegacyPackages: async () => ({ value: [packageValue], firestoreReads: 3 }),
+      readV2Packages: async () => ({ value: [packageValue], firestoreReads: 2 })
+    }, telemetry)({ endpoint: 'packages', requestId: 'req-telemetry' });
+    expect(result.mode).toBe('v2');
+    expect(telemetry.snapshot()).toMatchObject({ comparisonsAttempted: 1, equalComparisons: 1, firestoreReads: 5 });
   });
 });
