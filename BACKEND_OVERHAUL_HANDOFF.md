@@ -4,9 +4,9 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `322faee docs: define repeatable agent handoff protocol`
-**Latest implementation commit:** `5a0cb56 feat: add shadow comparison coordinator`
+**Latest implementation commit:** `07308e5 feat: add gated shadow comparison route`
 **Latest correction commit:** `4cc13b1 test: correct garage summary read cost assertions`
-**Latest verified implementation gate:** `35713410959` — **success** for `bb1dfe7`; the shadow-read policy passes strict typecheck, focused tests, full emulator-backed v2 validation, build, and diff checks locally. The shadow-comparison coordinator passes the same validation locally and is awaiting its Production Gate. The latest Pages production deployment is `26c2151f` for `bb1dfe7`.
+**Latest verified implementation gate:** `35714135062` — **success** for `6b6a1a2`; the shadow-comparison coordinator passes strict typecheck, focused tests, full emulator-backed v2 validation, build, and diff checks locally. The new gated route passes focused and full local validation and is awaiting its Production Gate. The latest Pages production deployment is `02ff95db` for `6b6a1a2`.
 
 ## Mission
 
@@ -167,9 +167,9 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ## Exact next actions for the next agent
 
-### Agent continuation packet — 2026-09-22 13:06 UTC+3
+### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
-The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, the explicitly flagged admin repair endpoint, the read-only status endpoint in `6d2dc91`, the fail-closed shadow-read policy in `9c61429`, and the pure shadow-comparison coordinator in `5a0cb56`; replay reporting was corrected in `1604a7f`. The coordinator runs legacy and v2 reads concurrently, compares normalized results, permits v2 only after an authenticated equal comparison, falls back to legacy when v2 fails, and blocks when legacy fails. Preview-disabled, mismatch, financial, authorization, or rollback-unsafe cases remain on legacy or blocked. It performs no writes and does not change traffic. The status route remains disabled unless `V2_PROJECTION_STATUS_ENABLED=true`; the repair route remains disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 53 test files and 284 tests. One initial full run hit a known Firestore emulator concurrency timeout; the focused projection retry and the subsequent complete run passed. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
+The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, the explicitly flagged admin repair endpoint, the read-only status endpoint in `6d2dc91`, the fail-closed shadow-read policy in `9c61429`, the pure shadow-comparison coordinator in `5a0cb56`, and a preview-only admin route in `07308e5`. The route is `POST /api/v2/shadow/compare`, requires admin Firebase/session authorization, accepts only `packages` or date-scoped `garage_summary` requests, delegates to an injected provider, and is disabled unless `V2_SHADOW_COMPARISON_ENABLED=true`; no provider is wired into the production preview composition yet, so it is not claimed as live functionality. The coordinator runs legacy and v2 reads concurrently, compares normalized results, permits v2 only after an authenticated equal comparison, falls back to legacy when v2 fails, and blocks when legacy fails. Preview-disabled, mismatch, financial, authorization, or rollback-unsafe cases remain on legacy or blocked. It performs no writes and does not change traffic. The status route remains disabled unless `V2_PROJECTION_STATUS_ENABLED=true`; the repair route remains disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 54 test files and 287 tests. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
 
 The most recent implementation remains `4ae7345 feat: add guarded garage profile updates`. It adds `server-v2/contracts/garageProfile.ts`, `server-v2/repositories/firestoreGarageProfile.ts`, route wiring in `server-v2/app.ts`, and route/emulator tests. Its Production Gate `35690669939` passed. The later handoff evidence updates are `40ac356`, `9c580fe`, and `322faee`.
 
