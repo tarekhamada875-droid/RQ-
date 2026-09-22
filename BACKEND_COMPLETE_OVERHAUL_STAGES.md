@@ -1041,7 +1041,7 @@ This status is maintained for handoff between agents. The current production bac
 | Stage 10 — Progressive cutover | **Not started** | No cohort has been migrated. | Internal users → one garage → small cohorts → all traffic, with SLO, cost, reconciliation, and tested rollback gates. |
 | Stage 11 — Retire legacy paths | **Not started** | No legacy route or writer has been removed. | Remove legacy paths only after migration completion, retention review, and rollback-window expiration. |
 
-**Latest implementation commit:** `a673cdb feat: add firestore garage summary adapter`, with preceding handoff documentation published through `2e0847c docs: align overhaul status with current implementation`. The latest verified implementation gate is garage profile run `35690669939`; the gate for `a673cdb` is pending. Do not infer success until it completes.
+**Latest implementation commit:** `a673cdb feat: add firestore garage summary adapter`, with correction commit `4cc13b1 test: correct garage summary read cost assertions`. The original adapter gate failed only on two incorrect read-cost expectations; the corrected full emulator-backed v2 check passes locally. Do not infer the new Production Gate result until it completes.
 
 **Important safety boundary:** Keep all production `VITE_V2_READ_*` flags false until the matching v2 Railway endpoints are deployed, authenticated, compared with legacy behavior, and rollback-tested. A preview-only package flag may be true as recorded in the handoff; it does not authorize enabling the production flag. Do not mount additional v2 behavior into production, migrate financial writes, delete legacy routes, or delete production data as part of foundation work.
 
