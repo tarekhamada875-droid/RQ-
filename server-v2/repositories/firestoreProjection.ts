@@ -1,12 +1,16 @@
 import type { Firestore } from 'firebase-admin/firestore';
+import crypto from 'node:crypto';
+import { z } from 'zod';
 import { ProjectionEventSchema, ProjectionStateSchema, type ProjectionEvent, type ProjectionState } from '../contracts/projection.js';
+import { ProjectionRebuildInputSchema, ProjectionRebuildResultSchema, type ProjectionRebuildInput, type ProjectionRebuildResult } from '../contracts/projectionRepair.js';
 import { applyProjectionEvent } from '../domain/projections.js';
+import { idempotencyFingerprint } from '../domain/operations.js';
 import { CostCounter, type ReadCost } from './packageCatalog.js';
 
 export interface ProjectionRepository {
   get(garageId: string, dateKey: string): Promise<ProjectionState | null>;
   applyEvent(event: ProjectionEvent, now: Date): Promise<ProjectionState>;
-  rebuild(garageId: string, dateKey: string, events: ReadonlyArray<ProjectionEvent>, now: Date): Promise<ProjectionState>;
+  rebuild(input: ProjectionRebuildInput): Promise<ProjectionRebuildResult>;
 }
 
 function projectionPath(garageId: string, dateKey: string): string {
@@ -32,6 +36,16 @@ function initialState(event: ProjectionEvent): ProjectionState {
 }
 
 const MAX_REBUILD_EVENTS = 10_000;
+
+const StoredResultSchema = z.object({
+  fingerprint: z.string().length(64),
+  responseJson: z.string().max(30000),
+  createdAt: z.unknown()
+}).strict();
+
+function operationKey(actorUid: string, idempotencyKey: string): string {
+  return crypto.createHash('sha256').update(`projection.rebuild:${actorUid}:${idempotencyKey}`).digest('hex');
+}
 
 function emptyState(garageId: string, dateKey: string, now: Date): ProjectionState {
   return ProjectionStateSchema.parse({
@@ -67,9 +81,11 @@ export class FirestoreProjectionRepository implements ProjectionRepository {
     });
   }
 
-  async rebuild(garageId: string, dateKey: string, rawEvents: ReadonlyArray<ProjectionEvent>, now: Date): Promise<ProjectionState> {
+  async rebuild(rawInput: ProjectionRebuildInput): Promise<ProjectionRebuildResult> {
+    const input = ProjectionRebuildInputSchema.parse(rawInput);
+    const { garageId, dateKey, events: rawEvents } = input;
     projectionPath(garageId, dateKey);
-    if (Number.isNaN(now.getTime())) throw new Error('INVALID_DATE');
+    const now = new Date(input.occurredAt);
     if (rawEvents.length > MAX_REBUILD_EVENTS) throw new Error('PROJECTION_REBUILD_WINDOW_EXCEEDED');
     const events = rawEvents.map((rawEvent) => ProjectionEventSchema.parse(rawEvent));
     if (events.some((event) => event.garageId !== garageId || event.dateKey !== dateKey)) throw new Error('PROJECTION_SCOPE_MISMATCH');
@@ -77,13 +93,30 @@ export class FirestoreProjectionRepository implements ProjectionRepository {
     let rebuilt = emptyState(garageId, dateKey, now);
     for (const event of ordered) rebuilt = applyProjectionEvent(rebuilt, event, now);
     const ref = this.firestore.doc(projectionPath(garageId, dateKey));
+    const fingerprint = idempotencyFingerprint('projection.rebuild', { garageId, dateKey, actorUid: input.actorUid, idempotencyKey: input.idempotencyKey, events });
     this.costs.recordTransactionAttempt();
     return this.firestore.runTransaction(async (transaction) => {
+      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(input.actorUid, input.idempotencyKey));
+      const idempotencySnapshot = await transaction.get(idempotencyRef);
+      this.costs.recordRead(idempotencySnapshot.exists ? 1 : 0);
+      if (idempotencySnapshot.exists) {
+        const stored = StoredResultSchema.parse(idempotencySnapshot.data());
+        if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
+        return ProjectionRebuildResultSchema.parse(JSON.parse(stored.responseJson));
+      }
       const snapshot = await transaction.get(ref);
       this.costs.recordRead(snapshot.exists ? 1 : 0);
       transaction.set(ref, rebuilt);
-      this.costs.recordWrite();
-      return rebuilt;
+      const result = ProjectionRebuildResultSchema.parse({ projection: rebuilt, sourceEventCount: events.length, replayed: false });
+      const eventRef = this.firestore.collection('business_events').doc();
+      transaction.create(eventRef, {
+        garageId, aggregateType: 'projection', aggregateId: `${garageId}:${dateKey}`,
+        eventType: 'projection_rebuilt', actorUid: input.actorUid, occurredAt: now,
+        idempotencyKey: input.idempotencyKey, payload: { sourceEventCount: events.length, projectionVersion: rebuilt.projectionVersion }
+      });
+      transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: now });
+      this.costs.recordWrite(3);
+      return result;
     });
   }
 

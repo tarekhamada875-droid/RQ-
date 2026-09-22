@@ -8,6 +8,7 @@ import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './con
 import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema, SubscriberUpdateRequestSchema, SubscriberSuspendRequestSchema, SubscriberCancelRequestSchema, SubscriberDeleteRequestSchema } from './contracts/subscriberCommands.js';
 import { DeletionAdvanceRequestSchema, DeletionResumeRequestSchema, DeletionStartRequestSchema } from './contracts/deletion.js';
 import { GarageProfileUpdateRequestSchema } from './contracts/garageProfile.js';
+import { ProjectionRebuildRequestSchema } from './contracts/projectionRepair.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -17,6 +18,7 @@ import type { SubscriberCommandRepository } from './repositories/firestoreSubscr
 import type { GarageLifecycleRepository } from './repositories/firestoreGarageLifecycle.js';
 import type { GarageDeletionRepository } from './repositories/firestoreGarageDeletion.js';
 import type { GarageProfileManagementRepository } from './repositories/firestoreGarageProfile.js';
+import type { ProjectionRepository } from './repositories/firestoreProjection.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -34,6 +36,7 @@ type V2AppOptions = Readonly<{
   garageLifecycle?: GarageLifecycleRepository;
   garageDeletion?: GarageDeletionRepository;
   garageProfileManagement?: GarageProfileManagementRepository;
+  projection?: ProjectionRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -113,6 +116,9 @@ export function createV2App(options: V2AppOptions = {}): Express {
     if (options.garageProfileManagement) {
       app.use('/v2/garages/:garageId/profile/update', options.authMiddleware, requireV2Authorization('admin_only'));
     }
+    if (options.projection && environment.V2_PROJECTION_REPAIR_ENABLED) {
+      app.use('/v2/garages/:garageId/projection/rebuild', options.authMiddleware, requireV2Authorization('admin_only'));
+    }
     app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
     app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
   } else if (options.rateLimitMiddleware) {
@@ -148,6 +154,31 @@ export function createV2App(options: V2AppOptions = {}): Express {
           return;
         }
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to update garage profile'));
+      }
+    });
+  }
+
+  if (options.projection && options.authMiddleware && environment.V2_PROJECTION_REPAIR_ENABLED && v2ReadEnabled) {
+    const projection = options.projection;
+    app.post('/v2/garages/:garageId/projection/rebuild', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const authorization = request.v2Authorization;
+      const parsed = ProjectionRebuildRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID, date, event window, and idempotency key are required'));
+        return;
+      }
+      try {
+        const result = await projection.rebuild({ ...parsed.data, garageId, actorUid: authorization.uid, occurredAt: new Date().toISOString() });
+        response.json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (new Set(['IDEMPOTENCY_KEY_REUSE', 'PROJECTION_SCOPE_MISMATCH', 'PROJECTION_ACTIVE_COUNT_NEGATIVE', 'PROJECTION_REBUILD_WINDOW_EXCEEDED']).has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to rebuild projection'));
       }
     });
   }

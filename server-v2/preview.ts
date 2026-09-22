@@ -12,6 +12,7 @@ import { FirestoreGarageLifecycleRepository } from './repositories/firestoreGara
 import { FirestoreGarageDeletionRepository } from './repositories/firestoreGarageDeletion.js';
 import { FirestoreGarageManagementRepository } from './repositories/firestoreGarageProfile.js';
 import { FirestoreGarageSummaryRepository } from './repositories/firestoreGarageSummary.js';
+import { FirestoreProjectionRepository } from './repositories/firestoreProjection.js';
 import { FirestoreActivityRepository, FirestorePendingQueueRepository } from './repositories/readModels.js';
 import { createV2App } from './app.js';
 import { InMemoryRateLimiter } from './security/rateLimit.js';
@@ -39,6 +40,7 @@ export function createV2PreviewApp(environment: V2Environment): Express {
     garageDeletion: new FirestoreGarageDeletionRepository(firebase.firestore),
     garageProfileManagement: new FirestoreGarageManagementRepository(firebase.firestore),
     garageSummary: new FirestoreGarageSummaryRepository(firebase.firestore),
+    projection: new FirestoreProjectionRepository(firebase.firestore),
     pendingQueue: new FirestorePendingQueueRepository(firebase.firestore),
     activity: new FirestoreActivityRepository(firebase.firestore),
     authMiddleware: createV2AuthMiddleware({
