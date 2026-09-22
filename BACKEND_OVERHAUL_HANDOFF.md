@@ -1,9 +1,9 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 08:28 UTC+3
+**Last updated:** 2026-09-22 08:30 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** pending this handoff update
+**Latest published documentation commit:** pending this preview-evidence update
 **Latest implementation commit:** `4ae7345 feat: add guarded garage profile updates`
 **Latest GitHub Production Gate:** `35690669939` — **success**
 
@@ -76,7 +76,7 @@ VITE_V2_READ_PACKAGE_CATALOG=true
 
 The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; production remains on the legacy provider. The v2 flag parser defaults every flag to false unless the exact value is `true`. The preview flag being true does not authorize enabling the production flag.
 
-Cloudflare currently has only stale preview deployments from old feature branches; the current `main` commit has no current non-production preview deployment. The project is configured to create previews for branches, but the user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
+Cloudflare read-only inspection on 2026-09-22 confirmed that the project is configured to create previews for all branches, but the available previews are stale deployments from old feature branches. The newest listed preview is `7ff4c62e` at `https://7ff4c62e.rq-acg.pages.dev`, built from `feat/backend-operator-mcp-auth` at commit `1c60a0d` on 2026-09-19; it is not a current `main` build. The latest `main` deployment is production-only and was triggered by `a09b248`. The user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
 
 ### Latest frontend slice
 
@@ -168,7 +168,7 @@ The repository context is clean at `27ca6e1` before the pending handoff document
 
 ### Current blocking validation
 
-Use the enabled Cloudflare connector to inspect the `rq` Pages project before claiming preview readiness. The project has preview support enabled, but the available preview deployments are stale builds from old feature branches. The current `main` commit has only a successful production deployment. Do not create a branch merely to manufacture a current preview URL, and do not use a stale preview to claim current authenticated end-to-end behavior.
+Use the enabled Cloudflare connector to inspect the `rq` Pages project before claiming preview readiness. The 2026-09-22 inspection confirmed preview support is enabled, but the available preview deployments are stale builds from old feature branches. The current `main` commit has only a production deployment. Do not create a branch merely to manufacture a current preview URL, and do not use a stale preview to claim current authenticated end-to-end behavior.
 
 When a current non-production preview exists, use a Firebase-authenticated browser session to verify:
 
