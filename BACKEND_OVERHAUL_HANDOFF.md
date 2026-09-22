@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 07:42 UTC+3
+**Last updated:** 2026-09-22 07:45 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `65b4811 docs: record final production gate`
-**Latest implementation commit:** `87922af feat: add guarded garage lifecycle commands`
-**Latest GitHub Production Gate:** `35639317287` — **success**
+**Latest implementation commit:** `27ca6e1 feat: add reversible subscriber tombstone`
+**Latest GitHub Production Gate:** `35687922847` — **success**
 
 ## Mission
 
@@ -164,7 +164,7 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ### Completed implementation slices
 
-The repository context is clean at `87922af` before the pending tombstone implementation and handoff commits. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, reversible subscriber tombstone, and admin-only garage lifecycle transactional persistence and routes are complete and locally validated; the tombstone slice is ready for publication after this validation.
+The repository context is clean at `27ca6e1` before the pending handoff documentation update. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, reversible subscriber tombstone, and admin-only garage lifecycle transactional persistence and routes are complete, validated locally, and published directly to `main`.
 
 ### Current blocking validation
 
@@ -195,9 +195,11 @@ Garage lifecycle is complete in `87922af`. It adds admin-only, preview-gated rou
 
 Migration-safety utilities are complete locally: normalized read comparison, redacted mismatch reporting with authorization/financial hard flags, fail-closed rollback policy, and a runbook. They do not establish authenticated frontend-to-Railway success and are not wired to production traffic.
 
-The next bounded implementation slice is **physical deletion safety**, beginning with subscriber delete policy and then resumable garage deletion. Preserve the legacy backend as authority, do not route the current UI to irreversible deletion, require explicit admin authorization, retain transactionally recorded idempotency/audit state, and prove no-delete rollback behavior. In parallel, use the migration-safety runbook to inspect for a real current non-production Cloudflare preview; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
+Subscriber tombstone is complete in `27ca6e1`. It adds `POST /v2/garages/:garageId/subscribers/:subscriberId/delete` as an admin-only, preview-gated, reversible state transition to `deleted`; the document and plate/date fields are retained, only status and updatedAt are mutated, and one audit event plus one idempotency record are written transactionally. The legacy physical-delete route remains unchanged and authoritative.
 
-After renew is green, repeat the same one-slice process in this order: subscriber update (preserve immutable plate), subscriber suspend, subscriber cancel/delete, garage lock/suspension, garage management, and resumable garage deletion. Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
+The next bounded implementation slice is **resumable garage deletion safety**. Preserve the legacy backend as authority, do not route the current UI to irreversible deletion, require explicit admin authorization, retain transactionally recorded idempotency/audit state, and prove no-delete rollback behavior. In parallel, use the migration-safety runbook to inspect for a real current non-production Cloudflare preview; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
+
+Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
 
 Do not begin financial writes before the lifecycle routes, shadow comparison, and rollback procedures are complete.
 
