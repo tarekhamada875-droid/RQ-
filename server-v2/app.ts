@@ -11,6 +11,8 @@ import { GarageProfileUpdateRequestSchema } from './contracts/garageProfile.js';
 import { ProjectionRebuildRequestSchema } from './contracts/projectionRepair.js';
 import { ProjectionStatusRequestSchema, ProjectionStatusSchema } from './contracts/projectionStatus.js';
 import { ShadowComparisonRequestSchema, type ShadowComparisonProvider } from './contracts/shadowComparison.js';
+import { createDashboardReport } from './domain/reportEnvelope.js';
+import { reconcileProjection } from './domain/projections.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -80,6 +82,10 @@ export function createV2App(options: V2AppOptions = {}): Express {
     const activityRateLimit = options.routeRateLimitMiddleware?.activity ?? options.rateLimitMiddleware;
     app.use('/v2/packages', options.authMiddleware, ...(packageRateLimit ? [packageRateLimit] : []));
     app.use('/v2/garages/:garageId/summary', options.authMiddleware, ...(garageRateLimit ? [garageRateLimit] : []), requireV2Authorization('garage_read', (request) => {
+      const garageId = request.params.garageId;
+      return typeof garageId === 'string' ? garageId : undefined;
+    }));
+    app.use('/v2/garages/:garageId/report', options.authMiddleware, ...(garageRateLimit ? [garageRateLimit] : []), requireV2Authorization('garage_read', (request) => {
       const garageId = request.params.garageId;
       return typeof garageId === 'string' ? garageId : undefined;
     }));
@@ -283,6 +289,46 @@ export function createV2App(options: V2AppOptions = {}): Express {
       response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to read garage summary'));
     }
   });
+
+  const dashboardProjection = options.projection;
+  if (dashboardProjection && options.authMiddleware && v2ReadEnabled) {
+    app.get('/v2/garages/:garageId/report', async (request, response) => {
+      const id = getV2RequestId(request);
+      if (!v2ReadEnabled) {
+        response.status(404).json(errorResponse(id, 'NOT_FOUND', 'V2 dashboard report is not enabled in production'));
+        return;
+      }
+      const garageId = request.params.garageId;
+      const dateResult = DateKeySchema.safeParse(request.query.date ?? '');
+      if (!garageId || !dateResult.success) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID and date are required'));
+        return;
+      }
+      try {
+        const summary = await garageSummary.getSummary(garageId, dateResult.data);
+        if (!summary) {
+          response.status(404).json(errorResponse(id, 'NOT_FOUND', 'Garage summary not found'));
+          return;
+        }
+        const currentProjection = await dashboardProjection.get(garageId, dateResult.data);
+        if (!currentProjection) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', 'PROJECTION_MISSING'));
+          return;
+        }
+        const now = new Date();
+        const reconciliation = reconcileProjection(currentProjection, { ...summary, asOf: new Date(summary.asOf) }, now);
+        const repairReason = !reconciliation.consistent
+          ? 'SUMMARY_PROJECTION_MISMATCH'
+          : reconciliation.projectionLagMs > 15 * 60 * 1000
+            ? 'PROJECTION_STALE'
+            : undefined;
+        const report = createDashboardReport(summary, reconciliation, now, repairReason);
+        response.json(successResponse(id, report));
+      } catch {
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to read dashboard report'));
+      }
+    });
+  }
 
   const vehicleCheckIn = options.vehicleCheckIn;
   if (vehicleCheckIn && options.authMiddleware && v2ReadEnabled) {
