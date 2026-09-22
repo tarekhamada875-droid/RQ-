@@ -4,9 +4,9 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `322faee docs: define repeatable agent handoff protocol`
-**Latest implementation commit:** `6d2dc91 feat: add gated projection status endpoint`
+**Latest implementation commit:** `9c61429 feat: add fail-closed shadow read policy`
 **Latest correction commit:** `4cc13b1 test: correct garage summary read cost assertions`
-**Latest verified implementation gate:** `35711558351` — **success** for `1604a7f`; all Production Gate jobs passed, including the repair route, full v2 validation, build, maintainability checks, artifact verification, and live release smoke. The status endpoint passed local full validation and is awaiting its own Production Gate. The latest Pages production deployment is `f7da4593` for `1604a7f`.
+**Latest verified implementation gate:** `35712423816` — **success** for `748dace`; the prior projection-status gate was superseded by the documentation commit. The shadow-read policy passes strict typecheck, focused tests, full emulator-backed v2 validation, build, and diff checks locally; its Production Gate is pending. The latest Pages production deployment is `6e04fbb4` for `748dace`.
 
 ## Mission
 
@@ -167,9 +167,9 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ## Exact next actions for the next agent
 
-### Agent continuation packet — 2026-09-22 12:46 UTC+3
+### Agent continuation packet — 2026-09-22 12:58 UTC+3
 
-The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, the explicitly flagged admin repair endpoint, and the read-only status endpoint in `6d2dc91`; replay reporting was corrected in `1604a7f`. The status route is `GET /api/v2/garages/:garageId/projection/status?date=YYYY-MM-DD`, requires Firebase/session authorization with admin role, reports `missing`, `healthy`, or `stale` plus lag, and is disabled unless `V2_PROJECTION_STATUS_ENABLED=true`; keep that flag false in production. The repair route remains disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 51 test files and 276 tests. Production Gate `35711558351` passed for the previous slice; the status endpoint is awaiting its gate. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
+The previous agent added the production Firestore garage-summary adapter, transactional projection persistence, a bounded deterministic projection rebuild primitive, the explicitly flagged admin repair endpoint, the read-only status endpoint in `6d2dc91`, and the fail-closed shadow-read policy in `9c61429`; replay reporting was corrected in `1604a7f`. The shadow policy permits v2 only after an authenticated equal comparison; preview-disabled, mismatch, financial, authorization, or rollback-unsafe cases remain on legacy or blocked. It performs no writes and does not change traffic. The status route remains disabled unless `V2_PROJECTION_STATUS_ENABLED=true`; the repair route remains disabled unless `V2_PROJECTION_REPAIR_ENABLED=true`. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 52 test files and 280 tests. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
 
 The most recent implementation remains `4ae7345 feat: add guarded garage profile updates`. It adds `server-v2/contracts/garageProfile.ts`, `server-v2/repositories/firestoreGarageProfile.ts`, route wiring in `server-v2/app.ts`, and route/emulator tests. Its Production Gate `35690669939` passed. The later handoff evidence updates are `40ac356`, `9c580fe`, and `322faee`.
 
