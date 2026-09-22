@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 08:04 UTC+3
+**Last updated:** 2026-09-22 08:28 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** `65b4811 docs: record final production gate`
-**Latest implementation commit:** `2e74606 feat: add resumable garage deletion jobs`
-**Latest GitHub Production Gate:** `35689117835` — **success**
+**Latest published documentation commit:** pending this handoff update
+**Latest implementation commit:** `4ae7345 feat: add guarded garage profile updates`
+**Latest GitHub Production Gate:** `35690669939` — **success**
 
 ## Mission
 
@@ -131,7 +131,7 @@ The following foundations exist and are tested:
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
 - Production vehicle, subscriber, and garage state repositories with emulator tests.
-- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, and non-destructive resumable garage deletion jobs now have guarded transactional HTTP paths; physical deletion remains legacy-authoritative.
+- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, non-destructive resumable garage deletion jobs, and admin-only non-financial garage profile updates now have guarded transactional HTTP paths; physical deletion remains legacy-authoritative.
 - Pure migration comparison and rollback-policy utilities with focused tests and a safety runbook. These are not wired to production traffic.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
@@ -142,11 +142,11 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend, reversible subscriber tombstone, and non-destructive garage deletion jobs now have transactional repositories; physical garage deletion, irreversible deletion migration, and financial write repositories remain unmigrated.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend, reversible subscriber tombstone, non-destructive garage deletion jobs, and non-financial garage profile updates now have transactional repositories; physical garage deletion, irreversible deletion migration, and financial write repositories remain unmigrated.
 
 ### HTTP routes
 
-Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, admin-only reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, and admin-only non-destructive garage deletion jobs in addition to health, packages, garage summary, pending, and activity. Physical subscriber/garage deletion, garage management, and financial routes are not complete.
+Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, admin-only reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, admin-only non-destructive garage deletion jobs, and admin-only non-financial garage profile updates in addition to health, packages, garage summary, pending, and activity. Physical subscriber/garage deletion, broader garage management, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -199,7 +199,9 @@ Subscriber tombstone is complete in `27ca6e1`. It adds `POST /v2/garages/:garage
 
 Resumable garage deletion safety is complete in `2e74606`. It creates and advances admin-only deletion jobs, marks the garage as deleting, records repair/resume state, and writes audit/idempotency records, but performs no physical deletion of the garage or child documents. The legacy `/api/garages/delete` route remains unchanged and authoritative. Production Gate `35689117835` passed.
 
-After publication, the next bounded work is preview evidence: inspect the current Cloudflare Pages project and obtain a real current non-production preview only if one exists naturally; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
+Garage profile management is complete in `4ae7345`. It adds strict allowlisted contracts and an admin-only preview-gated `POST /v2/garages/:garageId/profile/update` route for non-financial profile fields, preserving balance, package, lifecycle, and deletion fields. The Firestore repository applies the update transactionally, rejects deletion-in-progress garages, records one `garage_profile_updated` business event, persists an idempotency record, supports replay/conflict handling and concurrent requests, and has route plus emulator coverage. Production Gate `35690669939` passed; its checks included typecheck, tests, production build, v2 foundation, artifact, maintainability, and live smoke validation.
+
+After publication, the next bounded work is preview evidence: inspect the current Cloudflare Pages project and obtain a real current non-production preview only if one exists naturally; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist. If no current preview exists, do not manufacture one; continue with read-only inspection and the next reversible backend safety slice rather than changing production flags.
 
 Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
 
