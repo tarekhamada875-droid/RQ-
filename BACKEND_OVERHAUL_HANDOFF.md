@@ -343,3 +343,19 @@ The existing external implementation is the reference pattern. It lives at `/hom
 [1]: ./BACKEND_COMPLETE_OVERHAUL_STAGES.md "RQ Backend Complete Overhaul Stages"
 [2]: https://rq-production-af02.up.railway.app/api/v2/health "RQ Railway v2 health endpoint"
 [3]: https://github.com/tarekhamada875-droid/RQ- "RQ GitHub repository"
+
+
+## Canonical next-agent instructions
+
+The complete direct-address operating manual for the next agent is now maintained in [`NEXT_AGENT_HANDOFF.md`](NEXT_AGENT_HANDOFF.md). It includes the exact working sequence, validation commands, current state, implementation order, safety boundaries, forbidden actions, preview rules, financial migration rules, and progress-report format. Read it before making any further change.
+
+Current verified state at handoff preparation:
+
+- `HEAD`: `7b67208 docs: record gated shadow comparison route`
+- Working tree: clean and synchronized with `origin/main`
+- Latest Production Gate: `35715777203` — success
+- Application suite: 55 files / 296 tests passed
+- Server v2 suite: 54 files / 287 tests passed
+- Production flags: unchanged and disabled for v2 migration behavior
+- Financial authority: legacy backend remains authoritative
+- Cloudflare: current `main` deployments are production; no current non-production preview is available
