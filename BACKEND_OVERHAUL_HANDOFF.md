@@ -1,11 +1,11 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 08:00 UTC+3
+**Last updated:** 2026-09-22 08:04 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `65b4811 docs: record final production gate`
-**Latest implementation commit:** `27ca6e1 feat: add reversible subscriber tombstone`
-**Latest GitHub Production Gate:** `35687922847` — **success**
+**Latest implementation commit:** `2e74606 feat: add resumable garage deletion jobs`
+**Latest GitHub Production Gate:** `35689117835` — **success**
 
 ## Mission
 
@@ -197,7 +197,7 @@ Migration-safety utilities are complete locally: normalized read comparison, red
 
 Subscriber tombstone is complete in `27ca6e1`. It adds `POST /v2/garages/:garageId/subscribers/:subscriberId/delete` as an admin-only, preview-gated, reversible state transition to `deleted`; the document and plate/date fields are retained, only status and updatedAt are mutated, and one audit event plus one idempotency record are written transactionally. The legacy physical-delete route remains unchanged and authoritative.
 
-Resumable garage deletion safety is implemented locally and ready for publication. It creates and advances admin-only deletion jobs, marks the garage as deleting, records repair/resume state, and writes audit/idempotency records, but performs no physical deletion of the garage or child documents. The legacy `/api/garages/delete` route remains unchanged and authoritative.
+Resumable garage deletion safety is complete in `2e74606`. It creates and advances admin-only deletion jobs, marks the garage as deleting, records repair/resume state, and writes audit/idempotency records, but performs no physical deletion of the garage or child documents. The legacy `/api/garages/delete` route remains unchanged and authoritative. Production Gate `35689117835` passed.
 
 After publication, the next bounded work is preview evidence: inspect the current Cloudflare Pages project and obtain a real current non-production preview only if one exists naturally; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
 
