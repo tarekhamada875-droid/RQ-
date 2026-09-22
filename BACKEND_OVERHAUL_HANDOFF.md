@@ -1,9 +1,9 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 08:30 UTC+3
+**Last updated:** 2026-09-22 08:34 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** pending this preview-evidence update
+**Latest published documentation commit:** `40ac356 docs: record current preview availability`
 **Latest implementation commit:** `4ae7345 feat: add guarded garage profile updates`
 **Latest GitHub Production Gate:** `35690669939` — **success**
 
@@ -161,6 +161,18 @@ The existing backend remains the only financial writer. Do not dual-write money 
 Pure normalized comparison, redacted mismatch reporting, fail-closed rollback policy, and the [migration-safety runbook](docs/migration-safety-runbook.md) now exist. They do not establish authenticated frontend-to-Railway success and are not connected to production flags or dual-write behavior.
 
 ## Exact next actions for the next agent
+
+### Agent continuation packet — 2026-09-22 08:34 UTC+3
+
+The previous agent has completed the garage profile slice, verified its GitHub gate, inspected Cloudflare read-only, and stopped at the physical-deletion safety boundary. The current repository `HEAD` is `40ac356`; the working tree was clean and synchronized with `origin/main`. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
+
+The most recent implementation is `4ae7345 feat: add guarded garage profile updates`. It adds `server-v2/contracts/garageProfile.ts`, `server-v2/repositories/firestoreGarageProfile.ts`, route wiring in `server-v2/app.ts`, and route/emulator tests. It passed local validation and Production Gate `35690669939`. The handoff evidence update is `40ac356`.
+
+The most recent permitted external inspection used the enabled Cloudflare connector. Project `rq` has preview deployments enabled for all branches and preview-only `VITE_V2_READ_PACKAGE_CATALOG=true`; production does not have that flag. No current preview for `main` exists. The newest preview is stale branch deployment `7ff4c62e` from `feat/backend-operator-mcp-auth`, commit `1c60a0d`, dated 2026-09-19. Do not use it for authenticated current-build evidence, create a branch to manufacture a preview, change production flags, or claim Firebase-authenticated frontend-to-Railway success.
+
+The next agent should proceed autonomously in this order: first verify `git status --short --branch`, `git log -3 --oneline`, and the relevant current files; next, if a current natural Cloudflare preview has appeared, perform the authenticated Firebase browser smoke test and normalized legacy/v2 comparison; otherwise keep that item blocked and do not manufacture a preview. For backend implementation, physical deletion remains deferred because it would mutate data. A future deletion slice may only begin as a non-production, explicitly approved exercise and must add strict contracts, authorization, idempotency, bounded cursor traversal, reference verification, retention metadata, repair/resume behavior, audit events, emulator/concurrency tests, and a rollback note before any actual delete operation. The existing `server-v2/repositories/firestoreGarageDeletion.ts` is intentionally non-destructive: it marks `isDeleting`, tracks a resumable job, and records `physicalDeletion: false`; do not silently convert it into a physical delete writer.
+
+For every new slice, follow the established sequence: inspect legacy behavior and the master plan; implement one bounded capability behind the existing preview gate; run focused tests followed by `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`; review changed files and status; push directly to `main` (approved); watch the GitHub Production Gate; then update this handoff with the exact implementation commit, gate run, limitations, and next action. Keep Railway legacy routes and financial writes authoritative.
 
 ### Completed implementation slices
 
