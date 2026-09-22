@@ -169,6 +169,82 @@ Never leave stale commit numbers or test counts in the handoff.
 
 Before using Cloudflare, Railway, GitHub, or another external service, inspect the configured connector state and use the enabled connector or the repository's existing CLI convention. Do not invent credentials, print secret values, paste tokens into files, or replace a configured connector with an ad hoc integration. Keep all operator tokens server-to-server and treat them as different from Firebase user authentication. Redact secrets from command output, logs, screenshots, test artifacts, and handoff text.
 
+### Railway MCP build or restore procedure
+
+The Railway operator MCP is deliberately outside this repository. Never commit it into `RQ-`, put it under `server-v2`, bundle it into the frontend, or place its token in Git. The existing reference implementation is:
+
+```text
+/home/ubuntu/rq-backend-mcp/server.mjs
+```
+
+Before rebuilding anything, inspect the configured connector and the external directory:
+
+```bash
+manus-config config load --search railway
+manus-config connector list --user-custom-only
+find /home/ubuntu/rq-backend-mcp -maxdepth 1 -type f -print
+```
+
+The current connector is named `RQ Railway Backend Operator`. It is a stdio MCP launched with Node and uses these environment variables:
+
+```text
+RQ_BACKEND_URL=https://rq-production-af02.up.railway.app
+BACKEND_OPERATOR_TOKEN=<user-provided Railway operator token>
+RQ_BACKEND_TIMEOUT_MS=10000
+```
+
+Never print the token, place it on a shell command line, write it to the repository, put it in this handoff, or include it in a test fixture. If the token is missing or expired, stop and ask the user to provide or rotate it. Never invent a token. The operator token is server-to-server only; it cannot authenticate Firebase frontend users.
+
+If the external MCP directory is missing, create it outside the repository and install the MCP SDK there:
+
+```bash
+mkdir -p /home/ubuntu/rq-backend-mcp
+cd /home/ubuntu/rq-backend-mcp
+npm init -y
+npm install @modelcontextprotocol/sdk zod
+```
+
+Implement or restore a Node server using `StdioServerTransport`. At startup, require `RQ_BACKEND_URL` and `BACKEND_OPERATOR_TOKEN`; accept `RQ_BACKEND_TIMEOUT_MS` only within the bounded range 1000–60000 milliseconds, defaulting to 10000. The server must use `GET` only, attach `x-backend-operator-token`, create a correlation ID, enforce an abort timeout, parse JSON safely, and cap raw non-JSON responses.
+
+Expose only these read-only tools:
+
+```text
+backend_health
+read_backend_endpoint
+```
+
+The endpoint tool must validate the path against this explicit allowlist and must not accept a caller-supplied base URL:
+
+```text
+/api/health
+/api/system-config
+/v2/health
+/api/v2/health
+/v2/packages
+/api/v2/packages
+```
+
+Do not add POST, PUT, PATCH, DELETE, arbitrary URL access, shell execution, Firestore access, token inspection, or mutation tools. Do not use the MCP to bypass Firebase authorization or to perform business operations.
+
+Register or restore the connector through `manus-config`, not by editing `/home/ubuntu/.manus/config/config.json` directly. Inspect first:
+
+```bash
+manus-config config load --search railway
+```
+
+If no matching connector exists, create a form-mode stdio connector draft. Put secrets only in the connector environment fields; never put them in command arguments. A connector review/approval step may be presented to the user; do not bypass it.
+
+After registration or restoration, verify without exposing secrets:
+
+```bash
+manus-config connector list --user-custom-only
+manus-mcp-cli tool list --server 'RQ Railway Backend Operator'
+manus-mcp-cli tool call backend_health --server 'RQ Railway Backend Operator' --input '{}'
+manus-mcp-cli tool call read_backend_endpoint --server 'RQ Railway Backend Operator' --input '{"path":"/api/v2/health"}'
+```
+
+Use only allowlisted read paths for verification. Inspect the returned status and redacted metadata, not secret configuration. The MCP is a diagnostic/operator boundary, not part of the application backend and not evidence of authenticated Cloudflare-to-Railway frontend behavior.
+
 ## What is already complete
 
 The repository already contains:
