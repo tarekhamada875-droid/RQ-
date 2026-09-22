@@ -30,7 +30,7 @@ describe('Firestore garage summary repository', () => {
       grossRevenueMinor: 1550, refundTotalMinor: 100, netRevenueMinor: 1450, projectionVersion: 1,
       asOf: '2026-09-22T11:00:00.000Z'
     });
-    expect(repository.getCostSnapshot()).toMatchObject({ reads: 5, writes: 0, deletes: 0, transactionAttempts: 0 });
+    expect(repository.getCostSnapshot()).toMatchObject({ reads: 3, writes: 0, deletes: 0, transactionAttempts: 0 });
   });
 
   it('falls back to a date-matching stored dashboard summary when no live buckets exist', async () => {
@@ -46,7 +46,7 @@ describe('Firestore garage summary repository', () => {
     await expect(repository.getSummary('missing', '2026-09-22')).resolves.toBeNull();
     await expect(repository.getSummary('', '2026-09-22')).rejects.toThrow('Garage ID is required');
     await expect(repository.getSummary('garage-1', 'bad-date')).rejects.toThrow('Invalid summary date');
-    expect(repository.getCostSnapshot().reads).toBe(1);
+    expect(repository.getCostSnapshot().reads).toBe(0);
   });
 
   it('serializes concurrent reads deterministically without writes', async () => {
