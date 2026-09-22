@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -57,10 +57,12 @@ jobs:
       - name: Maintainability checks
         run: npm run maintainability:check
 
-      - name: Live release smoke check
+      - name: Wait for Railway deployment and run live smoke check
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SMOKE_BASE_URL: https://rq-production-af02.up.railway.app
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
           SMOKE_EXPECTED_VERSION: ${{ github.sha }}
+          SMOKE_MAX_ATTEMPTS: 60
+          SMOKE_RETRY_DELAY_MS: 10000
         run: npm run release:smoke
