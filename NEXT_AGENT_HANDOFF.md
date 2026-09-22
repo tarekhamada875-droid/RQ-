@@ -24,7 +24,7 @@ Read these files before changing code:
 The current published `main` commit is:
 
 ```text
-7b67208 docs: record gated shadow comparison route
+b87ef01 docs: add comprehensive next agent handoff
 ```
 
 The working tree is clean and synchronized with `origin/main`.
@@ -32,7 +32,7 @@ The working tree is clean and synchronized with `origin/main`.
 The latest successful Production Gate is:
 
 ```text
-35715777203 — success
+35720900015 — success
 ```
 
 The latest local validation is:
@@ -165,6 +165,10 @@ Record:
 
 Never leave stale commit numbers or test counts in the handoff.
 
+### External services and credentials
+
+Before using Cloudflare, Railway, GitHub, or another external service, inspect the configured connector state and use the enabled connector or the repository's existing CLI convention. Do not invent credentials, print secret values, paste tokens into files, or replace a configured connector with an ad hoc integration. Keep all operator tokens server-to-server and treat them as different from Firebase user authentication. Redact secrets from command output, logs, screenshots, test artifacts, and handoff text.
+
 ## What is already complete
 
 The repository already contains:
@@ -219,6 +223,8 @@ GET /api/v2/garages/:garageId/summary
 
 The Railway operator MCP token is not a Firebase user token. Do not use it as a substitute for browser authentication.
 
+If no current preview exists, do not wait indefinitely and do not manufacture one. Keep the preview-validation item explicitly blocked, then continue with the backend-only provider, telemetry, repository, report, and worker work described below. Re-check Cloudflare only as part of a meaningful validation step or after a new natural deployment is reported.
+
 ### Second: wire real providers into the shadow route
 
 The next backend implementation slice should inject real read providers into the preview composition only:
@@ -254,6 +260,8 @@ After real providers exist, add aggregate operational counters without storing s
 - latency and Firestore read-cost measurements.
 
 Keep telemetry redacted. Do not log customer data, tokens, full records, wallet values, or unrestricted request bodies.
+
+Telemetry must be observational only. It must not become a hidden traffic switch, a financial writer, or a reason to bypass the fail-closed decision policy. A counter is not migration evidence until it comes from a current authenticated preview or an explicitly documented non-production fixture.
 
 ### Fourth: complete non-financial backend gaps
 
@@ -298,6 +306,8 @@ At each stage define and monitor:
 
 Keep the legacy fallback available throughout the rollout.
 
+Before each cohort expands, require an explicit checklist result for equality rate, hard-mismatch count, p95 latency, Firestore cost, error rate, fallback rate, and rollback readiness. If any threshold is missing or fails, stop at the current cohort and keep legacy authoritative.
+
 ### Seventh: financial authority migration
 
 Financial writes come last. Before migrating them:
@@ -311,6 +321,8 @@ Financial writes come last. Before migrating them:
 - Define one financial authority.
 
 Never dual-write money operations. Never migrate financial writes because read comparisons passed.
+
+Financial migration is a separate approval boundary from read migration. Do not implement or enable financial Firestore writers merely because the read-side shadow route is complete. The first financial slice must remain non-production until transaction, reconciliation, repair, rollback, idempotency, audit, and concurrency evidence is complete.
 
 ### Eighth: legacy retirement
 
