@@ -1,6 +1,6 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 07:45 UTC+3
+**Last updated:** 2026-09-22 08:00 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `65b4811 docs: record final production gate`
@@ -131,7 +131,7 @@ The following foundations exist and are tested:
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
 - Production vehicle, subscriber, and garage state repositories with emulator tests.
-- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, reversible subscriber tombstone, and admin-only garage lock/unlock/suspend/unsuspend now have guarded transactional HTTP paths; physical deletion remains legacy-authoritative.
+- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, and non-destructive resumable garage deletion jobs now have guarded transactional HTTP paths; physical deletion remains legacy-authoritative.
 - Pure migration comparison and rollback-policy utilities with focused tests and a safety runbook. These are not wired to production traffic.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
@@ -142,11 +142,11 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend and reversible subscriber tombstone now have transactional repositories; physical garage deletion, irreversible deletion migration, and financial write repositories remain unmigrated.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend, reversible subscriber tombstone, and non-destructive garage deletion jobs now have transactional repositories; physical garage deletion, irreversible deletion migration, and financial write repositories remain unmigrated.
 
 ### HTTP routes
 
-Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, admin-only reversible subscriber tombstone, and admin-only garage lock/unlock/suspend/unsuspend in addition to health, packages, garage summary, pending, and activity. Physical subscriber delete, garage management/deletion, and financial routes are not complete.
+Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, admin-only reversible subscriber tombstone, admin-only garage lock/unlock/suspend/unsuspend, and admin-only non-destructive garage deletion jobs in addition to health, packages, garage summary, pending, and activity. Physical subscriber/garage deletion, garage management, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -197,7 +197,9 @@ Migration-safety utilities are complete locally: normalized read comparison, red
 
 Subscriber tombstone is complete in `27ca6e1`. It adds `POST /v2/garages/:garageId/subscribers/:subscriberId/delete` as an admin-only, preview-gated, reversible state transition to `deleted`; the document and plate/date fields are retained, only status and updatedAt are mutated, and one audit event plus one idempotency record are written transactionally. The legacy physical-delete route remains unchanged and authoritative.
 
-The next bounded implementation slice is **resumable garage deletion safety**. Preserve the legacy backend as authority, do not route the current UI to irreversible deletion, require explicit admin authorization, retain transactionally recorded idempotency/audit state, and prove no-delete rollback behavior. In parallel, use the migration-safety runbook to inspect for a real current non-production Cloudflare preview; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
+Resumable garage deletion safety is implemented locally and ready for publication. It creates and advances admin-only deletion jobs, marks the garage as deleting, records repair/resume state, and writes audit/idempotency records, but performs no physical deletion of the garage or child documents. The legacy `/api/garages/delete` route remains unchanged and authoritative.
+
+After publication, the next bounded work is preview evidence: inspect the current Cloudflare Pages project and obtain a real current non-production preview only if one exists naturally; do not create a branch merely to manufacture one. Authenticated browser validation remains blocked until a current preview and Firebase-authenticated session exist.
 
 Every command must have a strict contract, Firebase authentication, canonical session and garage scope authorization, idempotency, one transaction boundary, audit event, emulator tests, concurrency tests where relevant, and a rollback note. Keep the legacy backend authoritative and do not dual-write financial operations.
 
