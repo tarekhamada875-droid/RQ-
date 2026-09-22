@@ -7,6 +7,7 @@ import { GarageLifecycleRequestSchema } from './contracts/garageLifecycle.js';
 import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
 import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema, SubscriberUpdateRequestSchema, SubscriberSuspendRequestSchema, SubscriberCancelRequestSchema, SubscriberDeleteRequestSchema } from './contracts/subscriberCommands.js';
 import { DeletionAdvanceRequestSchema, DeletionResumeRequestSchema, DeletionStartRequestSchema } from './contracts/deletion.js';
+import { GarageProfileUpdateRequestSchema } from './contracts/garageProfile.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -15,6 +16,7 @@ import type { VehicleCheckOutRepository } from './repositories/firestoreVehicleC
 import type { SubscriberCommandRepository } from './repositories/firestoreSubscriberCommands.js';
 import type { GarageLifecycleRepository } from './repositories/firestoreGarageLifecycle.js';
 import type { GarageDeletionRepository } from './repositories/firestoreGarageDeletion.js';
+import type { GarageProfileManagementRepository } from './repositories/firestoreGarageProfile.js';
 import { requireV2Authorization } from './http/auth.js';
 import { getV2RequestId } from './http/requestId.js';
 
@@ -31,6 +33,7 @@ type V2AppOptions = Readonly<{
   subscriberCommands?: SubscriberCommandRepository;
   garageLifecycle?: GarageLifecycleRepository;
   garageDeletion?: GarageDeletionRepository;
+  garageProfileManagement?: GarageProfileManagementRepository;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -107,6 +110,9 @@ export function createV2App(options: V2AppOptions = {}): Express {
     if (options.garageDeletion) {
       app.use('/v2/garages/:garageId/deletion', options.authMiddleware, requireV2Authorization('admin_only'));
     }
+    if (options.garageProfileManagement) {
+      app.use('/v2/garages/:garageId/profile/update', options.authMiddleware, requireV2Authorization('admin_only'));
+    }
     app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
     app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
   } else if (options.rateLimitMiddleware) {
@@ -114,6 +120,36 @@ export function createV2App(options: V2AppOptions = {}): Express {
     app.use('/v2/garages/:garageId/summary', options.rateLimitMiddleware);
     app.use('/v2/pending', options.rateLimitMiddleware);
     app.use('/v2/activity', options.rateLimitMiddleware);
+  }
+
+  const garageProfileManagement = options.garageProfileManagement;
+  if (garageProfileManagement && options.authMiddleware && v2ReadEnabled) {
+    app.post('/v2/garages/:garageId/profile/update', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const authorization = request.v2Authorization;
+      const parsed = GarageProfileUpdateRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage ID and non-empty profile update are required'));
+        return;
+      }
+      try {
+        const result = await garageProfileManagement.update({
+          ...parsed.data,
+          garageId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString()
+        });
+        response.json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (new Set(['IDEMPOTENCY_KEY_REUSE', 'GARAGE_NOT_FOUND', 'GARAGE_DELETION_IN_PROGRESS']).has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to update garage profile'));
+      }
+    });
   }
 
   app.get('/v2/packages', async (request, response) => {
