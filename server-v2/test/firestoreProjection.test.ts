@@ -62,4 +62,18 @@ describe('Firestore projection repository', () => {
     expect(stored?.appliedEventIds).toEqual(expect.arrayContaining(['entry-1', 'entry-2']));
     expect([left.entriesToday, right.entriesToday].sort()).toEqual([1, 2]);
   });
+
+  it('rebuilds deterministically from a bounded authoritative event window', async () => {
+    const repository = new FirestoreProjectionRepository(firestore);
+    const rebuilt = await repository.rebuild('garage-1', '2026-09-22', [
+      event('a-exit', 'exit'),
+      event('b-entry', 'entry'),
+      event('c-revenue', 'revenue', 500)
+    ], now).catch((error: unknown) => error);
+    expect(rebuilt).toBeInstanceOf(Error);
+    expect((rebuilt as Error).message).toBe('PROJECTION_ACTIVE_COUNT_NEGATIVE');
+    await expect(repository.rebuild('garage-1', '2026-09-22', [event('entry-1', 'entry'), event('revenue-1', 'revenue', 500), event('exit-1', 'exit')], now)).resolves.toMatchObject({ activeVehicleCount: 0, entriesToday: 1, exitsToday: 1, netRevenueMinor: 500 });
+    await expect(repository.rebuild('garage-1', '2026-09-22', [{ ...event('other', 'entry'), dateKey: '2026-09-23' }], now)).rejects.toThrow('PROJECTION_SCOPE_MISMATCH');
+    await expect(repository.rebuild('garage-1', '2026-09-22', Array.from({ length: 10_001 }, (_, index) => event(`e-${index}`, 'entry')), now)).rejects.toThrow('PROJECTION_REBUILD_WINDOW_EXCEEDED');
+  });
 });
