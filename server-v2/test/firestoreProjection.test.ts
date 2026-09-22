@@ -68,7 +68,7 @@ describe('Firestore projection repository', () => {
     const input = { garageId: 'garage-1', dateKey: '2026-09-22', actorUid: 'admin-1', occurredAt: now.toISOString(), idempotencyKey: 'rebuild-0001', events: [event('entry-1', 'entry'), event('revenue-1', 'revenue', 500), event('exit-1', 'exit')] };
     await expect(repository.rebuild({ ...input, events: [{ ...event('a-exit', 'exit'), id: 'a-exit' }, { ...event('b-entry', 'entry'), id: 'b-entry' }] })).rejects.toThrow('PROJECTION_ACTIVE_COUNT_NEGATIVE');
     await expect(repository.rebuild(input)).resolves.toMatchObject({ projection: { activeVehicleCount: 0, entriesToday: 1, exitsToday: 1, netRevenueMinor: 500 }, sourceEventCount: 3, replayed: false });
-    await expect(repository.rebuild(input)).resolves.toMatchObject({ projection: { netRevenueMinor: 500 }, replayed: false });
+    await expect(repository.rebuild(input)).resolves.toMatchObject({ projection: { netRevenueMinor: 500 }, replayed: true });
     await expect(repository.rebuild({ ...input, idempotencyKey: 'rebuild-0002', events: [{ ...event('other', 'entry'), dateKey: '2026-09-23' }] })).rejects.toThrow('PROJECTION_SCOPE_MISMATCH');
     await expect(repository.rebuild({ ...input, idempotencyKey: 'rebuild-0003', events: Array.from({ length: 10_001 }, (_, index) => event(`e-${index}`, 'entry')) })).rejects.toThrow();
   });

@@ -102,7 +102,8 @@ export class FirestoreProjectionRepository implements ProjectionRepository {
       if (idempotencySnapshot.exists) {
         const stored = StoredResultSchema.parse(idempotencySnapshot.data());
         if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
-        return ProjectionRebuildResultSchema.parse(JSON.parse(stored.responseJson));
+        const replay = ProjectionRebuildResultSchema.parse(JSON.parse(stored.responseJson));
+        return ProjectionRebuildResultSchema.parse({ ...replay, replayed: true });
       }
       const snapshot = await transaction.get(ref);
       this.costs.recordRead(snapshot.exists ? 1 : 0);
