@@ -7,6 +7,7 @@ const EnvironmentSchema = z.object({
   V2_PREVIEW_AUTH_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   V2_PROJECTION_REPAIR_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   V2_PROJECTION_STATUS_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
+  V2_SHADOW_COMPARISON_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   V2_CORS_ALLOWED_ORIGINS: z.string().default(''),
   V2_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).max(10000).default(60),
   V2_RATE_LIMIT_PACKAGE_READ_MAX_REQUESTS: z.coerce.number().int().min(1).max(10000).default(60),

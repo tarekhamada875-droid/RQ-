@@ -10,6 +10,7 @@ import { DeletionAdvanceRequestSchema, DeletionResumeRequestSchema, DeletionStar
 import { GarageProfileUpdateRequestSchema } from './contracts/garageProfile.js';
 import { ProjectionRebuildRequestSchema } from './contracts/projectionRepair.js';
 import { ProjectionStatusRequestSchema, ProjectionStatusSchema } from './contracts/projectionStatus.js';
+import { ShadowComparisonRequestSchema, type ShadowComparisonProvider } from './contracts/shadowComparison.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -38,6 +39,7 @@ type V2AppOptions = Readonly<{
   garageDeletion?: GarageDeletionRepository;
   garageProfileManagement?: GarageProfileManagementRepository;
   projection?: ProjectionRepository;
+  shadowComparison?: ShadowComparisonProvider;
   corsMiddleware?: RequestHandler;
   authMiddleware?: RequestHandler;
   requestContextMiddleware?: RequestHandler;
@@ -122,6 +124,9 @@ export function createV2App(options: V2AppOptions = {}): Express {
     }
     if (options.projection && environment.V2_PROJECTION_STATUS_ENABLED) {
       app.use('/v2/garages/:garageId/projection/status', options.authMiddleware, requireV2Authorization('admin_only'));
+    }
+    if (options.shadowComparison && environment.V2_SHADOW_COMPARISON_ENABLED) {
+      app.use('/v2/shadow/compare', options.authMiddleware, requireV2Authorization('admin_only'));
     }
     app.use('/v2/pending', options.authMiddleware, ...(pendingRateLimit ? [pendingRateLimit] : []), requireV2Authorization('admin_only'));
     app.use('/v2/activity', options.authMiddleware, ...(activityRateLimit ? [activityRateLimit] : []), requireV2Authorization('admin_only'));
@@ -210,6 +215,24 @@ export function createV2App(options: V2AppOptions = {}): Express {
         response.json(successResponse(id, result));
       } catch {
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to read projection status'));
+      }
+    });
+  }
+
+  if (options.shadowComparison && options.authMiddleware && environment.V2_SHADOW_COMPARISON_ENABLED && v2ReadEnabled) {
+    const shadowComparison = options.shadowComparison;
+    app.post('/v2/shadow/compare', async (request, response) => {
+      const id = getV2RequestId(request);
+      const parsed = ShadowComparisonRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid shadow-comparison request is required'));
+        return;
+      }
+      try {
+        const result = await shadowComparison({ ...parsed.data, requestId: id });
+        response.json(successResponse(id, result));
+      } catch {
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to run shadow comparison'));
       }
     });
   }
