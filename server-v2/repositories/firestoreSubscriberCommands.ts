@@ -12,6 +12,8 @@ import {
   SubscriberSuspendResultSchema,
   SubscriberCancelInputSchema,
   SubscriberCancelResultSchema,
+  SubscriberDeleteInputSchema,
+  SubscriberDeleteResultSchema,
   type SubscriberCreateInput,
   type SubscriberCreateResult,
   type SubscriberRenewInput,
@@ -21,7 +23,9 @@ import {
   type SubscriberSuspendInput,
   type SubscriberSuspendResult,
   type SubscriberCancelInput,
-  type SubscriberCancelResult
+  type SubscriberCancelResult,
+  type SubscriberDeleteInput,
+  type SubscriberDeleteResult
 } from '../contracts/subscriberCommands.js';
 import { executeSubscriberCommand } from '../domain/subscriberOperations.js';
 import { idempotencyFingerprint } from '../domain/operations.js';
@@ -34,7 +38,7 @@ const StoredResultSchema = z.object({
   createdAt: z.unknown()
 }).strict();
 
-type SubscriberOperationKind = 'create' | 'renew' | 'update' | 'suspend' | 'cancel';
+type SubscriberOperationKind = 'create' | 'renew' | 'update' | 'suspend' | 'cancel' | 'delete';
 
 type LegacySubscriberUpdate = {
   updatedAt: Date;
@@ -80,12 +84,18 @@ function parseStoredCancelResult(raw: unknown): SubscriberCancelResult {
   return SubscriberCancelResultSchema.parse(JSON.parse(stored.responseJson));
 }
 
+function parseStoredDeleteResult(raw: unknown): SubscriberDeleteResult {
+  const stored = StoredResultSchema.parse(raw);
+  return SubscriberDeleteResultSchema.parse(JSON.parse(stored.responseJson));
+}
+
 export interface SubscriberCommandRepository {
   create(input: SubscriberCreateInput): Promise<SubscriberCreateResult>;
   renew(input: SubscriberRenewInput): Promise<SubscriberRenewResult>;
   update(input: SubscriberUpdateInput): Promise<SubscriberUpdateResult>;
   suspend(input: SubscriberSuspendInput): Promise<SubscriberSuspendResult>;
   cancel(input: SubscriberCancelInput): Promise<SubscriberCancelResult>;
+  delete(input: SubscriberDeleteInput): Promise<SubscriberDeleteResult>;
 }
 
 export class FirestoreSubscriberCommandRepository implements SubscriberCommandRepository {
@@ -359,6 +369,55 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
         occurredAt,
         idempotencyKey: command.idempotencyKey,
         payload: { status: 'cancelled' }
+      });
+      transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
+      this.costs.recordWrite(3);
+      return result;
+    });
+  }
+
+  async delete(input: SubscriberDeleteInput): Promise<SubscriberDeleteResult> {
+    const command = SubscriberDeleteInputSchema.parse(input);
+    const fingerprint = idempotencyFingerprint('subscriber.delete', command);
+    this.costs.recordTransactionAttempt();
+    return this.firestore.runTransaction(async (transaction) => {
+      const idempotencyRef = this.firestore.collection('idempotency_records').doc(operationKey(command.actorUid, 'delete', command.idempotencyKey));
+      const subscriberRef = this.firestore.doc(`garages/${command.garageId}/subscribers/${command.subscriberId}`);
+      const idempotencySnapshot = await transaction.get(idempotencyRef);
+      this.costs.recordRead(idempotencySnapshot.exists ? 1 : 0);
+      if (idempotencySnapshot.exists) {
+        const stored = StoredResultSchema.parse(idempotencySnapshot.data());
+        if (stored.fingerprint !== fingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
+        return parseStoredDeleteResult(stored);
+      }
+      const subscriberSnapshot = await transaction.get(subscriberRef);
+      this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      const rawGarageId = subscriberSnapshot.data()?.garageId;
+      if (subscriberSnapshot.exists && typeof rawGarageId === 'string' && rawGarageId !== command.garageId) throw new Error('GARAGE_SCOPE_MISMATCH');
+      const existing = subscriberSnapshot.exists
+        ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
+        : null;
+      const decision = executeSubscriberCommand({
+        operation: 'delete',
+        existing,
+        subscriberId: command.subscriberId,
+        garageId: command.garageId,
+        plate: existing?.plate ?? 'unknown',
+        occurredAt: new Date(command.occurredAt)
+      });
+      const result = SubscriberDeleteResultSchema.parse({ operationId: decision.operation.operationId, subscriber: decision.subscriber });
+      const occurredAt = new Date(command.occurredAt);
+      transaction.update(subscriberRef, { status: 'deleted', updatedAt: occurredAt });
+      const eventRef = this.firestore.collection('business_events').doc();
+      transaction.create(eventRef, {
+        garageId: command.garageId,
+        aggregateType: 'subscriber',
+        aggregateId: command.subscriberId,
+        eventType: 'subscriber_deleted',
+        actorUid: command.actorUid,
+        occurredAt,
+        idempotencyKey: command.idempotencyKey,
+        payload: { status: 'deleted' }
       });
       transaction.create(idempotencyRef, { fingerprint, responseJson: JSON.stringify(result), createdAt: occurredAt });
       this.costs.recordWrite(3);

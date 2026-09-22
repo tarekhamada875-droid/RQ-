@@ -228,4 +228,46 @@ describe('Firestore subscriber command repository', () => {
     expect(left).toEqual(right);
     expect((await firestore.collection('business_events').get()).size).toBe(2);
   });
+
+  it('tombstones without physical deletion, preserves plate/date fields, and writes one audit event', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'admin-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'delete-0001' };
+    const result = await repository.delete(command);
+    expect(result.subscriber).toMatchObject({ id: command.subscriberId, garageId: command.garageId, plate: 'abc-123', status: 'deleted', startAt: input.startAt, endAt: input.endAt });
+    const document = await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get();
+    expect(document.exists).toBe(true);
+    expect(document.data()).toMatchObject({ plateNumber: input.plate, plateNumberRaw: input.plateRaw, startDate: input.startAt, endDate: input.endAt, status: 'deleted' });
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+    expect((await firestore.collection('idempotency_records').get()).size).toBe(2);
+  });
+
+  it('replays deletion exactly, rejects changed-key payloads, missing records, and already-deleted records', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'admin-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'delete-0002' };
+    const first = await repository.delete(command);
+    await expect(repository.delete(command)).resolves.toEqual(first);
+    await expect(repository.delete({ ...command, occurredAt: '2026-09-22T12:01:00.000Z' })).rejects.toThrow('IDEMPOTENCY_KEY_REUSE');
+    await expect(repository.delete({ ...command, idempotencyKey: 'delete-0003' })).rejects.toThrow('SUBSCRIBER_ALREADY_DELETED');
+    await expect(repository.delete({ ...command, subscriberId: 'plate_missing', idempotencyKey: 'delete-0004' })).rejects.toThrow('SUBSCRIBER_NOT_FOUND');
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+  });
+
+  it('rejects a document whose stored garage scope does not match the command', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    await expect(repository.delete({ garageId: 'garage-2', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'admin-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'delete-0005' })).rejects.toThrow('SUBSCRIBER_NOT_FOUND');
+    expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).data()).toMatchObject({ status: 'active' });
+  });
+
+  it('serializes concurrent same-key deletion attempts to one result and one event', { timeout: 15000 }, async () => {
+    const first = new FirestoreSubscriberCommandRepository(firestore);
+    await first.create(input);
+    const command = { garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'admin-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'delete-0006' };
+    const [left, right] = await Promise.all([first.delete(command), new FirestoreSubscriberCommandRepository(firestore).delete(command)]);
+    expect(left).toEqual(right);
+    expect((await firestore.collection('business_events').get()).size).toBe(2);
+    expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).exists).toBe(true);
+  });
 });

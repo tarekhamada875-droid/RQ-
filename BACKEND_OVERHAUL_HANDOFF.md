@@ -1,6 +1,6 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-21 21:45 UTC+3
+**Last updated:** 2026-09-22 07:42 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `65b4811 docs: record final production gate`
@@ -131,7 +131,7 @@ The following foundations exist and are tested:
 - Firebase ID-token middleware, canonical session lookup, CORS allowlisting, request context, request IDs, authenticated-UID rate limiting, telemetry, and route budgets.
 - Package catalog and garage-summary repository abstractions, production package repository, production garage-summary repository, pending/activity Firestore read models, and emulator tests.
 - Production vehicle, subscriber, and garage state repositories with emulator tests.
-- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, and admin-only garage lock/unlock/suspend/unsuspend now have guarded transactional HTTP paths; physical subscriber delete and garage deletion remain.
+- Lifecycle domain commands for vehicles, subscribers, garage lock/suspension, deletion, and idempotency. Vehicle check-in/check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, reversible subscriber tombstone, and admin-only garage lock/unlock/suspend/unsuspend now have guarded transactional HTTP paths; physical deletion remains legacy-authoritative.
 - Pure migration comparison and rollback-policy utilities with focused tests and a safety runbook. These are not wired to production traffic.
 - Financial contracts, wallet math, reconciliation, audit events, and in-memory transaction primitives. Financial authority is not migrated.
 - Projection reducers, bounded read models, daily financial summaries, reports, lag, repair-needed states, and related tests.
@@ -142,11 +142,11 @@ The following foundations exist and are tested:
 
 ### Production repositories
 
-The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend now has a transactional repository; physical subscriber delete, garage management/deletion, and financial write repositories remain unmigrated.
+The bounded production read repositories are covered for vehicle, subscriber, and garage state. Transactional vehicle check-in/check-out and subscriber lifecycle repositories now exist with Firestore emulator, idempotency, audit, and concurrency tests. Admin-only garage lifecycle lock/unlock/suspend/unsuspend and reversible subscriber tombstone now have transactional repositories; physical garage deletion, irreversible deletion migration, and financial write repositories remain unmigrated.
 
 ### HTTP routes
 
-Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, and admin-only garage lock/unlock/suspend/unsuspend in addition to health, packages, garage summary, pending, and activity. Physical subscriber delete, garage management/deletion, and financial routes are not complete.
+Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber creation, subscriber renewal, subscriber update, subscriber suspend, reversible subscriber cancel, admin-only reversible subscriber tombstone, and admin-only garage lock/unlock/suspend/unsuspend in addition to health, packages, garage summary, pending, and activity. Physical subscriber delete, garage management/deletion, and financial routes are not complete.
 
 ### Authenticated Cloudflare preview smoke
 
@@ -164,7 +164,7 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ### Completed implementation slices
 
-The repository context is clean at `87922af` before the pending handoff documentation update. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, and admin-only garage lifecycle transactional persistence and routes are complete, validated locally and in CI, and published directly to `main`. Migration comparison/rollback utilities are locally validated and safe, pure, and not connected to production traffic.
+The repository context is clean at `87922af` before the pending tombstone implementation and handoff commits. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, reversible subscriber tombstone, and admin-only garage lifecycle transactional persistence and routes are complete and locally validated; the tombstone slice is ready for publication after this validation.
 
 ### Current blocking validation
 

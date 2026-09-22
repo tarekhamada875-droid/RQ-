@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { SubscriberOperationSchema, SubscriberStateSchema, type SubscriberOperation, type SubscriberState } from '../contracts/subscriber.js';
 
 type SubscriberCommandInput = Readonly<{
-  operation: 'create' | 'renew' | 'update' | 'suspend' | 'cancel';
+  operation: 'create' | 'renew' | 'update' | 'suspend' | 'cancel' | 'delete';
   existing: SubscriberState | null;
   subscriberId: string;
   garageId: string;
@@ -37,6 +37,7 @@ export function executeSubscriberCommand(input: SubscriberCommandInput): Subscri
     return result(input, subscriber, ['status', 'startAt', 'endAt', 'updatedAt']);
   }
   if (!existing) throw new Error('SUBSCRIBER_NOT_FOUND');
+  if (existing.status === 'deleted' && input.operation !== 'delete') throw new Error('SUBSCRIBER_DELETED');
   if (input.operation === 'renew') {
     if (existing.status === 'cancelled') throw new Error('SUBSCRIBER_CANCELLED');
     const startAt = isoDate(input.startAt, 'START_DATE_REQUIRED');
@@ -56,6 +57,10 @@ export function executeSubscriberCommand(input: SubscriberCommandInput): Subscri
   if (input.operation === 'suspend') {
     if (existing.status !== 'active') throw new Error('SUBSCRIBER_NOT_ACTIVE');
     return result(input, { ...existing, status: 'suspended', updatedAt: occurredAt }, ['status', 'updatedAt']);
+  }
+  if (input.operation === 'delete') {
+    if (existing.status === 'deleted') throw new Error('SUBSCRIBER_ALREADY_DELETED');
+    return result(input, { ...existing, status: 'deleted', updatedAt: occurredAt }, ['status', 'updatedAt']);
   }
   if (existing.status === 'cancelled') throw new Error('SUBSCRIBER_ALREADY_CANCELLED');
   return result(input, { ...existing, status: 'cancelled', updatedAt: occurredAt }, ['status', 'updatedAt']);

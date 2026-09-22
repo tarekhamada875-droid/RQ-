@@ -27,6 +27,14 @@ describe('v2 subscriber lifecycle operations', () => {
     expect(cancelled.subscriber.status).toBe('cancelled');
   });
 
+  it('creates a deleted tombstone while retaining identity fields and rejects later lifecycle mutation', () => {
+    const deleted = executeSubscriberCommand({ operation: 'delete', existing, subscriberId: 'sub-1', garageId: 'garage-1', plate: 'ABC123', occurredAt });
+    expect(deleted.subscriber).toMatchObject({ status: 'deleted', plate: existing.plate, startAt: existing.startAt, endAt: existing.endAt, updatedAt: occurredAt.toISOString() });
+    expect(deleted.operation.allowedUpdates).toEqual(['status', 'updatedAt']);
+    expect(() => executeSubscriberCommand({ operation: 'delete', existing: deleted.subscriber, subscriberId: 'sub-1', garageId: 'garage-1', plate: 'ABC123', occurredAt })).toThrow('SUBSCRIBER_ALREADY_DELETED');
+    expect(() => executeSubscriberCommand({ operation: 'cancel', existing: deleted.subscriber, subscriberId: 'sub-1', garageId: 'garage-1', plate: 'ABC123', occurredAt })).toThrow('SUBSCRIBER_DELETED');
+  });
+
   it.each([
     ['create', existing, 'SUBSCRIBER_ALREADY_EXISTS'],
     ['renew', { ...existing, status: 'cancelled' as const }, 'SUBSCRIBER_CANCELLED'],

@@ -9,7 +9,7 @@ const LegacySubscriberSchema = z.object({
   garageId: z.string().min(1).max(160).optional(),
   plateNumber: z.string().min(2).max(64).optional(),
   plateNumberRaw: z.string().min(2).max(64).optional(),
-  status: z.enum(['active', 'suspended', 'cancelled']).optional(),
+  status: z.enum(['active', 'suspended', 'cancelled', 'deleted']).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   startAt: z.unknown().optional(),

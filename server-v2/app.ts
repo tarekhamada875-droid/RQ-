@@ -5,7 +5,7 @@ import { errorResponse, successResponse } from './contracts/api.js';
 import { DateKeySchema } from './contracts/summary.js';
 import { GarageLifecycleRequestSchema } from './contracts/garageLifecycle.js';
 import { VehicleCheckInRequestSchema, VehicleCheckOutRequestSchema } from './contracts/vehicleCommands.js';
-import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema, SubscriberUpdateRequestSchema, SubscriberSuspendRequestSchema, SubscriberCancelRequestSchema } from './contracts/subscriberCommands.js';
+import { SubscriberCreateRequestSchema, SubscriberRenewRequestSchema, SubscriberUpdateRequestSchema, SubscriberSuspendRequestSchema, SubscriberCancelRequestSchema, SubscriberDeleteRequestSchema } from './contracts/subscriberCommands.js';
 import { InMemoryPackageCatalogRepository, type PackageCatalogRepository } from './repositories/packageCatalog.js';
 import { InMemoryGarageSummaryRepository, type GarageSummaryRepository } from './repositories/garageSummary.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository, type ActivityRepository, type PendingQueueRepository } from './repositories/readModels.js';
@@ -84,10 +84,16 @@ export function createV2App(options: V2AppOptions = {}): Express {
       }));
     }
     if (options.subscriberCommands) {
-      app.use('/v2/garages/:garageId/subscribers', options.authMiddleware, requireV2Authorization('garage_write', (request) => {
-        const garageId = request.params.garageId;
-        return typeof garageId === 'string' ? garageId : undefined;
-      }));
+      app.use('/v2/garages/:garageId/subscribers', options.authMiddleware, (request, response, next) => {
+        if (request.path.endsWith('/delete')) {
+          requireV2Authorization('admin_only')(request, response, next);
+          return;
+        }
+        requireV2Authorization('garage_write', (currentRequest) => {
+          const garageId = currentRequest.params.garageId;
+          return typeof garageId === 'string' ? garageId : undefined;
+        })(request, response, next);
+      });
     }
     if (options.garageLifecycle) {
       app.use('/v2/garages/:garageId/lock', options.authMiddleware, requireV2Authorization('admin_only'));
@@ -364,6 +370,35 @@ export function createV2App(options: V2AppOptions = {}): Express {
           return;
         }
         response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to cancel subscriber'));
+      }
+    });
+
+    app.post('/v2/garages/:garageId/subscribers/:subscriberId/delete', async (request, response) => {
+      const id = getV2RequestId(request);
+      const garageId = request.params.garageId;
+      const subscriberId = request.params.subscriberId;
+      const authorization = request.v2Authorization;
+      const parsed = SubscriberDeleteRequestSchema.safeParse(request.body);
+      if (typeof garageId !== 'string' || typeof subscriberId !== 'string' || !parsed.success || !authorization) {
+        response.status(400).json(errorResponse(id, 'BAD_REQUEST', 'A valid garage, subscriber, and delete request are required'));
+        return;
+      }
+      try {
+        const result = await subscriberCommands.delete({
+          ...parsed.data,
+          garageId,
+          subscriberId,
+          actorUid: authorization.uid,
+          occurredAt: new Date().toISOString()
+        });
+        response.json(successResponse(id, result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
+        if (new Set(['IDEMPOTENCY_KEY_REUSE', 'SUBSCRIBER_NOT_FOUND', 'SUBSCRIBER_ALREADY_DELETED']).has(message)) {
+          response.status(409).json(errorResponse(id, 'CONFLICT', message));
+          return;
+        }
+        response.status(500).json(errorResponse(id, 'INTERNAL_ERROR', 'Unable to delete subscriber'));
       }
     });
   }

@@ -4,7 +4,7 @@ export const SubscriberStateSchema = z.object({
   id: z.string().min(1).max(160),
   garageId: z.string().min(1).max(160),
   plate: z.string().min(2).max(32),
-  status: z.enum(['active', 'suspended', 'cancelled']),
+  status: z.enum(['active', 'suspended', 'cancelled', 'deleted']),
   startAt: z.string().datetime({ offset: true }),
   endAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true })
@@ -12,7 +12,7 @@ export const SubscriberStateSchema = z.object({
 
 export const SubscriberOperationSchema = z.object({
   operationId: z.string().min(1).max(160),
-  operation: z.enum(['create', 'renew', 'update', 'suspend', 'cancel']),
+  operation: z.enum(['create', 'renew', 'update', 'suspend', 'cancel', 'delete']),
   subscriberId: z.string().min(1).max(160),
   garageId: z.string().min(1).max(160),
   occurredAt: z.string().datetime({ offset: true }),
