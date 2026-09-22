@@ -1,6 +1,6 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 08:34 UTC+3
+**Last updated:** 2026-09-22 08:35 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `40ac356 docs: record current preview availability`
@@ -14,6 +14,10 @@ Continue the staged, contract-first v2 backend replacement described in the [mas
 The next agent must preserve the migration strategy: implement one bounded capability, validate it locally and in CI, deploy only behind an explicit preview gate, compare it with legacy behavior, and migrate production traffic only after correctness, authorization, cost, rollback, and operational checks pass.
 
 > **Do not delete legacy routes, migrate financial writes, change production frontend flags, or delete production data during the repository and preview phases.**
+
+## Token-exhaustion handoff protocol
+
+If the user says that the agent's tokens are about to end, do not merely summarize in chat. Immediately perform the same controlled handoff process used for this continuation: inspect the current `HEAD` and working tree; record completed work, exact commits, tests, CI gates, deployment/preview evidence, blocked validations, safety boundaries, and the next bounded action in this file; run `git diff --check`; commit and push the handoff directly to `main`; verify the file is non-empty and the working tree is clean; then provide the user with a self-contained, paste-ready continuation message that names the repository path, current commit, files to read, current production/preview authority, exact next steps, and all prohibitions. The next agent must be prepared to repeat this protocol whenever the user gives the same warning, preserving the same execution model rather than starting a new planning style.
 
 ## Operating rules
 
