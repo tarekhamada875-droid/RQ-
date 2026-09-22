@@ -17,6 +17,7 @@ import { FirestoreActivityRepository, FirestorePendingQueueRepository } from './
 import { createV2App } from './app.js';
 import { InMemoryRateLimiter } from './security/rateLimit.js';
 import type { V2Environment } from './config/environment.js';
+import { createFirestoreShadowComparisonProvider } from './migration/firestoreShadowComparison.js';
 
 export function previewOrigins(value: string): ReadonlySet<string> {
   return new Set(value.split(',').map((origin) => origin.trim()).filter(Boolean));
@@ -30,19 +31,22 @@ export function createV2PreviewApp(environment: V2Environment): Express {
   const firebase = createV2Firebase(environment);
   const firebaseAuth = createV2FirebaseAuth(firebase.app);
   const sessions = new FirestoreSessionRepository(firebase.firestore);
+  const packageCatalog = new FirestorePackageCatalogRepository(firebase.firestore);
+  const garageSummary = new FirestoreGarageSummaryRepository(firebase.firestore);
   return createV2App({
     environment,
-    packageCatalog: new FirestorePackageCatalogRepository(firebase.firestore),
+    packageCatalog,
     vehicleCheckIn: new FirestoreVehicleCheckInRepository(firebase.firestore),
     vehicleCheckOut: new FirestoreVehicleCheckOutRepository(firebase.firestore),
     subscriberCommands: new FirestoreSubscriberCommandRepository(firebase.firestore),
     garageLifecycle: new FirestoreGarageLifecycleRepository(firebase.firestore),
     garageDeletion: new FirestoreGarageDeletionRepository(firebase.firestore),
     garageProfileManagement: new FirestoreGarageManagementRepository(firebase.firestore),
-    garageSummary: new FirestoreGarageSummaryRepository(firebase.firestore),
+    garageSummary,
     projection: new FirestoreProjectionRepository(firebase.firestore),
     pendingQueue: new FirestorePendingQueueRepository(firebase.firestore),
     activity: new FirestoreActivityRepository(firebase.firestore),
+    shadowComparison: createFirestoreShadowComparisonProvider({ firestore: firebase.firestore, packageCatalog, garageSummary, environment }),
     authMiddleware: createV2AuthMiddleware({
       verifyIdToken: firebaseAuth.verifyIdToken,
       getSession: (uid, sessionId) => sessions.getSession(uid, sessionId)
