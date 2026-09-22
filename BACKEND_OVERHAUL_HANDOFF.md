@@ -1,12 +1,12 @@
 # RQ Backend Overhaul — Continuation Handoff
 
-**Last updated:** 2026-09-22 12:09 UTC+3
+**Last updated:** 2026-09-22 12:21 UTC+3
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
 **Latest published documentation commit:** `322faee docs: define repeatable agent handoff protocol`
-**Latest implementation commit:** `a673cdb feat: add firestore garage summary adapter`
+**Latest implementation commit:** `9276bd1 feat: persist guarded projection state in firestore`
 **Latest correction commit:** `4cc13b1 test: correct garage summary read cost assertions`
-**Latest verified implementation gate:** `35690669939` — **success**; the original adapter gate failed only because two test expectations disagreed with existence-based read accounting. The correction was reproduced locally with the full Firestore-emulator-backed v2 check and is awaiting its new Production Gate.
+**Latest verified implementation gate:** `35690669939` — **success**; the corrected garage-summary validation passed locally, and the new projection slice passed the full emulator-backed v2 check. The gate for `9276bd1` is pending.
 
 ## Mission
 
@@ -167,9 +167,9 @@ Pure normalized comparison, redacted mismatch reporting, fail-closed rollback po
 
 ## Exact next actions for the next agent
 
-### Agent continuation packet — 2026-09-22 12:09 UTC+3
+### Agent continuation packet — 2026-09-22 12:21 UTC+3
 
-The previous agent added the production Firestore garage-summary adapter in `a673cdb`; its first gate exposed only incorrect test expectations for existence-based Firestore read accounting. Commit `4cc13b1` corrects those assertions. The full emulator-backed `npm run check:v2` now passes locally: 48 test files and 263 tests. The working tree is clean and synchronized with `origin/main`. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
+The previous agent added the production Firestore garage-summary adapter and then added transactional projection persistence in `9276bd1`. The repository is clean and synchronized with `origin/main`. The full emulator-backed `npm run check:v2` passes locally: 49 test files and 267 tests. Do not assume older commit references elsewhere in this document are the current `HEAD`; verify them before relying on them.
 
 The most recent implementation remains `4ae7345 feat: add guarded garage profile updates`. It adds `server-v2/contracts/garageProfile.ts`, `server-v2/repositories/firestoreGarageProfile.ts`, route wiring in `server-v2/app.ts`, and route/emulator tests. Its Production Gate `35690669939` passed. The later handoff evidence updates are `40ac356`, `9c580fe`, and `322faee`.
 
@@ -181,7 +181,7 @@ For every new slice, follow the established sequence: inspect legacy behavior an
 
 ### Completed implementation slices
 
-The repository context is clean at `4cc13b1`. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, reversible subscriber tombstone, admin-only garage lifecycle transactional persistence and routes, non-destructive garage deletion jobs, garage profile updates, and the production Firestore garage-summary adapter are complete in the repository. Strict v2 typecheck, full emulator-backed `npm run check:v2` (48 files/263 tests), preview wiring tests, production build, and diff checks pass locally. The local emulator had to be downloaded for this validation; CI uses the same Firebase emulator command.
+The repository context is clean at `9276bd1`. Subscriber and garage read repositories, vehicle pricing compatibility, vehicle check-in/check-out transactional persistence and routes, subscriber-create, subscriber-renew, subscriber-update, subscriber-suspend, reversible subscriber-cancel, reversible subscriber tombstone, admin-only garage lifecycle transactional persistence and routes, non-destructive garage deletion jobs, garage profile updates, the production Firestore garage-summary adapter, and transactional daily projection persistence with event-id replay protection are complete in the repository. Strict v2 typecheck, full emulator-backed `npm run check:v2` (49 files/267 tests), preview wiring tests, production build, and diff checks pass locally. Projection persistence is a read-model capability only; it is not a financial writer and is not mounted as an unapproved production route.
 
 ### Current blocking validation
 
