@@ -64,4 +64,13 @@ describe('Firestore projection repair queue', () => {
     ]);
     expect(left.length + right.length).toBe(1);
   });
+
+  it('rejects completion after the worker lease expires without changing queue state', async () => {
+    const repository = new FirestoreProjectionRepairQueueRepository(firestore);
+    await repository.enqueue(task);
+    await repository.claim({ limit: 1, workerId: 'worker-1', now });
+    const expiredNow = '2026-09-22T12:06:00.000Z';
+    await expect(repository.complete({ taskId: task.taskId, workerId: 'worker-1', now: expiredNow })).rejects.toThrow('REPAIR_TASK_LEASE_EXPIRED');
+    expect((await firestore.doc(`projection_repair_tasks/${task.taskId}`).get()).data()).toMatchObject({ status: 'running', workerId: 'worker-1' });
+  });
 });

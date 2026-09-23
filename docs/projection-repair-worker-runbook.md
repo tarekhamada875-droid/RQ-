@@ -12,6 +12,8 @@ Each invocation supplies an explicit batch with an `occurredAt` timestamp and on
 
 The batch contract caps the worker at **25 tasks**. The repository remains responsible for event-window validation, projection scope checks, idempotency, audit behavior, and transaction semantics. Unexpected exceptions are reduced to the redacted `REPAIR_FAILED` result code; credentials, customer payloads, and raw exception text must never appear in the result or logs.
 
+Queue actions are lease-owned. A worker may complete or fail a task only while its `workerId` matches and its lease is still valid; an expired lease is rejected with `REPAIR_TASK_LEASE_EXPIRED` without changing the task state. This prevents a delayed or partitioned worker from completing work after another operator has had an opportunity to recover it.
+
 The current worker implementation is `server-v2/workers/projectionRepairWorker.ts`. It is a library primitive only. No production scheduler, queue consumer, automatic retry loop, or Cloudflare/Railway route invokes it today.
 
 ## Preconditions for a future non-production exercise

@@ -128,6 +128,7 @@ export class FirestoreProjectionRepairQueueRepository implements ProjectionRepai
       const current = parseTask(input.taskId, snapshot.data());
       if (current.status !== 'running') throw new Error('REPAIR_TASK_NOT_RUNNING');
       if (current.workerId !== input.workerId) throw new Error('REPAIR_TASK_LEASE_MISMATCH');
+      if (current.leaseUntil && parseDate(current.leaseUntil).getTime() <= now.getTime()) throw new Error('REPAIR_TASK_LEASE_EXPIRED');
       const exhausted = requested === 'failed' && current.attempts >= MAX_ATTEMPTS;
       const nextStatus = requested === 'completed' ? 'completed' : exhausted ? 'failed' : 'queued';
       const retryAt = new Date(now.getTime() + Math.min(30, 2 ** current.attempts) * 1000).toISOString();
