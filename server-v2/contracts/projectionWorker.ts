@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { ProjectionEventSchema, ProjectionStateSchema, type ProjectionEvent } from './projection.js';
+import { DateKeySchema } from './summary.js';
 
 export const ProjectionRepairTaskSchema = z.object({
   taskId: z.string().min(1).max(160),
   garageId: z.string().min(1).max(160),
-  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateKey: DateKeySchema,
   idempotencyKey: z.string().min(8).max(160),
   events: z.array(ProjectionEventSchema).max(10_000)
 }).strict();

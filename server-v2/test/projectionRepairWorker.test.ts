@@ -69,4 +69,12 @@ describe('projection repair worker', () => {
     const worker = new ProjectionRepairWorker({ repository: repository(async () => rebuilt), actorUid: 'projection-worker' });
     await expect(worker.run({ tasks: Array.from({ length: 26 }, (_, index) => ({ ...task, taskId: `task-${index}`, idempotencyKey: `repair-task-${index}` })), occurredAt: '2026-09-22T12:00:00.000Z' })).rejects.toThrow();
   });
+
+  it('rejects impossible calendar dates before repository access', async () => {
+    let calls = 0;
+    const worker = new ProjectionRepairWorker({ repository: repository(async () => { calls += 1; return rebuilt; }), actorUid: 'projection-worker' });
+    await expect(worker.run({ tasks: [{ ...task, dateKey: '2026-02-29' }], occurredAt: '2026-09-22T12:00:00.000Z' })).rejects.toThrow();
+    await expect(worker.run({ tasks: [{ ...task, events: [{ ...task.events[0]!, dateKey: '2026-02-29' }] }], occurredAt: '2026-09-22T12:00:00.000Z' })).rejects.toThrow();
+    expect(calls).toBe(0);
+  });
 });

@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { DateKeySchema } from './summary.js';
 
 export const ProjectionEventSchema = z.object({
   id: z.string().min(1).max(160),
   garageId: z.string().min(1).max(160),
-  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateKey: DateKeySchema,
   type: z.enum(['entry', 'exit', 'revenue', 'refund']),
   amountMinor: z.number().int().nonnegative().optional(),
   occurredAt: z.string().datetime({ offset: true })
@@ -11,7 +12,7 @@ export const ProjectionEventSchema = z.object({
 
 export const ProjectionStateSchema = z.object({
   garageId: z.string().min(1).max(160),
-  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateKey: DateKeySchema,
   activeVehicleCount: z.number().int().nonnegative(),
   entriesToday: z.number().int().nonnegative(),
   exitsToday: z.number().int().nonnegative(),
