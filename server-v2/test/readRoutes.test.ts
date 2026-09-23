@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { NextFunction, Request, Response } from 'express';
 import { createV2App } from '../app.js';
 import { parseEnvironment } from '../config/environment.js';
 import { InMemoryActivityRepository, InMemoryPendingQueueRepository } from '../repositories/readModels.js';
@@ -15,11 +16,16 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function start(environment: 'test' | 'production' = 'test'): Promise<string> {
+async function start(environment: 'test' | 'production' = 'test', protectedReads = false): Promise<string> {
   const app = createV2App({
     environment: parseEnvironment({ NODE_ENV: environment, FIREBASE_PROJECT_ID: 'rq-v2-test', V2_PORT: '8081' }),
     pendingQueue: new InMemoryPendingQueueRepository([pending]),
-    activity: new InMemoryActivityRepository([activity])
+    activity: new InMemoryActivityRepository([activity]),
+    ...(protectedReads ? {
+      authMiddleware: (_request: Request, response: Response, _next: NextFunction) => {
+        response.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+    } : {})
   });
   server = app.listen(0);
   await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
@@ -46,6 +52,17 @@ describe('v2 read routes', () => {
     expect(invalidCursor.status).toBe(400);
     expect(await invalidLimit.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
     expect(await invalidCursor.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
+  });
+
+  it('rejects unauthenticated reads when the authenticated preview gate is mounted', async () => {
+    const baseUrl = await start('test', true);
+    const responses = await Promise.all([
+      fetch(`${baseUrl}/v2/packages`),
+      fetch(`${baseUrl}/v2/garages/garage-1/summary?date=2026-09-20`),
+      fetch(`${baseUrl}/v2/pending`),
+      fetch(`${baseUrl}/v2/activity`)
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([401, 401, 401, 401]);
   });
 
   it('keeps both read routes disabled in production', async () => {
