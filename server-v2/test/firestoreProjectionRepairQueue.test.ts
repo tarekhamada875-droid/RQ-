@@ -55,6 +55,16 @@ describe('Firestore projection repair queue', () => {
     await expect(repository.fail({ taskId: task.taskId, workerId: 'worker-1', now, errorCode: 'REPAIR_FAILED' })).resolves.toMatchObject({ status: 'failed', attempts: 5 });
   });
 
+  it('does not reclaim a failed task before its bounded retry time', async () => {
+    const repository = new FirestoreProjectionRepairQueueRepository(firestore);
+    await repository.enqueue(task);
+    await repository.claim({ limit: 1, workerId: 'worker-1', now });
+    const retried = await repository.fail({ taskId: task.taskId, workerId: 'worker-1', now, errorCode: 'REPAIR_FAILED' });
+    expect(retried.nextAttemptAt).toBe('2026-09-22T12:00:02.000Z');
+    expect(await repository.claim({ limit: 1, workerId: 'worker-2', now: '2026-09-22T12:00:01.000Z' })).toHaveLength(0);
+    expect(await repository.claim({ limit: 1, workerId: 'worker-2', now: '2026-09-22T12:00:02.000Z' })).toHaveLength(1);
+  });
+
   it('allows only one concurrent claimant to acquire a queued task', async () => {
     const repository = new FirestoreProjectionRepairQueueRepository(firestore);
     await repository.enqueue(task);
