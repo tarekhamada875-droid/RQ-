@@ -1629,3 +1629,8 @@ The enabled operator MCP verified live `/api/health` at `200` with `adminSdk: tr
 ### Projection repair queue expired-failure coverage — 2026-09-23
 
 Commit `3797734` adds emulator-backed proof that both completion and failure actions reject expired worker leases without changing queue state. The corrected complete validation gate passed after an unrelated transient vehicle concurrency timeout was reproduced as passing in isolation. No runtime behavior or production mutation path changed.
+
+
+### Projection repair queue retry timing coverage — 2026-09-23
+
+Commit `c3b76b3` adds emulator-backed evidence that queued repair retries respect their bounded `nextAttemptAt` timestamp, preventing early reclaim while allowing reclaim at the due time. The corrected complete validation gate passed. No runtime or production mutation path changed.

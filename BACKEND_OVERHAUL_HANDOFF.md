@@ -413,3 +413,8 @@ After enabling the protected read-only Railway MCP, live checks returned `GET /a
 ### Projection repair queue expired-failure coverage — 2026-09-23
 
 Commit `3797734` adds emulator-backed coverage proving that a worker whose lease has expired cannot fail a queued repair task and cannot change its `running` state, matching the existing completion-side fail-closed rule. The focused queue suite passed 6 tests. The first complete-gate attempt encountered one transient timeout in the unrelated vehicle check-in concurrency test; that test passed in isolation, and the corrected complete validation retry passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No runtime queue behavior, production worker, scheduler, flag, financial authority, or production data changed.
+
+
+### Projection repair queue retry timing coverage — 2026-09-23
+
+Commit `c3b76b3` adds emulator-backed coverage that a failed repair task is not reclaimed before its bounded `nextAttemptAt` and is reclaimable at the exact due time. The focused queue suite passes 7 tests. The complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No runtime queue behavior, production worker, scheduler, flag, financial authority, or production data changed.

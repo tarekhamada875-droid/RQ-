@@ -284,3 +284,8 @@ The enabled read-only Railway MCP verified `/api/health` as `200` with `adminSdk
 ### Projection repair queue expired-failure coverage — 2026-09-23
 
 Commit `3797734` adds Firestore-emulator coverage that expired workers cannot fail repair tasks or mutate their `running` state. The focused queue suite passes 6 tests. A transient unrelated vehicle-concurrency timeout occurred in the first full gate attempt; isolated reproduction passed and the corrected full gate passed. The queue remains lease-owned, undeployed, unscheduled, and disconnected from production mutation.
+
+
+### Projection repair queue retry timing coverage — 2026-09-23
+
+Commit `c3b76b3` adds emulator-backed proof that failed repair tasks cannot be reclaimed before their bounded retry timestamp and can be reclaimed at the due time. The focused queue suite passes 7 tests and the complete corrected validation gate passes. The queue remains lease-owned, undeployed, unscheduled, and disconnected from production mutation.
