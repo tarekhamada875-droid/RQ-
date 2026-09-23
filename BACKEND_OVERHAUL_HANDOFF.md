@@ -393,3 +393,8 @@ Current verified state at handoff preparation:
 - Production flags: unchanged and disabled for v2 migration behavior
 - Financial authority: legacy backend remains authoritative
 - Cloudflare: current `main` deployments are production; no current non-production preview is available
+
+
+### External Railway MCP restoration — 2026-09-23
+
+The missing external operator MCP was rebuilt at `/home/ubuntu/rq-backend-mcp`, outside the repository and production application. It contains exactly two read-only tools, `backend_health` and `read_backend_endpoint`; the implementation permits only the six documented diagnostic paths, uses `GET` only, bounds timeout and response size, generates request IDs, and redacts live-check output. Syntax checks and the no-secret smoke test passed. Connector registration remains intentionally pending because `BACKEND_OPERATOR_TOKEN` is unavailable in this session. Do not place the token in chat, source, command arguments, repository files, or this handoff. The protected Railway-dashboard action is to set or rotate the variable named `BACKEND_OPERATOR_TOKEN`; after that, register the stdio MCP through the supported connector workflow. No production flag, route, financial authority, or production data changed.

@@ -1609,3 +1609,8 @@ No one needs to approve the existence of this architecture again. The work still
 ### Succession trigger: `tokens ending`
 
 When the project owner sends the exact phrase **`tokens ending`**, the active agent must stop starting new work and perform a controlled successor handoff. It must verify the current repository, commit, tests, CI gate, deployment/preview state, blockers, and MCP availability; update the canonical handoff and relevant evidence documents with exact facts and the next bounded action; preserve all safety boundaries; keep secrets out of chat, files, logs, commits, and frontend assets; validate a clean tree; and provide a paste-ready message for the next agent. Every successor must repeat this protocol when given the same exact phrase.
+
+
+### External operator MCP preparation — 2026-09-23
+
+The read-only Railway diagnostic MCP was restored outside the repository at `/home/ubuntu/rq-backend-mcp`. Its bounded allowlist, GET-only transport, timeout, response-size limit, request IDs, and two-tool surface passed local syntax and no-secret smoke checks. Registration is not claimed because the protected `BACKEND_OPERATOR_TOKEN` is unavailable; the remaining human boundary is setting or rotating that exact variable in the Railway dashboard, followed by supported connector registration. This preparation changes no production traffic, flags, financial authority, or data.
