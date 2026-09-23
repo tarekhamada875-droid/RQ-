@@ -215,6 +215,7 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Commit `647e251` adds five focused `sessionService` tests covering valid list responses, malformed list rejection, DELETE construction for valid opaque keys, invalid-key rejection before network access, and mismatched revoke responses. Production Gate `35823053960` passed.
 - Commit `eb19593` adds three React/jsdom tests covering session loading, non-current revocation with success feedback, and current-session revocation with logout. Production Gate `35823805861` passed.
 - Commit `b1aae73` adds two v2 adapter tests covering URL-encoded pagination cursors/bounded limits and malformed bounded-page rejection. Production Gate `35824735761` passed.
+- Cloudflare Pages was rechecked on 2026-09-23 after `061204e`: project `rq` has latest deployment `fdf79720` for `main`/`061204e`, and every listed deployment is `environment: production`; there is still no current non-production preview URL. Preview configuration has package-catalog enabled, but that does not make a production deployment eligible for authenticated preview evidence.
 
 The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 

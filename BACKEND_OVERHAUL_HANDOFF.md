@@ -155,7 +155,7 @@ Guarded v2 routes now include vehicle check-in, vehicle check-out, subscriber cr
 
 ### Authenticated Cloudflare preview smoke
 
-Railway authentication and CORS have been tested through local and live unauthenticated boundary checks. A real authenticated Cloudflare preview request still needs to be performed with a Firebase-authenticated browser session when a current non-production preview exists. The Railway operator MCP token cannot substitute for a Firebase user token.
+Railway authentication and CORS have been tested through local and live unauthenticated boundary checks. Cloudflare Pages was rechecked on 2026-09-23: the latest deployment is production `fdf79720` for `061204e`, and all listed deployments are `environment: production` on `main`; no current non-production preview URL exists. Preview configuration has package-catalog enabled, but no production deployment may be used as preview evidence. A real authenticated request still needs to be performed with a Firebase-authenticated browser session when a current non-production preview exists. The Railway operator MCP token cannot substitute for a Firebase user token.
 
 ### Financial authority
 
