@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `b5b681b fix: satisfy active sessions typecheck`
-**Latest verified local evidence:** focused normalized-comparison tests passed with 4 files and 16 tests; the complete repository/emulator validation gate passed; Production Gate `35822201327` passed for `b5b681b`.
+**Latest published commit:** `647e251 test: cover active session service`
+**Latest verified local evidence:** focused Active Devices service tests passed with 5 tests; the complete repository/emulator validation gate passed; Production Gate `35823053960` passed for `647e251`.
 
 ## Mission
 
@@ -176,6 +176,8 @@ The current Cloudflare Pages inspection is read-only and remains a preview block
 The bounded local migration-evidence task is complete for this slice. `npm run test:v2 -- server-v2/test/migrationSafety.test.ts server-v2/test/shadowComparisonCoordinator.test.ts server-v2/test/shadowReadPolicy.test.ts server-v2/test/shadowComparisonRoute.test.ts` passed 4 files and 16 tests. It proves stable normalized ordering and timestamp tolerance, redacted financial/authorization mismatch flags, equal-comparison v2 permission, v2-read fallback to legacy, legacy-read blocking, rollback safety, strict admin route validation, and disabled-flag non-exposure. The complete gate also passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. This is read-only evidence only; no production shadow traffic, financial write migration, or production flag change occurred.
 
 Next action remains conditional: when a natural current Firebase-authenticated Cloudflare preview exists, run the requested authenticated v2 health, package, garage-summary, and session checks, then compare normalized legacy/v2 results and exercise fallback/blocking. Until then, keep the preview item blocked and continue only with bounded read-only evidence or explicitly safe non-financial work. Legacy backend and financial writes remain authoritative.
+
+The follow-up non-financial slice is `647e251`. It adds `src/services/sessionService.test.ts` with five focused tests for valid session-list parsing, malformed list rejection, valid opaque-key DELETE construction, invalid-key rejection before network access, and mismatched revoke-response rejection. The corrected full validation sequence passed `npm run lint:v2`, the Firestore-emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. Production Gate `35823053960` passed. No backend authority, production flag, financial write, or production data changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
