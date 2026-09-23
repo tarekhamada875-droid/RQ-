@@ -16,8 +16,8 @@ afterEach(async () => {
 const current: ProjectionState = { garageId: 'garage-1', dateKey: '2026-09-22', activeVehicleCount: 1, entriesToday: 1, exitsToday: 0, grossRevenueMinor: 0, refundTotalMinor: 0, netRevenueMinor: 0, projectionVersion: 1, asOf: new Date().toISOString(), appliedEventIds: [] };
 const stale = { ...current, asOf: new Date(Date.now() - 16 * 60 * 1000).toISOString() };
 
-async function start(role: 'admin' | 'garage' = 'admin', enabled = true, projection: ProjectionState | null = current) {
-  const repository: ProjectionRepository = { get: async () => projection, applyEvent: async () => current, rebuild: async () => ({ projection: current, sourceEventCount: 0, replayed: false }) };
+async function start(role: 'admin' | 'garage' = 'admin', enabled = true, projection: ProjectionState | null = current, get: ProjectionRepository['get'] = async () => projection) {
+  const repository: ProjectionRepository = { get, applyEvent: async () => current, rebuild: async () => ({ projection: current, sourceEventCount: 0, replayed: false }) };
   const app = createV2App({
     environment: parseEnvironment({ NODE_ENV: enabled ? 'test' : 'production', FIREBASE_PROJECT_ID: 'rq-v2-status-route-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true', V2_PROJECTION_STATUS_ENABLED: String(enabled) }),
     projection: repository,
@@ -52,6 +52,28 @@ describe('v2 projection status route', () => {
   it('reports stale projections without modifying them', async () => {
     const response = await getStatus(await start('admin', true, stale));
     expect(await response.json()).toMatchObject({ data: { state: 'stale' } });
+  });
+
+  it('rejects an impossible calendar date before reading projection state', async () => {
+    let reads = 0;
+    const baseUrl = await start('admin', true, current, async () => {
+      reads += 1;
+      return current;
+    });
+    const response = await fetch(`${baseUrl}/v2/garages/garage-1/projection/status?date=2026-99-99`);
+    expect(response.status).toBe(400);
+    expect(reads).toBe(0);
+  });
+
+  it('redacts repository failures behind a generic internal error', async () => {
+    const baseUrl = await start('admin', true, current, async () => {
+      throw new Error('firebase credentials and customer payload');
+    });
+    const response = await getStatus(baseUrl);
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR' });
+    expect(JSON.stringify(body)).not.toContain('customer payload');
   });
 
   it('does not expose status in production without the explicit flag', async () => {
