@@ -1614,3 +1614,8 @@ When the project owner sends the exact phrase **`tokens ending`**, the active ag
 ### External operator MCP preparation — 2026-09-23
 
 The read-only Railway diagnostic MCP was restored outside the repository at `/home/ubuntu/rq-backend-mcp`. Its bounded allowlist, GET-only transport, timeout, response-size limit, request IDs, and two-tool surface passed local syntax and no-secret smoke checks. Registration is not claimed because the protected `BACKEND_OPERATOR_TOKEN` is unavailable; the remaining human boundary is setting or rotating that exact variable in the Railway dashboard, followed by supported connector registration. This preparation changes no production traffic, flags, financial authority, or data.
+
+
+### Projection repair worker fail-closed hardening — 2026-09-23
+
+Commit `05b377f` closes the operational gap where an unexpected repair exception was redacted but later tasks continued. The worker now stops the bounded batch after `REPAIR_FAILED`, while explicitly classified repository errors remain reportable task failures and do not abort unrelated bounded tasks. Focused tests cover both paths; the complete emulator-backed repository validation passed. The worker remains an undeployed library primitive with no scheduler or production mutation path.
