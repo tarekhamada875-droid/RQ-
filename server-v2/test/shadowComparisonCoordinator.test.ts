@@ -36,4 +36,9 @@ describe('shadow comparison coordinator', () => {
     const result = await runShadowComparison({ ...input, previewEnabled: false, readLegacy: read([{ id: 'a' }]), readV2: read([{ id: 'a' }]) });
     expect(result).toMatchObject({ mode: 'legacy', reason: 'preview_disabled' });
   });
+
+  it('keeps legacy when preview authentication is disabled', async () => {
+    const result = await runShadowComparison({ ...input, previewAuthEnabled: false, readLegacy: read([{ id: 'a' }]), readV2: read([{ id: 'a' }]) });
+    expect(result).toMatchObject({ mode: 'legacy', reason: 'preview_disabled' });
+  });
 });

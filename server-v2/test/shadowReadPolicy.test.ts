@@ -21,6 +21,16 @@ describe('shadow read policy', () => {
     expect(result).toMatchObject({ mode: 'v2', reason: 'comparison_equal' });
   });
 
+  it('keeps legacy when preview authentication is disabled', () => {
+    const result = decideShadowRead({ comparison: comparison([{ id: 'a' }], [{ id: 'a' }]), previewEnabled: true, previewAuthEnabled: false, legacyFallbackAvailable: true });
+    expect(result).toMatchObject({ mode: 'legacy', reason: 'preview_disabled' });
+  });
+
+  it('blocks an equal comparison when the legacy rollback fallback is unavailable', () => {
+    const result = decideShadowRead({ comparison: comparison([{ id: 'a' }], [{ id: 'a' }]), previewEnabled: true, previewAuthEnabled: true, legacyFallbackAvailable: false });
+    expect(result).toMatchObject({ mode: 'blocked', reason: 'rollback_blocked' });
+  });
+
   it('blocks if rollback safety has a missing legacy fallback', () => {
     const result = decideShadowRead({ comparison: comparison([{ id: 'a' }], [{ id: 'a' }]), previewEnabled: false, legacyFallbackAvailable: false });
     expect(result).toMatchObject({ mode: 'blocked', reason: 'rollback_blocked' });

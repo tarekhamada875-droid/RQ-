@@ -29,7 +29,7 @@ export function decideRollbackPolicy(input: RollbackPolicyInput): RollbackDecisi
     violations.push('dual-financial-write-not-permitted');
   }
   const useLegacyFallback = flagOff;
-  if (useLegacyFallback && input.legacyFallbackAvailable === false) violations.push('legacy-fallback-unavailable');
+  if (input.legacyFallbackAvailable === false) violations.push('legacy-fallback-unavailable');
   const blocked = violations.length > 0;
   return {
     safe: !blocked,
