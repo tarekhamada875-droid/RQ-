@@ -22,7 +22,7 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; currentSummary?: GarageSummary | null } = {}) {
+async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; currentSummary?: GarageSummary | null; role?: 'admin' | 'garage'; garageId?: string } = {}) {
   const enabled = options.enabled ?? true;
   const projectionRepository: ProjectionRepository = {
     get: async () => options.currentProjection === undefined ? projection : options.currentProjection,
@@ -36,7 +36,7 @@ async function start(options: { enabled?: boolean; currentProjection?: Projectio
     environment: parseEnvironment({ NODE_ENV: enabled ? 'test' : 'production', FIREBASE_PROJECT_ID: 'rq-v2-report-route-test', V2_PREVIEW_ENABLED: String(enabled), V2_PREVIEW_AUTH_ENABLED: String(enabled) }),
     projection: projectionRepository,
     garageSummary: summaryRepository,
-    authMiddleware: (request, _response, next) => { request.v2Authorization = { uid: 'actor-1', sessionId: 'session-1', role: 'admin', delegateGarageIds: [] }; next(); }
+    authMiddleware: (request, _response, next) => { request.v2Authorization = { uid: 'actor-1', sessionId: 'session-1', role: options.role ?? 'admin', garageId: options.garageId, delegateGarageIds: [] }; next(); }
   });
   server = app.listen(0);
   await new Promise<void>((resolve) => server?.once('listening', () => resolve()));
@@ -78,6 +78,13 @@ describe('v2 dashboard report route', () => {
     const response = await getReport(await start({ currentProjection: null }));
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ success: false, code: 'CONFLICT' });
+  });
+
+  it('denies a garage user access to another garage report before repository reads', async () => {
+    const baseUrl = await start({ role: 'garage', garageId: 'garage-2', currentSummary: summary });
+    const response = await fetch(`${baseUrl}/v2/garages/garage-1/report?date=2026-09-22`);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ success: false, code: 'FORBIDDEN' });
   });
 
   it('does not expose the report in production', async () => {
