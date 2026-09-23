@@ -30,7 +30,7 @@ function errorMessage(error: unknown): string {
   return 'تعذر تحميل جلسات الأجهزة أو تحديثها';
 }
 
-export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, t, showToast }) => {
+export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, showToast }) => {
   const [sessions, setSessions] = React.useState<ActiveSession[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [busySession, setBusySession] = React.useState<string | null>(null);
