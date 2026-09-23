@@ -1619,3 +1619,8 @@ The read-only Railway diagnostic MCP was restored outside the repository at `/ho
 ### Projection repair worker fail-closed hardening — 2026-09-23
 
 Commit `05b377f` closes the operational gap where an unexpected repair exception was redacted but later tasks continued. The worker now stops the bounded batch after `REPAIR_FAILED`, while explicitly classified repository errors remain reportable task failures and do not abort unrelated bounded tasks. Focused tests cover both paths; the complete emulator-backed repository validation passed. The worker remains an undeployed library primitive with no scheduler or production mutation path.
+
+
+### Live Railway read-only boundary evidence — 2026-09-23
+
+The enabled operator MCP verified live `/api/health` at `200` with `adminSdk: true` and deployed version `b75a024746a692e3d6f89de561b65730e6eae257`, live `/api/v2/health` at `200` in production without the Firebase emulator, and unauthenticated `/api/v2/packages` at `401` for missing Firebase ID token. `/api/system-config` also returned `200`, but its payload was intentionally excluded from repository evidence. This validates diagnostic and unauthenticated boundaries only and does not establish authenticated Cloudflare preview behavior or authorize any migration.
