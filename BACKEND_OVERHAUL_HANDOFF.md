@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `6fb49c6 test: cover shadow telemetry redaction`
-**Latest verified local evidence:** the shadow telemetry suite passes 3 focused tests, including authorization-mismatch counting and aggregate console redaction; the complete repository/emulator validation gate passed; Production Gate `35840179976` passed for `6fb49c6`.
+**Latest published commit:** `e67348c docs: record shadow telemetry coverage`
+**Latest verified local evidence:** shadow telemetry coverage passes 3 focused tests, the complete repository/emulator validation gate passed, and Production Gate `35840571252` passed for `e67348c`. The succession handoff records that a dedicated non-production Cloudflare/Railway/Firebase environment is not being created in this slice.
 
 ## Mission
 
@@ -192,6 +192,8 @@ The next bounded route-safety slice is `693fdb8`. It adds projection-status cove
 The next projection-worker safety slice is `54bd219`. Queue completion and failure now require a matching, unexpired worker lease; expired workers receive `REPAIR_TASK_LEASE_EXPIRED` and cannot mutate queue state. The runbook records this fail-closed rule, and emulator coverage passes. The complete validation sequence passed, and Production Gate `35837731215` passed. The worker remains undeployed and unscheduled.
 
 The next migration-evidence slice is `6fb49c6`. Shadow telemetry now has explicit authorization-mismatch coverage and verifies that its console sink emits only aggregate counters, not mismatch payloads or raw error text. The complete validation sequence passed, and Production Gate `35840179976` passed. No production shadow traffic or cutover flag changed.
+
+The current preview blocker remains explicit. Creating a dedicated non-production environment is technically possible but is a separate infrastructure workstream, not a validation shortcut. It requires isolated Cloudflare Pages, Railway, and Firebase configuration, non-production secrets and data isolation, authentication/CORS checks, rollback and teardown controls, and an updated plan. Do not create a branch merely to manufacture a preview, change production flags, or treat a production deployment as preview evidence.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 

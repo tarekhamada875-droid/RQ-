@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ-`
 **Current branch:** `main`
-**Latest published commit:** `6fb49c6 test: cover shadow telemetry redaction`
-**Working tree at handoff:** clean and synchronized with `origin/main`; shadow-comparison telemetry coverage and handoff evidence are published directly to `main`.
+**Latest published commit:** `e67348c docs: record shadow telemetry coverage`
+**Working tree at handoff:** clean and synchronized with `origin/main`; shadow-comparison telemetry coverage and succession evidence are published directly to `main`.
 
 ## Read this first
 
@@ -220,11 +220,12 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Commit `693fdb8` adds projection-status route coverage for impossible-date rejection before repository reads and redaction of repository failures behind the generic `INTERNAL_ERROR` envelope. Production Gate `35834417741` passed. No runtime behavior, production flag, financial authority, or production data changed.
 - Commit `54bd219` makes projection-repair queue completion/failure fail closed after `leaseUntil`, returning `REPAIR_TASK_LEASE_EXPIRED` without changing queue state. Emulator coverage and the projection-repair runbook now document the lease rule. Production Gate `35837731215` passed. No production worker, scheduler, financial authority, or production data changed.
 - Commit `6fb49c6` adds shadow-telemetry coverage for authorization mismatches and verifies that the console sink emits aggregate counters without mismatch payloads or raw error text. Production Gate `35840179976` passed. No production shadow traffic, flag, financial authority, or production data changed.
+- Commit `e67348c` records the verified telemetry handoff state. Production Gate `35840571252` passed. The user asked whether a non-production Cloudflare preview should be created to bypass the blocker; the decision recorded here is **not to create one in the current slice**. A dedicated non-production environment is a separate infrastructure workstream requiring an updated plan, isolated Railway/Firebase/Cloudflare configuration, secret/data isolation, and rollback/teardown controls.
 - Cloudflare Pages was rechecked on 2026-09-23 after `061204e`: project `rq` has latest deployment `fdf79720` for `main`/`061204e`, and every listed deployment is `environment: production`; there is still no current non-production preview URL. Preview configuration has package-catalog enabled, but that does not make a production deployment eligible for authenticated preview evidence.
 
 The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 
-The latest published commit is gate-verified by `35840179976`; the prior validation-command failure was environmental (Firestore queue tests were initially run without the emulator), then the corrected sequence passed.
+The latest published commit is gate-verified by `35840571252`; the prior validation-command failure was environmental (Firestore queue tests were initially run without the emulator), then the corrected sequence passed.
 
 ### Completed bounded read-only migration-evidence task
 
@@ -234,11 +235,11 @@ Local normalized migration evidence passed in 4 focused v2 test files with 16 te
 
 ### Then resume the overhaul order
 
-1. Keep `6fb49c6` and Production Gate `35840179976` as the verified current tip.
+1. Keep `e67348c` and Production Gate `35840571252` as the verified current tip.
 2. If a natural current authenticated Cloudflare preview appears, perform Firebase-browser checks for v2 health, package reads, garage summary, and session behavior.
 3. Through that preview, repeat normalized legacy/v2 package and garage-summary comparisons and classify every difference.
 4. Exercise v2-failure fallback and legacy-failure blocking in the authenticated preview; no unexplained financial or authorization mismatch is acceptable.
-5. Complete remaining non-financial repositories, reports, and projection-worker operational preparation; deployment remains blocked on explicit operational design and rollback evidence.
+5. Continue remaining non-financial repositories, reports, projection-worker operational preparation, and local migration evidence in parallel. Treat a dedicated non-production Cloudflare/Railway/Firebase environment as a separately approved infrastructure phase; do not create it merely to bypass the current preview blocker.
 6. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
 7. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
 8. Retire legacy paths only after migration and rollback-window expiration.
