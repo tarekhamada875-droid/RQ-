@@ -1649,3 +1649,8 @@ Commit `60d38e3` adds evidence that production-disabled package and garage-summa
 ### Current Cloudflare preview discovery and public smoke evidence — 2026-09-23
 
 A fresh Cloudflare Pages preview from current `main` was created through temporary branch `preview/current-main-v2-smoke`: deployment `7a66d0e0`, alias `https://preview-current-main-v2-smok.rq-acg.pages.dev`. The public login UI loaded successfully; Railway health and v2 health returned `200`, and unauthenticated packages returned `401`. Authenticated Firebase preview checks remain pending a valid session or test credential. No production flags or financial authority changed.
+
+
+### Shadow-comparison route failure hardening — 2026-09-23
+
+Commit `f9a280b` adds evidence that the admin-only shadow route rejects unknown request fields and redacts provider failures into a stable internal-error response. The complete corrected validation gate passed. No production shadow flag or migration authority changed.

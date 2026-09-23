@@ -304,3 +304,8 @@ Commit `60d38e3` adds coverage for production-disabled package and garage-summar
 ### Current Cloudflare preview discovery and public smoke evidence — 2026-09-23
 
 A fresh preview was created from current `main` through temporary branch `preview/current-main-v2-smoke`: deployment `7a66d0e0`, alias `https://preview-current-main-v2-smok.rq-acg.pages.dev`. The public login screen loaded successfully. Railway read-only checks returned health `200`, v2 health `200`, and unauthenticated packages `401`. Authenticated Firebase checks remain blocked on a valid session or test credential; no credential was guessed and no production authority changed. The working tree is back on `main`.
+
+
+### Shadow-comparison route failure hardening — 2026-09-23
+
+Commit `f9a280b` adds strict-payload and provider-failure redaction coverage for the admin-only shadow route. Focused tests and the complete corrected validation gate passed. Shadow comparison remains disabled unless explicitly enabled and does not authorize production migration.
