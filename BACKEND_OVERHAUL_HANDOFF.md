@@ -3,9 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** `9bbcb5a feat: add active devices admin view` (documentation update follows in the next handoff commit)
-**Latest implementation commit:** `9bbcb5a feat: add active devices admin view`
-**Latest verified local implementation evidence:** `npm test -- --run` passed with 56 files and 300 tests; `npm run build` passed. The GitHub Production Gate for `9bbcb5a` must still be checked by the next agent.
+**Latest published commit:** `b5b681b fix: satisfy active sessions typecheck`
+**Latest verified local evidence:** focused normalized-comparison tests passed with 4 files and 16 tests; the complete repository/emulator validation gate passed; Production Gate `35822201327` passed for `b5b681b`.
 
 ## Mission
 
@@ -167,6 +166,16 @@ The existing backend remains the only financial writer. Do not dual-write money 
 Pure normalized comparison, redacted mismatch reporting, fail-closed rollback policy, and the [migration-safety runbook](docs/migration-safety-runbook.md) now exist. They do not establish authenticated frontend-to-Railway success and are not connected to production flags or dual-write behavior.
 
 ## Exact next actions for the next agent
+
+### Verified continuation packet — 2026-09-23
+
+The Active Devices UI from `9bbcb5a` exposed an unused destructured `t` prop under the repository typecheck. The initial gate for documentation tip `6f8172f` failed only at `verify/Typecheck` with `TS6133`; focused correction `b5b681b` removes that unused destructuring and changes no behavior. Production Gate `35822201327` passed all required checks, including typecheck, tests, production build, v2 foundation, artifact verification, maintainability, and Railway live smoke validation.
+
+The current Cloudflare Pages inspection is read-only and remains a preview blocker. Project `rq` has preview deployments enabled and preview-only `VITE_V2_READ_PACKAGE_CATALOG=true`; production has no v2 read flag. The current production deployment is `https://52388dd0.rq-acg.pages.dev`, built from `main` commit `6f8172f` on 2026-09-23. The newest non-production preview is still `https://7ff4c62e.rq-acg.pages.dev`, branch `feat/backend-operator-mcp-auth`, commit `1c60a0d`, created 2026-09-19. It is stale and must not be used as current-build evidence. Do not create a branch merely to manufacture a preview or alter production flags.
+
+The bounded local migration-evidence task is complete for this slice. `npm run test:v2 -- server-v2/test/migrationSafety.test.ts server-v2/test/shadowComparisonCoordinator.test.ts server-v2/test/shadowReadPolicy.test.ts server-v2/test/shadowComparisonRoute.test.ts` passed 4 files and 16 tests. It proves stable normalized ordering and timestamp tolerance, redacted financial/authorization mismatch flags, equal-comparison v2 permission, v2-read fallback to legacy, legacy-read blocking, rollback safety, strict admin route validation, and disabled-flag non-exposure. The complete gate also passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. This is read-only evidence only; no production shadow traffic, financial write migration, or production flag change occurred.
+
+Next action remains conditional: when a natural current Firebase-authenticated Cloudflare preview exists, run the requested authenticated v2 health, package, garage-summary, and session checks, then compare normalized legacy/v2 results and exercise fallback/blocking. Until then, keep the preview item blocked and continue only with bounded read-only evidence or explicitly safe non-financial work. Legacy backend and financial writes remain authoritative.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 

@@ -2,10 +2,10 @@
 
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
-**Local path:** `/home/ubuntu/RQ`
+**Local path:** `/home/ubuntu/RQ-`
 **Current branch:** `main`
-**Latest feature commit:** `9bbcb5a feat: add active devices admin view`
-**Working tree at handoff:** clean and synchronized with `origin/main`; the frontend session UI commit was pushed directly to `main` and awaits its Production Gate result.
+**Latest published commit:** `b5b681b fix: satisfy active sessions typecheck`
+**Working tree at handoff:** clean and synchronized with `origin/main`; the focused typecheck correction and handoff evidence are published directly to `main`.
 
 ## Read this first
 
@@ -202,7 +202,7 @@ The MCP is an operator diagnostic boundary only. It is not a replacement for Fir
 
 ## Current plan and next move
 
-### Completed current slice: frontend session-management UI
+### Completed current slice: frontend session-management UI and gate correction
 
 Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed client service:
 
@@ -211,23 +211,28 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Current-session revocation delegates to the existing logout callback; no new auth authority was introduced.
 - `src/components/admin/AdminNavigationAndViews.tsx` and `AdminDashboard.tsx` wire the screen into admin settings.
 - Local `npm test -- --run` passed: 56 files and 300 tests. `npm run build` passed.
+- The initial gate for documentation tip `6f8172f` failed in `verify/Typecheck` because the component destructured an unused `t` prop (`TS6133`). Commit `b5b681b` removes only that unused destructuring; Production Gate `35822201327` passed, including typecheck, tests, production build, v2 foundation, artifact, maintainability, and live smoke checks.
 
-The normal UI test harness has no dedicated component test added yet; add focused service/component coverage in the next small slice if the existing test environment supports it.
+The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 
-The GitHub Production Gate for `9bbcb5a` is not yet recorded in this handoff. Check it before claiming the slice complete.
+The latest published commit is gate-verified by `35822201327`; the earlier failing gate was corrected without changing behavior.
+
+### Completed bounded read-only migration-evidence task
+
+No current non-production Cloudflare Pages preview exists. Read-only Cloudflare inspection on 2026-09-23 found `main` production deployment `52388dd0` built from `6f8172f`; the newest preview remains stale deployment `7ff4c62e` from branch `feat/backend-operator-mcp-auth`, commit `1c60a0d`, created 2026-09-19. Do not use it for current authenticated Firebase-browser evidence, create a branch to manufacture a preview, or change production flags.
+
+Local normalized migration evidence passed in 4 focused v2 test files with 16 tests: stable normalization/order, timestamp tolerance, redacted financial/authorization mismatch classification, equal-comparison v2 permission, v2-read fallback to legacy, legacy-read blocking, rollback safety, admin route validation, and disabled-flag non-exposure. The full validation gate also passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. This remains read-only evidence; no production shadow traffic or cutover is enabled.
 
 ### Then resume the overhaul order
 
-1. Verify Production Gate for `9bbcb5a` and keep the tree clean.
-2. Obtain a natural current authenticated Cloudflare preview, if one appears.
-3. Run Firebase-authenticated preview checks for v2 health, package reads, garage summary, and session behavior.
-4. Run normalized legacy/v2 package and garage-summary comparisons.
-5. Exercise v2-failure fallback and legacy-failure blocking.
-6. Classify every difference; no unexplained financial or authorization mismatch is acceptable.
-7. Complete remaining non-financial repositories, reports, and a deployed projection worker only after explicit operational design and rollback evidence.
-8. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
-9. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
-10. Retire legacy paths only after migration and rollback-window expiration.
+1. Keep `b5b681b` and Production Gate `35822201327` as the verified current tip.
+2. If a natural current authenticated Cloudflare preview appears, perform Firebase-browser checks for v2 health, package reads, garage summary, and session behavior.
+3. Through that preview, repeat normalized legacy/v2 package and garage-summary comparisons and classify every difference.
+4. Exercise v2-failure fallback and legacy-failure blocking in the authenticated preview; no unexplained financial or authorization mismatch is acceptable.
+5. Complete remaining non-financial repositories, reports, and a deployed projection worker only after explicit operational design and rollback evidence.
+6. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
+7. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
+8. Retire legacy paths only after migration and rollback-window expiration.
 
 ## Cleanup and source-of-truth rules
 
