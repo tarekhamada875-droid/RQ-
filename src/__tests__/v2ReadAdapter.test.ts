@@ -31,6 +31,25 @@ describe('Cloudflare v2 read adapter', () => {
     ]);
   });
 
+  it('encodes pagination cursors and preserves bounded limits', async () => {
+    const transport = vi.fn(async (_endpoint: string): Promise<unknown> => ({ data: { items: [], nextCursor: 'next', projectionVersion: 2 } }));
+    const client = createV2ReadClient(transport);
+
+    await client.pendingQueue(25, 'cursor/with spaces');
+    await client.recentActivity(10, 'next?page=2');
+
+    expect(transport.mock.calls.map(([endpoint]) => endpoint)).toEqual([
+      '/api/v2/pending?limit=25&cursor=cursor%2Fwith%20spaces',
+      '/api/v2/activity?limit=10&cursor=next%3Fpage%3D2'
+    ]);
+  });
+
+  it('rejects malformed bounded-page responses', async () => {
+    const client = createV2ReadClient(async () => ({ data: { items: [], projectionVersion: '2' } }));
+
+    await expect(client.pendingQueue(10)).rejects.toBeInstanceOf(V2ReadAdapterError);
+  });
+
   it('maps invalid v2 responses to a typed adapter error', async () => {
     const client = createV2ReadClient(async () => ({ data: [{ id: 'bad' }] }));
     await expect(client.packageCatalog()).rejects.toBeInstanceOf(V2ReadAdapterError);
