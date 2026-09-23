@@ -1634,3 +1634,8 @@ Commit `3797734` adds emulator-backed proof that both completion and failure act
 ### Projection repair queue retry timing coverage — 2026-09-23
 
 Commit `c3b76b3` adds emulator-backed evidence that queued repair retries respect their bounded `nextAttemptAt` timestamp, preventing early reclaim while allowing reclaim at the due time. The corrected complete validation gate passed. No runtime or production mutation path changed.
+
+
+### Authenticated preview read-route boundary coverage — 2026-09-23
+
+Commit `6b8964d` adds test evidence that authenticated-preview middleware protects package, garage-summary, pending, and activity reads uniformly with `401` for unauthenticated callers. The complete corrected validation gate passed. This changes no production flags or runtime authority.

@@ -289,3 +289,8 @@ Commit `3797734` adds Firestore-emulator coverage that expired workers cannot fa
 ### Projection repair queue retry timing coverage — 2026-09-23
 
 Commit `c3b76b3` adds emulator-backed proof that failed repair tasks cannot be reclaimed before their bounded retry timestamp and can be reclaimed at the due time. The focused queue suite passes 7 tests and the complete corrected validation gate passes. The queue remains lease-owned, undeployed, unscheduled, and disconnected from production mutation.
+
+
+### Authenticated preview read-route boundary coverage — 2026-09-23
+
+Commit `6b8964d` adds coverage that package, garage-summary, pending, and activity reads all reject unauthenticated callers when the authenticated preview middleware is mounted. Focused tests and the complete corrected validation gate passed. No production flag or financial authority changed.
