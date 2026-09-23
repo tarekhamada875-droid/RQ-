@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ-`
 **Current branch:** `main`
-**Latest published commit:** `693fdb8 test: cover projection status boundaries`
-**Working tree at handoff:** clean and synchronized with `origin/main`; projection-status boundary coverage and handoff evidence are published directly to `main`.
+**Latest published commit:** `54bd219 fix: reject expired repair leases`
+**Working tree at handoff:** clean and synchronized with `origin/main`; projection-repair lease-expiry protection and handoff evidence are published directly to `main`.
 
 ## Read this first
 
@@ -218,11 +218,12 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Commit `9b42c8f` fixes a shared contract defect found by the dashboard-report boundary test: `DateKeySchema` previously accepted impossible dates such as `2026-99-99`. It now validates real calendar dates, with foundation and report-route coverage for invalid dates and stale projections. Production Gate `35826313877` passed.
 - Commit `3b1f018` adds [`docs/projection-repair-worker-runbook.md`](docs/projection-repair-worker-runbook.md), defining bounded invocation, preconditions, redacted evidence, stop/rollback controls, and the explicit status that the worker is not deployed or automatically triggered. Production Gate `35827534873` passed. The corrected full validation sequence passed after keeping Firestore-dependent checks inside the emulator.
 - Commit `693fdb8` adds projection-status route coverage for impossible-date rejection before repository reads and redaction of repository failures behind the generic `INTERNAL_ERROR` envelope. Production Gate `35834417741` passed. No runtime behavior, production flag, financial authority, or production data changed.
+- Commit `54bd219` makes projection-repair queue completion/failure fail closed after `leaseUntil`, returning `REPAIR_TASK_LEASE_EXPIRED` without changing queue state. Emulator coverage and the projection-repair runbook now document the lease rule. Production Gate `35837731215` passed. No production worker, scheduler, financial authority, or production data changed.
 - Cloudflare Pages was rechecked on 2026-09-23 after `061204e`: project `rq` has latest deployment `fdf79720` for `main`/`061204e`, and every listed deployment is `environment: production`; there is still no current non-production preview URL. Preview configuration has package-catalog enabled, but that does not make a production deployment eligible for authenticated preview evidence.
 
 The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 
-The latest published commit is gate-verified by `35834417741`; the prior validation-command failure was environmental (Firestore queue tests were initially run without the emulator), then the corrected sequence passed.
+The latest published commit is gate-verified by `35837731215`; the prior validation-command failure was environmental (Firestore queue tests were initially run without the emulator), then the corrected sequence passed.
 
 ### Completed bounded read-only migration-evidence task
 
@@ -232,7 +233,7 @@ Local normalized migration evidence passed in 4 focused v2 test files with 16 te
 
 ### Then resume the overhaul order
 
-1. Keep `693fdb8` and Production Gate `35834417741` as the verified current tip.
+1. Keep `54bd219` and Production Gate `35837731215` as the verified current tip.
 2. If a natural current authenticated Cloudflare preview appears, perform Firebase-browser checks for v2 health, package reads, garage summary, and session behavior.
 3. Through that preview, repeat normalized legacy/v2 package and garage-summary comparisons and classify every difference.
 4. Exercise v2-failure fallback and legacy-failure blocking in the authenticated preview; no unexplained financial or authorization mismatch is acceptable.

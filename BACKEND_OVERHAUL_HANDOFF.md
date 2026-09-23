@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `693fdb8 test: cover projection status boundaries`
-**Latest verified local evidence:** the projection-status route suite passes 6 tests, including impossible-date rejection before reads and redacted repository failures; the complete repository/emulator validation gate passed; Production Gate `35834417741` passed for `693fdb8`.
+**Latest published commit:** `54bd219 fix: reject expired repair leases`
+**Latest verified local evidence:** the Firestore repair queue suite passes 5 emulator-backed tests, including expired-lease rejection without queue-state mutation; the complete repository/emulator validation gate passed; Production Gate `35837731215` passed for `54bd219`.
 
 ## Mission
 
@@ -188,6 +188,8 @@ The next bounded safety slice is `9b42c8f`. Its dashboard-report boundary test e
 The following operational-safety slice is `3b1f018`. It adds [`docs/projection-repair-worker-runbook.md`](docs/projection-repair-worker-runbook.md), documenting the existing worker's 25-task bound, explicit event windows, idempotency/audit requirements, redacted failure handling, stop/rollback procedure, and evidence checklist. The worker remains a library primitive: it is not deployed, scheduled, or connected to automatic production mutation. The corrected full validation sequence passed, and Production Gate `35827534873` passed. No production flag, financial authority, or production data changed.
 
 The next bounded route-safety slice is `693fdb8`. It adds projection-status coverage for impossible calendar dates and repository-error redaction. The route remains preview-gated and admin-only; no runtime behavior or production authority changed. The complete validation sequence passed, and Production Gate `35834417741` passed.
+
+The next projection-worker safety slice is `54bd219`. Queue completion and failure now require a matching, unexpired worker lease; expired workers receive `REPAIR_TASK_LEASE_EXPIRED` and cannot mutate queue state. The runbook records this fail-closed rule, and emulator coverage passes. The complete validation sequence passed, and Production Gate `35837731215` passed. The worker remains undeployed and unscheduled.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
