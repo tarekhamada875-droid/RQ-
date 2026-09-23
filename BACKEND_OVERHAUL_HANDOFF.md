@@ -467,3 +467,10 @@ The complete reusable succession procedure is [`docs/SUCCESSION_PROTOCOL.md`](do
 ### Cross-account succession and Railway MCP bootstrap enhancement — 2026-09-23
 
 The reusable protocol now documents how a new account reconstructs the external Railway read-only MCP outside the repository. The contract exposes only `backend_health` and `read_backend_endpoint`, allows only six bounded GET paths, requires redacted output and missing-token smoke validation, and registers through the supported connector workflow. The protected variable name is `BACKEND_OPERATOR_TOKEN`; the value must remain in Railway/connector secret fields and must never enter chat, source, logs, command arguments, Git, or handoff files. Every future `tokens ending` trigger repeats this cross-account process and cannot assume inherited connector or sandbox state.
+
+
+### Dashboard report garage-scope coverage — 2026-09-23 18:17 UTC
+
+Commit `debd0c9` adds focused route coverage proving that a garage-scoped Firebase principal cannot read another garage's dashboard report; the request is rejected with the generic `FORBIDDEN` envelope before report data is returned. The focused dashboard-report suite passes 7 tests and v2 typecheck passes. The corrected complete emulator-backed v2 check, application tests, lint, production build, maintainability check, and diff check all pass. Production Gate `35901088303` passed for exact commit `debd0c9`.
+
+This is test-only hardening. No route authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked; production and stale previews must not be used as substitutes. The next bounded slice is dashboard-report repository-error redaction coverage, proving provider failures return only the generic `INTERNAL_ERROR` envelope.

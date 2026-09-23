@@ -1681,3 +1681,10 @@ The project-wide agent handoff procedure is now maintained in [`docs/SUCCESSION_
 ### Cross-account succession and Railway MCP bootstrap enhancement — 2026-09-23
 
 The succession protocol now includes a cross-account Railway MCP reconstruction procedure. New agents must rebuild the external read-only boundary when needed, validate its six-path GET allowlist and missing-token safety, and register it with protected connector environment fields. `BACKEND_OPERATOR_TOKEN` is the protected variable name; its secret value must never be transmitted through chat or committed. The `tokens ending` trigger is durable and must be repeated by every successor in every account.
+
+
+### Route-boundary hardening — 2026-09-23 18:17 UTC
+
+The dashboard report route now has focused regression coverage for garage-scope authorization in `debd0c9`: a garage-scoped principal targeting another garage receives `FORBIDDEN` and cannot read the report. The focused suite, v2 typecheck, corrected emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks passed. Production Gate `35901088303` succeeded for the exact implementation commit. This slice changes tests only and preserves legacy authority, disabled production read and shadow flags, financial-write boundaries, the undeployed projection worker, deferred physical deletion, and legacy route availability.
+
+The next independent bounded hardening task is dashboard-report repository-error redaction coverage. Authenticated Cloudflare preview validation remains blocked until a legitimate current non-production preview and Firebase-authenticated session exist; no branch should be created to manufacture one.

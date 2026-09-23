@@ -346,3 +346,22 @@ The reusable start-to-finish succession playbook is now [`docs/SUCCESSION_PROTOC
 ### Cross-account succession and Railway MCP bootstrap enhancement — 2026-09-23
 
 `docs/SUCCESSION_PROTOCOL.md` now explicitly handles agents that start in a new account without inherited sandbox files or connectors. Each successor must rebuild the external read-only Railway MCP outside the repository when diagnostics are needed, using exactly `backend_health` and `read_backend_endpoint`, the six documented GET paths, bounded requests/responses, redacted output, and missing-token smoke validation. Registration must use the supported connector workflow with protected environment fields. The protected Railway variable name is `BACKEND_OPERATOR_TOKEN`; its value must be entered through Railway and connector secret fields and must never be pasted into chat, source, logs, command arguments, Git, or handoff documents. Every future agent repeats this protocol when the owner says `tokens ending`; no account may assume inherited files, connectors, browser sessions, tokens, or deployment state.
+
+
+### Dashboard report garage-scope coverage — 2026-09-23 18:17 UTC
+
+- Current branch and SHA: `main`, `debd0c9`; working tree was clean before this documentation update and synchronized with `origin/main` at the implementation tip.
+- Last implementation commit: `debd0c9 test: cover dashboard report garage scope`.
+- Documentation commit: pending; this record is being added after the implementation gate.
+- Focused validation: `npm run test:v2 -- server-v2/test/dashboardReportRoute.test.ts` — 7 tests passed, including denial of a garage user reading another garage report; `npm run lint:v2` — passed.
+- Full validation: Firestore-emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check` — passed on the corrected rerun. An earlier full-gate timeout in unrelated concurrent subscriber creation reproduced as transient; the isolated 25-test suite and corrected full gate passed.
+- Production Gate: run `35901088303` — success for exact implementation commit `debd0c9`.
+- Deployment evidence: exact-commit Production Gate Railway smoke checks passed; no Cloudflare preview was created or claimed.
+- Connector/MCP state: the external read-only Railway MCP remains outside Git at `/home/ubuntu/rq-backend-mcp`; it exposes only bounded read-only diagnostics. No secret values are recorded here.
+- Known blockers: no current Firebase-authenticated non-production Cloudflare preview is established; do not use production or stale previews as authenticated evidence.
+- Safety state: legacy backend remains authoritative; production `VITE_V2_READ_*` flags and shadow traffic remain disabled; financial writes are not migrated; projection repair remains undeployed, unscheduled, and disconnected from automatic mutation; physical deletion remains deferred; legacy routes remain available.
+- Exact next task: add focused dashboard-report repository-error redaction coverage, proving a provider failure returns the generic `INTERNAL_ERROR` envelope without exposing internal details; do not change runtime authority or production flags.
+
+**Copy-paste startup:**
+
+> Repository: `/home/ubuntu/RQ-`. Read `NEXT_AGENT_HANDOFF.md` first. Verify `HEAD`, `origin/main`, and Production Gate `35901088303` for `debd0c9`. Start the single bounded task: add dashboard-report repository-error redaction coverage. Preserve legacy authority, disabled production v2/shadow flags, undeployed projection repair, deferred deletion, and all secret-handling rules. If `tokens ending` appears, stop feature work and repeat this protocol.
