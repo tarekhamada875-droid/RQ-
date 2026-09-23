@@ -443,3 +443,8 @@ Commit `f9a280b` adds route coverage proving shadow comparison rejects strict pa
 ### Shadow rollback fallback safety hardening — 2026-09-23
 
 Commit `a467b31` closes a policy gap: when the legacy fallback is explicitly unavailable, shadow-read decisions now block rather than permitting v2, regardless of preview flag state. Unauthenticated previews still fail closed to legacy when fallback is available. Focused policy/coordinator coverage passes 11 tests; the complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No production shadow flag, financial authority, traffic, or production data changed.
+
+
+### Projection repair calendar-date contract hardening — 2026-09-23
+
+Commit `e83161d` reuses the canonical real-calendar-date validator for projection events, projection state, and repair tasks. Impossible dates such as `2026-02-29` are rejected before repository access, preventing malformed operational repair input from entering rebuild logic. Focused worker coverage passes 5 tests; the complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. The worker remains library-only, undeployed, unscheduled, and disconnected from automatic production mutation.

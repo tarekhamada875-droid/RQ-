@@ -314,3 +314,8 @@ Commit `f9a280b` adds strict-payload and provider-failure redaction coverage for
 ### Shadow rollback fallback safety hardening — 2026-09-23
 
 Commit `a467b31` ensures an unavailable legacy fallback blocks shadow cutover instead of allowing v2. Missing preview authentication continues to route safely to legacy when fallback exists. Focused policy/coordinator tests and the complete corrected validation gate passed. Production shadow and financial authority remain disabled.
+
+
+### Projection repair calendar-date contract hardening — 2026-09-23
+
+Commit `e83161d` makes projection events, states, and repair tasks reject impossible calendar dates before repository access. Focused worker tests and the complete corrected validation gate passed. The repair worker remains undeployed and unscheduled; no production mutation or financial authority changed.

@@ -1659,3 +1659,8 @@ Commit `f9a280b` adds evidence that the admin-only shadow route rejects unknown 
 ### Shadow rollback fallback safety hardening — 2026-09-23
 
 Commit `a467b31` closes the rollback-policy gap where an explicitly unavailable legacy fallback could still allow v2 after an equal comparison. The policy now blocks that path; unauthenticated preview paths still fail closed to legacy when fallback is available. Focused tests and the complete corrected validation gate passed. No production shadow flag or financial authority changed.
+
+
+### Projection repair calendar-date contract hardening — 2026-09-23
+
+Commit `e83161d` applies the real-calendar-date validator to projection and repair contracts and adds pre-repository rejection coverage for impossible dates. The complete corrected validation gate passed. Projection-worker deployment and scheduling remain explicitly out of scope.
