@@ -59,6 +59,21 @@ describe('v2 dashboard report route', () => {
     expect(await response.json()).toMatchObject({ data: { status: 'repair_needed', repairReason: 'SUMMARY_PROJECTION_MISMATCH', differences: { entriesToday: 1 } } });
   });
 
+  it('labels an old projection as stale without treating it as a data mismatch', async () => {
+    const response = await getReport(await start({ currentProjection: { ...projection, asOf: '2026-09-22T00:00:00.000Z' } }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { status: 'repair_needed', repairReason: 'PROJECTION_STALE', differences: { activeVehicleCount: 0 } } });
+  });
+
+  it('rejects an invalid report date', async () => {
+    const baseUrl = await start({
+      currentSummary: summary,
+      currentProjection: projection
+    });
+    const response = await fetch(`${baseUrl}/v2/garages/garage-1/report?date=2026-99-99`);
+    expect(response.status).toBe(400);
+  });
+
   it('blocks a report when the projection is missing', async () => {
     const response = await getReport(await start({ currentProjection: null }));
     expect(response.status).toBe(409);

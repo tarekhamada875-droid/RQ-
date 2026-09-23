@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createV2App } from '../app.js';
 import { parseEnvironment } from '../config/environment.js';
 import { PackageSchema } from '../contracts/entities.js';
+import { DateKeySchema } from '../contracts/summary.js';
 import { businessDateKey, idempotencyFingerprint } from '../domain/operations.js';
 import { addMinorUnits, formatMinorUnits, parseMinorUnits } from '../domain/money.js';
 import { decodeCursor, encodeCursor } from '../domain/pagination.js';
@@ -38,6 +39,12 @@ describe('v2 foundation', () => {
     expect(businessDateKey(new Date('2026-09-20T00:30:00.000Z'), 'Africa/Cairo')).toBe('2026-09-20');
     expect(idempotencyFingerprint('catalog', { b: 2, a: 1 })).toBe(idempotencyFingerprint('catalog', { a: 1, b: 2 }));
     expect(decodeCursor(encodeCursor('2026-09-20T00:00:00.000Z', 'weekly')).id).toBe('weekly');
+  });
+
+  it('accepts real date keys and rejects impossible calendar dates', () => {
+    expect(DateKeySchema.safeParse('2026-02-28').success).toBe(true);
+    expect(DateKeySchema.safeParse('2026-02-29').success).toBe(false);
+    expect(DateKeySchema.safeParse('2026-99-99').success).toBe(false);
   });
 
   it('counts one bounded read for the package catalog', async () => {
