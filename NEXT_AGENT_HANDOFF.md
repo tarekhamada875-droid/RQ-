@@ -1,219 +1,148 @@
-# Next Agent Handoff — RQ Backend Overhaul
+# RQ Next-Agent Handoff
+
+**Last updated:** 2026-09-23
+**Repository:** `tarekhamada875-droid/RQ-`
+**Local path:** `/home/ubuntu/RQ`
+**Current branch:** `main`
+**Current HEAD:** `5e2bba2 feat: add active session management`
+**Working tree at handoff:** clean and synchronized with `origin/main`
 
 ## Read this first
 
-You are continuing a controlled backend replacement project. Your job is to improve the new `server-v2` backend without breaking the current production system.
-
-The old backend is still the **production authority**. The new backend is a guarded preview. Treat every production change as dangerous unless the overhaul plan explicitly allows it.
-
-Start in:
-
-```text
-/home/ubuntu/RQ-
-```
+This is a controlled backend-overhaul project. The legacy backend remains the production authority. `server-v2` is a guarded replacement foundation and preview capability. Do not migrate production traffic, financial writes, or data ownership without explicit evidence, rollback testing, and an updated plan.
 
 Read these files before changing code:
 
-1. `BACKEND_COMPLETE_OVERHAUL_STAGES.md` — the master plan and stage status.
-2. `BACKEND_OVERHAUL_HANDOFF.md` — the current evidence and known blockers.
-3. This file — your operating instructions.
-4. The relevant legacy implementation and the matching `server-v2` contracts, repository, route, and tests.
+1. `BACKEND_COMPLETE_OVERHAUL_STAGES.md` — canonical master plan and stage status.
+2. `BACKEND_OVERHAUL_HANDOFF.md` — current evidence, blockers, and slice history.
+3. `RAILWAY_DEPLOYMENT_HANDOFF.md` — production deployment contract.
+4. This file — current operating method, MCP restoration procedure, and next action.
+5. The relevant legacy route/repository, matching v2 contract/repository, and existing tests.
 
-## Current repository state
+## Current verified state
 
-The current published `main` commit is:
-
-```text
-b87ef01 docs: add comprehensive next agent handoff
-```
-
-The working tree is clean and synchronized with `origin/main`.
-
-The latest successful Production Gate is:
+The latest implementation commit is:
 
 ```text
-35720900015 — success
+5e2bba2 feat: add active session management
 ```
 
-The latest local validation is:
+It adds:
 
-- Application suite: 55 test files, 296 tests passed.
-- Server v2 suite: 54 test files, 287 tests passed.
-- Strict v2 typecheck: passed.
-- Emulator-backed Firestore validation: passed.
-- Production build: passed.
-- CI workflow: runs on every push.
+- `GET /api/auth/sessions` for a Firebase-authenticated user’s redacted active-session list.
+- `DELETE /api/auth/sessions/:sessionKey` for revoking one device session.
+- SHA-256 opaque session identifiers; raw session IDs, UIDs, names, and credentials are not returned.
+- Per-device revocation restricted to the caller’s own UID and role.
+- Root and entity active-session marker synchronization.
+- Backend-operator tokens explicitly blocked from user-session management endpoints.
 
-## The mission
+The previous multi-device implementation is `db0b4a5`; the CI propagation fix is `f0a5b20`.
 
-Move the system from the old backend to the new backend safely, in small reversible steps.
+Successful Production Gates:
 
-You are not trying to replace the backend in one jump. You are building evidence first:
-
-1. Prove that the new backend behaves like the old backend.
-2. Prove authentication, authorization, scope, cost, latency, rollback, and repair behavior.
-3. Use a real non-production frontend preview to test the full Cloudflare-to-Railway path.
-4. Only then consider controlled read traffic.
-5. Migrate financial authority last.
-6. Retire old paths only after the rollback window has expired.
-
-## Exact working method
-
-Follow this sequence for every new slice.
-
-### 1. Inspect before editing
-
-Run:
-
-```bash
-git status --short --branch
-git log -3 --oneline
+```text
+5e2bba2 active-session implementation: 35815476395
+f0a5b20 Railway propagation wait: 35773357754
+259bbc3 prior documentation: 35770479204
 ```
 
-Then inspect:
+The Production Gate now cancels obsolete runs, waits up to ten minutes for Railway propagation, and verifies that `/api/health` serves the exact GitHub commit SHA. Its workflow is `.github/workflows/production-gate.yml`.
 
-- The master-plan stage you are working on.
-- The current handoff and known gaps.
-- The matching legacy route/service/repository.
-- The existing `server-v2` contract and repository patterns.
-- Existing tests for a similar feature.
-- Environment flags and preview wiring.
-- CI workflow expectations.
+Local validation for the current implementation passed:
 
-Do not implement from a general idea when the repository already has a pattern. Copy the repository's existing conventions for contracts, idempotency, audit events, authorization, request IDs, response envelopes, emulator setup, and error handling.
-
-### 2. Choose one bounded capability
-
-Implement one small capability at a time. Put it behind the existing preview or feature gate when it is not already safe for all environments.
-
-Prefer read-only and non-financial work first. Keep the change easy to revert. Do not mix unrelated refactors with the capability.
-
-### 3. Add tests before calling it complete
-
-Add focused tests for:
-
-- Valid behavior.
-- Invalid input.
-- Authentication failure.
-- Authorization failure.
-- Cross-garage or cross-scope access.
-- Feature-flag disabled behavior.
-- Idempotency where a command writes.
-- Audit events where a command writes.
-- Replay and changed-payload conflict.
-- Concurrency where transactions are involved.
-- Emulator behavior for Firestore repositories.
-- Production non-exposure where the route is preview-only.
-
-### 4. Validate locally
-
-Run focused tests first, then the complete checks:
-
-```bash
-npm run lint:v2
-npm run test:v2 -- <focused-tests>
-npx --yes firebase-tools@15.30.2 emulators:exec --only firestore --project rq-v2-agent-check "npm run check:v2"
-npm test
+```text
 npm run lint
+npm run lint:v2
+focused session-marker tests
+Firebase-emulator-backed npm run check:v2
+npm test
 npm run build
 npm run maintainability:check
 git diff --check
 ```
 
-The emulator can occasionally time out on Firestore concurrency tests. If that happens, rerun the focused failing test once in a fresh emulator project. Record whether the retry passes. Do not weaken a concurrency test merely to make CI green.
+Do not trust old test counts or commit references in historical sections without checking `git log`, current files, and the latest GitHub run.
 
-### 5. Review the diff
+## Current architecture and safety boundaries
 
-Before committing:
-
-```bash
-git diff --stat
-git diff --check
-git status --short
+```text
+Cloudflare Pages: https://rq-acg.pages.dev
+        |
+        v
+Railway API: https://rq-production-af02.up.railway.app
+        |
+        v
+Firebase Authentication + Firestore
 ```
 
-Review every changed file. Confirm that no secret, token, credential, production flag, generated artifact, or unrelated file was added.
+The legacy Express backend and its financial routes remain authoritative. Firestore and immutable business events remain authoritative data sources. Dashboard summaries, projection buckets, caches, and telemetry are rebuildable read models.
 
-### 6. Publish and verify CI
+Never:
 
-Direct pushes to `main` are authorized for this project. After validation:
+- enable production `VITE_V2_READ_*` flags as part of foundation work;
+- migrate financial authority to v2;
+- delete legacy routes or production data;
+- convert the intentionally non-destructive garage deletion job into a physical delete writer;
+- use an old Cloudflare preview as current-build evidence;
+- create a branch merely to manufacture a preview for validation;
+- print, commit, paste, or expose secrets;
+- use the Railway operator token as a Firebase user token;
+- treat an operator-MCP health response as proof of Firebase-authenticated frontend behavior.
 
-```bash
-git add <exact-files>
-git commit -m "<small descriptive message>"
-git push origin main
-gh run list --repo tarekhamada875-droid/RQ- --limit 5 --json databaseId,headSha,status,conclusion,name,displayTitle,createdAt
+Known external blocker: the last Cloudflare inspection found no current non-production preview for the current `main` build. The available preview was stale. When a natural current preview appears, use a Firebase-authenticated browser session to validate the Cloudflare-to-Railway path. Do not bypass this by changing production flags.
+
+## Exact working method used successfully
+
+For every new slice:
+
+1. Verify `git status --short --branch`, `git log -3 --oneline`, current plan, handoff, and relevant source.
+2. Inspect the legacy behavior and matching v2 contracts/repositories/routes/tests.
+3. Select one bounded, reversible, preferably read-only or non-financial capability.
+4. Implement it using existing repository conventions for auth, scope, envelopes, idempotency, audit, redaction, and emulator tests.
+5. Add focused tests for valid behavior, invalid input, authentication, authorization, cross-scope access, replay/concurrency where relevant, and production non-exposure.
+6. Run focused tests first, then the complete validation gate:
+
+   ```bash
+   npm run lint:v2
+   npm run test:v2 -- <focused-tests>
+   npx --yes firebase-tools@15.30.2 emulators:exec --only firestore --project rq-v2-agent-check "npm run check:v2"
+   npm test
+   npm run lint
+   npm run build
+   npm run maintainability:check
+   git diff --check
+   ```
+
+7. Review `git diff --stat`, every changed file, secret exposure, flags, generated artifacts, and `git status`.
+8. Direct pushes to `main` are authorized in this project. Commit only the focused files, push, and watch the Production Gate.
+9. Do not call a slice complete until the relevant GitHub Gate succeeds.
+10. Update both `BACKEND_OVERHAUL_HANDOFF.md` and `BACKEND_COMPLETE_OVERHAUL_STAGES.md` with exact commits, gate IDs, validation evidence, limitations, and next action.
+
+## Railway MCP: restore or recreate it safely
+
+The Railway MCP is deliberately outside the repository at:
+
+```text
+/home/ubuntu/rq-backend-mcp
 ```
 
-Wait for the Production Gate result before describing the slice as verified. If a newer commit cancels an earlier run, use the final run for the latest commit.
-
-### 7. Update the handoff
-
-After the gate finishes, update both:
-
-- `BACKEND_OVERHAUL_HANDOFF.md`
-- `BACKEND_COMPLETE_OVERHAUL_STAGES.md`
-
-Record:
-
-- Exact implementation commit.
-- Exact documentation commit.
-- Exact CI run and conclusion.
-- Local test counts.
-- What is still blocked.
-- The next bounded action.
-
-Never leave stale commit numbers or test counts in the handoff.
-
-### External services and credentials
-
-Before using Cloudflare, Railway, GitHub, or another external service, inspect the configured connector state and use the enabled connector or the repository's existing CLI convention. Do not invent credentials, print secret values, paste tokens into files, or replace a configured connector with an ad hoc integration. Keep all operator tokens server-to-server and treat them as different from Firebase user authentication. Redact secrets from command output, logs, screenshots, test artifacts, and handoff text.
-
-### Railway MCP build or restore procedure
-
-The Railway operator MCP is deliberately outside this repository. Never commit it into `RQ-`, put it under `server-v2`, bundle it into the frontend, or place its token in Git. The existing reference implementation is:
+Never move it into `RQ-`, `server-v2`, or the frontend. The reference files are:
 
 ```text
 /home/ubuntu/rq-backend-mcp/server.mjs
+/home/ubuntu/rq-backend-mcp/smoke-test.mjs
+/home/ubuntu/rq-backend-mcp/live-check.mjs
+/home/ubuntu/rq-backend-mcp/README.md
 ```
 
-Before rebuilding anything, inspect the configured connector and the external directory:
-
-```bash
-manus-config config load --search railway
-manus-config connector list --user-custom-only
-find /home/ubuntu/rq-backend-mcp -maxdepth 1 -type f -print
-```
-
-The current connector is named `RQ Railway Backend Operator`. It is a stdio MCP launched with Node and uses these environment variables:
-
-```text
-RQ_BACKEND_URL=https://rq-production-af02.up.railway.app
-BACKEND_OPERATOR_TOKEN=<user-provided Railway operator token>
-RQ_BACKEND_TIMEOUT_MS=10000
-```
-
-Never print the token, place it on a shell command line, write it to the repository, put it in this handoff, or include it in a test fixture. If the token is missing or expired, stop and ask the user to provide or rotate it. Never invent a token. The operator token is server-to-server only; it cannot authenticate Firebase frontend users.
-
-If the external MCP directory is missing, create it outside the repository and install the MCP SDK there:
-
-```bash
-mkdir -p /home/ubuntu/rq-backend-mcp
-cd /home/ubuntu/rq-backend-mcp
-npm init -y
-npm install @modelcontextprotocol/sdk zod
-```
-
-Implement or restore a Node server using `StdioServerTransport`. At startup, require `RQ_BACKEND_URL` and `BACKEND_OPERATOR_TOKEN`; accept `RQ_BACKEND_TIMEOUT_MS` only within the bounded range 1000–60000 milliseconds, defaulting to 10000. The server must use `GET` only, attach `x-backend-operator-token`, create a correlation ID, enforce an abort timeout, parse JSON safely, and cap raw non-JSON responses.
-
-Expose only these read-only tools:
+It is a read-only stdio MCP with exactly two tools:
 
 ```text
 backend_health
 read_backend_endpoint
 ```
 
-The endpoint tool must validate the path against this explicit allowlist and must not accept a caller-supplied base URL:
+It uses only `GET`, adds a server-to-server operator header, creates request IDs, enforces a bounded timeout, safely parses/truncates responses, and allows only:
 
 ```text
 /api/health
@@ -224,224 +153,93 @@ The endpoint tool must validate the path against this explicit allowlist and mus
 /api/v2/packages
 ```
 
-Do not add POST, PUT, PATCH, DELETE, arbitrary URL access, shell execution, Firestore access, token inspection, or mutation tools. Do not use the MCP to bypass Firebase authorization or to perform business operations.
+It must not gain POST/PUT/PATCH/DELETE, arbitrary URLs, shell execution, Firestore access, token inspection, or business-operation tools.
 
-Register or restore the connector through `manus-config`, not by editing `/home/ubuntu/.manus/config/config.json` directly. Inspect first:
+Required environment variables are configured outside Git:
+
+```text
+RQ_BACKEND_URL=https://rq-production-af02.up.railway.app
+BACKEND_OPERATOR_TOKEN=<private token; never place in this file>
+RQ_BACKEND_TIMEOUT_MS=10000
+```
+
+The same private operator token must be configured as `BACKEND_OPERATOR_TOKEN` in Railway and in the MCP connector environment. It is not the Firebase user token. If it is missing or expired, ask the user to provide or rotate it; never invent one. The local token file, if present, must stay outside Git with mode `600`:
+
+```text
+/home/ubuntu/rq-backend-mcp/.operator-token
+```
+
+To recreate the external directory if it is missing:
+
+```bash
+mkdir -p /home/ubuntu/rq-backend-mcp
+cd /home/ubuntu/rq-backend-mcp
+npm init -y
+npm install @modelcontextprotocol/sdk zod
+```
+
+Then restore `server.mjs` from the existing reference or implement the same `McpServer` + `StdioServerTransport` design. Do not put the token in command arguments or source files.
+
+Inspect connectors before changing them:
 
 ```bash
 manus-config config load --search railway
+manus-config connector list --user-custom-only
 ```
 
-If no matching connector exists, create a form-mode stdio connector draft. Put secrets only in the connector environment fields; never put them in command arguments. A connector review/approval step may be presented to the user; do not bypass it.
+Register or restore the connector through the connector-management workflow, not by editing `/home/ubuntu/.manus/config/config.json` directly. Put secrets only in connector environment fields. A user approval card may be required; do not bypass it.
 
-After registration or restoration, verify without exposing secrets:
+Safe local checks, without printing credentials:
 
 ```bash
-manus-config connector list --user-custom-only
-manus-mcp-cli tool list --server 'RQ Railway Backend Operator'
-manus-mcp-cli tool call backend_health --server 'RQ Railway Backend Operator' --input '{}'
-manus-mcp-cli tool call read_backend_endpoint --server 'RQ Railway Backend Operator' --input '{"path":"/api/v2/health"}'
+cd /home/ubuntu/rq-backend-mcp
+node smoke-test.mjs
+node --check server.mjs
+node --check live-check.mjs
 ```
 
-Use only allowlisted read paths for verification. Inspect the returned status and redacted metadata, not secret configuration. The MCP is a diagnostic/operator boundary, not part of the application backend and not evidence of authenticated Cloudflare-to-Railway frontend behavior.
+The MCP is an operator diagnostic boundary only. It is not a replacement for Firebase authentication and it is not evidence of a real authenticated Cloudflare preview.
 
-## What is already complete
+## Current plan and next move
 
-The repository already contains:
+### Immediate next move: frontend session-management UI
 
-- Strict v2 TypeScript foundation and CI/CD.
-- Typed API envelopes and environment parsing.
-- Firebase authentication/session adapters and authorization policies.
-- CORS allowlisting, request IDs, rate limits, and structured telemetry.
-- Package catalog, garage summary, vehicle, subscriber, garage-state, pending, and activity repositories.
-- Vehicle check-in/check-out commands.
-- Subscriber create, renew, update, suspend, cancel, and reversible tombstone commands.
-- Garage lifecycle commands.
-- Non-destructive garage deletion jobs.
-- Non-financial garage profile updates.
-- Projection persistence with event replay protection.
-- Bounded deterministic projection rebuilds.
-- Admin-only, disabled-by-default projection repair route.
-- Admin-only, disabled-by-default projection status route.
-- Fail-closed rollback and shadow-read policies.
-- Pure shadow-comparison coordinator.
-- Preview-only admin route:
+The backend endpoints are complete, but there is no user-facing Settings/Active Devices screen yet. Add a small frontend slice that:
 
-```text
-POST /api/v2/shadow/compare
-```
+- calls `GET /api/auth/sessions` through the existing authenticated API client;
+- displays opaque device/session entries, current status, and last-active timestamps;
+- confirms before revoking a non-current device;
+- calls `DELETE /api/auth/sessions/:sessionKey`;
+- logs out locally if the user revokes the current device;
+- handles `401`, `403`, `404`, timeout, and stale-list conflicts safely;
+- never displays or logs raw session IDs;
+- adds frontend tests and keeps the feature behind an appropriate safe UI route if needed.
 
-The route is disabled unless:
+After that slice, run the normal full gate and update the handoff.
 
-```text
-V2_SHADOW_COMPARISON_ENABLED=true
-```
+### Then resume the overhaul order
 
-The route currently has **no real production provider wiring**. Do not claim that it performs live comparisons until providers are actually injected and a real preview request succeeds.
+1. Obtain a natural current authenticated Cloudflare preview, if one appears.
+2. Run Firebase-authenticated preview checks for v2 health, package reads, garage summary, and session behavior.
+3. Run normalized legacy/v2 package and garage-summary comparisons.
+4. Exercise v2-failure fallback and legacy-failure blocking.
+5. Classify every difference; no unexplained financial or authorization mismatch is acceptable.
+6. Complete remaining non-financial repositories, reports, and a deployed projection worker only after explicit operational design and rollback evidence.
+7. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
+8. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
+9. Retire legacy paths only after migration and rollback-window expiration.
 
-## What is next
+## Cleanup and source-of-truth rules
 
-Follow this order.
+The repository contains several historical documents. Keep them unless they are demonstrably obsolete; update canonical status instead of deleting project history. The canonical current documents are:
 
-### First: current authenticated Cloudflare preview evidence
+- `NEXT_AGENT_HANDOFF.md` — this operating handoff.
+- `BACKEND_OVERHAUL_HANDOFF.md` — evidence and slice history.
+- `BACKEND_COMPLETE_OVERHAUL_STAGES.md` — master stage plan.
+- `RAILWAY_DEPLOYMENT_HANDOFF.md` — deployment contract.
 
-Check Cloudflare before assuming a preview exists. Use the enabled Cloudflare connector or the documented project tools. The current known state is that deployments from `main` are production deployments and no current non-production preview is available.
+Generated local artifacts such as `firestore-debug.log` and `dist/` are ignored and disposable. Do not commit them. The external MCP directory, `.operator-token`, and its lockfile are not repository files; preserve the MCP source and protect the token.
 
-Do not manufacture a preview by creating a branch just to trigger one. Do not use an old stale preview to claim current-build evidence.
+## Final handoff rule
 
-When a real current non-production preview exists, run authenticated checks with a real Firebase-authenticated browser session:
-
-```text
-GET /api/v2/health
-GET /api/v2/packages?limit=100
-GET /api/v2/garages/:garageId/summary
-```
-
-The Railway operator MCP token is not a Firebase user token. Do not use it as a substitute for browser authentication.
-
-If no current preview exists, do not wait indefinitely and do not manufacture one. Keep the preview-validation item explicitly blocked, then continue with the backend-only provider, telemetry, repository, report, and worker work described below. Re-check Cloudflare only as part of a meaningful validation step or after a new natural deployment is reported.
-
-### Second: wire real providers into the shadow route
-
-The next backend implementation slice should inject real read providers into the preview composition only:
-
-- Legacy package catalog read versus v2 package catalog read.
-- Legacy garage summary read versus v2 garage summary read.
-
-The provider must:
-
-- Be read-only.
-- Use the same request scope and authenticated user.
-- Include endpoint, request ID, garage/tenant scope, and data version in the comparison input.
-- Reuse the existing normalized comparison utility.
-- Reuse the fail-closed shadow policy.
-- Return redacted mismatch data only.
-- Never write comparison payloads to production.
-- Never enable production traffic.
-
-Add provider tests with deterministic legacy/v2 fixtures and preview composition tests proving the provider is absent or disabled in production.
-
-### Third: add aggregate comparison telemetry
-
-After real providers exist, add aggregate operational counters without storing sensitive payloads:
-
-- comparisons attempted;
-- equal comparisons;
-- ordinary mismatches;
-- financial mismatches;
-- authorization mismatches;
-- v2 read failures;
-- legacy fallbacks;
-- blocked comparisons;
-- latency and Firestore read-cost measurements.
-
-Keep telemetry redacted. Do not log customer data, tokens, full records, wallet values, or unrestricted request bodies.
-
-Telemetry must be observational only. It must not become a hidden traffic switch, a financial writer, or a reason to bypass the fail-closed decision policy. A counter is not migration evidence until it comes from a current authenticated preview or an explicitly documented non-production fixture.
-
-### Fourth: complete non-financial backend gaps
-
-Continue with:
-
-- Remaining entity converters and indexes.
-- Remaining real Firestore-backed reports.
-- Production projection workers.
-- Retry, resume, and dead-letter behavior.
-- Repair-needed monitoring.
-- Remaining non-financial management routes.
-
-Physical deletion is deferred. The existing deletion job is intentionally non-destructive. Do not convert it into a physical delete writer.
-
-### Fifth: shadow comparison evidence
-
-Run enough authenticated preview comparisons to explain every difference. Do not treat one successful request as proof.
-
-No unexplained financial or authorization mismatch is acceptable. Any v2 error must fall back to legacy. Any legacy failure must block rather than silently selecting v2.
-
-### Sixth: progressive read cutover
-
-Only after comparison evidence is clean:
-
-1. Internal/admin users.
-2. One selected garage.
-3. Small garage cohort.
-4. Larger cohort.
-5. All eligible read traffic.
-
-At each stage define and monitor:
-
-- equality rate;
-- mismatch rate;
-- hard financial/authorization mismatch count;
-- p95 latency;
-- Firestore reads and cost;
-- error rate;
-- fallback rate;
-- rollback trigger;
-- rollback test result.
-
-Keep the legacy fallback available throughout the rollout.
-
-Before each cohort expands, require an explicit checklist result for equality rate, hard-mismatch count, p95 latency, Firestore cost, error rate, fallback rate, and rollback readiness. If any threshold is missing or fails, stop at the current cohort and keep legacy authoritative.
-
-### Seventh: financial authority migration
-
-Financial writes come last. Before migrating them:
-
-- Implement Firestore transactions.
-- Persist idempotency records atomically.
-- Persist audit/business events atomically.
-- Reconcile old and new ledger behavior.
-- Test retries and concurrency.
-- Test repair and rollback.
-- Define one financial authority.
-
-Never dual-write money operations. Never migrate financial writes because read comparisons passed.
-
-Financial migration is a separate approval boundary from read migration. Do not implement or enable financial Firestore writers merely because the read-side shadow route is complete. The first financial slice must remain non-production until transaction, reconciliation, repair, rollback, idempotency, audit, and concurrency evidence is complete.
-
-### Eighth: legacy retirement
-
-Retire legacy paths only after:
-
-- All required read and write domains are migrated.
-- The rollback window has expired.
-- Retention and audit requirements are reviewed.
-- Production monitoring is stable.
-- The old writer cannot still be reached unexpectedly.
-
-Do not delete production data as part of this overhaul.
-
-## Absolute rules — do not break these
-
-1. Do not replace the old production backend yet.
-2. Do not enable production `VITE_V2_READ_*` flags.
-3. Do not enable financial v2 writes.
-4. Do not dual-write money operations.
-5. Do not use the Railway operator token as Firebase user authentication.
-6. Do not claim authenticated Cloudflare-to-Railway success without a current preview and real Firebase-authenticated request.
-7. Do not create a branch solely to manufacture preview evidence.
-8. Do not use stale preview deployments as current-build evidence.
-9. Do not physically delete garages, subscribers, vehicles, or production data.
-10. Do not silently weaken authorization, scope checks, idempotency, audit, rate limits, or rollback behavior.
-11. Do not store secrets in Git, handoff files, test fixtures, logs, or generated artifacts.
-12. Do not remove legacy fallback until the staged cutover is complete.
-13. Do not mark a stage complete because code compiles; require tests, emulator validation, build, CI, and documented evidence.
-14. Do not make unrelated broad refactors while implementing a bounded slice.
-
-## How to report progress
-
-When you finish a slice, report in the handoff using this structure:
-
-```text
-Implementation commit: <sha> <message>
-Documentation commit: <sha> <message>
-Production Gate: <run id> — success/failure
-Local validation: exact test files/tests, typecheck, build, maintainability result
-External evidence: preview URL or explicitly unavailable
-Safety state: production flags and financial authority unchanged
-Remaining blocker: one clear statement
-Next action: one bounded action
-```
-
-Remember: your success is not measured by how much code you change. It is measured by whether the new backend becomes safer, more observable, more reversible, and better proven without damaging production.
+At the end of every slice, leave the repository clean, the exact commit and CI run recorded, the next action explicit, and no secret in source, logs, test fixtures, or documentation.
