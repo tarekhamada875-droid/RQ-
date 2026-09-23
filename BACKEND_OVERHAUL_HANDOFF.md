@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `eb19593 test: cover active devices interactions`
-**Latest verified local evidence:** focused Active Devices service/component tests passed with 8 tests total; the complete repository/emulator validation gate passed; Production Gate `35823805861` passed for `eb19593`.
+**Latest published commit:** `b1aae73 test: cover v2 read pagination contracts`
+**Latest verified local evidence:** focused v2 adapter tests passed with 7 tests; the complete repository/emulator validation gate passed; Production Gate `35824735761` passed for `b1aae73`.
 
 ## Mission
 
@@ -180,6 +180,8 @@ Next action remains conditional: when a natural current Firebase-authenticated C
 The follow-up non-financial slice is `647e251`. It adds `src/services/sessionService.test.ts` with five focused tests for valid session-list parsing, malformed list rejection, valid opaque-key DELETE construction, invalid-key rejection before network access, and mismatched revoke-response rejection. The corrected full validation sequence passed `npm run lint:v2`, the Firestore-emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. Production Gate `35823053960` passed. No backend authority, production flag, financial write, or production data changed.
 
 The next non-financial slice is `eb19593`. It adds `src/components/admin/AdminActiveSessionsView.test.tsx` with three React/jsdom tests for session loading, non-current revocation and success feedback, and current-session revocation delegating to logout. The same complete validation sequence passed, and Production Gate `35823805861` passed. No backend authority, production flag, financial write, or production data changed.
+
+The next bounded read-only slice is `b1aae73`. It adds pagination contract coverage to `src/__tests__/v2ReadAdapter.test.ts`: cursor and limit URL encoding for pending/activity reads and rejection of malformed page envelopes. The complete validation sequence passed, and Production Gate `35824735761` passed. No runtime behavior, backend authority, production flag, financial write, or production data changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
