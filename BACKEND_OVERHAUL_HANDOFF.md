@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `b1aae73 test: cover v2 read pagination contracts`
-**Latest verified local evidence:** focused v2 adapter tests passed with 7 tests; the complete repository/emulator validation gate passed; Production Gate `35824735761` passed for `b1aae73`.
+**Latest published commit:** `9b42c8f fix: validate calendar date keys`
+**Latest verified local evidence:** focused date-contract/report-route tests passed with 12 tests; the complete repository/emulator validation gate passed; Production Gate `35826313877` passed for `9b42c8f`.
 
 ## Mission
 
@@ -182,6 +182,8 @@ The follow-up non-financial slice is `647e251`. It adds `src/services/sessionSer
 The next non-financial slice is `eb19593`. It adds `src/components/admin/AdminActiveSessionsView.test.tsx` with three React/jsdom tests for session loading, non-current revocation and success feedback, and current-session revocation delegating to logout. The same complete validation sequence passed, and Production Gate `35823805861` passed. No backend authority, production flag, financial write, or production data changed.
 
 The next bounded read-only slice is `b1aae73`. It adds pagination contract coverage to `src/__tests__/v2ReadAdapter.test.ts`: cursor and limit URL encoding for pending/activity reads and rejection of malformed page envelopes. The complete validation sequence passed, and Production Gate `35824735761` passed. No runtime behavior, backend authority, production flag, financial write, or production data changed.
+
+The next bounded safety slice is `9b42c8f`. Its dashboard-report boundary test exposed that the shared `DateKeySchema` accepted impossible calendar dates despite enforcing `YYYY-MM-DD` shape. The schema now validates calendar reality using UTC component round-tripping. Foundation coverage rejects `2026-02-29` and `2026-99-99`, and report-route coverage verifies invalid-date rejection plus stale-projection labeling. The complete validation sequence passed, and Production Gate `35826313877` passed. No financial authority, production flag, or production data changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
