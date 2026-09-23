@@ -25,9 +25,87 @@ import {
   isNewPinFormat,
   ValidationError
 } from '../validation';
-import { addActiveSession, hasActiveSession, removeActiveSession } from '../auth/sessionMarkers';
+import { addActiveSession, hashSessionId, hasActiveSession, removeActiveSession, toSessionSummary } from '../auth/sessionMarkers';
 
 export function registerAuthRoutes(router: Router) {
+  const sessionCollections: Record<string, { sessions: string; entity: string }> = {
+    admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
+    supervisor: { sessions: 'supervisor_sessions', entity: 'supervisors' },
+    delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
+    garage: { sessions: 'garage_sessions', entity: 'garages' },
+    staff: { sessions: 'staff_sessions', entity: 'staff' }
+  };
+
+  // Return only redacted session summaries. Raw session IDs never leave the backend.
+  router.get('/api/auth/sessions', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!adminDb || !req.user?.uid || req.user.uid === 'backend-operator') {
+        return sendApiError(res, 403, 'FORBIDDEN', 'SESSION_MANAGEMENT_REQUIRES_USER_SESSION', req.correlationId);
+      }
+      const definition = sessionCollections[req.user.role];
+      if (!definition) return sendApiError(res, 403, 'FORBIDDEN', 'SESSION_MANAGEMENT_ROLE_NOT_ALLOWED', req.correlationId);
+
+      const rootRef = adminDb.doc(`${definition.sessions}/${req.user.uid}`);
+      const [rootSnap, deviceSnap] = await Promise.all([
+        rootRef.get(),
+        rootRef.collection('sessions').get()
+      ]);
+      const summaries = deviceSnap.docs.map((doc) => toSessionSummary(doc.id, doc.data() || {}, req.user?.sessionId));
+      if (summaries.length === 0 && rootSnap.exists && rootSnap.data()?.isActive === true && req.user.sessionId) {
+        summaries.push(toSessionSummary(req.user.sessionId, rootSnap.data() || {}, req.user.sessionId));
+      }
+      return res.json({ success: true, sessions: summaries });
+    } catch (error) {
+      console.error('[Server Auth] Error listing sessions:', error);
+      return sendApiError(res, 500, 'INTERNAL_ERROR', 'SESSION_LIST_FAILED', req.correlationId);
+    }
+  });
+
+  // Revoke one of the caller's own devices using only its redacted session ID.
+  router.delete('/api/auth/sessions/:sessionKey', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!adminDb || !req.user?.uid || req.user.uid === 'backend-operator') {
+        return sendApiError(res, 403, 'FORBIDDEN', 'SESSION_MANAGEMENT_REQUIRES_USER_SESSION', req.correlationId);
+      }
+      const definition = sessionCollections[req.user.role];
+      const sessionKey = String(req.params.sessionKey || '').trim();
+      if (!definition || !/^[a-f0-9]{64}$/.test(sessionKey)) {
+        return sendApiError(res, 400, 'INVALID_INPUT', 'INVALID_SESSION_KEY', req.correlationId);
+      }
+
+      const rootRef = adminDb.doc(`${definition.sessions}/${req.user.uid}`);
+      const [rootSnap, deviceSnap] = await Promise.all([rootRef.get(), rootRef.collection('sessions').get()]);
+      const target = deviceSnap.docs.find((doc) => hashSessionId(doc.id) === sessionKey);
+      if (!target) return sendApiError(res, 404, 'NOT_FOUND', 'SESSION_NOT_FOUND', req.correlationId);
+
+      const targetData = target.data() || {};
+      const entityId = req.user.role === 'admin' ? 'auth_pin' : targetData.entityId;
+      const entityRef = entityId ? adminDb.doc(`${definition.entity}/${entityId}`) : null;
+      const entitySnap = entityRef ? await entityRef.get() : null;
+      const remainingRoot = removeActiveSession(rootSnap.data() || {}, target.id);
+      const remainingEntity = entitySnap?.exists ? removeActiveSession(entitySnap.data() || {}, target.id) : [];
+      const batch = adminDb.batch();
+      batch.set(target.ref, { isActive: false, lastActive: new Date() }, { merge: true });
+      batch.set(rootRef, {
+        activeSessionIds: remainingRoot,
+        ...(rootSnap.data()?.currentSessionId === target.id
+          ? { currentSessionId: remainingRoot.at(-1) ?? null }
+          : {})
+      }, { merge: true });
+      if (entityRef && entitySnap?.exists) {
+        batch.set(entityRef, {
+          activeSessionIds: remainingEntity,
+          ...(entitySnap.data()?.currentSessionId === target.id ? { currentSessionId: remainingEntity.at(-1) ?? null } : {})
+        }, { merge: true });
+      }
+      await batch.commit();
+      return res.json({ success: true, revokedSession: sessionKey, wasCurrent: target.id === req.user.sessionId });
+    } catch (error) {
+      console.error('[Server Auth] Error revoking session:', error);
+      return sendApiError(res, 500, 'INTERNAL_ERROR', 'SESSION_REVOKE_FAILED', req.correlationId);
+    }
+  });
+
   router.post('/api/auth/verify-pin', requireFirebaseUser, async (req: AuthRequest, res) => {
     try {
       const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';

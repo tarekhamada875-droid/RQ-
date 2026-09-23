@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeSessionIds, addActiveSession, hasActiveSession, removeActiveSession } from '../auth/sessionMarkers';
+import { activeSessionIds, addActiveSession, hashSessionId, hasActiveSession, removeActiveSession, toSessionSummary } from '../auth/sessionMarkers';
 
 describe('multi-device session markers', () => {
   it('merges the legacy marker with active device sessions without duplicates', () => {
@@ -19,5 +19,25 @@ describe('multi-device session markers', () => {
     expect(ids).toHaveLength(100);
     expect(ids.at(-1)).toBe('session-100');
     expect(ids).not.toContain('session-0');
+  });
+
+  it('exposes only a one-way session identifier and safe timestamps', () => {
+    const summary = toSessionSummary('session-secret', {
+      isActive: true,
+      createdAt: new Date('2026-09-22T10:00:00.000Z'),
+      lastActive: new Date('2026-09-22T10:05:00.000Z'),
+      uid: 'uid-secret',
+      displayName: 'Private User'
+    }, 'session-secret');
+
+    expect(summary).toEqual({
+      id: hashSessionId('session-secret'),
+      isCurrent: true,
+      isActive: true,
+      createdAt: '2026-09-22T10:00:00.000Z',
+      lastActive: '2026-09-22T10:05:00.000Z'
+    });
+    expect(JSON.stringify(summary)).not.toContain('session-secret');
+    expect(JSON.stringify(summary)).not.toContain('uid-secret');
   });
 });
