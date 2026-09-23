@@ -1644,3 +1644,8 @@ Commit `6b8964d` adds test evidence that authenticated-preview middleware protec
 ### Package and garage-summary read guard coverage — 2026-09-23
 
 Commit `60d38e3` adds evidence that production-disabled package and garage-summary reads remain `404` and malformed package/date queries remain `400`. The complete corrected validation gate passed. No production flags or runtime authority changed.
+
+
+### Current Cloudflare preview discovery and public smoke evidence — 2026-09-23
+
+A fresh Cloudflare Pages preview from current `main` was created through temporary branch `preview/current-main-v2-smoke`: deployment `7a66d0e0`, alias `https://preview-current-main-v2-smok.rq-acg.pages.dev`. The public login UI loaded successfully; Railway health and v2 health returned `200`, and unauthenticated packages returned `401`. Authenticated Firebase preview checks remain pending a valid session or test credential. No production flags or financial authority changed.

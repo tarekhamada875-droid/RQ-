@@ -428,3 +428,8 @@ Commit `6b8964d` adds route coverage proving that when the authenticated preview
 ### Package and garage-summary read guard coverage — 2026-09-23
 
 Commit `60d38e3` extends read-route coverage so production-disabled package catalog and garage-summary reads return `404`, while malformed package limits and summary dates return stable `400` envelopes. The focused read-route suite and v2 typecheck passed; the complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No production flag, deployment authority, financial write, or production data changed.
+
+
+### Current Cloudflare preview discovery and public smoke evidence — 2026-09-23
+
+The enabled Cloudflare connector confirmed the Pages project `rq` is connected to `tarekhamada875-droid/RQ-`, with preview deployments enabled for all branches. The newest prior preview was stale (`feat/backend-operator-mcp-auth`, 2026-09-19), so a temporary branch `preview/current-main-v2-smoke` was pushed from current `main` commit `2eddcfa`. Cloudflare created active preview deployment `7a66d0e0` with alias `https://preview-current-main-v2-smok.rq-acg.pages.dev`. The public browser smoke check loaded the current RQ login screen successfully. Read-only Railway checks returned `/api/health` `200` with version `2eddcfa...`, `/api/v2/health` `200`, and unauthenticated `/api/v2/packages` `401` with `UNAUTHORIZED`. Authenticated package, summary, and shadow comparisons remain unexecuted because no Firebase session or test credential was supplied; no credentials were guessed or attempted. No production flags, financial authority, or production data changed.
