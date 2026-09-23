@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `54bd219 fix: reject expired repair leases`
-**Latest verified local evidence:** the Firestore repair queue suite passes 5 emulator-backed tests, including expired-lease rejection without queue-state mutation; the complete repository/emulator validation gate passed; Production Gate `35837731215` passed for `54bd219`.
+**Latest published commit:** `6fb49c6 test: cover shadow telemetry redaction`
+**Latest verified local evidence:** the shadow telemetry suite passes 3 focused tests, including authorization-mismatch counting and aggregate console redaction; the complete repository/emulator validation gate passed; Production Gate `35840179976` passed for `6fb49c6`.
 
 ## Mission
 
@@ -190,6 +190,8 @@ The following operational-safety slice is `3b1f018`. It adds [`docs/projection-r
 The next bounded route-safety slice is `693fdb8`. It adds projection-status coverage for impossible calendar dates and repository-error redaction. The route remains preview-gated and admin-only; no runtime behavior or production authority changed. The complete validation sequence passed, and Production Gate `35834417741` passed.
 
 The next projection-worker safety slice is `54bd219`. Queue completion and failure now require a matching, unexpired worker lease; expired workers receive `REPAIR_TASK_LEASE_EXPIRED` and cannot mutate queue state. The runbook records this fail-closed rule, and emulator coverage passes. The complete validation sequence passed, and Production Gate `35837731215` passed. The worker remains undeployed and unscheduled.
+
+The next migration-evidence slice is `6fb49c6`. Shadow telemetry now has explicit authorization-mismatch coverage and verifies that its console sink emits only aggregate counters, not mismatch payloads or raw error text. The complete validation sequence passed, and Production Gate `35840179976` passed. No production shadow traffic or cutover flag changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
