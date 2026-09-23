@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ-`
 **Current branch:** `main`
-**Latest published commit:** `647e251 test: cover active session service`
-**Working tree at handoff:** clean and synchronized with `origin/main`; focused Active Devices service coverage and handoff evidence are published directly to `main`.
+**Latest published commit:** `eb19593 test: cover active devices interactions`
+**Working tree at handoff:** clean and synchronized with `origin/main`; focused Active Devices service/component coverage and handoff evidence are published directly to `main`.
 
 ## Read this first
 
@@ -213,10 +213,11 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Local `npm test -- --run` passed: 56 files and 300 tests. `npm run build` passed.
 - The initial gate for documentation tip `6f8172f` failed in `verify/Typecheck` because the component destructured an unused `t` prop (`TS6133`). Commit `b5b681b` removes only that unused destructuring; Production Gate `35822201327` passed, including typecheck, tests, production build, v2 foundation, artifact, maintainability, and live smoke checks.
 - Commit `647e251` adds five focused `sessionService` tests covering valid list responses, malformed list rejection, DELETE construction for valid opaque keys, invalid-key rejection before network access, and mismatched revoke responses. Production Gate `35823053960` passed.
+- Commit `eb19593` adds three React/jsdom tests covering session loading, non-current revocation with success feedback, and current-session revocation with logout. Production Gate `35823805861` passed.
 
 The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 
-The latest published commit is gate-verified by `35823053960`; the earlier failing gate was corrected without changing behavior.
+The latest published commit is gate-verified by `35823805861`; the earlier failing gate was corrected without changing behavior.
 
 ### Completed bounded read-only migration-evidence task
 
@@ -226,7 +227,7 @@ Local normalized migration evidence passed in 4 focused v2 test files with 16 te
 
 ### Then resume the overhaul order
 
-1. Keep `647e251` and Production Gate `35823053960` as the verified current tip.
+1. Keep `eb19593` and Production Gate `35823805861` as the verified current tip.
 2. If a natural current authenticated Cloudflare preview appears, perform Firebase-browser checks for v2 health, package reads, garage summary, and session behavior.
 3. Through that preview, repeat normalized legacy/v2 package and garage-summary comparisons and classify every difference.
 4. Exercise v2-failure fallback and legacy-failure blocking in the authenticated preview; no unexplained financial or authorization mismatch is acceptable.

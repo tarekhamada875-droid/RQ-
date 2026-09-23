@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `647e251 test: cover active session service`
-**Latest verified local evidence:** focused Active Devices service tests passed with 5 tests; the complete repository/emulator validation gate passed; Production Gate `35823053960` passed for `647e251`.
+**Latest published commit:** `eb19593 test: cover active devices interactions`
+**Latest verified local evidence:** focused Active Devices service/component tests passed with 8 tests total; the complete repository/emulator validation gate passed; Production Gate `35823805861` passed for `eb19593`.
 
 ## Mission
 
@@ -178,6 +178,8 @@ The bounded local migration-evidence task is complete for this slice. `npm run t
 Next action remains conditional: when a natural current Firebase-authenticated Cloudflare preview exists, run the requested authenticated v2 health, package, garage-summary, and session checks, then compare normalized legacy/v2 results and exercise fallback/blocking. Until then, keep the preview item blocked and continue only with bounded read-only evidence or explicitly safe non-financial work. Legacy backend and financial writes remain authoritative.
 
 The follow-up non-financial slice is `647e251`. It adds `src/services/sessionService.test.ts` with five focused tests for valid session-list parsing, malformed list rejection, valid opaque-key DELETE construction, invalid-key rejection before network access, and mismatched revoke-response rejection. The corrected full validation sequence passed `npm run lint:v2`, the Firestore-emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. Production Gate `35823053960` passed. No backend authority, production flag, financial write, or production data changed.
+
+The next non-financial slice is `eb19593`. It adds `src/components/admin/AdminActiveSessionsView.test.tsx` with three React/jsdom tests for session loading, non-current revocation and success feedback, and current-session revocation delegating to logout. The same complete validation sequence passed, and Production Gate `35823805861` passed. No backend authority, production flag, financial write, or production data changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
