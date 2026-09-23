@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ`
 **Current branch:** `main`
-**Latest feature commit:** `5e2bba2 feat: add active session management`
-**Working tree at handoff:** clean and synchronized with `origin/main`; verify the exact documentation HEAD with `git log -3 --oneline`.
+**Latest feature commit:** `9bbcb5a feat: add active devices admin view`
+**Working tree at handoff:** clean and synchronized with `origin/main`; the frontend session UI commit was pushed directly to `main` and awaits its Production Gate result.
 
 ## Read this first
 
@@ -202,32 +202,32 @@ The MCP is an operator diagnostic boundary only. It is not a replacement for Fir
 
 ## Current plan and next move
 
-### Immediate next move: frontend session-management UI
+### Completed current slice: frontend session-management UI
 
-The backend endpoints are complete, but there is no user-facing Settings/Active Devices screen yet. Add a small frontend slice that:
+Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed client service:
 
-- calls `GET /api/auth/sessions` through the existing authenticated API client;
-- displays opaque device/session entries, current status, and last-active timestamps;
-- confirms before revoking a non-current device;
-- calls `DELETE /api/auth/sessions/:sessionKey`;
-- logs out locally if the user revokes the current device;
-- handles `401`, `403`, `404`, timeout, and stale-list conflicts safely;
-- never displays or logs raw session IDs;
-- adds frontend tests and keeps the feature behind an appropriate safe UI route if needed.
+- `src/services/sessionService.ts` calls both authenticated endpoints and validates response shapes and 64-character opaque keys.
+- `src/components/admin/AdminActiveSessionsView.tsx` displays redacted entries, current status, timestamps, refresh, errors, and confirmation before revocation.
+- Current-session revocation delegates to the existing logout callback; no new auth authority was introduced.
+- `src/components/admin/AdminNavigationAndViews.tsx` and `AdminDashboard.tsx` wire the screen into admin settings.
+- Local `npm test -- --run` passed: 56 files and 300 tests. `npm run build` passed.
 
-After that slice, run the normal full gate and update the handoff.
+The normal UI test harness has no dedicated component test added yet; add focused service/component coverage in the next small slice if the existing test environment supports it.
+
+The GitHub Production Gate for `9bbcb5a` is not yet recorded in this handoff. Check it before claiming the slice complete.
 
 ### Then resume the overhaul order
 
-1. Obtain a natural current authenticated Cloudflare preview, if one appears.
-2. Run Firebase-authenticated preview checks for v2 health, package reads, garage summary, and session behavior.
-3. Run normalized legacy/v2 package and garage-summary comparisons.
-4. Exercise v2-failure fallback and legacy-failure blocking.
-5. Classify every difference; no unexplained financial or authorization mismatch is acceptable.
-6. Complete remaining non-financial repositories, reports, and a deployed projection worker only after explicit operational design and rollback evidence.
-7. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
-8. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
-9. Retire legacy paths only after migration and rollback-window expiration.
+1. Verify Production Gate for `9bbcb5a` and keep the tree clean.
+2. Obtain a natural current authenticated Cloudflare preview, if one appears.
+3. Run Firebase-authenticated preview checks for v2 health, package reads, garage summary, and session behavior.
+4. Run normalized legacy/v2 package and garage-summary comparisons.
+5. Exercise v2-failure fallback and legacy-failure blocking.
+6. Classify every difference; no unexplained financial or authorization mismatch is acceptable.
+7. Complete remaining non-financial repositories, reports, and a deployed projection worker only after explicit operational design and rollback evidence.
+8. Progressive read cutover: internal users, one garage, small cohort, larger cohort, all eligible reads.
+9. Financial authority migration only after reconciliation, cost/SLO evidence, and rollback testing.
+10. Retire legacy paths only after migration and rollback-window expiration.
 
 ## Cleanup and source-of-truth rules
 

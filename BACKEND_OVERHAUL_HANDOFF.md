@@ -3,9 +3,9 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published documentation commit:** `bd2e04d docs: prepare next agent handoff`
-**Latest implementation commit:** `5e2bba2 feat: add active session management`
-**Latest verified implementation gate:** `35815476395` — **success**; the active-session implementation, full emulator-backed v2 validation, full application suite, build, maintainability checks, and exact-commit Railway smoke check pass. The handoff documentation gate for `bd2e04d` is `35818472489` — **success**.
+**Latest published documentation commit:** `9bbcb5a feat: add active devices admin view` (documentation update follows in the next handoff commit)
+**Latest implementation commit:** `9bbcb5a feat: add active devices admin view`
+**Latest verified local implementation evidence:** `npm test -- --run` passed with 56 files and 300 tests; `npm run build` passed. The GitHub Production Gate for `9bbcb5a` must still be checked by the next agent.
 
 ## Mission
 
@@ -83,6 +83,8 @@ The production environment does **not** contain `VITE_V2_READ_PACKAGE_CATALOG`; 
 Cloudflare read-only inspection on 2026-09-22 confirmed that the project is configured to create previews for all branches, but the available previews remain stale deployments from old feature branches. The newest listed preview is `7ff4c62e` at `https://7ff4c62e.rq-acg.pages.dev`, built from `feat/backend-operator-mcp-auth` at commit `1c60a0d` on 2026-09-19; it is not a current `main` build. The latest `main` deployment is production-only at `https://90c0d469.rq-acg.pages.dev`, built from commit `322faee`. The user explicitly prohibited branch creation, so do not create a branch merely to manufacture a preview URL. Do not claim Cloudflare-to-Railway authenticated end-to-end success until a current non-production preview deployment has been tested.
 
 ### Latest frontend slice
+
+Commit `9bbcb5a` adds the typed active-session client and Arabic RTL admin **Active Devices** screen. It uses the existing authenticated API client, displays only opaque session keys, confirms revocation, handles current-session logout through the existing callback, and is wired through `AdminDashboard.tsx` and `AdminNavigationAndViews.tsx`. It changes no backend authority, financial behavior, production flags, or production data.
 
 Commit `35d5856 feat: gate package catalog reads through v2` added:
 
