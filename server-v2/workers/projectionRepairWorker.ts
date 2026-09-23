@@ -57,7 +57,9 @@ export class ProjectionRepairWorker {
           projection: result.projection
         });
       } catch (error) {
-        results.push({ taskId: task.taskId, state: 'failed', errorCode: safeErrorCode(error) });
+        const errorCode = safeErrorCode(error);
+        results.push({ taskId: task.taskId, state: 'failed', errorCode });
+        if (errorCode === 'REPAIR_FAILED') break;
       }
     }
 

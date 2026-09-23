@@ -42,11 +42,27 @@ describe('projection repair worker', () => {
       }),
       actorUid: 'projection-worker'
     });
-    const result = await worker.run({ tasks: [task, { ...task, taskId: 'task-2', idempotencyKey: 'repair-task-2' }], occurredAt: '2026-09-22T12:00:00.000Z' });
+    const result = await worker.run({ tasks: [task, { ...task, taskId: 'task-2', idempotencyKey: 'repair-task-2' }, { ...task, taskId: 'task-3', idempotencyKey: 'repair-task-3' }], occurredAt: '2026-09-22T12:00:00.000Z' });
     expect(result).toMatchObject({ attempted: 2, rebuilt: 0, replayed: 1, failed: 1 });
     expect(result.results[0]).toMatchObject({ state: 'replayed' });
     expect(result.results[1]).toMatchObject({ state: 'failed', errorCode: 'REPAIR_FAILED' });
     expect(JSON.stringify(result)).not.toContain('customer payload');
+  });
+
+  it('reports known repository failures and continues to the next task', async () => {
+    let count = 0;
+    const worker = new ProjectionRepairWorker({
+      repository: repository(async () => {
+        count += 1;
+        if (count === 1) throw new Error('PROJECTION_SCOPE_MISMATCH');
+        return rebuilt;
+      }),
+      actorUid: 'projection-worker'
+    });
+    const result = await worker.run({ tasks: [task, { ...task, taskId: 'task-2', idempotencyKey: 'repair-task-2' }], occurredAt: '2026-09-22T12:00:00.000Z' });
+    expect(result).toMatchObject({ attempted: 2, rebuilt: 1, replayed: 0, failed: 1 });
+    expect(result.results[0]).toMatchObject({ taskId: 'task-1', state: 'failed', errorCode: 'PROJECTION_SCOPE_MISMATCH' });
+    expect(result.results[1]).toMatchObject({ taskId: 'task-2', state: 'rebuilt' });
   });
 
   it('rejects batches larger than the bounded worker limit', async () => {
