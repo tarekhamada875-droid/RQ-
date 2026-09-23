@@ -423,3 +423,8 @@ Commit `c3b76b3` adds emulator-backed coverage that a failed repair task is not 
 ### Authenticated preview read-route boundary coverage — 2026-09-23
 
 Commit `6b8964d` adds route coverage proving that when the authenticated preview middleware is mounted, unauthenticated requests to package catalog, garage summary, pending, and activity reads all fail with `401` before reaching their repositories. The focused read-route suite and v2 typecheck passed; the complete corrected validation gate also passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No production flag, deployment authority, financial write, or production data changed.
+
+
+### Package and garage-summary read guard coverage — 2026-09-23
+
+Commit `60d38e3` extends read-route coverage so production-disabled package catalog and garage-summary reads return `404`, while malformed package limits and summary dates return stable `400` envelopes. The focused read-route suite and v2 typecheck passed; the complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No production flag, deployment authority, financial write, or production data changed.

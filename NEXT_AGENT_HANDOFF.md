@@ -294,3 +294,8 @@ Commit `c3b76b3` adds emulator-backed proof that failed repair tasks cannot be r
 ### Authenticated preview read-route boundary coverage — 2026-09-23
 
 Commit `6b8964d` adds coverage that package, garage-summary, pending, and activity reads all reject unauthenticated callers when the authenticated preview middleware is mounted. Focused tests and the complete corrected validation gate passed. No production flag or financial authority changed.
+
+
+### Package and garage-summary read guard coverage — 2026-09-23
+
+Commit `60d38e3` adds coverage for production-disabled package and garage-summary reads and malformed query rejection. Focused tests and the complete corrected validation gate passed. No production flags or financial authority changed.

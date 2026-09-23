@@ -1639,3 +1639,8 @@ Commit `c3b76b3` adds emulator-backed evidence that queued repair retries respec
 ### Authenticated preview read-route boundary coverage — 2026-09-23
 
 Commit `6b8964d` adds test evidence that authenticated-preview middleware protects package, garage-summary, pending, and activity reads uniformly with `401` for unauthenticated callers. The complete corrected validation gate passed. This changes no production flags or runtime authority.
+
+
+### Package and garage-summary read guard coverage — 2026-09-23
+
+Commit `60d38e3` adds evidence that production-disabled package and garage-summary reads remain `404` and malformed package/date queries remain `400`. The complete corrected validation gate passed. No production flags or runtime authority changed.
