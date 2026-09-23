@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ`
 **Current branch:** `main`
-**Current HEAD:** `5e2bba2 feat: add active session management`
-**Working tree at handoff:** clean and synchronized with `origin/main`
+**Latest feature commit:** `5e2bba2 feat: add active session management`
+**Working tree at handoff:** clean and synchronized with `origin/main`; verify the exact documentation HEAD with `git log -3 --oneline`.
 
 ## Read this first
 
