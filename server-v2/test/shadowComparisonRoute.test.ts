@@ -40,6 +40,21 @@ describe('v2 shadow comparison route', () => {
     await new Promise<void>((resolve) => server?.close(() => resolve()));
     server = undefined;
     expect((await post(await start('admin'), { endpoint: 'garage_summary' })).status).toBe(400);
+    await new Promise<void>((resolve) => server?.close(() => resolve()));
+    server = undefined;
+    expect((await post(await start('admin'), { endpoint: 'packages', unexpected: true })).status).toBe(400);
+  });
+
+  it('redacts provider failures behind a stable internal-error envelope', async () => {
+    const provider = vi.fn<ShadowComparisonProvider>(async () => {
+      throw new Error('legacy response contained sensitive details');
+    });
+    const response = await post(await start('admin', true, provider), { endpoint: 'packages' });
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expect(body).toContain('INTERNAL_ERROR');
+    expect(body).toContain('Unable to run shadow comparison');
+    expect(body).not.toContain('sensitive details');
   });
 
   it('is not exposed while the feature flag is disabled', async () => {
