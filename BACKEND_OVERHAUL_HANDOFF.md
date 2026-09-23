@@ -462,3 +462,8 @@ The exact next bounded action is browser-free projection-worker operational prep
 ### Succession protocol enhancement — 2026-09-23
 
 The complete reusable succession procedure is [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md). It is now the standard companion to `NEXT_AGENT_HANDOFF.md` and covers state verification, exact-commit CI evidence, deployment and connector blockers, secret handling, safety invariants, bounded next-task selection, validation, publication, and closure.
+
+
+### Cross-account succession and Railway MCP bootstrap enhancement — 2026-09-23
+
+The reusable protocol now documents how a new account reconstructs the external Railway read-only MCP outside the repository. The contract exposes only `backend_health` and `read_backend_endpoint`, allows only six bounded GET paths, requires redacted output and missing-token smoke validation, and registers through the supported connector workflow. The protected variable name is `BACKEND_OPERATOR_TOKEN`; the value must remain in Railway/connector secret fields and must never enter chat, source, logs, command arguments, Git, or handoff files. Every future `tokens ending` trigger repeats this cross-account process and cannot assume inherited connector or sandbox state.

@@ -23,6 +23,82 @@ Read these files in this order:
 
 Historical notes are evidence, not authority, when they disagree with the latest verified repository state.
 
+## Cross-account Railway MCP bootstrap
+
+A new account does **not** inherit the previous account's sandbox files or connector registrations. If the next agent needs Railway diagnostics, it must reconstruct the external read-only MCP in the new environment before using it. This MCP is an operator diagnostic boundary, not a business-operation API.
+
+### Required implementation contract
+
+The rebuilt stdio MCP must expose exactly these two tools:
+
+- `backend_health` — a redacted health check.
+- `read_backend_endpoint` — a bounded read of one allowlisted endpoint.
+
+The implementation may perform only bounded `GET` requests to these exact paths:
+
+```text
+/api/health
+/api/system-config
+/v2/health
+/api/v2/health
+/v2/packages
+/api/v2/packages
+```
+
+It must reject arbitrary URLs and must not contain shell execution, Firestore access, token inspection, business-operation tools, mutation methods, unbounded response reads, or raw-secret logging. It must generate request IDs, bound request time and response size, and redact live-check output.
+
+### Rebuild and validate it
+
+The agent should create the MCP **outside the application repository**, for example at `/home/ubuntu/rq-backend-mcp`, and install the official MCP SDK there. The source must read configuration from protected environment fields rather than command-line arguments or repository files. The required names are:
+
+```text
+RQ_BACKEND_URL
+BACKEND_OPERATOR_TOKEN
+RQ_BACKEND_TIMEOUT_MS   # optional
+```
+
+The agent must validate the rebuilt workspace with:
+
+```bash
+node --check server.mjs
+node --check live-check.mjs
+node smoke-test.mjs
+```
+
+The smoke test must pass without a token and must prove the allowlist, server factory, and missing-token safety. A live check may run only after the protected token is available through a secret field; its output must contain only redacted status and request-ID information.
+
+### Register it through the connector workflow
+
+After the local smoke test passes, the agent should register the stdio connector through the supported configuration workflow, not by editing hidden configuration files directly:
+
+```bash
+manus-config config load --search railway
+manus-config connector list --user-custom-only
+manus-config connector create --file /tmp/rq-railway-mcp-connector.json
+```
+
+The connector definition must point to the external `server.mjs`, set `RQ_BACKEND_URL`, and reference `BACKEND_OPERATOR_TOKEN` through a protected connector environment field. It must not embed the token in JSON, shell history, source, logs, Git, or chat. The agent must inspect the connector schema before creating it and must verify the enabled connector without printing environment values.
+
+### How the Railway secret is handled
+
+The protected Railway variable name is **`BACKEND_OPERATOR_TOKEN`**. The value must be a high-entropy secret entered into Railway's protected environment-variable field and, separately, into the connector's protected environment field or secret replacement flow. The value must never be pasted into chat, committed to Git, placed in the MCP source, included in a command argument, or written into a handoff document.
+
+If a new account needs the value, the owner should set or rotate `BACKEND_OPERATOR_TOKEN` directly in the Railway dashboard and provide it only through the connector's protected secret-entry workflow. The agent must not retrieve, print, or repeat the value. If the connector workflow cannot accept a protected secret, stop and report the missing protected-secret path; do not create a plaintext workaround.
+
+The agent may tell the owner the **variable name** and the exact dashboard location needed, but it must not deliver a secret value in chat. This rule applies even when the owner asks for the value explicitly.
+
+### Connector failure conditions
+
+Stop instead of improvising if any of these occurs:
+
+- The connector would expose a mutation tool or an unbounded endpoint.
+- A token appears in command output, logs, source, Git, or a handoff file.
+- The token is available only as plaintext and there is no protected connector field.
+- The MCP cannot prove missing-token safety without contacting production.
+- The Railway URL, project, or environment is ambiguous.
+
+Record the failure as a blocker and continue only with browser-free local repository work that does not require Railway diagnostics.
+
 ## First five minutes
 
 Before editing any file, run the following commands from `/home/ubuntu/RQ-`:
@@ -70,6 +146,8 @@ When the owner sends `tokens ending`, follow this order exactly:
 8. **Validate the handoff.** Run `git diff --check`, scan the diff for secret-like material, verify all canonical files exist and contain the new packet, and run the repository validation appropriate to the change. For documentation-only changes, at minimum run the complete existing gate if time permits; otherwise run `git diff --check` and record why the full gate was not repeated.
 9. **Publish only the handoff.** Commit and push the documentation update. Do not mix a feature implementation into the succession commit.
 10. **Verify closure.** Confirm the final tree is clean, `HEAD == origin/main`, the pushed Production Gate result is known, and the final message links the canonical handoff files.
+
+Every future agent in every future account repeats this same procedure. The exact phrase `tokens ending` is a durable succession trigger, not a one-time instruction. Each successor must read this protocol, rebuild the Railway MCP when needed, verify the same safety boundary, and leave the next successor the same copy-paste startup block. No successor may assume that a prior account's files, browser session, connector, token, or deployment state still exists.
 
 ## Decision tree for choosing the next task
 

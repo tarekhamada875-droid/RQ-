@@ -341,3 +341,8 @@ Copy-paste message for the next agent:
 ### Succession protocol enhancement — 2026-09-23
 
 The reusable start-to-finish succession playbook is now [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md). It defines immediate-trigger behavior, first-five-minute verification, connector and deployment checks, secret-safety rules, task-selection decision logic, safety invariants, validation gates, handoff-record fields, copy-paste startup text, and final closure requirements. Future agents must read it together with this handoff before continuing.
+
+
+### Cross-account succession and Railway MCP bootstrap enhancement — 2026-09-23
+
+`docs/SUCCESSION_PROTOCOL.md` now explicitly handles agents that start in a new account without inherited sandbox files or connectors. Each successor must rebuild the external read-only Railway MCP outside the repository when diagnostics are needed, using exactly `backend_health` and `read_backend_endpoint`, the six documented GET paths, bounded requests/responses, redacted output, and missing-token smoke validation. Registration must use the supported connector workflow with protected environment fields. The protected Railway variable name is `BACKEND_OPERATOR_TOKEN`; its value must be entered through Railway and connector secret fields and must never be pasted into chat, source, logs, command arguments, Git, or handoff documents. Every future agent repeats this protocol when the owner says `tokens ending`; no account may assume inherited files, connectors, browser sessions, tokens, or deployment state.
