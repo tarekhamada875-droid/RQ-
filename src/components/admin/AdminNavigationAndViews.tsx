@@ -9,7 +9,8 @@ import {
   Key,
   ClipboardList,
   ChevronRight,
-  Clock
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
@@ -25,6 +26,7 @@ import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminFinancialReportsView } from './AdminFinancialReportsView';
+import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -60,6 +62,7 @@ interface AdminNavigationAndViewsProps {
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onLogout: () => void;
 }
 
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
@@ -95,7 +98,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   loadAdminGaragePage,
   adminLang,
   t,
-  showToast
+  showToast,
+  onLogout
 }) => {
   const unlimitedGarages = React.useMemo(() => {
     return approvedGarages.filter(g => {
@@ -278,7 +282,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
               className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'catalog_settings' || activeTab === 'wallet' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings'
+                  activeTab === 'catalog_settings' || activeTab === 'wallet' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
@@ -385,6 +389,23 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                 <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-purple-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
               </div>
             </div>
+
+            {/* Active Devices */}
+            <div
+              onClick={() => setActiveTab('active_sessions')}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-slate-900 dark:text-white text-base">الأجهزة والجلسات</h3>
+                <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                <span>مراجعة الأجهزة وإلغاء الجلسات</span>
+                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
+              </div>
+            </div>
           </div>
         </div>
       ) : activeTab === 'garages' ? (
@@ -456,6 +477,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminAnnouncementsView allGarages={allGarages} />
       ) : activeTab === 'global_settings' ? (
         <AdminGlobalSettingsView />
+      ) : activeTab === 'active_sessions' ? (
+        <AdminActiveSessionsView onLogout={onLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
           currentAdminPin={currentAdminPin}

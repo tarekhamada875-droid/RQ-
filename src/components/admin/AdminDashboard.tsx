@@ -70,7 +70,7 @@ export const AdminDashboard = memo(({
   // Localized states to encapsulate admin view and prevent global App re-renders
   const systemConfig = useSystemConfig();
   const [adminSearch, setAdminSearch] = React.useState<string>('');
-  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'menu' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'wallet' | 'admin-pin' | 'announcements' | 'global_settings' | 'catalog_settings' | 'financial_reports'>('app_admin_tab', 'overview');
+  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'menu' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'wallet' | 'admin-pin' | 'announcements' | 'global_settings' | 'catalog_settings' | 'financial_reports' | 'active_sessions'>('app_admin_tab', 'overview');
 
   // Ensure supervisor is restricted to delegates view
   React.useEffect(() => {
@@ -511,6 +511,7 @@ export const AdminDashboard = memo(({
           adminLang={adminLang}
           t={t}
           showToast={showToast}
+          onLogout={onLogout}
         />
       </main>
 
