@@ -1664,3 +1664,15 @@ Commit `a467b31` closes the rollback-policy gap where an explicitly unavailable 
 ### Projection repair calendar-date contract hardening — 2026-09-23
 
 Commit `e83161d` applies the real-calendar-date validator to projection and repair contracts and adds pre-repository rejection coverage for impossible dates. The complete corrected validation gate passed. Projection-worker deployment and scheduling remain explicitly out of scope.
+
+
+### Token-ending succession handoff — 2026-09-23 19:10 UTC+3
+
+Final verified tip is `c67c3bd` on clean, synchronized `main`; Production Gate `35879864414` succeeded. The latest implementation hardens shadow rollback safety and validates real calendar dates in projection repair contracts. The complete corrected repository validation sequence passed. The current Railway read-only MCP connector and Cloudflare connector are enabled; My Browser is enabled but is not required for the next task. The authenticated preview track remains blocked until a legitimate current non-production Cloudflare deployment and compatible Firebase-authenticated browser session exist.
+
+The next independent workstream is projection-worker operational preparation: define a redacted non-production invocation/evidence contract and health/failure outcome accounting, while retaining the worker as undeployed, unscheduled, flag-off, and disconnected from automatic production mutation. Continue to prohibit production v2/shadow flags, financial-write migration, data deletion, legacy-route retirement, and progressive cutover until their dependent gates are complete. If the exact `tokens ending` trigger is received again, repeat the succession protocol before any feature work.
+
+
+### Succession protocol enhancement — 2026-09-23
+
+The project-wide agent handoff procedure is now maintained in [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md). It supplements this staged plan with mandatory state verification, safe blocker classification, exact validation and Production Gate evidence, protected-credential rules, and a copy-paste startup/closure protocol.

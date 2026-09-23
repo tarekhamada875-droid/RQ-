@@ -448,3 +448,17 @@ Commit `a467b31` closes a policy gap: when the legacy fallback is explicitly una
 ### Projection repair calendar-date contract hardening — 2026-09-23
 
 Commit `e83161d` reuses the canonical real-calendar-date validator for projection events, projection state, and repair tasks. Impossible dates such as `2026-02-29` are rejected before repository access, preventing malformed operational repair input from entering rebuild logic. Focused worker coverage passes 5 tests; the complete corrected validation gate passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. The worker remains library-only, undeployed, unscheduled, and disconnected from automatic production mutation.
+
+
+### Token-ending succession handoff — 2026-09-23 19:10 UTC+3
+
+The owner issued the exact `tokens ending` trigger; no new feature was started after it. Final repository state is clean on `main` at `c67c3bd50bcb43b4a6d92f6a17895a557edf7d2c`, synchronized with `origin/main`. Production Gate `35879864414` succeeded for the latest documentation commit. The current implementation includes shadow route error redaction and strict validation (`f9a280b`), rollback blocking when legacy fallback is unavailable (`a467b31`), and real-calendar-date validation across projection repair contracts (`e83161d`). The full corrected validation sequence passed for the current implementation.
+
+The Railway read-only MCP connector is enabled and its external no-secret smoke test passed. Cloudflare is enabled. My Browser is enabled but is not needed for the next task. Authenticated preview evidence remains blocked because no legitimate current non-production preview is available and the connected browser previously stopped at the app's intentional compatibility gate. Do not weaken that gate, manufacture a preview, use production or stale deployment evidence, or substitute the Railway operator token for a Firebase user token.
+
+The exact next bounded action is browser-free projection-worker operational preparation: add a redacted non-production invocation/evidence contract and health/failure outcome accounting, with focused tests and the complete repository gate. Keep the worker undeployed, unscheduled, flag-off, and disconnected from automatic production mutation. Financial writes, production v2/shadow flags, deletion, legacy-route retirement, and progressive cutover remain prohibited until their separate gates pass.
+
+
+### Succession protocol enhancement — 2026-09-23
+
+The complete reusable succession procedure is [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md). It is now the standard companion to `NEXT_AGENT_HANDOFF.md` and covers state verification, exact-commit CI evidence, deployment and connector blockers, secret handling, safety invariants, bounded next-task selection, validation, publication, and closure.

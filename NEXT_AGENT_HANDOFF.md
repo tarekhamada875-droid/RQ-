@@ -319,3 +319,25 @@ Commit `a467b31` ensures an unavailable legacy fallback blocks shadow cutover in
 ### Projection repair calendar-date contract hardening — 2026-09-23
 
 Commit `e83161d` makes projection events, states, and repair tasks reject impossible calendar dates before repository access. Focused worker tests and the complete corrected validation gate passed. The repair worker remains undeployed and unscheduled; no production mutation or financial authority changed.
+
+
+### Token-ending succession handoff — 2026-09-23 19:10 UTC+3
+
+The project owner issued the exact `tokens ending` trigger. No new feature was started after the trigger. Final repository verification: branch `main`; working tree clean; `HEAD` and `origin/main` both `c67c3bd50bcb43b4a6d92f6a17895a557edf7d2c`; latest implementation commit `e83161d` validates real calendar dates in projection events, projection state, and repair tasks; latest documentation commit is `c67c3bd`. Production Gate `35879864414` succeeded for `c67c3bd`. The preceding rollback-safety gate `35874104814` also succeeded.
+
+The latest completed slices are: shadow route strict-payload and provider-error redaction coverage (`f9a280b`); rollback policy correction that blocks when the legacy fallback is unavailable (`a467b31`); and projection repair calendar-date validation (`e83161d`). The complete corrected validation gate passed for the current implementation: `npm run lint:v2`; Firestore-emulator-backed `npm run check:v2`; `npm test`; `npm run lint`; `npm run build`; `npm run maintainability:check`; and `git diff --check`. The projection repair worker remains library-only, undeployed, unscheduled, and disconnected from automatic production mutation.
+
+Current external state: the read-only Railway connector `RQ Railway Read-only MCP` is enabled; Cloudflare is enabled; My Browser is enabled but is not needed for the next task. The external MCP smoke test at `/home/ubuntu/rq-backend-mcp/smoke-test.mjs` passed allowlist, server-factory, and missing-token safety checks. Existing live Railway evidence remains limited to operator/unauthenticated boundaries: health `200`, v2 health `200`, system-config `200` without recording its payload, and unauthenticated packages `401`. Do not treat operator-token evidence as Firebase-user authentication.
+
+The authenticated Cloudflare preview remains blocked. The preview reached the user browser but the app displayed its intentional compatibility screen because the connected browser failed the `Promise`/`Proxy` capability gate; do not weaken that gate. A current legitimate non-production preview must exist before authenticated Firebase browser checks. Do not manufacture a preview by creating a branch, use stale or production deployments as preview evidence, change production flags, or use the Railway operator token as a Firebase user token.
+
+**Exact next task:** continue the browser-free projection-worker operational-preparation track by adding a redacted non-production invocation/evidence contract and health/failure outcome accounting. Keep the worker undeployed, unscheduled, flag-off, and disconnected from automatic mutation. Add focused tests, run the complete validation gate, publish the implementation and handoff evidence, and verify the Production Gate. Do not migrate financial writes, enable production v2/shadow flags, delete data, remove legacy routes, or begin progressive cutover.
+
+Copy-paste message for the next agent:
+
+> Repository: `/home/ubuntu/RQ-`; canonical handoff: [`NEXT_AGENT_HANDOFF.md`](NEXT_AGENT_HANDOFF.md). Token-ending succession is complete. Start by verifying `git status --short --branch`, `git log -3 --oneline`, `HEAD == origin/main`, and the latest Production Gate. Current tip is `c67c3bd`; latest gate is `35879864414` success. Next bounded task is a browser-free projection-worker operational-preparation slice: add a redacted non-production invocation/evidence contract and health/failure outcome accounting, with focused tests and the complete validation gate. Keep the worker library-only, undeployed, unscheduled, and disconnected from automatic production mutation. Keep production v2/shadow flags false, legacy backend and financial writes authoritative, and do not delete data or retire routes. If a current legitimate authenticated Cloudflare preview later appears, perform browser validation only then; never manufacture one. If you receive `tokens ending`, repeat this succession protocol immediately instead of starting another feature.
+
+
+### Succession protocol enhancement — 2026-09-23
+
+The reusable start-to-finish succession playbook is now [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md). It defines immediate-trigger behavior, first-five-minute verification, connector and deployment checks, secret-safety rules, task-selection decision logic, safety invariants, validation gates, handoff-record fields, copy-paste startup text, and final closure requirements. Future agents must read it together with this handoff before continuing.

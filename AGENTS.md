@@ -10,6 +10,7 @@
   1. **First Confirmation:** Present the design or plan clearly, explain the details fully, and ask Tarek for a first confirmation (التأكيد الأول) and if he wants to modify or adjust anything.
   2. **Second Confirmation:** After Tarek approves or adjusts the first step, present the finalized implementation plan or a draft, and explicitly ask for a second final confirmation (التأكيد الثاني / الضوء الأخضر) before writing or changing any code.
   3. Never proceed with code changes until both confirmations are explicitly granted.
+- **Agent Succession:** For the exact owner message `tokens ending`, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md) before making any other change. Read the protocol with `NEXT_AGENT_HANDOFF.md` at the start of every resumed session.
 
 ## Design Conventions
 - **License Plate UI:** The primary input field is designed as a realistic Egyptian license plate. Maintain this visual identity in future updates.
