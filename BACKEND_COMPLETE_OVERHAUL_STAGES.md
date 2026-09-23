@@ -1624,3 +1624,8 @@ Commit `05b377f` closes the operational gap where an unexpected repair exception
 ### Live Railway read-only boundary evidence — 2026-09-23
 
 The enabled operator MCP verified live `/api/health` at `200` with `adminSdk: true` and deployed version `b75a024746a692e3d6f89de561b65730e6eae257`, live `/api/v2/health` at `200` in production without the Firebase emulator, and unauthenticated `/api/v2/packages` at `401` for missing Firebase ID token. `/api/system-config` also returned `200`, but its payload was intentionally excluded from repository evidence. This validates diagnostic and unauthenticated boundaries only and does not establish authenticated Cloudflare preview behavior or authorize any migration.
+
+
+### Projection repair queue expired-failure coverage — 2026-09-23
+
+Commit `3797734` adds emulator-backed proof that both completion and failure actions reject expired worker leases without changing queue state. The corrected complete validation gate passed after an unrelated transient vehicle concurrency timeout was reproduced as passing in isolation. No runtime behavior or production mutation path changed.

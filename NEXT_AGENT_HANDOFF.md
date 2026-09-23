@@ -279,3 +279,8 @@ Commit `05b377f` makes `ProjectionRepairWorker` stop processing after an unexpec
 ### Live Railway MCP boundary evidence — 2026-09-23
 
 The enabled read-only Railway MCP verified `/api/health` as `200` with `adminSdk: true` and exact version `b75a024746a692e3d6f89de561b65730e6eae257`; `/api/v2/health` as `200` with production/non-emulator status; `/api/system-config` as `200` without recording its payload; and unauthenticated `/api/v2/packages` as `401 Missing Firebase ID token`. These are operator and unauthenticated boundary checks only, not Firebase-authenticated Cloudflare preview evidence. No production flag or authority changed; continue bounded non-financial work while the current preview remains blocked.
+
+
+### Projection repair queue expired-failure coverage — 2026-09-23
+
+Commit `3797734` adds Firestore-emulator coverage that expired workers cannot fail repair tasks or mutate their `running` state. The focused queue suite passes 6 tests. A transient unrelated vehicle-concurrency timeout occurred in the first full gate attempt; isolated reproduction passed and the corrected full gate passed. The queue remains lease-owned, undeployed, unscheduled, and disconnected from production mutation.

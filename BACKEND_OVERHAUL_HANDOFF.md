@@ -408,3 +408,8 @@ Commit `05b377f` makes the bounded projection repair worker stop after an unexpe
 ### Live Railway read-only MCP evidence — 2026-09-23
 
 After enabling the protected read-only Railway MCP, live checks returned `GET /api/health -> 200` with `adminSdk: true` and exact deployed version `b75a024746a692e3d6f89de561b65730e6eae257`; `GET /api/system-config -> 200` (payload intentionally not copied into repository evidence); `GET /api/v2/health -> 200` with `environment: production` and `firebaseEmulator: false`; and `GET /api/v2/packages -> 401` with `Missing Firebase ID token`. This confirms the operator diagnostic boundary and the unauthenticated v2 package-read boundary only. The operator token is not a Firebase user token, so this is not authenticated Cloudflare preview evidence. No production data, flags, traffic authority, or financial behavior changed.
+
+
+### Projection repair queue expired-failure coverage — 2026-09-23
+
+Commit `3797734` adds emulator-backed coverage proving that a worker whose lease has expired cannot fail a queued repair task and cannot change its `running` state, matching the existing completion-side fail-closed rule. The focused queue suite passed 6 tests. The first complete-gate attempt encountered one transient timeout in the unrelated vehicle check-in concurrency test; that test passed in isolation, and the corrected complete validation retry passed `npm run lint:v2`, emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check`. No runtime queue behavior, production worker, scheduler, flag, financial authority, or production data changed.
