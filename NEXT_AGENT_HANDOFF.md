@@ -4,8 +4,8 @@
 **Repository:** `tarekhamada875-droid/RQ-`
 **Local path:** `/home/ubuntu/RQ-`
 **Current branch:** `main`
-**Latest published commit:** `9b42c8f fix: validate calendar date keys`
-**Working tree at handoff:** clean and synchronized with `origin/main`; the calendar-valid date contract correction and handoff evidence are published directly to `main`.
+**Latest published commit:** `3b1f018 docs: add projection repair worker runbook`
+**Working tree at handoff:** clean and synchronized with `origin/main`; the bounded projection-repair operational runbook and handoff evidence are published directly to `main`.
 
 ## Read this first
 
@@ -216,11 +216,12 @@ Commit `9bbcb5a` adds the user-facing Settings/Active Devices screen and typed c
 - Commit `eb19593` adds three React/jsdom tests covering session loading, non-current revocation with success feedback, and current-session revocation with logout. Production Gate `35823805861` passed.
 - Commit `b1aae73` adds two v2 adapter tests covering URL-encoded pagination cursors/bounded limits and malformed bounded-page rejection. Production Gate `35824735761` passed.
 - Commit `9b42c8f` fixes a shared contract defect found by the dashboard-report boundary test: `DateKeySchema` previously accepted impossible dates such as `2026-99-99`. It now validates real calendar dates, with foundation and report-route coverage for invalid dates and stale projections. Production Gate `35826313877` passed.
+- Commit `3b1f018` adds [`docs/projection-repair-worker-runbook.md`](docs/projection-repair-worker-runbook.md), defining bounded invocation, preconditions, redacted evidence, stop/rollback controls, and the explicit status that the worker is not deployed or automatically triggered. Production Gate `35827534873` passed. The corrected full validation sequence passed after keeping Firestore-dependent checks inside the emulator.
 - Cloudflare Pages was rechecked on 2026-09-23 after `061204e`: project `rq` has latest deployment `fdf79720` for `main`/`061204e`, and every listed deployment is `environment: production`; there is still no current non-production preview URL. Preview configuration has package-catalog enabled, but that does not make a production deployment eligible for authenticated preview evidence.
 
 The normal UI test harness has no dedicated component test added yet; add focused service/component coverage only in a later small slice if the existing test environment supports it.
 
-The latest published commit is gate-verified by `35826313877`; the earlier failing gate was corrected without changing behavior.
+The latest published commit is gate-verified by `35827534873`; the earlier validation-command failure was environmental (Firestore queue tests were initially run without the emulator), then the corrected sequence passed.
 
 ### Completed bounded read-only migration-evidence task
 
@@ -230,7 +231,7 @@ Local normalized migration evidence passed in 4 focused v2 test files with 16 te
 
 ### Then resume the overhaul order
 
-1. Keep `9b42c8f` and Production Gate `35826313877` as the verified current tip.
+1. Keep `3b1f018` and Production Gate `35827534873` as the verified current tip.
 2. If a natural current authenticated Cloudflare preview appears, perform Firebase-browser checks for v2 health, package reads, garage summary, and session behavior.
 3. Through that preview, repeat normalized legacy/v2 package and garage-summary comparisons and classify every difference.
 4. Exercise v2-failure fallback and legacy-failure blocking in the authenticated preview; no unexplained financial or authorization mismatch is acceptable.

@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `9b42c8f fix: validate calendar date keys`
-**Latest verified local evidence:** focused date-contract/report-route tests passed with 12 tests; the complete repository/emulator validation gate passed; Production Gate `35826313877` passed for `9b42c8f`.
+**Latest published commit:** `3b1f018 docs: add projection repair worker runbook`
+**Latest verified local evidence:** focused projection-worker/route tests passed; the complete repository/emulator validation gate passed with Firestore-dependent checks inside the emulator; Production Gate `35827534873` passed for `3b1f018`.
 
 ## Mission
 
@@ -184,6 +184,8 @@ The next non-financial slice is `eb19593`. It adds `src/components/admin/AdminAc
 The next bounded read-only slice is `b1aae73`. It adds pagination contract coverage to `src/__tests__/v2ReadAdapter.test.ts`: cursor and limit URL encoding for pending/activity reads and rejection of malformed page envelopes. The complete validation sequence passed, and Production Gate `35824735761` passed. No runtime behavior, backend authority, production flag, financial write, or production data changed.
 
 The next bounded safety slice is `9b42c8f`. Its dashboard-report boundary test exposed that the shared `DateKeySchema` accepted impossible calendar dates despite enforcing `YYYY-MM-DD` shape. The schema now validates calendar reality using UTC component round-tripping. Foundation coverage rejects `2026-02-29` and `2026-99-99`, and report-route coverage verifies invalid-date rejection plus stale-projection labeling. The complete validation sequence passed, and Production Gate `35826313877` passed. No financial authority, production flag, or production data changed.
+
+The following operational-safety slice is `3b1f018`. It adds [`docs/projection-repair-worker-runbook.md`](docs/projection-repair-worker-runbook.md), documenting the existing worker's 25-task bound, explicit event windows, idempotency/audit requirements, redacted failure handling, stop/rollback procedure, and evidence checklist. The worker remains a library primitive: it is not deployed, scheduled, or connected to automatic production mutation. The corrected full validation sequence passed, and Production Gate `35827534873` passed. No production flag, financial authority, or production data changed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
