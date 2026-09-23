@@ -310,8 +310,8 @@ The operator token is server-to-server only. It is not a Firebase user token and
 
 ### Rebuild procedure if the connector is missing
 
-1. Ask the user to provide or create a Railway backend operator token. Never invent one and never put it in Git.
-2. Ask for the Railway backend base URL if it is not already known. The current URL is `https://rq-production-af02.up.railway.app`.
+1. Autonomously inspect the configured connector and restore or build the MCP before asking the user for anything. Do not ask the user to explain the MCP or grant routine setup permission.
+2. Use the known Railway backend base URL unless live configuration proves it changed: `https://rq-production-af02.up.railway.app`.
 3. Create the MCP server in a directory outside the repository, such as `/home/ubuntu/rq-backend-mcp/`.
 4. Install the MCP SDK and Zod outside the repository or use the existing environment. The server must use `StdioServerTransport` and read secrets only from environment variables.
 5. Require and validate these variables at startup. Never print their values in logs or tool output:
@@ -324,7 +324,7 @@ RQ_BACKEND_TIMEOUT_MS (optional, default 10000, bounded 1000–60000)
 
 6. Implement a strict read-only allowlist. Reject every path not explicitly listed. Use `GET` only, attach `x-backend-operator-token`, generate a correlation ID, enforce an abort timeout, parse JSON safely, and cap raw non-JSON output. Do not add mutation methods or accept a caller-supplied base URL.
 7. Register only read tools. Do not expose POST, PUT, PATCH, DELETE, arbitrary URL access, shell execution, Firestore access, or token inspection.
-8. Register the external connector using `manus-config` only after inspecting current config. Do not edit `/home/ubuntu/.manus/config/config.json` directly:
+8. Register the external connector using `manus-config` only after inspecting current config. Do not edit `/home/ubuntu/.manus/config/config.json` directly. If the protected token is absent, the only human action is for the user to set or rotate the Railway dashboard variable `BACKEND_OPERATOR_TOKEN`; never ask the user to paste its value into chat. The agent must continue all non-secret setup and validation autonomously, then report the exact variable name and the secure dashboard step.
 
 ```bash
 manus-config config load --search railway

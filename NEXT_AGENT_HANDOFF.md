@@ -163,7 +163,7 @@ BACKEND_OPERATOR_TOKEN=<private token; never place in this file>
 RQ_BACKEND_TIMEOUT_MS=10000
 ```
 
-The same private operator token must be configured as `BACKEND_OPERATOR_TOKEN` in Railway and in the MCP connector environment. It is not the Firebase user token. If it is missing or expired, ask the user to provide or rotate it; never invent one. The local token file, if present, must stay outside Git with mode `600`:
+The same private operator token must be configured as `BACKEND_OPERATOR_TOKEN` in Railway and in the MCP connector environment. It is not the Firebase user token. A successor must autonomously inspect, restore, or build this MCP and run its safe checks; do not stop to ask the user to explain the MCP or grant routine setup permission. If the protected token is missing, do not invent, print, commit, or place it in this handoff. The only expected human boundary is the Railway dashboard: tell the user the exact variable name `BACKEND_OPERATOR_TOKEN` and have them set or rotate its protected value there, then continue with non-secret validation. Do not ask the user to paste the secret into chat. The local token file, if present, must stay outside Git with mode `600`:
 
 ```text
 /home/ubuntu/rq-backend-mcp/.operator-token
