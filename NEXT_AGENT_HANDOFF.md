@@ -309,3 +309,8 @@ A fresh preview was created from current `main` through temporary branch `previe
 ### Shadow-comparison route failure hardening — 2026-09-23
 
 Commit `f9a280b` adds strict-payload and provider-failure redaction coverage for the admin-only shadow route. Focused tests and the complete corrected validation gate passed. Shadow comparison remains disabled unless explicitly enabled and does not authorize production migration.
+
+
+### Shadow rollback fallback safety hardening — 2026-09-23
+
+Commit `a467b31` ensures an unavailable legacy fallback blocks shadow cutover instead of allowing v2. Missing preview authentication continues to route safely to legacy when fallback exists. Focused policy/coordinator tests and the complete corrected validation gate passed. Production shadow and financial authority remain disabled.

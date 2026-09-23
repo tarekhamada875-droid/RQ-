@@ -1654,3 +1654,8 @@ A fresh Cloudflare Pages preview from current `main` was created through tempora
 ### Shadow-comparison route failure hardening — 2026-09-23
 
 Commit `f9a280b` adds evidence that the admin-only shadow route rejects unknown request fields and redacts provider failures into a stable internal-error response. The complete corrected validation gate passed. No production shadow flag or migration authority changed.
+
+
+### Shadow rollback fallback safety hardening — 2026-09-23
+
+Commit `a467b31` closes the rollback-policy gap where an explicitly unavailable legacy fallback could still allow v2 after an equal comparison. The policy now blocks that path; unauthenticated preview paths still fail closed to legacy when fallback is available. Focused tests and the complete corrected validation gate passed. No production shadow flag or financial authority changed.
