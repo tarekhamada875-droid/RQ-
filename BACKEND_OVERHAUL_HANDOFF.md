@@ -3,8 +3,8 @@
 **Last updated:** 2026-09-23
 **Repository:** `tarekhamada875-droid/RQ-`
 **Branch:** `main`
-**Latest published commit:** `3b1f018 docs: add projection repair worker runbook`
-**Latest verified local evidence:** focused projection-worker/route tests passed; the complete repository/emulator validation gate passed with Firestore-dependent checks inside the emulator; Production Gate `35827534873` passed for `3b1f018`.
+**Latest published commit:** `693fdb8 test: cover projection status boundaries`
+**Latest verified local evidence:** the projection-status route suite passes 6 tests, including impossible-date rejection before reads and redacted repository failures; the complete repository/emulator validation gate passed; Production Gate `35834417741` passed for `693fdb8`.
 
 ## Mission
 
@@ -186,6 +186,8 @@ The next bounded read-only slice is `b1aae73`. It adds pagination contract cover
 The next bounded safety slice is `9b42c8f`. Its dashboard-report boundary test exposed that the shared `DateKeySchema` accepted impossible calendar dates despite enforcing `YYYY-MM-DD` shape. The schema now validates calendar reality using UTC component round-tripping. Foundation coverage rejects `2026-02-29` and `2026-99-99`, and report-route coverage verifies invalid-date rejection plus stale-projection labeling. The complete validation sequence passed, and Production Gate `35826313877` passed. No financial authority, production flag, or production data changed.
 
 The following operational-safety slice is `3b1f018`. It adds [`docs/projection-repair-worker-runbook.md`](docs/projection-repair-worker-runbook.md), documenting the existing worker's 25-task bound, explicit event windows, idempotency/audit requirements, redacted failure handling, stop/rollback procedure, and evidence checklist. The worker remains a library primitive: it is not deployed, scheduled, or connected to automatic production mutation. The corrected full validation sequence passed, and Production Gate `35827534873` passed. No production flag, financial authority, or production data changed.
+
+The next bounded route-safety slice is `693fdb8`. It adds projection-status coverage for impossible calendar dates and repository-error redaction. The route remains preview-gated and admin-only; no runtime behavior or production authority changed. The complete validation sequence passed, and Production Gate `35834417741` passed.
 
 ### Agent continuation packet — 2026-09-22 13:23 UTC+3
 
