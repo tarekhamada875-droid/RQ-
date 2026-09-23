@@ -48,10 +48,16 @@ describe('v2 read routes', () => {
     const baseUrl = await start();
     const invalidLimit = await fetch(`${baseUrl}/v2/pending?limit=0`);
     const invalidCursor = await fetch(`${baseUrl}/v2/activity?limit=1&cursor=bad-cursor`);
+    const invalidPackageLimit = await fetch(`${baseUrl}/v2/packages?limit=0`);
+    const invalidSummaryDate = await fetch(`${baseUrl}/v2/garages/garage-1/summary?date=bad-date`);
     expect(invalidLimit.status).toBe(400);
     expect(invalidCursor.status).toBe(400);
+    expect(invalidPackageLimit.status).toBe(400);
+    expect(invalidSummaryDate.status).toBe(400);
     expect(await invalidLimit.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
     expect(await invalidCursor.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
+    expect(await invalidPackageLimit.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
+    expect(await invalidSummaryDate.json()).toMatchObject({ success: false, code: 'BAD_REQUEST' });
   });
 
   it('rejects unauthenticated reads when the authenticated preview gate is mounted', async () => {
@@ -67,6 +73,8 @@ describe('v2 read routes', () => {
 
   it('keeps both read routes disabled in production', async () => {
     const baseUrl = await start('production');
+    expect((await fetch(`${baseUrl}/v2/packages`)).status).toBe(404);
+    expect((await fetch(`${baseUrl}/v2/garages/garage-1/summary?date=2026-09-20`)).status).toBe(404);
     expect((await fetch(`${baseUrl}/v2/pending`)).status).toBe(404);
     expect((await fetch(`${baseUrl}/v2/activity`)).status).toBe(404);
   });
