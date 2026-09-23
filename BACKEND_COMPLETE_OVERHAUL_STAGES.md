@@ -1592,3 +1592,7 @@ Stage 0 inventory
 ```
 
 No one needs to approve the existence of this architecture again. The work still requires normal code review, automated tests, deployment controls, and explicit confirmation before consequential production actions such as destructive data operations or changing financial authority.
+
+### Succession trigger: `tokens ending`
+
+When the project owner sends the exact phrase **`tokens ending`**, the active agent must stop starting new work and perform a controlled successor handoff. It must verify the current repository, commit, tests, CI gate, deployment/preview state, blockers, and MCP availability; update the canonical handoff and relevant evidence documents with exact facts and the next bounded action; preserve all safety boundaries; keep secrets out of chat, files, logs, commits, and frontend assets; validate a clean tree; and provide a paste-ready message for the next agent. Every successor must repeat this protocol when given the same exact phrase.

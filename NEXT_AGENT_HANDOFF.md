@@ -243,3 +243,9 @@ Generated local artifacts such as `firestore-debug.log` and `dist/` are ignored 
 ## Final handoff rule
 
 At the end of every slice, leave the repository clean, the exact commit and CI run recorded, the next action explicit, and no secret in source, logs, test fixtures, or documentation.
+
+## Token-ending succession trigger
+
+If the project owner sends the exact phrase **`tokens ending`**, treat it as an immediate handoff request. Do not begin another feature. First inspect the current git status, branch, `HEAD`, recent commits, GitHub Production Gate, changed files, tests, deployment state, blockers, and MCP availability. Then update this file as the canonical operating guide and update the relevant historical and plan documents with exact commit SHAs, test commands and outcomes, CI run IDs, deployment evidence, known limitations, and the next bounded task.
+
+Keep secrets out of chat, files, commits, logs, and frontend code; refer only to secure variable names and the protected MCP restore procedure. Remove duplicate documentation only after verifying that it is not referenced by CI or required checks. Run the repository validation and confirm a clean tree. End with a copy-paste message for the next agent that names the repository, canonical handoff file, completed work, exact next task, safety boundaries, required verification, and the requirement to repeat this succession protocol if the next agent receives **`tokens ending`**.
