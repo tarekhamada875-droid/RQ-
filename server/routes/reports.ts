@@ -3,6 +3,7 @@ import { requireAuth, AuthRequest, sendApiError } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
 import { validateId } from '../validation';
 import { calculateFinancialReport } from '../financialReporting';
+import { canViewFinancialReport } from '../domain/authorization';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ function parseBoundary(value: unknown, field: string): string | undefined {
 }
 
 router.get('/financial', requireAuth, async (req: AuthRequest, res: any) => {
-  if (req.user?.role !== 'admin') {
+  if (!canViewFinancialReport(req.user)) {
     return sendApiError(res, 403, 'FORBIDDEN', 'ADMIN_ONLY', req.correlationId);
   }
   try {

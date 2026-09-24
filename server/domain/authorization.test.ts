@@ -6,6 +6,7 @@ import {
   canInvalidateAllSessions,
   canManageGarageScopedData,
   canRunGarageMaintenance,
+  canViewFinancialReport,
   canReleaseSession,
   canUpdateAdminPin,
   canUpdateTrialDecision
@@ -103,6 +104,17 @@ describe('admin maintenance authorization policy', () => {
     expect(canUpdateAdminPin(admin)).toBe(true);
     expect(canInvalidateAllSessions({ role: 'admin' })).toBe(true);
     expect(canUpdateAdminPin({ role: 'admin' })).toBe(true);
+  });
+});
+
+describe('financial report authorization policy', () => {
+  it('allows admins and denies every non-admin or missing principal', () => {
+    expect(canViewFinancialReport({ role: 'admin' })).toBe(true);
+    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator', 'unknown']) {
+      expect(canViewFinancialReport({ role })).toBe(false);
+    }
+    expect(canViewFinancialReport(undefined)).toBe(false);
+    expect(canViewFinancialReport(null)).toBe(false);
   });
 });
 
