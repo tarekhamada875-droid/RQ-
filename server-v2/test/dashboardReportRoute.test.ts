@@ -22,10 +22,13 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; currentSummary?: GarageSummary | null; summaryError?: Error; role?: 'admin' | 'garage'; garageId?: string } = {}) {
+async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; projectionError?: Error; currentSummary?: GarageSummary | null; summaryError?: Error; role?: 'admin' | 'garage'; garageId?: string } = {}) {
   const enabled = options.enabled ?? true;
   const projectionRepository: ProjectionRepository = {
-    get: async () => options.currentProjection === undefined ? projection : options.currentProjection,
+    get: async () => {
+      if (options.projectionError) throw options.projectionError;
+      return options.currentProjection === undefined ? projection : options.currentProjection;
+    },
     applyEvent: async () => projection,
     rebuild: async () => ({ projection, sourceEventCount: 0, replayed: false })
   };
@@ -93,6 +96,15 @@ describe('v2 dashboard report route', () => {
   it('redacts dashboard report repository failures', async () => {
     const internalFailure = 'Firestore path projects/rq-v2/databases/(default)/documents/secret-internal';
     const response = await getReport(await start({ summaryError: new Error(internalFailure) }));
+    const body = await response.json();
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR', error: 'Unable to read dashboard report' });
+    expect(JSON.stringify(body)).not.toContain(internalFailure);
+  });
+
+  it('redacts dashboard report projection failures', async () => {
+    const internalFailure = 'Firestore transaction failed at projection secret path';
+    const response = await getReport(await start({ projectionError: new Error(internalFailure) }));
     const body = await response.json();
     expect(response.status).toBe(500);
     expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR', error: 'Unable to read dashboard report' });
