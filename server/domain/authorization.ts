@@ -3,6 +3,14 @@ export type AuthorizationPrincipal = Readonly<{
   garageId?: unknown;
 }>;
 
+export function canInvalidateAllSessions(principal: AuthorizationPrincipal | null | undefined): boolean {
+  return principal?.role === 'admin';
+}
+
+export function canUpdateAdminPin(principal: AuthorizationPrincipal | null | undefined): boolean {
+  return principal?.role === 'admin';
+}
+
 /**
  * Decides whether a principal may manage garage-scoped records.
  * This pure policy intentionally preserves the current route contract:

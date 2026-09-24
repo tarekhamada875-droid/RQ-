@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { canClaimAdminSession, canManageGarageScopedData, canReleaseSession, canUpdateTrialDecision } from './authorization';
+import {
+  canClaimAdminSession,
+  canInvalidateAllSessions,
+  canManageGarageScopedData,
+  canReleaseSession,
+  canUpdateAdminPin,
+  canUpdateTrialDecision
+} from './authorization';
 
 describe('garage-scoped authorization policy', () => {
   it('preserves global admin access', () => {
@@ -71,5 +78,27 @@ describe('trial decision authorization policy', () => {
     expect(canUpdateTrialDecision({ role: 'delegate' }, 'garage_target', 'continued')).toBe(false);
     expect(canUpdateTrialDecision({ role: 'admin' }, 'garage_target', null)).toBe(true);
     expect(canUpdateTrialDecision({ role: 'admin' }, 'garage_target', 'declined')).toBe(true);
+  });
+});
+
+describe('admin maintenance authorization policy', () => {
+  it.each([
+    ['garage', { role: 'garage' }],
+    ['staff', { role: 'staff' }],
+    ['delegate', { role: 'delegate' }],
+    ['supervisor', { role: 'supervisor' }],
+    ['missing principal', undefined],
+    ['null principal', null]
+  ])('denies session invalidation and PIN changes for %s', (_label, principal) => {
+    expect(canInvalidateAllSessions(principal)).toBe(false);
+    expect(canUpdateAdminPin(principal)).toBe(false);
+  });
+
+  it('allows only the admin role for both decisions', () => {
+    const admin = { role: 'admin' };
+    expect(canInvalidateAllSessions(admin)).toBe(true);
+    expect(canUpdateAdminPin(admin)).toBe(true);
+    expect(canInvalidateAllSessions({ role: 'admin' })).toBe(true);
+    expect(canUpdateAdminPin({ role: 'admin' })).toBe(true);
   });
 });

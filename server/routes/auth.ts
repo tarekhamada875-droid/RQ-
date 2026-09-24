@@ -26,7 +26,12 @@ import {
   ValidationError
 } from '../validation';
 import { addActiveSession, hashSessionId, hasActiveSession, removeActiveSession, toSessionSummary } from '../auth/sessionMarkers';
-import { canClaimAdminSession, canReleaseSession } from '../domain/authorization';
+import {
+  canClaimAdminSession,
+  canInvalidateAllSessions,
+  canReleaseSession,
+  canUpdateAdminPin
+} from '../domain/authorization';
 
 export function registerAuthRoutes(router: Router) {
   const sessionCollections: Record<string, { sessions: string; entity: string }> = {
@@ -713,7 +718,7 @@ export function registerAuthRoutes(router: Router) {
   // passwords, account records, vehicles, subscribers, balances, or subscriptions.
   router.post('/api/auth/invalidate-all-sessions', requireAuth, async (req: AuthRequest, res: any) => {
     try {
-      if (req.user?.role !== 'admin') {
+      if (!canInvalidateAllSessions(req.user)) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
       }
       if (!adminDb) {
@@ -824,7 +829,7 @@ export function registerAuthRoutes(router: Router) {
   // Secure Server API: Server-Authoritative Garage Package Recharge Engine
   router.post('/api/admin/update-pin', requireAuth, async (req: AuthRequest, res: any) => {
     try {
-      if (req.user?.role !== 'admin') {
+      if (!canUpdateAdminPin(req.user)) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
       }
 
