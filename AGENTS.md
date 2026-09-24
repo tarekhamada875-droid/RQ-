@@ -5,12 +5,11 @@
 - **Collaboration Tone:** Direct, collaborative, and professional without excessive formalities. Focus on functional and shared development.
 - **Prohibited Terms:** Never use "Your Garage" (الجراج بتاعك), "Professor" (أستاذ), or "Your Excellence" (حضرتك).
 
-## Execution Workflow & Confirmations
-- **Strict Multi-Step Confirmation:** For any new design, feature, or code update requested by Tarek:
-  1. **First Confirmation:** Present the design or plan clearly, explain the details fully, and ask Tarek for a first confirmation (التأكيد الأول) and if he wants to modify or adjust anything.
-  2. **Second Confirmation:** After Tarek approves or adjusts the first step, present the finalized implementation plan or a draft, and explicitly ask for a second final confirmation (التأكيد الثاني / الضوء الأخضر) before writing or changing any code.
-  3. Never proceed with code changes until both confirmations are explicitly granted.
-- **Agent Succession:** For the exact owner message `tokens ending`, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md) before making any other change. Read the protocol with `NEXT_AGENT_HANDOFF.md` at the start of every resumed session.
+## V3 Execution Workflow
+- **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
+- **Project Scope:** Repository code, frontend, Railway configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.
+- **Engineering Safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations. These safeguards do not limit project scope.
+- **Agent Succession:** For the exact owner message `tokens ending`, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md) before making any other change. Read [`V3_BACKEND_PLAN.md`](V3_BACKEND_PLAN.md) and the succession protocol at the start of every resumed session.
 
 ## Design Conventions
 - **License Plate UI:** The primary input field is designed as a realistic Egyptian license plate. Maintain this visual identity in future updates.

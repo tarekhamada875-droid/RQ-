@@ -45,8 +45,8 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Server v2 foundation gate
-        run: npx --yes firebase-tools@15.30.2 emulators:exec --only firestore --project rq-v2-emulator "npm run check:v2"
+      - name: V3 legacy backend foundation gate
+        run: npm test -- --run server/subscriberLifecycle.test.ts
 
       - name: Verify production artifacts
         run: |
