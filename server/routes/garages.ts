@@ -8,6 +8,8 @@ import { mapDomainErrorToStatus } from './helpers';
 import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
+import { decideGarageDeletion } from '../domain/garageDeletion';
+import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 
 const router = Router();
 
@@ -267,16 +269,22 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
 
     const deletionJobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
     const garageRef = adminDb.doc(`garages/${garageId}`);
-    const garageSnap = await garageRef.get();
-    if (!garageSnap.exists) {
-      const deletionJobSnap = await deletionJobRef.get();
-      if (deletionJobSnap.exists && deletionJobSnap.data()?.status === 'completed') {
-        return res.json({ success: true, alreadyDeleted: true });
+    const [garageSnap, deletionJobSnap] = await Promise.all([garageRef.get(), deletionJobRef.get()]);
+    const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
+    const deletionDecision = decideGarageDeletion(
+      { callerRole, garageId },
+      garageDocumentToDeletionState(garageSnap.exists ? garageData : null),
+      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobSnap.data() || {} : null),
+    );
+    if (deletionDecision.ok === false) {
+      if (deletionDecision.error === 'GARAGE_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
       }
-      return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
-
-    const garageData = garageSnap.data() || {};
+    if (deletionDecision.value.kind === 'already_deleted') {
+      return res.json({ success: true, alreadyDeleted: true });
+    }
 
     // Mark first so a timeout or partial failure can safely resume on retry.
     await garageRef.set({
