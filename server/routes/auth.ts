@@ -26,6 +26,7 @@ import {
   ValidationError
 } from '../validation';
 import { addActiveSession, hashSessionId, hasActiveSession, removeActiveSession, toSessionSummary } from '../auth/sessionMarkers';
+import { canClaimAdminSession, canReleaseSession } from '../domain/authorization';
 
 export function registerAuthRoutes(router: Router) {
   const sessionCollections: Record<string, { sessions: string; entity: string }> = {
@@ -482,27 +483,21 @@ export function registerAuthRoutes(router: Router) {
       }
 
       // Check authorization: Must either have valid admin PIN OR already have an active matching session
-      let isAuthorized = false;
       const cleanInputPin = pin ? cleanPin(pin) : '';
+      let hasValidAdminPin = false;
       if (cleanInputPin) {
         const adminPinStored = await getAdminPin();
         if (verifyPinMatch(cleanInputPin, adminPinStored).matches) {
-          isAuthorized = true;
+          hasValidAdminPin = true;
           await resetRateLimit(clientIp);
         }
       }
 
-      if (!isAuthorized) {
-        const secSnap = await adminDb.doc(`admin_sessions/${effectiveUid}`).get();
-        if (secSnap.exists) {
-          const sData = secSnap.data() || {};
-          if (sData.isActive && sData.sessionId === sessionId) {
-            isAuthorized = true;
-          }
-        }
-      }
-
-      if (!isAuthorized) {
+      const activeSessionSnap = hasValidAdminPin
+        ? null
+        : await adminDb.doc(`admin_sessions/${effectiveUid}`).get();
+      const activeSession = activeSessionSnap?.exists ? activeSessionSnap.data() || {} : null;
+      if (!canClaimAdminSession({ hasValidAdminPin, activeSession, requestedSessionId: sessionId })) {
         return sendApiError(res, 403, 'FORBIDDEN', 'غير مصرح: يتطلب إدخال الرقم السري', req.correlationId);
       }
 
@@ -651,16 +646,16 @@ export function registerAuthRoutes(router: Router) {
       }
 
       // Check authorization: caller must release own session or be active admin/supervisor
-      let isAuthorized = (verifiedUid === uid);
-      if (!isAuthorized) {
+      let isActiveAdmin = false;
+      let isActiveSupervisor = false;
+      if (verifiedUid !== uid) {
         const adminSnap = await adminDb.doc(`admin_sessions/${verifiedUid}`).get();
         const supSnap = await adminDb.doc(`supervisor_sessions/${verifiedUid}`).get();
-        if ((adminSnap.exists && adminSnap.data()?.isActive) || (supSnap.exists && supSnap.data()?.isActive)) {
-          isAuthorized = true;
-        }
+        isActiveAdmin = Boolean(adminSnap.exists && adminSnap.data()?.isActive);
+        isActiveSupervisor = Boolean(supSnap.exists && supSnap.data()?.isActive);
       }
 
-      if (!isAuthorized) {
+      if (!canReleaseSession({ actorUid: verifiedUid, targetUid: uid, isActiveAdmin, isActiveSupervisor })) {
         return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Unauthorized session release', req.correlationId);
       }
 

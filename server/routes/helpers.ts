@@ -1,5 +1,6 @@
 import { ValidationError } from '../validation';
 import { AuthRequest } from '../middleware';
+import { canManageGarageScopedData as decideGarageScope } from '../domain/authorization';
 
 /**
  * Domain Error Status Code Resolver
@@ -17,6 +18,7 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
 
   if (
     errMsg.includes('REQUEST_ALREADY_PROCESSED') ||
+    errMsg.includes('IDEMPOTENCY_KEY_REUSE') ||
     errMsg.includes('VEHICLE_ALREADY_INSIDE') ||
     errMsg.includes('VEHICLE_ALREADY_OUTSIDE') ||
     errMsg.includes('INSUFFICIENT_BALANCE') ||
@@ -55,6 +57,5 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
 }
 
 export function canManageGarageScopedData(req: AuthRequest, garageId: string): boolean {
-  if (req.user?.role === 'admin') return true;
-  return (req.user?.role === 'garage' || req.user?.role === 'staff') && req.user?.garageId === garageId;
+  return decideGarageScope(req.user, garageId);
 }
