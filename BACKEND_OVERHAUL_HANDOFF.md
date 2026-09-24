@@ -474,3 +474,10 @@ The reusable protocol now documents how a new account reconstructs the external 
 Commit `debd0c9` adds focused route coverage proving that a garage-scoped Firebase principal cannot read another garage's dashboard report; the request is rejected with the generic `FORBIDDEN` envelope before report data is returned. The focused dashboard-report suite passes 7 tests and v2 typecheck passes. The corrected complete emulator-backed v2 check, application tests, lint, production build, maintainability check, and diff check all pass. Production Gate `35901088303` passed for exact commit `debd0c9`.
 
 This is test-only hardening. No route authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked; production and stale previews must not be used as substitutes. The next bounded slice is dashboard-report repository-error redaction coverage, proving provider failures return only the generic `INTERNAL_ERROR` envelope.
+
+
+### Dashboard report error-redaction coverage — 2026-09-24 04:18 UTC
+
+Commit `e80f88e` adds focused coverage proving that a dashboard-summary repository failure is returned as the generic `INTERNAL_ERROR` envelope and that an internal Firestore path is not exposed. The focused report suite passes 8 tests, v2 typecheck passes, the corrected complete emulator-backed and application validation sequence passes, and Production Gate `35954928976` succeeds for the exact commit.
+
+This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is equivalent projection-repository error-redaction coverage for the same dashboard report route.

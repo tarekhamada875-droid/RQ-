@@ -1688,3 +1688,8 @@ The succession protocol now includes a cross-account Railway MCP reconstruction 
 The dashboard report route now has focused regression coverage for garage-scope authorization in `debd0c9`: a garage-scoped principal targeting another garage receives `FORBIDDEN` and cannot read the report. The focused suite, v2 typecheck, corrected emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks passed. Production Gate `35901088303` succeeded for the exact implementation commit. This slice changes tests only and preserves legacy authority, disabled production read and shadow flags, financial-write boundaries, the undeployed projection worker, deferred physical deletion, and legacy route availability.
 
 The next independent bounded hardening task is dashboard-report repository-error redaction coverage. Authenticated Cloudflare preview validation remains blocked until a legitimate current non-production preview and Firebase-authenticated session exist; no branch should be created to manufacture one.
+
+
+### Dashboard report error-redaction coverage — 2026-09-24 04:18 UTC
+
+The dashboard report test suite now proves that summary-repository failures return a generic `INTERNAL_ERROR` envelope without leaking an internal Firestore path. The focused suite has 8 passing tests; the v2 typecheck, emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35954928976` succeeded for exact implementation commit `e80f88e`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is projection-repository error-redaction coverage for the dashboard report route.
