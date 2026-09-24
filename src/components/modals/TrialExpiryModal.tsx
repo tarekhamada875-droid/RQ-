@@ -17,10 +17,11 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
   showToast
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const [showConfirmDeclined, setShowConfirmDeclined] = useState(false);
   const [submittedChoice, setSubmittedChoice] = useState<'continued' | 'declined' | null>(null);
 
-  if (!garage) return null;
+  if (!garage || isDismissed) return null;
 
   // Check if subscription/trial is expired and no decision has been recorded yet
   const isExpired = isSubscriptionExpired(garage);
@@ -46,7 +47,8 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
       }
 
       setTimeout(() => {
-        if (onClose) onClose();
+        setIsDismissed(true);
+        onClose?.();
       }, 2500);
     } catch (err) {
       console.error('Error saving trial decision:', err);

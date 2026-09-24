@@ -9,6 +9,7 @@ import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
 import { decideGarageDeletion } from '../domain/garageDeletion';
+import { canUpdateTrialDecision } from '../domain/authorization';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 
 const router = Router();
@@ -336,15 +337,15 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
 // Secure Server API: Update Garage Trial Decision
 router.post('/trial-decision', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
     const { garageId, trialDecision } = req.body || {};
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
     const validatedGarageId = validateId(garageId, 'garageId', true);
 
     if (trialDecision !== null && trialDecision !== 'continued' && trialDecision !== 'declined') {
       return res.status(400).json({ success: false, error: 'INVALID_TRIAL_DECISION' });
+    }
+    if (!canUpdateTrialDecision(req.user, validatedGarageId, trialDecision)) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Trial decision is outside your authority' });
     }
 
     const garageRef = adminDb.collection('garages').doc(validatedGarageId);
