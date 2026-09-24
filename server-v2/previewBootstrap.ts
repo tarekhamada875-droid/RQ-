@@ -5,6 +5,10 @@ import type { V2Environment } from './config/environment.js';
 
 export function configuredV2Preview(environment: V2Environment): Express | undefined {
   if (!environment.V2_PREVIEW_ENABLED || !environment.V2_PREVIEW_AUTH_ENABLED) return undefined;
+  if (environment.NODE_ENV === 'production') {
+    console.warn('[RQ V2] Preview remains disabled in production until a distributed rate limiter is configured');
+    return undefined;
+  }
   return createV2PreviewApp(environment);
 }
 

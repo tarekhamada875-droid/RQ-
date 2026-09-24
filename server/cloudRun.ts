@@ -13,7 +13,7 @@ const previewMounted = Boolean(previewApp);
 const app = createApp(previewApp ? { apiPreviewApp: previewApp } : {});
 
 if (environment.V2_PREVIEW_ENABLED && !previewMounted) {
-  console.warn('[RQ Cloud Run API] v2 preview remains disabled because V2_PREVIEW_AUTH_ENABLED is false');
+  console.warn('[RQ Cloud Run API] v2 preview remains disabled because its production safety requirements are not satisfied');
 }
 
 app.listen(port, '0.0.0.0', () => {

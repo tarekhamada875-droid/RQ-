@@ -36,9 +36,9 @@ describe('Railway v2 preview bootstrap', () => {
     expect((await fetch(`${baseUrl}/api/v2/packages`)).status).toBe(401);
   });
 
-  it('refuses production preview until a distributed rate limiter is configured', () => {
+  it('keeps the legacy service available by disabling unsafe production preview', () => {
     const environment = parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-v2-preview-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' });
-    expect(() => mountConfiguredV2Preview(express(), environment)).toThrow('distributed rate limiter');
+    expect(mountConfiguredV2Preview(express(), environment)).toBe(false);
   });
 
 });
