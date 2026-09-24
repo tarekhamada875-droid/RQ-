@@ -383,3 +383,21 @@ The reusable start-to-finish succession playbook is now [`docs/SUCCESSION_PROTOC
 **Copy-paste startup:**
 
 > Repository: `/home/ubuntu/RQ-`. Read `NEXT_AGENT_HANDOFF.md` first. Verify `HEAD`, `origin/main`, and Production Gate `35954928976` for `e80f88e`. Start the single bounded task: add dashboard-report projection-error redaction coverage. Preserve legacy authority, disabled production v2/shadow flags, undeployed projection repair, deferred deletion, and all secret-handling rules. If `tokens ending` appears, stop feature work and repeat this protocol.
+
+
+### Dashboard report projection-error redaction coverage — 2026-09-24 04:28 UTC
+
+- Current branch and SHA: `main`, `38cec77` implementation tip; working tree clean and synchronized before this documentation update.
+- Last implementation commit: `38cec77 test: cover dashboard projection error redaction`.
+- Focused validation: `npm run test:v2 -- server-v2/test/dashboardReportRoute.test.ts` — 9 tests passed; `npm run lint:v2` — passed.
+- Full validation: Firestore-emulator-backed `npm run check:v2`, `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, and `git diff --check` — passed.
+- Production Gate: run `35955592411` — success for exact implementation commit `38cec77`.
+- Deployment evidence: exact-commit Production Gate Railway smoke checks passed; no Cloudflare preview was created or used as authenticated evidence.
+- Connector/MCP state: external read-only Railway MCP remains outside Git at `/home/ubuntu/rq-backend-mcp`; no secret values are recorded here.
+- Known blockers: no current Firebase-authenticated non-production Cloudflare preview is established; do not use production or stale previews as substitutes.
+- Safety state: legacy backend remains authoritative; production `VITE_V2_READ_*` flags and shadow traffic remain disabled; financial writes are not migrated; projection repair remains undeployed, unscheduled, and disconnected from automatic mutation; physical deletion remains deferred; legacy routes remain available.
+- Exact next task: add focused dashboard-report combined repository-failure coverage, proving a failure from either summary or projection access remains a generic `INTERNAL_ERROR` envelope without exposing internal details.
+
+**Copy-paste startup:**
+
+> Repository: `/home/ubuntu/RQ-`. Read `NEXT_AGENT_HANDOFF.md` first. Verify `HEAD`, `origin/main`, and Production Gate `35955592411` for `38cec77`. Start the single bounded task: add combined dashboard-report repository-failure redaction coverage. Preserve legacy authority, disabled production v2/shadow flags, undeployed projection repair, deferred deletion, and all secret-handling rules. If `tokens ending` appears, stop feature work and repeat this protocol.

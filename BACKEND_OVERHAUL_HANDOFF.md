@@ -481,3 +481,10 @@ This is test-only hardening. No route authority, production flag, financial writ
 Commit `e80f88e` adds focused coverage proving that a dashboard-summary repository failure is returned as the generic `INTERNAL_ERROR` envelope and that an internal Firestore path is not exposed. The focused report suite passes 8 tests, v2 typecheck passes, the corrected complete emulator-backed and application validation sequence passes, and Production Gate `35954928976` succeeds for the exact commit.
 
 This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is equivalent projection-repository error-redaction coverage for the same dashboard report route.
+
+
+### Dashboard report projection-error redaction coverage — 2026-09-24 04:28 UTC
+
+Commit `38cec77` adds focused coverage proving that a projection-repository failure in the dashboard report route returns the generic `INTERNAL_ERROR` envelope without exposing internal failure text. The focused report suite passes 9 tests, v2 typecheck passes, the complete emulator-backed and application validation sequence passes, and Production Gate `35955592411` succeeds for the exact commit.
+
+This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is combined repository-failure redaction coverage for the dashboard report route.

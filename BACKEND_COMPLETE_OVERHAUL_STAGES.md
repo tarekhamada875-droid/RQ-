@@ -1693,3 +1693,8 @@ The next independent bounded hardening task is dashboard-report repository-error
 ### Dashboard report error-redaction coverage — 2026-09-24 04:18 UTC
 
 The dashboard report test suite now proves that summary-repository failures return a generic `INTERNAL_ERROR` envelope without leaking an internal Firestore path. The focused suite has 8 passing tests; the v2 typecheck, emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35954928976` succeeded for exact implementation commit `e80f88e`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is projection-repository error-redaction coverage for the dashboard report route.
+
+
+### Dashboard report projection-error redaction coverage — 2026-09-24 04:28 UTC
+
+The dashboard report suite now proves that projection-repository failures return a generic `INTERNAL_ERROR` envelope without leaking internal details. The focused suite has 9 passing tests; v2 typecheck, emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35955592411` succeeded for exact implementation commit `38cec77`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is combined repository-failure redaction coverage for the dashboard report route.
