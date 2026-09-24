@@ -1708,3 +1708,35 @@ The dashboard report tests now use one explicit table-driven matrix for summary-
 ### Dashboard report success-envelope schema coverage — 2026-09-24 04:50 UTC
 
 The dashboard report route tests now validate typed success envelopes for consistent and summary-mismatch repair-needed reports, including exact top-level keys, UUID request IDs, and `DashboardReportSchema` parsing. The focused suite has 9 passing tests; v2 typecheck, corrected emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35957142712` succeeded for exact implementation commit `5bbd454`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is stale-projection success-envelope schema coverage.
+
+
+## 18. Strategic pivot: remodel the legacy backend with a functional core
+
+### Decision — 2026-09-24
+
+The current production backend under `server/` remains the authority. The parallel `server-v2` replacement is paused for new feature work because a wholesale replacement increases migration risk even when its internal tests are strong. The repository retains V2 contracts and tests as reference material, but no production authority, financial writer, or frontend production flag is transferred to V2.
+
+The new implementation path is a **functional core with an imperative Firestore shell**. Pure functions will own business decisions and state transitions. Thin legacy adapters will continue to own authentication, Firestore reads, transactions, event writes, idempotency records, logs, HTTP envelopes, and deployment behavior. This allows one capability to be remodeled while the existing backend remains operational and reversible.
+
+### Legacy-first stages
+
+| Stage | Goal | Required boundary |
+|---|---|---|
+| L0 — Characterization | Capture legacy route contracts and data behavior before changing runtime code | Tests only; no production behavior change |
+| L1 — Shared pure policies | Extract dates, validation, scope, fair-use, projections, and replay classification | Pure functions receive explicit inputs and return typed results |
+| L2 — Subscriber lifecycle | Remodel add, renew, update, and delete behind the existing routes | Keep legacy Firestore adapter and response envelopes |
+| L3 — Vehicle check-in | Remodel capacity, subscriber, lock, expiry, and fair-use decisions | Keep existing transaction writer authoritative |
+| L4 — Vehicle check-out | Remodel pricing, exit, counters, and accounting decisions | Do not change financial authority until reconciliation passes |
+| L5 — Garage non-financial operations | Remodel profile, lock, trial, and deletion-job policies | Physical deletion remains deferred |
+| L6 — Authentication policy | Separate identity/session reads from authorization decisions | Preserve legacy session compatibility |
+| L7 — Financial operations | Remodel recharge, wallet, commission, refund, and settlement decisions | No dual writes; cutover requires reconciliation and rollback evidence |
+
+### Next bounded task
+
+The next agent must perform L0 for the legacy subscriber lifecycle. Add or organize characterization tests for `/api/subscribers/add`, `/renew`, `/update`, and `/delete`, including success responses, garage-scope authorization, invalid dates, immutable plate behavior, missing records, idempotent replay, and changed-payload idempotency behavior. Do not refactor runtime code in L0.
+
+### Acceptance gates
+
+Every later stage requires focused tests, the full repository test suite, typecheck, production build, maintainability checks, diff and secret scans, an exact-commit Production Gate, and a clean synchronized tree. A stage may not change production authority until its adapter behavior matches the characterized legacy contract and a flag-based rollback is demonstrated. Financial stages additionally require reconciliation against legacy events and balances. No production V2 flag, shadow comparison flag, financial dual-write, projection mutator, physical deletion, or legacy route removal is allowed under this plan without a separately approved migration stage.
+
+The detailed assessment is `docs/LEGACY_BACKEND_FUNCTIONAL_REFACTOR_ASSESSMENT.md`.

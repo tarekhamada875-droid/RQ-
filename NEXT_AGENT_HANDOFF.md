@@ -437,3 +437,24 @@ The reusable start-to-finish succession playbook is now [`docs/SUCCESSION_PROTOC
 **Copy-paste startup:**
 
 > Repository: `/home/ubuntu/RQ-`. Read `NEXT_AGENT_HANDOFF.md` first. Verify `HEAD`, `origin/main`, and Production Gate `35957142712` for `5bbd454`. Start the single bounded task: add dashboard-report stale-projection success-envelope schema coverage. Preserve legacy authority, disabled production v2/shadow flags, undeployed projection repair, deferred deletion, and all secret-handling rules. If `tokens ending` appears, stop feature work and repeat this protocol.
+
+
+### Strategic pivot: legacy-first functional refactoring — 2026-09-24
+
+- Current repository state: branch `main`, implementation tip `b1d65bf` (`test: allow emulator concurrency timeouts`), synchronized before this documentation slice. The assessment artifact is `docs/LEGACY_BACKEND_FUNCTIONAL_REFACTOR_ASSESSMENT.md`.
+- Current production authority: the legacy `server/` backend remains authoritative. Production `VITE_V2_READ_*` flags remain disabled, production shadow traffic remains disabled, financial writes remain legacy-only, physical deletion remains deferred, and legacy routes remain available.
+- V2 status: pause new V2 feature expansion. Do not delete `server-v2`; its contracts and tests may be reused as references, but it must not become production authority.
+- Validation evidence: local emulator-backed V2 validation passed 59 files and 337 tests after the hardening changes; repository typecheck, tests, build, and maintainability checks passed locally. Production Gate `35962732184` for `b1d65bf` passed code, test, build, V2 foundation, artifact, and maintainability stages but was still at the Railway smoke stage when monitoring was stopped. Do not record it as successful until its final conclusion is independently verified.
+- Assessment finding: remodeling the real backend with a functional core and imperative Firestore adapters is feasible and safer than a big-bang replacement. The legacy handlers currently interleave authorization, validation, time, business rules, Firestore operations, events, projections, and HTTP responses.
+- Exact next bounded task: begin **Stage 0 characterization for the legacy subscriber lifecycle**. Add or organize tests for legacy `/api/subscribers/add`, `/renew`, `/update`, and `/delete` covering successful responses, garage-scope authorization, invalid date ranges, immutable plate behavior, missing records, replay behavior, and changed-payload idempotency. Do not change runtime behavior in this task.
+- After Stage 0, the next implementation slice is to extract only pure subscriber state-transition decisions behind the existing legacy routes. Keep Firestore reads, transactions, events, idempotency persistence, and HTTP envelopes in the legacy adapters.
+- Functional-core rules: no Firestore, Express, `process.env`, `Date.now()`, random IDs, logging, or hidden side effects inside extracted domain functions. Inject the clock and ID generator. Use typed results and explicit domain errors while preserving current HTTP response compatibility.
+- Migration order: subscriber lifecycle first; vehicle check-in second; vehicle check-out third; non-financial garage policies next; authentication policy after characterization; financial recharge, wallet, commission, refund, and settlement last. Never dual-write money operations.
+- Required validation for every implementation slice: focused legacy tests, full `npm test`, `npm run lint`, `npm run build`, `npm run maintainability:check`, `git diff --check`, secret scan, exact-commit Production Gate, and clean synchronized tree.
+- Explicit prohibitions: do not enable production V2 flags, enable shadow traffic, remove legacy routes, migrate financial writers, deploy a projection mutator, physically delete production data, manufacture a Cloudflare preview, or use stale/production deployments as authenticated preview evidence.
+
+**Copy-paste startup for the next agent:**
+
+> Repository: `/home/ubuntu/RQ-`. Read `docs/SUCCESSION_PROTOCOL.md`, `NEXT_AGENT_HANDOFF.md`, `BACKEND_OVERHAUL_HANDOFF.md`, `BACKEND_COMPLETE_OVERHAUL_STAGES.md`, `RAILWAY_DEPLOYMENT_HANDOFF.md`, and `AGENTS.md`. Verify `HEAD`, `origin/main`, working-tree state, and the live Production Gate status. Read `docs/LEGACY_BACKEND_FUNCTIONAL_REFACTOR_ASSESSMENT.md`. The strategy is legacy-first: keep `server/` authoritative, pause new `server-v2` feature work, and preserve disabled production V2/shadow flags and legacy financial writes. Start one bounded read-only implementation task: characterize legacy subscriber add/renew/update/delete behavior and idempotency/scope/error contracts without changing runtime behavior. Then follow the focused-test, full-validation, diff/secret-scan, push, and exact-commit Production Gate sequence. If `tokens ending` appears, stop and repeat the succession protocol.
+
+### End strategic-pivot handoff

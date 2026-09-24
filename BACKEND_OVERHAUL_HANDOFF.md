@@ -502,3 +502,18 @@ This is test-only hardening. No runtime authority, production flag, financial wr
 Commit `5bbd454` adds focused success-envelope assertions for consistent and summary-mismatch repair-needed dashboard reports. Each response now validates the exact top-level success keys, UUID request ID, and typed `DashboardReportSchema`. The focused suite passes 9 tests, v2 typecheck passes, the corrected complete validation sequence passes after an isolated transient subscriber timeout reproduction passed all 25 tests, and Production Gate `35957142712` succeeds for the exact commit.
 
 This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is stale-projection success-envelope schema coverage.
+
+
+### Legacy-first functional-refactor strategy — 2026-09-24
+
+The implementation strategy has changed from expanding the parallel V2 replacement to **remodeling the real production backend incrementally**. The legacy `server/` backend remains authoritative and must continue serving the existing routes and writing financial data. `server-v2` is paused as a feature-development track; retain it for typed-contract and test references, but do not enable it as production authority.
+
+The recommended architecture is a functional core with an imperative Firestore shell. Pure domain functions will decide validation, authorization, state transitions, pricing, and replay outcomes. Existing legacy route adapters will continue to perform authentication, Firestore reads and transactions, event recording, idempotency persistence, logging, and HTTP response translation. This preserves the live data model and makes each change reversible.
+
+The new plan is: characterize legacy subscriber lifecycle behavior first; extract subscriber transitions; extract vehicle check-in; extract vehicle check-out; extract non-financial garage policies; refactor authentication policy; and migrate financial behavior last. No financial dual-write is permitted. The full assessment and detailed sequencing are in `docs/LEGACY_BACKEND_FUNCTIONAL_REFACTOR_ASSESSMENT.md`.
+
+The next agent must begin with a bounded, runtime-neutral characterization slice for legacy subscriber add, renew, update, and delete. Coverage must include success, garage scope, invalid dates, immutable plates, missing records, replay, and changed-payload idempotency contracts. Do not alter production flags, routes, data, or authority in that slice.
+
+At the pivot point, `b1d65bf` is the synchronized repository tip. Local V2 validation after the hardening work passed 59 files and 337 tests, and repository typecheck, tests, build, and maintainability checks passed. Production Gate `35962732184` was green through maintainability and remained at Railway smoke when monitoring was stopped; its final conclusion must be rechecked rather than assumed successful.
+
+Safety boundaries remain unchanged: production V2 and shadow flags stay disabled; financial writes remain legacy-only; physical deletion remains deferred; the projection worker remains undeployed and unscheduled; legacy routes remain available; and no stale or production Cloudflare deployment may be used as current authenticated preview evidence.
