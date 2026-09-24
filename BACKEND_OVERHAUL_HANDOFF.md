@@ -488,3 +488,10 @@ This is test-only hardening. No runtime authority, production flag, financial wr
 Commit `38cec77` adds focused coverage proving that a projection-repository failure in the dashboard report route returns the generic `INTERNAL_ERROR` envelope without exposing internal failure text. The focused report suite passes 9 tests, v2 typecheck passes, the complete emulator-backed and application validation sequence passes, and Production Gate `35955592411` succeeds for the exact commit.
 
 This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is combined repository-failure redaction coverage for the dashboard report route.
+
+
+### Dashboard report combined repository-failure redaction matrix — 2026-09-24 04:39 UTC
+
+Commit `48bf815` consolidates summary- and projection-repository failure checks into one explicit table-driven redaction matrix. Both cases return the generic `INTERNAL_ERROR` envelope without exposing internal details. The focused report suite passes 9 tests, v2 typecheck passes, the complete emulator-backed and application validation sequence passes, and Production Gate `35956361235` succeeds for the exact commit.
+
+This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is dashboard-report success-envelope schema coverage for consistent and repair-needed responses.
