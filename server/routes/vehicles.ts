@@ -11,6 +11,8 @@ import { mapDomainErrorToStatus } from './helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from '../deltaProjection';
 import { decideVehicleCheckIn } from '../domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from '../adapters/vehicleCheckInAdapter';
+import { decideVehicleCheckOut } from '../domain/vehicleCheckOut';
+import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '../adapters/vehicleCheckOutAdapter';
 
 const router = Router();
 
@@ -295,6 +297,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
     }
     if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+    const requestFingerprint = createRequestFingerprint({ garageId, vehicleId });
 
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
@@ -303,7 +306,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
           finalCost = Number(duplicate.cachedResult?.cost || 0);
           return;
@@ -320,35 +323,33 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
         t.get(dailyStatsRef)
       ]);
 
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-      if (!vehicleSnap.exists) throw new Error('VEHICLE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      const vehicleData = vehicleSnap.data() || {};
+      const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
+      const vehicleData = vehicleSnap.exists ? vehicleSnap.data() || {} : {};
+      const checkOutGarage = garageDocumentToCheckOutState(garageSnap.exists ? garageData : null);
+      const checkOutVehicle = vehicleDocumentToCheckOutState(vehicleSnap.exists ? vehicleData : null);
+      const preflight = decideVehicleCheckOut({ today, cost: 0 }, checkOutGarage, checkOutVehicle);
+      if (preflight.ok === false) throw new Error(preflight.error);
 
       const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
 
-      if (vehicleData.status === 'outside') {
-        throw new Error('VEHICLE_ALREADY_OUTSIDE');
-      }
-
       const cost = calculateVehicleCost(vehicleData, garageData);
-      finalCost = cost;
+      const decision = decideVehicleCheckOut({ today, cost }, checkOutGarage, checkOutVehicle);
+      if (decision.ok === false) throw new Error(decision.error);
+      const { cost: finalDecisionCost, isNewDay } = decision.value;
+      finalCost = finalDecisionCost;
 
       t.set(vehicleRef, {
         status: 'outside',
         exitTime: new Date(),
-        totalCost: cost,
+        totalCost: finalDecisionCost,
         operationId,
         operationVersion: nextOperationVersion(vehicleData.operationVersion)
       }, { merge: true });
 
-      const isNewDay = garageData.lastTransactionDate !== today;
-      
       t.set(garageRef, {
-        totalRevenue: (garageData.totalRevenue || 0) + cost,
+        totalRevenue: (garageData.totalRevenue || 0) + finalDecisionCost,
         totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
-        todayRevenue: isNewDay ? cost : (garageData.todayRevenue || 0) + cost,
+        todayRevenue: isNewDay ? finalDecisionCost : (garageData.todayRevenue || 0) + finalDecisionCost,
         todayCount: isNewDay ? 0 : (garageData.todayCount || 0),
         lastTransactionDate: today,
         carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
@@ -358,11 +359,11 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
         t.set(dailyStatsRef, {
           dateId: today,
           count: 0,
-          revenue: cost,
+          revenue: finalDecisionCost,
           createdAt: new Date()
         });
       } else {
-        t.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + cost }, { merge: true });
+        t.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + finalDecisionCost }, { merge: true });
       }
 
       const logRef = adminDb.collection('activity_logs').doc();
@@ -378,7 +379,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
         type: vehicleData.type || 'hourly',
         isSubscriber: !!vehicleData.isSubscriber,
         timestamp: new Date(),
-        amount: cost
+        amount: finalDecisionCost
       });
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
@@ -393,18 +394,18 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
           plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
           type: vehicleData.type || 'hourly',
           isSubscriber: !!vehicleData.isSubscriber,
-          cost,
+          cost: finalDecisionCost,
           entryTime: vehicleData.entryTime,
           staffId: staffId || null,
           staffName: resolvedStaffName,
           operationId,
           operationVersion: nextOperationVersion(vehicleData.operationVersion),
-          projectionDelta: createVehicleDelta('vehicle_exited', cost)
+          projectionDelta: createVehicleDelta('vehicle_exited', finalDecisionCost)
         }
       });
-      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_exited', cost));
+      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_exited', finalDecisionCost));
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, { cost }, '/api/vehicles/check-out', req.user?.uid);
+        storeIdempotencyInTransaction(t, idempotencyKey, { cost: finalDecisionCost }, '/api/vehicles/check-out', req.user?.uid, requestFingerprint);
       }
     });
 
