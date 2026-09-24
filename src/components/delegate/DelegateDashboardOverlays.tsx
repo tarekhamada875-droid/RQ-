@@ -42,7 +42,7 @@ export const DelegateDashboardOverlays = (props: any) => {
                   <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
                     <PlusCircle className="w-5 h-5" />
                   </div>
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">إضافة جراج جديد</h2>
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">طلب إنشاء جراج جديد</h2>
                 </div>
                 <button 
                   type="button"
@@ -52,6 +52,10 @@ export const DelegateDashboardOverlays = (props: any) => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-right text-xs font-bold leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                سيتم إرسال الطلب إلى الإدارة للمراجعة، ولن يتم تفعيل الجراج إلا بعد الموافقة.
+              </p>
   
               <form 
                 onSubmit={async (e) => {
@@ -206,7 +210,7 @@ export const DelegateDashboardOverlays = (props: any) => {
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
                       <PlusCircle className="w-4 h-4" />
-                      <span>تأكيد الإضافة</span>
+                      <span>إرسال الطلب</span>
                     </>
                   )}
                 </button>

@@ -383,16 +383,14 @@ export const DelegateDashboardView = memo(({
             </div>
 
             {/* 4.b) Add Garage Button (Clear in-page action) */}
-            {delegate.canCreateGarage && (
-              <button
-                type="button"
-                onClick={handleOpenAddGarage}
-                className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-sm cursor-pointer"
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>إضافة جراج جديد</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleOpenAddGarage}
+              className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-sm cursor-pointer"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>طلب إنشاء جراج</span>
+            </button>
 
             {/* 4.c) Search Bar */}
             <div className="relative w-full">

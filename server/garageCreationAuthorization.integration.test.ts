@@ -7,11 +7,13 @@ vi.mock('./firebaseAdmin', () => ({ adminDb: null, adminAuth: null, firebaseConf
 
 vi.mock('./middleware', () => ({
   requireAuth(req: Request, _res: Response, next: NextFunction) {
-    (req as AuthRequest).user = {
+    const user = {
       uid: 'test-actor',
       displayName: 'Test actor',
-      role: req.header('x-test-role') || 'garage'
+      role: req.header('x-test-role') || 'garage',
+      canCreateGarage: false
     };
+    (req as AuthRequest).user = user;
     next();
   },
   financialRateLimiter: () => (_req: Request, _res: Response, next: NextFunction) => next()
@@ -77,14 +79,14 @@ afterAll(async () => {
   });
 });
 
-describe('garage creation authorization route', () => {
+describe('garage application authorization route', () => {
   it.each(['garage', 'staff', 'supervisor', 'backend-operator'])('denies %s using the existing forbidden response', async (role) => {
     const response = await postGarageCreate(role, {});
     expect(response.status).toBe(403);
     expect(response.json).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
   });
 
-  it.each(['admin', 'delegate'])('allows %s past authorization without writing to a database', async (role) => {
+  it.each(['admin', 'delegate'])('allows %s past authorization even with legacy canCreateGarage=false, without writing to a database', async (role) => {
     const response = await postGarageCreate(role, { name: 'Integration Test Garage', pin: '12345678' });
     expect(response.status).toBe(500);
     expect(response.json).toEqual({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });

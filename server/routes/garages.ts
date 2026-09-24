@@ -9,7 +9,7 @@ import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
 import { decideGarageDeletion } from '../domain/garageDeletion';
-import { canCreateGarage, canRunGarageMaintenance, canUpdateTrialDecision } from '../domain/authorization';
+import { canRunGarageMaintenance, canSubmitGarageApplication, canUpdateTrialDecision } from '../domain/authorization';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 
 const router = Router();
@@ -68,7 +68,7 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     const callerUid = req.user?.uid;
     const callerName = req.user?.displayName || '';
 
-    if (!canCreateGarage(req.user)) {
+    if (!canSubmitGarageApplication(req.user)) {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
     }
 

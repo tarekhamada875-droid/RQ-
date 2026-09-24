@@ -48,7 +48,7 @@ export const AdminPeopleView = memo(({
   }, [currentSupervisor, subTab]);
 
   // Delegates State
-  const [delegateForm, setDelegateForm] = useState({ name: '', phone: '', pin: '', canCreateGarage: false });
+  const [delegateForm, setDelegateForm] = useState({ name: '', phone: '', pin: '' });
   const [delegatePinError, setDelegatePinError] = useState('');
   const [isSubmittingDelegate, setIsSubmittingDelegate] = useState(false);
 
@@ -86,12 +86,11 @@ export const AdminPeopleView = memo(({
         name: cleanName,
         phone: cleanPhone,
         pin: cleanPin,
-        canCreateGarage: delegateForm.canCreateGarage,
         totalRechargedAmount: 0,
         role: 'delegate',
         createdAt: new Date()
       });
-      setDelegateForm({ name: '', phone: '', pin: '', canCreateGarage: false });
+      setDelegateForm({ name: '', phone: '', pin: '' });
       setDelegatePinError('');
     } catch (err) {
       console.error(err);
@@ -248,21 +247,6 @@ export const AdminPeopleView = memo(({
                     <p className="text-[11px] font-bold text-rose-500 dark:text-rose-400 mt-1">{delegatePinError}</p>
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setDelegateForm({ ...delegateForm, canCreateGarage: !delegateForm.canCreateGarage })}
-                  className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                    delegateForm.canCreateGarage
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 text-emerald-700 dark:text-emerald-400'
-                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500'
-                  }`}
-                >
-                  <span className="font-black text-xs">{t('السماح بإنشاء جراجات جديدة')}</span>
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${delegateForm.canCreateGarage ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                    {delegateForm.canCreateGarage && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
-                </button>
 
                 <button
                   type="submit"

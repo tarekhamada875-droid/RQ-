@@ -11,7 +11,6 @@ import {
   History,
   Trash2,
   Lock,
-  Plus,
   Percent,
   Wallet,
   Check,
@@ -436,12 +435,6 @@ export const AdminDelegateDetailsView = memo(({
                       <span>{t('الرمز:')} {formatDisplayPin(delegate.pin)}</span>
                       <span className="text-[10px] text-blue-400 dark:text-blue-500 font-bold underline mr-1 hover:text-blue-600">{t('تعديل')}</span>
                     </button>
-                  )}
-                  {delegate.canCreateGarage && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-2xl text-emerald-700 dark:text-emerald-400 text-sm font-bold transition-colors">
-                      <Plus className="w-4 h-4" />
-                      <span>{t('إنشاء جراجات')}</span>
-                    </div>
                   )}
                 </div>
                 <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 transition-colors">

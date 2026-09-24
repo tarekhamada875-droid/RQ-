@@ -140,6 +140,7 @@ export interface Delegate {
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   createdAt: any;
+  /** Legacy field on existing records; every delegate may now submit applications. */
   canCreateGarage?: boolean;
   commissionRate?: number;
   totalRechargedAmount?: number;
@@ -276,4 +277,3 @@ export interface SystemConfig {
 }
 
 export * from './types/apiContracts';
-

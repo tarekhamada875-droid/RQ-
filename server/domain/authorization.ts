@@ -60,7 +60,7 @@ export function canViewFinancialReport(principal: AuthorizationPrincipal | null 
   return principal?.role === 'admin';
 }
 
-export function canCreateGarage(principal: AuthorizationPrincipal | null | undefined): boolean {
+export function canSubmitGarageApplication(principal: AuthorizationPrincipal | null | undefined): boolean {
   return principal?.role === 'admin' || principal?.role === 'delegate';
 }
 
