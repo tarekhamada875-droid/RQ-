@@ -9,6 +9,7 @@ import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
 import { decideGarageDeletion } from '../domain/garageDeletion';
+import { reconcileGarageState } from '../domain/garageReconciliation';
 import { canRunGarageMaintenance, canSubmitGarageApplication, canUpdateTrialDecision } from '../domain/authorization';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 
@@ -424,79 +425,19 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
         .orderBy('occurredAt', 'desc')
         .get()
     ]);
-    const garageData = garageSnap.data() || {};
-    const stats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
-
-    let eventDerivedRevenue = 0;
-    let eventGrossRevenue = 0;
-    let eventRefundRevenue = 0;
-    let eventEntersCount = 0;
-    let eventExitsCount = 0;
-    let eventRefundsCount = 0;
-
-    for (const doc of eventsSnap.docs) {
-      const ev = doc.data() || {};
-      if (ev.occurredAt) {
-        if (ev.eventType === 'vehicle_entered') eventEntersCount++;
-        if (ev.eventType === 'vehicle_exited') {
-          eventExitsCount++;
-          const cost = Number(ev.payload?.cost || 0);
-          eventGrossRevenue += cost;
-          eventDerivedRevenue += cost;
-        }
-        if (ev.eventType === 'vehicle_refunded') {
-          eventRefundsCount++;
-          const refund = Number(ev.payload?.refundAmount || 0);
-          eventRefundRevenue += refund;
-          eventDerivedRevenue -= refund;
-        }
-      }
-    }
-
-    const expected = {
-      carsInside: insideSnap.size,
-      todayCount: Number(stats.count || 0),
-      todayRevenue: Number(stats.revenue || 0)
-    };
-    const actual = {
-      carsInside: Number(garageData.carsInside || 0),
-      todayCount: garageData.lastTransactionDate === today ? Number(garageData.todayCount || 0) : 0,
-      todayRevenue: garageData.lastTransactionDate === today ? Number(garageData.todayRevenue || 0) : 0
-    };
-    const eventLedgerSummary = {
-      totalRecordedEvents: eventsSnap.size,
-      todayEnters: eventEntersCount,
-      todayExits: eventExitsCount,
-      todayRefunds: eventRefundsCount,
-      eventGrossRevenue: Number(eventGrossRevenue.toFixed(2)),
-      eventRefundRevenue: Number(eventRefundRevenue.toFixed(2)),
-      eventDerivedRevenue: Number(eventDerivedRevenue.toFixed(2))
-    };
-
-    const differences = Object.fromEntries(Object.keys(expected).map((key) => [key, expected[key as keyof typeof expected] - actual[key as keyof typeof actual]]));
-    const eventLedgerDifferences = {
-      todayCount: Number(stats.count || 0) - eventEntersCount,
-      todayExits: Number(stats.exitsCount || 0) - eventExitsCount,
-      todayRevenue: Number(stats.revenue || 0) - Number(eventDerivedRevenue.toFixed(2))
-    };
-    const operationalStateConsistent = differences.carsInside === 0;
-    const dailyStatsConsistent = differences.todayCount === 0 && differences.todayRevenue === 0;
-    const eventLedgerConsistent = Object.values(eventLedgerDifferences).every((value) => value === 0);
+    const reconciliation = reconcileGarageState({
+      today,
+      insideVehicleCount: insideSnap.size,
+      garage: garageSnap.data() || {},
+      dailyStats: dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {},
+      events: eventsSnap.docs.map((doc: any) => doc.data() || {})
+    });
     return res.json({
       success: true,
       data: {
         garageId,
         date: today,
-        expected,
-        actual,
-        eventLedgerSummary,
-        differences,
-        eventLedgerDifferences,
-        operationalStateConsistent,
-        dailyStatsConsistent,
-        eventLedgerConsistent,
-        overallConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent,
-        isConsistent: operationalStateConsistent && dailyStatsConsistent && eventLedgerConsistent
+        ...reconciliation
       }
     });
   } catch (e: any) {
