@@ -1703,3 +1703,8 @@ The dashboard report suite now proves that projection-repository failures return
 ### Dashboard report combined repository-failure redaction matrix — 2026-09-24 04:39 UTC
 
 The dashboard report tests now use one explicit table-driven matrix for summary- and projection-repository failures, proving both paths return a generic `INTERNAL_ERROR` envelope without leaking internal details. The focused suite has 9 passing tests; v2 typecheck, emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35956361235` succeeded for exact implementation commit `48bf815`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is dashboard-report success-envelope schema coverage for consistent and repair-needed responses.
+
+
+### Dashboard report success-envelope schema coverage — 2026-09-24 04:50 UTC
+
+The dashboard report route tests now validate typed success envelopes for consistent and summary-mismatch repair-needed reports, including exact top-level keys, UUID request IDs, and `DashboardReportSchema` parsing. The focused suite has 9 passing tests; v2 typecheck, corrected emulator-backed full validation, application tests, lint, production build, maintainability checks, and diff checks pass. Production Gate `35957142712` succeeded for exact implementation commit `5bbd454`. This test-only slice preserves all migration safety boundaries. The next independent hardening task is stale-projection success-envelope schema coverage.

@@ -495,3 +495,10 @@ This is test-only hardening. No runtime authority, production flag, financial wr
 Commit `48bf815` consolidates summary- and projection-repository failure checks into one explicit table-driven redaction matrix. Both cases return the generic `INTERNAL_ERROR` envelope without exposing internal details. The focused report suite passes 9 tests, v2 typecheck passes, the complete emulator-backed and application validation sequence passes, and Production Gate `35956361235` succeeds for the exact commit.
 
 This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is dashboard-report success-envelope schema coverage for consistent and repair-needed responses.
+
+
+### Dashboard report success-envelope schema coverage — 2026-09-24 04:50 UTC
+
+Commit `5bbd454` adds focused success-envelope assertions for consistent and summary-mismatch repair-needed dashboard reports. Each response now validates the exact top-level success keys, UUID request ID, and typed `DashboardReportSchema`. The focused suite passes 9 tests, v2 typecheck passes, the corrected complete validation sequence passes after an isolated transient subscriber timeout reproduction passed all 25 tests, and Production Gate `35957142712` succeeds for the exact commit.
+
+This is test-only hardening. No runtime authority, production flag, financial writer, projection worker, deletion behavior, legacy route, or production data changed. No current authenticated non-production Cloudflare preview exists, so authenticated frontend evidence remains blocked. The next bounded slice is stale-projection success-envelope schema coverage.
