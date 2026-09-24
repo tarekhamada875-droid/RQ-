@@ -3,6 +3,7 @@ import type {
   VehicleCheckInGarageState,
   VehicleCheckInVehicleState,
 } from '../domain/vehicleCheckIn';
+import type { UnlimitedFairUse } from '../unlimitedFairUse';
 
 export type LegacyVehicleRecord = Readonly<Record<string, unknown>>;
 
@@ -63,7 +64,7 @@ export function vehicleDocumentToCheckInState(document: LegacyVehicleRecord | nu
   };
 }
 
-export function fairUseResultToDecision(result: Readonly<{ allowed: boolean; updatedFairUse?: unknown; autoExtended: boolean }>): FairUseDecision {
+export function fairUseResultToDecision(result: Readonly<{ allowed: boolean; updatedFairUse?: UnlimitedFairUse; autoExtended: boolean }>): FairUseDecision {
   return {
     allowed: result.allowed,
     autoExtended: result.autoExtended,

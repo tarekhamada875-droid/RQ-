@@ -2,13 +2,15 @@ import { Router } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
 import { recordDomainEventInTransaction } from '../events';
 import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
 import { calculateVehicleCost } from '../utils';
 import { validateIdempotencyKey, validatePlate } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from '../deltaProjection';
+import { decideVehicleCheckIn } from '../domain/vehicleCheckIn';
+import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from '../adapters/vehicleCheckInAdapter';
 
 const router = Router();
 
@@ -64,13 +66,14 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     };
 
     const today = getCairoDateKey();
+    const requestFingerprint = createRequestFingerprint({ garageId, plateNumber, plateRaw, type: type || 'hourly' });
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let resultData: Record<string, any> = {};
     let isSubscriberAuthoritative = false;
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
           resultData = duplicate.cachedResult || {};
           return;
@@ -109,51 +112,29 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
         console.warn('[Server Check-In] Subscriber lookup failed inside transaction:', subErr);
         throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
       }
-      if (isGarageDeletionActive(garageData)) {
-        throw new Error('GARAGE_DELETION_IN_PROGRESS');
-      }
-      if (garageData.isLocked === true || garageData.isSuspended === true) {
-        throw new Error('GARAGE_CHECK_IN_LOCKED');
-      }
-      if (isSubscriberAuthoritative) {
-        throw new Error('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN');
-      }
-
       const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
-      
-      const expDateRaw = garageData.balanceExpiry;
-      if (!expDateRaw) throw new Error('SUBSCRIPTION_EXPIRED');
-      const expDate = expDateRaw.toDate ? expDateRaw.toDate() : new Date(expDateRaw);
-      if (isNaN(expDate.getTime()) || expDate.getTime() < Date.now()) {
-        throw new Error('SUBSCRIPTION_EXPIRED');
-      }
-
-      const isNewDay = garageData.lastTransactionDate !== today;
-      const capacity = Number(garageData.dailyCapacity || 0);
-      const used = isNewDay ? 0 : Number(garageData.todayCount || 0);
-      const isUnlimited = capacity === 0 || String(garageData.activePackageName || '').includes('مفتوح');
-      
-      let updatedFairUse: any = null;
-      let didAutoExtend = false;
-
+      const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
+      const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
+      const isUnlimited = checkInGarage.dailyCapacity === 0 || checkInGarage.activePackageName.includes('مفتوح');
+      let fairUseDecision = null;
       if (isUnlimited) {
         const evalResult = evaluateFairUseCheckIn(
           garageData.unlimitedFairUse,
           garageData.durationDays || 30,
           garageData.activePackageName || ''
         );
-        if (!evalResult.allowed) {
-          throw new Error('FAIR_USE_LIMIT_REACHED');
-        }
-        updatedFairUse = evalResult.updatedFairUse;
-        didAutoExtend = evalResult.autoExtended;
-      } else if (used >= capacity) {
-        throw new Error('CAPACITY_LIMIT_REACHED');
+        fairUseDecision = fairUseResultToDecision(evalResult);
       }
-
-      if (vehicleSnap.exists && vehicleSnap.data()?.status === 'inside') {
-        throw new Error('VEHICLE_ALREADY_INSIDE');
-      }
+      const decision = decideVehicleCheckIn(
+        { today, nowMs: Date.now(), plateNumber, plateNumberRaw: plateRaw },
+        checkInGarage,
+        checkInVehicle,
+        fairUseDecision,
+      );
+      if (decision.ok === false) throw new Error(decision.error);
+      const { isNewDay, used, capacity } = decision.value;
+      const updatedFairUse = decision.value.fairUse?.updatedFairUse;
+      const didAutoExtend = decision.value.fairUse?.autoExtended === true;
       
       t.set(vehicleRef, {
         id: plateRaw,
@@ -266,7 +247,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
       writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_entered'));
 
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid);
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', req.user?.uid, requestFingerprint);
       }
     });
 

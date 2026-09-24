@@ -1,3 +1,5 @@
+import type { UnlimitedFairUse } from '../unlimitedFairUse';
+
 export type VehicleCheckInError =
   | 'GARAGE_NOT_FOUND'
   | 'GARAGE_DELETION_IN_PROGRESS'
@@ -39,7 +41,7 @@ export interface VehicleCheckInVehicleState {
 
 export interface FairUseDecision {
   readonly allowed: boolean;
-  readonly updatedFairUse?: unknown;
+  readonly updatedFairUse?: UnlimitedFairUse;
   readonly autoExtended: boolean;
 }
 

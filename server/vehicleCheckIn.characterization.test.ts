@@ -47,7 +47,14 @@ describe('vehicle check-in characterization', () => {
 
   it('uses fair-use decisions for unlimited garages', () => {
     const unlimited = garageDocumentToCheckInState({ ...baseGarage, dailyCapacity: 0, activePackageName: 'مفتوح' }, false);
-    const fairUse = fairUseResultToDecision({ allowed: true, autoExtended: true, updatedFairUse: { cycleCarsCount: 1 } });
+    const fairUse = fairUseResultToDecision({
+      allowed: true,
+      autoExtended: true,
+      updatedFairUse: {
+        isActive: true, tierType: 'daily', cycleCarsCount: 1, currentAllowance: 200, maxAllowance: 400,
+        stepAmount: 200, threshold: 20, extensionsCount: 0,
+      },
+    });
     expect(decideVehicleCheckIn(command, unlimited, { exists: false }, fairUse)).toMatchObject({ ok: true, value: { isUnlimited: true, fairUse } });
     expect(decideVehicleCheckIn(command, unlimited, { exists: false }, { allowed: false, autoExtended: false })).toEqual({ ok: false, error: 'FAIR_USE_LIMIT_REACHED' });
   });
