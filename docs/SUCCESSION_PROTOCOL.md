@@ -27,7 +27,9 @@ Every successor in every future account repeats these steps. The protocol does n
 
 ## Railway connector continuity
 
-Railway is within project scope. If Railway diagnostics or deployment control is needed, inspect the current connector configuration first. The expected protected variable name is `BACKEND_OPERATOR_TOKEN`; never disclose its value. If no connector exists, continue browser-free repository work and record the missing endpoint or protected credential as a blocker. Do not create a plaintext secret workaround.
+Railway is within project scope. The environment connector **RQ Railway Backend Operator** is already registered and enabled. Before Railway diagnostics or deployment control, inspect the current connector configuration and use the existing connector rather than creating a duplicate. The connector UID is `318c3a81-56d7-4fd1-b695-c3c7b7c9b943`.
+
+The connector exposes only the read-only tools `backend_health` and `read_backend_endpoint`, initially allowlisted to `/api/health` and `/api/system-config`. Verify the connector with a read-only health call before any operational work; the expected result is HTTP 200 with the deployed commit version. The protected Railway variable is `BACKEND_OPERATOR_TOKEN`; never disclose, print, copy, search for, or place its value in chat, source, logs, command arguments, or handoff files. If the connector is missing or disabled in a future environment, record that as a blocker and use the protected connector review flow. Never create a plaintext secret workaround and never weaken backend authentication.
 
 ## V3 safety boundaries
 
@@ -35,4 +37,4 @@ The production `server/` backend remains authoritative until a bounded V3 slice 
 
 ## Copy-paste startup
 
-> Repository: `/home/ubuntu/RQ-`. Read `V3_BACKEND_PLAN.md`, `docs/SUCCESSION_PROTOCOL.md`, and `AGENTS.md`. Verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest validation result. Start exactly one bounded V3 task, preserving the production `server/` authority and secret-handling rules. If the owner sends `tokens ending`, stop feature work and repeat this succession protocol before doing anything else.
+> Repository: `/home/ubuntu/RQ-`. Read `V3_BACKEND_PLAN.md`, `docs/SUCCESSION_PROTOCOL.md`, and `AGENTS.md`. Verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest validation result. Inspect the existing **RQ Railway Backend Operator** connector, verify its read-only `backend_health` tool, and never request or expose `BACKEND_OPERATOR_TOKEN`. Start exactly one bounded V3 task, preserving the production `server/` authority and secret-handling rules. If the owner sends `tokens ending`, stop feature work and repeat this succession protocol before doing anything else.
