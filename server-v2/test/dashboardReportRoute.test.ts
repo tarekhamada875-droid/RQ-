@@ -22,7 +22,7 @@ afterEach(async () => {
   server = undefined;
 });
 
-async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; currentSummary?: GarageSummary | null; role?: 'admin' | 'garage'; garageId?: string } = {}) {
+async function start(options: { enabled?: boolean; currentProjection?: ProjectionState | null; currentSummary?: GarageSummary | null; summaryError?: Error; role?: 'admin' | 'garage'; garageId?: string } = {}) {
   const enabled = options.enabled ?? true;
   const projectionRepository: ProjectionRepository = {
     get: async () => options.currentProjection === undefined ? projection : options.currentProjection,
@@ -30,7 +30,10 @@ async function start(options: { enabled?: boolean; currentProjection?: Projectio
     rebuild: async () => ({ projection, sourceEventCount: 0, replayed: false })
   };
   const summaryRepository: GarageSummaryRepository = {
-    getSummary: async () => options.currentSummary === undefined ? summary : options.currentSummary
+    getSummary: async () => {
+      if (options.summaryError) throw options.summaryError;
+      return options.currentSummary === undefined ? summary : options.currentSummary;
+    }
   };
   const app = createV2App({
     environment: parseEnvironment({ NODE_ENV: enabled ? 'test' : 'production', FIREBASE_PROJECT_ID: 'rq-v2-report-route-test', V2_PREVIEW_ENABLED: String(enabled), V2_PREVIEW_AUTH_ENABLED: String(enabled) }),
@@ -85,6 +88,15 @@ describe('v2 dashboard report route', () => {
     const response = await fetch(`${baseUrl}/v2/garages/garage-1/report?date=2026-09-22`);
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ success: false, code: 'FORBIDDEN' });
+  });
+
+  it('redacts dashboard report repository failures', async () => {
+    const internalFailure = 'Firestore path projects/rq-v2/databases/(default)/documents/secret-internal';
+    const response = await getReport(await start({ summaryError: new Error(internalFailure) }));
+    const body = await response.json();
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR', error: 'Unable to read dashboard report' });
+    expect(JSON.stringify(body)).not.toContain(internalFailure);
   });
 
   it('does not expose the report in production', async () => {
