@@ -60,6 +60,10 @@ export function canViewFinancialReport(principal: AuthorizationPrincipal | null 
   return principal?.role === 'admin';
 }
 
+export function canCreateGarage(principal: AuthorizationPrincipal | null | undefined): boolean {
+  return principal?.role === 'admin' || principal?.role === 'delegate';
+}
+
 /**
  * Decides whether a principal may manage garage-scoped records.
  * This pure policy intentionally preserves the current route contract:

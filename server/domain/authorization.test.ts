@@ -3,6 +3,7 @@ import {
   ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS,
   authorizeVehicleGarageScope,
   canClaimAdminSession,
+  canCreateGarage,
   canInvalidateAllSessions,
   canManageGarageScopedData,
   canRunGarageMaintenance,
@@ -115,6 +116,18 @@ describe('financial report authorization policy', () => {
     }
     expect(canViewFinancialReport(undefined)).toBe(false);
     expect(canViewFinancialReport(null)).toBe(false);
+  });
+});
+
+describe('garage creation authorization policy', () => {
+  it('allows administrators and delegates only', () => {
+    expect(canCreateGarage({ role: 'admin' })).toBe(true);
+    expect(canCreateGarage({ role: 'delegate' })).toBe(true);
+    for (const role of ['garage', 'staff', 'supervisor', 'backend-operator', 'unknown']) {
+      expect(canCreateGarage({ role })).toBe(false);
+    }
+    expect(canCreateGarage(undefined)).toBe(false);
+    expect(canCreateGarage(null)).toBe(false);
   });
 });
 
