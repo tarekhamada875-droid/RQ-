@@ -1,10 +1,23 @@
 import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../idempotency';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
 import { recordDomainEventInTransaction } from '../events';
 import { validateDateRange, validatePlate, validateId, validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus, canManageGarageScopedData } from './helpers';
+import {
+  addRequestToCommand,
+  lifecycleErrorToLegacyError,
+  subscriberDocumentToState,
+  transitionToFirestoreUpdate,
+  updateRequestToCommand,
+} from '../adapters/subscriberLifecycleAdapter';
+import {
+  decideSubscriberAdd,
+  decideSubscriberDelete,
+  decideSubscriberRenew,
+  decideSubscriberUpdate,
+} from '../domain/subscriberLifecycle';
 
 const router = Router();
 
@@ -23,11 +36,12 @@ router.post('/add', requireAuth, async (req: AuthRequest, res: any) => {
     const subscriberId = `plate_${Buffer.from(plateRaw).toString('base64url')}`;
     const docRef = subscriberCollection.doc(subscriberId);
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+    const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberData: { ...subscriberFields, plateNumber, plateNumberRaw: plateRaw, ...dates } });
     let resultData: { id: string } = { id: subscriberId };
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/add', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/add', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
           resultData = duplicate.cachedResult || resultData;
           return;
@@ -38,6 +52,8 @@ router.post('/add', requireAuth, async (req: AuthRequest, res: any) => {
       if (deterministicSnap.exists || !legacyMatches.empty) {
         throw new Error('SUBSCRIBER_ALREADY_EXISTS');
       }
+      const decision = decideSubscriberAdd(null, addRequestToCommand(subscriberData, { plateNumber, plateRaw }, dates));
+      if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
       t.set(docRef, {
         ...subscriberFields,
         plateNumber,
@@ -63,7 +79,7 @@ router.post('/add', requireAuth, async (req: AuthRequest, res: any) => {
         }
       });
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/subscribers/add', req.user?.uid);
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/subscribers/add', req.user?.uid, requestFingerprint);
       }
     });
 
@@ -86,15 +102,22 @@ router.post('/renew', requireAuth, async (req: AuthRequest, res: any) => {
     const dates = validateDateRange(newDates.startDate, newDates.endDate);
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
     const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId, newDates: dates });
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/renew', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/renew', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) return;
       }
       const currentSnap = await t.get(subscriberRef);
       if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
-      t.update(subscriberRef, { startDate: dates.startDate, endDate: dates.endDate });
+      const currentState = subscriberDocumentToState(currentSnap.data() || {});
+      const decision = decideSubscriberRenew(currentState, dates);
+      if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      t.update(subscriberRef, {
+        startDate: decision.value.state?.startDate,
+        endDate: decision.value.state?.endDate,
+      });
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
@@ -108,7 +131,7 @@ router.post('/renew', requireAuth, async (req: AuthRequest, res: any) => {
           endDate: dates.endDate
         }
       });
-      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/renew', req.user?.uid);
+      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/renew', req.user?.uid, requestFingerprint);
     });
 
     return res.json({ success: true });
@@ -129,9 +152,10 @@ router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
     if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
     const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId, subscriberData });
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/update', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/update', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) return;
       }
       const currentSnap = await t.get(subscriberRef);
@@ -146,11 +170,10 @@ router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
       }
       const mergedData = { ...currentData, ...subscriberData };
       const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
-      const safeUpdates: Record<string, any> = { ...dates };
-      for (const key of ['ownerName', 'phone', 'notes']) {
-        if (key in subscriberData) safeUpdates[key] = subscriberData[key];
-      }
-      t.update(subscriberRef, safeUpdates);
+      const currentState = subscriberDocumentToState(currentData);
+      const decision = decideSubscriberUpdate(currentState, updateRequestToCommand(mergedData, currentState, dates));
+      if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      t.update(subscriberRef, transitionToFirestoreUpdate(decision.value));
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
@@ -164,7 +187,7 @@ router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
           endDate: dates.endDate
         }
       });
-      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/update', req.user?.uid);
+      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/update', req.user?.uid, requestFingerprint);
     });
     return res.json({ success: true });
   } catch (e: any) {
@@ -184,13 +207,16 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
     if (!canManageGarageScopedData(req, validatedGarageId)) return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' });
     const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
     const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId });
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/delete', req.user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/delete', req.user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) return;
       }
       const currentSnap = await t.get(subscriberRef);
       if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
+      const decision = decideSubscriberDelete(subscriberDocumentToState(currentSnap.data() || {}));
+      if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
       t.delete(subscriberRef);
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
@@ -202,7 +228,7 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
         idempotencyKey: idempotencyKey || undefined,
         payload: {}
       });
-      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/delete', req.user?.uid);
+      if (idempotencyKey) storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/delete', req.user?.uid, requestFingerprint);
     });
     return res.json({ success: true });
   } catch (e: any) {
