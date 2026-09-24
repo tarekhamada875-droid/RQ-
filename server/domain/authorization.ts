@@ -3,6 +3,22 @@ export type AuthorizationPrincipal = Readonly<{
   garageId?: unknown;
 }>;
 
+export const ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS = [
+  'recalculate-cars-inside',
+  'reconciliation',
+  'dashboard-summary/rebuild',
+  'rebuild-projections'
+] as const;
+
+export type GarageMaintenanceOperation = typeof ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS[number];
+
+export function canRunGarageMaintenance(
+  principal: AuthorizationPrincipal | null | undefined,
+  operation: GarageMaintenanceOperation
+): boolean {
+  return principal?.role === 'admin' && ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS.includes(operation);
+}
+
 export function canInvalidateAllSessions(principal: AuthorizationPrincipal | null | undefined): boolean {
   return principal?.role === 'admin';
 }

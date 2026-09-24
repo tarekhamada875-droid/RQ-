@@ -9,7 +9,7 @@ import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
 import { decideGarageDeletion } from '../domain/garageDeletion';
-import { canUpdateTrialDecision } from '../domain/authorization';
+import { canRunGarageMaintenance, canUpdateTrialDecision } from '../domain/authorization';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 
 const router = Router();
@@ -384,7 +384,7 @@ router.post('/trial-decision', requireAuth, async (req: AuthRequest, res: any) =
 // Secure Server API: Recalculate Cars Inside
 router.post('/recalculate-cars-inside', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!canRunGarageMaintenance(req.user, 'recalculate-cars-inside')) {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
     const { garageId } = req.body || {};
@@ -404,7 +404,7 @@ router.post('/recalculate-cars-inside', requireAuth, async (req: AuthRequest, re
 // Read-only consistency diagnostics & Event Ledger reconciliation
 router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!canRunGarageMaintenance(req.user, 'reconciliation')) {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
     if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
@@ -509,7 +509,7 @@ router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) =
 // Admin-only Dashboard Summary Rebuild: Rebuilds the compact read model from buckets and events.
 router.post('/dashboard-summary/rebuild', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
+    if (!canRunGarageMaintenance(req.user, 'dashboard-summary/rebuild')) return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     const { garageId, date } = req.body || {};
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
     const targetDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -603,7 +603,7 @@ router.get('/:id/dashboard-summary', requireAuth, async (req: AuthRequest, res: 
 // Admin-only Projection Rebuild: Rebuilds daily_stats from the authoritative Event Ledger log
 router.post('/rebuild-projections', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!canRunGarageMaintenance(req.user, 'rebuild-projections')) {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
     const { garageId, date } = req.body || {};

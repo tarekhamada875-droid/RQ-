@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS,
   canClaimAdminSession,
   canInvalidateAllSessions,
   canManageGarageScopedData,
+  canRunGarageMaintenance,
   canReleaseSession,
   canUpdateAdminPin,
   canUpdateTrialDecision
@@ -100,5 +102,19 @@ describe('admin maintenance authorization policy', () => {
     expect(canUpdateAdminPin(admin)).toBe(true);
     expect(canInvalidateAllSessions({ role: 'admin' })).toBe(true);
     expect(canUpdateAdminPin({ role: 'admin' })).toBe(true);
+  });
+});
+
+describe('garage reconciliation and projection maintenance authorization', () => {
+  it.each(ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS)('allows admins to run %s', (operation) => {
+    expect(canRunGarageMaintenance({ role: 'admin' }, operation)).toBe(true);
+  });
+
+  it.each(ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS)('denies non-admins from running %s', (operation) => {
+    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator']) {
+      expect(canRunGarageMaintenance({ role }, operation)).toBe(false);
+    }
+    expect(canRunGarageMaintenance(undefined, operation)).toBe(false);
+    expect(canRunGarageMaintenance(null, operation)).toBe(false);
   });
 });
