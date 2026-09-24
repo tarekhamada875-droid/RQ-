@@ -96,6 +96,8 @@ export class FirestoreVehicleCheckInRepository implements VehicleCheckInReposito
       const fairUseAllowed = garage.unlimitedFairUse?.isMaxLimitReached !== true;
       const activeSubscriber = [...subscriberRawSnapshot.docs, ...subscriberNormalizedSnapshot.docs].some((document) => {
         const subscriber = document.data();
+        const status = subscriber.status;
+        if (typeof status === 'string' && status !== 'active') return false;
         const startDate = typeof subscriber.startDate === 'string' ? subscriber.startDate : '';
         const endDate = typeof subscriber.endDate === 'string' ? subscriber.endDate : '';
         return startDate !== '' && endDate !== '' && today >= startDate && today <= endDate;

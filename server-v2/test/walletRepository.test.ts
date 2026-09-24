@@ -19,6 +19,16 @@ describe('v2 wallet repository and financial audit', () => {
     expect(repository.listEvents()).toHaveLength(1);
   });
 
+  it('replays the same wallet operation without applying it twice', async () => {
+    const repository = new InMemoryWalletLedgerRepository(account);
+    const input = { ...base, idempotencyKey: 'debit-replay-1' };
+    const first = await repository.apply(input);
+    await expect(repository.apply(input)).resolves.toEqual(first);
+    expect(repository.getAccount()).toMatchObject({ balanceMinor: 2500, version: 1 });
+    expect(repository.listEvents()).toHaveLength(1);
+    await expect(repository.apply({ ...input, amountMinor: 1000, operationFingerprint: 'b'.repeat(64) })).rejects.toThrow('IDEMPOTENCY_KEY_REUSE');
+  });
+
   it('records a safe audit event for both success and failure outcomes', () => {
     const success = createFinancialAuditEvent({ requestId: '2f1d4d2d-3b15-4a01-9d45-8ee1d8cf0c16', actorUid: 'admin-1', accountId: 'wallet-1', operation: 'wallet.debit', resultCode: 'OK', ledgerEventId: 'ledger-1', occurredAt: new Date('2026-09-20T10:00:00.000Z') });
     const failure = createFinancialAuditEvent({ requestId: 'b2d6c5ef-b34c-4f26-a8de-5b6672b486a2', actorUid: 'admin-1', accountId: 'wallet-1', operation: 'wallet.debit', resultCode: 'INSUFFICIENT_BALANCE', occurredAt: new Date('2026-09-20T10:00:00.000Z') });

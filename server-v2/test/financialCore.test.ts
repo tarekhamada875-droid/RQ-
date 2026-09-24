@@ -46,4 +46,10 @@ describe('v2 financial core', () => {
     expect(reconcileWallet({ openingBalanceMinor: 10000, events, reportedBalanceMinor: 13000 })).toMatchObject({ expectedBalanceMinor: 13000, discrepancyMinor: 0, consistent: true, eventCount: 2 });
     expect(reconcileWallet({ openingBalanceMinor: 10000, events, reportedBalanceMinor: 12900 })).toMatchObject({ expectedBalanceMinor: 13000, discrepancyMinor: -100, consistent: false });
   });
+
+  it('deduplicates identical ledger replays and rejects conflicting duplicate IDs', () => {
+    const event = LedgerEventSchema.parse({ id: 'event-replay', accountId: 'wallet-1', kind: 'credit', amountMinor: 5000, idempotencyKey: 'credit-replay', operationFingerprint: fingerprint, actorUid: 'admin-1', occurredAt: '2026-09-20T09:00:00.000Z' });
+    expect(reconcileWallet({ openingBalanceMinor: 10000, events: [event, event], reportedBalanceMinor: 15000 })).toMatchObject({ expectedBalanceMinor: 15000, eventCount: 1, consistent: true });
+    expect(() => reconcileWallet({ openingBalanceMinor: 10000, events: [event, { ...event, amountMinor: 6000 }], reportedBalanceMinor: 15000 })).toThrow('DUPLICATE_LEDGER_EVENT');
+  });
 });

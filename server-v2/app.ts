@@ -61,6 +61,9 @@ export function createV2App(options: V2AppOptions = {}): Express {
   const pendingQueue = options.pendingQueue ?? new InMemoryPendingQueueRepository([]);
   const activity = options.activity ?? new InMemoryActivityRepository([]);
   const v2ReadEnabled = environment.NODE_ENV !== 'production' || (environment.V2_PREVIEW_ENABLED && environment.V2_PREVIEW_AUTH_ENABLED);
+  if (environment.NODE_ENV === 'production' && v2ReadEnabled && !options.authMiddleware) {
+    throw new Error('V2 production preview requires authMiddleware');
+  }
   const app = express();
 
   if (options.corsMiddleware) app.use(options.corsMiddleware);

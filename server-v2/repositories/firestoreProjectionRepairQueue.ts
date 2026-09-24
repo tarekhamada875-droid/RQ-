@@ -71,15 +71,18 @@ export class FirestoreProjectionRepairQueueRepository implements ProjectionRepai
   async claim(rawInput: ProjectionRepairQueueClaimInput): Promise<ReadonlyArray<ProjectionRepairQueueTask>> {
     const input = ProjectionRepairQueueClaimInputSchema.parse(rawInput);
     const now = parseDate(input.now);
-    let query: Query = this.firestore.collection('projection_repair_tasks')
-      .where('status', '==', 'queued')
+    const query = (status: 'queued' | 'running'): Query => this.firestore.collection('projection_repair_tasks')
+      .where('status', '==', status)
       .orderBy('createdAt', 'asc')
       .orderBy(FieldPath.documentId(), 'asc')
       .limit(input.limit);
-    const snapshot = await query.get();
-    this.costs.recordRead(snapshot.size);
+    const [queuedSnapshot, runningSnapshot] = await Promise.all([query('queued').get(), query('running').get()]);
+    this.costs.recordRead(queuedSnapshot.size + runningSnapshot.size);
+    const documents = [...queuedSnapshot.docs, ...runningSnapshot.docs]
+      .sort((left, right) => String(left.data().createdAt).localeCompare(String(right.data().createdAt)) || left.id.localeCompare(right.id))
+      .slice(0, input.limit);
     const claimed: ProjectionRepairQueueTask[] = [];
-    for (const document of snapshot.docs) {
+    for (const document of documents) {
       const ref = taskRef(this.firestore, document.id);
       this.costs.recordTransactionAttempt();
       const result = await this.firestore.runTransaction(async (transaction) => {
@@ -87,8 +90,14 @@ export class FirestoreProjectionRepairQueueRepository implements ProjectionRepai
         this.costs.recordRead(currentSnapshot.exists ? 1 : 0);
         if (!currentSnapshot.exists) return undefined;
         const current = parseTask(document.id, currentSnapshot.data());
-        if (current.status !== 'queued') return undefined;
-        if (current.nextAttemptAt && parseDate(current.nextAttemptAt).getTime() > now.getTime()) return undefined;
+        const queuedReady = current.status === 'queued' && (!current.nextAttemptAt || parseDate(current.nextAttemptAt).getTime() <= now.getTime());
+        const expiredRunning = current.status === 'running' && Boolean(current.leaseUntil) && parseDate(current.leaseUntil as string).getTime() <= now.getTime();
+        if (!queuedReady && !expiredRunning) return undefined;
+        if (current.attempts >= MAX_ATTEMPTS) {
+          transaction.update(ref, { status: 'failed', updatedAt: input.now, lastErrorCode: 'REPAIR_ATTEMPTS_EXHAUSTED' });
+          this.costs.recordWrite();
+          return undefined;
+        }
         const next = ProjectionRepairQueueTaskSchema.parse({
           ...current,
           status: 'running',

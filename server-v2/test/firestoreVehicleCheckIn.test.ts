@@ -62,6 +62,12 @@ describe('Firestore vehicle check-in repository', () => {
     expect((await firestore.doc('garages/garage-1/vehicles/abc-123').get()).exists).toBe(false);
   });
 
+  it('does not treat a cancelled subscriber as active', async () => {
+    await seedGarage();
+    await firestore.collection('garages/garage-1/subscribers').doc('sub-cancelled').set({ plateNumberRaw: 'abc-123', startDate: '2026-09-01', endDate: '2026-09-30', status: 'cancelled' });
+    await expect(new FirestoreVehicleCheckInRepository(firestore).checkIn({ ...baseInput, idempotencyKey: 'checkin-cancelled' })).resolves.toMatchObject({ vehicle: { garageId: 'garage-1' } });
+  });
+
   it('enforces finite capacity through the transaction boundary', async () => {
     await seedGarage(1);
     const repository = new FirestoreVehicleCheckInRepository(firestore);

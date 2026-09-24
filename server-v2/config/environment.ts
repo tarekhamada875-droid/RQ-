@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const EnvironmentSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'production']),
   V2_PORT: z.coerce.number().int().min(1).max(65535).default(8081),
   V2_PREVIEW_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   V2_PREVIEW_AUTH_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),

@@ -12,6 +12,7 @@ export interface WalletLedgerRepository {
 export class InMemoryWalletLedgerRepository implements WalletLedgerRepository {
   private account: WalletAccount;
   private readonly events: LedgerEvent[] = [];
+  private readonly idempotency = new Map<string, { fingerprint: string; result: WalletOperationResult }>();
   private queue: Promise<void> = Promise.resolve();
 
   constructor(initialAccount: WalletAccount) {
@@ -20,9 +21,15 @@ export class InMemoryWalletLedgerRepository implements WalletLedgerRepository {
 
   apply(input: WalletOperationInput): Promise<WalletOperationResult> {
     const operation = this.queue.then(() => {
+      const stored = this.idempotency.get(input.idempotencyKey);
+      if (stored) {
+        if (stored.fingerprint !== input.operationFingerprint) throw new Error('IDEMPOTENCY_KEY_REUSE');
+        return stored.result;
+      }
       const result = applyWalletOperation(this.account, { ...input, expectedVersion: this.account.version });
       this.account = result.account;
       this.events.push(result.event);
+      this.idempotency.set(input.idempotencyKey, { fingerprint: input.operationFingerprint, result });
       return result;
     });
     this.queue = operation.then(() => undefined, () => undefined);

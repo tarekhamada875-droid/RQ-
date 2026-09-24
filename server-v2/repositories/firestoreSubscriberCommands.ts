@@ -55,6 +55,11 @@ function operationKey(actorUid: string, operation: SubscriberOperationKind, idem
   return crypto.createHash('sha256').update(`${actorUid}:subscriber.${operation}:${idempotencyKey}`).digest('hex');
 }
 
+function assertStoredGarageScope(raw: unknown, garageId: string): void {
+  const storedGarageId = (raw as { garageId?: unknown } | undefined)?.garageId;
+  if (typeof storedGarageId === 'string' && storedGarageId !== garageId) throw new Error('GARAGE_SCOPE_MISMATCH');
+}
+
 function subscriberId(plateRaw: string): string {
   return `plate_${Buffer.from(plateRaw).toString('base64url')}`;
 }
@@ -127,6 +132,7 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       if (deterministicSnapshot.exists || !legacyMatches.empty) throw new Error('SUBSCRIBER_ALREADY_EXISTS');
       const decision = executeSubscriberCommand({
         operation: 'create',
+        idempotencyKey: command.idempotencyKey,
         existing: null,
         subscriberId: id,
         garageId: command.garageId,
@@ -181,11 +187,13 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       }
       const subscriberSnapshot = await transaction.get(subscriberRef);
       this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      assertStoredGarageScope(subscriberSnapshot.data(), command.garageId);
       const existing = subscriberSnapshot.exists
         ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
         : null;
       const decision = executeSubscriberCommand({
         operation: 'renew',
+        idempotencyKey: command.idempotencyKey,
         existing,
         subscriberId: command.subscriberId,
         garageId: command.garageId,
@@ -237,11 +245,13 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       }
       const subscriberSnapshot = await transaction.get(subscriberRef);
       this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      assertStoredGarageScope(subscriberSnapshot.data(), command.garageId);
       const existing = subscriberSnapshot.exists
         ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
         : null;
       const decision = executeSubscriberCommand({
         operation: 'update',
+        idempotencyKey: command.idempotencyKey,
         existing,
         subscriberId: command.subscriberId,
         garageId: command.garageId,
@@ -298,11 +308,13 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       }
       const subscriberSnapshot = await transaction.get(subscriberRef);
       this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      assertStoredGarageScope(subscriberSnapshot.data(), command.garageId);
       const existing = subscriberSnapshot.exists
         ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
         : null;
       const decision = executeSubscriberCommand({
         operation: 'suspend',
+        idempotencyKey: command.idempotencyKey,
         existing,
         subscriberId: command.subscriberId,
         garageId: command.garageId,
@@ -345,11 +357,13 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
       }
       const subscriberSnapshot = await transaction.get(subscriberRef);
       this.costs.recordRead(subscriberSnapshot.exists ? 1 : 0);
+      assertStoredGarageScope(subscriberSnapshot.data(), command.garageId);
       const existing = subscriberSnapshot.exists
         ? mapLegacySubscriber(command.subscriberId, { ...subscriberSnapshot.data(), garageId: command.garageId })
         : null;
       const decision = executeSubscriberCommand({
         operation: 'cancel',
+        idempotencyKey: command.idempotencyKey,
         existing,
         subscriberId: command.subscriberId,
         garageId: command.garageId,
@@ -399,6 +413,7 @@ export class FirestoreSubscriberCommandRepository implements SubscriberCommandRe
         : null;
       const decision = executeSubscriberCommand({
         operation: 'delete',
+        idempotencyKey: command.idempotencyKey,
         existing,
         subscriberId: command.subscriberId,
         garageId: command.garageId,

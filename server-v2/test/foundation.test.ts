@@ -27,6 +27,15 @@ describe('v2 foundation', () => {
     expect(() => parseEnvironment({ NODE_ENV: 'production' })).toThrow('FIREBASE_PROJECT_ID');
   });
 
+  it('rejects deployment configuration without an explicit environment', () => {
+    expect(() => parseEnvironment({ FIREBASE_PROJECT_ID: 'rq-preview-test' })).toThrow();
+  });
+
+  it('fails closed when production V2 preview is enabled without authentication wiring', () => {
+    const environment = parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-preview-test', V2_PREVIEW_ENABLED: 'true', V2_PREVIEW_AUTH_ENABLED: 'true' });
+    expect(() => createV2App({ environment })).toThrow('authMiddleware');
+  });
+
   it('keeps the Railway v2 preview gates closed by default', () => {
     const environment = parseEnvironment({ NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'rq-preview-test' });
     expect(environment.V2_PREVIEW_ENABLED).toBe(false);

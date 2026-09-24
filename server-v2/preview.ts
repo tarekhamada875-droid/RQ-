@@ -28,6 +28,9 @@ export function createV2PreviewApp(environment: V2Environment): Express {
   if (!environment.V2_PREVIEW_ENABLED || !environment.V2_PREVIEW_AUTH_ENABLED) {
     throw new Error('V2 preview requires both V2_PREVIEW_ENABLED and V2_PREVIEW_AUTH_ENABLED');
   }
+  if (environment.NODE_ENV === 'production') {
+    throw new Error('V2 production preview requires a distributed rate limiter');
+  }
   if (!environment.FIREBASE_PROJECT_ID) throw new Error('V2 preview requires FIREBASE_PROJECT_ID');
   const firebase = createV2Firebase(environment);
   const firebaseAuth = createV2FirebaseAuth(firebase.app);

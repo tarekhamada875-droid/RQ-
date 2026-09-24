@@ -7,6 +7,7 @@ type SubscriberCommandInput = Readonly<{
   subscriberId: string;
   garageId: string;
   plate: string;
+  idempotencyKey?: string;
   startAt?: Date;
   endAt?: Date;
   occurredAt: Date;
@@ -15,7 +16,7 @@ type SubscriberCommandInput = Readonly<{
 export type SubscriberCommandResult = Readonly<{ subscriber: SubscriberState; operation: SubscriberOperation }>;
 
 function operationId(input: SubscriberCommandInput): string {
-  return `subscriber_${crypto.createHash('sha256').update(`${input.operation}:${input.subscriberId}:${input.occurredAt.toISOString()}`).digest('hex').slice(0, 32)}`;
+  return `subscriber_${crypto.createHash('sha256').update(`${input.operation}:${input.subscriberId}:${input.occurredAt.toISOString()}:${input.idempotencyKey ?? ''}`).digest('hex').slice(0, 32)}`;
 }
 
 function isoDate(value: Date | undefined, code: string): string {

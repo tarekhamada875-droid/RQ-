@@ -92,4 +92,15 @@ describe('Firestore projection repair queue', () => {
     await expect(repository.fail({ taskId: task.taskId, workerId: 'worker-1', now: expiredNow, errorCode: 'REPAIR_FAILED' })).rejects.toThrow('REPAIR_TASK_LEASE_EXPIRED');
     expect((await firestore.doc(`projection_repair_tasks/${task.taskId}`).get()).data()).toMatchObject({ status: 'running', workerId: 'worker-1' });
   });
+
+  it('reclaims an expired running lease for another worker', async () => {
+    const repository = new FirestoreProjectionRepairQueueRepository(firestore);
+    await repository.enqueue(task);
+    await repository.claim({ limit: 1, workerId: 'worker-1', now });
+    const reclaimed = await repository.claim({ limit: 1, workerId: 'worker-2', now: '2026-09-22T12:06:00.000Z' });
+    expect(reclaimed).toHaveLength(1);
+    expect(reclaimed[0]).toMatchObject({ status: 'running', attempts: 2, workerId: 'worker-2' });
+    await expect(repository.complete({ taskId: task.taskId, workerId: 'worker-1', now: '2026-09-22T12:06:00.000Z' })).rejects.toThrow('REPAIR_TASK_LEASE_MISMATCH');
+    await expect(repository.complete({ taskId: task.taskId, workerId: 'worker-2', now: '2026-09-22T12:06:00.000Z' })).resolves.toMatchObject({ status: 'completed' });
+  });
 });

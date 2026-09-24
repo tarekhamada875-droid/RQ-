@@ -23,6 +23,12 @@ describe('v2 daily financial summaries', () => {
     expect(result.summary?.purchaseGrossMinor).toBe(1000);
   });
 
+  it('deduplicates identical source events and requests repair for conflicting duplicates', () => {
+    const purchase = event('replay', 'purchase', 1000);
+    expect(rebuildDailyFinancialSummary([purchase, purchase], 'garage-1', '2026-09-20', now).summary).toMatchObject({ purchaseGrossMinor: 1000, sourceEventCount: 1 });
+    expect(rebuildDailyFinancialSummary([purchase, { ...purchase, amountMinor: 2000 }], 'garage-1', '2026-09-20', now)).toEqual({ status: 'repair_needed', reason: 'DUPLICATE_SOURCE_EVENT' });
+  });
+
   it('returns a repair-needed result for oversized or invalid source windows', () => {
     const oversized = Array.from({ length: 10_001 }, (_, index) => event(`event-${index}`, 'purchase', 1));
     expect(rebuildDailyFinancialSummary(oversized, 'garage-1', '2026-09-20', now)).toEqual({ status: 'repair_needed', reason: 'SOURCE_EVENT_WINDOW_EXCEEDED' });

@@ -261,6 +261,16 @@ describe('Firestore subscriber command repository', () => {
     expect((await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').get()).data()).toMatchObject({ status: 'active' });
   });
 
+  it('rejects stored scope mismatches for renewal, update, suspension, and cancellation', async () => {
+    const repository = new FirestoreSubscriberCommandRepository(firestore);
+    await repository.create(input);
+    await firestore.doc('garages/garage-1/subscribers/plate_YWJjLTEyMw').update({ garageId: 'garage-2' });
+    await expect(repository.renew({ ...renewal, idempotencyKey: 'renew-scope-1' })).rejects.toThrow('GARAGE_SCOPE_MISMATCH');
+    await expect(repository.update({ garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', ownerName: 'Nope', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'update-scope-1' })).rejects.toThrow('GARAGE_SCOPE_MISMATCH');
+    await expect(repository.suspend({ garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'suspend-scope-1' })).rejects.toThrow('GARAGE_SCOPE_MISMATCH');
+    await expect(repository.cancel({ garageId: 'garage-1', subscriberId: 'plate_YWJjLTEyMw', actorUid: 'staff-1', occurredAt: '2026-09-22T12:00:00.000Z', idempotencyKey: 'cancel-scope-1' })).rejects.toThrow('GARAGE_SCOPE_MISMATCH');
+  });
+
   it('serializes concurrent same-key deletion attempts to one result and one event', { timeout: 15000 }, async () => {
     const first = new FirestoreSubscriberCommandRepository(firestore);
     await first.create(input);

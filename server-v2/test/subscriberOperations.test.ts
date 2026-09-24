@@ -49,4 +49,10 @@ describe('v2 subscriber lifecycle operations', () => {
     expect(decideSubscriberIdempotency(record, 'subscriber-op-1', 'subscriber.renew', fingerprint)).toMatchObject({ kind: 'replay' });
     expect(decideSubscriberIdempotency(record, 'subscriber-op-1', 'subscriber.renew', 'b'.repeat(64))).toEqual({ kind: 'conflict' });
   });
+
+  it('keeps distinct command idempotency keys distinct in operation IDs', () => {
+    const first = executeSubscriberCommand({ operation: 'renew', existing, subscriberId: 'sub-1', garageId: 'garage-1', plate: 'ABC123', idempotencyKey: 'renew-op-1', startAt, endAt, occurredAt });
+    const second = executeSubscriberCommand({ operation: 'renew', existing, subscriberId: 'sub-1', garageId: 'garage-1', plate: 'ABC123', idempotencyKey: 'renew-op-2', startAt, endAt, occurredAt });
+    expect(first.operation.operationId).not.toBe(second.operation.operationId);
+  });
 });

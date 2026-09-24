@@ -8,7 +8,18 @@ export function rebuildDailyFinancialSummary(rawEvents: ReadonlyArray<BusinessEv
   if (!garageId || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || Number.isNaN(now.getTime())) throw new Error('INVALID_REBUILD_INPUT');
   if (rawEvents.length > MAX_SOURCE_EVENTS) return DailyFinancialRebuildSchema.parse({ status: 'repair_needed', reason: 'SOURCE_EVENT_WINDOW_EXCEEDED' });
   try {
-    const events = rawEvents.map((event) => BusinessEventSchema.parse(event)).filter((event) => event.accountId === garageId && businessDateKey(new Date(event.occurredAt)) === dateKey);
+    const seen = new Map<string, string>();
+    const events = rawEvents.map((event) => BusinessEventSchema.parse(event)).filter((event) => event.accountId === garageId && businessDateKey(new Date(event.occurredAt)) === dateKey).filter((event) => {
+      const identity = event.sourceEventId ? `source:${event.sourceEventId}` : `event:${event.eventId}`;
+      const fingerprint = JSON.stringify(event);
+      const previous = seen.get(identity);
+      if (previous !== undefined) {
+        if (previous !== fingerprint) throw new Error('DUPLICATE_SOURCE_EVENT');
+        return false;
+      }
+      seen.set(identity, fingerprint);
+      return true;
+    });
     const totals = events.reduce((result, event) => ({
       purchaseGrossMinor: result.purchaseGrossMinor + (event.eventType === 'purchase' ? event.amountMinor : 0),
       rechargeMinor: result.rechargeMinor + (event.eventType === 'recharge' ? event.amountMinor : 0),
@@ -17,8 +28,8 @@ export function rebuildDailyFinancialSummary(rawEvents: ReadonlyArray<BusinessEv
     }), { purchaseGrossMinor: 0, rechargeMinor: 0, commissionMinor: 0, refundMinor: 0 });
     const summary = DailyFinancialSummarySchema.parse({ garageId, dateKey, ...totals, netRevenueMinor: totals.purchaseGrossMinor - totals.refundMinor - totals.commissionMinor, projectionVersion: 1, asOf: now.toISOString(), sourceEventCount: events.length });
     return DailyFinancialRebuildSchema.parse({ status: 'rebuilt', summary });
-  } catch {
-    return DailyFinancialRebuildSchema.parse({ status: 'repair_needed', reason: 'INVALID_SOURCE_EVENT' });
+  } catch (error) {
+    return DailyFinancialRebuildSchema.parse({ status: 'repair_needed', reason: error instanceof Error && error.message === 'DUPLICATE_SOURCE_EVENT' ? 'DUPLICATE_SOURCE_EVENT' : 'INVALID_SOURCE_EVENT' });
   }
 }
 
