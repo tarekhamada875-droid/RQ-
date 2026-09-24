@@ -661,7 +661,13 @@ service cloud.firestore {
       allow delete: if false; // Server-only via Admin SDK
       
       allow update: if isValidId(garageId) && isSignedIn() && (
-        isAdmin() ||
+        (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny([
+          'balance', 'balanceExpiry', 'totalAdminRevenue', 'totalRevenue',
+          'lastRechargeDate', 'lastRechargeAmount', 'lastRechargePackageName',
+          'dailyRefundCount', 'lastRefundDate', 'dailyDeletionCount', 'lastDeletionDate',
+          'totalCommissionEarned', 'totalRechargedAmount', 'commission',
+          'todayRevenue', 'totalVehiclesOut'
+        ])) ||
         (isGarageSession(garageId) && isAllowedGarageSessionUpdate()) ||
         (isDelegateForGarage(garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
       );
@@ -686,6 +692,10 @@ service cloud.firestore {
                       isValidSubscriberUpdate(garageId, subscriberId);
         allow delete: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
       }
+    }
+
+    match /manual_credit_ledger/{entryId} {
+      allow read, create, update, delete: if false; // Server-only immutable financial audit ledger
     }
 
     match /admin_rate_limits/{adminUid}/operations/{operationId} {

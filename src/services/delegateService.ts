@@ -248,7 +248,8 @@ export const delegateService = {
         method: 'POST',
         body: {
           requestId: request.id,
-          request
+          request,
+          idempotencyKey: generateIdempotencyKey('manual_recharge_approve')
         }
       });
 
@@ -268,7 +269,8 @@ export const delegateService = {
       await apiFetch('/api/transactions/reject-recharge-request', {
         method: 'POST',
         body: {
-          requestId
+          requestId,
+          idempotencyKey: generateIdempotencyKey('manual_recharge_reject')
         }
       });
     } catch (error) {

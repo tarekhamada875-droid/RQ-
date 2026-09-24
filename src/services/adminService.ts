@@ -571,7 +571,8 @@ export const adminService = {
           garageId,
           packageId: pkg.id,
           pkg,
-          adminDetails
+          adminDetails,
+          idempotencyKey: generateIdempotencyKey('manual_recharge')
         }
       });
     } catch (error: any) {

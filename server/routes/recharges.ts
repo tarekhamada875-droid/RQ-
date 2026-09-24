@@ -7,6 +7,7 @@ import { initializeFairUse } from '../unlimitedFairUse';
 import { sanitizePayload, validateId, validateNumber, validateIdempotencyKey } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
 import { validatePackageCatalogRecord } from '../packageCatalog';
+import { decideManualCredit } from '../domain/manualCredit';
 
 const router = Router();
 
@@ -211,6 +212,7 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
     const sanitized = sanitizePayload(req.body, ['requestId', 'idempotencyKey'], false);
     const reqId = validateId(sanitized.requestId, 'requestId', true);
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+    if (!idempotencyKey) return sendApiError(res, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REQUIRED', req.correlationId);
 
     if (!adminDb) {
       return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
@@ -219,13 +221,6 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
     let resultData: any = null;
 
     await adminDb.runTransaction(async (t: any) => {
-      // Idempotency check
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/approve-recharge-request', callerUid);
-      if (isDuplicate) {
-        resultData = cachedResult;
-        return;
-      }
-
       const requestRef = adminDb.doc(`recharge_requests/${reqId}`);
       const requestSnap = await t.get(requestRef);
       if (!requestSnap.exists) {
@@ -233,6 +228,19 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       }
 
       const requestData = requestSnap.data() || {};
+      const requestFingerprint = createRequestFingerprint({
+        requestId: reqId,
+        garageId: requestData.garageId || null,
+        requestType: requestData.requestType || null,
+        amount: requestData.amount ?? requestData.revenueAmount ?? requestData.price ?? null,
+        packageId: requestData.packageId || null,
+        durationDays: requestData.durationDays ?? requestData.vehiclesCount ?? null,
+      });
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/approve-recharge-request', callerUid, requestFingerprint);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
       if (requestData.status && requestData.status !== 'pending') {
         throw new Error('REQUEST_ALREADY_PROCESSED');
       }
@@ -251,8 +259,9 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       // time, package capacity, monthly statistics, or delegate commission.
       if (requestData.requestType === 'balance_topup') {
         const amount = validateNumber(requestData.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
-        const previousBalance = Number(garageData.balance || 0);
-        const newBalance = previousBalance + amount;
+        const creditDecision = decideManualCredit({ amount, previousBalance: Number(garageData.balance || 0) });
+        if (creditDecision.ok === false) throw new Error(creditDecision.error);
+        const { previousBalance, newBalance } = creditDecision.value;
 
         t.set(garageRef, { balance: newBalance }, { merge: true });
         t.set(requestRef, {
@@ -290,9 +299,21 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
           idempotencyKey: idempotencyKey || undefined,
           payload: { requestId: reqId, amount, previousBalance, newBalance }
         });
+        t.set(adminDb.doc(`manual_credit_ledger/${reqId}`), {
+          operationId: reqId,
+          garageId: targetGarageId,
+          amount,
+          previousBalance,
+          newBalance,
+          source: 'approved_recharge_request',
+          externalReference: requestData.externalReference || requestData.transferReference || null,
+          approvedBy: callerUid || 'admin',
+          idempotencyKey,
+          createdAt: new Date()
+        });
 
         resultData = { requestId: reqId, status: 'approved', amount, previousBalance, newBalance };
-        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/approve-recharge-request', callerUid);
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/approve-recharge-request', callerUid, requestFingerprint);
         return;
       }
 
@@ -476,7 +497,7 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
         commission
       };
 
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/approve-recharge-request', callerUid);
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/approve-recharge-request', callerUid, requestFingerprint);
     });
 
     return res.json({ success: true, data: resultData });
@@ -497,24 +518,31 @@ router.post('/reject-recharge-request', requireAuth, financialRateLimiter(), asy
     const sanitized = sanitizePayload(req.body, ['requestId', 'idempotencyKey'], false);
     const requestId = validateId(sanitized.requestId, 'requestId', true);
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+    if (!idempotencyKey) return sendApiError(res, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_REQUIRED', req.correlationId);
 
     if (!adminDb) {
       return sendApiError(res, 500, 'INTERNAL_ERROR', 'ADMIN_SDK_NOT_INITIALIZED', req.correlationId);
     }
 
     await adminDb.runTransaction(async (t: any) => {
-      const { isDuplicate } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/reject-recharge-request', callerUid);
-      if (isDuplicate) {
-        return;
-      }
-
       const requestRef = adminDb.doc(`recharge_requests/${requestId}`);
       const requestSnap = await t.get(requestRef);
       if (!requestSnap.exists) {
         throw new Error('REQUEST_NOT_FOUND');
       }
 
-      const currentStatus = requestSnap.data()?.status;
+      const requestData = requestSnap.data() || {};
+      const requestFingerprint = createRequestFingerprint({
+        requestId,
+        garageId: requestData.garageId || null,
+        requestType: requestData.requestType || null,
+        amount: requestData.amount ?? requestData.revenueAmount ?? requestData.price ?? null,
+        packageId: requestData.packageId || null,
+      });
+      const { isDuplicate } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/reject-recharge-request', callerUid, requestFingerprint);
+      if (isDuplicate) return;
+
+      const currentStatus = requestData.status;
       if (currentStatus && currentStatus !== 'pending') {
         throw new Error('REQUEST_ALREADY_PROCESSED');
       }
@@ -524,7 +552,6 @@ router.post('/reject-recharge-request', requireAuth, financialRateLimiter(), asy
         resolvedAt: new Date()
       }, { merge: true });
 
-      const requestData = requestSnap.data() || {};
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validateId(requestData.garageId, 'garageId', true),
         aggregateType: 'recharge',
@@ -536,7 +563,7 @@ router.post('/reject-recharge-request', requireAuth, financialRateLimiter(), asy
         payload: { requestId, rejectedAt: new Date().toISOString(), reason: requestData.rejectionReason || null }
       });
 
-      storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/transactions/reject-recharge-request', callerUid);
+      storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/transactions/reject-recharge-request', callerUid, requestFingerprint);
     });
 
     return res.json({ success: true });
@@ -581,8 +608,9 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
       }
 
       const garageData = garageSnap.data() || {};
-      const currentBalance = Number(garageData.balance || 0);
-      const newBalance = currentBalance + numAmount;
+      const creditDecision = decideManualCredit({ amount: numAmount, previousBalance: Number(garageData.balance || 0) });
+      if (creditDecision.ok === false) throw new Error(creditDecision.error);
+      const { previousBalance: currentBalance, newBalance } = creditDecision.value;
 
       t.set(garageRef, {
         balance: newBalance,
@@ -619,6 +647,17 @@ router.post('/admin-topup-balance', requireAuth, financialRateLimiter(), async (
         actorRole: 'admin',
         idempotencyKey,
         payload: { amount: numAmount, previousBalance: currentBalance, newBalance, source: 'admin_direct_topup' }
+      });
+      t.set(adminDb.doc(`manual_credit_ledger/${createRequestFingerprint({ garageId, amount: numAmount, idempotencyKey })}`), {
+        operationId: idempotencyKey,
+        garageId,
+        amount: numAmount,
+        previousBalance: currentBalance,
+        newBalance,
+        source: 'admin_direct_topup',
+        approvedBy: callerUid || 'admin',
+        idempotencyKey,
+        createdAt: new Date()
       });
 
       resultData = { garageId, newBalance, addedAmount: numAmount };
