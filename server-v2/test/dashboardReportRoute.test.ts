@@ -15,6 +15,10 @@ const summary: GarageSummary = {
   grossRevenueMinor: 1000, refundTotalMinor: 0, netRevenueMinor: 1000, projectionVersion: 1, asOf
 };
 const projection: ProjectionState = { ...summary, appliedEventIds: [] };
+const repositoryFailureCases = [
+  { label: 'summary', option: 'summaryError', detail: 'Firestore path projects/rq-v2/databases/(default)/documents/secret-internal' },
+  { label: 'projection', option: 'projectionError', detail: 'Firestore transaction failed at projection secret path' }
+] as const;
 
 afterEach(async () => {
   if (!server) return;
@@ -93,22 +97,12 @@ describe('v2 dashboard report route', () => {
     expect(await response.json()).toMatchObject({ success: false, code: 'FORBIDDEN' });
   });
 
-  it('redacts dashboard report repository failures', async () => {
-    const internalFailure = 'Firestore path projects/rq-v2/databases/(default)/documents/secret-internal';
-    const response = await getReport(await start({ summaryError: new Error(internalFailure) }));
+  it.each(repositoryFailureCases)('redacts dashboard report $label repository failures', async ({ option, detail }) => {
+    const response = await getReport(await start({ [option]: new Error(detail) }));
     const body = await response.json();
     expect(response.status).toBe(500);
     expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR', error: 'Unable to read dashboard report' });
-    expect(JSON.stringify(body)).not.toContain(internalFailure);
-  });
-
-  it('redacts dashboard report projection failures', async () => {
-    const internalFailure = 'Firestore transaction failed at projection secret path';
-    const response = await getReport(await start({ projectionError: new Error(internalFailure) }));
-    const body = await response.json();
-    expect(response.status).toBe(500);
-    expect(body).toMatchObject({ success: false, code: 'INTERNAL_ERROR', error: 'Unable to read dashboard report' });
-    expect(JSON.stringify(body)).not.toContain(internalFailure);
+    expect(JSON.stringify(body)).not.toContain(detail);
   });
 
   it('does not expose the report in production', async () => {
