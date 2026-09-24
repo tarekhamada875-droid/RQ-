@@ -3,6 +3,7 @@ import type { Server } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseEnvironment } from '../config/environment.js';
 import { createV2App } from '../app.js';
+import { DashboardReportSchema } from '../contracts/report.js';
 import type { ProjectionRepository } from '../repositories/firestoreProjection.js';
 import type { ProjectionState } from '../contracts/projection.js';
 import type { GarageSummaryRepository } from '../repositories/garageSummary.js';
@@ -59,14 +60,22 @@ const getReport = (baseUrl: string) => fetch(`${baseUrl}/v2/garages/garage-1/rep
 describe('v2 dashboard report route', () => {
   it('returns a consistency-labeled report without writing', async () => {
     const response = await getReport(await start());
+    const body = await response.json();
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { status: 'consistent', projectionVersion: 1, differences: { activeVehicleCount: 0 } } });
+    expect(body).toMatchObject({ success: true, data: { status: 'consistent', projectionVersion: 1, differences: { activeVehicleCount: 0 } } });
+    expect(Object.keys(body).sort()).toEqual(['data', 'requestId', 'success']);
+    expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(DashboardReportSchema.parse(body.data)).toMatchObject({ status: 'consistent', projectionVersion: 1 });
   });
 
   it('labels summary/projection mismatches as repair-needed', async () => {
     const response = await getReport(await start({ currentProjection: { ...projection, entriesToday: 2 } }));
+    const body = await response.json();
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { status: 'repair_needed', repairReason: 'SUMMARY_PROJECTION_MISMATCH', differences: { entriesToday: 1 } } });
+    expect(body).toMatchObject({ success: true, data: { status: 'repair_needed', repairReason: 'SUMMARY_PROJECTION_MISMATCH', differences: { entriesToday: 1 } } });
+    expect(Object.keys(body).sort()).toEqual(['data', 'requestId', 'success']);
+    expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(DashboardReportSchema.parse(body.data)).toMatchObject({ status: 'repair_needed', repairReason: 'SUMMARY_PROJECTION_MISMATCH' });
   });
 
   it('labels an old projection as stale without treating it as a data mismatch', async () => {
