@@ -68,3 +68,19 @@ The exact owner phrase `tokens ending` is a durable trigger. When it appears, th
 ## Explicit boundaries
 
 The following are not ordinary implementation shortcuts: irreversible production deletion, untested production cutover, financial dual-write, secret exposure, and deployment without rollback evidence. If one is required, stop and obtain the appropriate explicit approval or protected credential path.
+
+## Continuation packet — 2026-09-24
+
+The last completed bounded slice is the **manual-credit accounting hardening** published at commit `409619d0774a5093995a62f4044bab4d609f7a19`. It added `server/domain/manualCredit.ts` and focused tests, required fingerprinted idempotency for recharge approval and rejection, added server-only `manual_credit_ledger` records for approved balance credits and direct admin top-ups, sent idempotency keys from the frontend manual-credit actions, and blocked direct client/admin updates to authoritative garage financial fields in `firestore.rules`.
+
+Validation evidence for that commit: focused manual-credit/idempotency/client tests passed (13 tests), the full test suite passed, TypeScript validation passed, the production build passed, `ci:check` passed, `maintainability:check` passed, and `git diff --check` passed. Repository-wide ESLint remains a pre-existing baseline failure with 602 `no-explicit-any` findings across the repository; it was not introduced or resolved by this slice. Firebase CLI/emulator validation was unavailable in the environment, so Firestore rules still require emulator validation.
+
+The working tree was clean and `HEAD` matched `origin/main` at the published commit. The protected **RQ Railway Backend Operator** connector is enabled; never expose or copy its protected credential. No production mutation or deployment was performed for the manual-credit slice.
+
+### Exact next bounded task
+
+Add Firestore-emulator or equivalent mocked route-integration tests for the manual-credit workflow. Cover duplicate approval replay, same-key changed-payload rejection, duplicate rejection replay, duplicate direct top-up replay, unauthorized direct financial-field writes, ledger/event/idempotency atomicity, and concurrent approval behavior. Preserve the current production `server/` authority, do not add a parallel backend, do not contact production, and do not change financial semantics beyond what the tests prove.
+
+### Copy-paste startup block
+
+> Repository: `/home/ubuntu/RQ-`. Read `V3_BACKEND_PLAN.md`, `docs/SUCCESSION_PROTOCOL.md`, and `AGENTS.md`. Verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest validation result. Current published SHA: `409619d0774a5093995a62f4044bab4d609f7a19`. The last slice hardened manual credits; the exact next task is manual-credit route integration/emulator coverage for duplicate replay, changed-payload conflicts, unauthorized financial writes, atomic ledger/event/idempotency persistence, and concurrent approval. Use the existing RQ Railway Backend Operator connector only for protected read-only diagnostics when needed; never request or expose its credential. Do not deploy or mutate production. If the owner sends `tokens ending`, stop feature work and repeat `docs/SUCCESSION_PROTOCOL.md` before doing anything else, then tell the next agent to repeat it too.
