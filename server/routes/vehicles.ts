@@ -13,6 +13,7 @@ import { decideVehicleCheckIn } from '../domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from '../adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from '../domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '../adapters/vehicleCheckOutAdapter';
+import { authorizeVehicleGarageScope } from '../domain/authorization';
 
 const router = Router();
 
@@ -39,21 +40,17 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
     const plateNumber = normalizedPlate.plateNumber;
     const plateRaw = normalizedPlate.plateRaw;
     const callerRole = req.user?.role;
-    let garageId = '';
-
-    if (callerRole === 'garage' || callerRole === 'staff') {
-      if (!req.user?.garageId) {
+    const scope = authorizeVehicleGarageScope(req.user, bodyGarageId);
+    if (scope.allowed === false) {
+      if (scope.reason === 'garage_id_missing') {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' });
       }
-      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+      if (scope.reason === 'garage_scope_mismatch') {
         return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
       }
-      garageId = req.user.garageId;
-    } else if (callerRole === 'admin') {
-      garageId = bodyGarageId;
-    } else {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for vehicle operations' });
     }
+    const garageId = scope.garageId as string;
 
     const staffId = req.user?.uid;
     
@@ -274,21 +271,17 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
   try {
     const { garageId: bodyGarageId, vehicleId } = req.body || {};
     const callerRole = req.user?.role;
-    let garageId = '';
-
-    if (callerRole === 'garage' || callerRole === 'staff') {
-      if (!req.user?.garageId) {
+    const scope = authorizeVehicleGarageScope(req.user, bodyGarageId);
+    if (scope.allowed === false) {
+      if (scope.reason === 'garage_id_missing') {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage ID missing in session' });
       }
-      if (bodyGarageId && bodyGarageId !== req.user.garageId) {
+      if (scope.reason === 'garage_scope_mismatch') {
         return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
       }
-      garageId = req.user.garageId;
-    } else if (callerRole === 'admin') {
-      garageId = bodyGarageId;
-    } else {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Role not authorized for vehicle operations' });
     }
+    const garageId = scope.garageId as string;
 
     const staffId = req.user?.uid;
     

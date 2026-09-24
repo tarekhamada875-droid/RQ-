@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS,
+  authorizeVehicleGarageScope,
   canClaimAdminSession,
   canInvalidateAllSessions,
   canManageGarageScopedData,
@@ -116,5 +117,54 @@ describe('garage reconciliation and projection maintenance authorization', () =>
     }
     expect(canRunGarageMaintenance(undefined, operation)).toBe(false);
     expect(canRunGarageMaintenance(null, operation)).toBe(false);
+  });
+});
+
+describe('vehicle operation garage-scope authorization', () => {
+  it.each(['garage', 'staff'])('uses the session garage for %s and permits only a matching requested scope', (role) => {
+    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, undefined)).toEqual({
+      allowed: true,
+      garageId: 'garage_1'
+    });
+    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, 'garage_1')).toEqual({
+      allowed: true,
+      garageId: 'garage_1'
+    });
+    expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, 'garage_2')).toEqual({
+      allowed: false,
+      reason: 'garage_scope_mismatch'
+    });
+  });
+
+  it('preserves the distinct missing-session-garage denial', () => {
+    expect(authorizeVehicleGarageScope({ role: 'garage' }, 'garage_1')).toEqual({
+      allowed: false,
+      reason: 'garage_id_missing'
+    });
+    expect(authorizeVehicleGarageScope({ role: 'staff', garageId: '' }, undefined)).toEqual({
+      allowed: false,
+      reason: 'garage_id_missing'
+    });
+  });
+
+  it('allows admins to target the requested garage and denies unsupported roles', () => {
+    expect(authorizeVehicleGarageScope({ role: 'admin' }, 'garage_2')).toEqual({
+      allowed: true,
+      garageId: 'garage_2'
+    });
+    expect(authorizeVehicleGarageScope({ role: 'admin' }, undefined)).toEqual({
+      allowed: true,
+      garageId: undefined
+    });
+    for (const role of ['delegate', 'supervisor', 'backend-operator']) {
+      expect(authorizeVehicleGarageScope({ role, garageId: 'garage_1' }, 'garage_1')).toEqual({
+        allowed: false,
+        reason: 'role_not_authorized'
+      });
+    }
+    expect(authorizeVehicleGarageScope(undefined, undefined)).toEqual({
+      allowed: false,
+      reason: 'role_not_authorized'
+    });
   });
 });

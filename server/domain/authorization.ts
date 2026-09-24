@@ -3,6 +3,35 @@ export type AuthorizationPrincipal = Readonly<{
   garageId?: unknown;
 }>;
 
+export type VehicleGarageScopeDecision =
+  | Readonly<{ allowed: true; garageId: unknown }>
+  | Readonly<{ allowed: false; reason: 'garage_id_missing' | 'garage_scope_mismatch' | 'role_not_authorized' }>;
+
+export function authorizeVehicleGarageScope(
+  principal: AuthorizationPrincipal | null | undefined,
+  requestedGarageId: unknown
+): VehicleGarageScopeDecision {
+  if (principal?.role === 'admin') {
+    return {
+      allowed: true,
+      garageId: requestedGarageId
+    };
+  }
+
+  if (principal?.role !== 'garage' && principal?.role !== 'staff') {
+    return { allowed: false, reason: 'role_not_authorized' };
+  }
+
+  if (typeof principal.garageId !== 'string' || !principal.garageId) {
+    return { allowed: false, reason: 'garage_id_missing' };
+  }
+  if (requestedGarageId && requestedGarageId !== principal.garageId) {
+    return { allowed: false, reason: 'garage_scope_mismatch' };
+  }
+
+  return { allowed: true, garageId: principal.garageId };
+}
+
 export const ADMIN_ONLY_GARAGE_MAINTENANCE_OPERATIONS = [
   'recalculate-cars-inside',
   'reconciliation',
