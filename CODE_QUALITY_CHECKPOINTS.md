@@ -326,3 +326,11 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused deletion/locking validation passed: **4 test files, 16 tests**. The edited hook has no remaining React Hooks findings. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Refreshed ESLint inventory: **596 total findings**, including React Hooks `exhaustive-deps` **3**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
 - **Next documented finding:** `AdminAddGarageModal.tsx`’s initialization effect remains the next review candidate, but its open-state snapshot semantics are behavior-sensitive and may remain deferred. If deferred, review the first `useGarageSession.ts` exhaustive-deps finding as exactly one subsequent candidate.
+
+### 2026-09-25 — API session-expiration listener cleanup
+
+- Preserved the `AdminAddGarageModal.tsx` open-state snapshot deferral; no new evidence changed its behavior-sensitive semantics.
+- Resolved the first remaining `useGarageSession.ts` exhaustive-deps finding at the API session-expiration listener. The listener now depends on stable `handleLogout` and `showLogoutToastOnce` callbacks. `handleLogout` captures its actual session/view state and setters; `showLogoutToastOnce` captures `showToast`. Cleanup removes the prior DOM listener before any re-registration, preserving lifecycle behavior while preventing stale forced-logout closures.
+- Focused session/auth validation passed: **5 test files, 36 tests**. The listener has no remaining Hook finding; the separate coordinator effect and set-state warning were not changed. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory: **595 total findings**, including React Hooks `exhaustive-deps` **2**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+- **Next documented finding:** the remaining `useGarageSession.ts` coordinator exhaustive-deps finding at line 365. If the modal snapshot warning remains deferred, inspect that effect’s session ownership and cleanup as exactly one subsequent candidate.

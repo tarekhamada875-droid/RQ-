@@ -38,9 +38,10 @@ The production communication rule is important: frontend API calls from Cloudfla
 
 ## Current verified baseline
 
-The current `main` branch was verified clean and synchronized with `origin/main` at commit `e43e964` after the focused Hooks slice:
+The current `main` branch was verified clean and synchronized with `origin/main` at commit `37c7e1b` after the focused Hooks slice:
 
 ```text
+37c7e1b quality: stabilize session expiry listener
 e43e964 quality: track vehicle setter in check-in callback
 b9c08cf quality: stabilize admin login handler
 61e4059 quality: track trial status in recharge sync
@@ -53,7 +54,7 @@ The latest complete validation evidence is:
 - Production build: `npm run build` passed. The build includes the Vite frontend, the external-dependency server bundle, and the bundled Railway/Cloud Run server.
 - Maintainability: `npm run maintainability:check` passed.
 - Formatting/diff: `git diff --check` passed.
-- Focused vehicle-operation regressions: **4 test files and 24 tests passed**.
+- Focused session/auth regressions: **5 test files and 36 tests passed**.
 
 The complete ESLint command is not yet green. The current remaining React Hooks findings are:
 
@@ -95,9 +96,9 @@ Before each new change:
 
 ## Immediate next plan
 
-The last completed code slice changed only `src/hooks/useVehicleOperations.ts`: the delete callback now declares the `isLoading` guard value plus the stable `setGarage` and `setVehicles` dispatchers. Its optimistic deletion, server reconciliation, and rollback behavior are unchanged. The `AdminAddGarageModal.tsx` initialization warning remains deferred because its effect intentionally snapshots parent form values only when opening. The full gate passed; the working tree must not be treated as complete until the change is pushed.
+The last completed code slice changed only `src/hooks/useGarageSession.ts`: the API-expiration listener now receives stable `handleLogout` and `showLogoutToastOnce` callbacks through its dependency list. `handleLogout` and the toast guard were wrapped in `useCallback` over their actual closure dependencies, preserving listener cleanup/re-registration and preventing stale forced-logout behavior. The `AdminAddGarageModal.tsx` initialization warning remains deferred because its effect intentionally snapshots parent form values only when opening. The full gate passed; the working tree must not be treated as complete until the change is pushed.
 
-The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. The modal warning remains deferred unless a dedicated snapshot regression proves a different design is intended. The next review candidate is `AdminAddGarageModal.tsx`’s initialization effect, but its open-state snapshot semantics remain behavior-sensitive; if it stays deferred, inspect the first `useGarageSession.ts` exhaustive-deps finding as the next single candidate. Do not broaden into unrelated findings.
+The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. The modal warning remains deferred unless a dedicated snapshot regression proves a different design is intended. If it stays deferred, the next single candidate is the remaining `useGarageSession.ts` exhaustive-deps finding at line 365; inspect its coordinator effect’s session ownership and cleanup before editing. Do not broaden into unrelated findings.
 
 For every candidate, preserve these contracts: the production `server/` backend remains authoritative; browser Firestore listeners are read/display synchronization only; authentication/session, financial, API, Firebase rules, and Cloudflare/Railway topology are out of scope; no `eslint-disable`, test weakening, or broad autofix is allowed. If a finding concerns `set-state-in-effect`, render purity, session/logout behavior, or a data-loading subscription, leave it unchanged unless the semantic replacement and focused regression tests are clear. Record why a finding is intentionally deferred.
 
