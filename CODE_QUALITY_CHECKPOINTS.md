@@ -283,3 +283,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Refreshed ESLint inventory: React Hooks findings are now **20** total (`exhaustive-deps` **9**, `set-state-in-effect` **10**, `purity` **1`). The broader result still has **579** pre-existing `no-explicit-any` findings, plus two `prefer-const` and one `no-empty-object-type` finding; do not mass-fix those categories.
 - The full baseline was green before this slice: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`. Run the full gate again before committing/pushing this slice.
 - **Next agent:** start from the committed result, rerun the current ESLint inventory, and review exactly one remaining Hook finding. Prefer a clearly unnecessary dependency or a stable scalar dependency already available in the effect. Do not refactor `set-state-in-effect` or purity findings without a semantic review and focused regression coverage. Do not add changing object/function dependencies to Firestore subscriptions, authentication/session effects, or data-loading callbacks merely to silence ESLint.
+
+### 2026-09-25 — GarageDashboard countdown dependency cleanup
+
+- Removed the unnecessary `timeTicker` dependency from the `getRemainingSubscriptionInfo` memo in `src/components/garage/GarageDashboardView.tsx` by evaluating the countdown directly during the existing minute-ticker rerenders. Retained the setter-only ticker state so countdown timing and display behavior remain unchanged.
+- Focused subscription/regression validation passed: **3 test files, 22 tests**. TypeScript, production build, maintainability check, and `git diff --check` passed.
+- The edited file has no remaining `react-hooks/exhaustive-deps` warning for the selected finding; its remaining Hook warning (`t?.isTrial`) and three `no-explicit-any` findings were pre-existing and intentionally deferred.
+- Refreshed ESLint inventory: **601 total findings**, including React Hooks `exhaustive-deps` **8**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.

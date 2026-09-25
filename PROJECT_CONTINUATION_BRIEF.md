@@ -57,7 +57,7 @@ The latest complete validation evidence is:
 
 The complete ESLint command is not yet green. The current remaining React Hooks findings are:
 
-- `react-hooks/exhaustive-deps`: **9** after the current focused slice.
+- `react-hooks/exhaustive-deps`: **8** after the current focused slice.
 - `react-hooks/set-state-in-effect`: **10**.
 - `react-hooks/purity`: **1**.
 
@@ -95,7 +95,7 @@ Before each new change:
 
 ## Immediate next plan
 
-The last completed code slice changed only `src/hooks/useGarageSync.ts`: the supervisor subscription guard now checks `currentSupervisor?.id`, which matches the existing stable dependency and removes one exhaustive-deps warning. The full baseline was green before that edit; the final full gate must be rerun before publication. The working tree must not be treated as complete until the change is committed and pushed.
+The last completed code slice changed only `src/components/garage/GarageDashboardView.tsx`: the subscription countdown now recomputes on the existing minute ticker without an unnecessary `timeTicker` memo dependency. The ticker setter remains in place so the countdown still rerenders once per minute. The full baseline was green before that edit; the final full gate must be rerun before publication. The working tree must not be treated as complete until the change is committed and pushed.
 
 The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. Prefer a dependency that is demonstrably unnecessary or a stable scalar already used by the effect. Inspect the surrounding callback/effect before editing. Do not automatically add every missing dependency: changing object or function identities can create repeated Firestore subscriptions, reload loops, stale-session behavior, or altered user-visible behavior.
 

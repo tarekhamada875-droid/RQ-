@@ -125,7 +125,7 @@ export const GarageDashboardView = memo((props: any) => {
     });
     return () => _e();
   }, []);
-  const [timeTicker, setTimeTicker] = useState(Date.now());
+  const [, setTimeTicker] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeTicker(Date.now());
@@ -156,7 +156,7 @@ export const GarageDashboardView = memo((props: any) => {
       return packageIdToDays(t.activePackageId || t.packageId || '', t.activePackageName || t.packageName || t.lastPackageName || '');
     }, [t]),
     isDailyPackage = packageDays <= 2,
-    subInfo = useMemo(() => getRemainingSubscriptionInfo(t, packageDays), [t, packageDays, timeTicker]),
+    subInfo = getRemainingSubscriptionInfo(t, packageDays),
     at = useMemo(() => subInfo.days, [subInfo]),
     L = useMemo(() => at, [at]),
     isCountdownInHours = subInfo.unit === 'hours',
