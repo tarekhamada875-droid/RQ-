@@ -38,12 +38,12 @@ The production communication rule is important: frontend API calls from Cloudfla
 
 ## Current verified baseline
 
-The current `main` branch is clean and synchronized with `origin/main` at commit `1e5ebea`:
+The current `main` branch was verified clean and synchronized with `origin/main` at commit `e14fe68` before the focused Hooks slice:
 
 ```text
-1e5ebea quality: remove redundant hook dependencies
-6de002b quality: fix safe react hook findings
-3dda6d0 quality: remove useless assignments
+e14fe68 fix: harden financial workflows and reporting
+3c25b1a fix: remove overlapping trial badge
+9cd0387 fix: preserve wallet number during config sync
 ```
 
 The latest complete validation evidence is:
@@ -57,8 +57,8 @@ The latest complete validation evidence is:
 
 The complete ESLint command is not yet green. The current remaining React Hooks findings are:
 
-- `react-hooks/exhaustive-deps`: **16**.
-- `react-hooks/set-state-in-effect`: **9**.
+- `react-hooks/exhaustive-deps`: **9** after the current focused slice.
+- `react-hooks/set-state-in-effect`: **10**.
 - `react-hooks/purity`: **1**.
 
 The broader ESLint result still contains the large pre-existing `@typescript-eslint/no-explicit-any` category. Do not mass-rewrite it.
@@ -95,7 +95,11 @@ Before each new change:
 
 ## Immediate next plan
 
-The next task is to continue Phase 1.7 by reviewing the remaining React Hooks findings one at a time. Start with a complete inventory using the current ESLint configuration. Prefer findings that ESLint explicitly identifies as unnecessary dependencies and that can be proven not to affect callback behavior. Do not automatically add every missing dependency: some callbacks intentionally have stable application-level behavior, and adding changing values can create repeated subscriptions, reload loops, or altered user-visible behavior.
+The last completed code slice changed only `src/hooks/useGarageSync.ts`: the supervisor subscription guard now checks `currentSupervisor?.id`, which matches the existing stable dependency and removes one exhaustive-deps warning. The full baseline was green before that edit; the final full gate must be rerun before publication. The working tree must not be treated as complete until the change is committed and pushed.
+
+The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. Prefer a dependency that is demonstrably unnecessary or a stable scalar already used by the effect. Inspect the surrounding callback/effect before editing. Do not automatically add every missing dependency: changing object or function identities can create repeated Firestore subscriptions, reload loops, stale-session behavior, or altered user-visible behavior.
+
+For every candidate, preserve these contracts: the production `server/` backend remains authoritative; browser Firestore listeners are read/display synchronization only; authentication/session, financial, API, Firebase rules, and Cloudflare/Railway topology are out of scope; no `eslint-disable`, test weakening, or broad autofix is allowed. If a finding concerns `set-state-in-effect`, render purity, session/logout behavior, or a data-loading subscription, leave it unchanged unless the semantic replacement and focused regression tests are clear. Record why a finding is intentionally deferred.
 
 The `set-state-in-effect` findings require special care because they concern state synchronization and may represent intentional external-system synchronization. The remaining `exhaustive-deps` findings must be inspected in context. The remaining `purity` finding must be checked for render-time impure values and corrected only if the replacement preserves timing and display semantics.
 

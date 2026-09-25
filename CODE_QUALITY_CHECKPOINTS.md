@@ -275,3 +275,11 @@ For logging changes, first preserve the old message meaning in the new structure
 - The resolver’s React Hooks warning is resolved without changing package-price fallback logic.
 - Full validation passed: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Current ESLint Hook findings: **20** total (`exhaustive-deps` **10**, `set-state-in-effect` **9**, `purity` **1`). Phase 1.7 remains in progress; Phase 1.8 remains pending until the complete ESLint command is stable and green.
+
+### 2026-09-25 — useGarageSync supervisor dependency stabilization
+
+- Changed the supervisor-subscription guard in `src/hooks/useGarageSync.ts` from object truthiness to `currentSupervisor?.id`, matching the effect’s existing stable identifier dependency. This resolves one `react-hooks/exhaustive-deps` finding without adding the whole supervisor object and without changing valid supervisor behavior or subscription timing.
+- Focused validation passed: the edited file passed the React Hooks rule with the unrelated pre-existing `@typescript-eslint/no-explicit-any` rule disabled only for that focused check, and `npm run lint` (`tsc --noEmit`) passed. No dedicated test covers this hook; the guard is a pure dependency/identity cleanup.
+- Refreshed ESLint inventory: React Hooks findings are now **20** total (`exhaustive-deps` **9**, `set-state-in-effect` **10**, `purity` **1`). The broader result still has **579** pre-existing `no-explicit-any` findings, plus two `prefer-const` and one `no-empty-object-type` finding; do not mass-fix those categories.
+- The full baseline was green before this slice: **52 test files, 287 tests**, TypeScript, production build, maintainability check, and `git diff --check`. Run the full gate again before committing/pushing this slice.
+- **Next agent:** start from the committed result, rerun the current ESLint inventory, and review exactly one remaining Hook finding. Prefer a clearly unnecessary dependency or a stable scalar dependency already available in the effect. Do not refactor `set-state-in-effect` or purity findings without a semantic review and focused regression coverage. Do not add changing object/function dependencies to Firestore subscriptions, authentication/session effects, or data-loading callbacks merely to silence ESLint.

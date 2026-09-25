@@ -167,7 +167,7 @@ export function useGarageSync({
       ? firestoreService.subscribeToDelegates(setDelegates)
       : () => {};
 
-    const unsubSupervisors = (view === 'admin_dashboard' && !currentSupervisor)
+    const unsubSupervisors = (view === 'admin_dashboard' && !currentSupervisor?.id)
       ? firestoreService.subscribeToSupervisors(setSupervisors)
       : () => {};
 
