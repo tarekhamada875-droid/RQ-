@@ -423,7 +423,7 @@ This plan was consolidated from the following supplied documents:
 - [Financial audit report](</home/ubuntu/upload/FINANCIAL_AUDIT_REPORT.md>)
 - [Architecture audit](</home/ubuntu/upload/ARCHITECTURE_AUDIT_2026-09-25.md>)
 - [Project continuation brief](</home/ubuntu/upload/PROJECT_CONTINUATION_BRIEF.md>)
-- [Succession protocol](</home/ubuntu/upload/SUCCESSION_PROTOCOL.md>)
+- [Canonical succession protocol](docs/SUCCESSION_PROTOCOL.md)
 
 ## References
 
