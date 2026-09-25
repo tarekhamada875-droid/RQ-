@@ -136,7 +136,7 @@ describe('claimDelegateSession atomic locking', () => {
       name: 'Delegate 1',
       pin: '1234',
       currentSessionId: 'session-OLD',
-      lastActive: Date.now() - 15 * 60 * 1000,
+      lastActive: Date.now() - 61 * 60 * 1000,
     };
 
     const newClaim = await firestoreService.claimDelegateSession('del-1', 'session-NEW');

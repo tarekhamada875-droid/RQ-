@@ -595,10 +595,10 @@ export function registerAuthRoutes(router: Router) {
         return res.json({ success: false, valid: false, code: 'SESSION_INVALID', error: 'SESSION_INVALID' });
       }
 
-      // Check session expiration timeout (15 minutes of inactivity)
+      // Check session expiration timeout (1 hour of inactivity)
       const rawLastActive = secData.lastActive;
       const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
-      const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+      const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
       if (!lastActive || Date.now() - lastActive > SESSION_TIMEOUT_MS) {
         await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
         return res.json({ success: false, valid: false, code: 'SESSION_EXPIRED', error: 'SESSION_EXPIRED' });

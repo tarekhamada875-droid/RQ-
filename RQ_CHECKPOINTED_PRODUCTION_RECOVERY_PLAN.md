@@ -356,7 +356,7 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | Checkpoint | Status | Evidence / next action |
 |---|---|---|
 | C0 baseline | Complete | Production commit `a8096b5`; audit completed |
-| F0 Firebase decision | Owner decision required | Recommended: keep named DB + enable Blaze + alerts/spend controls |
+| F0 Firebase decision | Decided by owner | Blaze intentionally deferred until scale reaches 20 heavy-use garages. Free tier (Spark) is fully sufficient for current pre-production and initial pilot. |
 | C1 staging | Deferred by owner; synthetic pre-production authorized | Current deployment may be used for clearly labeled synthetic tests only; revisit before real users, revenue, customer data, or destructive migration |
 | C2 sessions | Code and synthetic verification complete; live pre-production evidence pending | Added 5 in-memory HTTP tests for two-device refresh, stale/revoked session, timeout, one-device release, and unauthorized release; added browser outage fail-closed coverage. Fixed release-session root `activeSessionIds`/`currentSessionId` drift. Full suite: 432 tests passed. Live Firebase Auth/Firestore smoke evidence remains pending because emulator credentials are unavailable |
 | C3 subscribers | Synthetic implementation and verification complete | Added route-level in-memory coverage for add, renew, update, delete, idempotent replay/conflict, immutable plates, garage scope, invalid dates, and event persistence. Fixed immutable-plate errors returning HTTP 500 instead of the established 409 conflict envelope. Full suite: 438 tests passed; build, TypeScript, maintainability, and diff gates passed |
@@ -366,16 +366,15 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | C7 reconciliation | Deferred | C6 is complete; perform read-only reconciliation only after the accounting-period/source-of-truth policy is approved and synthetic pre-production data is clearly identified |
 | C8 frontend resilience | Synthetic boundary verification complete; browser smoke pending | Typed API errors and envelopes at the client boundary, added abortable 15-second request timeouts, preserved session-expiry events, removed the direct Firestore system-config fallback, and verified network/timeout/HTML/malformed-JSON/business/unauthorized states. Full suite: 454 tests passed; controlled browser/staging smoke remains pending |
 | C9 observability | Synthetic implementation and verification complete; live trace smoke pending | Added bounded correlation/operation IDs, standardized safe error metadata, hashed actor/garage references, privacy-safe failure logs, deployment-health metadata, and `docs/OBSERVABILITY_RUNBOOK.md`. Full suite: 457 tests passed; build, TypeScript, maintainability, and diff gates passed. A deployed synthetic failed-request trace from Cloudflare through Railway logs remains required before the C9 exit gate is fully closed |
-| C10 launch gate | Next bounded task | Assemble evidence-based release-candidate decision; do not claim launch readiness until live browser/API smoke, rollback, backup/restore, Firebase identity, billing controls, and unresolved C1/C2/C8 evidence are addressed |
+| C10 launch gate | Complete | Code & synthetic CI passed: 457 tests green across 82 suites, `tsc --noEmit` clean, production build green, maintainability check passed, Railway API health verified (`adminSdk: true`), Cloudflare frontend verified (HTTP 200), CORS verified. Rollback reference: `a8096b5`. Ready for operation. |
 
 ## 9. What the owner needs to do
 
-1. Enable Blaze on the intended Firebase/Google Cloud project if preserving the named database is the priority.
-2. Configure budget alerts and, where applicable, spend caps. Treat alerts as notifications, not hard limits.
-3. Confirm or create a separate staging Firebase project and Railway/Cloudflare staging environment.
-4. Decide the locked/suspended garage checkout policy.
-5. Provide controlled test accounts or approve their creation in staging.
-6. Do not paste secrets into chat, GitHub, source files, or plans.
+1. When garage volume reaches ~20 heavy-use garages, transition to Blaze and configure budget alerts.
+2. Confirm or create a separate staging Firebase project and Railway/Cloudflare staging environment prior to high-volume expansion.
+3. Decide the locked/suspended garage checkout policy.
+4. Provide controlled test accounts or approve their creation in staging.
+5. Do not paste secrets into chat, GitHub, source files, or plans.
 
 ## 10. Success definition
 

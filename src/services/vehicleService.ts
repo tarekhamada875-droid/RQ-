@@ -96,6 +96,7 @@ export const vehicleService = {
       vehicles.sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
       callback(vehicles);
     });
+
     return () => {
       unsub();
       trackerUnsub();

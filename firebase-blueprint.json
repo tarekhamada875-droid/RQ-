@@ -149,6 +149,41 @@
         "vehiclesCount": { "type": "number", "description": "Number of vehicles included in the package" }
       },
       "required": ["name", "price", "vehiclesCount"]
+    },
+    "GarageLiveState": {
+      "title": "GarageLiveState",
+      "description": "Living state matrix holding active inside vehicles and real-time garage counters.",
+      "type": "object",
+      "properties": {
+        "garageId": { "type": "string", "description": "ID of the garage" },
+        "activeCars": { "type": "object", "description": "Map of currently active inside cars keyed by raw plate number" },
+        "totalInside": { "type": "number", "description": "Total count of active vehicles currently inside" },
+        "todayCount": { "type": "number", "description": "Total vehicle entries recorded today" },
+        "todayRevenue": { "type": "number", "description": "Total revenue generated today" },
+        "lastTransactionDate": { "type": "string", "description": "Date of the last transaction (YYYY-MM-DD)" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of last live state update" }
+      },
+      "required": ["garageId", "activeCars", "totalInside"]
+    },
+    "ArchiveReceipt": {
+      "title": "ArchiveReceipt",
+      "description": "Cold immutable receipt archive of completed vehicle stays.",
+      "type": "object",
+      "properties": {
+        "garageId": { "type": "string", "description": "ID of the garage" },
+        "garageName": { "type": "string", "description": "Name of the garage" },
+        "plateNumber": { "type": "string", "description": "Formatted vehicle plate number" },
+        "plateNumberRaw": { "type": "string", "description": "Raw vehicle plate number" },
+        "entryTime": { "type": "string", "format": "date-time", "description": "Entry time" },
+        "exitTime": { "type": "string", "format": "date-time", "description": "Exit time" },
+        "type": { "type": "string", "enum": ["hourly", "overnight"], "description": "Stay type" },
+        "totalCost": { "type": "number", "description": "Calculated total cost" },
+        "isSubscriber": { "type": "boolean", "description": "Whether vehicle belonged to a subscriber" },
+        "staffId": { "type": "string", "description": "ID of staff who processed checkout" },
+        "staffName": { "type": "string", "description": "Name of staff who processed checkout" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation timestamp" }
+      },
+      "required": ["garageId", "plateNumber", "plateNumberRaw", "entryTime", "exitTime", "totalCost"]
     }
   },
   "firestore": {
@@ -159,6 +194,14 @@
     "/garages/{garageId}": {
       "schema": "Garage",
       "description": "Collection of garage accounts."
+    },
+    "/garages/{garageId}/live/{docId}": {
+      "schema": "GarageLiveState",
+      "description": "Sub-collection holding the living state matrix for high-speed, single-read garage syncing."
+    },
+    "/archive_receipts/{receiptId}": {
+      "schema": "ArchiveReceipt",
+      "description": "Global cold archive of completed parking transaction receipts."
     },
     "/garages/{garageId}/vehicles/{vehicleId}": {
       "schema": "Vehicle",

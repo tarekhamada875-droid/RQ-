@@ -322,7 +322,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       { role: 'staff', coll: 'staff_sessions' }
     ];
 
-    const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
 
     for (const { role, coll } of secCollMap) {
       const legacySecSnap = await adminDb.doc(`${coll}/${uid}`).get();
@@ -331,7 +331,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       if (secSnap.exists) {
         const secData = secSnap.data() || {};
         if (secData.isActive) {
-          // Check session freshness (15-minute inactivity timeout)
+          // Check session freshness (1-hour inactivity timeout)
           const rawLastActive = secData.lastActive;
           const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
           if (!lastActive || Date.now() - lastActive > SESSION_TIMEOUT_MS) {
