@@ -1,4 +1,4 @@
-import { doc, runTransaction, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EntityRole } from '../types';
 import { authService } from './authService';
@@ -147,20 +147,20 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
 
 export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {
   if (!role || !entityId || !sessionId || !uid) return;
-
-  const entityColl = ENTITY_COLLECTIONS[role];
-  const secColl = SECURITY_COLLECTIONS[role];
-  const entityDocId = getEntityDocumentId(role, entityId);
-
   try {
-    const batch = writeBatch(db);
-    batch.update(doc(db, entityColl, entityDocId), {
-      lastActive: serverTimestamp()
-    });
-    batch.set(doc(db, secColl, uid), {
-      lastActive: serverTimestamp()
-    }, { merge: true });
-    await batch.commit();
+    // Session freshness and entity heartbeat are server-authoritative. The
+    // browser may request a refresh, but it must not write security or entity
+    // session fields directly because that creates a second authority beside
+    // /api/auth/validate-or-refresh-session.
+    const valid = await authService.validateOrRefreshSessionOnServer(
+      uid,
+      sessionId,
+      role,
+      entityId
+    );
+    if (!valid) {
+      console.warn('[AuthSessionService] Server rejected session refresh', { role, entityId });
+    }
   } catch (err) {
     console.warn('refreshEntitySession failed:', err);
   }
