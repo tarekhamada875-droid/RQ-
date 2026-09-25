@@ -111,4 +111,4 @@ railway.json            Railway build, start, and health-check configuration
 Dockerfile              Container build alternative
 ```
 
-For deployment details, use [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). For the planned backend replacement, use [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md). For the current agent-to-agent implementation state and next steps, use [`BACKEND_OVERHAUL_HANDOFF.md`](./BACKEND_OVERHAUL_HANDOFF.md).
+For deployment details, use [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). For the current checkpointed recovery and wiring plan, use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](./RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). The older overhaul-stage and handoff documents were superseded and are no longer active instructions.

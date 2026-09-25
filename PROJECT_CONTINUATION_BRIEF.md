@@ -1,5 +1,7 @@
 # RQ- Project Continuation Brief
 
+> **Historical document:** This brief records an older code-quality handoff and is not the active execution plan. Start with [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md), then read `AGENTS.md` and the relevant capability checkpoint. Do not follow the stale commit, test counts, or “immediate next plan” below as current instructions.
+
 > **Purpose:** This file is the durable handoff point for continuing work on the RQ- repository from another account or coding session.
 
 ## Latest session handoff — 2026-09-25

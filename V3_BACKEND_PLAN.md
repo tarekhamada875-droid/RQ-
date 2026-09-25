@@ -1,6 +1,6 @@
 # RQ V3 Backend Plan
 
-**Status:** Active implementation plan
+**Status:** Active architectural guide; execution is governed by `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`
 
 **Purpose:** Rebuild the real production backend incrementally around functional programming principles while preserving the existing production data model and HTTP compatibility until each capability is proven.
 
@@ -79,8 +79,8 @@ The working tree was clean and `HEAD` matched `origin/main` at the published com
 
 ### Exact next bounded task
 
-Add Firestore-emulator or equivalent mocked route-integration tests for the manual-credit workflow. Cover duplicate approval replay, same-key changed-payload rejection, duplicate rejection replay, duplicate direct top-up replay, unauthorized direct financial-field writes, ledger/event/idempotency atomicity, and concurrent approval behavior. Preserve the current production `server/` authority, do not add a parallel backend, do not contact production, and do not change financial semantics beyond what the tests prove.
+The current execution order is in `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`. The next engineering task after the staging boundary is the manual-credit route/emulator integration slice: duplicate approval replay, same-key changed-payload rejection, duplicate rejection replay, duplicate direct top-up replay, unauthorized direct financial-field writes, ledger/event/idempotency atomicity, and concurrent approval behavior. Preserve the current production `server/` authority, do not add a parallel backend, do not contact production, and do not change financial semantics beyond what the tests prove.
 
 ### Copy-paste startup block
 
-> Repository: `/home/ubuntu/RQ-`. Read `V3_BACKEND_PLAN.md`, `docs/SUCCESSION_PROTOCOL.md`, and `AGENTS.md`. Verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest validation result. Current published SHA: `409619d0774a5093995a62f4044bab4d609f7a19`. The last slice hardened manual credits; the exact next task is manual-credit route integration/emulator coverage for duplicate replay, changed-payload conflicts, unauthorized financial writes, atomic ledger/event/idempotency persistence, and concurrent approval. Use the existing RQ Railway Backend Operator connector only for protected read-only diagnostics when needed; never request or expose its credential. Do not deploy or mutate production. If the owner sends `tokens ending`, stop feature work and repeat `docs/SUCCESSION_PROTOCOL.md` before doing anything else, then tell the next agent to repeat it too.
+> Repository: `/home/ubuntu/RQ`. Read `AGENTS.md`, `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`, `V3_BACKEND_PLAN.md`, and `docs/SUCCESSION_PROTOCOL.md`. Verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest validation result. Current published SHA: `a8096b5349df6b890d830f04ccb99febb68aac9e`. Use the RQ Railway Backend Operator connector only for protected read-only diagnostics; never request or expose its credential. Do not deploy or mutate production. If the owner sends `tokens ending`, stop feature work and repeat `docs/SUCCESSION_PROTOCOL.md` before doing anything else, then tell the next agent to repeat it too.

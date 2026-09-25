@@ -1,5 +1,7 @@
 # RQ- Code Quality Checkpoints
 
+> **Historical document:** The static-analysis work recorded here is retained for evidence, but this is not the active product-recovery plan. Use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md) for current checkpoint assignment and scope. Do not start the old ESLint/logging/bundle phases unless a current checkpoint explicitly assigns them.
+
 **Purpose:** Durable continuation plan for the remaining code-quality work identified after the business-logic audit.
 
 **Repository:** `tarekhamada875-droid/RQ-`

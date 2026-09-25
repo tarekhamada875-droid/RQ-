@@ -31,4 +31,4 @@ The Railway health response must be JSON with `status: ok` and `adminSdk: true`.
 
 ## Architecture direction
 
-The current production deployment remains Cloudflare Pages → Railway → Firebase. The planned replacement of legacy backend boundaries is documented in `BACKEND_COMPLETE_OVERHAUL_STAGES.md`; do not change production traffic or data until its staged migration gates pass.
+The current production deployment remains Cloudflare Pages → Railway → Firebase. The active staged recovery and frontend/backend wiring work is documented in `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`; do not change production traffic or data until the relevant checkpoint gate passes.

@@ -1,5 +1,7 @@
 # RQ Production-Readiness Plan
 
+> **Superseded:** Use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md) as the active plan. This document is retained as audit history; its older alternatives, ordering, and handoff text must not override the canonical checkpoint ledger.
+
 **Prepared:** 2026-09-25  
 **Project:** `tarekhamada875-droid/RQ-`  
 **Purpose:** Provide one practical plan that states each known problem, the fix, how to implement it, where to make the change, when to do it, dependencies, parallel work, and the exact continuation point for the next agent.

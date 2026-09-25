@@ -44,7 +44,7 @@ Do not mutate or delete production Firestore records without explicit scope and 
 
 ## Architecture direction
 
-The current production architecture remains Cloudflare Pages → Railway → Firebase. The planned replacement of legacy backend boundaries is documented in [`BACKEND_COMPLETE_OVERHAUL_STAGES.md`](./BACKEND_COMPLETE_OVERHAUL_STAGES.md). Its first required implementation step is Stage 0 inventory; do not change production data or traffic before that stage passes.
+The current production architecture remains Cloudflare Pages → Railway → Firebase. The active staged recovery and wiring work is documented in [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](./RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). Do not change production data or traffic outside an approved checkpoint and its validation gate.
 
 ## Last verified local baseline
 
