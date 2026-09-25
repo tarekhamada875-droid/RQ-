@@ -259,7 +259,7 @@ export function useVehicleOperations({
       showToast('جاري المعالجة... يرجى الانتظار', 'info');
       return;
     }
-  }, [isOnline, garage, setGarage, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
+  }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
