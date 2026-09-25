@@ -33,7 +33,8 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
     errMsg.includes('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN') ||
     errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE') ||
     errMsg.includes('SUBSCRIPTION_EXPIRED') ||
-    errMsg.includes('SUBSCRIBER_ALREADY_EXISTS')
+    errMsg.includes('SUBSCRIBER_ALREADY_EXISTS') ||
+    errMsg.includes('SUBSCRIBER_PLATE_IMMUTABLE')
   ) {
     return { statusCode: 409, code: 'CONFLICT', message: 'The requested operation conflicts with the current state.' };
   }
