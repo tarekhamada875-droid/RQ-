@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
@@ -69,7 +69,7 @@ export function useGarageSession({
   }, []);
 
   // Logout handler
-  const handleLogout = async (isRemoteKicked: boolean = false) => {
+  const handleLogout = useCallback(async (isRemoteKicked: boolean = false) => {
     try {
       if (!isRemoteKicked && auth.currentUser) {
         let activeRole: EntityRole | null = null;
@@ -125,7 +125,7 @@ export function useGarageSession({
       setView('login');
       setShowLogoutConfirm(false);
     }
-  };
+  }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, showToast, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
 
   const handleInitiateLogout = () => {
     setShowLogoutConfirm(true);
@@ -134,13 +134,13 @@ export function useGarageSession({
   // Track last logout toast time to prevent multiple stacked toasts when session expires
   const lastLogoutToastRef = useRef<number>(0);
 
-  const showLogoutToastOnce = (msg: string) => {
+  const showLogoutToastOnce = useCallback((msg: string) => {
     const now = Date.now();
     if (now - lastLogoutToastRef.current > 3000) {
       lastLogoutToastRef.current = now;
       showToast(msg, 'error');
     }
-  };
+  }, [showToast]);
 
   // API Session Expiration Listener
   useEffect(() => {
@@ -160,7 +160,7 @@ export function useGarageSession({
         window.removeEventListener('api-session-expired', handleApiSessionExpired);
       }
     };
-  }, [showToast]);
+  }, [handleLogout, showLogoutToastOnce]);
 
   // Authoritative Session & Coordinator
   useEffect(() => {
