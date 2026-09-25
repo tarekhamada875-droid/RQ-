@@ -60,6 +60,8 @@ export function sendApiError(
   correlationId?: string,
   details?: Record<string, any>
 ) {
+  res.locals = res.locals || {};
+  res.locals.apiErrorCode = code;
   const payload: Record<string, any> = {
     success: false,
     error: message,
@@ -81,7 +83,8 @@ export function sendApiError(
  */
 export const correlationMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   const headerId = req.headers['x-correlation-id'];
-  const correlationId = typeof headerId === 'string' && headerId.trim() ? headerId.trim() : crypto.randomUUID();
+  const candidate = typeof headerId === 'string' ? headerId.trim() : '';
+  const correlationId = /^[A-Za-z0-9._:-]{1,128}$/.test(candidate) ? candidate : crypto.randomUUID();
   req.correlationId = correlationId;
   res.setHeader('X-Correlation-ID', correlationId);
   next();

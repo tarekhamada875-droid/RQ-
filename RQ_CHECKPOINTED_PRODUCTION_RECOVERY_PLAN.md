@@ -365,8 +365,8 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval |
 | C7 reconciliation | Deferred | C6 is complete; perform read-only reconciliation only after the accounting-period/source-of-truth policy is approved and synthetic pre-production data is clearly identified |
 | C8 frontend resilience | Synthetic boundary verification complete; browser smoke pending | Typed API errors and envelopes at the client boundary, added abortable 15-second request timeouts, preserved session-expiry events, removed the direct Firestore system-config fallback, and verified network/timeout/HTML/malformed-JSON/business/unauthorized states. Full suite: 454 tests passed; controlled browser/staging smoke remains pending |
-| C9 observability | Planned | Before release candidate |
-| C10 launch gate | Planned | Evidence-based release decision |
+| C9 observability | Synthetic implementation and verification complete; live trace smoke pending | Added bounded correlation/operation IDs, standardized safe error metadata, hashed actor/garage references, privacy-safe failure logs, deployment-health metadata, and `docs/OBSERVABILITY_RUNBOOK.md`. Full suite: 457 tests passed; build, TypeScript, maintainability, and diff gates passed. A deployed synthetic failed-request trace from Cloudflare through Railway logs remains required before the C9 exit gate is fully closed |
+| C10 launch gate | Next bounded task | Assemble evidence-based release-candidate decision; do not claim launch readiness until live browser/API smoke, rollback, backup/restore, Firebase identity, billing controls, and unresolved C1/C2/C8 evidence are addressed |
 
 ## 9. What the owner needs to do
 

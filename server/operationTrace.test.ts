@@ -17,6 +17,7 @@ function response(statusCode: number) {
   const listeners = new Map<string, () => void>();
   return {
     statusCode,
+    locals: {},
     on(event: string, listener: () => void) { listeners.set(event, listener); },
     finish() { listeners.get('finish')?.(); },
   } as any;
@@ -47,18 +48,21 @@ describe('operation trace middleware', () => {
       path: '/api/vehicles/check-in',
       statusCode: 201,
       outcome: 'success',
-      actorUid: 'user-1',
+      actorUidHash: expect.any(String),
       actorRole: 'garage',
-      garageId: 'garage-1',
-      schemaVersion: 1,
+      garageIdHash: expect.any(String),
+      schemaVersion: 2,
     });
     expect(JSON.stringify(state.writes[0].value)).not.toContain('do-not-store');
+    expect(JSON.stringify(state.writes[0].value)).not.toContain('user-1');
+    expect(JSON.stringify(state.writes[0].value)).not.toContain('garage-1');
     expect(state.writes[0].value.expiresAt).toBeInstanceOf(Date);
   });
 
   it('records failed API outcomes without storing request bodies or credentials', async () => {
     state.writes.length = 0;
     const res = response(500);
+    res.locals.apiErrorCode = 'INTERNAL_ERROR';
     const req: any = {
       method: 'POST',
       path: '/api/transactions/approve',
@@ -74,8 +78,10 @@ describe('operation trace middleware', () => {
       correlationId: 'corr-failure',
       outcome: 'server_error',
       statusCode: 500,
+      errorCode: 'INTERNAL_ERROR',
     });
     expect(state.writes[0].value).not.toHaveProperty('body');
     expect(state.writes[0].value).not.toHaveProperty('headers');
+    expect(JSON.stringify(state.writes[0].value)).not.toContain('secret');
   });
 });
