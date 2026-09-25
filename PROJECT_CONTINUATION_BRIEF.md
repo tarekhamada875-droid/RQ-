@@ -38,12 +38,12 @@ The production communication rule is important: frontend API calls from Cloudfla
 
 ## Current verified baseline
 
-The current `main` branch was verified clean and synchronized with `origin/main` at commit `b9c08cf` after the focused Hooks slice:
+The current `main` branch was verified clean and synchronized with `origin/main` at commit `e43e964` after the focused Hooks slice:
 
 ```text
+e43e964 quality: track vehicle setter in check-in callback
 b9c08cf quality: stabilize admin login handler
 61e4059 quality: track trial status in recharge sync
-7ee8990 quality: remove redundant dashboard countdown dependency
 ```
 
 The latest complete validation evidence is:
@@ -53,11 +53,11 @@ The latest complete validation evidence is:
 - Production build: `npm run build` passed. The build includes the Vite frontend, the external-dependency server bundle, and the bundled Railway/Cloud Run server.
 - Maintainability: `npm run maintainability:check` passed.
 - Formatting/diff: `git diff --check` passed.
-- Focused authentication/session regressions: **3 test files and 22 tests passed**.
+- Focused vehicle-operation regressions: **4 test files and 24 tests passed**.
 
 The complete ESLint command is not yet green. The current remaining React Hooks findings are:
 
-- `react-hooks/exhaustive-deps`: **6** after the current focused slice.
+- `react-hooks/exhaustive-deps`: **5** after the current focused slice.
 - `react-hooks/set-state-in-effect`: **10**.
 - `react-hooks/purity`: **1**.
 
@@ -95,9 +95,9 @@ Before each new change:
 
 ## Immediate next plan
 
-The last completed code slice changed only `src/components/auth/AdminLoginView.tsx`: `handleLogin` is now a `useCallback` over its actual `adminPin`, `onLogin`, and `showToast` inputs, stabilizing the keyboard-login effect without changing login behavior. The `AdminAddGarageModal.tsx` initialization warning was reviewed and deferred because its effect intentionally snapshots parent form values only when opening; adding all suggested fields would overwrite local edits while the modal remains open. The full gate passed; the working tree must not be treated as complete until the change is pushed.
+The last completed code slice changed only `src/hooks/useVehicleOperations.ts`: the check-in callback now declares the `setVehicles` dispatcher supplied by `useGarageApp`’s `useState` as a dependency. This is a stable setter used by the optimistic, server-reconciliation, and rollback paths; callback behavior is unchanged. The `AdminAddGarageModal.tsx` initialization warning remains deferred because its effect intentionally snapshots parent form values only when opening. The full gate passed; the working tree must not be treated as complete until the change is pushed.
 
-The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. The modal warning remains deferred unless a dedicated snapshot regression proves a different design is intended. The next narrow candidate is `src/hooks/useVehicleOperations.ts` line 262, where the missing `setVehicles` dependency is a React state setter and should be reviewed as a stable scalar/function dependency. Inspect the callback before editing and do not broaden into the neighboring vehicle-operation findings.
+The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. The modal warning remains deferred unless a dedicated snapshot regression proves a different design is intended. The next narrow candidate is `src/hooks/useVehicleOperations.ts` line 357, where the checkout callback is missing `setGarage`, `setVehicles`, and `vehicles`; inspect its optimistic update and rollback ownership before editing and keep line 440 out of scope.
 
 For every candidate, preserve these contracts: the production `server/` backend remains authoritative; browser Firestore listeners are read/display synchronization only; authentication/session, financial, API, Firebase rules, and Cloudflare/Railway topology are out of scope; no `eslint-disable`, test weakening, or broad autofix is allowed. If a finding concerns `set-state-in-effect`, render purity, session/logout behavior, or a data-loading subscription, leave it unchanged unless the semantic replacement and focused regression tests are clear. Record why a finding is intentionally deferred.
 

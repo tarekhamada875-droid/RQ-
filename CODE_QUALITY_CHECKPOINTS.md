@@ -305,3 +305,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused authentication/session validation passed: **3 test files, 22 tests**. The edited file has no React Hooks findings; its two `no-explicit-any` findings were pre-existing. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Refreshed ESLint inventory: **599 total findings**, including React Hooks `exhaustive-deps` **6**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
 - **Next documented finding:** `src/hooks/useVehicleOperations.ts` line 262, the missing `setVehicles` dependency in the check-in callback. Review it as a stable React state setter and keep adjacent vehicle-operation findings out of scope.
+
+### 2026-09-25 — vehicle check-in setter dependency correction
+
+- Confirmed `setVehicles` is the stable `useState` dispatcher created in `useGarageApp` and passed directly to `useVehicleOperations`. Added it only to the check-in callback dependency list; the dispatcher is used by optimistic insertion, server reconciliation, and rollback paths, with no behavior or architecture change.
+- Focused vehicle-operation validation passed: **4 test files, 24 tests**. The edited hook has no remaining Hook finding for the selected callback; its remaining checkout/delete findings were not changed. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory: **598 total findings**, including React Hooks `exhaustive-deps` **5**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+- **Next documented finding:** `src/hooks/useVehicleOperations.ts` line 357, the checkout callback’s missing `setGarage`, `setVehicles`, and `vehicles` dependencies. Review its optimistic update and rollback semantics before changing it; keep line 440 out of scope.
