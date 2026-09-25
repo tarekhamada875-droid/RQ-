@@ -18,6 +18,10 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 if (!packageJson.packageManager?.startsWith('npm@')) fail('package.json must declare npm as the supported package manager.');
 if (!packageJson.scripts?.['build:railway']?.includes('build:cloudrun')) fail('Railway build must use the API-only Cloud Run-compatible build.');
 
+for (const strayLock of ['bun.lock', 'bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']) {
+  if (existsSync(resolve(root, strayLock))) fail(`Secondary lockfile ${strayLock} must not exist; project is standardized on npm.`);
+}
+
 for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'MAINTAINABILITY_HANDOFF.md']) {
   if (!existsSync(resolve(root, requiredDoc))) fail(`Required maintainability document is missing: ${requiredDoc}.`);
 }

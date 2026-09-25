@@ -4,5 +4,9 @@ api/index.js
 coverage/
 .DS_Store
 *.log
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
 .env*
 !.env.example
