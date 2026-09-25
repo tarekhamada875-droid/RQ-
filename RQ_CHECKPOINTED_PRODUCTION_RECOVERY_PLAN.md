@@ -358,8 +358,8 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | C0 baseline | Complete | Production commit `a8096b5`; audit completed |
 | F0 Firebase decision | Owner decision required | Recommended: keep named DB + enable Blaze + alerts/spend controls |
 | C1 staging | Deferred by owner; synthetic pre-production authorized | Current deployment may be used for clearly labeled synthetic tests only; revisit before real users, revenue, customer data, or destructive migration |
-| C2 sessions | Next bounded verification task | Server-authoritative refresh/release wiring is published at `9629206`; run synthetic two-device, stale-session, logout/revoke, outage, and unauthorized-write evidence in the current pre-production environment |
-| C3 subscribers | Planned | Follow existing V3 migration order |
+| C2 sessions | Code and synthetic verification complete; live pre-production evidence pending | Added 5 in-memory HTTP tests for two-device refresh, stale/revoked session, timeout, one-device release, and unauthorized release; added browser outage fail-closed coverage. Fixed release-session root `activeSessionIds`/`currentSessionId` drift. Full suite: 432 tests passed. Live Firebase Auth/Firestore smoke evidence remains pending because emulator credentials are unavailable |
+| C3 subscribers | Next bounded implementation task | Characterize and harden the existing subscriber add/renew/update/delete route contracts without changing UI/UX or migrating data |
 | C4 vehicles | Planned | Resolve lock/suspension policy first |
 | C5 operations | Planned | Non-financial only |
 | C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval |

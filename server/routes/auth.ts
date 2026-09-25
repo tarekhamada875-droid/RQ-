@@ -698,10 +698,22 @@ export function registerAuthRoutes(router: Router) {
 
       if (secColl && uid) {
         const secSnap = await adminDb.doc(`${secColl}/${uid}`).get();
-        if (secSnap.exists && secSnap.data()?.sessionId === sessionId) {
+        if (secSnap.exists) {
+          const rootData = secSnap.data() || {};
+          const remainingRoot = removeActiveSession(rootData, sessionId);
+          const rootWasReleased = rootData.sessionId === sessionId;
           await adminDb.doc(`${secColl}/${uid}`).update({
-            isActive: false,
-            lastActive: new Date()
+            activeSessionIds: remainingRoot,
+            ...(rootData.currentSessionId === sessionId
+              ? { currentSessionId: remainingRoot.at(-1) ?? null }
+              : {}),
+            ...(rootWasReleased
+              ? {
+                  sessionId: remainingRoot.at(-1) ?? null,
+                  isActive: remainingRoot.length > 0
+                }
+              : {}),
+            ...(rootWasReleased ? { lastActive: new Date() } : {})
           });
         }
         await adminDb.doc(`${secColl}/${uid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });

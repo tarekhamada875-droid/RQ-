@@ -85,6 +85,25 @@ describe('auth session server authority', () => {
     expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
+  it('fails closed during a server outage without attempting a browser fallback write', async () => {
+    mockedRefresh.mockRejectedValue(new Error('SERVER_UNAVAILABLE'));
+
+    await expect(refreshEntitySession({
+      role: 'garage',
+      entityId: 'garage-1',
+      sessionId: 'session-outage',
+      uid: 'firebase-uid-outage',
+    })).resolves.toBeUndefined();
+
+    expect(mockedRefresh).toHaveBeenCalledWith(
+      'firebase-uid-outage',
+      'session-outage',
+      'garage',
+      'garage-1'
+    );
+    expect(mockedRunTransaction).not.toHaveBeenCalled();
+  });
+
   it('releases the session through the server without a browser transaction', async () => {
     await releaseEntitySession({
       role: 'garage',
