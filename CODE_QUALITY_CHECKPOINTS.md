@@ -319,3 +319,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused vehicle-operation validation passed: **3 test files, 19 tests**. The edited callback has no remaining Hook finding; the separate line-440 delete callback was intentionally left untouched. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Refreshed ESLint inventory: **597 total findings**, including React Hooks `exhaustive-deps` **4**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
 - **Next documented finding:** `src/hooks/useVehicleOperations.ts` line 440, the delete callback’s missing `isLoading`, `setGarage`, and `setVehicles` dependencies. Review its ownership and rollback behavior before editing; keep unrelated findings out of scope.
+
+### 2026-09-25 — vehicle delete dependency correction
+
+- Reviewed the delete callback’s loading guard, optimistic vehicle removal, server-authoritative deletion/refund request, and vehicle/garage rollback paths. Confirmed `isLoading` is read by the guard, while `setGarage` and `setVehicles` are stable `useState` dispatchers supplied by `useGarageApp`. Added exactly those three dependencies without changing deletion ownership, API behavior, or rollback semantics.
+- Focused deletion/locking validation passed: **4 test files, 16 tests**. The edited hook has no remaining React Hooks findings. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory: **596 total findings**, including React Hooks `exhaustive-deps` **3**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+- **Next documented finding:** `AdminAddGarageModal.tsx`’s initialization effect remains the next review candidate, but its open-state snapshot semantics are behavior-sensitive and may remain deferred. If deferred, review the first `useGarageSession.ts` exhaustive-deps finding as exactly one subsequent candidate.
