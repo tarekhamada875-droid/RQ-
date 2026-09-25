@@ -164,6 +164,8 @@ Development checkpoints do not deploy automatically. Deployment requires:
 
 **Goal:** create a safe place for authenticated workflow tests and migration rehearsal.
 
+**Owner decision (2026-09-25):** The project currently has no real users, customer records, or live financial data. Until that changes, the existing Cloudflare Pages → Railway → Firebase deployment is treated as a **controlled pre-production environment** using synthetic test data only. A separate staging environment is deferred, not an immediate implementation blocker. This decision must be revisited before onboarding real users, accepting real revenue, importing customer data, or performing destructive migrations.
+
 **Tasks:**
 
 - create or identify a separate Firebase staging project/database;
@@ -172,11 +174,11 @@ Development checkpoints do not deploy automatically. Deployment requires:
 - create test accounts for owner, staff, delegate, supervisor, and admin roles;
 - seed only synthetic data.
 
-**Exit gate:** authenticated smoke tests run against staging, and a staging failure cannot read or write production data.
+**Exit gate when staging is enabled:** authenticated smoke tests run against staging, and a staging failure cannot read or write production data. Until then, synthetic pre-production tests must use clearly labeled records and must not delete or overwrite unknown data.
 
 **Rollback:** disable preview/staging deployment; production variables remain untouched.
 
-**Blocker policy:** if staging credentials or account ownership are unavailable, stop and report exact missing access.
+**Blocker policy:** staging credentials or account ownership are not required for the current synthetic pre-production phase. Stop and report if a test would touch unknown data, require destructive cleanup, or involve a real user or financial record.
 
 ### C2 — Session authority and multi-device behavior
 
@@ -355,13 +357,13 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 |---|---|---|
 | C0 baseline | Complete | Production commit `a8096b5`; audit completed |
 | F0 Firebase decision | Owner decision required | Recommended: keep named DB + enable Blaze + alerts/spend controls |
-| C1 staging | Blocked | Need separate Firebase/Railway staging project and environment before authenticated workflow validation |
-| C2 sessions | Implementation slice complete; exit blocked | Server-authoritative refresh/release wiring is published at `9629206`; staging two-device and outage evidence still required |
+| C1 staging | Deferred by owner; synthetic pre-production authorized | Current deployment may be used for clearly labeled synthetic tests only; revisit before real users, revenue, customer data, or destructive migration |
+| C2 sessions | Next bounded verification task | Server-authoritative refresh/release wiring is published at `9629206`; run synthetic two-device, stale-session, logout/revoke, outage, and unauthorized-write evidence in the current pre-production environment |
 | C3 subscribers | Planned | Follow existing V3 migration order |
 | C4 vehicles | Planned | Resolve lock/suspension policy first |
 | C5 operations | Planned | Non-financial only |
-| C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval; next safe step requires staging |
-| C7 reconciliation | Blocked | C6 is complete, but read-only reconciliation requires a separate staging/export boundary and an approved accounting-period/source-of-truth policy |
+| C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval |
+| C7 reconciliation | Deferred | C6 is complete; perform read-only reconciliation only after the accounting-period/source-of-truth policy is approved and synthetic pre-production data is clearly identified |
 | C8 frontend resilience | Planned | After API contracts stabilize |
 | C9 observability | Planned | Before release candidate |
 | C10 launch gate | Planned | Evidence-based release decision |
