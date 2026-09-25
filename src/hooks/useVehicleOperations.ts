@@ -354,7 +354,7 @@ export function useVehicleOperations({
       showToast('جاري المعالجة... يرجى الانتظار', 'info');
       return;
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles]);
 
   // Delete Vehicle
   const handleDeleteVehicle = useCallback(async () => {
