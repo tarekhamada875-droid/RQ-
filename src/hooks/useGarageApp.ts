@@ -15,6 +15,7 @@ import { useGarageSubscription } from './useGarageSubscription';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { useGarageSync } from './useGarageSync';
 import { useSystemConfig } from './useSystemConfig';
+import { getWalletNumberUpdate } from '../utils/walletNumber';
 
 const CURRENT_VERSION = '1.0.4';
 
@@ -98,8 +99,12 @@ export function useGarageApp() {
   // Real-time synchronization of system wallet number and subscription prices
   useEffect(() => {
     const unsubWallet = firestoreService.subscribeToWalletNumber((wallet) => {
-      if (wallet !== undefined) {
-        setWalletNumber(wallet || '');
+      // An empty value can be a fallback from a transient Firestore listener
+      // error or an older/incomplete config document. Never let it erase a
+      // previously loaded valid number from local storage.
+      const nextWalletNumber = getWalletNumberUpdate(wallet);
+      if (nextWalletNumber) {
+        setWalletNumber(nextWalletNumber);
       }
     });
 
