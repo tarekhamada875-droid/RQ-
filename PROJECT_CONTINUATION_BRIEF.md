@@ -2,6 +2,18 @@
 
 > **Purpose:** This file is the durable handoff point for continuing work on the RQ- repository from another account or coding session.
 
+## Latest session handoff — 2026-09-25
+
+The garage dashboard cleanup is complete: the standalone Arabic **`تجريبي`** badge was removed from the subscription countdown card because it overlapped the card content on mobile. Trial access logic, countdown calculations, balance behavior, and wallet-number rendering were not changed. The change is in `src/components/garage/GarageDashboardView.tsx`.
+
+Validation completed for this slice:
+
+- `npm run lint` passed.
+- `npm run build:web` passed.
+- `git diff --check` passed.
+
+The next agent should verify the pushed commit and deployment status, then continue with the existing bounded code-quality plan in this brief and `CODE_QUALITY_CHECKPOINTS.md`. Do not repeat the removed-badge investigation unless a production screenshot shows a different overlapping element. When the owner sends the exact phrase **`tokens ending`**, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md), recording the current commit, validation, changed files, blockers, and one exact next bounded task for the successor. Every successor must repeat that protocol.
+
 ## Important limitation
 
 This document cannot transfer consciousness, personal memory, or awareness between accounts. A new coding agent will not literally remember previous conversations. It can, however, reconstruct the project context from this brief, the repository history, the checkpoint files, and fresh validation. The correct behavior after reading this file is to verify the current repository state and then continue from the recorded plan rather than starting the audit from zero.

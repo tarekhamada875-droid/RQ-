@@ -20,7 +20,6 @@ import {
   Clock,
   Crown,
   Megaphone,
-  Sparkles,
   FileText,
 } from "lucide-react";
 import { Announcement } from "../../types";
@@ -736,16 +735,6 @@ export const GarageDashboardView = memo((props: any) => {
                         : "bg-[#faf9f6] dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                   }`}
                 >
-                  {/* Trial Badge */}
-                  {t?.isTrial && (
-                    <div className="absolute top-2 left-2 md:top-3 md:left-3 z-10">
-                      <span className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] md:text-[11px] font-black px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full border border-amber-500/30 inline-flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                        <span>تجريبي</span>
-                      </span>
-                    </div>
-                  )}
-
                   <div className={`${hasWarning ? "text-[11px] md:text-xs mb-0.5" : "text-xs md:text-sm mb-1"} font-bold text-slate-500 dark:text-slate-400 z-10`}>
                     الرصيد المتبقي
                   </div>
