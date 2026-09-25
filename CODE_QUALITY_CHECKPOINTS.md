@@ -297,3 +297,11 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused validation passed: **3 test files, 18 tests**, edited-file React Hooks lint with no Hook findings, TypeScript, full **75-file/423-test** suite, production build, maintainability check, and `git diff --check`.
 - Refreshed ESLint inventory: **600 total findings**, including React Hooks `exhaustive-deps` **7**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
 - **Next documented finding:** `AdminAddGarageModal.tsx` initialization effect missing form-field dependencies. Review its open-state snapshot semantics before deciding whether to change it; do not automatically add all suggested dependencies.
+
+### 2026-09-25 — AdminAddGarageModal snapshot review and AdminLogin callback stabilization
+
+- Reviewed `AdminAddGarageModal.tsx`’s initialization effect. The effect intentionally copies the parent `garageForm` and `pinInput` into local editing state only when `isOpen` becomes true. Adding the seven suggested form-field dependencies would resynchronize the local state during an open modal and can overwrite user typing, so this finding is deferred pending a dedicated snapshot regression or an explicit design change.
+- Resolved the next safe finding in `src/components/auth/AdminLoginView.tsx` by wrapping `handleLogin` in `React.useCallback` with its actual `adminPin`, `onLogin`, and `showToast` dependencies. Keyboard Enter and button login behavior are unchanged.
+- Focused authentication/session validation passed: **3 test files, 22 tests**. The edited file has no React Hooks findings; its two `no-explicit-any` findings were pre-existing. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory: **599 total findings**, including React Hooks `exhaustive-deps` **6**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+- **Next documented finding:** `src/hooks/useVehicleOperations.ts` line 262, the missing `setVehicles` dependency in the check-in callback. Review it as a stable React state setter and keep adjacent vehicle-operation findings out of scope.
