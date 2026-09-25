@@ -41,7 +41,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = memo(({
     setAdminPin(adminPin.slice(0, -1));
   };
 
-  const handleLogin = async () => {
+  const handleLogin = React.useCallback(async () => {
     const entered = normalizeDigits(adminPin).replace(/\D/g, '');
     if (!entered) {
       showToast('الرقم السري خطأ', 'error');
@@ -57,7 +57,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = memo(({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [adminPin, onLogin, showToast]);
 
   // Support physical keyboard / numpad
   React.useEffect(() => {
