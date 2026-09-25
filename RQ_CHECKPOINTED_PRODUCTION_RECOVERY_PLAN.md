@@ -218,8 +218,8 @@ Development checkpoints do not deploy automatically. Deployment requires:
 **Tasks:**
 
 - extract check-in and checkout decisions into pure modules;
-- define the locked/suspended garage policy explicitly;
-- decide whether vehicles already inside may be checked out or corrected while locked;
+- **locked/suspended policy:** reject new check-ins when either flag is true;
+- **existing vehicles:** allow checkout/correction of vehicles already inside while locked or suspended, preserving an exit path without accepting new exposure;
 - enforce that policy in every direct route, not just dashboard UI;
 - test duplicate requests, invalid state transitions, garage scope, staff scope, and idempotency.
 
@@ -360,8 +360,8 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | C1 staging | Deferred by owner; synthetic pre-production authorized | Current deployment may be used for clearly labeled synthetic tests only; revisit before real users, revenue, customer data, or destructive migration |
 | C2 sessions | Code and synthetic verification complete; live pre-production evidence pending | Added 5 in-memory HTTP tests for two-device refresh, stale/revoked session, timeout, one-device release, and unauthorized release; added browser outage fail-closed coverage. Fixed release-session root `activeSessionIds`/`currentSessionId` drift. Full suite: 432 tests passed. Live Firebase Auth/Firestore smoke evidence remains pending because emulator credentials are unavailable |
 | C3 subscribers | Synthetic implementation and verification complete | Added route-level in-memory coverage for add, renew, update, delete, idempotent replay/conflict, immutable plates, garage scope, invalid dates, and event persistence. Fixed immutable-plate errors returning HTTP 500 instead of the established 409 conflict envelope. Full suite: 438 tests passed; build, TypeScript, maintainability, and diff gates passed |
-| C4 vehicles | Next bounded implementation task | Resolve lock/suspension policy first, then enforce the existing vehicle check-in/checkout decision at every direct route |
-| C5 operations | Planned | Non-financial only |
+| C4 vehicles | Synthetic policy verification complete | Formalized and tested the existing policy: locked/suspended garages reject new check-ins, while vehicles already inside remain eligible for checkout/correction. Pure check-in/checkout decisions, direct-route scope tests, deletion lock tests, invalid transitions, and idempotency boundaries passed; no UI/UX or financial behavior changed |
+| C5 operations | Next bounded implementation task | Verify non-financial garage deletion, staff/delegate scope, operational status, and reporting projection policies |
 | C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval |
 | C7 reconciliation | Deferred | C6 is complete; perform read-only reconciliation only after the accounting-period/source-of-truth policy is approved and synthetic pre-production data is clearly identified |
 | C8 frontend resilience | Planned | After API contracts stabilize |
