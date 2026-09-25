@@ -355,13 +355,13 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 |---|---|---|
 | C0 baseline | Complete | Production commit `a8096b5`; audit completed |
 | F0 Firebase decision | Owner decision required | Recommended: keep named DB + enable Blaze + alerts/spend controls |
-| C1 staging | Blocked | Need separate staging project/environment |
-| C2 sessions | Planned | Start only after staging boundary exists |
+| C1 staging | Blocked | Need separate Firebase/Railway staging project and environment before authenticated workflow validation |
+| C2 sessions | Implementation slice complete; exit blocked | Server-authoritative refresh/release wiring is published at `9629206`; staging two-device and outage evidence still required |
 | C3 subscribers | Planned | Follow existing V3 migration order |
 | C4 vehicles | Planned | Resolve lock/suspension policy first |
 | C5 operations | Planned | Non-financial only |
-| C6 manual credit | Next bounded engineering task | Add route/emulator integration coverage |
-| C7 reconciliation | Blocked until C6 and policy definition | Read-only first |
+| C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval; next safe step requires staging |
+| C7 reconciliation | Blocked | C6 is complete, but read-only reconciliation requires a separate staging/export boundary and an approved accounting-period/source-of-truth policy |
 | C8 frontend resilience | Planned | After API contracts stabilize |
 | C9 observability | Planned | Before release candidate |
 | C10 launch gate | Planned | Evidence-based release decision |
