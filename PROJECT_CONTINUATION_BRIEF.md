@@ -38,26 +38,26 @@ The production communication rule is important: frontend API calls from Cloudfla
 
 ## Current verified baseline
 
-The current `main` branch was verified clean and synchronized with `origin/main` at commit `e14fe68` before the focused Hooks slice:
+The current `main` branch was verified clean and synchronized with `origin/main` at commit `61e4059` after the focused Hooks slice:
 
 ```text
-e14fe68 fix: harden financial workflows and reporting
-3c25b1a fix: remove overlapping trial badge
-9cd0387 fix: preserve wallet number during config sync
+61e4059 quality: track trial status in recharge sync
+7ee8990 quality: remove redundant dashboard countdown dependency
+88c6458 docs: add production readiness plan
 ```
 
 The latest complete validation evidence is:
 
-- Full suite: **52 test files and 287 tests passed**.
+- Full suite: **75 test files and 423 tests passed**.
 - TypeScript: `npm run lint` passed.
 - Production build: `npm run build` passed. The build includes the Vite frontend, the external-dependency server bundle, and the bundled Railway/Cloud Run server.
 - Maintainability: `npm run maintainability:check` passed.
 - Formatting/diff: `git diff --check` passed.
-- Focused Hooks regressions: **8 test files and 31 tests passed** for the safe Hooks subset, followed by **6 test files and 21 tests passed** for the dependency-only subset.
+- Focused subscription/recharge regressions: **3 test files and 18 tests passed**.
 
 The complete ESLint command is not yet green. The current remaining React Hooks findings are:
 
-- `react-hooks/exhaustive-deps`: **8** after the current focused slice.
+- `react-hooks/exhaustive-deps`: **7** after the current focused slice.
 - `react-hooks/set-state-in-effect`: **10**.
 - `react-hooks/purity`: **1**.
 
@@ -95,9 +95,9 @@ Before each new change:
 
 ## Immediate next plan
 
-The last completed code slice changed only `src/components/garage/GarageDashboardView.tsx`: the subscription countdown now recomputes on the existing minute ticker without an unnecessary `timeTicker` memo dependency. The ticker setter remains in place so the countdown still rerenders once per minute. The full baseline was green before that edit; the final full gate must be rerun before publication. The working tree must not be treated as complete until the change is committed and pushed.
+The last completed code slice changed only `src/components/garage/GarageDashboardView.tsx`: the recharge-log subscription now includes the stable `t?.isTrial` scalar because it is read by the fallback notification payload. This lets the fallback notification refresh when trial status changes without changing subscription ownership or API behavior. The full gate passed; the working tree must not be treated as complete until the change is pushed.
 
-The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. Prefer a dependency that is demonstrably unnecessary or a stable scalar already used by the effect. Inspect the surrounding callback/effect before editing. Do not automatically add every missing dependency: changing object or function identities can create repeated Firestore subscriptions, reload loops, stale-session behavior, or altered user-visible behavior.
+The next agent must first verify `git status --short --branch`, `git rev-parse HEAD`, `git rev-parse origin/main`, and the latest checkpoint entry. Then run a complete ESLint inventory with the current configuration and choose **exactly one** remaining React Hooks finding. The next documented candidate is the `AdminAddGarageModal.tsx` initialization effect’s missing form-field dependencies; inspect whether the effect intentionally snapshots values only when opening before deciding whether any dependency change is safe. Prefer a dependency that is demonstrably unnecessary or a stable scalar already used by the effect. Inspect the surrounding callback/effect before editing. Do not automatically add every missing dependency: changing object or function identities can create repeated Firestore subscriptions, reload loops, stale-session behavior, or altered user-visible behavior.
 
 For every candidate, preserve these contracts: the production `server/` backend remains authoritative; browser Firestore listeners are read/display synchronization only; authentication/session, financial, API, Firebase rules, and Cloudflare/Railway topology are out of scope; no `eslint-disable`, test weakening, or broad autofix is allowed. If a finding concerns `set-state-in-effect`, render purity, session/logout behavior, or a data-loading subscription, leave it unchanged unless the semantic replacement and focused regression tests are clear. Record why a finding is intentionally deferred.
 

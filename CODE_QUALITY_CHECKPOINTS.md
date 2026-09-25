@@ -290,3 +290,10 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused subscription/regression validation passed: **3 test files, 22 tests**. TypeScript, production build, maintainability check, and `git diff --check` passed.
 - The edited file has no remaining `react-hooks/exhaustive-deps` warning for the selected finding; its remaining Hook warning (`t?.isTrial`) and three `no-explicit-any` findings were pre-existing and intentionally deferred.
 - Refreshed ESLint inventory: **601 total findings**, including React Hooks `exhaustive-deps` **8**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+
+### 2026-09-25 — GarageDashboard trial-status dependency correction
+
+- Added the stable `t?.isTrial` dependency to the existing recharge-log subscription effect in `src/components/garage/GarageDashboardView.tsx`. The effect already reads this scalar when constructing the fallback recharge notification payload; the dependency keeps that payload current if trial status changes without changing listener ownership or backend behavior.
+- Focused validation passed: **3 test files, 18 tests**, edited-file React Hooks lint with no Hook findings, TypeScript, full **75-file/423-test** suite, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory: **600 total findings**, including React Hooks `exhaustive-deps` **7**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
+- **Next documented finding:** `AdminAddGarageModal.tsx` initialization effect missing form-field dependencies. Review its open-state snapshot semantics before deciding whether to change it; do not automatically add all suggested dependencies.
