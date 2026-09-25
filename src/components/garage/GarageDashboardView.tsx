@@ -259,7 +259,7 @@ export const GarageDashboardView = memo((props: any) => {
       }
     }, 1);
     return () => _e();
-  }, [t.id, De, t?.lastRechargeDate, t?.lastRechargeAmount, t?.lastRechargePackageName]);
+  }, [t.id, De, t?.lastRechargeDate, t?.lastRechargeAmount, t?.lastRechargePackageName, t?.isTrial]);
     useEffect(
       () => () => {
         document.body.style.overflow = "unset";
