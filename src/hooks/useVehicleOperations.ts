@@ -437,7 +437,7 @@ export function useVehicleOperations({
     } finally {
       deletingVehicleRef.current = null;
     }
-  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, vehicles]);
+  }, [isOnline, garage, selectedVehicle, isLoading, currentStaff, showToast, vehicles, setGarage, setVehicles]);
 
   return {
     newPlateNumber,
