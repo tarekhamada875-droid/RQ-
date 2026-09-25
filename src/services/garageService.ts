@@ -19,6 +19,7 @@ import type { Garage } from '../types';
 import { withRetry, sortGaragesNewestFirst } from '../utils';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
+import { generateIdempotencyKey } from '../types/apiContracts';
 
 export type GarageDeletionProgress = {
   phase: 'preparing' | 'deleting' | 'finalizing' | 'complete';
@@ -336,7 +337,7 @@ export const garageService = {
     try {
       const data = await apiFetch('/api/transactions/admin-topup-balance', {
         method: 'POST',
-        body: { garageId, amount }
+        body: { garageId, amount, idempotencyKey: generateIdempotencyKey('admin_wallet_topup') }
       });
       return data.data;
     } catch (error) {
@@ -349,7 +350,7 @@ export const garageService = {
     try {
       const data = await apiFetch('/api/transactions/garage-self-subscribe', {
         method: 'POST',
-        body: { garageId, packageId, packageData }
+        body: { garageId, packageId, packageData, idempotencyKey: generateIdempotencyKey('garage_self_subscribe') }
       });
       return data.data;
     } catch (error) {

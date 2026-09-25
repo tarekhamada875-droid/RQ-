@@ -20,6 +20,8 @@ export interface FinancialReportOptions {
 
 export interface FinancialReport {
   grossRechargeTotal: number;
+  walletTopupTotal: number;
+  cashCollectedTotal: number;
   commissionTotal: number;
   refundTotal: number;
   companyNetRevenue: number;
@@ -53,6 +55,7 @@ export function calculateFinancialReport(
   options: FinancialReportOptions = {}
 ): FinancialReport {
   let grossRechargeTotal = 0;
+  let walletTopupTotal = 0;
   let commissionTotal = 0;
   let refundTotal = 0;
   let historicalSettledTotal = 0;
@@ -78,6 +81,9 @@ export function calculateFinancialReport(
     if (event.eventType === 'recharge_approved') {
       grossRechargeTotal += Number(payload.amount || 0);
     }
+    if (event.eventType === 'wallet_topup_approved') {
+      walletTopupTotal += Number(payload.amount || 0);
+    }
     if (event.eventType === 'commission_earned') {
       commissionTotal += Number(payload.commissionAmount || 0);
     }
@@ -98,6 +104,8 @@ export function calculateFinancialReport(
 
   return {
     grossRechargeTotal: round(grossRechargeTotal),
+    walletTopupTotal: round(walletTopupTotal),
+    cashCollectedTotal: round(grossRechargeTotal + walletTopupTotal),
     commissionTotal: round(commissionTotal),
     refundTotal: round(refundTotal),
     companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),

@@ -40,6 +40,7 @@ import {
   initializeFairUse,
   manualAdminExtendFairUse
 } from './unlimitedFairUse';
+import { validatePackageCatalogRecord } from './packageCatalog';
 
 /**
  * Domain Error Status Code Resolver
@@ -626,8 +627,17 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       }
       if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
 
+      const rawPackage = req.body && typeof req.body === 'object' ? req.body : {};
+      const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
       const pkgData = {
-        ...req.body,
+        name: validatedPackage.name,
+        price: validatedPackage.basePrice,
+        durationDays: validatedPackage.durationDays,
+        dailyCapacity: validatedPackage.dailyCapacity,
+        vehiclesCount: validatedPackage.dailyCapacity,
+        discountType: rawPackage.discountType ?? null,
+        discountValue: Number(rawPackage.discountValue ?? 0),
+        isUnlimited: validatedPackage.isUnlimited,
         isActive: true,
         createdAt: new Date()
       };

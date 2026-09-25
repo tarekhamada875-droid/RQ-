@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, CalendarDays, RefreshCw, Wallet, Users, TrendingDown } from 'lucide-react';
+import { BarChart3, CalendarDays, RefreshCw, Wallet, Users, TrendingDown, Banknote } from 'lucide-react';
 import { Delegate } from '../../types';
 import { adminService, FinancialReportData } from '../../services/adminService';
 
@@ -46,6 +46,8 @@ export const AdminFinancialReportsView: React.FC<Props> = ({ delegates, t }) => 
 
   const cards = report ? [
     { label: 'إجمالي الاشتراكات', value: report.grossRechargeTotal, icon: Wallet, color: 'text-blue-500' },
+    { label: 'شحنات المحافظ', value: report.walletTopupTotal, icon: Banknote, color: 'text-amber-500' },
+    { label: 'إجمالي النقد المحصل', value: report.cashCollectedTotal, icon: BarChart3, color: 'text-cyan-500' },
     { label: 'العمولات', value: report.commissionTotal, icon: Users, color: 'text-amber-500' },
     { label: 'المبالغ المستردة', value: report.refundTotal, icon: TrendingDown, color: 'text-rose-500' },
     { label: 'صافي إيراد الشركة', value: report.companyNetRevenue, icon: BarChart3, color: 'text-emerald-500' }
@@ -72,7 +74,7 @@ export const AdminFinancialReportsView: React.FC<Props> = ({ delegates, t }) => 
       {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-900 p-4 text-sm font-black text-rose-700 dark:text-rose-300">{error}</div>}
       {loading && !report && <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-10 text-center text-sm font-black text-slate-500">جاري تحميل التقرير...</div>}
       {report && <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {cards.map(card => { const Icon = card.icon; return <div key={card.label} className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm"><div className="flex items-center justify-between"><span className="text-sm font-black text-slate-500">{card.label}</span><Icon className={`w-5 h-5 ${card.color}`} /></div><strong className="block mt-4 text-2xl font-black text-slate-900 dark:text-white">{money(card.value)}</strong></div>; })}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

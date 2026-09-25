@@ -17,6 +17,8 @@ import { listenerTracker } from '../utils/listenerTracker';
 
 export interface FinancialReportData {
   grossRechargeTotal: number;
+  walletTopupTotal: number;
+  cashCollectedTotal: number;
   commissionTotal: number;
   refundTotal: number;
   companyNetRevenue: number;

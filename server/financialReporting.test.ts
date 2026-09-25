@@ -15,6 +15,8 @@ describe('financial reporting projections', () => {
       { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-17T12:00:00.000Z', previousCycleTotal: 750 }
     ], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' })).toEqual({
       grossRechargeTotal: 1500,
+      walletTopupTotal: 0,
+      cashCollectedTotal: 1500,
       commissionTotal: 100,
       refundTotal: 50,
       companyNetRevenue: 1350,
@@ -42,6 +44,16 @@ describe('financial reporting projections', () => {
     expect(report.grossRechargeTotal).toBe(1999);
     expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 1999 });
     expect(report.commissionTotal).toBe(100);
+  });
+
+  it('reports wallet credits separately without treating them as subscriptions', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'wallet_topup_approved', aggregateId: 'garage-1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 250 } },
+      { eventType: 'package_purchased', aggregateId: 'purchase-1', occurredAt: '2026-09-18T09:00:00.000Z', payload: { amount: 200 } },
+    ], []);
+    expect(report.grossRechargeTotal).toBe(0);
+    expect(report.walletTopupTotal).toBe(250);
+    expect(report.cashCollectedTotal).toBe(250);
   });
 
   it('supports delegate-scoped totals without leaking another delegate\'s settlements', () => {

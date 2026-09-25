@@ -232,8 +232,10 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                   </div>
 
                   {(request.delegateId || (request as any).referrerId) && (
-                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg font-mono whitespace-nowrap">
-                      {t('عمولة المندوب')}: +{(request.durationDays || 30) <= 1 ? 5 : 50} ج.م
+                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg whitespace-nowrap">
+                      {request.commission !== undefined
+                        ? `${t('عمولة المندوب')}: +${request.commission} ج.م`
+                        : 'العمولة تُحتسب عند الاعتماد حسب سياسة النظام'}
                     </span>
                   )}
                 </div>
