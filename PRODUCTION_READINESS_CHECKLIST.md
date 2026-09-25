@@ -5,6 +5,7 @@
 - [x] Cloudflare Pages serves the React/Vite frontend at `https://rq-acg.pages.dev`.
 - [x] Railway serves the Express API at `https://rq-production-af02.up.railway.app`.
 - [x] Firebase Authentication and Firestore remain the identity and data services.
+- [ ] Firestore database/billing path is explicitly selected and documented in [`docs/FIRESTORE_DATABASE_DECISION.md`](docs/FIRESTORE_DATABASE_DECISION.md).
 - [x] The frontend API client uses `VITE_BACKEND_API_URL` with the Railway URL as a safe fallback.
 - [x] Cloudflare is not expected to serve `/api/*`.
 
