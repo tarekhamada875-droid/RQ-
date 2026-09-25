@@ -364,7 +364,7 @@ Agents must not receive overlapping write scopes in parallel. Parallel agents ma
 | C5 operations | Synthetic policy verification complete | Added a complete role/state matrix for admin-only garage deletion and maintenance, owner/staff same-garage scope, delegate/supervisor denial, missing/completed deletion recovery, admin-only reports, and deterministic projection rebuilds. Full suite: 447 tests passed; build, TypeScript, maintainability, and diff gates passed |
 | C6 manual credit | Complete | `server/manualCreditRoutes.integration.test.ts`: 9 passing tests covering replay, changed-payload conflict, unauthorized writes, atomic rollback, ledger/event/idempotency persistence, and concurrent approval |
 | C7 reconciliation | Deferred | C6 is complete; perform read-only reconciliation only after the accounting-period/source-of-truth policy is approved and synthetic pre-production data is clearly identified |
-| C8 frontend resilience | Planned | After API contracts stabilize |
+| C8 frontend resilience | Synthetic boundary verification complete; browser smoke pending | Typed API errors and envelopes at the client boundary, added abortable 15-second request timeouts, preserved session-expiry events, removed the direct Firestore system-config fallback, and verified network/timeout/HTML/malformed-JSON/business/unauthorized states. Full suite: 454 tests passed; controlled browser/staging smoke remains pending |
 | C9 observability | Planned | Before release candidate |
 | C10 launch gate | Planned | Evidence-based release decision |
 

@@ -11,7 +11,7 @@ import { apiFetch } from '../api/apiClient';
 export const authService = {
   checkPinAvailability: async (normalizedPinVal: string, excludeId?: string): Promise<{ taken: boolean; role?: string; name?: string }> => {
     try {
-      const data = await apiFetch('/api/auth/check-pin-availability', {
+      const data = await apiFetch<{ taken: boolean; role?: string; name?: string }>('/api/auth/check-pin-availability', {
         method: 'POST',
         body: { pin: normalizedPinVal, excludeId }
       });
@@ -59,7 +59,7 @@ export const authService = {
         ...(token ? { firebaseIdToken: token } : {})
       };
 
-      const data = await apiFetch('/api/auth/verify-pin', {
+      const data = await apiFetch<{ success: boolean; role?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; accountId?: string; account?: any; sessionClaimed?: boolean; error?: string }>('/api/auth/verify-pin', {
         method: 'POST',
         body: payload
       });

@@ -1,7 +1,7 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 import type { 
   Supervisor, 
   Staff, 
@@ -710,38 +710,8 @@ export const adminService = {
 
   getSystemConfig: async (): Promise<SystemConfig | null> => {
     try {
-      // 1. Try server API first for instantaneous cached response
-      try {
-        const apiRes = await apiFetch('/api/system-config');
-        if (apiRes?.success && apiRes?.config) {
-          return apiRes.config as SystemConfig;
-        }
-      } catch {
-        // Fallback to direct Firestore getDoc
-      }
-
-      const docSnap = await getDoc(doc(db, 'system_config', 'global'));
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as SystemConfig;
-      }
-      return {
-        defaultTrialDays: 2,
-        warningDaysThreshold: 3,
-        supportPhone: '01000000000',
-        walletNumber: '',
-        monthlySubscribersFlatFee: 500,
-        monthlySubscribersSurchargePercent: 25,
-        referralFeePerRenewal: 50,
-        delegatePackageCommissions: {
-          daily: 5,
-          weekly: 15,
-          biweekly: 25,
-          monthly: 50
-        },
-        isMaintenanceMode: false,
-        maintenanceMessage: '',
-        adminColor: '#10b981'
-      };
+      const apiRes = await apiFetch<{ success?: boolean; config?: SystemConfig }>('/api/system-config');
+      return apiRes?.success && apiRes.config ? apiRes.config : null;
     } catch (error) {
       console.error('Error fetching system config:', error);
       return null;
