@@ -334,3 +334,12 @@ For logging changes, first preserve the old message meaning in the new structure
 - Focused session/auth validation passed: **5 test files, 36 tests**. The listener has no remaining Hook finding; the separate coordinator effect and set-state warning were not changed. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
 - Refreshed ESLint inventory: **595 total findings**, including React Hooks `exhaustive-deps` **2**, `set-state-in-effect` **10**, and `purity` **1**. Phase 1.7 remains in progress; Phase 1.8 remains pending.
 - **Next documented finding:** the remaining `useGarageSession.ts` coordinator exhaustive-deps finding at line 365. If the modal snapshot warning remains deferred, inspect that effect’s session ownership and cleanup as exactly one subsequent candidate.
+
+### 2026-09-25 — coordinator exhaustive-deps lifecycle review
+
+- Preserved the `AdminAddGarageModal.tsx` open-state snapshot deferral; no evidence changed its intended semantics.
+- Reviewed the remaining `useGarageSession.ts` coordinator warning at line 365. The effect intentionally keys its single claim/listener/heartbeat lifecycle on `view`, auth readiness, canonical session ID, and scalar entity IDs. Its cleanup unsubscribes Firestore, clears the heartbeat, and removes the visibility listener. Adding the lint-suggested mutable entity objects, toast callback, logout callback, and setters would re-run session claims and recreate listeners/heartbeats on ordinary state changes, creating session churn and possible loops. The finding is therefore intentionally deferred pending a dedicated lifecycle design and regression-test slice; no auto-fix was applied.
+- Focused session/auth validation passed: **6 test files, 43 tests**. Full validation passed: **75 test files, 423 tests**, TypeScript, production build, maintainability check, and `git diff --check`.
+- Refreshed ESLint inventory remains **595 total findings**, including React Hooks `exhaustive-deps` **2**, `set-state-in-effect` **10**, and `purity` **1**.
+- **Phase status:** Phase 1.7 remains open; the exhaustive-deps track also remains open because the modal snapshot and coordinator lifecycle findings are both deferred. Phase 1.8 remains pending.
+- **Next documented work item:** design and test a coordinator lifecycle refactor that separates session identity changes from callback freshness before revisiting line 365; do not broaden into set-state, purity, or unrelated lint findings.
