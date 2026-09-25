@@ -5,6 +5,10 @@
 - **Collaboration Tone:** Direct, collaborative, and professional without excessive formalities. Focus on functional and shared development.
 - **Prohibited Terms:** Never use "Your Garage" (الجراج بتاعك), "Professor" (أستاذ), or "Your Excellence" (حضرتك).
 
+## Current environment status
+- **Pre-production only:** As of 2026-09-25, the project has no real users, customer records, or live financial data. The current Cloudflare Pages → Railway → Firebase deployment is an owner-authorized controlled pre-production environment and may use synthetic test data only.
+- **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
+
 ## V3 Execution Workflow
 - **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
 - **Project Scope:** Repository code, frontend, Railway configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.

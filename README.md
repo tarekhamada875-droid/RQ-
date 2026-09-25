@@ -2,6 +2,8 @@
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
+> **Current status — controlled synthetic pre-production (2026-09-25):** This project does not have real users, customer records, or live financial data yet. The current Cloudflare Pages → Railway → Firebase deployment is being used for synthetic testing and wiring recovery only. Do not use unknown data, perform destructive cleanup, accept real revenue, or treat this environment as final production until a separate staging/pre-production validation decision is recorded.
+
 ## Production architecture
 
 RQ is deployed as two connected applications:
