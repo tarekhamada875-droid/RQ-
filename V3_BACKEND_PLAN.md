@@ -75,7 +75,7 @@ The latest completed bounded slices are: (1) server-authoritative session refres
 
 Validation evidence: C3 focused integration tests passed (5 tests), the full suite passed (438 tests across 78 files), TypeScript validation passed, the production build passed, maintainability validation passed, and `git diff --check` passed. Repository-wide ESLint remains a pre-existing baseline failure with 602 `no-explicit-any` findings across the repository; it was not introduced or resolved by this work. Firebase CLI/emulator validation remains unavailable in the environment, so live Firebase Auth/Firestore smoke evidence and Firestore rules still require a later pre-production/emulator validation pass.
 
-The working tree is clean and `HEAD` matches `origin/main` at `fb6e4d9efab81486f9fe9eea84a25ce5ba205791`. The protected **RQ Backend Operator** connector is enabled at UID `4735a906-68d1-44ba-85c7-b60dc6adfb6d`; it exposes only `backend_health` and `read_backend_endpoint` and returned HTTP 200 with `adminSdk: true` and version `fb6e4d9`. Never expose or copy its protected credential. No production data mutation was performed.
+The working tree is clean and `HEAD` matches `origin/main` at `789a01c`. The protected **RQ Backend Operator** connector is enabled at UID `4735a906-68d1-44ba-85c7-b60dc6adfb6d`; it exposes only `backend_health` and `read_backend_endpoint` and returned HTTP 200 with `adminSdk: true`. Never expose or copy its protected credential. No production data mutation was performed.
 
 ### Exact next bounded task
 
