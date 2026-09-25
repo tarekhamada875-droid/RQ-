@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { refreshEntitySession, claimEntitySession, _resetRecentClaimsForTesting } from './authSessionService';
+import { refreshEntitySession, claimEntitySession, releaseEntitySession, _resetRecentClaimsForTesting } from './authSessionService';
 import { authService } from './authService';
 import { runTransaction } from 'firebase/firestore';
 
@@ -15,11 +15,13 @@ vi.mock('../firebase', () => ({
 vi.mock('./authService', () => ({
   authService: {
     validateOrRefreshSessionOnServer: vi.fn(),
+    releaseSessionOnServer: vi.fn(),
     claimAdminSessionOnServer: vi.fn(),
   },
 }));
 
 const mockedRefresh = vi.mocked(authService.validateOrRefreshSessionOnServer);
+const mockedRelease = vi.mocked(authService.releaseSessionOnServer);
 const mockedRunTransaction = vi.mocked(runTransaction);
 
 describe('auth session server authority', () => {
@@ -27,6 +29,7 @@ describe('auth session server authority', () => {
     vi.clearAllMocks();
     _resetRecentClaimsForTesting();
     mockedRefresh.mockResolvedValue(true);
+    mockedRelease.mockResolvedValue();
   });
 
   it('refreshes the session through the server and does not write Firestore from the browser', async () => {
@@ -78,6 +81,23 @@ describe('auth session server authority', () => {
       'session-2',
       'staff',
       'staff-1'
+    );
+    expect(mockedRunTransaction).not.toHaveBeenCalled();
+  });
+
+  it('releases the session through the server without a browser transaction', async () => {
+    await releaseEntitySession({
+      role: 'garage',
+      entityId: 'garage-1',
+      sessionId: 'session-1',
+      uid: 'firebase-uid-1',
+    });
+
+    expect(mockedRelease).toHaveBeenCalledWith(
+      'firebase-uid-1',
+      'session-1',
+      'garage',
+      'garage-1'
     );
     expect(mockedRunTransaction).not.toHaveBeenCalled();
   });

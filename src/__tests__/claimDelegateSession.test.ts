@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { firestoreService } from '../services';
 import { _resetRecentClaimsForTesting } from '../services/authSessionService';
+import { authService } from '../services/authService';
 import { runTransaction } from 'firebase/firestore';
 
 vi.mock('firebase/firestore', async (importOriginal) => {
@@ -23,10 +24,12 @@ vi.mock('../firebase', () => ({
 
 describe('claimDelegateSession atomic locking', () => {
   let delegateDocStore: Record<string, any>;
+  let releaseSessionOnServerSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     _resetRecentClaimsForTesting();
+    releaseSessionOnServerSpy = vi.spyOn(authService, 'releaseSessionOnServer').mockResolvedValue();
     delegateDocStore = {
       'delegates/del-1': {
         name: 'Delegate 1',
@@ -141,16 +144,26 @@ describe('claimDelegateSession atomic locking', () => {
     expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-NEW');
   });
 
-  it('releases session only if the caller owns currentSessionId', async () => {
+  it('delegates release to the server without mutating browser session state', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
     expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
 
-    // Attempt release by another session ID (e.g. old tab)
     await firestoreService.releaseDelegateSession('del-1', 'session-OTHER');
     expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+    expect(releaseSessionOnServerSpy).toHaveBeenLastCalledWith(
+      'del-1',
+      'session-OTHER',
+      'delegate',
+      'del-1'
+    );
 
-    // Attempt release by the actual session owner
     await firestoreService.releaseDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe(null);
+    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+    expect(releaseSessionOnServerSpy).toHaveBeenLastCalledWith(
+      'del-1',
+      'session-A',
+      'delegate',
+      'del-1'
+    );
   });
 });
