@@ -4,8 +4,7 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
-  Coins
+  AlertCircle
 } from 'lucide-react';
 import { SystemConfig } from '../../types';
 import { firestoreService } from '../../services';
@@ -41,17 +40,11 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
       try {
         const fetchedConfig = await firestoreService.getSystemConfig();
         if (fetchedConfig) {
-          const fetchedMonthly = fetchedConfig.delegateMonthlyCommission !== undefined && !isNaN(Number(fetchedConfig.delegateMonthlyCommission))
-            ? Math.max(0, Math.floor(Number(fetchedConfig.delegateMonthlyCommission)))
-            : (fetchedConfig.referralFeePerRenewal !== undefined && !isNaN(Number(fetchedConfig.referralFeePerRenewal))
-              ? Math.max(0, Math.floor(Number(fetchedConfig.referralFeePerRenewal)))
-              : 100);
-
           setConfig(prev => ({ 
             ...prev, 
             ...fetchedConfig,
-            referralFeePerRenewal: fetchedMonthly,
-            delegateMonthlyCommission: fetchedMonthly,
+            referralFeePerRenewal: 100,
+            delegateMonthlyCommission: 100,
           }));
         }
       } catch (e) {
@@ -76,19 +69,13 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
     setIsSaving(true);
     setStatusMessage(null);
     try {
-      const delegateComm = config.delegateMonthlyCommission !== undefined && !isNaN(Number(config.delegateMonthlyCommission)) && Number(config.delegateMonthlyCommission) >= 0
-        ? Math.floor(Number(config.delegateMonthlyCommission))
-        : (config.referralFeePerRenewal !== undefined && !isNaN(Number(config.referralFeePerRenewal)) && Number(config.referralFeePerRenewal) >= 0
-          ? Math.floor(Number(config.referralFeePerRenewal))
-          : 100);
-
       await firestoreService.updateSystemConfig({
         defaultTrialDays: Number(config.defaultTrialDays) || 2,
         warningDaysThreshold: Number(config.warningDaysThreshold) || 3,
         monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee) || 500,
         monthlySubscribersSurchargePercent: 25,
-        referralFeePerRenewal: delegateComm,
-        delegateMonthlyCommission: delegateComm,
+        referralFeePerRenewal: 100,
+        delegateMonthlyCommission: 100,
         isMaintenanceMode: !!config.isMaintenanceMode,
         maintenanceMessage: (config.maintenanceMessage || '').trim()
       });
@@ -193,44 +180,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
               <p className="text-[10px] font-bold text-slate-400">
                 {t('المبلغ الثابت المضاف تلقائياً عند تفعيل خيار المشتركين الشهريين للجراج')}
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Delegate Monthly Commission */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border-2 border-slate-100 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <Coins className="w-5 h-5 text-emerald-500" />
-              <span>{t('عمولة المندوب الشهرية')}</span>
-            </h3>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-black text-slate-700 dark:text-slate-300 block text-right">
-              {t('عمولة المندوب الشهرية عن كل جراج')}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={config.delegateMonthlyCommission ?? config.referralFeePerRenewal ?? 100}
-                onChange={(e) => {
-                  const rawVal = e.target.value.replace(/\D/g, '');
-                  const numVal = rawVal === '' ? 0 : Math.max(0, parseInt(rawVal, 10));
-                  setConfig({
-                    ...config,
-                    referralFeePerRenewal: numVal,
-                    delegateMonthlyCommission: numVal
-                  });
-                }}
-                className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-right pr-4 pl-24"
-                required
-              />
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono pointer-events-none">
-                ج.م / شهر
-              </span>
             </div>
           </div>
         </div>

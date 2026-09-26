@@ -323,9 +323,6 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
       const subscriberFlatFee = systemConfig?.subscriberFlatFee !== undefined
         ? Math.max(0, Number(systemConfig.subscriberFlatFee))
         : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
-      const delegateMonthlyCommission = systemConfig?.delegateMonthlyCommission !== undefined
-        ? Number(systemConfig.delegateMonthlyCommission)
-        : 100;
 
       const referredByDelegate = Boolean(garageData.createdByDelegateId || garageData.referrerId);
       const delegateReferrerId = garageData.createdByDelegateId || garageData.referrerId || null;
@@ -380,8 +377,8 @@ router.post('/approve-recharge-request', requireAuth, financialRateLimiter(), as
         const newDaysPurchased = prevDaysPurchased + durationDays;
         const alreadyPaid = Boolean(monthlyStatsData.paid100EgpCommission);
 
-        if (!alreadyPaid && (durationDays >= 30 || newDaysPurchased >= 10)) {
-          commission = delegateMonthlyCommission > 0 ? delegateMonthlyCommission : 100;
+        if (!alreadyPaid && (durationDays >= 10 || newDaysPurchased >= 10)) {
+          commission = 100;
         }
 
         t.set(monthlyStatsRef, {
