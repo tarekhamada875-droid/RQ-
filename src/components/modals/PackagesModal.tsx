@@ -284,7 +284,6 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
               'grid-cols-2 sm:grid-cols-4'
             }`}>
               {availableDurations.map((dur) => {
-                const count = rawList.filter(p => getCleanPackageInfo(p).durationDays === dur).length;
                 const isSelected = selectedDurationFilter === dur;
 
                 return (
@@ -292,20 +291,13 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                     key={dur}
                     type="button"
                     onClick={() => setSelectedDurationFilter(dur)}
-                    className={`py-2.5 px-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-2.5 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       isSelected
                         ? 'bg-amber-400 text-slate-950 shadow-sm scale-[1.01]'
                         : 'text-slate-700 hover:text-slate-950 hover:bg-white/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60'
                     }`}
                   >
                     <span>{getDurationLabel(dur)}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      isSelected
-                        ? 'bg-slate-950/20 text-slate-950'
-                        : 'bg-slate-300/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                    }`}>
-                      {count}
-                    </span>
                   </button>
                 );
               })}

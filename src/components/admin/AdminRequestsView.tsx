@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, Car, Building2, Zap, ClipboardList, Loader2, Wallet, Phone } from 'lucide-react';
+import { Check, X, Building2, Zap, ClipboardList, Loader2, Wallet } from 'lucide-react';
 import { RechargeRequest, Garage } from '../../types';
 import { sortGaragesNewestFirst } from '../../utils';
 
@@ -10,7 +10,7 @@ interface AdminRequestsViewProps {
   handleRejectRequest: (requestId: string) => Promise<void>;
   handleApproveGarage: (garage: Garage) => Promise<void>;
   handleRejectGarage: (garage: Garage) => Promise<void>;
-  adminLang: string;
+  adminLang?: string;
   t: (key: string) => string;
 }
 
@@ -21,7 +21,6 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
   handleRejectRequest,
   handleApproveGarage,
   handleRejectGarage,
-  adminLang,
   t,
 }) => {
   const [requestSubTab, setRequestSubTab] = useState<'recharge' | 'creation'>(() => {
@@ -93,7 +92,6 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     }
   };
 
-  // Auto switch subtab if user is currently on 'recharge' but it is empty while 'creation' has pending garages
   React.useEffect(() => {
     if (requestSubTab === 'recharge' && rechargeRequests.length === 0 && pendingGarages.length > 0) {
       setRequestSubTab('creation');
@@ -101,35 +99,42 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
   }, [pendingGarages.length, rechargeRequests.length, requestSubTab]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
-      {/* Sub-tabs segment controller */}
-      <div className="flex bg-[#f1f5f9] dark:bg-slate-900/60 p-1 rounded-2xl max-w-sm sm:max-w-md w-full border border-slate-200/40 dark:border-slate-800/40">
+    <div className="max-w-4xl mx-auto space-y-6 dir-rtl text-right font-sans">
+      {/* Streamlined Sub-tabs segment switcher */}
+      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl max-w-md mx-auto w-full border border-slate-200 dark:border-slate-800">
         <button
+          type="button"
           onClick={() => setRequestSubTab('recharge')}
-          className={`flex-1 flex items-center justify-center gap-4 py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all focus:outline-none ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
             requestSubTab === 'recharge'
-              ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm font-black'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <span>{t('طلبات الشحن')}</span>
+          <span>{t('طلبات الشحن والتجديد')}</span>
           {rechargeRequests.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500 text-white shrink-0">
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
+              requestSubTab === 'recharge' ? 'bg-emerald-700/60 text-white' : 'bg-red-500 text-white'
+            }`}>
               {rechargeRequests.length}
             </span>
           )}
         </button>
+
         <button
+          type="button"
           onClick={() => setRequestSubTab('creation')}
-          className={`flex-1 flex items-center justify-center gap-4 py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all focus:outline-none ${
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
             requestSubTab === 'creation'
-              ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm font-black'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <span>{t('إنشاء الجراجات')}</span>
+          <span>{t('طلبات تسجيل الجراجات')}</span>
           {pendingGarages.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500 text-white shrink-0">
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
+              requestSubTab === 'creation' ? 'bg-emerald-700/60 text-white' : 'bg-blue-500 text-white'
+            }`}>
               {pendingGarages.length}
             </span>
           )}
@@ -149,114 +154,71 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                 key={request.id}
                 className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 transition-all hover:border-emerald-500/50 shadow-sm space-y-4"
               >
-                {/* Header Row: Icon + Garage Name + Request Type Badge */}
+                {/* Header Row: Icon + Garage Name + Badge */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                       isBalanceTopup 
-                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' 
-                        : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                     }`}>
                       {isBalanceTopup ? <Wallet className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
                     </div>
-                    <div className={`min-w-0 ${adminLang === 'en' ? 'text-left' : 'text-right'}`}>
+                    <div className="min-w-0">
                       <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight truncate">
                         {request.garageName}
                       </h3>
-                      <p className="text-xs font-bold text-slate-400 mt-0.5 flex items-center gap-1.5">
-                        <span>{t('بواسطة المندوب:')}</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-black underline decoration-dotted">
-                          {request.delegateName || t('غير معروف')}
+                      <p className="text-xs font-bold text-slate-400 mt-0.5 flex items-center gap-1">
+                        <span>المندوب:</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                          {request.delegateName || 'غير محدد'}
                         </span>
                       </p>
                     </div>
                   </div>
 
-                  <span className={`text-[11px] font-black px-3 py-1 rounded-full shrink-0 whitespace-nowrap ${
+                  <span className={`text-[11px] font-black px-3 py-1 rounded-xl shrink-0 ${
                     isBalanceTopup
                       ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                   }`}>
-                    {isBalanceTopup ? t('شحن رصيد') : t('اشتراك باقة')}
+                    {isBalanceTopup ? 'شحن رصيد محفظة' : 'شحن باقة'}
                   </span>
                 </div>
 
-                {/* Hero Amount Section */}
-                <div className="flex flex-wrap items-baseline gap-2 font-mono">
+                {/* Hero Amount Display */}
+                <div className="flex items-baseline gap-2 font-mono bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-150 dark:border-slate-800">
                   <span className={`text-2xl sm:text-3xl font-black ${
-                    isBalanceTopup ? 'text-amber-500 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                    isBalanceTopup ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                   }`}>
                     {isBalanceTopup ? (request.amount || request.revenueAmount) : request.revenueAmount}
                   </span>
-                  <span className="text-sm font-black text-slate-500 dark:text-slate-400">{t('ج.م')}</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-sans">ج.م</span>
                   
                   {!isBalanceTopup && (
-                    <>
-                      <span className="text-xs font-bold text-slate-400 font-sans mr-1">
-                        / {request.durationDays || 30} {t('يوم')}
-                      </span>
-                      {((request as any).originalRevenueAmount && (request as any).originalRevenueAmount > request.revenueAmount) && (
-                        <span className="text-xs font-bold text-slate-400 line-through mr-1 font-mono whitespace-nowrap">
-                          بدلاً من {(request as any).originalRevenueAmount} ج.م
-                        </span>
-                      )}
-                      {request.discountAmount && request.discountAmount > 0 ? (
-                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-sans whitespace-nowrap">
-                          خصم {request.discountAmount} ج.م {request.couponCode ? `[${request.couponCode}]` : ''}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-
-                {/* Feature Row / Details */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-                  <div className="flex items-center gap-2">
-                    {isBalanceTopup ? (
-                      <>
-                        <div className="w-5 h-5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                          <Wallet className="w-3 h-3" />
-                        </div>
-                        <span>{t('إضافة رصيد فوري لمحفظة الجراج')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <Car className="w-3 h-3" />
-                        </div>
-                        <span>
-                          {request.packageName} • {request.carsCount === 0 || !request.carsCount ? t('سعة مفتوحة بدون حد أقصى') : `سعة ${request.carsCount} سيارة يومياً`}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  {(request.delegateId || (request as any).referrerId) && (
-                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg whitespace-nowrap">
-                      {request.commission !== undefined
-                        ? `${t('عمولة المندوب')}: +${request.commission} ج.م`
-                        : 'العمولة تُحتسب عند الاعتماد حسب سياسة النظام'}
+                    <span className="text-xs font-bold text-slate-400 font-sans mr-2">
+                      ({request.packageName || 'الباقة'} • {request.durationDays || 30} يوم)
                     </span>
                   )}
                 </div>
 
-                {/* Actions Segment */}
+                {/* Direct Action Buttons */}
                 <div className="pt-2 flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => onApproveRequestClick(request)}
                     disabled={isReqProcessing}
-                    className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     {isReqApproving ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        <span>{t('جاري التنفيذ...')}</span>
+                        <span>جاري الاعتماد...</span>
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4 stroke-[3] shrink-0" />
-                        <span>{t('قبول واعتماد الطلب')}</span>
+                        <span>موافقة واعتماد</span>
                       </>
                     )}
                   </button>
@@ -265,17 +227,17 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                     type="button"
                     onClick={() => onRejectRequestClick(request.id)}
                     disabled={isReqProcessing}
-                    className="px-6 h-12 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 active:scale-[0.98] text-red-600 dark:text-red-400 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all border border-red-100 dark:border-red-900/40 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 active:scale-[0.98] text-red-600 dark:text-red-400 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border border-red-200 dark:border-red-900/40 cursor-pointer disabled:opacity-50"
                   >
                     {isReqRejecting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        <span>{t('جاري الرفض...')}</span>
+                        <span>جاري الرفض...</span>
                       </>
                     ) : (
                       <>
                         <X className="w-4 h-4 stroke-[3] shrink-0" />
-                        <span>{t('رفض')}</span>
+                        <span>رفض</span>
                       </>
                     )}
                   </button>
@@ -285,12 +247,12 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
           })}
 
           {rechargeRequests.length === 0 && (
-            <div className="text-center py-24 bg-white dark:bg-slate-900/50 rounded-[3rem] border-4 border-dashed border-slate-100 dark:border-slate-800">
-              <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <ClipboardList className="w-10 h-10 text-slate-200 dark:text-slate-700" />
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                <ClipboardList className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold text-slate-400 dark:text-slate-500 mb-2">{t('لا توجد طلبات معلقة')}</h3>
-              <p className="text-sm font-medium text-slate-400 dark:text-slate-600">{t('سيظهر هنا طلبات شحن الأرصدة المقدمة من قبل المندوبين')}</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-200">لا توجد طلبات شحن معلقة</h3>
+              <p className="text-xs font-medium text-slate-400">ستظهر هنا أية طلبات شحن جديدة مقدمة من المندوبين.</p>
             </div>
           )}
         </div>
@@ -306,50 +268,38 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                 key={garage.id}
                 className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 transition-all hover:border-emerald-500/50 shadow-sm space-y-4"
               >
-                {/* Header: Garage Name + Delegate + Status Badge */}
+                {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 bg-emerald-50 dark:bg-emerald-400/10 text-emerald-500 border border-emerald-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-2xl flex items-center justify-center shrink-0">
                       <Building2 className="w-5 h-5" />
                     </div>
-                    <div className={`min-w-0 ${adminLang === 'en' ? 'text-left' : 'text-right'}`}>
+                    <div className="min-w-0">
                       <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight truncate">{garage.name}</h3>
-                      <p className="text-xs font-bold text-slate-400 mt-0.5 flex items-center gap-1.5">
-                        <span>{t('بواسطة المندوب:')}</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-black underline decoration-dotted">
-                          {garage.createdByDelegateName || t('غير معروف')}
+                      <p className="text-xs font-bold text-slate-400 mt-0.5 flex items-center gap-1">
+                        <span>المندوب:</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                          {garage.createdByDelegateName || 'غير محدد'}
                         </span>
                       </p>
                     </div>
                   </div>
 
-                  <span className="text-[11px] font-black px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0 whitespace-nowrap">
-                    {t('تسجيل جراج جديد')}
+                  <span className="text-[11px] font-black px-3 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
+                    جراج جديد
                   </span>
                 </div>
 
-                {/* Rates & Phone Row */}
-                <div className="flex flex-wrap items-baseline gap-4 font-mono">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs text-slate-400 font-bold font-sans">{t('سعر الساعة')}:</span>
-                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{garage.hourlyRate}</span>
-                    <span className="text-xs font-bold text-slate-500">{t('ج.م')}</span>
+                {/* Details Row */}
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-150 dark:border-slate-800 text-xs font-bold">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">رقم الهاتف</span>
+                    <span className="font-mono text-slate-900 dark:text-white">{garage.phone || 'بدون هاتف'}</span>
                   </div>
-                  <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700 self-center" />
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs text-slate-400 font-bold font-sans">{t('سعر المبيت')}:</span>
-                    <span className="text-xl font-black text-slate-900 dark:text-white">{garage.overnightRate}</span>
-                    <span className="text-xs font-bold text-slate-500">{t('ج.م')}</span>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">سعر الساعة / المبيت</span>
+                    <span className="font-mono text-slate-900 dark:text-white">{garage.hourlyRate} / {garage.overnightRate} ج.م</span>
                   </div>
-                </div>
-
-                {/* Contact / Phone Feature Row */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-                  <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
-                    <Phone className="w-3 h-3" />
-                  </div>
-                  <span>{t('رقم الهاتف')}:</span>
-                  <span className="font-mono text-slate-900 dark:text-white" dir="ltr">{garage.phone || t('بدون هاتف')}</span>
                 </div>
 
                 {/* Actions */}
@@ -358,17 +308,17 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                     type="button"
                     onClick={() => onApproveGarageClick(garage)}
                     disabled={isGarageProcessing}
-                    className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     {isApproving ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        <span>{t('جاري التفعيل...')}</span>
+                        <span>جاري التفعيل...</span>
                       </>
                     ) : (
                       <>
                         <Check className="w-4 h-4 stroke-[3] shrink-0" />
-                        <span>{t('تأكيد وتفعيل الجراج')}</span>
+                        <span>تأكيد وتفعيل الجراج</span>
                       </>
                     )}
                   </button>
@@ -377,17 +327,17 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
                     type="button"
                     onClick={() => onRejectGarageClick(garage)}
                     disabled={isGarageProcessing}
-                    className="px-6 h-12 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 active:scale-[0.98] text-red-600 dark:text-red-400 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all border border-red-100 dark:border-red-900/40 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-3 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 active:scale-[0.98] text-red-600 dark:text-red-400 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border border-red-200 dark:border-red-900/40 cursor-pointer disabled:opacity-50"
                   >
                     {isRejecting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        <span>{t('جاري الرفض...')}</span>
+                        <span>جاري الرفض...</span>
                       </>
                     ) : (
                       <>
                         <X className="w-4 h-4 stroke-[3] shrink-0" />
-                        <span>{t('رفض')}</span>
+                        <span>رفض</span>
                       </>
                     )}
                   </button>
@@ -397,12 +347,12 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
           })}
 
           {pendingGarages.length === 0 && (
-            <div className="text-center py-24 bg-white dark:bg-slate-900/50 rounded-[3rem] border-4 border-dashed border-slate-100 dark:border-slate-800">
-              <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Building2 className="w-10 h-10 text-slate-200 dark:text-slate-700" />
+            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                <Building2 className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold text-slate-400 dark:text-slate-500 mb-2">{t('لا توجد طلبات معلقة')}</h3>
-              <p className="text-sm font-medium text-slate-400 dark:text-slate-600">{t('سيظهر هنا طلبات تسجيل الجراجات الجديدة المقدمة من المندوبين')}</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-200">لا توجد طلبات تسجيل معلقة</h3>
+              <p className="text-xs font-medium text-slate-400">ستظهر هنا طلبات تسجيل الجراجات الجديدة المقدمة من المندوبين.</p>
             </div>
           )}
         </div>
@@ -410,3 +360,6 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     </div>
   );
 };
+
+export default AdminRequestsView;
+

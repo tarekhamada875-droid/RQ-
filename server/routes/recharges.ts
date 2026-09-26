@@ -99,7 +99,7 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
         Boolean(referrerGarageId) &&
         referrerGarageId !== garageId &&
         price > 0 &&
-        durationDays > 1;
+        durationDays >= 15;
 
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
@@ -161,8 +161,18 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
+        let refBaseDate = new Date();
+        if (referrerData.balanceExpiry) {
+          const rawExp = referrerData.balanceExpiry;
+          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
+          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
+            refBaseDate = refExpDate;
+          }
+        }
+        refBaseDate.setDate(refBaseDate.getDate() + 1);
+
         t.set(referrerRef, {
-          totalReferralRewardDays: (referrerData.totalReferralRewardDays || 0) + 1,
+          balanceExpiry: refBaseDate,
           totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
           lastReferralRewardAt: new Date()
         }, { merge: true });
@@ -172,16 +182,17 @@ router.post('/recharge-garage', requireAuth, financialRateLimiter(), async (req:
           garageId: referrerGarageId,
           garageName: referrerData.name || '',
           staffId: null,
-          staffName: 'النظام — مكافأة إحالة',
+          staffName: 'النظام — مكافأة إحالة تلقائية',
           actionType: 'recharge',
-          plateNumber: `مكافأة إحالة من ${garageData.name || ''} — إضافة يوم مجاني برصيد المكافآت`,
+          plateNumber: `🎉 مكافأة إحالة تلقائية: تمديد الاشتراك +1 يوم مجاناً لإحالة ${garageData.name || ''}`,
           timestamp: new Date(),
           amount: 0,
-          packageId: referrerData.packageId || 'referral_reward',
+          packageId: 'referral_reward',
           details: {
             type: 'referral_reward',
             referrerGarageId: referrerGarageId,
-            referredGarageId: garageId
+            referredGarageId: garageId,
+            rewardDaysGiven: 1
           }
         });
       }

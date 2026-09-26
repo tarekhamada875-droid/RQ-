@@ -53,7 +53,7 @@ describe('Stage 3: Server-Authoritative Garage Recharge Engine', () => {
     expect(validateRechargeDuration(garageData, 30)).toBe(true);
   });
 
-  it('4. Correctly computes referral reward eligibility and increments referrer days', () => {
+  it('4. Correctly computes referral reward eligibility for 15+ day packages', () => {
     const garageData = {
       referredByGarageId: 'referrer_garage_99',
       totalAdminRevenue: 100
@@ -61,19 +61,24 @@ describe('Stage 3: Server-Authoritative Garage Recharge Engine', () => {
 
     const garageId = 'garage_01';
     const price = 150;
-    const durationDays = 30;
 
-    const isEligibleForReferral =
+    // 30-day package -> eligible
+    const isEligibleFor30Day =
       Boolean(garageData.referredByGarageId) &&
       garageData.referredByGarageId !== garageId &&
       price > 0 &&
-      durationDays > 1;
+      30 >= 15;
 
-    expect(isEligibleForReferral).toBe(true);
+    expect(isEligibleFor30Day).toBe(true);
 
-    const referrerInitialDays = 2;
-    const updatedReferrerDays = referrerInitialDays + 1;
-    expect(updatedReferrerDays).toBe(3);
+    // 1-day package -> NOT eligible
+    const isEligibleFor1Day =
+      Boolean(garageData.referredByGarageId) &&
+      garageData.referredByGarageId !== garageId &&
+      price > 0 &&
+      1 >= 15;
+
+    expect(isEligibleFor1Day).toBe(false);
   });
 
   it('5. Properly handles unlimited vs fixed daily capacity packages', () => {

@@ -9,8 +9,7 @@ import {
   calculateCost,
   isSubscriptionExpired,
   getEffectiveDailyCapacity,
-  isUnlimitedCapacity,
-  createAsyncLock
+  isUnlimitedCapacity
 } from '../utils';
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
@@ -63,8 +62,6 @@ export function useVehicleOperations({
   const [subscriberWarningPlate, setSubscriberWarningPlate] = useState<string>('');
   const [pendingCheckInType, setPendingCheckInType] = useState<'hourly' | 'overnight' | null>(null);
 
-  const checkInLock = useRef(createAsyncLock());
-  const checkOutLock = useRef(createAsyncLock());
   const deletingVehicleRef = useRef<string | null>(null);
 
   // Check In
@@ -152,112 +149,106 @@ export function useVehicleOperations({
       }
     }
 
-    const lockResult = await checkInLock.current(async () => {
-      const previousVehicles = [...vehicles];
-      const previousGarage = garage ? { ...garage } : null;
-      const optimisticVehicle: Vehicle = {
+    // Execute Check-In optimistically and handle per-plate async lock
+    const previousVehicles = [...vehicles];
+    const previousGarage = garage ? { ...garage } : null;
+    const optimisticVehicle: Vehicle = {
+      id: raw,
+      plateNumber: formatted,
+      plateNumberRaw: raw,
+      entryTime: new Date() as any,
+      type: type,
+      garageId: garage.id,
+      status: 'inside',
+      staffId: currentStaff ? currentStaff.id : null,
+      staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
+      isSubscriber: isSubscriber
+    };
+    
+    setVehicles(prev => [optimisticVehicle, ...prev.filter(v => v.id !== raw)]);
+    // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR COUNTERS
+    setGarage(prev => prev ? {
+      ...prev,
+      carsInside: (prev.carsInside || 0) + 1,
+      todayCount: (prev.todayCount || 0) + 1,
+      lastTransactionDate: getCairoDateKey()
+    } : prev);
+    setNewPlateNumber('');
+    setShowCheckInModal(false);
+    soundManager.play('checkIn');
+    
+    try {
+      const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
+        firestoreService.checkInVehicle(garage.id, {
+          plateNumber: formatted,
+          plateNumberRaw: raw,
+          type: type,
+          garageId: garage.id,
+          staffId: currentStaff ? currentStaff.id : null,
+          staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
+          isSubscriber: isSubscriber
+        })
+      );
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+
+      const serverData = (res as any).data;
+      const serverVehicle = serverData?.vehicle;
+      const newVehicleObj: Vehicle = {
         id: raw,
-        plateNumber: formatted,
-        plateNumberRaw: raw,
-        entryTime: new Date() as any,
-        type: type,
+        plateNumber: serverVehicle?.plateNumber || formatted,
+        plateNumberRaw: serverVehicle?.plateNumberRaw || raw,
+        entryTime: serverVehicle?.entryTime || new Date() as any,
+        type: serverVehicle?.type || type,
         garageId: garage.id,
         status: 'inside',
-        staffId: currentStaff ? currentStaff.id : null,
-        staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-        isSubscriber: isSubscriber
+        staffId: serverVehicle?.staffId ?? (currentStaff ? currentStaff.id : null),
+        staffName: serverVehicle?.staffName || (currentStaff ? currentStaff.name : 'مدير الجراج'),
+        isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
       };
+      setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
+
+      if (typeof serverData?.carsInside === 'number' || typeof serverData?.dailyCount === 'number') {
+        setGarage(prev => prev ? {
+          ...prev,
+          ...(typeof serverData.carsInside === 'number' ? { carsInside: serverData.carsInside } : {}),
+          ...(typeof serverData.dailyCount === 'number' ? {
+            todayCount: serverData.dailyCount,
+            lastTransactionDate: getCairoDateKey(),
+          } : {}),
+        } : prev);
+      }
+    } catch (error: any) {
+      setVehicles(previousVehicles);
+      if (previousGarage) {
+        setGarage(previousGarage);
+      }
+      if (error?.message === 'Operation already in progress') return;
       
-      setVehicles(prev => [optimisticVehicle, ...prev.filter(v => v.id !== raw)]);
-      // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR COUNTERS
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: (prev.carsInside || 0) + 1,
-        todayCount: (prev.todayCount || 0) + 1,
-        lastTransactionDate: getCairoDateKey()
-      } : prev);
-      setNewPlateNumber('');
-      setShowCheckInModal(false);
-      soundManager.play('checkIn');
-      
-      try {
-        const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
-          firestoreService.checkInVehicle(garage.id, {
-            plateNumber: formatted,
-            plateNumberRaw: raw,
-            type: type,
-            garageId: garage.id,
-            staffId: currentStaff ? currentStaff.id : null,
-            staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-            isSubscriber: isSubscriber
-          })
-        );
-
-        if (!res.success) {
-          throw new Error(res.error);
-        }
-
-        const serverData = (res as any).data;
-        const serverVehicle = serverData?.vehicle;
-        const newVehicleObj: Vehicle = {
-          id: raw,
-          plateNumber: serverVehicle?.plateNumber || formatted,
-          plateNumberRaw: serverVehicle?.plateNumberRaw || raw,
-          entryTime: serverVehicle?.entryTime || new Date() as any,
-          type: serverVehicle?.type || type,
-          garageId: garage.id,
-          status: 'inside',
-          staffId: serverVehicle?.staffId ?? (currentStaff ? currentStaff.id : null),
-          staffName: serverVehicle?.staffName || (currentStaff ? currentStaff.name : 'مدير الجراج'),
-          isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
-        };
-        setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
-
-        if (typeof serverData?.carsInside === 'number' || typeof serverData?.dailyCount === 'number') {
-          setGarage(prev => prev ? {
-            ...prev,
-            ...(typeof serverData.carsInside === 'number' ? { carsInside: serverData.carsInside } : {}),
-            ...(typeof serverData.dailyCount === 'number' ? {
-              todayCount: serverData.dailyCount,
-              lastTransactionDate: getCairoDateKey(),
-            } : {}),
-          } : prev);
-        }
-      } catch (error: any) {
-        setVehicles(previousVehicles);
-        if (previousGarage) {
-          setGarage(previousGarage);
-        }
-        if (error?.message === 'Operation already in progress') return;
-        
-        let message = error?.message || '';
-        if (message.startsWith('{') && message.endsWith('}')) {
-          try {
-            const detailed = JSON.parse(message);
-            message = detailed.error || message;
-          } catch {
-            // Keep the original error message when the server detail is malformed.
-          }
-        }
-
-        if (message === 'ALREADY_INSIDE' || message.includes('مسجلة بالفعل')) {
-          showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
-        } else if (message.includes('permission') || message.includes('PERMISSION_DENIED')) {
-          setNewPlateNumber(formatted);
-          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
-        } else if (message.includes('الحد اليومي') || message.includes('اشتراك')) {
-          setNewPlateNumber(formatted);
-          showToast(message, 'error');
-        } else {
-          setNewPlateNumber(formatted);
-          showToast(message || 'حدث خطأ أثناء الدخول، تأكد من الاتصال بالإنترنت', 'error');
+      let message = error?.message || '';
+      if (message.startsWith('{') && message.endsWith('}')) {
+        try {
+          const detailed = JSON.parse(message);
+          message = detailed.error || message;
+        } catch {
+          // Keep the original error message when the server detail is malformed.
         }
       }
-    });
 
-    if (lockResult === null) {
-      showToast('جاري المعالجة... يرجى الانتظار', 'info');
-      return;
+      if (message === 'ALREADY_INSIDE' || message.includes('مسجلة بالفعل')) {
+        showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
+      } else if (message.includes('permission') || message.includes('PERMISSION_DENIED')) {
+        setNewPlateNumber(formatted);
+        showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
+      } else if (message.includes('الحد اليومي') || message.includes('اشتراك')) {
+        setNewPlateNumber(formatted);
+        showToast(message, 'error');
+      } else {
+        setNewPlateNumber(formatted);
+        showToast(message || 'حدث خطأ أثناء الدخول، تأكد من الاتصال بالإنترنت', 'error');
+      }
     }
   }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
 
@@ -272,87 +263,80 @@ export function useVehicleOperations({
 
     const vehicleToOut = selectedVehicle;
 
-    const lockResult = await checkOutLock.current(async () => {
-      const previousVehicles = [...vehicles];
-      const previousGarage = garage ? { ...garage } : null;
-      setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
-      const cost = calculateCost(vehicleToOut, garage, now);
-      // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR CHECK-OUT
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: Math.max(0, (prev.carsInside || 0) - 1),
-        todayRevenue: Number(((prev.todayRevenue || 0) + cost).toFixed(2)),
-        totalRevenue: Number(((prev.totalRevenue || 0) + cost).toFixed(2))
-      } : prev);
-      setShowCheckOutModal(false);
-      setSelectedVehicle(null);
-      setNewPlateNumber('');
-      soundManager.play('checkOut');
+    const previousVehicles = [...vehicles];
+    const previousGarage = garage ? { ...garage } : null;
+    setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
+    const cost = calculateCost(vehicleToOut, garage, now);
+    // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR CHECK-OUT
+    setGarage(prev => prev ? {
+      ...prev,
+      carsInside: Math.max(0, (prev.carsInside || 0) - 1),
+      todayRevenue: Number(((prev.todayRevenue || 0) + cost).toFixed(2)),
+      totalRevenue: Number(((prev.totalRevenue || 0) + cost).toFixed(2))
+    } : prev);
+    setShowCheckOutModal(false);
+    setSelectedVehicle(null);
+    setNewPlateNumber('');
+    soundManager.play('checkOut');
+    
+    try {
+      const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
+        firestoreService.checkOutVehicle(
+          garage.id,
+          vehicleToOut.id,
+          cost,
+          currentStaff ? currentStaff.name : 'مدير الجراج',
+          currentStaff ? currentStaff.id : undefined
+        )
+      );
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+      if (typeof res.cost === 'number' && res.cost !== cost) {
+        const costDelta = res.cost - cost;
+        setGarage(prev => prev ? {
+          ...prev,
+          todayRevenue: Number(((prev.todayRevenue || 0) + costDelta).toFixed(2)),
+          totalRevenue: Number(((prev.totalRevenue || 0) + costDelta).toFixed(2)),
+        } : prev);
+      }
+    } catch (error: any) {
+      setVehicles(previousVehicles);
+      if (previousGarage) {
+        setGarage(previousGarage);
+      }
+      setSelectedVehicle(vehicleToOut);
+      
+      if (error?.message === 'Operation already in progress') return;
+      
+      console.error('CheckOut Error:', error);
+      let errMsg: string;
       
       try {
-        const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
-          firestoreService.checkOutVehicle(
-            garage.id,
-            vehicleToOut.id,
-            cost,
-            currentStaff ? currentStaff.name : 'مدير الجراج',
-            currentStaff ? currentStaff.id : undefined
-          )
-        );
-
-        if (!res.success) {
-          throw new Error(res.error);
-        }
-        if (typeof res.cost === 'number' && res.cost !== cost) {
-          const costDelta = res.cost - cost;
-          setGarage(prev => prev ? {
-            ...prev,
-            todayRevenue: Number(((prev.todayRevenue || 0) + costDelta).toFixed(2)),
-            totalRevenue: Number(((prev.totalRevenue || 0) + costDelta).toFixed(2)),
-          } : prev);
-        }
-      } catch (error: any) {
-        setVehicles(previousVehicles);
-        if (previousGarage) {
-          setGarage(previousGarage);
-        }
-        setSelectedVehicle(vehicleToOut);
-        
-        if (error?.message === 'Operation already in progress') return;
-        
-        console.error('CheckOut Error:', error);
-        let errMsg: string;
-        
-        try {
-          const message = error?.message || '';
-          if (message.startsWith('{') && message.endsWith('}')) {
-            const parsed = JSON.parse(message);
-            const rawErr = parsed.error;
-            if (rawErr === 'ALREADY_OUTSIDE') {
-              errMsg = 'هذه السيارة تم تسجيل خروجها بالفعل (من جهاز آخر)';
-            } else if (rawErr === 'VEHICLE_NOT_FOUND') {
-              errMsg = 'لم يتم العثور على بيانات السيارة';
-            } else if (rawErr === 'GARAGE_NOT_FOUND') {
-              errMsg = 'لم يتم العثور على الجراج';
-            } else {
-              errMsg = rawErr || 'مشكلة في البيانات، حاول مرة أخرى';
-            }
+        const message = error?.message || '';
+        if (message.startsWith('{') && message.endsWith('}')) {
+          const parsed = JSON.parse(message);
+          const rawErr = parsed.error;
+          if (rawErr === 'ALREADY_OUTSIDE') {
+            errMsg = 'هذه السيارة تم تسجيل خروجها بالفعل (من جهاز آخر)';
+          } else if (rawErr === 'VEHICLE_NOT_FOUND') {
+            errMsg = 'لم يتم العثور على بيانات السيارة';
+          } else if (rawErr === 'GARAGE_NOT_FOUND') {
+            errMsg = 'لم يتم العثور على الجراج';
           } else {
-            errMsg = message || 'حدث خطأ أثناء الخروج';
+            errMsg = rawErr || 'مشكلة في البيانات، حاول مرة أخرى';
           }
-        } catch {
-          errMsg = error?.message || 'حدث خطأ أثناء الخروج';
+        } else {
+          errMsg = message || 'حدث خطأ أثناء الخروج';
         }
-        
-        showToast(errMsg, 'error');
-        setShowCheckOutModal(false);
-        setSelectedVehicle(null);
+      } catch {
+        errMsg = error?.message || 'حدث خطأ أثناء الخروج';
       }
-    });
-
-    if (lockResult === null) {
-      showToast('جاري المعالجة... يرجى الانتظار', 'info');
-      return;
+      
+      showToast(errMsg, 'error');
+      setShowCheckOutModal(false);
+      setSelectedVehicle(null);
     }
   }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles]);
 

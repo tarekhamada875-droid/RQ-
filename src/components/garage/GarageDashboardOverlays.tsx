@@ -3,7 +3,6 @@ import { TrialExpiryModal } from "../modals/TrialExpiryModal";
 import { SubscribersView } from "./SubscribersView";
 import { RechargeHistoryView } from "./RechargeHistoryView";
 import { PackagesModal } from "../modals/PackagesModal";
-import { RewardsModal } from "../modals/RewardsModal";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { GarageReportsView } from "./GarageReportsView";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
@@ -19,7 +18,6 @@ export const GarageDashboardOverlays = (props: any) => {
     isSubscribersOpen,
     isRechargeHistoryOpen,
     isPackagesOpen,
-    isRewardsOpen,
     isStaffStatsOpen,
     isReportsOpen,
     isAppearanceOpen,
@@ -29,7 +27,6 @@ export const GarageDashboardOverlays = (props: any) => {
     onCloseSubscribers,
     onCloseRechargeHistory,
     onClosePackages,
-    onCloseRewards,
     onCloseStaffStats,
     onCloseReports,
     onCloseAppearance,
@@ -93,15 +90,6 @@ export const GarageDashboardOverlays = (props: any) => {
           garageBalance={garage.balance || 0}
           showToast={showToast}
           initialDurationFilter={packagesInitialDuration}
-        />
-      )}
-      {isRewardsOpen && (
-        <RewardsModal
-          garage={garage}
-          onClose={onCloseRewards}
-          onToggleMenu={onToggleMenu}
-          referralBonusBalance={garage.referralBonusBalance || 0}
-          showToast={showToast}
         />
       )}
       {isStaffStatsOpen && !currentStaff && (

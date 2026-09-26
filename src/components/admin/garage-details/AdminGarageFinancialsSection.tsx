@@ -264,7 +264,7 @@ export const AdminGarageFinancialsSection = memo(({
             <span>{t('نظام مكافآت الإحالة')}</span>
           </h3>
           <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
-            {t('أيام المكافآت:')} {garage.totalReferralRewardDays || 0} {t('يوم')}
+            {t('+1 يوم مجاني تلقائياً للباقات 15+ يوم')}
           </span>
         </div>
 

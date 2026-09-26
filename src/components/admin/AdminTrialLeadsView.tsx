@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Phone, CheckCircle2, XCircle, Clock, Trash2, Zap, ExternalLink } from 'lucide-react';
+import { Phone, CheckCircle2, XCircle, Clock, Trash2, Zap, ExternalLink, EyeOff } from 'lucide-react';
 import { Garage } from '../../types';
 import { safeDate } from '../../utils';
 import { adminService } from '../../services/adminService';
@@ -23,13 +23,10 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'continued' | 'declined'>('continued');
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Filter garages by trialDecision
   const continuedGarages = garages.filter(g => g.trialDecision === 'continued');
   const declinedGarages = garages.filter(g => g.trialDecision === 'declined');
-
   const currentList = activeSubTab === 'continued' ? continuedGarages : declinedGarages;
 
-  // Format relative time in Arabic (e.g., "منذ 15 دقيقة", "منذ 2 ساعة", "منذ 3 أيام")
   const formatRelativeTime = (timestamp: any) => {
     if (!timestamp) return 'غير محدد';
     const date = safeDate(timestamp);
@@ -49,7 +46,7 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
     setProcessingId(garage.id);
     try {
       await adminService.updateTrialDecision(garage.id, null);
-      showToast?.('تمت إزالة العميل من قائمة التماس التجربة.', 'info');
+      showToast?.('تمت إزالة العميل من قائمة المتابعة.', 'info');
     } catch (err) {
       console.error('Error clearing trial decision:', err);
       showToast?.('حدث خطأ أثناء تحديث حالة الجراج.', 'error');
@@ -59,80 +56,68 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 dir-rtl text-right font-sans">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60 rounded-2xl p-6 shadow-xl text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">متابعة نتائج التجربة (Trial Leads)</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                متابعة الجراجات التي أنهت الفترة التجريبية وحددت موقفها بالاستمرار أو الإلغاء.
-              </p>
-            </div>
+    <div className="space-y-6 dir-rtl text-right font-sans max-w-6xl mx-auto px-2 sm:px-4">
+      {/* Sleek Minimal Header + Segment Switcher */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">نتائج التجربة (Trial Leads)</h2>
+            <p className="text-xs font-bold text-slate-400">متابعة طلبات استمرار الجراجات بعد الفترة التجريبية</p>
           </div>
         </div>
 
-        {/* Counters */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex-1 md:flex-initial bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-xl text-center">
-            <span className="block text-xs text-emerald-400 font-medium">راغبون في التجديد</span>
-            <span className="text-xl font-extrabold text-emerald-400 font-mono">{continuedGarages.length}</span>
-          </div>
-          <div className="flex-1 md:flex-initial bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl text-center">
-            <span className="block text-xs text-red-400 font-medium">غير راغبين</span>
-            <span className="text-xl font-extrabold text-red-400 font-mono">{declinedGarages.length}</span>
-          </div>
+        {/* Clean Segment Switcher with Built-in Counts (No Duplication) */}
+        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('continued')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all duration-200 cursor-pointer ${
+              activeSubTab === 'continued'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>راغبون في الاستمرار</span>
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
+              activeSubTab === 'continued' ? 'bg-emerald-700/60 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            }`}>
+              {continuedGarages.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('declined')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all duration-200 cursor-pointer ${
+              activeSubTab === 'declined'
+                ? 'bg-red-600 text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <XCircle className="w-4 h-4 shrink-0" />
+            <span>غير راغبين</span>
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold ${
+              activeSubTab === 'declined' ? 'bg-red-700/60 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+            }`}>
+              {declinedGarages.length}
+            </span>
+          </button>
         </div>
-      </div>
-
-      {/* Sub tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('continued')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-200 ${
-            activeSubTab === 'continued'
-              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80'
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-          <span>الراغبون في الاستمرار</span>
-          <span className="bg-emerald-800/60 text-emerald-200 text-xs px-2 py-0.5 rounded-full font-mono">
-            {continuedGarages.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('declined')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all duration-200 ${
-            activeSubTab === 'declined'
-              ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80'
-          }`}
-        >
-          <XCircle className="w-4 h-4 text-red-300" />
-          <span>غير الراغبين في الاستمرار</span>
-          <span className="bg-red-800/60 text-red-200 text-xs px-2 py-0.5 rounded-full font-mono">
-            {declinedGarages.length}
-          </span>
-        </button>
       </div>
 
       {/* List content */}
       {currentList.length === 0 ? (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
-          <div className="w-16 h-16 mx-auto bg-slate-800/80 text-slate-500 rounded-full flex items-center justify-center">
-            <Clock className="w-8 h-8" />
+        <div className="bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center space-y-3">
+          <div className="w-14 h-14 mx-auto bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center">
+            <Clock className="w-7 h-7" />
           </div>
-          <h3 className="text-lg font-bold text-slate-300">لا توجد طلبات في هذه القائمة حالياً</h3>
-          <p className="text-xs text-slate-500">
-            عندما تنتهي فترة جراج تجريبي ويحدد اختياره، ستظهر بياناته هنا فوراً.
+          <h3 className="text-base font-black text-slate-800 dark:text-slate-200">لا توجد طلبات في هذه القائمة حالياً</h3>
+          <p className="text-xs font-medium text-slate-400">
+            عندما تنتهي الفترة التجريبية لأي جراج ويحدد موقفه، ستظهر بياناته هنا تلقائياً.
           </p>
         </div>
       ) : (
@@ -145,100 +130,84 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
                 <motion.div
                   key={garage.id}
                   layout
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`bg-slate-900/90 border rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition-all duration-200 ${
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 ${
                     activeSubTab === 'continued'
-                      ? 'border-emerald-500/30 hover:border-emerald-500/60'
-                      : 'border-red-500/30 hover:border-red-500/60'
+                      ? 'border-emerald-500/30 dark:border-emerald-500/20'
+                      : 'border-red-500/30 dark:border-red-500/20'
                   }`}
                 >
-                  {/* Garage header */}
-                  <div className="space-y-2">
+                  {/* Top Row: Title, Owner & Timestamp */}
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 
+                      <div className="space-y-1">
+                        <button
+                          type="button"
                           onClick={() => onSelectGarage(garage)}
-                          className="font-extrabold text-lg text-white hover:text-emerald-400 cursor-pointer transition-colors flex items-center gap-2"
+                          className="font-black text-base text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer text-right"
                         >
-                          {garage.name}
-                          <ExternalLink className="w-4 h-4 text-slate-500 inline opacity-60" />
-                        </h3>
+                          <span>{garage.name}</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        </button>
                         {garage.ownerName && (
-                          <p className="text-xs text-slate-400 mt-0.5">المالك: {garage.ownerName}</p>
+                          <p className="text-xs font-bold text-slate-400">المالك: {garage.ownerName}</p>
                         )}
                       </div>
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-1 font-mono shrink-0">
-                        <Clock className="w-3 h-3 text-amber-400" />
+
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0 font-mono">
+                        <Clock className="w-3 h-3 text-amber-500" />
                         {timeFormatted}
                       </span>
                     </div>
 
-                    {/* Phone link */}
-                    <div className="pt-1">
+                    {/* Single Unified Phone Call Action (No Duplication) */}
+                    {garage.phone && (
                       <a
                         href={`tel:${garage.phone}`}
-                        className="inline-flex items-center gap-2 text-sm font-mono font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-colors"
+                        className="w-full py-2.5 px-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-mono font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 shadow-sm"
                       >
-                        <Phone className="w-4 h-4 text-emerald-400" />
-                        <span>{garage.phone}</span>
+                        <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>اتصال الآن ({garage.phone})</span>
                       </a>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Status Banner */}
-                  {activeSubTab === 'continued' ? (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 font-medium leading-relaxed">
-                      🔥 <strong>{garage.name}</strong> يطلب الاستمرار، تواصل معه الآن لإتمام الاشتراك وتفعيل الباقة!
-                    </div>
-                  ) : (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300 font-medium leading-relaxed">
-                      ❌ <strong>{garage.name}</strong> اختار عدم الاستمرار في الخدمة.
-                    </div>
-                  )}
-
-                  {/* Quick Action Buttons */}
-                  <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  {/* Clean Action Buttons */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
                     <div className="flex items-center gap-2">
-                      <a
-                        href={`tel:${garage.phone}`}
-                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        اتصال الآن
-                      </a>
-
-                      {onRechargeGarage && (
+                      {onRechargeGarage && activeSubTab === 'continued' && (
                         <button
                           type="button"
                           onClick={() => onRechargeGarage(garage)}
-                          className="flex-1 py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/20"
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98 cursor-pointer"
                         >
-                          <Zap className="w-3.5 h-3.5" />
-                          تجديد الباقة
+                          <Zap className="w-3.5 h-3.5 fill-current" />
+                          <span>تجديد الباقة</span>
                         </button>
                       )}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => onDeleteGarage(garage.id, garage.name)}
-                        className="py-1.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold text-xs transition-colors flex items-center gap-1 border border-red-500/20"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        حذف الجراج
-                      </button>
 
                       <button
                         type="button"
                         disabled={processingId === garage.id}
                         onClick={() => handleClearDecision(garage)}
-                        className="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 font-medium text-xs transition-colors"
-                        title="إزالة من قائمة المتابعة"
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer disabled:opacity-50"
+                        title="إزالتها من قائمة التماس المتابعة"
                       >
-                        تم التواصل / إخفاء
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>تم التواصل / إخفاء</span>
+                      </button>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onDeleteGarage(garage.id, garage.name)}
+                        className="text-[11px] font-bold text-red-500 hover:text-red-700 dark:hover:text-red-400 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>حذف الجراج</span>
                       </button>
                     </div>
                   </div>
@@ -251,3 +220,6 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
     </div>
   );
 };
+
+export default AdminTrialLeadsView;
+

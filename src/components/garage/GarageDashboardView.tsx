@@ -79,7 +79,6 @@ export const GarageDashboardView = memo((props: any) => {
   const [latestRechargeLog, setLatestRechargeLog] = useState<any>(null);
   const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
-  const [isRewardsOpen, setIsRewardsOpen] = useState(false);
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [packagesInitialDuration, setPackagesInitialDuration] = useState<number | undefined>(undefined);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -320,7 +319,6 @@ export const GarageDashboardView = memo((props: any) => {
     setShowSubscribers(target === "subscribers");
     setIsReportsOpen(target === "reports");
     setShowPackages(target === "packages");
-    setIsRewardsOpen(target === "rewards");
     setIsRechargeHistoryOpen(target === "history");
     setShowStaffStats(target === "staff");
     setIsAppearanceOpen(target === "appearance");
@@ -507,7 +505,6 @@ export const GarageDashboardView = memo((props: any) => {
         isSubscribersOpen={showSubscribers}
         isRechargeHistoryOpen={isRechargeHistoryOpen}
         isPackagesOpen={showPackages}
-        isRewardsOpen={isRewardsOpen}
         isStaffStatsOpen={showStaffStats}
         isReportsOpen={isReportsOpen}
         isAppearanceOpen={isAppearanceOpen}
@@ -523,7 +520,6 @@ export const GarageDashboardView = memo((props: any) => {
           setShowPackages(false);
           setPackagesInitialDuration(undefined);
         }}
-        onCloseRewards={() => setIsRewardsOpen(false)}
         onCloseStaffStats={() => setShowStaffStats(false)}
         onCloseReports={() => setIsReportsOpen(false)}
         onCloseAppearance={() => setIsAppearanceOpen(false)}
