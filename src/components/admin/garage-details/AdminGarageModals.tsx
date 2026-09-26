@@ -4,12 +4,12 @@
  */
 
 import { memo } from 'react';
-import { 
-  CheckCircle2, 
-  Trash2, 
-  Loader2, 
-  Key, 
-  Wallet 
+import {
+  CheckCircle2,
+  Trash2,
+  Loader2,
+  Key,
+  Wallet
 } from 'lucide-react';
 import { normalizeDigits } from '../../../utils';
 import { Garage, Staff } from '../../../types';
@@ -81,16 +81,16 @@ export const AdminGarageModals = memo(({
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl p-6 animate-popup-30fps">
             <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('إضافة موظف جديد')}</h3>
             <p className="text-xs text-slate-400 font-bold mb-5">{t('أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.')}</p>
-            
+
             <form onSubmit={onAddStaffSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{t('اسم الموظف')}</label>
-                <input 
-                  placeholder={t('مثال: أحمد محمد')} 
+                <input
+                  placeholder={t('مثال: أحمد محمد')}
                   value={staffForm.name}
                   autoFocus
                   onChange={e => setStaffForm(prev => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center transition-all" 
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center transition-all"
                 />
               </div>
 
@@ -102,9 +102,9 @@ export const AdminGarageModals = memo(({
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
-                  type="submit" 
-                  disabled={isLoading || !staffForm.name} 
+                <button
+                  type="submit"
+                  disabled={isLoading || !staffForm.name}
                   className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
@@ -116,8 +116,8 @@ export const AdminGarageModals = memo(({
                     <span>{t('تأكيد الإضافة')}</span>
                   )}
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   disabled={isLoading}
                   onClick={() => setShowAddStaffModal(false)}
                   className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer"
@@ -224,9 +224,9 @@ export const AdminGarageModals = memo(({
             <p className="text-xs text-slate-400 font-bold mb-6">
               {t('هل أنت متأكد من حذف الموظف')} <span className="text-slate-900 dark:text-white font-black">"{staffToDelete.name}"</span>؟
             </p>
-            
+
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => onDeleteStaff(staffToDelete.id)}
                 disabled={isLoading}
                 className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm hover:bg-rose-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
@@ -240,7 +240,7 @@ export const AdminGarageModals = memo(({
                   <span>{t('تأكيد الحذف')}</span>
                 )}
               </button>
-              <button 
+              <button
                 disabled={isLoading}
                 onClick={() => setStaffToDelete(null)}
                 className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
@@ -254,15 +254,15 @@ export const AdminGarageModals = memo(({
 
       {/* Edit Owner PIN Modal */}
       {showEditGaragePinModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowEditGaragePinModal(false);
             }
           }}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-right animate-popup-30fps"
             onClick={(e) => e.stopPropagation()}
             dir={adminLang === 'en' ? 'ltr' : 'rtl'}

@@ -15,13 +15,13 @@ import { Car } from "lucide-react";
 import { Announcement } from "../../types";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
-import { 
-  resolveShimmerColor, 
-  isLightColor, 
+import {
+  resolveShimmerColor,
+  isLightColor,
   getRemainingSubscriptionInfo,
-  safeDate, 
-  getEffectiveDailyCapacity, 
-  isUnlimitedCapacity, 
+  safeDate,
+  getEffectiveDailyCapacity,
+  isUnlimitedCapacity,
   isSubscriptionExpired,
   packageIdToDays
 } from "../../utils";
@@ -149,7 +149,7 @@ export const GarageDashboardView = memo((props: any) => {
   const countdownValue = subInfo.displayCount;
   const isUrgentRed = subInfo.isUrgentRed;
   const isWarningYellow = isDailyPackage ? (isCountdownInHours && remainingDays === 1) : (remainingDays > 0 && remainingDays <= 3) || isUrgentRed;
-  
+
   const totalInsideCount = useMemo(
     () =>
       vehicles.length > 0

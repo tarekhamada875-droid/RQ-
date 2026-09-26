@@ -4,13 +4,13 @@
  */
 
 import { memo } from 'react';
-import { 
-  Wallet, 
-  Calendar, 
-  Loader2, 
-  Users, 
-  Shield, 
-  Gift 
+import {
+  Wallet,
+  Calendar,
+  Loader2,
+  Users,
+  Shield,
+  Gift
 } from 'lucide-react';
 import { safeDate } from '../../../utils';
 import { Garage } from '../../../types';
@@ -113,7 +113,7 @@ export const AdminGarageFinancialsSection = memo(({
             {/* Zero Balance / Clear Wallet Action */}
             <div className="pt-2 border-t border-slate-700/40 flex justify-end">
               {!showClearBalanceConfirm ? (
-                <button 
+                <button
                   onClick={() => setShowClearBalanceConfirm(true)}
                   className="w-full sm:w-auto px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl font-bold text-xs border border-rose-500/20 transition-all cursor-pointer"
                 >
@@ -121,7 +121,7 @@ export const AdminGarageFinancialsSection = memo(({
                 </button>
               ) : (
                 <div className="flex gap-2 p-1.5 bg-slate-800/90 rounded-xl border border-slate-700">
-                  <button 
+                  <button
                     disabled={isLoading}
                     onClick={onClearBalance}
                     className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer"
@@ -129,9 +129,9 @@ export const AdminGarageFinancialsSection = memo(({
                     {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     <span>{isLoading ? t('جاري التصفير...') : t('تأكيد')}</span>
                   </button>
-                  <button 
+                  <button
                     disabled={isLoading}
-                    onClick={() => setShowClearBalanceConfirm(false)} 
+                    onClick={() => setShowClearBalanceConfirm(false)}
                     className="px-3 py-1.5 text-slate-400 hover:text-white font-bold text-xs disabled:opacity-50 cursor-pointer"
                   >
                     {t('إلغاء')}
@@ -154,7 +154,7 @@ export const AdminGarageFinancialsSection = memo(({
             {t('عند تفعيل هذا الخيار تضاف')} {subscriberFlatFee} {t('ج.م ثابتة تلقائياً على قيمة أية باقة أو اشتراك بالجراج.')}
           </p>
         </div>
-        <button 
+        <button
           type="button"
           onClick={onToggleMonthlySubscribers}
           className={`w-14 h-8 rounded-full p-1 transition-all duration-300 relative shrink-0 cursor-pointer ${

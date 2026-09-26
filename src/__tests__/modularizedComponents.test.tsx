@@ -186,7 +186,7 @@ describe('Modularized Admin Components Integrity', () => {
 
     // Garage title rendered in header and hero
     expect(screen.getAllByText('جراج النصر النموذجي').length).toBeGreaterThanOrEqual(1);
-    
+
     // Back button triggers setView('admin_dashboard')
     const backBtn = screen.getByTitle('رجوع');
     fireEvent.click(backBtn);

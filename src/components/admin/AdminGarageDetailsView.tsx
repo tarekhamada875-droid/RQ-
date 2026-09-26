@@ -4,10 +4,10 @@
  */
 
 import { useState, memo, useRef, useEffect, useCallback } from 'react';
-import { 
-  ChevronRight, 
-  Trash2, 
-  MoreVertical 
+import {
+  ChevronRight,
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { Timestamp } from 'firebase/firestore';
@@ -90,7 +90,7 @@ export const AdminGarageDetailsView = memo(({
     setGaragePinInput(selectedGarageForDetails.pin || '');
   }, [selectedGarageForDetails.id, selectedGarageForDetails.pin]);
 
-  const hasRateChanges = 
+  const hasRateChanges =
     hourlyRateInput !== String(selectedGarageForDetails.hourlyRate || 0) ||
     overnightRateInput !== String(selectedGarageForDetails.overnightRate || 0);
 
@@ -143,22 +143,22 @@ export const AdminGarageDetailsView = memo(({
         selectedGarageForDetails.id,
         selectedTopupAmount
       );
-      
+
       try {
         soundManager.play("checkIn");
       } catch (err) {
         console.error("Sound error", err);
       }
-      
+
       showToast?.(
         adminLang === 'en'
           ? `Successfully added ${selectedTopupAmount} EGP to balance`
           : `تم إضافة ${selectedTopupAmount} ج.م للرصيد بنجاح`,
         'success'
       );
-      
+
       setIsTopupSuccess(true);
-      
+
       if (typeof setSelectedGarageForDetails === 'function') {
         const updated = await firestoreService.getGarageById(selectedGarageForDetails.id);
         if (updated) {
@@ -169,33 +169,33 @@ export const AdminGarageDetailsView = memo(({
         setShowTopupModal(false);
         setIsTopupSuccess(false);
       }, 1400);
-    } catch (e: any) { 
+    } catch (e: any) {
       console.error('Balance top-up failed:', e);
       alert(
         adminLang === 'en'
           ? `Top-up failed: ${e?.message || 'Unknown error'}`
           : `فشل شحن الرصيد: ${e?.message || 'خطأ غير معروف'}`
       );
-    } finally { 
-      setIsLoading(false); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleClearBalance = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    try { 
+    try {
       const updateFields: any = { balance: 0, isLocked: true, balanceExpiry: Timestamp.fromDate(new Date()) };
-      await firestoreService.updateGarage(selectedGarageForDetails.id, updateFields); 
-      setShowClearBalanceConfirm(false); 
+      await firestoreService.updateGarage(selectedGarageForDetails.id, updateFields);
+      setShowClearBalanceConfirm(false);
       if (typeof setSelectedGarageForDetails === 'function') {
         const updated = await firestoreService.getGarageById(selectedGarageForDetails.id);
         if (updated) setSelectedGarageForDetails(updated);
       }
-    } catch (error) { 
-      console.error(error); 
-    } finally { 
-      setIsLoading(false); 
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -204,12 +204,12 @@ export const AdminGarageDetailsView = memo(({
     setIsUpdatingLock(true);
     try {
       const newLocked = !selectedGarageForDetails.isLocked;
-      await firestoreService.updateGarage(selectedGarageForDetails.id, { 
+      await firestoreService.updateGarage(selectedGarageForDetails.id, {
         isLocked: newLocked,
-        isSuspended: newLocked 
+        isSuspended: newLocked
       });
-      setSelectedGarageForDetails({ 
-        ...selectedGarageForDetails, 
+      setSelectedGarageForDetails({
+        ...selectedGarageForDetails,
         isLocked: newLocked,
         isSuspended: newLocked
       });
@@ -257,17 +257,17 @@ export const AdminGarageDetailsView = memo(({
         setIsLoading(false);
         return;
       }
-      await firestoreService.addStaff({ 
-        name: staffForm.name, 
-        pin: staffForm.pin, 
-        garageId: selectedGarageForDetails.id, 
-        role: 'staff' 
+      await firestoreService.addStaff({
+        name: staffForm.name,
+        pin: staffForm.pin,
+        garageId: selectedGarageForDetails.id,
+        role: 'staff'
       });
       setShowAddStaffModal(false);
-    } catch (e) { 
+    } catch (e) {
       console.error(e);
-    } finally { 
-      setIsLoading(false); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -277,10 +277,10 @@ export const AdminGarageDetailsView = memo(({
     try {
       await firestoreService.removeStaff(staffId);
       setStaffToDelete(null);
-    } catch (e) { 
+    } catch (e) {
       console.error(e);
-    } finally { 
-      setIsLoading(false); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -295,8 +295,8 @@ export const AdminGarageDetailsView = memo(({
     try {
       const pinCheck = await firestoreService.isPinTaken(garagePinInput, selectedGarageForDetails.id);
       if (pinCheck.taken) {
-        setPinError(adminLang === 'en' 
-          ? `PIN used by ${pinCheck.name}` 
+        setPinError(adminLang === 'en'
+          ? `PIN used by ${pinCheck.name}`
           : `الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
         setIsUpdatingGaragePin(false);
         return;
@@ -328,10 +328,10 @@ export const AdminGarageDetailsView = memo(({
 
   const today = getCairoDateKey();
   const isTodayValid = selectedGarageForDetails.lastTransactionDate === today;
-  
+
   const dailyCount = isTodayValid ? (selectedGarageForDetails.todayCount || 0) : 0;
   const dailyRevenue = isTodayValid ? (selectedGarageForDetails.todayRevenue || 0) : 0;
-  
+
   const totalCount = selectedGarageForDetails.totalVehiclesOut || 0;
   const totalRevenue = selectedGarageForDetails.totalRevenue || 0;
   const remainingDays = getRemainingDays(selectedGarageForDetails);
@@ -349,15 +349,15 @@ export const AdminGarageDetailsView = memo(({
   };
 
   return (
-    <div 
-      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-slate-900 dark:text-slate-100 transition-colors ${adminLang === 'en' ? 'text-left' : 'text-right'} ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`} 
+    <div
+      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-slate-900 dark:text-slate-100 transition-colors ${adminLang === 'en' ? 'text-left' : 'text-right'} ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
       dir={adminLang === 'en' ? 'ltr' : 'rtl'}
     >
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 mb-8 shadow-sm">
         <div className="max-w-5xl mx-auto flex justify-between items-center h-full">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => {
                 setView('admin_dashboard');
                 setSelectedGarageForDetails(null);
@@ -377,7 +377,7 @@ export const AdminGarageDetailsView = memo(({
           </div>
 
           <div className="flex items-center gap-3 relative" ref={menuRef}>
-            <button 
+            <button
               type="button"
               onClick={() => setShowMenu(!showMenu)}
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all outline-none border ${showMenu ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
@@ -387,13 +387,13 @@ export const AdminGarageDetailsView = memo(({
 
             {showMenu && (
               <>
-                <div 
-                  className="fixed inset-0 z-40 bg-slate-900/10 dark:bg-black/35" 
+                <div
+                  className="fixed inset-0 z-40 bg-slate-900/10 dark:bg-black/35"
                   onClick={() => setShowMenu(false)}
                 />
-                
+
                 <div className={`absolute top-12 ${adminLang === 'en' ? 'right-0' : 'left-0'} w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl p-2`}>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowDeleteConfirm(true);
                       setShowMenu(false);

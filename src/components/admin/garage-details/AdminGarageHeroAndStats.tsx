@@ -4,15 +4,15 @@
  */
 
 import { memo } from 'react';
-import { 
-  Car, 
-  Phone, 
-  Key, 
-  Loader2, 
-  Unlock, 
-  Lock, 
-  Clock, 
-  CheckCircle2 
+import {
+  Car,
+  Phone,
+  Key,
+  Loader2,
+  Unlock,
+  Lock,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { formatDisplayPin } from '../../../utils';
 import { Garage } from '../../../types';
@@ -51,8 +51,8 @@ export const AdminGarageHeroAndStats = memo(({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
-              garage.isLocked 
-                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60' 
+              garage.isLocked
+                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60'
                 : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60'
             }`}>
               <Car className="w-7 h-7" />
@@ -78,7 +78,7 @@ export const AdminGarageHeroAndStats = memo(({
                     <span className="font-mono text-slate-700 dark:text-slate-300">{garage.phone}</span>
                   </div>
                 )}
-                
+
                 {/* Owner PIN quick view / edit */}
                 <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   <Key className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
