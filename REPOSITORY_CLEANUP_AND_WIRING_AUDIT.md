@@ -52,6 +52,16 @@ The following older documents were marked **historical/superseded** rather than 
 
 `V3_BACKEND_PLAN.md` remains the architectural guide, but its continuation packet now points to the current SHA and the canonical checkpoint plan.
 
+### Confirmed dead-code cleanup checkpoint — 2026-09-26
+
+After a fresh Knip/source-reference audit, the following high-confidence leftovers were removed:
+
+- `api/package.json`, an orphan nested package containing only a CommonJS marker with no active `api/` implementation or deployment reference;
+- `src/utils/formatters.ts`, a one-function wrapper used only by `hardeningPlan.test.ts`; the test now imports the canonical `normalizeDigits` implementation from `src/utils/index.ts`;
+- the unused browser Firebase Functions initialization and `functions` export from `src/firebase.ts`.
+
+Knip still reports `tools/performance-benchmark.ts` and several unused exports/types. Those remain intentionally retained: the benchmark produced documented evidence, while the exports include compatibility boundaries, test contracts, dynamic UI entrypoints, and future adapter types. They require separate per-symbol review and are not safe bulk-deletion candidates.
+
 ## What was intentionally retained
 
 ### UI and UX source

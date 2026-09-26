@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDigits } from '../utils/formatters';
+import { normalizeDigits } from '../utils';
 import { isSubscriptionExpired, calculateCapacityUsed } from '../domain/garage/subscription';
 import { HEARTBEAT_TIMEOUT_MS, getOrCreateDeviceId } from '../services/authSessionService';
 

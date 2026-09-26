@@ -4,7 +4,6 @@ import {
   initializeFirestore, 
   memoryLocalCache
 } from 'firebase/firestore';
-import { getFunctions } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
 import { logDiagnostic, verifyFirebaseAppletConfig } from './utils/authDiagnosticLogger';
 
@@ -20,8 +19,6 @@ export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
   localCache: memoryLocalCache(),
 }, firebaseConfig.firestoreDatabaseId);
-
-export const functions = getFunctions(app);
 
 export const auth = getAuth(app);
 logDiagnostic('FIREBASE_AUTH_INITIALIZED', {

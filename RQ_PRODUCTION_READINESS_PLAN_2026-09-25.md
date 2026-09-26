@@ -219,13 +219,15 @@ Do not replace Firestore merely to avoid this decision. The current data model, 
 
 ### 3.11 P2: Dead compatibility wrapper and duplicated presentation logic
 
-**Problem.** `src/utils/formatters.ts` is a compatibility wrapper used only by a test, while presentation components reconstruct package and legacy business data in multiple places. This creates source-of-truth confusion and increases future defect risk.
+> **Formatter-wrapper portion resolved 2026-09-26.** The test now imports `normalizeDigits` from the canonical `src/utils/index.ts`, and the one-function `src/utils/formatters.ts` wrapper has been removed. The remaining presentation-normalization work is still open.
 
-**Fix.** Move the test to the canonical utility and remove the wrapper, or mark it as temporary with an owner and removal date. Move package and legacy-record normalization to pure service/domain adapters. Keep components responsible for display, not business-rule reconstruction.
+**Remaining problem.** Presentation components still reconstruct package and legacy business data in multiple places. This creates source-of-truth confusion and increases future defect risk.
+
+**Fix.** Move package and legacy-record normalization to pure service/domain adapters. Keep components responsible for display, not business-rule reconstruction.
 
 **How to do it.** Make one small change at a time. Add characterization tests for existing display behavior before moving logic. Replace component fallbacks with normalized view models. Review the resulting diff manually.
 
-**Where.** `src/utils/formatters.ts`, `src/utils/index.ts`, `RechargeHistoryView.tsx`, `GarageDashboardView.tsx`, service adapters, and tests.
+**Where.** `src/utils/index.ts`, `RechargeHistoryView.tsx`, `GarageDashboardView.tsx`, service adapters, and tests.
 
 **When.** **Phase 5, after package authority is stable.**
 
