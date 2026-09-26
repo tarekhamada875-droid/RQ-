@@ -78,6 +78,5 @@ try {
 
 export {
   adminDb,
-  adminAuth,
-  firebaseConfig
+  adminAuth
 };

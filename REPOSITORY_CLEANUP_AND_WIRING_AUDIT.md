@@ -70,11 +70,11 @@ No component, route, style, icon, layout, modal, navigation path, or user-facing
 
 ### `tools/performance-benchmark.ts`
 
-Knip reports this tool as unused by package scripts. It is retained because `PERFORMANCE_BENCHMARK_2026-09-18.md` records its output and it remains a useful deterministic benchmark. It should only be removed or moved after the benchmark evidence is deliberately archived and no release process needs it.
+The deterministic benchmark is retained because `PERFORMANCE_BENCHMARK_2026-09-18.md` records its output and it remains useful for future comparisons. It is now exposed as the explicit `npm run benchmark` command rather than being an untracked tool.
 
 ### Unused exports
 
-Knip reports unused exports and types. These are not automatically dead code: many are compatibility boundaries, test helpers, public service objects, or future adapter contracts. They require per-symbol review and are not part of safe repository cleanup.
+Knip still reports unused exports and types. These are not automatically dead code: many are compatibility boundaries, test helpers, public service objects, or future adapter contracts. The unused server app default export and unused Firebase Admin config export were removed in this pass; the remaining symbols require per-symbol review and are not safe bulk-deletion candidates.
 
 ## Confirmed wiring map
 

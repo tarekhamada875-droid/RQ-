@@ -904,4 +904,3 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
 }
 
 export const app = createApp();
-export default app;

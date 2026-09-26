@@ -25,7 +25,6 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
     errMsg.includes('CAPACITY_LIMIT_REACHED') ||
     errMsg.includes('FAIR_USE_LIMIT_REACHED') ||
     errMsg.includes('DAILY_DELETION_LIMIT_REACHED') ||
-    errMsg.includes('DAILY_DELETION_LIMIT_REACHED') ||
     errMsg.includes('GARAGE_DELETION_IN_PROGRESS') ||
     errMsg.includes('reached_daily_deletion_limit') ||
     errMsg.includes('PIN_ALREADY_TAKEN') ||
