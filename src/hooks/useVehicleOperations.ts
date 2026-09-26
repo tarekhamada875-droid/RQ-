@@ -237,12 +237,18 @@ export function useVehicleOperations({
         }
       }
 
-      if (message === 'ALREADY_INSIDE' || message.includes('مسجلة بالفعل')) {
+      if (
+        message === 'ALREADY_INSIDE' ||
+        message === 'VEHICLE_ALREADY_INSIDE' ||
+        message.includes('مسجلة بالفعل') ||
+        message.includes('موجودة بالفعل بالداخل') ||
+        message.includes('conflicts with the current state')
+      ) {
         showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
-      } else if (message.includes('permission') || message.includes('PERMISSION_DENIED')) {
+      } else if (message.includes('permission') || message.includes('PERMISSION_DENIED') || message === 'UNAUTHORIZED') {
         setNewPlateNumber(formatted);
         showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
-      } else if (message.includes('الحد اليومي') || message.includes('اشتراك')) {
+      } else if (message.includes('الحد اليومي') || message.includes('اشتراك') || message.includes('CAPACITY_LIMIT_REACHED') || message.includes('SUBSCRIPTION_EXPIRED')) {
         setNewPlateNumber(formatted);
         showToast(message, 'error');
       } else {

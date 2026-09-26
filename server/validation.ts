@@ -205,6 +205,42 @@ export function validateDateRange(startDate: any, endDate: any, fieldPrefix = 's
 }
 
 /**
+ * Normalizes plate characters into canonical format (letters first, then numbers, Arabic digits to English, standardized Alef/Yeh).
+ */
+export function normalizePlateRaw(val: string): string {
+  if (!val) return '';
+  const digitsNormalized = String(val)
+    .replace(/[٠۰]/g, '0')
+    .replace(/[١۱]/g, '1')
+    .replace(/[٢۲]/g, '2')
+    .replace(/[٣۳]/g, '3')
+    .replace(/[٤۴]/g, '4')
+    .replace(/[٥۵]/g, '5')
+    .replace(/[٦۶]/g, '6')
+    .replace(/[٧۷]/g, '7')
+    .replace(/[٨۸]/g, '8')
+    .replace(/[٩۹]/g, '9')
+    .replace(/[إأآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/ئ/g, 'ي')
+    .replace(/ؤ/g, 'و');
+
+  let letters = '';
+  let numbers = '';
+  for (let i = 0; i < digitsNormalized.length; i++) {
+    const char = digitsNormalized[i];
+    if (char >= '0' && char <= '9') {
+      if (numbers.length < 4) numbers += char;
+    } else if ((char >= '\u0621' && char <= '\u064A') || (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z')) {
+      if (letters.length < 4) letters += char.toUpperCase();
+    }
+  }
+
+  return letters + numbers;
+}
+
+/**
  * Validates vehicle plate input
  */
 export function validatePlate(val: any, fieldName = 'Plate Number'): { plateNumber: string; plateRaw: string } {
@@ -212,8 +248,8 @@ export function validatePlate(val: any, fieldName = 'Plate Number'): { plateNumb
   // Strip non-printable characters or script tags
   const cleanStr = str.replace(/[<>'"]/g, '').trim();
   
-  // plateRaw removes whitespace for standardized document key lookup
-  const plateRaw = cleanStr.replace(/\s+/g, '');
+  // plateRaw uses canonical normalized plate format (letters + numbers)
+  const plateRaw = normalizePlateRaw(cleanStr) || cleanStr.replace(/\s+/g, '');
   if (!plateRaw) {
     throw new ValidationError('Plate number cannot be blank', 'INVALID_PLATE', 400);
   }
