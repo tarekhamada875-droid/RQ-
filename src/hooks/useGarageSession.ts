@@ -342,7 +342,9 @@ export function useGarageSession({
             return;
           }
           const data = snapshot.data();
-          if (data?.currentSessionId && data.currentSessionId !== sessionId) {
+          const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
+          const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
+          if (!isSessionActive && (data?.currentSessionId || activeIds.length > 0)) {
             showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
             handleLogout(true);
           }

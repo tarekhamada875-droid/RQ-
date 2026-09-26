@@ -322,7 +322,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       { role: 'staff', coll: 'staff_sessions' }
     ];
 
-    const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
     for (const { role, coll } of secCollMap) {
       const legacySecSnap = await adminDb.doc(`${coll}/${uid}`).get();

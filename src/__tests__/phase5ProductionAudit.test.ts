@@ -34,8 +34,8 @@ describe('Phase 5: Final Production Security & Full System Audit', () => {
   });
 
   describe('2. Cross-Role Single-Device Session Locking', () => {
-    it('enforces 1-hour active session timeout window across all actors', () => {
-      expect(HEARTBEAT_TIMEOUT_MS).toBe(60 * 60 * 1000);
+    it('enforces 24-hour active session timeout window across all actors', () => {
+      expect(HEARTBEAT_TIMEOUT_MS).toBe(24 * 60 * 60 * 1000);
       const devId = getOrCreateDeviceId();
       expect(typeof devId).toBe('string');
       expect(devId.length).toBeGreaterThan(0);

@@ -233,12 +233,12 @@ describe('synthetic multi-device session routes', () => {
     seed('garage_sessions/synthetic-user/sessions/device-a', {
       sessionId: 'device-a',
       isActive: true,
-      lastActive: new Date(Date.now() - 61 * 60 * 1000)
+      lastActive: new Date(Date.now() - 25 * 60 * 60 * 1000)
     });
     seed('garage_sessions/synthetic-user', {
       sessionId: 'device-a',
       isActive: true,
-      lastActive: new Date(Date.now() - 61 * 60 * 1000)
+      lastActive: new Date(Date.now() - 25 * 60 * 60 * 1000)
     });
 
     const response = await request('POST', '/api/auth/validate-or-refresh-session', {

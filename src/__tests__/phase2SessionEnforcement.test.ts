@@ -115,19 +115,19 @@ describe('Phase 2 — Central Authority & Session Enforcement', () => {
       expect(res3.code).toBe('OK');
     });
 
-    it('rejects request with 401 SESSION_EXPIRED when inactivity exceeds 1 hour', () => {
-      const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+    it('rejects request with 401 SESSION_EXPIRED when inactivity exceeds 24 hours', () => {
+      const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
       const now = Date.now();
 
       const isSessionExpired = (lastActiveTime: number) => {
         return (now - lastActiveTime) > SESSION_TIMEOUT_MS;
       };
 
-      // 59 minutes ago -> Not expired
-      expect(isSessionExpired(now - 59 * 60 * 1000)).toBe(false);
+      // 23 hours ago -> Not expired
+      expect(isSessionExpired(now - 23 * 60 * 60 * 1000)).toBe(false);
 
-      // 60 minutes and 1 second ago -> Expired
-      expect(isSessionExpired(now - (60 * 60 * 1000 + 1000))).toBe(true);
+      // 24 hours and 1 second ago -> Expired
+      expect(isSessionExpired(now - (24 * 60 * 60 * 1000 + 1000))).toBe(true);
     });
   });
 

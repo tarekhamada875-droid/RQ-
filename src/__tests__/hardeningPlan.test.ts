@@ -18,8 +18,8 @@ describe('Stage 2: Schema Normalization & Formatter Tests', () => {
 });
 
 describe('Stage 3 & 5: Single-Device Access Lock & Heartbeat Tests', () => {
-  it('defines 1-hour heartbeat timeout window', () => {
-    expect(HEARTBEAT_TIMEOUT_MS).toBe(60 * 60 * 1000);
+  it('defines 24-hour heartbeat timeout window', () => {
+    expect(HEARTBEAT_TIMEOUT_MS).toBe(24 * 60 * 60 * 1000);
   });
 
   it('generates a stable persistent deviceId', () => {

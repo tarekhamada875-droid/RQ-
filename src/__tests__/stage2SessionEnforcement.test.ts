@@ -22,12 +22,12 @@ describe('Stage 2: Session Expiration & Invalidation Enforcement', () => {
     expect(localStorage.getItem('rq_canonical_session_id')).toBe(sid1);
   });
 
-  it('should enforce standard 1 hour session timeout constant', () => {
-    expect(SESSION_TIMEOUT_MS).toBe(60 * 60 * 1000);
+  it('should enforce standard 24 hour shift session timeout constant', () => {
+    expect(SESSION_TIMEOUT_MS).toBe(24 * 60 * 60 * 1000);
   });
 
   it('should verify session expiration timeout logic mathematically', () => {
-    const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
     const now = Date.now();
     
     // Active within 5 minutes -> Not expired
@@ -35,14 +35,14 @@ describe('Stage 2: Session Expiration & Invalidation Enforcement', () => {
     const isExpiredRecent = (now - lastActiveRecent) > SESSION_TIMEOUT_MS;
     expect(isExpiredRecent).toBe(false);
 
-    // Inactive for 61 minutes -> Expired
-    const lastActiveOld = now - 61 * 60 * 1000;
+    // Inactive for 25 hours -> Expired
+    const lastActiveOld = now - 25 * 60 * 60 * 1000;
     const isExpiredOld = (now - lastActiveOld) > SESSION_TIMEOUT_MS;
     expect(isExpiredOld).toBe(true);
   });
 
   it('should reject session takeover when an existing session is actively alive', () => {
-    const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
     const activeSessionId: string = 'session_device_A';
     const attemptingSessionId: string = 'session_device_B';
     const now = Date.now();
@@ -57,11 +57,11 @@ describe('Stage 2: Session Expiration & Invalidation Enforcement', () => {
   });
 
   it('should allow session takeover when previous session is expired beyond timeout', () => {
-    const SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+    const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
     const activeSessionId: string = 'session_device_A';
     const attemptingSessionId: string = 'session_device_B';
     const now = Date.now();
-    const lastActive = now - 65 * 60 * 1000; // 65 minutes ago (expired)
+    const lastActive = now - 25 * 60 * 60 * 1000; // 25 hours ago (expired)
 
     const isAlive = Boolean(activeSessionId && 
                     activeSessionId !== attemptingSessionId && 
