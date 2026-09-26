@@ -23,26 +23,39 @@ const makeTransaction = (entityData: any, securityData: any) => {
 describe('session transaction contracts', () => {
   beforeEach(() => vi.useRealTimers());
 
-  it.each([
-    ['admin', 'SESSION_OCCUPIED'],
-    ['supervisor', 'SESSION_OCCUPIED'],
-    ['staff', 'SESSION_OCCUPIED'],
-    ['delegate', 'DELEGATE_SESSION_OCCUPIED'],
-    ['garage', 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS']
-  ] as const)('rejects an active competing %s session with its policy error', async (role, errorCode) => {
-    const { tx } = makeTransaction(
-      { currentSessionId: 'other-session', lastActive: new Date() },
+  it('allows concurrent multi-device logins and adds new device to activeSessionIds without throwing', async () => {
+    const { tx, updates } = makeTransaction(
+      { currentSessionId: 'device-1', activeSessionIds: ['device-1'], lastActive: new Date() },
       { sessionId: null }
     );
 
-    await expect(claimSessionInTransaction(tx, {
-      entityRef: 'entity', securitySessionRef: 'security', role, sessionId: 'new-session'
-    })).rejects.toThrow(errorCode);
+    await claimSessionInTransaction(tx, {
+      entityRef: 'entity', securitySessionRef: 'security', role: 'garage', sessionId: 'device-2'
+    });
+
+    expect(updates).toEqual([
+      {
+        ref: 'entity',
+        data: {
+          currentSessionId: 'device-2',
+          activeSessionIds: ['device-1', 'device-2'],
+          lastActive: 'SERVER_TIMESTAMP'
+        }
+      },
+      {
+        ref: 'security',
+        data: {
+          isActive: true,
+          sessionId: 'device-2',
+          lastActive: 'SERVER_TIMESTAMP'
+        }
+      }
+    ]);
   });
 
   it('refreshes the owner and activates an existing security session', async () => {
     const { tx, updates } = makeTransaction(
-      { currentSessionId: 'same-session', lastActive: new Date() },
+      { currentSessionId: 'same-session', activeSessionIds: ['same-session'], lastActive: new Date() },
       { sessionId: 'same-session', isActive: false }
     );
 
@@ -51,37 +64,46 @@ describe('session transaction contracts', () => {
     });
 
     expect(updates).toEqual([
-      { ref: 'entity', data: { currentSessionId: 'same-session', lastActive: 'SERVER_TIMESTAMP' } },
-      { ref: 'security', data: { isActive: true, lastActive: 'SERVER_TIMESTAMP' } }
+      {
+        ref: 'entity',
+        data: {
+          currentSessionId: 'same-session',
+          activeSessionIds: ['same-session'],
+          lastActive: 'SERVER_TIMESTAMP'
+        }
+      },
+      { ref: 'security', data: { isActive: true, sessionId: 'same-session', lastActive: 'SERVER_TIMESTAMP' } }
     ]);
   });
 
-  it('releases only an owned entity lock and matching security session', async () => {
+  it('releases only the specific device session from activeSessionIds', async () => {
     const { tx, updates } = makeTransaction(
-      { currentSessionId: 'same-session' },
-      { sessionId: 'same-session', isActive: true }
+      { currentSessionId: 'device-2', activeSessionIds: ['device-1', 'device-2'] },
+      { sessionId: 'device-2', isActive: true }
     );
 
     await releaseSessionInTransaction(tx, {
-      entityRef: 'entity', securitySessionRef: 'security', sessionId: 'same-session'
+      entityRef: 'entity', securitySessionRef: 'security', sessionId: 'device-2'
     });
 
     expect(updates).toEqual([
-      { ref: 'entity', data: { currentSessionId: null } },
+      { ref: 'entity', data: { activeSessionIds: ['device-1'], currentSessionId: 'device-1' } },
       { ref: 'security', data: { isActive: false, lastActive: 'SERVER_TIMESTAMP' } }
     ]);
   });
 
-  it('does not clear a newer session during release', async () => {
+  it('does not clear an unrelated session during release', async () => {
     const { tx, updates } = makeTransaction(
-      { currentSessionId: 'newer-session' },
-      { sessionId: 'newer-session', isActive: true }
+      { currentSessionId: 'device-2', activeSessionIds: ['device-2'] },
+      { sessionId: 'device-2', isActive: true }
     );
 
     await releaseSessionInTransaction(tx, {
-      entityRef: 'entity', securitySessionRef: 'security', sessionId: 'old-session'
+      entityRef: 'entity', securitySessionRef: 'security', sessionId: 'device-1'
     });
 
-    expect(updates).toEqual([]);
+    expect(updates).toEqual([
+      { ref: 'entity', data: { activeSessionIds: ['device-2'] } }
+    ]);
   });
 });

@@ -1,7 +1,5 @@
 import { serverTimestamp } from 'firebase/firestore';
-import { safeDate } from '../../utils';
 import type { EntityRole } from '../../types';
-import { getSessionConflictCode } from './sessionPolicy';
 
 export const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
@@ -14,30 +12,30 @@ type SessionTransactionContext = {
 
 export async function claimSessionInTransaction(
   transaction: any,
-  { entityRef, securitySessionRef, role, sessionId }: SessionTransactionContext
+  { entityRef, securitySessionRef, sessionId }: SessionTransactionContext
 ): Promise<void> {
   const entitySnap = await transaction.get(entityRef);
   const secSnap = await transaction.get(securitySessionRef);
 
+  let activeSessionIds: string[] = [sessionId];
   if (entitySnap.exists()) {
     const data = entitySnap.data();
-    const activeSessionId = data?.currentSessionId;
-    const lastActive = safeDate(data?.lastActive).getTime();
-    const isAlive = lastActive > 0 && (Date.now() - lastActive < SESSION_TIMEOUT_MS);
-
-    if (activeSessionId && activeSessionId !== sessionId && isAlive) {
-      throw new Error(getSessionConflictCode(role));
-    }
+    const existing = Array.isArray(data?.activeSessionIds)
+      ? data.activeSessionIds.filter((id: any) => typeof id === 'string' && id.length > 0)
+      : (data?.currentSessionId ? [data.currentSessionId] : []);
+    activeSessionIds = [...new Set([...existing, sessionId])].slice(-100);
   }
 
   if (entitySnap.exists()) {
     transaction.update(entityRef, {
       currentSessionId: sessionId,
+      activeSessionIds,
       lastActive: serverTimestamp()
     });
   } else if (transaction.set) {
     transaction.set(entityRef, {
       currentSessionId: sessionId,
+      activeSessionIds,
       lastActive: serverTimestamp()
     }, { merge: true });
   }
@@ -46,6 +44,7 @@ export async function claimSessionInTransaction(
   if (isSecDoc) {
     transaction.update(securitySessionRef, {
       isActive: true,
+      sessionId,
       lastActive: serverTimestamp()
     });
   }
@@ -58,9 +57,12 @@ export async function releaseSessionInTransaction(
   const entitySnap = await transaction.get(entityRef);
   if (entitySnap.exists()) {
     const data = entitySnap.data();
-    if (data?.currentSessionId === sessionId) {
-      transaction.update(entityRef, { currentSessionId: null });
-    }
+    const existing = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
+    const updated = existing.filter((id: string) => id !== sessionId);
+    transaction.update(entityRef, {
+      activeSessionIds: updated,
+      ...(data?.currentSessionId === sessionId ? { currentSessionId: updated[updated.length - 1] || null } : {})
+    });
   }
 
   const secSnap = await transaction.get(securitySessionRef);

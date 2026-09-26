@@ -81,41 +81,36 @@ describe('claimDelegateSession atomic locking', () => {
     });
   });
 
-  it('allows only one concurrent delegate session claim', async () => {
+  it('allows concurrent delegate session claims across multiple devices', async () => {
     const promise1 = firestoreService.claimDelegateSession('del-1', 'session-A');
     const promise2 = firestoreService.claimDelegateSession('del-1', 'session-B');
 
     const results = await Promise.allSettled([promise1, promise2]);
 
     const fulfilled = results.filter(r => r.status === 'fulfilled');
-    const rejected = results.filter(r => r.status === 'rejected');
-
-    expect(fulfilled.length).toBe(1);
-    expect(rejected.length).toBe(1);
-    expect((rejected[0] as PromiseRejectedResult).reason.message).toBe('DELEGATE_SESSION_OCCUPIED');
+    expect(fulfilled.length).toBe(2);
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-B');
   });
 
-  it('allows exactly one winner under high concurrent contention', async () => {
-    const attempts = Array.from({ length: 50 }, (_, index) =>
+  it('records multiple sessions under concurrent load', async () => {
+    const attempts = Array.from({ length: 5 }, (_, index) =>
       firestoreService.claimDelegateSession('del-1', `load-session-${index}`)
     );
     const results = await Promise.allSettled(attempts);
     const fulfilled = results.filter(result => result.status === 'fulfilled');
-    const rejected = results.filter(result => result.status === 'rejected');
 
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(49);
-    expect(rejected.every(result => (result as PromiseRejectedResult).reason.message === 'DELEGATE_SESSION_OCCUPIED')).toBe(true);
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toMatch(/^load-session-/);
+    expect(fulfilled).toHaveLength(5);
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('does not replace the winning session', async () => {
+  it('maintains active session IDs when a new session joins', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
 
-    await expect(firestoreService.claimDelegateSession('del-1', 'session-B')).rejects.toThrow('DELEGATE_SESSION_OCCUPIED');
-
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+    await firestoreService.claimDelegateSession('del-1', 'session-B');
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
+    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-B');
   });
 
   it('allows the same session to refresh', async () => {

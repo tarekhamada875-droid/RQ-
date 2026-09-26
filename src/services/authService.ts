@@ -93,13 +93,17 @@ export const authService = {
     if (!uid || !sessionId || !role) return false;
     try {
       const firebaseIdToken = typeof auth.currentUser?.getIdToken === 'function' ? await auth.currentUser.getIdToken().catch(() => '') : '';
-      const data = await apiFetch('/api/auth/validate-or-refresh-session', {
+      const data = await apiFetch<{ valid?: boolean }>('/api/auth/validate-or-refresh-session', {
         method: 'POST',
         body: { uid, sessionId, role, entityId, firebaseIdToken }
       });
       return !!data?.valid;
-    } catch (e) {
-      console.error('[AuthService] Error validating session on server:', e);
+    } catch (e: any) {
+      if (e?.code === 'RATE_LIMIT_EXCEEDED' || e?.status === 429) {
+        console.warn('[AuthService] Session validation throttled by rate limiter:', e?.message || e);
+      } else {
+        console.warn('[AuthService] Error validating session on server:', e?.message || e);
+      }
     }
     return false;
   },

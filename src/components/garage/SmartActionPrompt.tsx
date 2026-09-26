@@ -45,6 +45,13 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
     return raw.length >= 10 ? raw : '01000000000';
   }, [walletNumber]);
 
+  const formattedWalletNumber = useMemo(() => {
+    if (targetWalletPhone.length === 11) {
+      return `${targetWalletPhone.slice(0, 4)} - ${targetWalletPhone.slice(4, 7)} - ${targetWalletPhone.slice(7, 11)}`;
+    }
+    return targetWalletPhone;
+  }, [targetWalletPhone]);
+
   // 2. Analyze Available Packages and Balance Eligibility
   const currentBalance = Number(garage?.balance || 0);
   const hasMonthlySubs = Boolean(garage?.hasMonthlySubscribers);
@@ -142,13 +149,14 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
 
       {/* Clean Egyptian description / 2-step structured layout */}
       {isBalanceDepleted ? (
-        <div className="mb-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-          <p>حوّل المبلغ الذي تريد إضافته إلى محفظة الإدارة، ثم اتصل بنا لتأكيد التحويل وإضافة الرصيد.</p>
-          <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/60 px-3 py-2">
+        <div className="mb-5 space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+          <p>حوّل الرصيد الذي تريد إضافته في محفظتك، ثم اتصل بنا لتأكيد التحويل وإضافة الرصيد.</p>
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/60 p-3">
             <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">رقم محفظة الإدارة</div>
-            <div className="mt-0.5 font-mono text-base font-black text-slate-900 dark:text-white" dir="ltr">{targetWalletPhone}</div>
+            <div className="mt-1 font-mono text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-wider" dir="ltr">
+              {formattedWalletNumber}
+            </div>
           </div>
-          <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">بعد التحويل، اذكر المبلغ ورقم المحفظة التي أرسلت منها.</p>
         </div>
       ) : hasEnoughBalanceForAny ? (
         <div className="mb-5 space-y-1.5 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">

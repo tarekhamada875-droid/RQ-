@@ -52,7 +52,6 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
             <div className={`flex flex-col sm:flex-row justify-between items-center gap-4 ${adminLang === 'en' ? 'sm:flex-row-reverse' : ''}`}>
               <div className="flex items-center gap-4">
                 <span className="text-sm font-semibold text-slate-900 dark:text-white">{t('قائمة الجراجات')}</span>
-                <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">({displayedGarages.length})</span>
               </div>
               <div className="relative w-full sm:w-64">
                 <Search className={`absolute ${adminLang === 'en' ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-3.5 h-3.5`} />

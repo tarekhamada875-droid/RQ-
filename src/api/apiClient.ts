@@ -159,6 +159,14 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   if (contentType && !contentType.includes('application/json')) {
     const text = await response.text().catch(() => '');
     console.error(`[ApiClient] Received non-JSON response from ${endpoint} (Correlation ID: ${serverCorrelationId}):`, text);
+    if (response.status === 429 || text.toLowerCase().includes('rate exceeded') || text.toLowerCase().includes('too many requests')) {
+      throw new ApiError('تم تجاوز حد الطلبات المسموح به مؤقتاً. يرجى الانتظار قليلاً.', {
+        code: 'RATE_LIMIT_EXCEEDED',
+        status: 429,
+        correlationId: serverCorrelationId,
+        cause: text
+      });
+    }
     const message = text.includes('FUNCTION_INVOCATION_FAILED')
       ? `تعذر تشغيل خدمة الخادم على منصة الاستضافة (ID: ${serverCorrelationId})`
       : `استجابة غير صالحة من الخادم (ID: ${serverCorrelationId})`;

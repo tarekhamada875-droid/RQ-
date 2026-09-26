@@ -44,12 +44,6 @@ export const AdminOverviewView = memo(({
     const activeGarages = allGarages.filter(g => !g.isLocked && g.status !== 'pending').length;
     const lockedGarages = allGarages.filter(g => g.isLocked).length;
     
-    // Total cars currently parked inside ALL garages
-    const currentCarsInside = allGarages.reduce((sum, g) => {
-      const activeCarsCount = typeof g.carsInside === 'number' ? Math.max(0, g.carsInside) : (g.activePlates ? Object.keys(g.activePlates).length : 0);
-      return sum + activeCarsCount;
-    }, 0);
-
     const totalAdminRevenue = allGarages.reduce((sum, g) => sum + (g.totalAdminRevenue || 0), 0);
 
     // Expiring soon garages count
@@ -62,7 +56,6 @@ export const AdminOverviewView = memo(({
       totalGarages,
       activeGarages,
       lockedGarages,
-      currentCarsInside,
       totalAdminRevenue,
       expiringSoonCount
     };
@@ -127,8 +120,8 @@ export const AdminOverviewView = memo(({
         )}
       </div>
 
-      {/* 3 High-Impact Compact Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* High-Impact Metric Cards */}
+      <div className={`grid grid-cols-1 ${!isSupervisor ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-4`}>
         {/* Metric 1: System Net Revenue */}
         {!isSupervisor && (
           <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 p-4 rounded-3xl transition-all shadow-sm flex items-center justify-between gap-3">
@@ -150,17 +143,6 @@ export const AdminOverviewView = memo(({
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 font-mono font-black text-xl">
             {systemMetrics.activeGarages}
-          </div>
-        </div>
-
-        {/* Metric 3: Total Cars Parked Currently */}
-        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-purple-500/50 p-4 rounded-3xl transition-all shadow-sm flex items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <span className="text-xs font-bold text-slate-400 block">السيارات بالداخل الآن</span>
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400">سيارات متواجدة حالياً</span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 font-mono font-black text-xl">
-            {systemMetrics.currentCarsInside}
           </div>
         </div>
       </div>

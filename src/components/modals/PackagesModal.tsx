@@ -360,21 +360,24 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
                     </div>
 
                     {/* Left: Clean Price Pill Display */}
-                    <div className="text-left shrink-0 font-mono">
-                      <div className="flex items-baseline justify-end gap-1">
+                    <div className="text-left shrink-0">
+                      <div className="flex items-baseline justify-end gap-1 font-mono">
                         <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-amber-400">
                           {formatNumber(effectivePrice)}
                         </span>
-                        <span className="text-xs font-black text-slate-500 dark:text-amber-400/80">ج.م</span>
+                        <span className="text-xs font-black text-slate-500 dark:text-amber-400/80 font-sans">ج.م</span>
                       </div>
                       
                       {hasDiscount && (
-                        <div className="flex items-center justify-end gap-1.5 mt-0.5 text-[11px] font-bold">
-                          <span className="text-red-500 dark:text-red-400 line-through">
-                            {formatNumber(displayBasePrice)}
-                          </span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-mono">
-                            (-{pkg.discountType === 'percentage' ? `${pkg.discountValue}%` : `${pkg.discountValue}ج.م`})
+                        <div className="flex flex-col items-end gap-1 mt-1">
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                            <span className="text-[10px]">بدلاً من</span>
+                            <span className="line-through font-mono">
+                              {formatNumber(displayBasePrice)} ج.م
+                            </span>
+                          </div>
+                          <span className="inline-block text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            خصم {pkg.discountType === 'percentage' ? `${pkg.discountValue}%` : `${pkg.discountValue} ج.م`}
                           </span>
                         </div>
                       )}

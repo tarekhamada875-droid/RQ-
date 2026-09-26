@@ -224,13 +224,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <Zap className="w-4 h-4" />
               <span>{t('أسعار الاشتراكات')}</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                activeTab === 'packages'
-                  ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
-                  : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-              }`}>
-                {packages.length}
-              </span>
             </button>
 
             {/* Tab 5: People (Delegates, Supervisors) */}
@@ -245,13 +238,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <Users className="w-4 h-4" />
               <span>{t('الأشخاص')}</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                activeTab === 'delegates' || activeTab === 'supervisors'
-                  ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
-                  : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-              }`}>
-                {delegates.length + supervisors.length}
-              </span>
             </button>
 
             {/* Tab 6: Fair-Use (الاستخدام العادل) */}
@@ -266,15 +252,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <Zap className="w-4 h-4" />
               <span>{t('الاستخدام العادل')}</span>
-              {unlimitedGarages.length > 0 && (
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                  activeTab === 'fair_use'
-                    ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                }`}>
-                  {unlimitedGarages.length}
-                </span>
-              )}
             </button>
 
             {/* Tab 7: Settings */}
