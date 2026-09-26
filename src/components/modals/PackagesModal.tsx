@@ -78,7 +78,7 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
   }, [availableDurations, selectedDurationFilter, rawList, hasMonthlySubscribers]);
 
   const getDurationLabel = (d: number) => {
-    if (d === 1) return 'يومي';
+    if (d === 1) return '1 يوم';
     if (d === 7) return 'أسبوعي';
     if (d === 15) return '15 يوم';
     if (d === 30) return 'شهري';
