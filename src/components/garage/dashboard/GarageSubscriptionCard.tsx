@@ -40,9 +40,9 @@ export const GarageSubscriptionCard = memo(({
           hasWarning ? 'py-2 md:py-4 px-3 md:px-6' : 'py-2.5 md:py-6 px-4 md:px-6'
         } rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden ${
           isUrgentRed || remainingDays <= 0
-            ? 'bg-slate-900 border-red-500/50'
+            ? 'bg-rose-50/80 dark:bg-slate-900 border-rose-200 dark:border-red-500/50'
             : isWarningYellow
-              ? 'bg-slate-900 border-amber-500/50'
+              ? 'bg-amber-50/80 dark:bg-slate-900 border-amber-200 dark:border-amber-500/50'
               : 'bg-[#faf9f6] dark:bg-slate-900 border-slate-200 dark:border-slate-800'
         }`}
       >
@@ -57,9 +57,9 @@ export const GarageSubscriptionCard = memo(({
               hasWarning ? 'text-lg md:text-3xl gap-1.5' : 'text-2xl md:text-4xl gap-2'
             } font-black transition-colors duration-300 flex items-center ${
               isUrgentRed || remainingDays <= 0
-                ? 'text-red-500'
+                ? 'text-rose-600 dark:text-red-500'
                 : isWarningYellow
-                  ? 'text-amber-400'
+                  ? 'text-amber-600 dark:text-amber-400'
                   : 'text-slate-900 dark:text-slate-100'
             }`}
           >
@@ -88,13 +88,13 @@ export const GarageSubscriptionCard = memo(({
 
         {/* Subtle Footer Warning if Urgent or Very close */}
         {(isUrgentRed || remainingDays <= 0) && (
-          <div className="mt-1 bg-red-500/10 border border-red-500/20 text-red-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
+          <div className="mt-1 bg-rose-100 dark:bg-red-500/10 border border-rose-200 dark:border-red-500/20 text-rose-700 dark:text-red-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
             {remainingDays <= 0 ? 'منتهي' : 'ينتهي قريباً جداً'}
           </div>
         )}
         {(isWarningYellow && !isUrgentRed && remainingDays === 1) && (
-          <div className="mt-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
+          <div className="mt-1 bg-amber-100 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-500 px-2.5 py-0.5 rounded-lg text-[9px] md:text-xs font-bold z-10 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
             يجب الشحن اليوم
           </div>
