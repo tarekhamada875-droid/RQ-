@@ -10,13 +10,25 @@ import {
   orderBy, 
   limit
 } from 'firebase/firestore';
-import type { Delegate, RechargeRequest, ActivityLog } from '../types';
+import type { Delegate, Garage, RechargeRequest, ActivityLog } from '../types';
 import { safeDate } from '../utils';
 import { validateRechargeRequest } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
+export interface DelegateDashboardData {
+  delegate: Delegate;
+  garages: Garage[];
+  requests: RechargeRequest[];
+}
+
 export const delegateService = {
+  getDashboardData: async (delegateId: string): Promise<DelegateDashboardData> => {
+    const response = await apiFetch<DelegateDashboardData & { success: boolean }>('/api/delegates/dashboard');
+    if (response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
+    return response;
+  },
+
   addDelegate: async (data: Omit<Delegate, 'id'>) => {
     try {
       const res = await apiFetch('/api/delegates/create', {

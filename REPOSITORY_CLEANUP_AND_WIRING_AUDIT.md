@@ -10,6 +10,12 @@ The checkpointed recovery plan remains necessary, but it should be executed as a
 
 The dominant confirmed defect is not missing UI. It is that some protected state transitions still have browser Firestore write paths while the backend also owns the same authority. The repair should preserve the owner-approved UI workflows while changing the service implementation beneath them to use the existing API authority.
 
+### Delegate dashboard wiring repair — 2026-09-27
+
+The delegate dashboard's garage and recharge-request list listeners were not permitted by the deployed Firestore rules: delegates may read their own document, but collection `list` access for `garages` and `recharge_requests` is intentionally restricted. The listeners therefore failed and left the dashboard's garage count, pending count, and commission inputs empty/zero.
+
+The existing UI was preserved. A scoped `GET /api/delegates/dashboard` endpoint now reads the authenticated delegate's own record, garages created/referred by that delegate, and recharge requests through the server Admin SDK. The frontend refreshes this read model on entry and every 15 seconds, and no longer starts the denied browser list listeners. The endpoint derives scope from the authenticated session and does not accept a client-supplied delegate ID.
+
 ## Baseline verified before cleanup
 
 - Repository was synchronized at `a8096b5` before this cleanup branch.
@@ -93,7 +99,7 @@ The API client correctly attaches Firebase ID tokens, correlation IDs, operation
 
 ### Display reads/listeners remain in Firestore
 
-The frontend uses Firestore listeners and reads for display synchronization across garages, vehicles, subscribers, staff, delegates, supervisors, packages, activity logs, announcements, and configuration. This can remain if the rules allow the read and the data is treated as a read model, not an authorization decision.
+The frontend uses Firestore listeners and reads for display synchronization across garages, vehicles, subscribers, staff, delegates, supervisors, packages, activity logs, announcements, and configuration. This can remain if the rules allow the read and the data is treated as a read model, not an authorization decision. Delegate-scoped garage and recharge-request lists are now the explicit exception: they use the server dashboard read because Firestore list rules correctly deny those queries.
 
 ### Confirmed browser write paths requiring the next wiring slice
 

@@ -132,10 +132,25 @@ export function useGarageSync({
   useEffect(() => {
     if (!isAuthReady || !user || !delegate || view !== 'delegate_dashboard') return;
 
-    const unsub = firestoreService.subscribeToDelegateRechargeRequests(delegate.id, (requests) => {
-      setDelegateRequests(requests);
-    });
-    return () => unsub();
+    let cancelled = false;
+    const loadDashboard = async () => {
+      try {
+        const data = await firestoreService.getDashboardData(delegate.id);
+        if (cancelled) return;
+        setDelegate(data.delegate);
+        setAllGarages(data.garages as Garage[]);
+        setDelegateRequests(data.requests);
+      } catch (err) {
+        console.error('[useGarageSync] Failed to load delegate dashboard:', err);
+      }
+    };
+
+    void loadDashboard();
+    const refresh = window.setInterval(loadDashboard, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refresh);
+    };
   }, [isAuthReady, user, delegate, view]);
 
   // Sync packages independently (prevents redundant re-subscribing on view changes)
@@ -157,9 +172,7 @@ export function useGarageSync({
   useEffect(() => {
     if (!isSessionReady || !isAuthReady || !user || (view !== 'admin_dashboard' && view !== 'admin_garage_details' && view !== 'admin_delegate_details' && view !== 'garage' && view !== 'delegate_dashboard')) return;
 
-    const unsubGarages = (view === 'delegate_dashboard' && delegate?.id)
-      ? firestoreService.subscribeToDelegateGarages(delegate.id, setAllGarages)
-      : (view === 'admin_dashboard' || view === 'admin_garage_details') 
+    const unsubGarages = (view === 'admin_dashboard' || view === 'admin_garage_details')
       ? firestoreService.subscribeToGarages(setAllGarages)
       : () => {};
     
@@ -175,9 +188,7 @@ export function useGarageSync({
       ? firestoreService.subscribeToGarage(garage.id, setGarage)
       : () => {};
 
-    const unsubCurrentDelegate = (view === 'delegate_dashboard' && delegate?.id)
-      ? firestoreService.subscribeToDelegate(delegate.id, setDelegate)
-      : () => {};
+    const unsubCurrentDelegate = () => {};
     
     return () => {
       unsubGarages();
@@ -211,7 +222,7 @@ export function useGarageSync({
 
   const delegateGarages = useMemo(() => {
     if (!delegate) return [];
-    return allGarages.filter(g => g.createdByDelegateId === delegate.id);
+    return allGarages.filter(g => g.createdByDelegateId === delegate.id || g.referrerId === delegate.id);
   }, [allGarages, delegate]);
 
   const sortedPackages = useMemo(() => {
