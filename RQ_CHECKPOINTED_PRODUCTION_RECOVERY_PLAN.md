@@ -1,9 +1,9 @@
 # RQ Checkpointed Production Recovery Plan
 
-**Date:** 2026-09-25  
-**Status:** Ready for controlled execution  
-**Owner:** RQ project owner + Manus agents  
-**Production source of truth:** `main`  
+**Date:** 2026-09-25
+**Status:** Ready for controlled execution
+**Owner:** RQ project owner + Manus agents
+**Production source of truth:** `main`
 **Current production commit:** `a8096b5349df6b890d830f04ccb99febb68aac9e`
 
 ## 1. The decision in plain language
@@ -26,9 +26,9 @@ The backend remains authoritative for:
 - subscriptions, balances, manual credits, and financial ledgers;
 - idempotency, transactions, audit events, and operational policy.
 
-### UI/UX preservation contract
+### UI/UX change contract
 
-The existing UI and UX are part of the product requirements. Checkpoints may repair API clients, service methods, data adapters, error handling, loading behavior, and backend routes underneath the current screens, but they must not redesign, remove, rename, or add user-facing features. Any visual or interaction change requires a separate explicit request. A checkpoint that changes component structure must prove that the rendered screens, navigation, labels, controls, and user workflow remain equivalent.
+The existing UI and UX remain protected by default. Checkpoints may repair API clients, service methods, data adapters, error handling, loading behavior, and backend routes underneath the current screens. A redesign, feature removal, label change, or workflow change requires an explicit owner request. The owner explicitly approved the product changes published in commits `726160c`, `08574c1`, `0d848da`, and `3ea0d86`: a 24-hour session timeout, fixed 100 EGP delegate commission policy, 15-day referral eligibility and expiry extension, rewards-screen removal, and the related admin/dashboard UI redesign. Future changes must continue to distinguish approved product evolution from unrequested redesign.
 
 Functional programming is a **design rule inside the backend**, not a reason to replace infrastructure:
 
@@ -56,9 +56,9 @@ However:
 
 ### Firebase checkpoint F0 — billing and database identity
 
-**Owner:** Project owner (account-level action)  
-**Agent role:** verify configuration and update documentation only  
-**Allowed:** read project configuration, update the plan/checklist  
+**Owner:** Project owner (account-level action)
+**Agent role:** verify configuration and update documentation only
+**Allowed:** read project configuration, update the plan/checklist
 **Forbidden:** changing billing, deleting databases, migrating data, or changing the database identifier automatically
 
 **Exit evidence:**

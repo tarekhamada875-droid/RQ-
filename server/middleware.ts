@@ -331,7 +331,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       if (secSnap.exists) {
         const secData = secSnap.data() || {};
         if (secData.isActive) {
-          // Check session freshness (1-hour inactivity timeout)
+          // Check session freshness (24-hour inactivity timeout for persistent shift sessions)
           const rawLastActive = secData.lastActive;
           const lastActive = rawLastActive ? new Date(rawLastActive.toDate ? rawLastActive.toDate() : rawLastActive).getTime() : 0;
           if (!lastActive || Date.now() - lastActive > SESSION_TIMEOUT_MS) {

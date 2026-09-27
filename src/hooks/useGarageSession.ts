@@ -4,12 +4,12 @@ import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Garage, Staff, Supervisor } from '../types';
-import { 
-  getCanonicalSessionId, 
-  claimEntitySession, 
-  releaseEntitySession, 
-  refreshEntitySession, 
-  type EntityRole 
+import {
+  getCanonicalSessionId,
+  claimEntitySession,
+  releaseEntitySession,
+  refreshEntitySession,
+  type EntityRole
 } from '../services/authSessionService';
 import { signOut } from 'firebase/auth';
 
@@ -318,7 +318,7 @@ export function useGarageSession({
         }
       };
 
-      // 5-minute heartbeat interval is fully safe with 15-minute session timeout and significantly reduces Firebase Spark write quota
+      // 5-minute heartbeat interval is safe with the 24-hour inactivity timeout and reduces Firebase Spark write quota
       heartbeatTimer = setInterval(sendHeartbeat, 300000);
 
       visibilityHandler = () => {

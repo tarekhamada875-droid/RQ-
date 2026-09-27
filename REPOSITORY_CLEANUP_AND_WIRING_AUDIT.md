@@ -1,14 +1,14 @@
 # Repository Cleanup and Frontend–Backend Wiring Audit
 
-**Date:** 2026-09-25  
-**Branch:** `chore/repository-cleanup-wiring-audit`  
-**UI/UX boundary:** preserve the existing screens, visual design, navigation, and user flows; this audit does not add or remove product features.
+**Date:** 2026-09-25
+**Branch:** `main`
+**UI/UX boundary:** preserve the existing screens, visual design, navigation, and user flows by default. The owner has explicitly approved the product/UI changes in commits `726160c`, `08574c1`, `0d848da`, and `3ea0d86`; those changes are now treated as intentional requirements rather than unauthorized redesign.
 
 ## Conclusion
 
-The checkpointed recovery plan is necessary, but it should be executed as a **wiring and authority repair**, not as a redesign or rewrite. The app has a functioning React/Vite frontend, Express/Railway backend, Firebase Auth/Firestore integration, production deployment configuration, and a passing automated baseline.
+The checkpointed recovery plan remains necessary, but it should be executed as a **wiring and authority repair around the owner-approved product direction**, not as an unrequested rewrite. The app has a functioning React/Vite frontend, Express/Railway backend, Firebase Auth/Firestore integration, production deployment configuration, and a passing automated baseline.
 
-The dominant confirmed defect is not missing UI. It is that some protected state transitions still have browser Firestore write paths while the backend also owns the same authority. The repair should keep the UI calls and visual behavior stable while changing the service implementation beneath them to use the existing API authority.
+The dominant confirmed defect is not missing UI. It is that some protected state transitions still have browser Firestore write paths while the backend also owns the same authority. The repair should preserve the owner-approved UI workflows while changing the service implementation beneath them to use the existing API authority.
 
 ## Baseline verified before cleanup
 
