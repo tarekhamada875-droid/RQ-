@@ -6,7 +6,7 @@ import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempoten
 import { recordDomainEventInTransaction } from '../events';
 import { evaluateFairUseCheckIn } from '../unlimitedFairUse';
 import { calculateVehicleCost } from '../utils';
-import { validateIdempotencyKey, validatePlate } from '../validation';
+import { validateIdempotencyKey, validatePlate, normalizePlateRaw } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from '../deltaProjection';
 import { decideVehicleCheckIn } from '../domain/vehicleCheckIn';
@@ -305,16 +305,26 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
           return;
         }
       }
+      const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
       const garageRef = adminDb.doc(`garages/${garageId}`);
-      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
       const today = getCairoDateKey();
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
 
-      const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
+      let [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
         t.get(garageRef),
         t.get(vehicleRef),
         t.get(dailyStatsRef)
       ]);
+
+      if (!vehicleSnap.exists && canonicalVehicleId !== vehicleId) {
+        const altRef = adminDb.doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
+        const altSnap = await t.get(altRef);
+        if (altSnap.exists) {
+          vehicleRef = altRef;
+          vehicleSnap = altSnap;
+        }
+      }
 
       const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
       const vehicleData = vehicleSnap.exists ? vehicleSnap.data() || {} : {};
@@ -448,15 +458,25 @@ router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
       }
       const todayYMD = getCairoDateKey();
       const operationId = createOperationId(garageId, idempotencyKey || undefined);
+      const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
       const garageRef = adminDb.doc(`garages/${garageId}`);
-      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
 
-      const [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
+      let [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
         t.get(garageRef),
         t.get(vehicleRef),
         t.get(dailyStatsRef)
       ]);
+
+      if (!vehicleDoc.exists && canonicalVehicleId !== vehicleId) {
+        const altRef = adminDb.doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
+        const altSnap = await t.get(altRef);
+        if (altSnap.exists) {
+          vehicleRef = altRef;
+          vehicleDoc = altSnap;
+        }
+      }
 
       if (!garageDoc.exists) throw new Error('GARAGE_NOT_FOUND');
       if (!vehicleDoc.exists) throw new Error('VEHICLE_NOT_FOUND');
