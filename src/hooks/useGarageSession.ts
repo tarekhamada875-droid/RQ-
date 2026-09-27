@@ -68,8 +68,14 @@ export function useGarageSession({
     };
   }, []);
 
+  // Track intentional manual logout vs remote kick
+  const isDeliberateLogoutRef = useRef<boolean>(false);
+
   // Logout handler
   const handleLogout = useCallback(async (isRemoteKicked: boolean = false) => {
+    if (!isRemoteKicked) {
+      isDeliberateLogoutRef.current = true;
+    }
     try {
       if (!isRemoteKicked && auth.currentUser) {
         let activeRole: EntityRole | null = null;
@@ -135,6 +141,7 @@ export function useGarageSession({
   const lastLogoutToastRef = useRef<number>(0);
 
   const showLogoutToastOnce = useCallback((msg: string) => {
+    if (isDeliberateLogoutRef.current) return;
     const now = Date.now();
     if (now - lastLogoutToastRef.current > 3000) {
       lastLogoutToastRef.current = now;
@@ -145,6 +152,7 @@ export function useGarageSession({
   // API Session Expiration Listener
   useEffect(() => {
     const handleApiSessionExpired = (e: any) => {
+      if (isDeliberateLogoutRef.current) return;
       console.warn('[Session] Global api-session-expired event detected. Triggering forced logout:', e.detail);
       const detail = e.detail || {};
       const msg = detail.error || 'انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً';
@@ -181,6 +189,7 @@ export function useGarageSession({
     let visibilityHandler: (() => void) | null = null;
 
     const runCoordinator = async () => {
+      isDeliberateLogoutRef.current = false;
       let currentUser = auth.currentUser;
       if (!currentUser) {
         try {
@@ -336,6 +345,7 @@ export function useGarageSession({
       if (docCollection && activeEntityId) {
         const entityDocRef = doc(db, docCollection, activeEntityId);
         unsubSnapshot = onSnapshot(entityDocRef, (snapshot) => {
+          if (isDeliberateLogoutRef.current) return;
           if (!snapshot.exists()) {
             showToast('عذراً، تم حذف أو تعطيل هذا الحساب من قبل مدير النظام.', 'error');
             handleLogout(true);
@@ -344,7 +354,11 @@ export function useGarageSession({
           const data = snapshot.data();
           const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
           const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
-          if (!isSessionActive && (data?.currentSessionId || activeIds.length > 0)) {
+          
+          const hasOtherActiveSession = (data?.currentSessionId && data.currentSessionId !== sessionId) || 
+                                       activeIds.some((id: string) => id && id !== sessionId);
+
+          if (!isSessionActive && hasOtherActiveSession && !isDeliberateLogoutRef.current) {
             showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
             handleLogout(true);
           }

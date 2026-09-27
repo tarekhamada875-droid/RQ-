@@ -45,7 +45,7 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
     if (!garage.id || processingId) return;
     setProcessingId(garage.id);
     try {
-      await adminService.updateTrialDecision(garage.id, null);
+      await adminService.updateTrialDecision(garage.id, 'dismissed');
       showToast?.('تمت إزالة العميل من قائمة المتابعة.', 'info');
     } catch (err) {
       console.error('Error clearing trial decision:', err);

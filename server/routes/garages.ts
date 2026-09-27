@@ -342,7 +342,7 @@ router.post('/trial-decision', requireAuth, async (req: AuthRequest, res: any) =
     if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
     const validatedGarageId = validateId(garageId, 'garageId', true);
 
-    if (trialDecision !== null && trialDecision !== 'continued' && trialDecision !== 'declined') {
+    if (trialDecision !== null && !['continued', 'declined', 'dismissed', 'resolved'].includes(trialDecision)) {
       return res.status(400).json({ success: false, error: 'INVALID_TRIAL_DECISION' });
     }
     if (!canUpdateTrialDecision(req.user, validatedGarageId, trialDecision)) {

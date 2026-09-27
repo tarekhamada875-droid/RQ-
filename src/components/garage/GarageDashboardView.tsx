@@ -118,24 +118,6 @@ export const GarageDashboardView = memo((props: any) => {
     return () => clearInterval(timer);
   }, []);
 
-  const prevBalanceRef = useRef<number>(garage?.balance || 0);
-  useEffect(() => {
-    if (garage?.balance !== undefined) {
-      if (garage.balance > prevBalanceRef.current) {
-        const diff = garage.balance - prevBalanceRef.current;
-        if (showToast) {
-          showToast(`تم إضافة ${diff} ج.م للرصيد بنجاح`, 'success');
-        }
-        try {
-          soundManager.play('checkIn');
-        } catch {
-          // Audio feedback is optional
-        }
-      }
-      prevBalanceRef.current = garage.balance;
-    }
-  }, [garage?.balance, showToast]);
-
   const packageDays = useMemo(() => {
     if (!garage) return 30;
     return packageIdToDays(garage.activePackageId || garage.packageId || '', garage.activePackageName || garage.packageName || garage.lastPackageName || '');

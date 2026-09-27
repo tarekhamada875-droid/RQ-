@@ -126,9 +126,6 @@ export const PackagesModal: React.FC<PackagesModalProps> = memo(({
     try {
       const result = await garageService.garageSelfSubscribe(effectiveGarageId, pendingPackage.id, pendingPackage);
       setSubscribeSuccess(true);
-      if (showToast) {
-        showToast(`تم تفعيل باقة ${pendingPackage.name} وخصم المبلغ من رصيد المحفظة بنجاح.`, 'success');
-      }
       if (onSubscribedSuccess) {
         onSubscribedSuccess(result);
       }

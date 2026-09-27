@@ -730,7 +730,7 @@ export const adminService = {
     }
   },
 
-  updateTrialDecision: async (garageId: string, trialDecision: 'continued' | 'declined' | null): Promise<void> => {
+  updateTrialDecision: async (garageId: string, trialDecision: 'continued' | 'declined' | 'dismissed' | 'resolved' | null): Promise<void> => {
     try {
       await apiFetch('/api/garages/trial-decision', {
         method: 'POST',

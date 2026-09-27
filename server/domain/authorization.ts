@@ -107,7 +107,7 @@ export function canReleaseSession(input: Readonly<{
 export function canUpdateTrialDecision(
   principal: AuthorizationPrincipal | null | undefined,
   targetGarageId: string,
-  decision: 'continued' | 'declined' | null,
+  decision: 'continued' | 'declined' | 'dismissed' | 'resolved' | null,
 ): boolean {
   if (!principal) return false;
   if (principal.role === 'admin') return true;

@@ -23,12 +23,18 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
 
   if (!garage || isDismissed) return null;
 
-  // Check if subscription/trial is expired and no decision has been recorded yet
+  // 1. Only actual trial garages should ever see the Trial Expiry Survey Modal
+  if (garage.isTrial !== true) {
+    return null;
+  }
+
+  // 2. Check if subscription/trial is expired and no decision has been recorded yet
   const isExpired = isSubscriptionExpired(garage);
-  const hasDecision = !!garage.trialDecision;
+  const localDecision = typeof window !== 'undefined' && garage.id ? localStorage.getItem(`trial_decision_${garage.id}`) : null;
+  const hasDecision = !!garage.trialDecision || !!localDecision;
 
   // Only show modal if expired and no decision made yet, unless submitted in current session
-  if (!isExpired || hasDecision) {
+  if ((!isExpired || hasDecision) && !submittedChoice) {
     return null;
   }
 
@@ -38,6 +44,10 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
     setIsSubmitting(true);
     try {
       await adminService.updateTrialDecision(garage.id, decision);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`trial_decision_${garage.id}`, decision);
+      }
+      garage.trialDecision = decision;
 
       setSubmittedChoice(decision);
       if (decision === 'continued') {

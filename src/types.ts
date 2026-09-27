@@ -98,7 +98,7 @@ export interface Garage {
   activePackageName?: string; // Current package name
   status?: 'pending' | 'approved' | 'rejected';
   isTrial?: boolean; // 15-day free trial indicator
-  trialDecision?: 'continued' | 'declined' | null;
+  trialDecision?: 'continued' | 'declined' | 'dismissed' | 'resolved' | null;
   trialDecisionAt?: any; // Timestamp when decision was made
   unlimitedFairUse?: UnlimitedFairUse | null;
 }

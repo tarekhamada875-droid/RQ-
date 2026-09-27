@@ -11,16 +11,17 @@ vi.mock('../../services/adminService', () => ({
 }));
 
 const mockedUpdateTrialDecision = vi.mocked(adminService.updateTrialDecision);
-const expiredGarage = {
+const createExpiredGarage = (): Garage => ({
   id: 'garage_test',
   name: 'Test Garage',
   isTrial: true,
   balanceExpiry: new Date('2020-01-01T00:00:00.000Z'),
   trialDecision: null
-} as Garage;
+} as Garage);
 
 beforeEach(() => {
   vi.useFakeTimers();
+  localStorage.clear();
   mockedUpdateTrialDecision.mockReset();
   mockedUpdateTrialDecision.mockResolvedValue(undefined);
 });
@@ -28,6 +29,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.runOnlyPendingTimers();
   vi.useRealTimers();
+  localStorage.clear();
 });
 
 async function submitAndFlush(button: HTMLElement) {
@@ -45,7 +47,7 @@ async function advanceDismissDelay() {
 
 describe('TrialExpiryModal', () => {
   it('records continuation and dismisses after showing the success state without onClose', async () => {
-    render(<TrialExpiryModal garage={expiredGarage} />);
+    render(<TrialExpiryModal garage={createExpiredGarage()} />);
 
     await submitAndFlush(screen.getByRole('button', { name: /نعم، أرغب في الاستمرار والتجديد/ }));
 
@@ -57,7 +59,7 @@ describe('TrialExpiryModal', () => {
   });
 
   it('confirms decline, records it, and dismisses after showing the success state', async () => {
-    render(<TrialExpiryModal garage={expiredGarage} />);
+    render(<TrialExpiryModal garage={createExpiredGarage()} />);
 
     fireEvent.click(screen.getByRole('button', { name: /لا، لا أرغب في الاستمرار/ }));
     await submitAndFlush(screen.getByRole('button', { name: /تأكيد عدم الاستمرار/ }));
@@ -72,13 +74,25 @@ describe('TrialExpiryModal', () => {
   it('keeps the decision controls available and reports an error when saving fails', async () => {
     const showToast = vi.fn();
     mockedUpdateTrialDecision.mockRejectedValueOnce(new Error('FORBIDDEN'));
-    render(<TrialExpiryModal garage={expiredGarage} showToast={showToast} />);
+    render(<TrialExpiryModal garage={createExpiredGarage()} showToast={showToast} />);
 
     await submitAndFlush(screen.getByRole('button', { name: /نعم، أرغب في الاستمرار والتجديد/ }));
 
     expect(showToast).toHaveBeenCalledWith('حدث خطأ أثناء حفظ اختيارك، يرجى المحاولة مرة أخرى.', 'error');
     expect(screen.getByRole('button', { name: /نعم، أرغب في الاستمرار والتجديد/ })).toBeEnabled();
     expect(screen.getByText('انتهت الفترة التجريبية للجراج')).toBeInTheDocument();
+  });
+
+  it('does not render for non-trial garages even if expired', () => {
+    const nonTrialGarage = { ...createExpiredGarage(), isTrial: false };
+    render(<TrialExpiryModal garage={nonTrialGarage} />);
+    expect(screen.queryByText('انتهت الفترة التجريبية للجراج')).not.toBeInTheDocument();
+  });
+
+  it('does not render when trialDecision has already been made', () => {
+    const decidedGarage = { ...createExpiredGarage(), trialDecision: 'continued' as const };
+    render(<TrialExpiryModal garage={decidedGarage} />);
+    expect(screen.queryByText('انتهت الفترة التجريبية للجراج')).not.toBeInTheDocument();
   });
 });
 
