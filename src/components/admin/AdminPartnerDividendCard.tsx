@@ -148,7 +148,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-black text-slate-700 dark:text-slate-300">
-                  عدد الشركاء المقترحين مع طارق:
+                  عدد الشركاء الجدد (إلى جانب طارق):
                 </label>
                 <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                   حصة كل شريك: {partnerSharePercent}%
@@ -180,7 +180,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                    عدد الجراجات المشتركة المستهدفة:
+                    عدد الجراجات المشتركة بالخدمة (المستهدفة):
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -270,7 +270,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
 
             <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/30 space-y-1">
               <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 block">
-                صافي الأرباح للتوزيع ({100 - operationalCostRate}%)
+                صافي الأرباح القابلة للتوزيع ({100 - operationalCostRate}%)
               </span>
               <div className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
                 {Math.round(financials.netProfitPool).toLocaleString()}{' '}

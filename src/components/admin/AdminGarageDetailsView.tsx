@@ -138,10 +138,14 @@ export const AdminGarageDetailsView = memo(({
     if (!selectedTopupAmount || selectedTopupAmount <= 0) return;
     setIsLoading(true);
     const { showToast } = useAppStore.getState();
+    const prevBalance = Number(selectedGarageForDetails.balance || 0);
+    const addedAmt = Number(selectedTopupAmount);
+    const expectedNewBalance = prevBalance + addedAmt;
+
     try {
       await firestoreService.adminTopupGarageBalance(
         selectedGarageForDetails.id,
-        selectedTopupAmount
+        addedAmt
       );
 
       try {
@@ -152,8 +156,8 @@ export const AdminGarageDetailsView = memo(({
 
       showToast?.(
         adminLang === 'en'
-          ? `Successfully added ${selectedTopupAmount} EGP to balance`
-          : `تم إضافة ${selectedTopupAmount} ج.م للرصيد بنجاح`,
+          ? `Added ${addedAmt} EGP to ${selectedGarageForDetails.name}. New Balance: ${expectedNewBalance} EGP`
+          : `تم إضافة ${addedAmt} ج.م للجراج (${selectedGarageForDetails.name}) بنجاح! الرصيد الجديد: ${expectedNewBalance} ج.م`,
         'success'
       );
 
@@ -168,13 +172,15 @@ export const AdminGarageDetailsView = memo(({
       setTimeout(() => {
         setShowTopupModal(false);
         setIsTopupSuccess(false);
+        setSelectedTopupAmount(null);
       }, 1400);
     } catch (e: any) {
       console.error('Balance top-up failed:', e);
-      alert(
+      showToast?.(
         adminLang === 'en'
           ? `Top-up failed: ${e?.message || 'Unknown error'}`
-          : `فشل شحن الرصيد: ${e?.message || 'خطأ غير معروف'}`
+          : `فشل شحن الرصيد: ${e?.message || 'خطأ غير معروف'}`,
+        'error'
       );
     } finally {
       setIsLoading(false);

@@ -28,7 +28,7 @@ interface AdminGarageFinancialsSectionProps {
   subscriberFlatFee: number;
   onToggleMonthlySubscribers: () => Promise<void>;
   selectedTopupAmount: number | null;
-  setSelectedTopupAmount: (amt: number) => void;
+  setSelectedTopupAmount: (amt: any) => void;
   onOpenTopupModal: () => void;
   allGarages: Garage[];
   onReferredByChange: (refId: string) => Promise<void>;
@@ -204,6 +204,37 @@ export const AdminGarageFinancialsSection = memo(({
               </button>
             );
           })}
+        </div>
+
+        {/* Custom Amount Input */}
+        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+          <label className="text-xs font-black text-slate-700 dark:text-slate-300 shrink-0">
+            {t('أو أدخل مبلغاً مخصصاً:')}
+          </label>
+          <div className="flex-1 flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 focus-within:border-amber-500 transition-all">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder={t('مثال: 350')}
+              value={selectedTopupAmount && !(BALANCE_PRESET_AMOUNTS as readonly number[]).includes(selectedTopupAmount) ? selectedTopupAmount : ''}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setSelectedTopupAmount(val ? Number(val) : 0);
+              }}
+              className="w-full font-mono font-black text-sm bg-transparent text-slate-900 dark:text-white outline-none"
+            />
+            <span className="text-xs font-bold text-slate-400 shrink-0">{t('ج.م')}</span>
+          </div>
+          {selectedTopupAmount ? (
+            <button
+              type="button"
+              onClick={() => setSelectedTopupAmount(0)}
+              className="px-2.5 py-1 text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+            >
+              {t('إلغاء')}
+            </button>
+          ) : null}
         </div>
 
         {/* Summary & Submit Action */}

@@ -89,7 +89,8 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
     if (
       hostname === 'parqv2.pages.dev' ||
       hostname === 'parq1.pages.dev' ||
-      hostname === 'rq-acg.pages.dev'
+      hostname === 'rq-acg.pages.dev' ||
+      ((hostname.startsWith('ais-dev-') || hostname.startsWith('ais-pre-')) && hostname.endsWith('.run.app'))
     ) {
       return true;
     }
