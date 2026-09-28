@@ -28,7 +28,14 @@ export const StaffStatsModal: React.FC<StaffStatsModalProps> = memo(({
   });
 
   const getStaffStats = (staffName: string) => {
-    return allTodayVehicles.filter(v => v.staffName === staffName).length;
+    if (staffName === 'مدير الجراج') {
+      const knownStaffNames = new Set(staffList.map(s => s.name?.trim()).filter(Boolean));
+      return allTodayVehicles.filter(v => {
+        const rawName = (v.staffName || '').trim();
+        return !rawName || rawName === 'مدير الجراج' || !knownStaffNames.has(rawName);
+      }).length;
+    }
+    return allTodayVehicles.filter(v => (v.staffName || '').trim() === staffName.trim()).length;
   };
 
   const resolveMonogram = (name: string): string => {

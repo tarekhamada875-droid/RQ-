@@ -28,17 +28,16 @@ export const GarageReportsView = memo(({
   onClose,
 }: GarageReportsViewProps) => {
   // Manual toggle state
-  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<Vehicle[]>([]);
+  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<Vehicle[]>(() => todayExitedVehicles || []);
   const [localGarage, setLocalGarage] = useState<Garage>(() => garage);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
   const [dashboardSummary, setDashboardSummary] = useState<GarageDashboardSummary | null>(null);
-  const [isStaffPerformanceCollapsed, setIsStaffPerformanceCollapsed] = useState(true);
+  const [isStaffPerformanceCollapsed, setIsStaffPerformanceCollapsed] = useState(false);
 
-  // Keep the detail dataset empty while the staff section is collapsed.
   useEffect(() => {
-    if (!isStaffPerformanceCollapsed) setLocalTodayExitedVehicles(todayExitedVehicles);
-  }, [todayExitedVehicles, isStaffPerformanceCollapsed]);
+    setLocalTodayExitedVehicles(todayExitedVehicles || []);
+  }, [todayExitedVehicles]);
 
   useEffect(() => {
     setLocalGarage(garage);
@@ -74,10 +73,7 @@ export const GarageReportsView = memo(({
   };
 
   const handleStaffPerformanceToggle = () => {
-    setIsStaffPerformanceCollapsed((collapsed) => {
-      if (collapsed) setLocalTodayExitedVehicles(todayExitedVehicles);
-      return !collapsed;
-    });
+    setIsStaffPerformanceCollapsed((collapsed) => !collapsed);
   };
 
   const formatLastRefreshed = (date: Date) => {
@@ -101,8 +97,13 @@ export const GarageReportsView = memo(({
       'مدير الجراج': { count: 0, revenue: 0 }
     };
     
-    for (let i = 0; i < staffList.length; i++) {
-      staffPerformance[staffList[i].name] = { count: 0, revenue: 0 };
+    const knownStaffNames = new Set<string>();
+    for (let i = 0; i < (staffList || []).length; i++) {
+      const sName = staffList[i]?.name?.trim();
+      if (sName) {
+        staffPerformance[sName] = { count: 0, revenue: 0 };
+        knownStaffNames.add(sName);
+      }
     }
 
     const totalExited = localTodayExitedVehicles.length;
@@ -116,7 +117,15 @@ export const GarageReportsView = memo(({
       const fee = typeof v.totalCost === 'number' ? v.totalCost : 0;
       actualCalculatedTodayRevenue += fee;
 
-      const handler = v.staffName || 'مدير الجراج';
+      const rawName = (v.staffName || '').trim();
+      const isGarageManager = 
+        !rawName || 
+        rawName === 'مدير الجراج' || 
+        rawName === localGarage?.name || 
+        rawName === (localGarage as any)?.ownerName ||
+        !knownStaffNames.has(rawName);
+
+      const handler = isGarageManager ? 'مدير الجراج' : rawName;
       if (!staffPerformance[handler]) {
         staffPerformance[handler] = { count: 0, revenue: 0 };
       }
@@ -157,7 +166,7 @@ export const GarageReportsView = memo(({
           <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
         </button>
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">تقارير وأحصائيات الجراج</h2>
+          <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">تقارير وإحصائيات الجراج</h2>
         </div>
       </div>
 

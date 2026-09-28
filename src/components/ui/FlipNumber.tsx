@@ -8,33 +8,20 @@ interface FlipCardProps {
 
 export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', color = 'default' }) => {
   const digits = value.toString().padStart(size === 'sm' ? 1 : 2, '0').split('');
-  const prevValueRef = React.useRef(value);
-  const [isPulsing, setIsPulsing] = React.useState(false);
-
-  React.useEffect(() => {
-    if (prevValueRef.current !== value) {
-      prevValueRef.current = value;
-      setIsPulsing(true);
-      const timer = setTimeout(() => setIsPulsing(false), 700);
-      return () => clearTimeout(timer);
-    }
-  }, [value]);
 
   return (
     <div 
-      className={`flex gap-1.5 sm:gap-2 items-center justify-center transition-all duration-300 ${
-        isPulsing ? 'scale-110 ring-4 ring-emerald-500/40 rounded-2xl' : 'scale-100'
-      } ${size === 'sm' ? 'p-1' : 'p-2'}`} 
+      className={`flex gap-1.5 sm:gap-2 items-center justify-center ${size === 'sm' ? 'p-1' : 'p-2'}`} 
       dir="ltr"
     >
       {digits.map((digit, index) => (
-        <FlipDigit key={index} digit={digit} size={size} color={color} isPulsing={isPulsing} />
+        <FlipDigit key={index} digit={digit} size={size} color={color} />
       ))}
     </div>
   );
 });
 
-const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', isPulsing = false }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; isPulsing?: boolean }) => {
+const FlipDigit = React.memo(({ digit, size = 'md', color = 'default' }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger' }) => {
   const sizeClasses = {
     sm: 'w-8 h-12 rounded-lg',
     md: 'w-14 h-22 rounded-xl sm:w-18 sm:h-28',
@@ -53,7 +40,7 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', isPulsing
       topBg: 'bg-slate-900 dark:bg-white',
       text: 'text-white dark:text-slate-900',
       border: 'border-slate-800 dark:border-slate-100',
-      sep: 'bg-black/60 dark:bg-slate-200'
+      sep: 'bg-black/40 dark:bg-slate-300'
     },
     success: {
       bg: 'bg-emerald-600 dark:bg-emerald-500',
@@ -75,25 +62,16 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', isPulsing
 
   return (
     <div 
-      className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${
-        isPulsing ? 'border-emerald-500 border-2' : colors.border
-      } transition-all duration-200 select-none`}
+      className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
     >
-      {/* Top half */}
-      <div className={`absolute inset-x-0 top-0 h-1/2 ${colors.topBg} flex items-end justify-center overflow-hidden`}>
-        <span className={`${colors.text} ${fontClasses[size]} font-black font-sans translate-y-1/2 leading-none`}>
-          {digit}
-        </span>
-      </div>
-
-      {/* Bottom half */}
-      <div className={`absolute inset-x-0 bottom-0 h-1/2 ${colors.bg} flex items-start justify-center overflow-hidden`}>
-        <span className={`${colors.text} ${fontClasses[size]} font-black font-sans -translate-y-1/2 leading-none`}>
-          {digit}
-        </span>
-      </div>
+      <span className={`${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}>
+        {digit}
+      </span>
+      {/* Subtle center hairline for clean scoreboard card division */}
+      <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] ${colors.sep} pointer-events-none opacity-40`} />
     </div>
   );
 });
 
 FlipDigit.displayName = 'FlipDigit';
+

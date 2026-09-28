@@ -111,7 +111,7 @@ router.post('/check-in', requireAuth, async (req: AuthRequest, res: any) => {
         console.warn('[Server Check-In] Subscriber lookup failed inside transaction:', subErr);
         throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
       }
-      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
       const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
       const isUnlimited = checkInGarage.dailyCapacity === 0 || checkInGarage.activePackageName.includes('مفتوح');
@@ -333,7 +333,7 @@ router.post('/check-out', requireAuth, async (req: AuthRequest, res: any) => {
       const preflight = decideVehicleCheckOut({ today, cost: 0 }, checkOutGarage, checkOutVehicle);
       if (preflight.ok === false) throw new Error(preflight.error);
 
-      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
+      const resolvedStaffName = req.user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
 
       const cost = calculateVehicleCost(vehicleData, garageData);
       const decision = decideVehicleCheckOut({ today, cost }, checkOutGarage, checkOutVehicle);
