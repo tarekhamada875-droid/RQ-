@@ -15,6 +15,22 @@ import type {
 import { safeDate } from '../utils';
 import { listenerTracker } from '../utils/listenerTracker';
 
+export interface FinancialReportData {
+  grossRechargeTotal: number;
+  walletTopupTotal: number;
+  cashCollectedTotal: number;
+  commissionTotal: number;
+  refundTotal: number;
+  companyNetRevenue: number;
+  historicalSettledTotal: number;
+  currentUnsettledByDelegate: Record<string, number>;
+}
+
+export interface FinancialReportFilters {
+  start: string;
+  end: string;
+}
+
 export const adminService = {
   // Supervisors
   addSupervisor: async (data: Omit<Supervisor, 'id'>) => {
@@ -690,6 +706,13 @@ export const adminService = {
       console.error('Error fetching system config:', error);
       return null;
     }
+  },
+
+  getFinancialReport: async (filters: FinancialReportFilters): Promise<FinancialReportData> => {
+    const params = new URLSearchParams({ start: filters.start, end: filters.end });
+    const response = await apiFetch<{ data?: { report?: FinancialReportData } }>(`/api/reports/financial?${params.toString()}`);
+    if (!response.data?.report) throw new Error('REPORT_DATA_UNAVAILABLE');
+    return response.data.report;
   },
 
   updateSystemConfig: async (config: Partial<SystemConfig>): Promise<void> => {

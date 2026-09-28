@@ -16,6 +16,10 @@ The delegate dashboard's garage and recharge-request list listeners were not per
 
 The existing UI was preserved. A scoped `GET /api/delegates/dashboard` endpoint now reads the authenticated delegate's own record, garages created/referred by that delegate, and recharge requests through the server Admin SDK. The frontend refreshes this read model on entry and every 15 seconds, and no longer starts the denied browser list listeners. The endpoint derives scope from the authenticated session and does not accept a client-supplied delegate ID.
 
+### Partner calculator financial wiring repair — 2026-09-28
+
+The partner calculator no longer treats cumulative garage aggregates as the current month's actual revenue. Its actual mode requests the existing admin-only financial report for the current UTC calendar month and uses the authoritative `cashCollectedTotal` value. The simulation mode remains local and configurable. Both modes are explicitly presented as estimates; the component is not a partner ledger, settlement engine, or accounting source of truth. The payout cards were extracted into `PartnerDividendPayouts.tsx` without changing the surrounding navigation or visual workflow.
+
 ## Baseline verified before cleanup
 
 - Repository was synchronized at `a8096b5` before this cleanup branch.

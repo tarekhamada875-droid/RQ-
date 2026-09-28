@@ -1,25 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Crown, 
-  Users, 
-  TrendingUp, 
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  TrendingUp,
   Sliders, 
   ChevronDown, 
   ChevronUp, 
-  Calculator, 
-  Coins,
-  ShieldCheck,
+  Calculator,
   Building2,
   Sparkles
 } from 'lucide-react';
+import { adminService } from '../../services/adminService';
+import { PartnerDividendPayouts } from './PartnerDividendPayouts';
 
 interface AdminPartnerDividendCardProps {
-  currentSystemRevenue: number;
   currentActiveGarages: number;
 }
 
 export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> = ({
-  currentSystemRevenue,
   currentActiveGarages
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -34,6 +30,39 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
   const [simulatedGarages, setSimulatedGarages] = useState<number>(Math.max(10, currentActiveGarages || 30));
   const [monthlyPackagePrice, setMonthlyPackagePrice] = useState<number>(800);
   const [operationalCostRate, setOperationalCostRate] = useState<number>(40); // 40% standard
+  const [actualRevenue, setActualRevenue] = useState<number | null>(null);
+  const [isActualRevenueLoading, setIsActualRevenueLoading] = useState(false);
+  const [actualRevenueError, setActualRevenueError] = useState(false);
+
+  useEffect(() => {
+    if (!isExpanded || mode !== 'actual') return;
+
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    let isMounted = true;
+
+    setIsActualRevenueLoading(true);
+    setActualRevenueError(false);
+    adminService.getFinancialReport({ start: start.toISOString(), end: end.toISOString() })
+      .then((report) => {
+        if (!isMounted) return;
+        setActualRevenue(report.cashCollectedTotal);
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        console.error('[PartnerDividend] Current-month report unavailable:', error);
+        setActualRevenue(null);
+        setActualRevenueError(true);
+      })
+      .finally(() => {
+        if (isMounted) setIsActualRevenueLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isExpanded, mode]);
 
   // Calculated equity per partner
   const partnerSharePercent = useMemo(() => {
@@ -44,7 +73,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
   // Financial calculations
   const financials = useMemo(() => {
     const isActual = mode === 'actual';
-    const grossRevenue = isActual ? currentSystemRevenue : (simulatedGarages * monthlyPackagePrice);
+    const grossRevenue = isActual ? (actualRevenue ?? 0) : (simulatedGarages * monthlyPackagePrice);
     
     const costPool = (grossRevenue * operationalCostRate) / 100;
     const netProfitPool = Math.max(0, grossRevenue - costPool);
@@ -61,7 +90,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
       totalPartnersPool,
       eachPartnerPayout
     };
-  }, [mode, currentSystemRevenue, simulatedGarages, monthlyPackagePrice, operationalCostRate, partnerCount, FOUNDER_PERCENT, REMAINING_POOL_PERCENT]);
+  }, [mode, actualRevenue, simulatedGarages, monthlyPackagePrice, operationalCostRate, partnerCount, FOUNDER_PERCENT, REMAINING_POOL_PERCENT]);
 
   return (
     <div className="bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/20 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-500/30 rounded-3xl p-5 shadow-sm transition-all">
@@ -77,7 +106,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
                 حاسبة أرباح الشركاء وتوزيع الحصص
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50">
-                حصة المؤسس 52% ثابتة
+                محاكي تقديري — حصة المؤسس 52%
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -89,7 +118,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
         <div className="flex items-center gap-2 self-end sm:self-center">
           {/* Quick Snapshot Badges */}
           <div className="hidden md:flex items-center gap-2 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400">صافي الأرباح:</span>
+            <span className="text-slate-400">صافي الأرباح التقديري:</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-black">
               {Math.round(financials.netProfitPool).toLocaleString()} ج.م
             </span>
@@ -139,7 +168,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
                   }`}
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
-                  <span>البيانات الفعلية الحالية</span>
+                  <span>الإيراد الفعلي لهذا الشهر</span>
                 </button>
               </div>
             </div>
@@ -248,13 +277,23 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
             </div>
           )}
 
+          {mode === 'actual' && (
+            <div className={`text-xs rounded-xl px-3 py-2 border ${actualRevenueError ? 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-800' : 'text-slate-500 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-800/40 dark:border-slate-700'}`}>
+              {isActualRevenueLoading
+                ? 'جارٍ تحميل الإيراد المحصل للشهر الحالي من التقرير المالي المعتمد...'
+                : actualRevenueError
+                  ? 'تعذر تحميل التقرير المالي الحالي. لا تعتبر أرقام هذا الوضع صالحة للتوزيع حتى ينجح التحديث.'
+                  : 'الوضع الفعلي يعرض التحصيلات المسجلة من التقرير المالي المعتمد للشهر الميلادي الحالي.'}
+            </div>
+          )}
+
           {/* High-Level Financial Breakdown Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="text-[11px] font-bold text-slate-400 block">إجمالي التحصيلات (Gross Revenue)</span>
               <div className="text-base font-black font-mono text-slate-900 dark:text-white">
-                {Math.round(financials.grossRevenue).toLocaleString()}{' '}
-                <span className="text-xs font-normal text-slate-400">ج.م/شهر</span>
+                {isActualRevenueLoading ? '...' : Math.round(financials.grossRevenue).toLocaleString()}{' '}
+                <span className="text-xs font-normal text-slate-400">ج.م/{mode === 'actual' ? 'الشهر الحالي' : 'شهر تقديري'}</span>
               </div>
             </div>
 
@@ -274,88 +313,25 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
               </span>
               <div className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
                 {Math.round(financials.netProfitPool).toLocaleString()}{' '}
-                <span className="text-xs font-normal text-emerald-600/70">ج.م/شهر</span>
+                <span className="text-xs font-normal text-emerald-600/70">ج.م/{mode === 'actual' ? 'الشهر الحالي' : 'شهر تقديري'}</span>
               </div>
             </div>
           </div>
 
-          {/* Cap Table & Payouts Cards */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>جدول توزيع الأرباح الشهرية الصافية:</span>
-              </h4>
-              <span className="text-[11px] text-slate-400">
-                إجمالي حصص الشركاء: 100%
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Founder Card (Tarek) - Fixed 52% */}
-              <div className="bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent border-2 border-amber-500/40 p-4 rounded-2xl relative overflow-hidden">
-                <div className="absolute top-2 left-2 text-amber-500/20">
-                  <Crown className="w-12 h-12" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-xs font-black text-slate-900 dark:text-white">
-                    طارق (المؤسس والمطور)
-                  </span>
-                </div>
-                <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-3 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>الحصة الحاكمة: {FOUNDER_PERCENT}% (ثابتة)</span>
-                </div>
-                <div className="pt-2 border-t border-amber-500/20">
-                  <span className="text-[10px] text-slate-400 block mb-0.5">العائد الشهري الصافي المقدر:</span>
-                  <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400">
-                    {Math.round(financials.founderPayout).toLocaleString()}{' '}
-                    <span className="text-xs font-normal text-slate-500">ج.م / شهر</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Partners Dynamic Cards */}
-              {Array.from({ length: partnerCount }).map((_, idx) => (
-                <div 
-                  key={idx}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl space-y-2 relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs font-black text-slate-900 dark:text-white">
-                        شريك {idx + 1}
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                      {partnerSharePercent}%
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400">
-                    {partnerCount === 2 ? 'حصة تشغيلية / تمويلية متساوية' : 'حصة شريك مساهم'}
-                  </p>
-
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">العائد الشهري الصافي المقدر:</span>
-                    <div className="text-xl font-black font-mono text-blue-600 dark:text-blue-400">
-                      {Math.round(financials.eachPartnerPayout).toLocaleString()}{' '}
-                      <span className="text-xs font-normal text-slate-500">ج.م / شهر</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PartnerDividendPayouts
+            financials={financials}
+            partnerCount={partnerCount}
+            partnerSharePercent={partnerSharePercent}
+            founderPercent={FOUNDER_PERCENT}
+            mode={mode}
+          />
 
           {/* Quick Pitch Advice Note */}
           <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-2xl flex items-start gap-2.5">
             <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               <span className="font-black text-emerald-700 dark:text-emerald-400">نصيحة التفاوض مع الشركاء:</span>{' '}
-              تم حجز نسبة <strong>40%</strong> كمخصص تشغيلي لحماية مصاريف المناديب (100 ج.م للباقة المؤهلة) وحسابات السيرفرات وصيانة الطابعات في الموقع. لا تقم بتوزيع الأرباح على إجمالي الإيراد أبداً، بل دائماً بعد خصم المخصص التشغيلي.
+              هذه الحاسبة تقديرية وليست سجل توزيع رسمي. تم حجز نسبة <strong>40%</strong> كمخصص تشغيلي لحماية مصاريف المناديب (100 ج.م للباقة المؤهلة) وحسابات السيرفرات وصيانة الطابعات في الموقع. لا تقم بتوزيع الأرباح على إجمالي الإيراد أبداً، بل دائماً بعد خصم المخصص التشغيلي.
             </div>
           </div>
         </div>

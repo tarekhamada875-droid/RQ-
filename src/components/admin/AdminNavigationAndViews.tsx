@@ -119,10 +119,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
     return allGarages.filter(g => g.trialDecision === 'continued' || g.trialDecision === 'declined').length;
   }, [allGarages]);
 
-  const totalAdminRevenue = React.useMemo(() => {
-    return approvedGarages.reduce((sum, g) => sum + (Number(g.totalAdminRevenue || g.totalRevenue) || 0), 0);
-  }, [approvedGarages]);
-
   return (
     <>
       {/* Top Navigation Bar with Horizontal Scrolling */}
@@ -302,7 +298,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'partners_calculator' ? (
         <div className="animate-in fade-in duration-200">
           <AdminPartnerDividendCard
-            currentSystemRevenue={totalAdminRevenue}
             currentActiveGarages={approvedGarages.length}
           />
         </div>
