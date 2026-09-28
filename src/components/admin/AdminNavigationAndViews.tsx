@@ -10,7 +10,8 @@ import {
   ClipboardList,
   ChevronRight,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  Calculator
 } from 'lucide-react';
 import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
@@ -26,6 +27,7 @@ import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
+import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -116,6 +118,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   const trialLeadsCount = React.useMemo(() => {
     return allGarages.filter(g => g.trialDecision === 'continued' || g.trialDecision === 'declined').length;
   }, [allGarages]);
+
+  const totalAdminRevenue = React.useMemo(() => {
+    return approvedGarages.reduce((sum, g) => sum + (Number(g.totalAdminRevenue || g.totalRevenue) || 0), 0);
+  }, [approvedGarages]);
 
   return (
     <>
@@ -239,6 +245,20 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('الاستخدام العادل')}</span>
             </button>
 
+            {/* Tab: Partners & Dividend Calculator */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('partners_calculator')}
+              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                activeTab === 'partners_calculator'
+                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Calculator className="w-4 h-4 text-emerald-500" />
+              <span>{t('حاسبة الشركاء')}</span>
+            </button>
+
             {/* Tab 7: Settings */}
             <button
               type="button"
@@ -279,6 +299,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onSelectGarage={onSelectGarage}
           t={t}
         />
+      ) : activeTab === 'partners_calculator' ? (
+        <div className="animate-in fade-in duration-200">
+          <AdminPartnerDividendCard
+            currentSystemRevenue={totalAdminRevenue}
+            currentActiveGarages={approvedGarages.length}
+          />
+        </div>
       ) : activeTab === 'catalog_settings' ? (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
