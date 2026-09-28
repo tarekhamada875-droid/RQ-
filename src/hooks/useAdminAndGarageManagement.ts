@@ -8,7 +8,7 @@ import { APP_TEXT } from '../constants';
 import { auth, db } from '../firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { claimEntitySession, releaseEntitySession, EntityRole } from '../services/authSessionService';
+import { claimEntitySession, releaseEntitySession, recordSessionAsClaimed, EntityRole } from '../services/authSessionService';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 
 interface UseAdminAndGarageManagementProps {
@@ -162,36 +162,41 @@ export function useAdminAndGarageManagement({
         return;
       }
 
-      try {
-        logDiagnostic('LOGIN_CLAIMING_SESSION', { role, entityId, sessionId, uid });
-        await claimEntitySession({
-          role: role as EntityRole,
-          entityId,
-          sessionId,
-          uid,
-          pin: cleanInput
-        });
-        logDiagnostic('LOGIN_CLAIM_SESSION_SUCCESS', { role, entityId });
-      } catch (claimErr: any) {
-        logDiagnostic('LOGIN_CLAIM_SESSION_FAILED', {
-          error: claimErr?.message || String(claimErr),
-          code: claimErr?.code || null,
-        });
-        console.warn('Login session claim error:', claimErr);
-        const errMsg = claimErr?.message || String(claimErr);
-        if (
-          errMsg === 'SESSION_OCCUPIED' ||
-          errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-          errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          errMsg.includes('مستخدم على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-        } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
-        } else {
-          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+      if (authRes.sessionClaimed) {
+        recordSessionAsClaimed(role, entityId, sessionId, uid);
+        logDiagnostic('LOGIN_CLAIM_SESSION_SUCCESS', { role, entityId, serverClaimed: true });
+      } else {
+        try {
+          logDiagnostic('LOGIN_CLAIMING_SESSION', { role, entityId, sessionId, uid });
+          await claimEntitySession({
+            role: role as EntityRole,
+            entityId,
+            sessionId,
+            uid,
+            pin: cleanInput
+          });
+          logDiagnostic('LOGIN_CLAIM_SESSION_SUCCESS', { role, entityId });
+        } catch (claimErr: any) {
+          logDiagnostic('LOGIN_CLAIM_SESSION_FAILED', {
+            error: claimErr?.message || String(claimErr),
+            code: claimErr?.code || null,
+          });
+          console.warn('Login session claim error:', claimErr);
+          const errMsg = claimErr?.message || String(claimErr);
+          if (
+            errMsg === 'SESSION_OCCUPIED' ||
+            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
+            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
+            errMsg.includes('مستخدم على جهاز آخر')
+          ) {
+            showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+          } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+            showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
+          } else {
+            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+          }
+          return;
         }
-        return;
       }
 
       if (role === 'garage' && account) {
@@ -326,30 +331,34 @@ export function useAdminAndGarageManagement({
         return;
       }
 
-      try {
-        await claimEntitySession({
-          role: 'delegate',
-          entityId,
-          sessionId,
-          uid,
-          pin: cleanPin
-        });
-      } catch (claimErr: any) {
-        console.warn('Delegate login session claim error:', claimErr);
-        const errMsg = claimErr?.message || String(claimErr);
-        if (
-          errMsg === 'SESSION_OCCUPIED' ||
-          errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-          errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          errMsg.includes('مستخدم على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-        } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-          showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
-        } else {
-          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+      if (authRes.sessionClaimed) {
+        recordSessionAsClaimed('delegate', entityId, sessionId, uid);
+      } else {
+        try {
+          await claimEntitySession({
+            role: 'delegate',
+            entityId,
+            sessionId,
+            uid,
+            pin: cleanPin
+          });
+        } catch (claimErr: any) {
+          console.warn('Delegate login session claim error:', claimErr);
+          const errMsg = claimErr?.message || String(claimErr);
+          if (
+            errMsg === 'SESSION_OCCUPIED' ||
+            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
+            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
+            errMsg.includes('مستخدم على جهاز آخر')
+          ) {
+            showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+          } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+            showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
+          } else {
+            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+          }
+          return;
         }
-        return;
       }
 
       const cleanAccount = account ? { ...account } : null;

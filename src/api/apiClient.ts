@@ -191,10 +191,12 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
     errorMessage.includes('SESSION_REVOKED') || errorMessage.includes('SESSION_EXPIRED');
 
   if (isSessionTerminated) {
+    const isLoginEndpoint = endpoint.includes('/api/auth/verify-pin');
+
     const message = errorMessage.includes('SESSION_REVOKED') || errorCode === 'SESSION_REVOKED'
       ? 'تم تسجيل خروجك من جهاز آخر'
       : 'انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً';
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !isLoginEndpoint) {
       window.dispatchEvent(new CustomEvent('api-session-expired', {
         detail: { status: response.status, error: message, code: errorCode || 'UNAUTHORIZED', correlationId: serverCorrelationId },
       }));

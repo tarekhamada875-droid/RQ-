@@ -63,6 +63,12 @@ export const _resetRecentClaimsForTesting = () => {
   recentClaims.clear();
 };
 
+export const recordSessionAsClaimed = (role: string, entityId: string, sessionId: string, uid: string): void => {
+  if (!role || !entityId || !sessionId || !uid) return;
+  const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
+  recentClaims.set(claimKey, Date.now());
+};
+
 export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }: ClaimSessionParams): Promise<void> => {
   if (!role || !entityId || !sessionId || !uid) {
     throw new Error('INVALID_SESSION_PARAMS');
@@ -86,7 +92,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     console.warn('Server session validation fallback:', err);
   }
 
-  // For Admin role: Use authoritative Server API with PIN or existing token
+  // 2. For Admin role: Use authoritative Server API with PIN or existing token
   if (role === 'admin') {
     try {
       const serverClaim = await authService.claimAdminSessionOnServer(uid, sessionId, pin);

@@ -11,6 +11,7 @@ import {
   refreshEntitySession,
   type EntityRole
 } from '../services/authSessionService';
+import { authService } from '../services/authService';
 import { signOut } from 'firebase/auth';
 
 interface UseGarageSessionProps {
@@ -344,9 +345,16 @@ export function useGarageSession({
 
       if (docCollection && activeEntityId) {
         const entityDocRef = doc(db, docCollection, activeEntityId);
-        unsubSnapshot = onSnapshot(entityDocRef, (snapshot) => {
-          if (isDeliberateLogoutRef.current) return;
+        let hasEverBeenActive = false;
+        let isEvicting = false;
+
+        unsubSnapshot = onSnapshot(entityDocRef, async (snapshot) => {
+          if (isDeliberateLogoutRef.current || isEvicting) return;
+          // Ignore offline cached snapshots - they can be stale and cause false evictions
+          if (snapshot.metadata.fromCache) return;
+
           if (!snapshot.exists()) {
+            isEvicting = true;
             showToast('عذراً، تم حذف أو تعطيل هذا الحساب من قبل مدير النظام.', 'error');
             handleLogout(true);
             return;
@@ -354,14 +362,42 @@ export function useGarageSession({
           const data = snapshot.data();
           const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
           const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
-          
-          const hasOtherActiveSession = (data?.currentSessionId && data.currentSessionId !== sessionId) || 
-                                       activeIds.some((id: string) => id && id !== sessionId);
 
-          if (!isSessionActive && hasOtherActiveSession && !isDeliberateLogoutRef.current) {
-            showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
-            handleLogout(true);
+          if (isSessionActive) {
+            hasEverBeenActive = true;
+            return;
           }
+
+          // If this session has never been confirmed active yet, it's still initializing/syncing from the server write.
+          // Do NOT falsely evict during the initial connection window!
+          if (!hasEverBeenActive) {
+            return;
+          }
+
+          // If the session was active, but is no longer in activeSessionIds:
+          // Verify authoritatively with the server before logging out!
+          isEvicting = true;
+          try {
+            const isStillValid = await authService.validateOrRefreshSessionOnServer(
+              currentUser.uid,
+              sessionId,
+              activeRole,
+              activeEntityId
+            );
+            if (isStillValid) {
+              // Server confirmed session is still valid; client snapshot was transiently out of sync
+              isEvicting = false;
+              return;
+            }
+          } catch {
+            // Network error during validation; do not kick out on transient network error
+            isEvicting = false;
+            return;
+          }
+
+          // Server confirmed session is revoked/displaced
+          showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
+          handleLogout(true);
         }, (err) => {
           console.warn('Entity lock snapshot warning:', err);
         });

@@ -612,7 +612,18 @@ export function registerAuthRoutes(router: Router) {
           const entityData = entitySnap.data() || {};
           if (!hasActiveSession(entityData, sessionId)) {
             await adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`).update({ isActive: false }).catch(() => {});
-            await adminDb.doc(`${secColl}/${effectiveUid}`).update({ isActive: false }).catch(() => {});
+            const rootSecSnap = await adminDb.doc(`${secColl}/${effectiveUid}`).get().catch(() => null);
+            if (rootSecSnap && rootSecSnap.exists) {
+              const rootData = rootSecSnap.data() || {};
+              const remaining = removeActiveSession(rootData, sessionId);
+              if (rootData.sessionId === sessionId) {
+                await adminDb.doc(`${secColl}/${effectiveUid}`).update({
+                  activeSessionIds: remaining,
+                  sessionId: remaining.at(-1) ?? null,
+                  isActive: remaining.length > 0
+                }).catch(() => {});
+              }
+            }
             return res.json({ success: false, valid: false, code: 'SESSION_REVOKED', error: 'SESSION_REVOKED' });
           }
         }
