@@ -276,7 +276,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رمز الدخول (PIN)')}</label>
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رمز الدخول')}</label>
                   <div className="relative">
                     <input
                       name="pin"

@@ -55,7 +55,7 @@ export const AdminGarageDetailsView = memo(({
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [staffForm, setStaffForm] = useState({ name: '', pin: '' });
-  const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(500);
+  const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
   const [showTopupModal, setShowTopupModal] = useState(false);
   const [isTopupSuccess, setIsTopupSuccess] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -79,7 +79,7 @@ export const AdminGarageDetailsView = memo(({
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isUpdatingLock, setIsUpdatingLock] = useState(false);
   const config = useSystemConfig();
-  const subscriberFlatFee = Number(config?.monthlySubscribersFlatFee) || 500;
+  const subscriberFlatFee = typeof config?.monthlySubscribersFlatFee === 'number' ? config.monthlySubscribersFlatFee : 250;
 
   useEffect(() => {
     setHourlyRateInput(String(selectedGarageForDetails.hourlyRate || 0));

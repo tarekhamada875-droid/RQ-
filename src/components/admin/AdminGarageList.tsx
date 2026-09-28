@@ -85,7 +85,7 @@ export const AdminGarageList: React.FC<AdminGarageListProps> = ({
               <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-2xl px-3.5 py-2.5 border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-xs font-bold text-slate-400">PIN:</span>
+                  <span className="text-xs font-bold text-slate-400">الرمز:</span>
                   <span className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 tracking-wider">
                     {displayPin}
                   </span>

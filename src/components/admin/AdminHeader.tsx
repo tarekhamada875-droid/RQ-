@@ -36,23 +36,31 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   menuRef,
   t,
 }) => {
+  const handleBack = () => {
+    if (['wallet', 'admin-pin', 'announcements', 'global_settings', 'active_sessions'].includes(activeTab)) {
+      setActiveTab('catalog_settings');
+    } else {
+      setActiveTab('overview');
+    }
+  };
+
   return (
     <>
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 transition-colors w-full shrink-0">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            {activeTab !== 'menu' && (
+            {activeTab !== 'overview' && (
               <button 
                 type="button"
                 onTouchEnd={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setActiveTab('menu');
+                  handleBack();
                 }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setActiveTab('menu');
+                  handleBack();
                 }}
                 className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
                 title={t('رجوع')}

@@ -180,7 +180,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
                   عدد الشركاء الجدد (إلى جانب طارق):
                 </label>
                 <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                  حصة كل شريك: {partnerSharePercent}%
+                  {partnerCount === 1 ? 'حصة الشريك:' : 'حصة كل شريك:'} {partnerSharePercent}%
                 </span>
               </div>
               <div className="grid grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
@@ -290,7 +290,7 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
           {/* High-Level Financial Breakdown Banner */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-slate-400 block">إجمالي التحصيلات (Gross Revenue)</span>
+              <span className="text-[11px] font-bold text-slate-400 block">إجمالي التحصيلات</span>
               <div className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {isActualRevenueLoading ? '...' : Math.round(financials.grossRevenue).toLocaleString()}{' '}
                 <span className="text-xs font-normal text-slate-400">ج.م/{mode === 'actual' ? 'الشهر الحالي' : 'شهر تقديري'}</span>

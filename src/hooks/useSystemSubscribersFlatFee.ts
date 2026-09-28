@@ -4,9 +4,9 @@ import { useSystemConfig } from './useSystemConfig';
 export function useSystemSubscribersFlatFee(): number {
   const config = useSystemConfig();
   if (config?.monthlySubscribersFlatFee !== undefined) {
-    return Number(config.monthlySubscribersFlatFee) || 500;
+    return Number(config.monthlySubscribersFlatFee) || 250;
   }
-  return 500;
+  return 250;
 }
 
 /** Subscribes to system_config/global.delegatePackageCommissions or fallback referralFeePerRenewal */

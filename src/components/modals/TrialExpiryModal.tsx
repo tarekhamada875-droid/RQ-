@@ -106,23 +106,25 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
               )}
             </div>
           ) : showConfirmDeclined ? (
-            <div className="space-y-5">
-              <div className="flex items-center gap-3 text-red-400 border-b border-slate-800 pb-3">
-                <AlertTriangle className="w-7 h-7 shrink-0" />
-                <h3 className="text-lg font-bold">تأكيد إلغاء الخدمة</h3>
+            <div className="space-y-6 py-2 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center shrink-0 border border-red-500/20 shadow-inner">
+                  <AlertTriangle className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-black text-white">تأكيد إلغاء الخدمة</h3>
               </div>
 
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-slate-200 text-sm leading-relaxed">
-                <p className="font-semibold text-red-300 mb-1">هل أنت متأكد من عدم الاستمرار؟</p>
-                <p>سيتم إيقاف الخدمة وحذف حساب الجراج بنهاية اليوم.</p>
+              <div className="space-y-1 max-w-sm mx-auto px-2">
+                <p className="font-bold text-red-400 text-sm">هل أنت متأكد من عدم الاستمرار؟</p>
+                <p className="text-xs text-slate-400">سيتم إيقاف الخدمة وحذف حساب الجراج بنهاية اليوم.</p>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-center gap-3 pt-2">
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setShowConfirmDeclined(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition-all duration-200"
+                  className="px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all duration-200 cursor-pointer"
                 >
                   تراجع
                 </button>
@@ -130,7 +132,7 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleDecision('declined')}
-                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold text-sm transition-all duration-200 flex items-center gap-2"
+                  className="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -142,44 +144,46 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                <div className="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-6 h-6" />
+            <div className="space-y-6 py-2 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center shrink-0 border border-amber-500/20 shadow-inner">
+                  <AlertTriangle className="w-7 h-7" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">انتهت الفترة التجريبية للجراج</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{garage.name}</p>
+                <div className="space-y-1 mt-1">
+                  <h3 className="text-xl font-black text-white">انتهت الفترة التجريبية للجراج</h3>
+                  <span className="inline-block px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-bold font-mono">
+                    {garage.name}
+                  </span>
                 </div>
               </div>
 
-              <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-slate-200 text-sm leading-relaxed">
-                لقد انتهت الفترة التجريبية الخاصة بجراجك. يرجى تحديد موقفك للتجديد لتحديد الباقة المناسبة لك.
-              </div>
+              <p className="text-sm text-slate-300 font-medium leading-relaxed max-w-sm mx-auto px-2">
+                يرجى تحديد موقفك لتجديد الاشتراك واختيار الباقة المناسبة لجراجك.
+              </p>
 
-              <div className="space-y-3 pt-1">
+              <div className="space-y-3 pt-2">
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleDecision('continued')}
-                  className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 text-white font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 text-white font-black text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <CheckCircle2 className="w-5 h-5" />
                   )}
-                  نعم، أرغب في الاستمرار والتجديد
+                  <span>نعم، أرغب في الاستمرار والتجديد</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setShowConfirmDeclined(true)}
-                  className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] disabled:opacity-50 text-slate-300 font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-slate-700/50"
+                  className="w-full py-3 px-4 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 active:scale-[0.98] disabled:opacity-50 font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-slate-700/50 cursor-pointer"
                 >
                   <XCircle className="w-4 h-4 text-slate-400" />
-                  لا، لا أرغب في الاستمرار
+                  <span>لا، لا أرغب في الاستمرار</span>
                 </button>
               </div>
             </div>

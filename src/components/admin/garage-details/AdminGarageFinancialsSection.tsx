@@ -216,7 +216,7 @@ export const AdminGarageFinancialsSection = memo(({
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              placeholder={t('مثال: 350')}
+              placeholder="0"
               value={selectedTopupAmount && !(BALANCE_PRESET_AMOUNTS as readonly number[]).includes(selectedTopupAmount) ? selectedTopupAmount : ''}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '');

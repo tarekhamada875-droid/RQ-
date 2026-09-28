@@ -64,7 +64,7 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">نتائج التجربة (Trial Leads)</h2>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">نتائج التجربة</h2>
             <p className="text-xs font-bold text-slate-400">متابعة طلبات استمرار الجراجات بعد الفترة التجريبية</p>
           </div>
         </div>

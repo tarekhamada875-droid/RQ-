@@ -667,7 +667,7 @@ export const adminService = {
       warningDaysThreshold: 3, 
       supportPhone: '01000000000',
       walletNumber: '',
-      monthlySubscribersFlatFee: 500,
+      monthlySubscribersFlatFee: 250,
       monthlySubscribersSurchargePercent: 25,
       referralFeePerRenewal: 50,
       delegatePackageCommissions: {
@@ -681,15 +681,26 @@ export const adminService = {
       adminColor: '#10b981'
     };
 
+    // Server API fetch to ensure real DB values loaded even when client Firestore is restricted
+    adminService.getSystemConfig().then((apiCfg) => {
+      if (apiCfg) {
+        callback(apiCfg);
+      }
+    }).catch(() => {});
+
     const unsub = onSnapshot(doc(db, 'system_config', 'global'), (docSnap) => {
       if (docSnap.exists()) {
         callback({ id: docSnap.id, ...docSnap.data() } as SystemConfig);
       } else {
-        callback(defaults);
+        adminService.getSystemConfig().then((apiCfg) => {
+          callback(apiCfg || defaults);
+        }).catch(() => callback(defaults));
       }
     }, (err) => {
-      console.warn('system_config snapshot notice (using defaults):', err?.message || err);
-      callback(defaults);
+      console.warn('system_config snapshot notice (using server API fallback):', err?.message || err);
+      adminService.getSystemConfig().then((apiCfg) => {
+        callback(apiCfg || defaults);
+      }).catch(() => callback(defaults));
     });
 
     return () => {

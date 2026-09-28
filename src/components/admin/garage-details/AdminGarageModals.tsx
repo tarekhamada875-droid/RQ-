@@ -95,7 +95,7 @@ export const AdminGarageModals = memo(({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{t('الرمز السري (PIN)')}</label>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{t('الرمز السري')}</label>
                 <div className="w-full p-4 bg-slate-900 rounded-xl text-center border border-slate-800">
                   <span className="text-3xl font-black text-emerald-400 tracking-[0.25em] font-mono">{staffForm.pin}</span>
                 </div>

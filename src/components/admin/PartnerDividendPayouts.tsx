@@ -62,7 +62,9 @@ export const PartnerDividendPayouts: React.FC<PartnerDividendPayoutsProps> = ({
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">{partnerSharePercent}%</span>
             </div>
-            <p className="text-[11px] text-slate-400">{partnerCount === 2 ? 'حصة تشغيلية / تمويلية متساوية' : 'حصة شريك مساهم'}</p>
+            <p className="text-[11px] text-slate-400">
+              {partnerCount === 1 ? 'حصة الشريك المساهم' : partnerCount === 2 ? 'حصة تشغيلية / تمويلية متساوية' : 'حصة شريك مساهم'}
+            </p>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-[10px] text-slate-400 block mb-0.5">العائد الصافي {resultLabel}:</span>
               <div className="text-xl font-black font-mono text-blue-600 dark:text-blue-400">

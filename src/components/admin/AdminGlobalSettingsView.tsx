@@ -22,7 +22,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   const [config, setConfig] = useState<SystemConfig>({
     defaultTrialDays: 2,
     warningDaysThreshold: 3,
-    monthlySubscribersFlatFee: 500,
+    monthlySubscribersFlatFee: 250,
     monthlySubscribersSurchargePercent: 25,
     referralFeePerRenewal: 100,
     delegateMonthlyCommission: 100,

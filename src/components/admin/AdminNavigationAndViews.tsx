@@ -130,12 +130,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('overview')}
               className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'overview' || activeTab === 'menu'
+                activeTab === 'overview'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
+              <BarChart3 className={`w-4 h-4 ${activeTab === 'overview' ? 'text-current' : 'text-blue-500'}`} />
               <span>{t('نظرة عامة')}</span>
             </button>
 
@@ -149,7 +149,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Car className="w-4 h-4" />
+              <Car className={`w-4 h-4 ${activeTab === 'garages' ? 'text-current' : 'text-amber-500'}`} />
               <span>{t('الجراجات')}</span>
             </button>
 
@@ -163,7 +163,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4" />
+              <Zap className={`w-4 h-4 ${activeTab === 'requests' ? 'text-current' : 'text-rose-500'}`} />
               <span>{t('الطلبات والمراجعات')}</span>
               {(rechargeRequests.length > 0 || pendingGarages.length > 0) && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 animate-pulse ${
@@ -186,7 +186,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Clock className="w-4 h-4 text-emerald-400" />
+              <Clock className={`w-4 h-4 ${activeTab === 'trial_leads' ? 'text-current' : 'text-emerald-500'}`} />
               <span>{t('متابعة التجارب')}</span>
               {trialLeadsCount > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
@@ -209,7 +209,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4" />
+              <Zap className={`w-4 h-4 ${activeTab === 'packages' ? 'text-current' : 'text-purple-500'}`} />
               <span>{t('أسعار الاشتراكات')}</span>
             </button>
 
@@ -223,7 +223,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Users className="w-4 h-4" />
+              <Users className={`w-4 h-4 ${(activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors') ? 'text-current' : 'text-indigo-500'}`} />
               <span>{t('الأشخاص')}</span>
             </button>
 
@@ -237,7 +237,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4" />
+              <Zap className={`w-4 h-4 ${activeTab === 'fair_use' ? 'text-current' : 'text-amber-500'}`} />
               <span>{t('الاستخدام العادل')}</span>
             </button>
 
@@ -251,7 +251,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Calculator className="w-4 h-4 text-emerald-500" />
+              <Calculator className={`w-4 h-4 ${activeTab === 'partners_calculator' ? 'text-current' : 'text-emerald-500'}`} />
               <span>{t('حاسبة الشركاء')}</span>
             </button>
 
@@ -265,14 +265,14 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <SettingsIcon className="w-4 h-4" />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'wallet' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
               <span>{t('الإعدادات')}</span>
             </button>
           </div>
         </div>
       )}
 
-      {activeTab === 'overview' || activeTab === 'menu' ? (
+      {activeTab === 'overview' ? (
         <AdminOverviewView
           allGarages={approvedGarages}
           delegates={delegates}
@@ -452,7 +452,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminWalletView
           currentWalletNumber={currentWalletNumber}
           onUpdateWalletNumber={onUpdateWalletNumber}
-          onCancel={() => setActiveTab('menu')}
+          onCancel={() => setActiveTab('catalog_settings')}
           t={t}
         />
       ) : activeTab === 'announcements' ? (
@@ -464,7 +464,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
           currentAdminPin={currentAdminPin}
-          onCancel={() => setActiveTab('menu')}
+          onCancel={() => setActiveTab('catalog_settings')}
           t={t}
         />
       ) : null}
