@@ -59,7 +59,7 @@ The repository contains multiple historical plans and handoffs, including:
 
 **Finding:** These are documentation candidates, not application dead code. The canonical operational sources remain `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`, `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`, `AGENTS.md`, and `docs/SUCCESSION_PROTOCOL.md`.
 
-**Next action:** Compare each historical document against the canonical sources, mark it as archived or superseded, and remove only exact duplicates or documents with no unique evidence. Do not delete a handoff until its unique deployment, security, or rollback information is migrated.
+**Next action:** Use `RQ_PROJECT_KNOWLEDGE_BASE.md` as the consolidated orientation layer, compare each historical document against it and the canonical sources, mark it as archived or superseded, and remove only exact duplicates or documents with no unique evidence. Do not delete a handoff until its unique deployment, security, or rollback information is migrated.
 
 ### Document disposition matrix — 2026-09-29
 

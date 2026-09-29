@@ -10,10 +10,11 @@
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
 ## V3 Execution Workflow
+- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for the architecture, product decisions, current status, document hierarchy, and cleanup dispositions. It is an orientation layer; the checkpoint plan below remains authoritative for task status.
 - **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
 - **Project Scope:** Repository code, frontend, Railway configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.
 - **Engineering Safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations. These safeguards do not limit project scope.
-- **Canonical execution plan:** Read [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md) first. It supersedes older broad recovery and continuation plans and defines the current checkpoint ledger, gates, rollback rules, and UI/UX preservation boundary.
+- **Canonical execution plan:** After the knowledge base, read [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). It supersedes older broad recovery and continuation plans and defines the current checkpoint ledger, gates, rollback rules, and UI/UX preservation boundary.
 - **Agent Succession:** For the exact owner message `tokens ending`, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md) before making any other change. Read the canonical recovery plan, [`V3_BACKEND_PLAN.md`](V3_BACKEND_PLAN.md), and the succession protocol at the start of every resumed session.
 
 ## Design Conventions
