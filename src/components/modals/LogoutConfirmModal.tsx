@@ -182,7 +182,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
 
         {error && (
           <div 
-            className="text-red-500 dark:text-red-400 text-center font-bold mt-4 text-sm animate-pulse"
+            className="text-red-500 dark:text-red-400 text-center font-bold mt-4 text-sm"
           >
             الرمز السري غير صحيح
           </div>

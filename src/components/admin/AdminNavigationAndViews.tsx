@@ -166,7 +166,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <Zap className={`w-4 h-4 ${activeTab === 'requests' ? 'text-current' : 'text-rose-500'}`} />
               <span>{t('الطلبات والمراجعات')}</span>
               {(rechargeRequests.length > 0 || pendingGarages.length > 0) && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 animate-pulse ${
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
                   activeTab === 'requests'
                     ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
                     : 'bg-rose-500 text-white'

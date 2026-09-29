@@ -217,7 +217,7 @@ export const RegistrationCard = memo(({
  
                 {/* Fixed Cursor Line */}
                 {isInputFocused && (
-                  <div className="absolute bottom-1.5 md:bottom-3 left-1/2 -translate-x-1/2 w-12 md:w-20 h-1 md:h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                  <div className="absolute bottom-1.5 md:bottom-3 left-1/2 -translate-x-1/2 w-12 md:w-20 h-1 md:h-1.5 bg-blue-600 rounded-full" />
                 )}
               </div>
             </div>            {(() => {
