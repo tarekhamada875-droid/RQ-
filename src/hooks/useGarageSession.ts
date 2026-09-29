@@ -77,62 +77,64 @@ export function useGarageSession({
     if (!isRemoteKicked) {
       isDeliberateLogoutRef.current = true;
     }
-    try {
-      if (!isRemoteKicked && auth.currentUser) {
-        let activeRole: EntityRole | null = null;
-        let activeEntityId: string | null = null;
 
-        if (view === 'garage') {
-          if (currentStaff) {
-            activeRole = 'staff';
-            activeEntityId = currentStaff.id;
-          } else if (garage) {
-            activeRole = 'garage';
-            activeEntityId = garage.id;
-          }
-        } else if (view === 'delegate_dashboard' && delegate) {
-          activeRole = 'delegate';
-          activeEntityId = delegate.id;
-        } else if (view === 'admin_dashboard' || view.startsWith('admin_')) {
-          if (currentSupervisor) {
-            activeRole = 'supervisor';
-            activeEntityId = currentSupervisor.id;
-          } else {
-            activeRole = 'admin';
-            activeEntityId = 'auth_pin';
-          }
-        }
+    // Capture active role & entity info before clearing local state
+    let activeRole: EntityRole | null = null;
+    let activeEntityId: string | null = null;
+    const currentUser = auth.currentUser;
 
-        if (activeRole && activeEntityId) {
-          await releaseEntitySession({
-            role: activeRole,
-            entityId: activeEntityId,
-            sessionId,
-            uid: auth.currentUser.uid
-          }).catch(err => console.warn('Release entity session failed:', err));
-        }
+    if (view === 'garage') {
+      if (currentStaff) {
+        activeRole = 'staff';
+        activeEntityId = currentStaff.id;
+      } else if (garage) {
+        activeRole = 'garage';
+        activeEntityId = garage.id;
       }
-
-      await signOut(auth);
-    } catch (e) {
-      console.error('Logout error:', e);
-      showToast('حدث خطأ، يرجى المحاولة مرة أخرى', 'error');
-    } finally {
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id') {
-          localStorage.removeItem(key);
-        }
-      });
-      localStorage.removeItem('app_admin_pin');
-      localStorage.removeItem('app_login_phone');
-      setGarage(null);
-      setDelegate(null);
-      setCurrentStaff(null);
-      setCurrentSupervisor(null);
-      setView('login');
-      setShowLogoutConfirm(false);
+    } else if (view === 'delegate_dashboard' && delegate) {
+      activeRole = 'delegate';
+      activeEntityId = delegate.id;
+    } else if (view === 'admin_dashboard' || view.startsWith('admin_')) {
+      if (currentSupervisor) {
+        activeRole = 'supervisor';
+        activeEntityId = currentSupervisor.id;
+      } else {
+        activeRole = 'admin';
+        activeEntityId = 'auth_pin';
+      }
     }
-  }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, showToast, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
+
+    // 1. Optimistic UI & Storage Reset (Instant <10ms transition)
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id') {
+        localStorage.removeItem(key);
+      }
+    });
+    localStorage.removeItem('app_admin_pin');
+    localStorage.removeItem('app_login_phone');
+    setGarage(null);
+    setDelegate(null);
+    setCurrentStaff(null);
+    setCurrentSupervisor(null);
+    setView('login');
+    setShowLogoutConfirm(false);
+
+    // 2. Background Server & Auth Cleanup (Fire-and-forget without blocking UI)
+    if (!isRemoteKicked && currentUser && activeRole && activeEntityId) {
+      releaseEntitySession({
+        role: activeRole,
+        entityId: activeEntityId,
+        sessionId,
+        uid: currentUser.uid
+      })
+        .catch(err => console.warn('Background release entity session failed:', err))
+        .finally(() => {
+          signOut(auth).catch(err => console.warn('Background sign-out failed:', err));
+        });
+    } else {
+      signOut(auth).catch(err => console.warn('Background sign-out failed:', err));
+    }
+  }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
 
   const handleInitiateLogout = () => {
     setShowLogoutConfirm(true);
