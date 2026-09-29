@@ -1,6 +1,6 @@
 import { useSystemConfig } from './useSystemConfig';
 
-/** Subscribes to system_config/global.monthlySubscribersFlatFee (default 500). */
+/** Subscribes to system_config/global.monthlySubscribersFlatFee (default 250). */
 export function useSystemSubscribersFlatFee(): number {
   const config = useSystemConfig();
   if (config?.monthlySubscribersFlatFee !== undefined) {
@@ -46,5 +46,4 @@ export function useSystemReferralFee(): number {
   }
   return 100;
 }
-
 

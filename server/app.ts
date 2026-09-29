@@ -177,7 +177,7 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
             defaultTrialDays: 2,
             warningDaysThreshold: 3,
             walletNumber: '',
-            monthlySubscribersFlatFee: 500,
+            monthlySubscribersFlatFee: 250,
             monthlySubscribersSurchargePercent: 25,
             referralFeePerRenewal: 100,
             delegateMonthlyCommission: 100,
@@ -220,7 +220,7 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
         updatePayload.warningDaysThreshold = Number(body.warningDaysThreshold) || 3;
       }
       if (body.monthlySubscribersFlatFee !== undefined) {
-        updatePayload.monthlySubscribersFlatFee = Number(body.monthlySubscribersFlatFee) || 500;
+        updatePayload.monthlySubscribersFlatFee = Number(body.monthlySubscribersFlatFee) || 250;
       }
       if (body.monthlySubscribersSurchargePercent !== undefined) {
         updatePayload.monthlySubscribersSurchargePercent = Number(body.monthlySubscribersSurchargePercent) || 25;

@@ -20,6 +20,10 @@ The existing UI was preserved. A scoped `GET /api/delegates/dashboard` endpoint 
 
 The partner calculator no longer treats cumulative garage aggregates as the current month's actual revenue. Its actual mode requests the existing admin-only financial report for the current UTC calendar month and uses the authoritative `cashCollectedTotal` value. The simulation mode remains local and configurable. Both modes are explicitly presented as estimates; the component is not a partner ledger, settlement engine, or accounting source of truth. The payout cards were extracted into `PartnerDividendPayouts.tsx` without changing the surrounding navigation or visual workflow.
 
+### Admin enhancement review — 2026-09-29
+
+The latest admin navigation, modal presentation, trial-lead labels, and system-settings enhancements were reviewed against the existing role workflows. TypeScript and focused UI tests passed. One confirmed business-logic inconsistency was corrected: the newly selected 250 EGP monthly-subscriber flat-fee default was aligned across the hook, admin settings save path, public system-config fallback, and server update fallback so a missing or zero value cannot silently revert to 500 EGP. No protected write authority or financial transaction path was changed.
+
 ## Baseline verified before cleanup
 
 - Repository was synchronized at `a8096b5` before this cleanup branch.

@@ -72,7 +72,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
       await firestoreService.updateSystemConfig({
         defaultTrialDays: Number(config.defaultTrialDays) || 2,
         warningDaysThreshold: Number(config.warningDaysThreshold) || 3,
-        monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee) || 500,
+        monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee) || 250,
         monthlySubscribersSurchargePercent: 25,
         referralFeePerRenewal: 100,
         delegateMonthlyCommission: 100,
