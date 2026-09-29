@@ -22,7 +22,7 @@ The partner calculator no longer treats cumulative garage aggregates as the curr
 
 ### Admin enhancement review — 2026-09-29
 
-The latest admin navigation, modal presentation, trial-lead labels, and system-settings enhancements were reviewed against the existing role workflows. TypeScript and focused UI tests passed. One confirmed business-logic inconsistency was corrected: the newly selected 250 EGP monthly-subscriber flat-fee default was aligned across the hook, admin settings save path, public system-config fallback, and server update fallback so a missing or zero value cannot silently revert to 500 EGP. No protected write authority or financial transaction path was changed.
+The latest admin navigation, modal presentation, trial-lead labels, and system-settings enhancements were reviewed against the existing role workflows. TypeScript and focused UI tests passed. One confirmed business-logic inconsistency was corrected: the newly selected 250 EGP monthly-subscriber flat-fee fallback default was aligned across the hook, admin settings save path, public system-config fallback, and server update fallback so a missing or invalid value cannot silently revert to 500 EGP. The persisted system setting remains editable and continues to override this fallback. No protected write authority or financial transaction path was changed.
 
 ## Baseline verified before cleanup
 
