@@ -61,6 +61,29 @@ The repository contains multiple historical plans and handoffs, including:
 
 **Next action:** Compare each historical document against the canonical sources, mark it as archived or superseded, and remove only exact duplicates or documents with no unique evidence. Do not delete a handoff until its unique deployment, security, or rollback information is migrated.
 
+### Document disposition matrix — 2026-09-29
+
+| Document | Disposition | Reason and next action |
+|---|---|---|
+| `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md` | **Active canonical plan** | Keep. This is the execution source of truth and checkpoint ledger. |
+| `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md` | **Active canonical audit** | Keep. It records authority boundaries, cleanup decisions, and approved product direction. |
+| `AGENTS.md` | **Active operating rules** | Keep. It defines safety, UI/UX, secret, and workflow boundaries. |
+| `V3_BACKEND_PLAN.md` | **Active architecture guide** | Keep. It defines the functional-core direction, but execution remains governed by the canonical checkpoint plan. |
+| `docs/SUCCESSION_PROTOCOL.md` | **Active handoff protocol** | Keep. It is required when the owner says `tokens ending`. |
+| `RAILWAY_DEPLOYMENT_HANDOFF.md` | **Active deployment contract** | Keep. It is referenced by the maintainability checker and contains deployment/rollback/smoke details. |
+| `MAINTAINABILITY_HANDOFF.md` | **Active handoff/checklist** | Keep. It is required by `tools/maintainability-check.ts` and contains current operational boundaries. |
+| `BRANCHING_AND_RELEASES.md` | **Active workflow policy** | Keep. It documents the repository’s direct-to-`main` release model and deployment URLs. |
+| `RQ_PRODUCTION_READINESS_PLAN_2026-09-25.md` | **Explicitly superseded historical plan** | Keep for audit history for now; it already points agents to the canonical plan. Delete only after unique database/billing and staging evidence is confirmed migrated. |
+| `PROJECT_CONTINUATION_BRIEF.md` | **Explicitly historical handoff** | Keep for now because it contains older context and links; do not follow its stale SHA, counts, or next task. Archive/delete only after unique information is checked against the succession protocol. |
+| `CODE_QUALITY_CHECKPOINTS.md` | **Historical quality evidence** | Keep for evidence; it is explicitly marked historical and must not be used to start old phases unless the canonical plan assigns them. |
+| `BUSINESS_LOGIC_AUDIT.md` | **Historical defect baseline** | Keep until its findings are mapped to verified fixes and deferred product decisions in the canonical plan or business-logic checkpoint record. It must not override current code evidence. |
+| `BUSINESS_LOGIC_FIX_CHECKPOINTS.md` | **Historical business-fix ledger** | Keep until its completed/deferred items are fully represented in the canonical ledger. Review for stale baseline SHAs before any archive. |
+| `FINANCIAL_AUDIT_REPORT.md` | **Historical financial evidence** | Keep. It documents prior corrections and financial-control evidence that should not be discarded without an evidence migration. |
+| `PRODUCTION_AUDIT_2026-09-25.md` | **Historical production audit** | Keep as dated evidence; migrate any still-open risk into C10 before archiving. |
+| `PRODUCTION_READINESS_CHECKLIST.md` | **Operational checklist candidate** | Review for unique deployment or launch checks. Keep until duplicates are reconciled with C10 and the Railway handoff. |
+
+**Safe deletion candidates after migration:** the dated superseded plan and historical continuation brief are the strongest candidates, but neither is approved for deletion yet. The active contracts and audit evidence above must remain.
+
 ## Explicit retain list
 
 Do not remove these merely because a simple text search shows few references:
@@ -91,4 +114,4 @@ Do not remove these merely because a simple text search shows few references:
 
 ## Current conclusion
 
-No additional **confirmed** orphan application asset or production module was found in this pass. The only safe next cleanup targets are the two unreferenced metadata candidates and historical documentation, both of which require external-consumer and uniqueness checks before deletion.
+No additional **confirmed** orphan application asset or production module was found in this pass. The old migration/overhaul plans are mostly already labeled as historical or superseded; they are not all safe to delete because deployment contracts, maintainability checks, and audit evidence still depend on several of them. The next bounded cleanup task is documentation-only: migrate unique evidence, then archive/delete only the dated superseded plan and continuation brief after validation.
