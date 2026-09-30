@@ -244,7 +244,33 @@ function checkRateLimitInMemory(ip: string): boolean {
 }
 
 export async function checkRateLimit(ip: string): Promise<boolean> {
-  return checkRateLimitInMemory(ip);
+  if (!adminDb) return checkRateLimitInMemory(ip);
+
+  const docId = crypto.createHash('sha256').update(ip).digest('hex');
+  const ref = adminDb.doc(`rate_limits/${docId}`);
+
+  try {
+    return await adminDb.runTransaction(async (t: any) => {
+      const snap = await t.get(ref);
+      const now = Date.now();
+      const data = snap.exists ? snap.data() || {} : null;
+
+      if (!data || now > data.resetAt) {
+        t.set(ref, {
+          count: 1,
+          resetAt: now + RATE_LIMIT_WINDOW_MS,
+          expiresAt: new Date(now + RATE_LIMIT_WINDOW_MS)
+        });
+        return true;
+      }
+      if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
+      t.update(ref, { count: data.count + 1 });
+      return true;
+    });
+  } catch (e) {
+    console.error('[Server Auth] Rate limit transaction failed, failing closed to in-memory:', e);
+    return checkRateLimitInMemory(ip);
+  }
 }
 
 export async function resetRateLimit(ip: string): Promise<void> {

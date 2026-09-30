@@ -97,12 +97,13 @@ The repository has completed and published repairs covering:
 - repository dependency/dead-code cleanup;
 - removal of the obsolete `public/egypt_crest.svg` asset;
 - alignment of the configurable monthly-subscriber fee fallback;
+- restoration of Firestore-backed cross-instance PIN rate limiting after a review caught a memory-only regression;
 - documentation cleanup and this consolidated knowledge base.
 
 Recent validation evidence includes:
 
-- 83 test files passed;
-- 461 tests passed in the latest full local gate;
+- 84 test files passed;
+- 462 tests passed in the latest full local gate;
 - TypeScript validation passed;
 - production build passed;
 - maintainability check passed;

@@ -105,6 +105,8 @@ The frontend sends protected commands through `src/api/apiClient.ts` to the Rail
 
 The API client correctly attaches Firebase ID tokens, correlation IDs, operation IDs, and the canonical session header where available.
 
+The latest enhancement review found that PIN authentication rate limiting had temporarily become memory-only while its surrounding contract still described Firestore-backed, cross-instance protection. The limiter was restored to an atomic Firestore transaction with an in-memory fallback only when the Admin SDK is unavailable; successful authentication still clears both stores.
+
 ### Display reads/listeners remain in Firestore
 
 The frontend uses Firestore listeners and reads for display synchronization across garages, vehicles, subscribers, staff, delegates, supervisors, packages, activity logs, announcements, and configuration. This can remain if the rules allow the read and the data is treated as a read model, not an authorization decision. Delegate-scoped garage and recharge-request lists are now the explicit exception: they use the server dashboard read because Firestore list rules correctly deny those queries.
