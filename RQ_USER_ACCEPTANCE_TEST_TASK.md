@@ -1,5 +1,7 @@
 # RQ Human User Acceptance Test Task
 
+> **Document status:** Supplemental human-only reference. The primary execution task is `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`, which combines these user steps with the related technical checks. Do not run this file as a separate acceptance gate when the integrated task is being executed.
+
 ## What this test is
 
 This is the test you meant: **use the actual RQ application as a real user**, logging in separately as the platform admin, delegate, garage owner, garage staff member, and supervisor.

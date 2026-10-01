@@ -38,9 +38,12 @@ Future agents must use this order:
 4. **`REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`**: current authority/wiring map and cleanup evidence.
 5. **`V3_BACKEND_PLAN.md`**: active functional-core architecture guide.
 6. **`docs/SUCCESSION_PROTOCOL.md`**: mandatory procedure when the owner says the exact phrase `tokens ending`.
-7. Capability-specific documents and dated audits: evidence only unless the canonical plan explicitly assigns work from them.
+7. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: primary combined browser/user and technical acceptance task when the application is tested by role.
+8. Capability-specific documents and dated audits: evidence only unless the canonical plan explicitly assigns work from them.
 
 Older plans must not override this hierarchy.
+
+The older `RQ_USER_ACCEPTANCE_TEST_TASK.md` and `RQ_FULL_SYSTEM_ACCEPTANCE_TEST_TASK.md` files are retained as supplemental references. They are not separate prerequisites or separate acceptance gates when the integrated acceptance task is used.
 
 ## 4. Core architecture decisions
 

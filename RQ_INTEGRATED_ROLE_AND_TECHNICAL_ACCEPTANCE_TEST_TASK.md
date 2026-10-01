@@ -24,17 +24,15 @@ This is a **test-only task**. Do not modify application code, business rules, UI
 
 ## Required reading
 
-Before starting, read:
+Before starting:
 
 1. `AGENTS.md`
 2. `RQ_PROJECT_KNOWLEDGE_BASE.md`
 3. `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`
 4. `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`
-5. `RQ_USER_ACCEPTANCE_TEST_TASK.md`
-6. `RQ_FULL_SYSTEM_ACCEPTANCE_TEST_TASK.md`
-7. `docs/OBSERVABILITY_RUNBOOK.md`
+5. `docs/OBSERVABILITY_RUNBOOK.md`
 
-The two earlier task files remain useful detailed references. This document is the **combined execution order** and prevents the same workflow from being tested separately and inconsistently.
+This document is self-contained and is the **primary execution task**. The older `RQ_USER_ACCEPTANCE_TEST_TASK.md` and `RQ_FULL_SYSTEM_ACCEPTANCE_TEST_TASK.md` files are retained as supplemental historical test references, but the executing agent does not need to read them or run them separately. They must not be treated as additional prerequisites or separate acceptance gates.
 
 If the owner says the exact phrase `tokens ending`, stop and follow `docs/SUCCESSION_PROTOCOL.md`.
 

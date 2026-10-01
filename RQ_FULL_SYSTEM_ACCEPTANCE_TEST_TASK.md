@@ -1,5 +1,7 @@
 # RQ Full-System Acceptance Test Task
 
+> **Document status:** Supplemental technical-only reference. The primary execution task is `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`, which combines technical checks with the human role workflows. Do not run this file as a separate acceptance gate when the integrated task is being executed.
+
 ## Mission
 
 Perform a complete, evidence-based acceptance test of the RQ garage-management PWA across **every supported role, every major user flow, every protected API capability, the Cloudflare-to-Railway-to-Firebase topology, tenant/scope isolation, session behavior, financial correctness, PWA behavior, and failure recovery**.
