@@ -636,3 +636,255 @@ Would I allow a real user to use the application? Why or why not?
 ```
 
 This document is intentionally separate from the technical production-gate task. The technical task checks code, APIs, CI, transactions, and deployment internals. **This task checks whether you and the other users can actually use RQ successfully.**
+
+
+---
+
+# Part 11 — Additional current RQ screens and actions
+
+This section was added after comparing the user task against the current RQ interface. It prevents the role test from skipping screens that are easy to miss inside menus, drawers, or settings cards.
+
+## 11.1 Admin requests and reviews
+
+As **QA Admin**:
+
+1. Open the requests/reviews screen.
+2. Confirm pending garage-creation requests are visible.
+3. Confirm pending recharge requests are visible.
+4. Open one synthetic request.
+5. Review garage, requester, package, amount, and request status.
+6. Cancel the approval dialog and confirm nothing changes.
+7. Approve one synthetic request if approval is authorized for this test.
+8. Confirm the request changes to the correct final status.
+9. Confirm the target synthetic garage/balance/package changes correctly.
+10. Confirm a second approval of the same request is prevented.
+11. Reject a different synthetic request if authorized.
+12. Confirm the rejection is visible and the underlying record is handled according to the displayed warning.
+13. Refresh the screen and confirm the result remains correct.
+
+## 11.2 Trial-lead follow-up and expired trials
+
+As **QA Admin**:
+
+1. Open trial follow-up/leads.
+2. Find a synthetic trial garage.
+3. Review its trial status and decision.
+4. Select the continue, decline, dismiss, or resolve action if shown.
+5. Confirm the application displays the consequence before saving.
+6. Confirm the action changes only the selected synthetic garage.
+7. Refresh and confirm the decision remains.
+8. Open the garage as the owner after the trial expires.
+9. Confirm the trial-expiry screen appears only for an actual undecided trial.
+10. Choose the displayed continue/decline/dismiss option as approved.
+11. Confirm the result is saved and the modal does not reappear incorrectly.
+
+## 11.3 Fair-use management
+
+As **QA Admin**:
+
+1. Open the fair-use screen.
+2. Review garages with unlimited/fair-use packages.
+3. Open a synthetic garage's fair-use details.
+4. Confirm current allowance, usage, and expiry information are understandable.
+5. Use the approved synthetic extension action.
+6. Confirm the app asks for confirmation.
+7. Cancel once and confirm no change.
+8. Confirm the extension once and verify the new value after refresh.
+9. Confirm a non-unlimited garage cannot receive an inappropriate fair-use extension.
+
+As **QA Garage Owner**:
+
+1. Check in synthetic vehicles until the approved fair-use boundary is reached.
+2. Confirm the application shows the expected warning or automatic extension behavior.
+3. Confirm no duplicate vehicle or duplicate extension is created.
+
+## 11.4 Admin wallet number and manual wallet top-up
+
+As **QA Admin**:
+
+1. Open Settings and then the wallet-number screen.
+2. Confirm the current synthetic wallet number is displayed safely.
+3. Edit it with an invalid value and confirm validation.
+4. Save an approved synthetic value.
+5. Refresh and confirm persistence.
+6. Open the manual wallet/balance top-up workflow.
+7. Select a synthetic garage.
+8. Enter a valid synthetic amount and reference.
+9. Review the confirmation.
+10. Cancel and confirm the balance does not change.
+11. Repeat and confirm the balance, activity, and audit result update once.
+12. Confirm the same action cannot be accidentally applied twice by double-clicking.
+
+Do not enter a real wallet number, bank reference, card number, or real payment information.
+
+## 11.5 Admin PIN and account security settings
+
+As **QA Admin**:
+
+1. Open the admin PIN/security screen.
+2. Review the current state without exposing the PIN in a screenshot.
+3. Start a PIN change using an approved synthetic value.
+4. Enter mismatched confirmation values.
+5. Confirm the change is rejected.
+6. Complete a valid synthetic PIN change if approved.
+7. Log out.
+8. Log in using the new synthetic PIN.
+9. Confirm the old synthetic PIN no longer works.
+10. Confirm the PIN is never displayed in clear text in a list, error, URL, or browser storage view.
+11. Restore the approved test credential using the safe account procedure.
+
+## 11.6 Admin announcements
+
+As **QA Admin**:
+
+1. Open platform announcements.
+2. Create a synthetic announcement with a clear QA title.
+3. Submit invalid or empty content and confirm validation.
+4. Save the valid announcement.
+5. Confirm it appears in the admin list.
+6. Toggle its active/inactive state.
+7. Edit it and save.
+8. Delete it only if the QA cleanup boundary allows it.
+9. Log in as Garage Owner and confirm the active announcement appears in the expected announcement modal or notice area.
+10. Confirm an inactive announcement is not shown as active.
+11. Log in as Staff and confirm the announcement behavior matches the intended role policy.
+
+## 11.7 Admin appearance and language
+
+As **QA Admin**:
+
+1. Open appearance settings.
+2. Change only an approved synthetic theme/color preference.
+3. Confirm the dashboard updates without losing data.
+4. Refresh and confirm the preference behavior.
+5. Switch Arabic/English if available.
+6. Confirm labels, direction, numbers, buttons, and modal alignment remain usable.
+7. Restore the approved appearance setting.
+
+## 11.8 Garage-owner drawer screens
+
+As **QA Garage Owner**, open the garage menu/drawer and test each visible item:
+
+- subscriber management;
+- smart reports;
+- packages and balance recharge;
+- recharge history;
+- staff statistics;
+- appearance settings;
+- terms and conditions;
+- announcements;
+- recharge-success notification, when a synthetic recharge is approved;
+- trial-expiry notice, for a synthetic trial garage.
+
+For each item:
+
+1. Open it.
+2. Confirm its data belongs to the current garage.
+3. Close it using its close button.
+4. Reopen it and confirm it does not duplicate content.
+5. Refresh the page and confirm the main dashboard remains intact.
+
+Additional checks:
+
+- Staff must not see owner-only reports or staff-statistics controls if the UI hides them.
+- Recharge history must distinguish pending, approved, rejected, and failed states.
+- Terms must close without changing application data.
+- Plate lookup/recent-exit warnings must return the correct synthetic record or a clear empty state.
+- Appearance changes must not change authorization.
+
+## 11.9 Delegate create-garage and trial request
+
+As **QA Delegate**:
+
+1. Open the add/create-garage action.
+2. Confirm the screen says the request goes to admin review when that is the product policy.
+3. Submit empty and invalid values and confirm validation.
+4. Create a synthetic garage request.
+5. Toggle the free-trial option if shown.
+6. Confirm the trial days are displayed clearly.
+7. Confirm the generated synthetic PIN is not reused by another account.
+8. Submit the request.
+9. Confirm the request is pending rather than incorrectly active.
+10. Log in as QA Admin and review the request.
+11. Approve it only if this synthetic test is authorized.
+12. Return as delegate and confirm the resulting garage appears only after the intended approval state.
+13. Confirm delegate creation limits or daily limits are enforced when applicable.
+
+## 11.10 Delegate account settlement and history
+
+As **QA Admin**, open a synthetic delegate's details:
+
+1. Review recharge/request history.
+2. Change the period/month filter.
+3. Confirm totals and commissions change to the selected period.
+4. Confirm empty-period behavior is clear.
+5. Open the settlement action.
+6. Cancel the confirmation and confirm no settlement timestamp is added.
+7. Confirm settlement using a synthetic delegate.
+8. Refresh and confirm the settlement timestamp and historical records remain.
+9. Confirm a duplicate settlement does not erase historical activity.
+10. Revoke a synthetic delegate only if approved.
+11. Confirm the delegate cannot log in or recharge after revocation.
+
+## 11.11 Staff statistics and operational activity
+
+As **QA Garage Owner**:
+
+1. Open staff statistics.
+2. Confirm only current-garage staff and activity are shown.
+3. Compare a synthetic staff member's check-in/check-out activity with the activity list.
+4. Confirm dates and totals are understandable.
+5. Confirm an empty staff state is handled.
+6. Confirm the staff member cannot view owner-only statistics unless explicitly allowed.
+
+## 11.12 Plate lookup and recent-exit warning
+
+As **QA Garage Owner** or the permitted staff role:
+
+1. Open plate lookup.
+2. Search for the active synthetic plate.
+3. Confirm the correct vehicle/subscriber result.
+4. Search for an unknown synthetic plate.
+5. Confirm a clear empty state.
+6. Check in a plate that recently exited, if this warning is enabled.
+7. Confirm the recent-exit warning appears before a duplicate action.
+8. Cancel the warning and confirm no new vehicle is created.
+9. Continue only if the business rule permits it and confirm the final state.
+
+## 11.13 Network/offline behavior from a user perspective
+
+For each role's main workflow:
+
+1. Open the application while online.
+2. Disconnect the browser network or use an approved offline simulation.
+3. Attempt a protected save.
+4. Confirm the app shows an offline/error state rather than claiming success.
+5. Reconnect.
+6. Refresh or retry.
+7. Confirm only the server-confirmed result is shown.
+8. Confirm no duplicate action occurred.
+
+## 11.14 Updated role-by-feature checklist
+
+| Feature | Admin | Delegate | Garage owner | Staff | Supervisor |
+|---|---:|---:|---:|---:|---:|
+| Dashboard and navigation | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Garage create/approve | ✓ | request only | own view | no | no |
+| Garage edit/status | ✓ | permitted request/view | own permitted fields | no/limited | permitted scope only |
+| Staff management | ✓ | no | permitted owner flow | own profile/limited | no |
+| Delegate management | ✓ | own dashboard | no | no | restricted review only |
+| Supervisor management | ✓ | no | no | no | no |
+| Recharge requests | approve/reject | create/view own | create/view own | view/limited | permitted review only |
+| Manual wallet top-up | ✓ | no | no | no | no |
+| Trial leads/decisions | ✓ | create trial request | receive trial state | no | no |
+| Fair-use controls | ✓ | no | observe/use | observe only | no |
+| Packages/balances | configure/approve | request | use/request | use if allowed | view if allowed |
+| Subscribers | platform visibility | scoped visibility | manage own | scoped visibility | scoped review |
+| Vehicles | platform visibility | no/limited | operate own | operate assigned garage | scoped review |
+| Reports | platform | commission/activity | own garage | limited/none | permitted scope |
+| Staff statistics | platform/garage detail | no | own garage | limited/none | permitted scope |
+| Announcements | create/publish | receive | receive | receive | receive |
+| Appearance/settings | platform | own allowed view | own allowed view | own allowed view | restricted |
+| Admin PIN/security | ✓ | no | no | no | no |
+| Sessions/logout | manage/revoke | own | own | own | own |
+| Audit/history | platform | own history | own history | own activity | permitted scope |
