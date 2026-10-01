@@ -31,10 +31,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 }) => {
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
-  const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5 minutes grace period for entry errors (matches refund logic)
+  const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5 minutes grace period for exit button hiding
   const isOwner = currentStaff 
-    ? (typeof selectedVehicle.staffId === 'string' && selectedVehicle.staffId === currentStaff.id) 
-    : (selectedVehicle.staffId == null);
+    ? Boolean(selectedVehicle.staffId && selectedVehicle.staffId === currentStaff.id) 
+    : true; // Garage Owner can delete any active vehicle entry error in their garage
+  const canDelete = isOwner;
 
   const [confirmingSide, setConfirmingSide] = React.useState<'left' | 'right' | null>(null);
   const [showLargeButton, setShowLargeButton] = React.useState(false);
@@ -90,10 +91,10 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     }
     if (isLargeScreen) {
       if (confirmingSide) return 520;
-      return isInitialMinute ? 720 : 774;
+      return isInitialMinute ? 740 : 774;
     }
     if (confirmingSide) return 360;
-    return isInitialMinute ? 480 : 520;
+    return isInitialMinute ? 580 : 520;
   }, [isGenerating, confirmingSide, isInitialMinute, isLargeScreen]);
 
   return (
@@ -144,7 +145,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
         transition={{ 
           duration: 0
         }}
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-hidden shadow-2xl" 
+        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto shadow-2xl" 
         style={{ willChange: 'transform, height, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
         dir="rtl"
       >
@@ -310,6 +311,24 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                 />
               </div>
 
+              {/* Entry Error Delete Action Banner */}
+              {canDelete && (
+                <div className="w-full mb-3 sm:mb-4 shrink-0">
+                  <button 
+                    onClick={onDelete}
+                    disabled={isLoading}
+                    className="w-full h-14 sm:h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 active:scale-95 transition-all duration-150 cursor-pointer"
+                  >
+                    {isLoading && loadingType === 'delete' ? (
+                      <Spinner className="!text-white" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
+                    {isLoading && loadingType === 'delete' ? 'جاري حذف السيارة...' : 'حذف السيارة (خطأ إدخال)'}
+                  </button>
+                </div>
+              )}
+
               {/* Ticket Card Container */}
               <div className="w-full bg-slate-50/50 dark:bg-slate-950/20 border-2 md:border-[3px] border-slate-900 dark:border-black rounded-xl p-3 sm:p-4 mb-2 sm:mb-4 shadow-sm overflow-hidden shrink-0">
                 
@@ -426,7 +445,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 
               </div>
 
-              {isInitialMinute && isOwner && (
+              {canDelete && (
                 <button 
                   onClick={onDelete}
                   disabled={isLoading}

@@ -5,8 +5,7 @@ import {
   ChevronDown, 
   ChevronUp, 
   Calculator,
-  Building2,
-  Sparkles
+  Building2
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { PartnerDividendPayouts } from './PartnerDividendPayouts';
@@ -325,15 +324,6 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
             founderPercent={FOUNDER_PERCENT}
             mode={mode}
           />
-
-          {/* Quick Pitch Advice Note */}
-          <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-2xl flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              <span className="font-black text-emerald-700 dark:text-emerald-400">نصيحة التفاوض مع الشركاء:</span>{' '}
-              هذه الحاسبة تقديرية وليست سجل توزيع رسمي. تم حجز نسبة <strong>40%</strong> كمخصص تشغيلي لحماية مصاريف المناديب (100 ج.م للباقة المؤهلة) وحسابات السيرفرات وصيانة الطابعات في الموقع. لا تقم بتوزيع الأرباح على إجمالي الإيراد أبداً، بل دائماً بعد خصم المخصص التشغيلي.
-            </div>
-          </div>
         </div>
       )}
     </div>

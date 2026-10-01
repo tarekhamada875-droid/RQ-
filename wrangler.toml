@@ -1,0 +1,7 @@
+name = "rq-backend"
+main = "server/cloudflareWorker.ts"
+compatibility_date = "2024-09-25"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"

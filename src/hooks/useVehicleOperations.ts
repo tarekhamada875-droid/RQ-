@@ -355,8 +355,8 @@ export function useVehicleOperations({
     if (!garage || !selectedVehicle) return;
 
     const isOwner = currentStaff 
-      ? (typeof selectedVehicle.staffId === 'string' && selectedVehicle.staffId === currentStaff.id)
-      : (selectedVehicle.staffId == null);
+      ? Boolean(selectedVehicle.staffId && selectedVehicle.staffId === currentStaff.id)
+      : true; // Garage Owner has full authority to delete initial entry errors
     if (!isOwner) {
       showToast('يمكن فقط لمسجّل هذه السيارة حذفها', 'error');
       return;
