@@ -28,39 +28,41 @@ function loadFirebaseConfig(): any {
 
 const firebaseConfig = loadFirebaseConfig();
 
-// Initialize Firebase Admin SDK if credentials exist
-let adminDb: any = null;
-let adminAuth: any = null;
+let activeDb: any = null;
+let activeAuth: any = null;
+let isInitialized = false;
 
-try {
+export function initializeFirebaseAdmin(env?: any) {
+  if (isInitialized && !env) return;
+
   const existingApps = getAdminApps();
   let adminApp = existingApps.find(a => a.name === 'admin-app');
 
+  const saEnv = env?.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const projectId = env?.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || firebaseConfig.projectId;
+  const databaseId = env?.FIREBASE_DATABASE_ID || process.env.FIREBASE_DATABASE_ID || firebaseConfig.firestoreDatabaseId;
+
   if (!adminApp) {
-    const saEnv = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (saEnv) {
       let sa: any;
       try {
-        const rawSA = saEnv.trim();
-        sa = JSON.parse(rawSA);
-      } catch (parseErr) {
-        console.error('[Server Auth] Failed to JSON.parse FIREBASE_SERVICE_ACCOUNT:', parseErr);
+        sa = JSON.parse(saEnv.trim());
+      } catch (err) {
+        console.error('[Server Auth] Failed to JSON.parse FIREBASE_SERVICE_ACCOUNT:', err);
       }
-
       if (sa && typeof sa === 'object') {
         adminApp = initAdminApp({
           credential: cert(sa),
-          projectId: sa.project_id || firebaseConfig.projectId
+          projectId: sa.project_id || projectId
         }, 'admin-app');
-        console.log('[Server Auth] Initialized Firebase Admin SDK with service account credentials for project:', sa.project_id || firebaseConfig.projectId);
+        console.log('[Server Auth] Initialized Firebase Admin SDK with service account credentials for project:', sa.project_id || projectId);
       }
     }
 
     if (!adminApp) {
-      // Attempt Application Default Credentials (GCP/Cloud Run native environment)
       try {
         adminApp = initAdminApp({
-          projectId: firebaseConfig.projectId
+          projectId
         }, 'admin-app');
         console.log('[Server Auth] Initialized Firebase Admin SDK with default environment credentials');
       } catch (adcErr) {
@@ -70,14 +72,35 @@ try {
   }
 
   if (adminApp) {
-    adminDb = getAdminFirestore(adminApp, (firebaseConfig as any).firestoreDatabaseId);
-    adminAuth = getAdminAuth(adminApp);
+    activeDb = getAdminFirestore(adminApp, databaseId);
+    activeAuth = getAdminAuth(adminApp);
+    isInitialized = true;
   }
-} catch (e) {
-  console.warn('[Server Auth] Could not initialize Firebase Admin SDK:', e);
 }
 
-export {
-  adminDb,
-  adminAuth
-};
+// Proxied exports so that any access dynamically checks if initialized and resolves correctly
+export const adminDb: any = new Proxy({}, {
+  get(_target, prop) {
+    if (!activeDb) {
+      initializeFirebaseAdmin();
+    }
+    if (!activeDb) {
+      return undefined;
+    }
+    const value = activeDb[prop];
+    return typeof value === 'function' ? value.bind(activeDb) : value;
+  }
+});
+
+export const adminAuth: any = new Proxy({}, {
+  get(_target, prop) {
+    if (!activeAuth) {
+      initializeFirebaseAdmin();
+    }
+    if (!activeAuth) {
+      return undefined;
+    }
+    const value = activeAuth[prop];
+    return typeof value === 'function' ? value.bind(activeAuth) : value;
+  }
+});

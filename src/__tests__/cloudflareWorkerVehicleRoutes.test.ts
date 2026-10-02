@@ -1,6 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MockFirestore, mockAdminAuth } from './mockFirestore';
+
+const mockDb = new MockFirestore();
+
+vi.mock('../../server/firebaseAdmin', () => ({
+  get adminDb() {
+    return mockDb;
+  },
+  adminAuth: mockAdminAuth,
+  firebaseConfig: {},
+  initializeFirebaseAdmin: () => {}
+}));
+
 import { workerApp } from '../../server/cloudflareWorker';
-import { adminDb } from '../../server/firebaseAdmin';
 
 describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -8,22 +20,20 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
   const testGarageId = 'worker-test-garage-cf5';
 
   beforeEach(async () => {
-    if (adminDb) {
-      // Seed test garage document
-      await adminDb.doc(`garages/${testGarageId}`).set({
-        name: 'Worker Test Garage',
-        hourlyRate: 10,
-        overnightRate: 50,
-        dailyCapacity: 100,
-        carsInside: 0,
-        todayCount: 0,
-        todayRevenue: 0,
-        totalRevenue: 0,
-        totalVehiclesOut: 0,
-        isTrial: false,
-        balanceExpiry: '2099-12-31'
-      });
-    }
+    mockDb.clear();
+    mockDb.seed(`garages/${testGarageId}`, {
+      name: 'Worker Test Garage',
+      hourlyRate: 10,
+      overnightRate: 50,
+      dailyCapacity: 100,
+      carsInside: 0,
+      todayCount: 0,
+      todayRevenue: 0,
+      totalRevenue: 0,
+      totalVehiclesOut: 0,
+      isTrial: false,
+      balanceExpiry: '2099-12-31'
+    });
   });
 
   it('1. POST /api/vehicles/check-in validates inputs and checks in a vehicle', async () => {
@@ -35,12 +45,12 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }));
     expect(unauthRes.status).toBe(401);
 
-    // Missing plate
+    // Missing plate (using admin token because operator is restricted)
     const missingPlateRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({ garageId: testGarageId })
     }), workerEnv);
@@ -51,7 +61,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': 'idemp_checkin_1'
       },
       body: JSON.stringify({
@@ -74,7 +84,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': 'idemp_checkin_1'
       },
       body: JSON.stringify({
@@ -93,7 +103,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -108,7 +118,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -128,7 +138,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -142,7 +152,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -155,7 +165,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -175,7 +185,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -187,7 +197,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
     // Query inside vehicles
     const insideRes = await workerApp.fetch(new Request(`http://localhost/api/vehicles/inside?garageId=${testGarageId}`, {
-      headers: { 'x-backend-operator-token': operatorToken }
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(insideRes.status).toBe(200);
@@ -198,7 +208,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
     // Query activity history
     const historyRes = await workerApp.fetch(new Request(`http://localhost/api/vehicles/history?garageId=${testGarageId}`, {
-      headers: { 'x-backend-operator-token': operatorToken }
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(historyRes.status).toBe(200);

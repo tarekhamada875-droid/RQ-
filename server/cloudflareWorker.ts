@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { FieldValue } from 'firebase-admin/firestore';
 import { createApp, isAllowedOrigin } from './app';
-import { adminDb, adminAuth } from './firebaseAdmin';
+import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './middleware';
 import { Readable, Writable } from 'node:stream';
 import { IncomingMessage, ServerResponse } from 'node:http';
@@ -53,6 +53,7 @@ const workerApp = new Hono<{
     FIREBASE_DATABASE_ID?: string;
     ALLOWED_ORIGINS?: string;
     BACKEND_OPERATOR_TOKEN?: string;
+    WORKER_VERSION?: string;
   };
   Variables: {
     correlationId: string;
@@ -62,21 +63,11 @@ const workerApp = new Hono<{
 }>();
 const expressApp = createApp();
 
-// 1. Environment variable propagation to process.env
+// 1. Dynamic Firebase initialization with Cloudflare bindings (no process.env copying)
 workerApp.use('*', async (c, next) => {
-  if (c.env && typeof process !== 'undefined' && process.env) {
-    if (c.env.FIREBASE_PROJECT_ID && !process.env.FIREBASE_PROJECT_ID) {
-      process.env.FIREBASE_PROJECT_ID = c.env.FIREBASE_PROJECT_ID;
-    }
-    if (c.env.FIREBASE_DATABASE_ID && !process.env.FIREBASE_DATABASE_ID) {
-      process.env.FIREBASE_DATABASE_ID = c.env.FIREBASE_DATABASE_ID;
-    }
-    if (c.env.ALLOWED_ORIGINS && !process.env.ALLOWED_ORIGINS) {
-      process.env.ALLOWED_ORIGINS = c.env.ALLOWED_ORIGINS;
-    }
-    if (c.env.BACKEND_OPERATOR_TOKEN && !process.env.BACKEND_OPERATOR_TOKEN) {
-      process.env.BACKEND_OPERATOR_TOKEN = c.env.BACKEND_OPERATOR_TOKEN;
-    }
+  if (c.env) {
+    // Initialize Firebase Admin explicitly and dynamically with c.env bindings
+    initializeFirebaseAdmin(c.env);
   }
   await next();
 });
@@ -145,9 +136,19 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
   const operatorToken = c.req.header('x-backend-operator-token');
   const configuredToken = c.env?.BACKEND_OPERATOR_TOKEN || process.env.BACKEND_OPERATOR_TOKEN;
   if (operatorToken && isValidBackendOperatorToken(operatorToken, configuredToken)) {
+    // Restrict the operator token: it is strictly for diagnostics (GET, HEAD, OPTIONS).
+    // Mutating requests (POST, PUT, DELETE, PATCH) are completely blocked in ALL environments.
+    const method = c.req.method.toUpperCase();
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      return c.json({
+        success: false,
+        error: 'FORBIDDEN: Mutating operations via backend operator token are prohibited. Use authentic role-specific credentials instead.'
+      }, 403);
+    }
+
     c.set('user', {
       uid: 'backend-operator',
-      role: 'admin',
+      role: 'viewer', // ALWAYS 'viewer' role to prevent administrative or financial mutations
       entityId: 'backend-operator',
       displayName: 'Backend Operator'
     });
@@ -215,7 +216,7 @@ workerApp.get('/api/health', (c) => {
 
 workerApp.get('/api/version', (c) => {
   return c.json({
-    version: '1.0.0',
+    version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0',
     environment: c.env?.ENVIRONMENT || 'production',
     runtime: 'cloudflare-worker',
     status: 'operational',

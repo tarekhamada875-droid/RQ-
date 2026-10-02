@@ -1,6 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MockFirestore, mockAdminAuth } from './mockFirestore';
+
+const mockDb = new MockFirestore();
+
+vi.mock('../../server/firebaseAdmin', () => ({
+  get adminDb() {
+    return mockDb;
+  },
+  adminAuth: mockAdminAuth,
+  firebaseConfig: {},
+  initializeFirebaseAdmin: () => {}
+}));
+
 import { workerApp } from '../../server/cloudflareWorker';
-import { adminDb } from '../../server/firebaseAdmin';
 
 describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -8,20 +20,14 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
   const testGarageId = 'worker-test-garage-cf6';
 
   beforeEach(async () => {
-    if (adminDb) {
-      await adminDb.doc(`garages/${testGarageId}`).set({
-        name: 'Subscriber Test Garage',
-        dailyCapacity: 50,
-        carsInside: 0,
-        isTrial: false,
-        balanceExpiry: '2099-12-31'
-      });
-
-      const subSnaps = await adminDb.collection(`garages/${testGarageId}/subscribers`).get();
-      const batch = adminDb.batch();
-      subSnaps.docs.forEach((doc: any) => batch.delete(doc.ref));
-      await batch.commit();
-    }
+    mockDb.clear();
+    mockDb.seed(`garages/${testGarageId}`, {
+      name: 'Subscriber Test Garage',
+      dailyCapacity: 50,
+      carsInside: 0,
+      isTrial: false,
+      balanceExpiry: '2099-12-31'
+    });
   });
 
   it('1. POST /api/subscribers/add validates, prevents duplicates, and creates subscriber', async () => {
@@ -33,12 +39,12 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     }));
     expect(unauthRes.status).toBe(401);
 
-    // Missing garage ID
+    // Missing garage ID (using admin token because operator is restricted)
     const missingGarageRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({ subscriberData: { plateNumber: 'أ ب ج 1111' } })
     }), workerEnv);
@@ -51,7 +57,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': testIdempKey
       },
       body: JSON.stringify({
@@ -78,7 +84,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -104,7 +110,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -127,7 +133,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -150,7 +156,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -173,7 +179,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -198,7 +204,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -221,7 +227,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,

@@ -1,6 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MockFirestore, mockAdminAuth } from './mockFirestore';
+
+const mockDb = new MockFirestore();
+
+vi.mock('../../server/firebaseAdmin', () => ({
+  get adminDb() {
+    return mockDb;
+  },
+  adminAuth: mockAdminAuth,
+  firebaseConfig: {},
+  initializeFirebaseAdmin: () => {}
+}));
+
 import { workerApp } from '../../server/cloudflareWorker';
-import { adminDb } from '../../server/firebaseAdmin';
 
 describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -9,36 +21,35 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
   const testDelegateId = 'worker-test-delegate-cf7';
 
   beforeEach(async () => {
-    if (adminDb) {
-      await adminDb.doc(`garages/${testGarageId}`).set({
-        name: 'Financial Test Garage',
-        balance: 100,
-        balanceExpiry: '2026-10-01',
-        dailyCapacity: 50,
-        isTrial: false,
-        createdByDelegateId: testDelegateId
-      });
+    mockDb.clear();
+    mockDb.seed(`garages/${testGarageId}`, {
+      name: 'Financial Test Garage',
+      balance: 100,
+      balanceExpiry: '2026-10-01',
+      dailyCapacity: 50,
+      isTrial: false,
+      createdByDelegateId: testDelegateId
+    });
 
-      await adminDb.doc(`delegates/${testDelegateId}`).set({
-        name: 'Financial Delegate',
-        phone: '01012345678',
-        totalRechargedAmount: 500,
-        totalCommissionEarned: 100
-      });
+    mockDb.seed(`delegates/${testDelegateId}`, {
+      name: 'Financial Delegate',
+      phone: '01012345678',
+      totalRechargedAmount: 500,
+      totalCommissionEarned: 100
+    });
 
-      await adminDb.doc('packages/pkg_monthly_standard').set({
-        id: 'pkg_monthly_standard',
-        name: 'باقة شهرية standard',
-        price: 500,
-        basePrice: 500,
-        discountAmount: 0,
-        finalPrice: 500,
-        durationDays: 30,
-        dailyCapacity: 50,
-        isUnlimited: false,
-        isActive: true
-      });
-    }
+    mockDb.seed('packages/pkg_monthly_standard', {
+      id: 'pkg_monthly_standard',
+      name: 'باقة شهرية standard',
+      price: 500,
+      basePrice: 500,
+      discountAmount: 0,
+      finalPrice: 500,
+      durationDays: 30,
+      dailyCapacity: 50,
+      isUnlimited: false,
+      isActive: true
+    });
   });
 
   it('1. POST /api/recharge-requests/create creates pending request', async () => {
@@ -50,12 +61,12 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     }));
     expect(unauthRes.status).toBe(401);
 
-    // Valid creation
+    // Valid creation (using admin token because operator is restricted from mutating)
     const createRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -78,7 +89,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -91,12 +102,12 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const requestId = createBody.id;
     const testIdempKey = `idemp_appr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    // Process/Approve
+    // Process/Approve (using admin token)
     const processRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/process', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': testIdempKey
       },
       body: JSON.stringify({
@@ -117,7 +128,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId,
@@ -135,7 +146,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': testIdempKey
       },
       body: JSON.stringify({
@@ -155,7 +166,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': testIdempKey
       },
       body: JSON.stringify({
@@ -177,7 +188,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken,
+        'Authorization': 'Bearer valid-admin-token',
         'x-idempotency-key': testIdempKey
       },
       body: JSON.stringify({
@@ -194,7 +205,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('6. GET /api/financial-summary returns aggregated financial totals', async () => {
     const summaryRes = await workerApp.fetch(new Request('http://localhost/api/financial-summary', {
-      headers: { 'x-backend-operator-token': operatorToken }
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(summaryRes.status).toBe(200);

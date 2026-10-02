@@ -1,6 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MockFirestore, mockAdminAuth } from './mockFirestore';
+
+const mockDb = new MockFirestore();
+
+vi.mock('../../server/firebaseAdmin', () => ({
+  get adminDb() {
+    return mockDb;
+  },
+  adminAuth: mockAdminAuth,
+  firebaseConfig: {},
+  initializeFirebaseAdmin: () => {}
+}));
+
 import { workerApp } from '../../server/cloudflareWorker';
-import { adminDb } from '../../server/firebaseAdmin';
 
 describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -8,15 +20,14 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
   const testGarageId = 'worker-test-garage-cf8';
 
   beforeEach(async () => {
-    if (adminDb) {
-      await adminDb.doc(`garages/${testGarageId}`).set({
-        name: 'Existing Hardening Garage',
-        hourlyRate: 10,
-        overnightRate: 50,
-        status: 'approved',
-        dailyCapacity: 40
-      });
-    }
+    mockDb.clear();
+    mockDb.seed(`garages/${testGarageId}`, {
+      name: 'Existing Hardening Garage',
+      hourlyRate: 10,
+      overnightRate: 50,
+      status: 'approved',
+      dailyCapacity: 40
+    });
   });
 
   it('1. POST /api/garages/create creates new garage record and pin', async () => {
@@ -33,7 +44,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         name: 'New Test Garage',
@@ -55,7 +66,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         id: testGarageId,
@@ -75,7 +86,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-backend-operator-token': operatorToken
+        'Authorization': 'Bearer valid-admin-token'
       },
       body: JSON.stringify({
         garageId: testGarageId
@@ -90,7 +101,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
 
   it('4. GET /api/garages and GET /api/garages/:id return live garage data', async () => {
     const listRes = await workerApp.fetch(new Request('http://localhost/api/garages', {
-      headers: { 'x-backend-operator-token': operatorToken }
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(listRes.status).toBe(200);
@@ -99,7 +110,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(Array.isArray(listBody.garages)).toBe(true);
 
     const getRes = await workerApp.fetch(new Request(`http://localhost/api/garages/${testGarageId}`, {
-      headers: { 'x-backend-operator-token': operatorToken }
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(getRes.status).toBe(200);

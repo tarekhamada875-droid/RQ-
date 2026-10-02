@@ -56,9 +56,10 @@ runStep('Production Bundling (Vite + Esbuild)', 'npm run build');
 console.log('[CHECK] Production Artifact Verification...');
 const indexHtmlExists = fs.existsSync(path.join(process.cwd(), 'dist/index.html'));
 const serverCjsExists = fs.existsSync(path.join(process.cwd(), 'dist/server.cjs'));
+const workerJsExists = fs.existsSync(path.join(process.cwd(), 'dist/worker.js'));
 
-if (indexHtmlExists && serverCjsExists) {
-  console.log('[PASS] dist/index.html and dist/server.cjs exist.\n');
+if (indexHtmlExists && serverCjsExists && workerJsExists) {
+  console.log('[PASS] dist/index.html, dist/server.cjs, and dist/worker.js exist.\n');
 } else {
   console.error('[FAIL] Production build artifacts missing in dist/!\n');
   failed = true;

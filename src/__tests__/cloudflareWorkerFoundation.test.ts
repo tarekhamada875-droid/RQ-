@@ -1,4 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { vi, describe, it, expect } from 'vitest';
+import { MockFirestore, mockAdminAuth } from './mockFirestore';
+
+const mockDb = new MockFirestore();
+
+vi.mock('../../server/firebaseAdmin', () => ({
+  get adminDb() {
+    return mockDb;
+  },
+  adminAuth: mockAdminAuth,
+  firebaseConfig: {},
+  initializeFirebaseAdmin: () => {}
+}));
+
 import { workerApp } from '../../server/cloudflareWorker';
 
 describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
@@ -55,9 +68,11 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(unauthBody.error).toContain('UNAUTHORIZED');
   });
 
-  it('5. Allows operator token on POST /api/admin/update-system-config', async () => {
+  it('5. Rejects operator token on POST /api/admin/update-system-config but allows valid admin token', async () => {
     const operatorToken = 'test-operator-token-32-chars-long!!';
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
+    
+    // 1. Should reject operator token on mutations
+    const opRes = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,9 +81,23 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       body: JSON.stringify({ warningDaysThreshold: 3 })
     }), { BACKEND_OPERATOR_TOKEN: operatorToken });
 
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.success).toBe(true);
+    expect(opRes.status).toBe(403);
+    const opBody = await opRes.json() as any;
+    expect(opBody.success).toBe(false);
+
+    // 2. Should allow valid admin token
+    const adminRes = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ warningDaysThreshold: 3 })
+    }), { BACKEND_OPERATOR_TOKEN: operatorToken });
+
+    expect(adminRes.status).toBe(200);
+    const adminBody = await adminRes.json() as any;
+    expect(adminBody.success).toBe(true);
   });
 
   it('6. Verifies CORS policy rejects or handles disallowed origins gracefully', async () => {

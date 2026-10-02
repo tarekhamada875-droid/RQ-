@@ -5,13 +5,14 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+WORKER_VERSION = "1.0.0-production"
 FIREBASE_PROJECT_ID = "gen-lang-client-0091669619"
 FIREBASE_DATABASE_ID = "ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759"
 
 # Pre-production environment for synthetic validation
 [env.preproduction]
 name = "rq-backend-pre"
-vars = { ENVIRONMENT = "preproduction", FIREBASE_PROJECT_ID = "gen-lang-client-0091669619", FIREBASE_DATABASE_ID = "ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759" }
+vars = { ENVIRONMENT = "preproduction", WORKER_VERSION = "1.0.0-preproduction", FIREBASE_PROJECT_ID = "gen-lang-client-0091669619", FIREBASE_DATABASE_ID = "ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759" }
 
 # Documented Cloudflare Worker Secrets (configured via Cloudflare secret put, never in Git):
 # - FIREBASE_SERVICE_ACCOUNT_JSON
