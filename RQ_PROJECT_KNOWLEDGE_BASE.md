@@ -39,7 +39,8 @@ Future agents must use this order:
 5. **`V3_BACKEND_PLAN.md`**: active functional-core architecture guide.
 6. **`docs/SUCCESSION_PROTOCOL.md`**: mandatory procedure when the owner says the exact phrase `tokens ending`.
 7. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: primary combined browser/user and technical acceptance task when the application is tested by role.
-8. Capability-specific documents and dated audits: evidence only unless the canonical plan explicitly assigns work from them.
+8. **`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`**: active checkpoint plan for the owner-approved Cloudflare Pages + Worker + Firebase migration.
+9. Capability-specific documents and dated audits: evidence only unless the canonical plan explicitly assigns work from them.
 
 Older plans must not override this hierarchy.
 
@@ -116,6 +117,8 @@ Recent validation evidence includes:
 ## 7. Current open work and blockers
 
 The active launch decision remains C10 in the checkpoint plan. Do not declare final production readiness merely because the app loads.
+
+The Cloudflare backend migration is an active pre-production workstream governed by `RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`. The repository contains an initial Worker adapter, but the live Pages project is not considered Worker-backed until Firebase compatibility, deployed Worker health, frontend origin switching, role acceptance, observability, and rollback gates are proven.
 
 C10 evidence still concerns:
 

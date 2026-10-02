@@ -1,12 +1,12 @@
 # RQ
 
-For a consolidated explanation of the architecture, business decisions, production-readiness status, document hierarchy, and cleanup dispositions, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first.
+For a consolidated explanation of the architecture, business decisions, production-readiness status, document hierarchy, and cleanup dispositions, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The active Cloudflare migration instructions are in [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md).
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
-> **Current status — controlled synthetic pre-production (2026-09-25):** This project does not have real users, customer records, or live financial data yet. The current Cloudflare Pages → Railway → Firebase deployment is being used for synthetic testing and wiring recovery only. Do not use unknown data, perform destructive cleanup, accept real revenue, or treat this environment as final production until a separate staging/pre-production validation decision is recorded.
+> **Current status — controlled synthetic pre-production (2026-10-02):** This project does not have real users, customer records, or live financial data yet. The Cloudflare Pages → Cloudflare Worker → Firebase migration is planned but not complete; the frontend is not approved to use the Worker until the checkpoint plan and rollback gates pass. Do not use unknown data, perform destructive cleanup, accept real revenue, or treat this environment as final production until a separate staging/pre-production validation decision is recorded.
 
-## Production architecture
+## Target production architecture
 
 RQ is deployed as two connected applications:
 
@@ -16,18 +16,17 @@ Cloudflare Pages frontend
         |
         | HTTPS API requests via VITE_BACKEND_API_URL
         v
-Railway Express backend
-  https://rq-production-af02.up.railway.app
+Dedicated Cloudflare Worker API
+  pre-production URL is assigned during CF1
         |
         v
 Firebase Authentication + Firestore
 ```
 
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
-- **Backend:** Express API deployed as a Railway service. Railway runs the API-only entrypoint and supplies `PORT`.
-- **Operator access:** A dedicated `BACKEND_OPERATOR_TOKEN` Railway variable may be supplied through the `X-Backend-Operator-Token` header for server-to-server operations. It does not replace browser Firebase authentication and must never be committed to the repository.
-- **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the backend uses Firebase Admin SDK credentials stored only in deployment secrets.
-- **Important split:** Cloudflare serves the SPA only. Railway owns `/api/*`; API calls must not be sent to the Cloudflare origin.
+- **Backend target:** A dedicated Cloudflare Worker API. The Worker must use a proven Worker-compatible Firebase Auth/Firestore adapter; local bundling alone is not sufficient evidence.
+- **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the Worker uses server-side secrets that must never enter frontend assets or Git.
+- **Important migration rule:** Cloudflare Pages currently serves the SPA. The Worker must be deployed and verified before the frontend API origin is changed.
 
 ## Repository and branch policy
 
@@ -49,7 +48,7 @@ Never commit `.env` files, Firebase service-account JSON, private keys, or produ
 
 ## Environment
 
-Copy `.env.example` to a local environment file when needed. `VITE_BACKEND_API_URL` is optional for the production frontend because the client has the Railway URL as a safe public fallback. Set it in Cloudflare Pages for preview or alternate API environments. Firebase Admin credentials belong only in Railway variables.
+Copy `.env.example` to a local environment file when needed. Set `VITE_BACKEND_API_URL` explicitly in each Cloudflare Pages environment after the corresponding Worker deployment is verified. Firebase credentials belong only in Cloudflare Worker secrets and must never be placed in frontend variables.
 
 ## Development and validation commands
 
@@ -69,27 +68,19 @@ The normal validation gate is:
 npm test && npm run lint && npm run build && npm run maintainability:check && git diff --check
 ```
 
-## Railway deployment contract
+## Cloudflare deployment contract
 
-Railway uses [`railway.json`](./railway.json). The current contract is:
-
-- Build with `npm run build:railway`.
-- Start with `node dist/cloud-run.cjs`.
-- Bind to `0.0.0.0` and Railway's `PORT`.
-- Expose `/api/health` as the health check.
-- Provide Firebase Admin credentials, `APP_URL`, and the approved `ALLOWED_ORIGINS` through Railway variables.
-
-The `cloudRun.ts` filename is retained as the existing API-only entrypoint name; the production host is Railway.
+The active target is documented in [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md). The Worker must expose JSON health and version endpoints, use only Worker-compatible Firebase access, receive secrets through Cloudflare Worker secrets, and remain on a verified pre-production URL until the migration gates pass.
 
 ## Production smoke checks
 
 ```bash
-curl -i https://rq-production-af02.up.railway.app/api/health
-curl -i https://rq-production-af02.up.railway.app/api/system-config
+curl -i "$WORKER_URL/api/health"
+curl -i "$WORKER_URL/api/system-config"
 curl -i -X POST \
   -H 'content-type: application/json' \
   --data '{}' \
-  https://rq-production-af02.up.railway.app/api/auth/verify-pin
+  "$WORKER_URL/api/auth/verify-pin"
 ```
 
 Expected behavior is HTTP 200 JSON for health and system configuration, and an authentication error in JSON for an unauthenticated PIN request. An API route returning `index.html` is a deployment failure.
@@ -103,16 +94,16 @@ Do not delete or mutate Firestore production data without explicit scope and con
 ## Repository structure
 
 ```text
-server/                 Express app, middleware, validation, domain utilities
-server/routes/          Backend route modules
-server/cloudRun.ts      Railway API-only process entrypoint (legacy filename)
+server/                 Existing backend/domain source being adapted incrementally
+server/routes/          Backend route modules and business contracts
+server/cloudflareWorker.ts  Initial Worker adapter; runtime compatibility is not yet proven
+wrangler.toml           Cloudflare Worker deployment configuration
 src/components/         React UI components
 src/api/                Frontend API client
 src/services/           Firebase-backed frontend services
-src/domain/             Shared business rules and domain logic
+src/domain/              Shared business rules and domain logic
 .github/workflows/      GitHub Actions production gate
-railway.json            Railway build, start, and health-check configuration
 Dockerfile              Container build alternative
 ```
 
-For deployment details, use [`RAILWAY_DEPLOYMENT_HANDOFF.md`](./RAILWAY_DEPLOYMENT_HANDOFF.md). For the current checkpointed recovery and wiring plan, use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](./RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). The older overhaul-stage and handoff documents were superseded and are no longer active instructions.
+For deployment details, use [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md). For the current checkpointed recovery and wiring plan, use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](./RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). Older overhaul-stage and handoff documents are historical evidence and do not override the canonical plans.
