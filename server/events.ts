@@ -117,7 +117,7 @@ export function recordDomainEventInTransaction(t: any, adminDb: any, params: Cre
     recordedAt: timestamp.toISOString(),
     actorUid: params.actorUid || 'system',
     actorRole: params.actorRole || 'unknown',
-    idempotencyKey: params.idempotencyKey || undefined,
+    ...(params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : {}),
     ...(params.correlationId || trace?.correlationId ? { correlationId: params.correlationId || trace?.correlationId } : {}),
     ...(params.operationId || trace?.operationId ? { operationId: params.operationId || trace?.operationId } : {}),
     payload: redactSensitive(params.payload) as EventPayload

@@ -12,12 +12,12 @@ import { validateIdempotencyKey } from '../../server/validation';
 import { idempotencyMiddleware } from '../../server/middleware';
 
 describe('Phase 1 — Foundation & Routing Test Suite', () => {
-  it('1. Verifies Railway deployment configuration', () => {
-    const railwayPath = path.resolve(process.cwd(), 'railway.json');
-    expect(fs.existsSync(railwayPath)).toBe(true);
-    const content = JSON.parse(fs.readFileSync(railwayPath, 'utf-8'));
-    expect(content.deploy.healthcheckPath).toBe('/api/health');
-    expect(content.deploy.startCommand).toBe('node dist/cloud-run.cjs');
+  it('1. Verifies deployment configuration', () => {
+    const wranglerPath = path.resolve(process.cwd(), 'wrangler.toml');
+    expect(fs.existsSync(wranglerPath)).toBe(true);
+    const content = fs.readFileSync(wranglerPath, 'utf-8');
+    expect(content).toContain('name = "rq-backend"');
+    expect(content).toContain('main = "server/cloudflareWorker.ts"');
   });
 
   it('2. Verifies the Railway API entry source exists', () => {

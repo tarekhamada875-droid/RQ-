@@ -37,10 +37,11 @@ try {
   let adminApp = existingApps.find(a => a.name === 'admin-app');
 
   if (!adminApp) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const saEnv = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (saEnv) {
       let sa: any;
       try {
-        const rawSA = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        const rawSA = saEnv.trim();
         sa = JSON.parse(rawSA);
       } catch (parseErr) {
         console.error('[Server Auth] Failed to JSON.parse FIREBASE_SERVICE_ACCOUNT:', parseErr);

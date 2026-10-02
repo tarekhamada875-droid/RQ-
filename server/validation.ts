@@ -84,7 +84,7 @@ export function validateId(val: any, fieldName = 'ID', required = true): string 
   }
 
   // Prevent path traversal or script injection
-  const safeIdRegex = /^[a-zA-Z0-9_.:@\s]+$/;
+  const safeIdRegex = /^[a-zA-Z0-9_.:@\s-]+$/;
   if (!safeIdRegex.test(trimmed)) {
     throw new ValidationError(`Invalid characters in ${fieldName}`, `INVALID_CHARS_${fieldName.toUpperCase()}`, 400);
   }
