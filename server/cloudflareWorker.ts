@@ -35,6 +35,13 @@ import {
   transitionToFirestoreUpdate,
   updateRequestToCommand
 } from './adapters/subscriberLifecycleAdapter';
+import {
+  checkWorkerPinRateLimit,
+  resetWorkerPinRateLimit,
+  PinRateLimiterNamespace
+} from './workerPinRateLimiter';
+
+export { PinRateLimiterDurableObject } from './workerPinRateLimiter';
 
 export interface WorkerUser {
   uid: string;
@@ -52,6 +59,7 @@ const workerApp = new Hono<{
     ALLOWED_ORIGINS?: string;
     BACKEND_OPERATOR_TOKEN?: string;
     WORKER_VERSION?: string;
+    PIN_RATE_LIMITER?: PinRateLimiterNamespace;
   };
   Variables: {
     correlationId: string;
@@ -262,6 +270,18 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const normalizedPin = cleanPin(rawInput);
     if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
+    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    let pinLimit: Awaited<ReturnType<typeof checkWorkerPinRateLimit>>;
+    try {
+      pinLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
+    } catch (error: any) {
+      console.error('[Worker Auth] PIN rate limiter unavailable:', error?.message || 'unknown');
+      return c.json({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' }, 503);
+    }
+    if (pinLimit.allowed === false) {
+      return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinLimit.resetAt }, 429);
+    }
+
     const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
       { name: 'garages', role: 'garage' },
       { name: 'staff', role: 'staff' },
@@ -318,6 +338,12 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(securityRef, sessionData, { merge: true });
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
     });
+
+    try {
+      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
+    } catch (error: any) {
+      console.error('[Worker Auth] PIN rate limiter reset failed after successful claim:', error?.message || 'unknown');
+    }
 
     return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
   } catch (error: any) {
