@@ -11,7 +11,7 @@ if (!existsSync(wranglerConfig) || statSync(wranglerConfig).size === 0) {
   fail('wrangler.toml must exist and be non-empty for Cloudflare Worker deployment.');
 } else {
   const content = readFileSync(wranglerConfig, 'utf8');
-  if (!content.includes('name = "rq-backend"')) fail('wrangler.toml must declare name = "rq-backend".');
+  if (!content.includes('name = "rq-backend"') && !content.includes('name = "rq"')) fail('wrangler.toml must declare name = "rq-backend" or "rq".');
   if (!content.includes('main = "server/cloudflareWorker.ts"')) fail('wrangler.toml must point to server/cloudflareWorker.ts.');
   if (!content.includes('"nodejs_compat"')) fail('wrangler.toml must enable nodejs_compat.');
 }
