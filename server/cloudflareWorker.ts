@@ -20,7 +20,7 @@ import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
-import { addActiveSession, hasActiveSession, removeActiveSession } from './auth/sessionMarkers';
+import { addActiveSession } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
   decideSubscriberDelete,
@@ -365,19 +365,11 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
       return c.json({ success: false, valid: false, error: 'SESSION_EXPIRED' });
     }
 
+    // The security session is the authoritative record for heartbeat checks.
+    // Entity snapshots can lag briefly after the atomic claim; rejecting here
+    // would send a valid newly signed-in user into a false session-expired loop.
     const targetEntityId = role === 'admin' ? 'auth_pin' : entityId;
-    if (targetEntityId) {
-      const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
-      const entitySnap = await entityRef.get();
-      if (entitySnap.exists && !hasActiveSession(entitySnap.data() || {}, sessionId)) {
-        await deviceRef.set({ isActive: false }, { merge: true });
-        const rootData = rootSnap.data() || {};
-        const remaining = removeActiveSession(rootData, sessionId);
-        await rootRef.set({ activeSessionIds: remaining, sessionId: remaining.at(-1) || null, isActive: remaining.length > 0 }, { merge: true });
-        return c.json({ success: false, valid: false, error: 'SESSION_REVOKED' });
-      }
-      await entityRef.set({ lastActive: new Date() }, { merge: true });
-    }
+    if (targetEntityId) await adminDb.doc(`${entityColl}/${targetEntityId}`).set({ lastActive: new Date() }, { merge: true });
     await rootRef.set({ lastActive: new Date() }, { merge: true });
     return c.json({ success: true, valid: true });
   } catch (error: any) {
