@@ -6,8 +6,8 @@ import { isValidBackendOperatorToken } from './middleware';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse } from './unlimitedFairUse';
-import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin } from './utils';
-import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString } from './validation';
+import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, cleanPin, verifyPinMatch, queryAccountWherePin, getAdminPin, checkRateLimit, resetRateLimit, migratePinToHash } from './utils';
+import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
 import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
@@ -20,6 +20,7 @@ import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
+import { addActiveSession } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
   decideSubscriberDelete,
@@ -236,6 +237,98 @@ workerApp.get('/api/version', (c) => {
     status: 'operational',
     timestamp: new Date().toISOString()
   });
+});
+
+// Authentication routes must be Fetch-native in the Worker. The old Express
+// router is not bundled into Cloudflare, so keep the server-owned PIN lookup,
+// validation, and atomic session claim here.
+workerApp.post('/api/auth/verify-pin', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+
+  try {
+    const credentials = await c.req.json().catch(() => ({} as Record<string, any>));
+    const currentUser = c.get('user');
+    const effectiveUid = currentUser?.uid || '';
+    const suppliedUid = typeof credentials.uid === 'string' ? credentials.uid.trim() : '';
+    if (!effectiveUid) return c.json({ success: false, error: 'UNAUTHORIZED' }, 401);
+    if (suppliedUid && suppliedUid !== effectiveUid) return c.json({ success: false, error: 'UID_MISMATCH' }, 401);
+
+    const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
+    if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
+
+    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    if (!(await checkRateLimit(clientIp))) {
+      return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', message: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً' }, 429);
+    }
+
+    const rawInput = credentials.pin || credentials.input;
+    const normalizedPin = cleanPin(rawInput);
+    if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+
+    const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
+      { name: 'garages', role: 'garage' },
+      { name: 'staff', role: 'staff' },
+      { name: 'delegates', role: 'delegate' },
+      { name: 'supervisors', role: 'supervisor' }
+    ];
+    const [adminPinStored, ...collectionResults] = await Promise.all([
+      getAdminPin(),
+      ...collectionsToCheck.map((collection) => queryAccountWherePin(collection.name, normalizedPin))
+    ]);
+
+    const matches: Array<{ role: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; id: string; account?: any; isLegacyMatch?: boolean }> = [];
+    const adminCheck = verifyPinMatch(normalizedPin, adminPinStored);
+    if (adminCheck.matches) {
+      matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
+      if (adminCheck.isLegacy) await migratePinToHash('admin_settings', 'auth_pin', normalizedPin);
+    }
+
+    for (let index = 0; index < collectionsToCheck.length; index += 1) {
+      const collection = collectionsToCheck[index];
+      for (const docSnap of collectionResults[index] || []) {
+        const account = { ...(docSnap as any).data };
+        delete account.pin;
+        delete account.ownerPin;
+        delete account.adminPin;
+        delete account.pinLookupHash;
+        matches.push({ role: collection.role, id: docSnap.id, account: { id: docSnap.id, ...account }, isLegacyMatch: docSnap.isLegacyMatch });
+        if (docSnap.isLegacyMatch) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+      }
+    }
+
+    if (matches.length > 1) return c.json({ success: false, error: 'PIN_NOT_UNIQUE' });
+    if (matches.length === 0) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+
+    const match = matches[0];
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    const entityColl = entityCollMap[match.role];
+    const secColl = secCollMap[match.role];
+    const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
+    if (!adminDb || !entityColl || !secColl) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
+
+    await adminDb.runTransaction(async (transaction: any) => {
+      const entityRef = adminDb.doc(`${entityColl}/${entityDocId}`);
+      const securityRef = adminDb.doc(`${secColl}/${effectiveUid}`);
+      const deviceSecurityRef = adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`);
+      const entitySnap = await transaction.get(entityRef);
+      const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
+      const activeSessionIds = addActiveSession(entityData, sessionId);
+      const resolvedGarageId = match.role === 'staff' ? (entityData.garageId || '') : (match.role === 'garage' ? entityDocId : '');
+      const displayName = match.account?.name || (match.role === 'admin' ? 'مدير النظام' : (match.role === 'garage' ? 'مدير الجراج' : match.role));
+      const sessionData = { uid: effectiveUid, role: match.role, entityId: entityDocId, garageId: resolvedGarageId, displayName, sessionId, isActive: true, lastActive: new Date(), createdAt: new Date() };
+      transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
+      transaction.set(securityRef, sessionData, { merge: true });
+      transaction.set(deviceSecurityRef, sessionData, { merge: true });
+    });
+
+    await resetRateLimit(clientIp);
+    return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
+  } catch (error: any) {
+    console.error('[Worker Auth] Unexpected error in verify-pin:', error);
+    return c.json({ success: false, error: 'حدث خطأ في الاتصال بالخادم', message: error?.message || 'unknown' }, 500);
+  }
 });
 
 // Foundation Route: GET /api/system-config
