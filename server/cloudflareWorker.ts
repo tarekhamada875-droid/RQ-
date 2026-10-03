@@ -20,7 +20,7 @@ import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
-import { addActiveSession } from './auth/sessionMarkers';
+import { addActiveSession, hasActiveSession, removeActiveSession } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
   decideSubscriberDelete,
@@ -328,6 +328,61 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
   } catch (error: any) {
     console.error('[Worker Auth] Unexpected error in verify-pin:', error);
     return c.json({ success: false, error: 'حدث خطأ في الاتصال بالخادم', message: error?.message || 'unknown' }, 500);
+  }
+});
+
+workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { uid, sessionId, role, entityId } = body;
+    const effectiveUid = c.get('user')?.uid || '';
+    if (!uid || !sessionId || !role) return c.json({ success: false, valid: false, error: 'INVALID_PARAMS' }, 400);
+    if (!effectiveUid) return c.json({ success: false, valid: false, error: 'UNAUTHORIZED' }, 401);
+    if (String(uid).trim() !== effectiveUid) return c.json({ success: false, valid: false, error: 'UID_MISMATCH' }, 401);
+    if (!adminDb) return c.json({ success: false, valid: false, error: 'DATABASE_UNAVAILABLE' }, 503);
+
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    const secColl = secCollMap[role];
+    const entityColl = entityCollMap[role];
+    if (!secColl || !entityColl) return c.json({ success: false, valid: false, error: 'INVALID_ROLE' });
+
+    const rootRef = adminDb.doc(`${secColl}/${effectiveUid}`);
+    const deviceRef = adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`);
+    const rootSnap = await rootRef.get();
+    const deviceSnap = await deviceRef.get();
+    const sessionSnap = deviceSnap.exists ? deviceSnap : rootSnap;
+    if (!sessionSnap.exists) return c.json({ success: false, valid: false, error: 'SESSION_NOT_FOUND' });
+    const sessionData = sessionSnap.data() || {};
+    if (!sessionData.isActive || sessionData.sessionId !== sessionId) return c.json({ success: false, valid: false, error: 'SESSION_INVALID' });
+
+    const lastActiveValue = sessionData.lastActive;
+    const lastActive = lastActiveValue?.toDate ? lastActiveValue.toDate().getTime() : new Date(lastActiveValue || 0).getTime();
+    if (!lastActive || Date.now() - lastActive > 24 * 60 * 60 * 1000) {
+      await rootRef.set({ isActive: false }, { merge: true });
+      return c.json({ success: false, valid: false, error: 'SESSION_EXPIRED' });
+    }
+
+    const targetEntityId = role === 'admin' ? 'auth_pin' : entityId;
+    if (targetEntityId) {
+      const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
+      const entitySnap = await entityRef.get();
+      if (entitySnap.exists && !hasActiveSession(entitySnap.data() || {}, sessionId)) {
+        await deviceRef.set({ isActive: false }, { merge: true });
+        const rootData = rootSnap.data() || {};
+        const remaining = removeActiveSession(rootData, sessionId);
+        await rootRef.set({ activeSessionIds: remaining, sessionId: remaining.at(-1) || null, isActive: remaining.length > 0 }, { merge: true });
+        return c.json({ success: false, valid: false, error: 'SESSION_REVOKED' });
+      }
+      await entityRef.set({ lastActive: new Date() }, { merge: true });
+    }
+    await rootRef.set({ lastActive: new Date() }, { merge: true });
+    return c.json({ success: true, valid: true });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error validating session:', error);
+    return c.json({ success: false, valid: false, error: 'SERVER_ERROR' }, 500);
   }
 });
 
