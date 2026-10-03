@@ -384,6 +384,45 @@ workerApp.post('/api/auth/verify-admin-pin', async (c) => {
   }
 });
 
+workerApp.post('/api/auth/check-pin-availability', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const normalizedPin = cleanPin(body.pin);
+    if (!normalizedPin) return c.json({ taken: false });
+    const result = await checkPinAvailabilityAcrossAll(normalizedPin, typeof body.excludeId === 'string' ? body.excludeId : undefined);
+    return c.json({ taken: Boolean(result.taken) });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error checking PIN availability:', error?.message || 'unknown');
+    return c.json({ taken: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/update-pin', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    if (c.get('user')?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const normalizedNewPin = validateNewPin(body.newPin, 'newPin');
+    const normalizedCurrentPin = cleanPin(body.currentPin);
+    if (!normalizedCurrentPin) return c.json({ success: false, error: 'CURRENT_PIN_REQUIRED' }, 400);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const storedPin = await getAdminPin();
+    if (!storedPin) return c.json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' }, 500);
+    if (!verifyPinMatch(normalizedCurrentPin, storedPin).matches) return c.json({ success: false, error: 'CURRENT_PIN_INCORRECT' }, 400);
+    const pinCheck = await checkPinAvailabilityAcrossAll(normalizedNewPin, 'auth_pin');
+    if (pinCheck.taken) return c.json({ success: false, error: 'PIN_ALREADY_TAKEN', takenBy: { name: pinCheck.name || '', role: pinCheck.role } }, 400);
+    await saveEntityPin('admin_settings', 'auth_pin', normalizedNewPin);
+    await adminDb.doc('admin_settings/auth_pin').set({ pin: null, pinLookupHash: null, updatedAt: new Date() }, { merge: true });
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Worker Admin] Error updating PIN:', error?.message || 'unknown');
+    return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 400);
+  }
+});
+
 workerApp.post('/api/auth/claim-admin-session', async (c) => {
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;

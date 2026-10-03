@@ -165,5 +165,19 @@ describe('Worker PIN rate limiter', () => {
       expect(await claim.json()).toMatchObject({ success: true, sessionClaimed: true });
       expect(mockDb.records.get('admin_sessions/admin-uid/sessions/claimed-session')?.isActive).toBe(true);
     });
+
+    it('supports sanitized PIN availability and admin PIN rotation', async () => {
+      const availability = await postAuth('/api/auth/check-pin-availability', { pin: '12345678' });
+      expect(availability.status).toBe(200);
+      expect(await availability.json()).toEqual({ taken: true });
+
+      const incorrect = await postAuth('/api/admin/update-pin', { currentPin: '00000000', newPin: '87654321' });
+      expect(incorrect.status).toBe(400);
+      expect(await incorrect.json()).toMatchObject({ success: false, error: 'CURRENT_PIN_INCORRECT' });
+
+      const rotated = await postAuth('/api/admin/update-pin', { currentPin: '12345678', newPin: '87654321' });
+      expect(rotated.status).toBe(200);
+      expect(await rotated.json()).toEqual({ success: true });
+    });
   });
 });
