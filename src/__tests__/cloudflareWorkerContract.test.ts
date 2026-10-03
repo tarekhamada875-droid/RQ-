@@ -22,9 +22,9 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
     expect(existsSync(wranglerPath)).toBe(true);
 
     const content = readFileSync(wranglerPath, 'utf8');
-    expect(content).toContain('name = "rq-backend"');
+    expect(content).toContain('name = "rq"');
     expect(content).toContain('main = "server/cloudflareWorker.ts"');
-    expect(content).toContain('compatibility_flags = ["nodejs_compat"]');
+    expect(content).toContain('compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]');
     expect(content).toContain('[env.preproduction]');
     expect(content).toContain('name = "rq-backend-pre"');
     expect(content).toContain('FIREBASE_PROJECT_ID');

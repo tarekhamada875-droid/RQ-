@@ -28,14 +28,14 @@ describe('Phase 1 — Foundation & Routing Test Suite', () => {
     const wranglerPath = path.resolve(process.cwd(), 'wrangler.toml');
     expect(fs.existsSync(wranglerPath)).toBe(true);
     const content = fs.readFileSync(wranglerPath, 'utf-8');
-    expect(content).toContain('name = "rq-backend"');
+    expect(content).toContain('name = "rq"');
     expect(content).toContain('main = "server/cloudflareWorker.ts"');
   });
 
-  it('2. Verifies the Railway API entry source exists', () => {
-    const apiEntryPath = path.resolve(process.cwd(), 'server/cloudRun.ts');
+  it('2. Verifies the active Cloudflare Worker entry source exists', () => {
+    const apiEntryPath = path.resolve(process.cwd(), 'server/cloudflareWorker.ts');
     expect(fs.existsSync(apiEntryPath)).toBe(true);
-    expect(fs.readFileSync(apiEntryPath, 'utf8')).toContain("from './app'");
+    expect(fs.readFileSync(apiEntryPath, 'utf8')).toContain("from 'hono'");
   });
 
   it('3. Verifies shared idempotency key transport helper', () => {
