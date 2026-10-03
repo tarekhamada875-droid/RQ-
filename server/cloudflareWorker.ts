@@ -259,7 +259,8 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
 
     const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-    if (!(await checkRateLimit(clientIp))) {
+    const rateLimitKey = `${clientIp}:${effectiveUid}`;
+    if (!(await checkRateLimit(rateLimitKey))) {
       return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', message: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً' }, 429);
     }
 
@@ -324,7 +325,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
     });
 
-    await resetRateLimit(clientIp);
+    await resetRateLimit(rateLimitKey);
     return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
   } catch (error: any) {
     console.error('[Worker Auth] Unexpected error in verify-pin:', error);
