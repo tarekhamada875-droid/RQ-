@@ -38,7 +38,7 @@ describe('CORS Origin Validation', () => {
     expect(isAllowedOrigin('https://evil-attacker.vercel.app')).toBe(false);
   });
 
-  it('allows the authenticated session header in the Railway CORS preflight', async () => {
+  it('allows the authenticated session header in the CORS preflight', async () => {
     const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
       const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
     });

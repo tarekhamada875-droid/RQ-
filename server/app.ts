@@ -145,7 +145,7 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   // Health endpoint reporting process readiness without sensitive info
   app.get('/api/health', (_req, res) => {
     const isReady = !!(adminDb && adminAuth);
-    const version = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || 'unknown';
+    const version = process.env.GIT_COMMIT_SHA || 'unknown';
     if (!isReady) {
       return res.status(503).json({
         status: 'error',

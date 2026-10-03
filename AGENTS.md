@@ -6,7 +6,7 @@
 - **Prohibited Terms:** Never use "Your Garage" (الجراج بتاعك), "Professor" (أستاذ), or "Your Excellence" (حضرتك).
 
 ## Current environment status
-- **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. The repository retains Railway/Cloud Run artifacts only as legacy rollback and compatibility tooling. There are no real users, customer records, or live financial data; use synthetic data only.
+- **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. There are no real users, customer records, or live financial data; use synthetic data only.
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
 ## V3 Execution Workflow

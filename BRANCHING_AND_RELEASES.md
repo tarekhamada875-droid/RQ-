@@ -2,10 +2,10 @@
 
 ## Current state
 
-`main` is the only permanent branch. It represents the source that should be deployed to Cloudflare Pages and Railway. The production URLs are:
+`main` is the only permanent branch. It represents the source deployed to Cloudflare Pages and the Cloudflare Worker. The production URLs are:
 
 - Frontend: `https://rq-acg.pages.dev`
-- Backend: `https://rq-production-af02.up.railway.app`
+- Backend: `https://rq.tarekhamada875.workers.dev`
 
 ## Normal change flow
 

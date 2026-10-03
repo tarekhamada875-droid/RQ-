@@ -20,13 +20,6 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 if (!packageJson.packageManager?.startsWith('npm@')) fail('package.json must declare npm as the supported package manager.');
 if (!packageJson.scripts?.['build:cloudflare']) fail('package.json must declare build:cloudflare script.');
 
-// Optional Railway transition validation if railway.json is present
-const railwayConfig = resolve(root, 'railway.json');
-if (existsSync(railwayConfig) && statSync(railwayConfig).size > 0) {
-  const config = JSON.parse(readFileSync(railwayConfig, 'utf8')) as any;
-  if (config.deploy?.healthcheckPath !== '/api/health') fail('Railway healthcheck must use /api/health.');
-}
-
 for (const strayLock of ['bun.lock', 'bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']) {
   if (existsSync(resolve(root, strayLock))) fail(`Secondary lockfile ${strayLock} must not exist; project is standardized on npm.`);
 }
