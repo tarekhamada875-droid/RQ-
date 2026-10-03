@@ -4,6 +4,7 @@ compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]
 
 [vars]
+ALLOWED_ORIGINS = "https://rq-acg.pages.dev"
 ENVIRONMENT = "production"
 WORKER_VERSION = "1.0.0-production"
 FIREBASE_PROJECT_ID = "gen-lang-client-0091669619"
