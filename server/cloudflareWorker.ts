@@ -18,6 +18,7 @@ import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageS
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
+import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboardSummary';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
 import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
@@ -2920,11 +2921,53 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
   }
 });
 
+workerApp.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
+  const startedAt = Date.now();
+  try {
+    const garageId = validateId(c.req.param('id'), 'garageId', true);
+    const user = c.get('user');
+    if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const [bucketSnap, garageSnap, summarySnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', today).get(),
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get()
+    ]);
+    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+    c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
+    if (bucketSnap.empty) {
+      if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
+      const storedSummary = summarySnap.data() || {};
+      if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
+      c.header('X-Summary-Source', 'stored_rebuild');
+      return c.json({ success: true, data: { garageId, summary: storedSummary } });
+    }
+    const summary = {
+      ...aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {})),
+      activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
+      garageId,
+      dateId: today,
+      rebuiltAt: new Date().toISOString(),
+      source: 'live_projection_buckets'
+    };
+    c.header('X-Summary-Source', 'live_projection_buckets');
+    c.header('X-Summary-Bucket-Count', String(bucketSnap.size));
+    return c.json({ success: true, data: { garageId, summary, bucketCount: bucketSnap.size } });
+  } catch (error: any) {
+    console.error('[Worker Garage] Error reading dashboard summary:', error);
+    return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
 workerApp.get('/api/garages/:id', requireWorkerAuth, async (c) => {
   try {
     const id = c.req.param('id');
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
+    const user = c.get('user');
+    if (!decideGarageScope(user, id)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
+    }
     const docSnap = await adminDb.doc(`garages/${id}`).get();
     if (!docSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
 

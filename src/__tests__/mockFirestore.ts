@@ -240,6 +240,13 @@ export const mockAdminAuth = {
     if (token === 'valid-delegate-token' || token === 'delegate-token') {
       return { uid: 'delegate-uid', email: 'delegate@test.com', role: 'delegate' };
     }
+    if (token === 'valid-supervisor-token' || token === 'supervisor-token') {
+      return { uid: 'supervisor-uid', email: 'supervisor@test.com', role: 'supervisor' };
+    }
+    if (token.startsWith('valid-staff-token-')) {
+      const garageId = token.substring('valid-staff-token-'.length);
+      return { uid: `staff-uid-${garageId}`, email: `staff-${garageId}@test.com`, role: 'staff', garageId };
+    }
     if (token === 'valid-worker-token' || token === 'worker-token') {
       return { uid: 'worker-uid', email: 'worker@test.com', role: 'worker' };
     }
