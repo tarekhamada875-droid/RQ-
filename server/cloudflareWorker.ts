@@ -181,31 +181,32 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
 
   try {
     const decoded = await adminAuth.verifyIdToken(token);
+    const decodedUid = (decoded as any).uid || (decoded as any).user_id || (decoded as any).sub || '';
     let role = (decoded as any).role || 'worker';
     let garageId = (decoded as any).garageId || null;
-    const entityId = (decoded as any).entityId || decoded.uid;
+    const entityId = (decoded as any).entityId || decodedUid;
 
     if (adminDb && (!role || role === 'worker')) {
-      const adminDoc = await adminDb.doc(`admins/${decoded.uid}`).get();
+      const adminDoc = await adminDb.doc(`admins/${decodedUid}`).get();
       if (adminDoc.exists) {
         role = 'admin';
       } else {
-        const staffDoc = await adminDb.doc(`staff/${decoded.uid}`).get();
+        const staffDoc = await adminDb.doc(`staff/${decodedUid}`).get();
         if (staffDoc.exists) {
           role = staffDoc.data()?.role || 'worker';
           garageId = staffDoc.data()?.garageId || null;
         } else {
-          const garageDoc = await adminDb.doc(`garages/${decoded.uid}`).get();
+          const garageDoc = await adminDb.doc(`garages/${decodedUid}`).get();
           if (garageDoc.exists) {
             role = 'garage';
-            garageId = decoded.uid;
+            garageId = decodedUid;
           }
         }
       }
     }
 
     c.set('user', {
-      uid: decoded.uid,
+      uid: decodedUid,
       email: decoded.email,
       role,
       garageId,
