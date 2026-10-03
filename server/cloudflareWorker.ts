@@ -20,7 +20,7 @@ import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
-import { addActiveSession } from './auth/sessionMarkers';
+import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
   decideSubscriberDelete,
@@ -68,6 +68,18 @@ const workerApp = new Hono<{
   };
 }>();
 let configuredAllowedOrigins = '';
+
+const WORKER_SESSION_DEFINITIONS: Record<string, { sessions: string; entity: string }> = {
+  admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
+  supervisor: { sessions: 'supervisor_sessions', entity: 'supervisors' },
+  delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
+  garage: { sessions: 'garage_sessions', entity: 'garages' },
+  staff: { sessions: 'staff_sessions', entity: 'staff' }
+};
+
+function workerSessionDefinition(role: string | undefined) {
+  return role ? WORKER_SESSION_DEFINITIONS[role] : undefined;
+}
 
 function isAllowedWorkerOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
@@ -352,6 +364,59 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
   }
 });
 
+workerApp.post('/api/auth/verify-admin-pin', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const normalizedPin = cleanPin(body.pin);
+    if (!normalizedPin) return c.json({ valid: false });
+    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
+    if (limit.allowed === false) return c.json({ valid: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: limit.resetAt }, 429);
+    const check = verifyPinMatch(normalizedPin, await getAdminPin());
+    if (check.matches) await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
+    return c.json({ valid: check.matches });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error verifying admin PIN:', error?.message || 'unknown');
+    return c.json({ valid: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/auth/claim-admin-session', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const effectiveUid = c.get('user')?.uid || '';
+    const uid = typeof body.uid === 'string' ? body.uid.trim() : '';
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
+    if (!effectiveUid || !uid || !sessionId) return c.json({ success: false, error: 'INVALID_PARAMS' }, 400);
+    if (uid !== effectiveUid) return c.json({ success: false, error: 'UID_MISMATCH' }, 401);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
+    const existing = await adminDb.doc(`admin_sessions/${effectiveUid}`).get();
+    const existingData = existing.exists ? existing.data() || {} : {};
+    const pinCheck = body.pin ? verifyPinMatch(cleanPin(body.pin), await getAdminPin()) : { matches: false };
+    if (!pinCheck.matches && !(existingData.isActive === true && existingData.sessionId === sessionId)) return c.json({ success: false, error: 'INVALID_ADMIN_PIN' }, 403);
+    await adminDb.runTransaction(async (transaction: any) => {
+      const entityRef = adminDb.doc('admin_settings/auth_pin');
+      const rootRef = adminDb.doc(`admin_sessions/${effectiveUid}`);
+      const deviceRef = adminDb.doc(`admin_sessions/${effectiveUid}/sessions/${sessionId}`);
+      const entitySnap = await transaction.get(entityRef);
+      const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
+      const activeSessionIds = addActiveSession(entityData, sessionId);
+      const sessionData = { uid: effectiveUid, role: 'admin', entityId: 'auth_pin', sessionId, isActive: true, lastActive: new Date(), createdAt: new Date() };
+      transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
+      transaction.set(rootRef, { ...sessionData, currentSessionId: sessionId, activeSessionIds }, { merge: true });
+      transaction.set(deviceRef, sessionData, { merge: true });
+    });
+    return c.json({ success: true, sessionClaimed: true });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error claiming admin session:', error?.message || 'unknown');
+    return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
 workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;
@@ -396,6 +461,148 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
   } catch (error: any) {
     console.error('[Worker Auth] Error validating session:', error);
     return c.json({ success: false, valid: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/auth/release-session', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const verifiedUid = c.get('user')?.uid || '';
+    const targetUid = typeof body.uid === 'string' ? body.uid.trim() : '';
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
+    const role = typeof body.role === 'string' ? body.role.trim() : '';
+    const entityId = typeof body.entityId === 'string' ? body.entityId.trim() : '';
+    if (!verifiedUid || !targetUid || !sessionId || !role) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
+
+    let authorized = verifiedUid === targetUid;
+    if (!authorized) {
+      const [adminSnap, supervisorSnap] = await Promise.all([
+        adminDb.doc(`admin_sessions/${verifiedUid}`).get(),
+        adminDb.doc(`supervisor_sessions/${verifiedUid}`).get()
+      ]);
+      authorized = Boolean((adminSnap.exists && adminSnap.data()?.isActive) || (supervisorSnap.exists && supervisorSnap.data()?.isActive));
+    }
+    if (!authorized) return c.json({ success: false, error: 'FORBIDDEN: Unauthorized session release' }, 403);
+
+    const definition = workerSessionDefinition(role);
+    const targetEntityId = role === 'admin' ? 'auth_pin' : entityId;
+    if (!definition) return c.json({ success: false, error: 'INVALID_ROLE' }, 400);
+
+    if (targetEntityId) {
+      const entityRef = adminDb.doc(`${definition.entity}/${targetEntityId}`);
+      const entitySnap = await entityRef.get();
+      if (entitySnap.exists) {
+        const data = entitySnap.data() || {};
+        const remaining = removeActiveSession(data, sessionId);
+        await entityRef.set({
+          activeSessionIds: remaining,
+          ...(data.currentSessionId === sessionId ? { currentSessionId: remaining.at(-1) ?? null } : {})
+        }, { merge: true });
+      }
+    }
+
+    const rootRef = adminDb.doc(`${definition.sessions}/${targetUid}`);
+    const rootSnap = await rootRef.get();
+    if (rootSnap.exists) {
+      const rootData = rootSnap.data() || {};
+      const remaining = removeActiveSession(rootData, sessionId);
+      const rootWasReleased = rootData.sessionId === sessionId || rootData.currentSessionId === sessionId;
+      await rootRef.set({
+        activeSessionIds: remaining,
+        ...(rootData.currentSessionId === sessionId ? { currentSessionId: remaining.at(-1) ?? null } : {}),
+        ...(rootWasReleased ? { sessionId: remaining.at(-1) ?? null, isActive: remaining.length > 0, lastActive: new Date() } : {})
+      }, { merge: true });
+    }
+    await adminDb.doc(`${definition.sessions}/${targetUid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error releasing session:', error);
+    return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/auth/release-admin-session', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const verifiedUid = c.get('user')?.uid || '';
+    const targetUid = typeof body.uid === 'string' ? body.uid.trim() : '';
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
+    if (!verifiedUid || !targetUid || !sessionId) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (verifiedUid !== targetUid || c.get('user')?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
+    const rootRef = adminDb.doc(`admin_sessions/${targetUid}`);
+    const rootSnap = await rootRef.get();
+    const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
+    const remaining = removeActiveSession(rootData, sessionId);
+    await rootRef.set({ activeSessionIds: remaining, sessionId: remaining.at(-1) ?? null, currentSessionId: remaining.at(-1) ?? null, isActive: remaining.length > 0, lastActive: new Date() }, { merge: true });
+    const entityRef = adminDb.doc('admin_settings/auth_pin');
+    const entitySnap = await entityRef.get();
+    if (entitySnap.exists) await entityRef.set({ activeSessionIds: removeActiveSession(entitySnap.data() || {}, sessionId), currentSessionId: remaining.at(-1) ?? null }, { merge: true });
+    await adminDb.doc(`admin_sessions/${targetUid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error releasing admin session:', error);
+    return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.get('/api/auth/sessions', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const user = c.get('user');
+    const sessionId = (c.req.header('x-session-id') || '').trim();
+    const definition = workerSessionDefinition(user?.role);
+    if (!user?.uid || !sessionId || !definition || !adminDb) return c.json({ success: false, error: 'SESSION_MANAGEMENT_REQUIRES_USER_SESSION' }, 403);
+    const rootSnap = await adminDb.doc(`${definition.sessions}/${user.uid}`).get();
+    const currentRoot = rootSnap.exists ? rootSnap.data() || {} : {};
+    const callerSession = await adminDb.doc(`${definition.sessions}/${user.uid}/sessions/${sessionId}`).get();
+    const callerData = callerSession.exists ? callerSession.data() || {} : currentRoot;
+    if (!callerSession.exists && !rootSnap.exists || callerData.isActive !== true || callerData.sessionId !== sessionId) return c.json({ success: false, error: 'SESSION_INVALID' }, 401);
+    const devices = await adminDb.collection(`${definition.sessions}/${user.uid}/sessions`).get();
+    const currentSessionId = currentRoot.currentSessionId || currentRoot.sessionId || sessionId;
+    const sessions = devices.docs.map((doc: any) => toSessionSummary(doc.id, doc.data() || {}, currentSessionId));
+    if (sessions.length === 0) sessions.push(toSessionSummary(sessionId, callerData, currentSessionId));
+    return c.json({ success: true, sessions });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error listing sessions:', error);
+    return c.json({ success: false, error: 'SESSION_LIST_FAILED' }, 500);
+  }
+});
+
+workerApp.delete('/api/auth/sessions/:sessionKey', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    const user = c.get('user');
+    const callerSessionId = (c.req.header('x-session-id') || '').trim();
+    const sessionKey = (c.req.param('sessionKey') || '').trim();
+    const definition = workerSessionDefinition(user?.role);
+    if (!user?.uid || !callerSessionId || !definition || !/^[a-f0-9]{64}$/.test(sessionKey) || !adminDb) return c.json({ success: false, error: 'INVALID_SESSION_KEY' }, 400);
+    const callerSnap = await adminDb.doc(`${definition.sessions}/${user.uid}/sessions/${callerSessionId}`).get();
+    if (!callerSnap.exists || callerSnap.data()?.isActive !== true || callerSnap.data()?.sessionId !== callerSessionId) return c.json({ success: false, error: 'SESSION_INVALID' }, 401);
+    const rootRef = adminDb.doc(`${definition.sessions}/${user.uid}`);
+    const rootSnap = await rootRef.get();
+    const devices = await adminDb.collection(`${definition.sessions}/${user.uid}/sessions`).get();
+    const target = devices.docs.find((doc: any) => hashSessionId(doc.id) === sessionKey);
+    if (!target) return c.json({ success: false, error: 'SESSION_NOT_FOUND' }, 404);
+    const targetData = target.data() || {};
+    const entityId = user.role === 'admin' ? 'auth_pin' : targetData.entityId;
+    const entityRef = entityId ? adminDb.doc(`${definition.entity}/${entityId}`) : null;
+    const entitySnap = entityRef ? await entityRef.get() : null;
+    const remainingRoot = removeActiveSession(rootSnap.exists ? rootSnap.data() || {} : {}, target.id);
+    await target.ref.set({ isActive: false, lastActive: new Date() }, { merge: true });
+    await rootRef.set({ activeSessionIds: remainingRoot, ...(rootSnap.data()?.currentSessionId === target.id ? { currentSessionId: remainingRoot.at(-1) ?? null } : {}) }, { merge: true });
+    if (entityRef && entitySnap?.exists) await entityRef.set({ activeSessionIds: removeActiveSession(entitySnap.data() || {}, target.id), ...(entitySnap.data()?.currentSessionId === target.id ? { currentSessionId: remainingRoot.at(-1) ?? null } : {}) }, { merge: true });
+    return c.json({ success: true, revokedSession: sessionKey, wasCurrent: target.id === callerSessionId });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error revoking session:', error);
+    return c.json({ success: false, error: 'SESSION_REVOKE_FAILED' }, 500);
   }
 });
 

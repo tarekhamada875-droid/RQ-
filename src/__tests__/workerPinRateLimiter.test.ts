@@ -112,6 +112,18 @@ describe('Worker PIN rate limiter', () => {
       }), env);
     }
 
+    async function postAuth(path: string, body: Record<string, unknown>, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }) {
+      return workerApp.fetch(new Request(`http://localhost${path}`, {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer valid-admin-token',
+          'content-type': 'application/json',
+          'cf-connecting-ip': '198.51.100.20'
+        },
+        body: JSON.stringify(body)
+      }), env);
+    }
+
     it('fails closed when the production limiter binding is unavailable', async () => {
       const response = await verifyPin('87654321', 'missing-binding', {});
       expect(response.status).toBe(503);
@@ -141,6 +153,17 @@ describe('Worker PIN rate limiter', () => {
       const allowedAgain = await verifyPin('87654321', 'after-success');
       expect(allowedAgain.status).toBe(200);
       expect(await allowedAgain.json()).toMatchObject({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    });
+
+    it('supports admin PIN verification and explicit admin session claim', async () => {
+      const verification = await postAuth('/api/auth/verify-admin-pin', { pin: '12345678' });
+      expect(verification.status).toBe(200);
+      expect(await verification.json()).toEqual({ valid: true });
+
+      const claim = await postAuth('/api/auth/claim-admin-session', { uid: 'admin-uid', sessionId: 'claimed-session', pin: '12345678' });
+      expect(claim.status).toBe(200);
+      expect(await claim.json()).toMatchObject({ success: true, sessionClaimed: true });
+      expect(mockDb.records.get('admin_sessions/admin-uid/sessions/claimed-session')?.isActive).toBe(true);
     });
   });
 });
