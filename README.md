@@ -4,7 +4,7 @@ For a consolidated explanation of the architecture, business decisions, producti
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
-> **Current status — controlled synthetic pre-production (2026-10-02):** This project does not have real users, customer records, or live financial data yet. The Cloudflare Pages → Cloudflare Worker → Firebase migration is planned but not complete; the frontend is not approved to use the Worker until the checkpoint plan and rollback gates pass. Do not use unknown data, perform destructive cleanup, accept real revenue, or treat this environment as final production until a separate staging/pre-production validation decision is recorded.
+> **Current status — Cloudflare production path verified (2026-10-03):** Cloudflare Pages serves the frontend at `https://rq-acg.pages.dev`, and the Cloudflare Worker API is live at `https://rq.tarekhamada875.workers.dev`. The Worker uses Fetch/Web-Crypto Firebase REST access rather than Node-only Firebase Admin packages. This remains a controlled environment with no real customer or financial data until business validation is completed.
 
 ## Target production architecture
 
@@ -17,16 +17,16 @@ Cloudflare Pages frontend
         | HTTPS API requests via VITE_BACKEND_API_URL
         v
 Dedicated Cloudflare Worker API
-  pre-production URL is assigned during CF1
+  https://rq.tarekhamada875.workers.dev
         |
         v
 Firebase Authentication + Firestore
 ```
 
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
-- **Backend target:** A dedicated Cloudflare Worker API. The Worker must use a proven Worker-compatible Firebase Auth/Firestore adapter; local bundling alone is not sufficient evidence.
+- **Backend:** A dedicated Cloudflare Worker API using a Worker-compatible Firebase Auth/Firestore REST adapter.
 - **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the Worker uses server-side secrets that must never enter frontend assets or Git.
-- **Important migration rule:** Cloudflare Pages currently serves the SPA. The Worker must be deployed and verified before the frontend API origin is changed.
+- **Production wiring:** Cloudflare Pages production is configured with `VITE_BACKEND_API_URL=https://rq.tarekhamada875.workers.dev`; preview remains on the Railway API until separately validated.
 
 ## Repository and branch policy
 
