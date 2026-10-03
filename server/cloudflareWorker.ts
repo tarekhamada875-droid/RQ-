@@ -1,11 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { FieldValue } from 'firebase-admin/firestore';
-import { createApp, isAllowedOrigin } from './app';
+import { FieldValue } from './firebaseWorkerAdmin';
 import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './middleware';
-import { Readable, Writable } from 'node:stream';
-import { IncomingMessage, ServerResponse } from 'node:http';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse } from './unlimitedFairUse';
@@ -61,13 +58,30 @@ const workerApp = new Hono<{
     user?: WorkerUser;
   };
 }>();
-const expressApp = createApp();
+let configuredAllowedOrigins = '';
+
+function isAllowedWorkerOrigin(origin: string | undefined): boolean {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/+$/, '');
+  const configured = configuredAllowedOrigins.split(',').map((value) => value.trim().replace(/\/+$/, '')).filter(Boolean);
+  if (configured.includes(normalized)) return true;
+  return new Set([
+    'https://rq-acg.pages.dev',
+    'https://rq-production-af02.up.railway.app',
+    'https://aistudio.google.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173'
+  ]).has(normalized);
+}
 
 // 1. Dynamic Firebase initialization with Cloudflare bindings (no process.env copying)
 workerApp.use('*', async (c, next) => {
   if (c.env) {
     // Initialize Firebase Admin explicitly and dynamically with c.env bindings
     initializeFirebaseAdmin(c.env);
+    configuredAllowedOrigins = c.env.ALLOWED_ORIGINS || '';
   }
   await next();
 });
@@ -105,7 +119,7 @@ workerApp.onError((err, c) => {
 workerApp.use('*', cors({
   origin: (origin) => {
     if (!origin) return '*';
-    if (isAllowedOrigin(origin)) return origin;
+    if (isAllowedWorkerOrigin(origin)) return origin;
     return 'https://rq-acg.pages.dev';
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -2661,111 +2675,7 @@ workerApp.post('/api/test-firestore-write', async (c) => {
   }
 });
 
-// Helper function to adapt Fetch API Request/Response to Express (req, res)
-async function handleExpressRequest(request: Request): Promise<Response> {
-  return new Promise<Response>(async (resolve, reject) => {
-    try {
-      const url = new URL(request.url);
-      const reqBodyBuffer = request.body ? Buffer.from(await request.arrayBuffer()) : Buffer.alloc(0);
-
-      // Create a Readable stream mock for IncomingMessage
-      const reqStream = new Readable();
-      reqStream.push(reqBodyBuffer);
-      reqStream.push(null);
-
-      const req = Object.assign(reqStream, {
-        url: url.pathname + url.search,
-        method: request.method,
-        headers: Object.fromEntries(request.headers.entries()),
-        httpVersion: '1.1',
-        httpVersionMajor: 1,
-        httpVersionMinor: 1,
-        connection: { remoteAddress: request.headers.get('cf-connecting-ip') || '127.0.0.1' },
-        socket: { remoteAddress: request.headers.get('cf-connecting-ip') || '127.0.0.1' }
-      }) as unknown as IncomingMessage;
-
-      const resHeaders: Record<string, string | string[]> = {};
-      let statusCode = 200;
-      let statusMessage = 'OK';
-      const chunks: Buffer[] = [];
-
-      // Create a Writable stream mock for ServerResponse
-      const resStream = new Writable({
-        write(chunk, encoding, callback) {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding));
-          callback();
-        }
-      });
-
-      const res = Object.assign(resStream, {
-        statusCode: 200,
-        statusMessage: 'OK',
-        headersSent: false,
-        setHeader(name: string, value: string | string[]) {
-          resHeaders[name.toLowerCase()] = value;
-          return this;
-        },
-        getHeader(name: string) {
-          return resHeaders[name.toLowerCase()];
-        },
-        removeHeader(name: string) {
-          delete resHeaders[name.toLowerCase()];
-          return this;
-        },
-        writeHead(code: number, messageOrHeaders?: string | Record<string, string | string[]>, headers?: Record<string, string | string[]>) {
-          statusCode = code;
-          if (typeof messageOrHeaders === 'string') {
-            statusMessage = messageOrHeaders;
-            if (headers) {
-              for (const [k, v] of Object.entries(headers)) {
-                resHeaders[k.toLowerCase()] = v;
-              }
-            }
-          } else if (messageOrHeaders) {
-            for (const [k, v] of Object.entries(messageOrHeaders)) {
-              resHeaders[k.toLowerCase()] = v;
-            }
-          }
-          this.headersSent = true;
-          return this;
-        },
-        end(chunk?: any, encoding?: any, callback?: any) {
-          if (chunk) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding));
-          }
-          Writable.prototype.end.call(this, callback);
-
-          const finalBody = Buffer.concat(chunks);
-          const responseHeaders = new Headers();
-
-          for (const [key, val] of Object.entries(resHeaders)) {
-            if (Array.isArray(val)) {
-              for (const v of val) responseHeaders.append(key, v);
-            } else if (val !== undefined) {
-              responseHeaders.set(key, String(val));
-            }
-          }
-
-          resolve(new Response(finalBody, {
-            status: statusCode,
-            statusText: statusMessage,
-            headers: responseHeaders
-          }));
-        }
-      }) as unknown as ServerResponse;
-
-      // Execute Express routing pipeline
-      expressApp(req, res);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-// Route all API requests to the full Express application engine
-workerApp.all('/api/*', async (c) => {
-  return handleExpressRequest(c.req.raw);
-});
+// All production API routes are implemented directly on the Fetch-native Hono app.
 
 export { workerApp };
 export default {
