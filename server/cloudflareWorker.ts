@@ -6,7 +6,7 @@ import { isValidBackendOperatorToken } from './middleware';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse } from './unlimitedFairUse';
-import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, cleanPin, verifyPinMatch, queryAccountWherePin, getAdminPin, checkRateLimit, resetRateLimit, migratePinToHash } from './utils';
+import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, cleanPin, verifyPinMatch, queryAccountWherePin, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
@@ -258,12 +258,6 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
     if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
 
-    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-    const rateLimitKey = `${clientIp}:${effectiveUid}:${sessionId}`;
-    if (!(await checkRateLimit(rateLimitKey))) {
-      return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', message: 'تم تجاوز عدد المحاولات المسموح بها، يرجى الانتظار لمدة دقيقة والمحاولة مجدداً' }, 429);
-    }
-
     const rawInput = credentials.pin || credentials.input;
     const normalizedPin = cleanPin(rawInput);
     if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -325,7 +319,6 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
     });
 
-    await resetRateLimit(rateLimitKey);
     return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
   } catch (error: any) {
     console.error('[Worker Auth] Unexpected error in verify-pin:', error);
