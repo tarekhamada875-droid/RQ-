@@ -16,7 +16,7 @@ class_name = "PinRateLimiterDurableObject"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["PinRateLimiterDurableObject"]
+new_sqlite_classes = ["PinRateLimiterDurableObject"]
 
 # Pre-production environment for synthetic validation
 [env.preproduction]
