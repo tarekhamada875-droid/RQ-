@@ -261,7 +261,8 @@ async function getGoogleCerts(): Promise<Record<string, JsonMap>> {
   if (certCache && certCache.expiresAt > Date.now()) return certCache.keys;
   const response = await fetch(googleCertsUrl);
   if (!response.ok) throw new Error(`FIREBASE_CERTS_FAILED:${response.status}`);
-  const keys = await response.json() as Record<string, JsonMap>;
+  const jwks = await response.json() as { keys?: JsonMap[] };
+  const keys = Object.fromEntries((jwks.keys || []).filter((key) => typeof key.kid === 'string').map((key) => [key.kid as string, key]));
   const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 3600);
   certCache = { keys, expiresAt: Date.now() + maxAge * 1000 };
   return keys;
