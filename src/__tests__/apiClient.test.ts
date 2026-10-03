@@ -35,15 +35,15 @@ describe('apiClient getApiUrl resolution', () => {
     expect(getApiUrl('/api/auth/verify-pin')).toBe('/api/auth/verify-pin');
   });
 
-  it('falls back to the Railway API when the configured base is unusable', () => {
+  it('falls back to the Cloudflare Worker when the configured base is unusable', () => {
     Object.defineProperty(window, 'location', {
       value: {
-        hostname: 'rq-production-af02.up.railway.app',
+        hostname: 'rq-acg.pages.dev',
       },
       writable: true,
     });
     // In the static Pages deployment, relative /api URLs are SPA fallbacks,
-    // so use the known Railway backend when no valid base URL is configured.
-    expect(getApiUrl('/api/auth/verify-pin')).toBe('https://rq-production-af02.up.railway.app/api/auth/verify-pin');
+    // so use the known Cloudflare Worker when no valid base URL is configured.
+    expect(getApiUrl('/api/auth/verify-pin')).toBe('https://rq.tarekhamada875.workers.dev/api/auth/verify-pin');
   });
 });

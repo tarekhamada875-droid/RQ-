@@ -26,7 +26,7 @@ Firebase Authentication + Firestore
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
 - **Backend:** A dedicated Cloudflare Worker API using a Worker-compatible Firebase Auth/Firestore REST adapter.
 - **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the Worker uses server-side secrets that must never enter frontend assets or Git.
-- **Production wiring:** Cloudflare Pages production is configured with `VITE_BACKEND_API_URL=https://rq.tarekhamada875.workers.dev`; preview remains on the Railway API until separately validated.
+- **Production wiring:** Cloudflare Pages production and preview are configured with `VITE_BACKEND_API_URL=https://rq.tarekhamada875.workers.dev`.
 
 ## Repository and branch policy
 

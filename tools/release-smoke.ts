@@ -46,8 +46,8 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
 
     if (attempt < maxAttempts) {
       const reason = healthPassed && expectedVersion
-        ? `waiting for Railway release ${expectedVersion}; currently serving ${body.version}`
-        : `waiting for a healthy Railway response (HTTP ${responseStatus})`;
+        ? `waiting for release ${expectedVersion}; currently serving ${body.version}`
+        : `waiting for a healthy backend response (HTTP ${responseStatus})`;
       console.warn(`[WAIT] ${reason} (attempt ${attempt}/${maxAttempts})`);
       await sleep(retryDelayMs);
     }

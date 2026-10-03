@@ -67,7 +67,6 @@ function isAllowedWorkerOrigin(origin: string | undefined): boolean {
   if (configured.includes(normalized)) return true;
   return new Set([
     'https://rq-acg.pages.dev',
-    'https://rq-production-af02.up.railway.app',
     'https://aistudio.google.com',
     'http://localhost:3000',
     'http://localhost:5173',
@@ -224,7 +223,8 @@ workerApp.get('/api/health', (c) => {
     runtime: 'cloudflare-worker',
     timestamp: new Date().toISOString(),
     environment: c.env?.ENVIRONMENT || 'production',
-    adminSdk: !!(adminDb && adminAuth)
+    adminSdk: !!(adminDb && adminAuth),
+    version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0'
   });
 });
 

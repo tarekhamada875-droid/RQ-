@@ -25,7 +25,6 @@ describe('CORS Origin Validation', () => {
     // Exact production frontends
     expect(isAllowedOrigin('https://rq-acg.pages.dev')).toBe(true);
     expect(isAllowedOrigin('https://rq-acg.pages.dev/')).toBe(true);
-    expect(isAllowedOrigin('https://rq-production-af02.up.railway.app')).toBe(true);
 
     // Unlisted preview domains are rejected until explicitly added to ALLOWED_ORIGINS
     expect(isAllowedOrigin('https://parqv2-preview-123.vercel.app')).toBe(false);

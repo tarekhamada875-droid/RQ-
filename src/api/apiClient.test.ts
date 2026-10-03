@@ -17,9 +17,9 @@ describe('frontend API boundary', () => {
     localStorage.clear();
   });
 
-  it('uses the Railway fallback for deployed API endpoints and preserves external URLs', () => {
+  it('uses the Cloudflare Worker fallback for deployed API endpoints and preserves external URLs', () => {
     vi.stubGlobal('window', { location: { hostname: 'rq-acg.pages.dev' } });
-    expect(getApiUrl('/api/health')).toBe('https://rq-production-af02.up.railway.app/api/health');
+    expect(getApiUrl('/api/health')).toBe('https://rq.tarekhamada875.workers.dev/api/health');
     expect(getApiUrl('https://example.test/data')).toBe('https://example.test/data');
     vi.unstubAllGlobals();
   });

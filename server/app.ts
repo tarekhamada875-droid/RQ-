@@ -69,7 +69,6 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   }
 
   const exactOrigins = new Set([
-    'https://rq-production-af02.up.railway.app',
     'https://aistudio.google.com',
     'http://localhost:3000',
     'http://localhost:5173',

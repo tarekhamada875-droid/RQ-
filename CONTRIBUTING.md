@@ -21,17 +21,17 @@ Keep business rules in domain modules or focused server route modules. Keep `ser
 
 Authentication, authorization, session lifecycle, balance operations, vehicle operations, and Firestore writes are sensitive areas. Add or update tests before changing behavior. Preserve response shapes and error codes unless the change explicitly requires a contract migration.
 
-## Railway deployment
+## Cloudflare deployment
 
-The production backend runs on Railway. Do not add Vercel/serverless routing files or generated provider bundles. Use the committed Railway contract:
+The production frontend runs on Cloudflare Pages and the production backend runs on the Cloudflare Worker at `https://rq.tarekhamada875.workers.dev`. Do not add Vercel/serverless routing files or generated provider bundles. Worker deployment is performed by the guarded GitHub Actions workflow:
 
 ```bash
 npm ci
-npm run build:railway
-node dist/cloud-run.cjs
+npm run build:cloudflare
+npx wrangler@4.147.0 deploy --config wrangler.deploy.toml --env="" --minify
 ```
 
-The Cloudflare Pages frontend calls the Railway API through `VITE_BACKEND_API_URL` or the safe default in `src/api/apiClient.ts`.
+The Cloudflare Pages frontend calls the Worker through `VITE_BACKEND_API_URL` or the safe default in `src/api/apiClient.ts`.
 
 ## Validation before review
 
@@ -43,7 +43,7 @@ npm run maintainability:check
 git diff --check
 ```
 
-For deployment-related changes, also run the Railway smoke checks documented in `README.md` and `RAILWAY_DEPLOYMENT_HANDOFF.md`.
+For deployment-related changes, also run the live Cloudflare smoke checks documented in `README.md` and `.github/workflows/production-gate.yml`.
 
 ## Security rules
 

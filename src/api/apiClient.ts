@@ -46,7 +46,7 @@ export class ApiError extends Error {
   }
 }
 
-export const DEFAULT_BACKEND_API_URL = 'https://rq-production-af02.up.railway.app';
+export const DEFAULT_BACKEND_API_URL = 'https://rq.tarekhamada875.workers.dev';
 export const DEFAULT_API_TIMEOUT_MS = 15000;
 
 export const getApiUrl = (endpoint: string): string => {
