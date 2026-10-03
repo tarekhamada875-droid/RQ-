@@ -16,7 +16,7 @@ type ServiceAccount = {
 
 const DEFAULT_PROJECT = 'gen-lang-client-0091669619';
 const DEFAULT_DATABASE = 'ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759';
-const googleCertsUrl = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+const googleCertsUrl = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 let config: { projectId: string; databaseId: string; serviceAccount?: ServiceAccount } = {
   projectId: DEFAULT_PROJECT,
@@ -25,7 +25,7 @@ let config: { projectId: string; databaseId: string; serviceAccount?: ServiceAcc
 let activeDb: FirestoreRest | null = null;
 let activeAuth: FirebaseAuthRest | null = null;
 let accessTokenCache: { token: string; expiresAt: number } | null = null;
-let certCache: { expiresAt: number; keys: Record<string, string> } | null = null;
+let certCache: { expiresAt: number; keys: Record<string, JsonMap> } | null = null;
 
 function base64Url(value: ArrayBuffer | Uint8Array | string): string {
   const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -248,20 +248,20 @@ class FirebaseAuthRest {
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(parts[1]))) as any;
     if (header.alg !== 'RS256' || payload.iss !== `https://securetoken.google.com/${this.projectId}` || payload.aud !== this.projectId || !payload.sub || payload.exp * 1000 <= Date.now()) throw new Error('INVALID_TOKEN');
     const certs = await getGoogleCerts();
-    const pem = certs[header.kid];
-    if (!pem) throw new Error('INVALID_TOKEN_KEY');
-    const key = await crypto.subtle.importKey('spki', fromBase64Url(pem.replace(/-----[^-]+-----|\s/g, '')), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    const jwk = certs[header.kid];
+    if (!jwk) throw new Error('INVALID_TOKEN_KEY');
+    const key = await crypto.subtle.importKey('jwk', jwk as JsonWebKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
     const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fromBase64Url(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
     if (!valid) throw new Error('INVALID_TOKEN_SIGNATURE');
     return payload;
   }
 }
 
-async function getGoogleCerts(): Promise<Record<string, string>> {
+async function getGoogleCerts(): Promise<Record<string, JsonMap>> {
   if (certCache && certCache.expiresAt > Date.now()) return certCache.keys;
   const response = await fetch(googleCertsUrl);
   if (!response.ok) throw new Error(`FIREBASE_CERTS_FAILED:${response.status}`);
-  const keys = await response.json() as Record<string, string>;
+  const keys = await response.json() as Record<string, JsonMap>;
   const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 3600);
   certCache = { keys, expiresAt: Date.now() + maxAge * 1000 };
   return keys;
