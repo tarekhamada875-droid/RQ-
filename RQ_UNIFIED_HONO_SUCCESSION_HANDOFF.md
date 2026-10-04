@@ -63,7 +63,7 @@ main
 Current known-good main commit at handoff:
 
 ```text
-8d4ef50 docs: add safe unified hono migration plan
+b1ecc68 docs: require chained agent succession handoffs
 ```
 
 Previous important commits:
@@ -252,6 +252,8 @@ Read:
 cat RQ_PROJECT_KNOWLEDGE_BASE.md
 cat RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md
 ```
+
+`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` is the authoritative continuation file. The old Railway-era recovery plans and old succession protocol were removed from the working tree on 2026-10-05; do not search for or recreate them unless a concrete missing fact is proven.
 
 Verify the live stack:
 

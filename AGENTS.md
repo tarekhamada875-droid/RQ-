@@ -10,12 +10,12 @@
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
 ## V3 Execution Workflow
-- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for the architecture, product decisions, current status, document hierarchy, and cleanup dispositions. It is an orientation layer; the checkpoint plan below remains authoritative for task status.
+- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for the architecture, product decisions, current status, document hierarchy, and cleanup dispositions.
 - **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
 - **Project Scope:** Repository code, frontend, Cloudflare configuration, legacy rollback configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.
 - **Engineering Safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations. These safeguards do not limit project scope.
-- **Canonical execution plan:** After the knowledge base, read [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). It supersedes older broad recovery and continuation plans and defines the current checkpoint ledger, gates, rollback rules, and UI/UX preservation boundary.
-- **Agent Succession:** For the exact owner message `tokens ending`, stop feature work immediately and follow [`docs/SUCCESSION_PROTOCOL.md`](docs/SUCCESSION_PROTOCOL.md) before making any other change. Read the canonical recovery plan, [`V3_BACKEND_PLAN.md`](V3_BACKEND_PLAN.md), and the succession protocol at the start of every resumed session.
+- **Canonical execution plan:** After the knowledge base, read [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) for the current Hono consolidation checkpoints, gates, rollback rules, and UI/UX preservation boundary.
+- **Agent Succession:** Read [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md) at the start of every resumed session. For the exact owner message `tokens ending`, stop feature work immediately and follow that handoff’s chained succession protocol before making any other change.
 
 ## Design Conventions
 - **License Plate UI:** The primary input field is designed as a realistic Egyptian license plate. Maintain this visual identity in future updates.

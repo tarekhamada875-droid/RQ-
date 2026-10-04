@@ -10,17 +10,14 @@
 
 ## 1. Executive Summary
 
-This report establishes the verified starting baseline for the migration of the RQ backend from Railway Express to a dedicated Cloudflare Worker API in accordance with `RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`.
+This historical report establishes the verified starting baseline for the migration of the RQ backend from Railway Express to a dedicated Cloudflare Worker API. The current architecture and next migration work are governed by `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
 
 All mandatory documents have been read:
 1. `RQ_PROJECT_KNOWLEDGE_BASE.md`
 2. `AGENTS.md`
-3. `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`
-4. `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`
-5. `V3_BACKEND_PLAN.md`
-6. `docs/SUCCESSION_PROTOCOL.md`
-7. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`
-8. `RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`
+3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+4. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
+5. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`
 
 All feature development, UI redesigns, and unrelated refactoring are frozen.
 
@@ -187,4 +184,4 @@ As a code-only agent without deployment connectors, the following items remain *
 
 ## 7. Migration Freeze
 
-No unrequested code refactoring, schema changes, or UI modifications will be introduced. Work will proceed strictly checkpoint-by-checkpoint following `RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`.
+No unrequested code refactoring, schema changes, or UI modifications will be introduced. The current follow-up work proceeds checkpoint-by-checkpoint following `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.

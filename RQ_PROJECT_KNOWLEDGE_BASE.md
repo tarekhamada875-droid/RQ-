@@ -1,9 +1,9 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-09-29  
+**Last updated:** 2026-10-05
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Current source of truth:** `main`  
-**Current verified commit:** `5d24d1a913301224c2055aaec588cd3a1b1b2ef4`
+**Current verified commit:** `b1ecc68d2c220261df63c888058a0aa6c263045a`
 
 ## 1. What RQ is
 
@@ -16,35 +16,37 @@ The application is in **controlled synthetic pre-production**. There are current
 ```text
 Cloudflare Pages frontend
         ↓ HTTPS API requests
-Railway Express backend
+Cloudflare Worker API (Hono)
         ↓ Firebase Admin SDK
 Firebase Authentication + Firestore
 ```
 
 - Frontend: React/Vite/Tailwind static PWA on Cloudflare Pages.
-- Backend: Express/Node.js on Railway.
+- Production backend: Hono/Fetch-native Cloudflare Worker named `rq`.
 - Data/authentication: Firebase Auth and Firestore.
-- Cloudflare serves the SPA only; Railway owns `/api/*`.
+- Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
+- Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
+- Production Pages URL: `https://rq-acg.pages.dev`.
+- Express remains transitional infrastructure for local development, Cloud Run compatibility, and existing integration tests; it is not the production API path.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
-- Railway uses the existing API-only `server/cloudRun.ts` entrypoint name through `railway.json`.
+- `wrangler.toml` is the production Worker deployment configuration.
 
 ## 3. Document hierarchy
 
 Future agents must use this order:
 
 1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, decisions, status, and file map.
-2. **`AGENTS.md`**: mandatory safety, engineering, UI/UX, secret, and communication rules.
-3. **`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`**: active execution plan, checkpoint ledger, gates, rollback rules, and open blockers.
-4. **`REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`**: current authority/wiring map and cleanup evidence.
-5. **`V3_BACKEND_PLAN.md`**: active functional-core architecture guide.
-6. **`docs/SUCCESSION_PROTOCOL.md`**: mandatory procedure when the owner says the exact phrase `tokens ending`.
-7. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: primary combined browser/user and technical acceptance task when the application is tested by role.
-8. **`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`**: active checkpoint plan for the owner-approved Cloudflare Pages + Worker + Firebase migration.
-9. Capability-specific documents and dated audits: evidence only unless the canonical plan explicitly assigns work from them.
+2. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: operational continuation instructions and chained succession protocol.
+3. **`AGENTS.md`**: mandatory safety, engineering, UI/UX, secret, and communication rules.
+4. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: active plan for the safe Hono consolidation experiment.
+5. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: primary combined browser/user and technical acceptance task when the application is tested by role.
+6. **`MAINTAINABILITY_HANDOFF.md`** and **`BRANCHING_AND_RELEASES.md`**: active repository and release conventions.
+7. **`docs/OBSERVABILITY_RUNBOOK.md`** and `docs/CF0_*` through `docs/CF7_*`: operational and Cloudflare migration evidence.
+8. Capability-specific documents and dated audits: evidence only unless the active plan explicitly assigns work from them.
 
 Older plans must not override this hierarchy.
 
-The older `RQ_USER_ACCEPTANCE_TEST_TASK.md` and `RQ_FULL_SYSTEM_ACCEPTANCE_TEST_TASK.md` files are retained as supplemental references. They are not separate prerequisites or separate acceptance gates when the integrated acceptance task is used.
+Superseded plans, duplicate acceptance tasks, and the old succession protocol were removed from the working tree on 2026-10-05. Their content remains recoverable from Git history if a specific fact must be audited.
 
 ## 4. Core architecture decisions
 
@@ -59,7 +61,7 @@ The backend is authoritative for:
 - balances, subscriptions, manual credits, financial ledgers, and idempotency;
 - audit events, operational policy, and protected reporting.
 
-The frontend may use Firestore reads/listeners for display synchronization when rules allow them. Display reads must never authorize a protected operation. Protected mutations must use the Railway API.
+The frontend may use Firestore reads/listeners for display synchronization when rules allow them. Display reads must never authorize a protected operation. Protected mutations must use the Cloudflare Worker API in production.
 
 ### Functional programming direction
 
@@ -106,10 +108,13 @@ The repository has completed and published repairs covering:
 
 Recent validation evidence includes:
 
-- 84 test files passed;
-- 462 tests passed in the latest full local gate;
+- 96 test files passed;
+- 547 tests passed in the latest full local gate;
 - TypeScript validation passed;
 - production build passed;
+- Cloudflare Worker build passed;
+- Worker parity and authorization suites passed;
+- `npm run ci:check` passed;
 - maintainability check passed;
 - `git diff --check` passed;
 - the Egypt crest cleanup Production Gate passed.
@@ -118,7 +123,7 @@ Recent validation evidence includes:
 
 The active launch decision remains C10 in the checkpoint plan. Do not declare final production readiness merely because the app loads.
 
-The Cloudflare backend migration is an active pre-production workstream governed by `RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`. The repository contains an initial Worker adapter, but the live Pages project is not considered Worker-backed until Firebase compatibility, deployed Worker health, frontend origin switching, role acceptance, observability, and rollback gates are proven.
+The Cloudflare backend migration is live for the production Pages-to-Worker path. The next architectural workstream is the controlled unified Hono consolidation governed by `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`. Do not delete Express until the Hono preview, role acceptance, parity, rollback, and full quality gates are proven.
 
 C10 evidence still concerns:
 
@@ -138,47 +143,39 @@ C7 historical financial reconciliation remains deferred until the owner approves
 - `src/api/apiClient.ts`: frontend HTTP boundary; attaches auth/session/correlation context.
 - `src/services/`: frontend service contracts and display-read adapters.
 - `src/domain/`: pure business decisions and policy helpers.
-- `server/app.ts`: Express composition and remaining admin/system endpoints.
-- `server/routes/`: authoritative route modules for vehicles, subscribers, delegates, garages, recharges, reports, and auth.
+- `server/cloudflareWorker.ts`: current production Hono Worker API and route authority.
+- `server/app.ts`: transitional Express composition used by local development, Cloud Run compatibility, and existing integration tests.
+- `server/routes/`: transitional Express route modules and characterization references; do not delete until the Hono consolidation is complete.
 - `server/domain/`: pure backend decision modules.
-- `server/cloudRun.ts`: Railway API-only process entrypoint with retained legacy filename.
+- `server/cloudRun.ts`: retained Node/Cloud Run-compatible API-only process entrypoint.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
-- `railway.json`, `Dockerfile`: deployment contracts.
+- `wrangler.toml`, `Dockerfile`: deployment/runtime contracts; inspect before removing legacy compatibility files.
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`: Firebase configuration.
 
 ## 9. Cleanup and documentation policy
 
-No additional confirmed orphan application asset or production module was found in the 2026-09-29 audit.
+The repository was cleaned on 2026-10-05. Superseded Railway-era plans, duplicate acceptance tasks, old audits, and the old succession protocol were removed from the working tree. Their history remains recoverable through Git.
 
 Keep these active:
 
 - `AGENTS.md`
-- `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`
-- `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`
-- `V3_BACKEND_PLAN.md`
-- `docs/SUCCESSION_PROTOCOL.md`
-- `RAILWAY_DEPLOYMENT_HANDOFF.md`
+- `RQ_PROJECT_KNOWLEDGE_BASE.md`
+- `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+- `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
+- `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`
 - `MAINTAINABILITY_HANDOFF.md`
 - `BRANCHING_AND_RELEASES.md`
+- `README.md`
+- `CONTRIBUTING.md`
+- `security_spec.md`
+- `OPERATION_TRAIL_GUIDE.md`
+- `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
+- `docs/OBSERVABILITY_RUNBOOK.md`
 
-Keep these as historical evidence until unique information is migrated:
+Keep `Dockerfile` and `server/cloudRun.ts` only as transitional local/Cloud Run compatibility until the Hono consolidation checkpoint explicitly retires them. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts.
 
-- `BUSINESS_LOGIC_AUDIT.md`
-- `BUSINESS_LOGIC_FIX_CHECKPOINTS.md`
-- `FINANCIAL_AUDIT_REPORT.md`
-- `PRODUCTION_AUDIT_2026-09-25.md`
-- `PRODUCTION_READINESS_CHECKLIST.md`
-- `CODE_QUALITY_CHECKPOINTS.md`
-
-The strongest future archive/delete candidates are:
-
-- `RQ_PRODUCTION_READINESS_PLAN_2026-09-25.md`
-- `PROJECT_CONTINUATION_BRIEF.md`
-
-They are already labeled superseded or historical, but must not be deleted until their unique database, billing, staging, rollback, and handoff facts are confirmed as represented here or in the canonical plan.
-
-Unreferenced metadata candidates also require external-consumer review before deletion:
+Unreferenced metadata candidates still require external-consumer review before deletion:
 
 - `firebase-blueprint.json`
 - `metadata.json`
@@ -198,7 +195,7 @@ npm run maintainability:check
 git diff --check
 ```
 
-For a deployment-related change, also use the documented Railway health and smoke checks. Never print secrets or commit credentials.
+For a deployment-related change, also verify the Cloudflare Worker health/version endpoints and run the documented production smoke checks. Never print secrets or commit credentials.
 
 ## 11. Direct operating rules for the next agent
 
@@ -209,6 +206,6 @@ For a deployment-related change, also use the documented Railway health and smok
 5. Use synthetic/in-memory data unless the owner explicitly authorizes a safe external workflow.
 6. Run focused tests, then the full validation gate.
 7. Push directly to `main` according to the owner’s established preference.
-8. If the owner says `tokens ending`, stop feature work immediately and follow `docs/SUCCESSION_PROTOCOL.md`; prepare the successor handoff before anything else.
+8. If the owner says `tokens ending`, stop feature work immediately and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`; prepare the next chained successor handoff before anything else.
 
 This file is an orientation and consolidation layer. The canonical checkpoint plan remains the authoritative source for current task status and launch decisions.

@@ -28,13 +28,13 @@ Before starting:
 
 1. `AGENTS.md`
 2. `RQ_PROJECT_KNOWLEDGE_BASE.md`
-3. `RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`
-4. `REPOSITORY_CLEANUP_AND_WIRING_AUDIT.md`
+3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+4. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
 5. `docs/OBSERVABILITY_RUNBOOK.md`
 
-This document is self-contained and is the **primary execution task**. The older `RQ_USER_ACCEPTANCE_TEST_TASK.md` and `RQ_FULL_SYSTEM_ACCEPTANCE_TEST_TASK.md` files are retained as supplemental historical test references, but the executing agent does not need to read them or run them separately. They must not be treated as additional prerequisites or separate acceptance gates.
+This document is self-contained and is the **primary execution task**. Do not create separate duplicate acceptance tasks for the same role workflows.
 
-If the owner says the exact phrase `tokens ending`, stop and follow `docs/SUCCESSION_PROTOCOL.md`.
+If the owner says the exact phrase `tokens ending`, stop and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
 ---
 
@@ -128,7 +128,7 @@ Record the frontend URL, configured backend origin, browser/device, test date, c
 Confirm the topology is:
 
 ```text
-Cloudflare Pages frontend → Railway Express API → Firebase Auth/Firestore
+Cloudflare Pages frontend → Cloudflare Worker API → Firebase Auth/Firestore
 ```
 
 Do not call a Cloudflare SPA fallback an API success.
@@ -510,7 +510,7 @@ For every protected mutation encountered in Phases 2–8, confirm as much as the
 
 | Technical check | Required observation |
 |---|---|
-| Authority | Mutation is performed by the Railway API/server authority, not an unsafe browser Firestore write |
+| Authority | Mutation is performed by the Cloudflare Worker/server authority, not an unsafe browser Firestore write |
 | Authentication | Request carries the supported authenticated context |
 | Authorization | Role, entity, garage, and requested target are checked server-side |
 | Validation | Invalid fields, amounts, dates, IDs, and statuses are rejected safely |

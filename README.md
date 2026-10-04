@@ -1,6 +1,6 @@
 # RQ
 
-For a consolidated explanation of the architecture, business decisions, production-readiness status, document hierarchy, and cleanup dispositions, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The active Cloudflare migration instructions are in [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md).
+For a consolidated explanation of the architecture, business decisions, production-readiness status, document hierarchy, and cleanup dispositions, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The active unified Hono migration instructions are in [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md), and continuation instructions are in [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
@@ -70,7 +70,7 @@ npm test && npm run lint && npm run build && npm run maintainability:check && gi
 
 ## Cloudflare deployment contract
 
-The active target is documented in [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md). The Worker must expose JSON health and version endpoints, use only Worker-compatible Firebase access, receive secrets through Cloudflare Worker secrets, and remain on a verified pre-production URL until the migration gates pass.
+The active target is documented in [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md). The production Worker exposes JSON health and version endpoints, uses Worker-compatible Firebase access, and receives secrets through Cloudflare Worker secrets. The Hono consolidation is tested on a separate branch before any production cutover.
 
 ## Production smoke checks
 
@@ -94,9 +94,9 @@ Do not delete or mutate Firestore production data without explicit scope and con
 ## Repository structure
 
 ```text
-server/                 Existing backend/domain source being adapted incrementally
+server/                 Backend/domain source and transitional local adapter
 server/routes/          Backend route modules and business contracts
-server/cloudflareWorker.ts  Initial Worker adapter; runtime compatibility is not yet proven
+server/cloudflareWorker.ts  Current production Hono Worker API
 wrangler.toml           Cloudflare Worker deployment configuration
 src/components/         React UI components
 src/api/                Frontend API client
@@ -106,4 +106,4 @@ src/domain/              Shared business rules and domain logic
 Dockerfile              Container build alternative
 ```
 
-For deployment details, use [`RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md`](./RQ_CLOUDFLARE_WORKER_BACKEND_CHECKPOINTED_PLAN.md). For the current checkpointed recovery and wiring plan, use [`RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md`](./RQ_CHECKPOINTED_PRODUCTION_RECOVERY_PLAN.md). Older overhaul-stage and handoff documents are historical evidence and do not override the canonical plans.
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The current architecture plan is [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md). The authoritative continuation file is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
