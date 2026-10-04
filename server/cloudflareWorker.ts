@@ -5,16 +5,16 @@ import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './middleware';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
-import { evaluateFairUseCheckIn, initializeFairUse } from './unlimitedFairUse';
+import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
 import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, cleanPin, verifyPinMatch, queryAccountWherePin, getAdminPin, migratePinToHash } from './utils';
-import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat } from './validation';
+import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
 import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
@@ -2257,6 +2257,15 @@ const handleApproveRechargeRequest = async (c: any) => {
         delegateSnap = await t.get(delegateRef);
       }
 
+      const referrerGarageId = garageData.referredByGarageId;
+      let referrerRef: any = null;
+      let referrerSnap: any = null;
+      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== targetGarageId && durationDays >= 15;
+      if (isEligibleForReferral && referrerGarageId) {
+        referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
+        referrerSnap = await t.get(referrerRef);
+      }
+
       let commission = 0;
       if (referredByDelegate && targetDelegateId) {
         const currentMonthKey = new Date().toISOString().slice(0, 7);
@@ -2366,6 +2375,39 @@ const handleApproveRechargeRequest = async (c: any) => {
           idempotencyKey: idempotencyKey || undefined,
           eventCollectionPath: `delegates/${targetDelegateId}/events`,
           payload: { delegateId: targetDelegateId, commissionAmount: commission, sourceRechargeId: reqId, earnedAt: new Date().toISOString() }
+        });
+      }
+
+      if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
+        const referrerData = referrerSnap.data() || {};
+        let refBaseDate = new Date();
+        if (referrerData.balanceExpiry) {
+          const rawExp = referrerData.balanceExpiry;
+          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
+          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
+            refBaseDate = refExpDate;
+          }
+        }
+        refBaseDate.setDate(refBaseDate.getDate() + 1);
+
+        t.set(referrerRef, {
+          balanceExpiry: refBaseDate,
+          totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
+          lastReferralRewardAt: new Date()
+        }, { merge: true });
+
+        const rewardLogRef = adminDb.collection('activity_logs').doc();
+        t.set(rewardLogRef, {
+          garageId: referrerGarageId,
+          garageName: referrerData.name || '',
+          staffId: null,
+          staffName: 'النظام — مكافأة إحالة تلقائية',
+          actionType: 'recharge',
+          plateNumber: `🎉 مكافأة إحالة تلقائية: تمديد الاشتراك +1 يوم مجاناً لإحالة ${requestData.garageName || garageData.name || ''}`,
+          timestamp: new Date(),
+          amount: 0,
+          packageId: 'referral_reward',
+          details: { type: 'referral_reward', referrerGarageId, referredGarageId: targetGarageId, rewardDaysGiven: 1 }
         });
       }
 
@@ -3104,6 +3146,1022 @@ workerApp.post('/api/garages/trial-decision', requireWorkerAuth, async (c) => {
     console.error('[Worker Garage] Error updating trial decision:', error);
     return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 400);
   }
+});
+
+// Staff Management Routes
+workerApp.post('/api/staff/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { name, phone, pin, garageId, role, permissions } = body;
+    const callerRole = user?.role;
+    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
+
+    if (callerRole !== 'admin' && (!callerGarageId || callerGarageId !== garageId)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' }, 403);
+    }
+
+    const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+    const normPin = validateNewPin(pin);
+
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+    if (pinCheck.taken) {
+      return c.json({
+        success: false,
+        error: 'PIN_ALREADY_TAKEN',
+        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+      }, 400);
+    }
+
+    const staffRef = adminDb.collection('staff').doc();
+    const staffId = staffRef.id;
+
+    await saveEntityPin('staff', staffId, normPin);
+    await staffRef.set({
+      name: normName.trim(),
+      phone: phone ? String(phone).trim() : '',
+      garageId,
+      role: role || 'worker',
+      permissions: permissions || {},
+      createdAt: new Date()
+    });
+
+    return c.json({ success: true, id: staffId });
+  } catch (e: any) {
+    console.error('[Worker Staff] Error in create:', e);
+    if (e instanceof ValidationError) {
+      return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
+    }
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/staff/update', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id, name, phone, role, permissions } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    const callerRole = user?.role;
+    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
+
+    if (callerRole !== 'admin') {
+      const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
+      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        return c.json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' }, 403);
+      }
+    }
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (name) updates.name = String(name).trim();
+    if (phone !== undefined) updates.phone = String(phone).trim();
+    if (role) updates.role = role;
+    if (permissions) updates.permissions = permissions;
+
+    await adminDb.collection('staff').doc(id).update(updates);
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Staff] Error in update:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    const callerRole = user?.role;
+    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
+
+    if (callerRole !== 'admin') {
+      const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
+      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
+      }
+    }
+
+    await adminDb.collection('staff').doc(id).delete();
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Staff] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Supervisors Management Routes
+workerApp.post('/api/supervisors/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { name, phone, pin, permissions } = body;
+    const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+    const normPin = validateNewPin(pin);
+
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+    if (pinCheck.taken) {
+      return c.json({
+        success: false,
+        error: 'PIN_ALREADY_TAKEN',
+        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+      }, 400);
+    }
+
+    const supRef = adminDb.collection('supervisors').doc();
+    const supId = supRef.id;
+
+    await saveEntityPin('supervisors', supId, normPin);
+    await supRef.set({
+      name: normName.trim(),
+      phone: phone ? String(phone).trim() : '',
+      permissions: permissions || {},
+      createdAt: new Date()
+    });
+
+    return c.json({ success: true, id: supId });
+  } catch (e: any) {
+    console.error('[Worker Supervisor] Error in create:', e);
+    if (e instanceof ValidationError) {
+      return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
+    }
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/supervisors/update', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id, name, phone, permissions } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (name) updates.name = String(name).trim();
+    if (phone !== undefined) updates.phone = String(phone).trim();
+    if (permissions) updates.permissions = permissions;
+
+    await adminDb.collection('supervisors').doc(id).update(updates);
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Supervisor] Error in update:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/supervisors/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('supervisors').doc(id).delete();
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Supervisor] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Delegates Management Routes
+workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = body;
+    const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
+    const normPhone = phone ? String(phone).trim() : '';
+    const normPin = validateNewPin(pin);
+
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
+    if (pinCheck.taken) {
+      return c.json({
+        success: false,
+        error: 'PIN_ALREADY_TAKEN',
+        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+      }, 400);
+    }
+
+    const delRef = adminDb.collection('delegates').doc();
+    const delId = delRef.id;
+
+    await saveEntityPin('delegates', delId, normPin);
+    await delRef.set({
+      name: normName.trim(),
+      phone: normPhone,
+      commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
+      commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
+      defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : 15,
+      balance: 0,
+      totalEarned: 0,
+      createdAt: new Date()
+    });
+
+    return c.json({ success: true, id: delId });
+  } catch (e: any) {
+    console.error('[Worker Delegate] Error in create:', e);
+    if (e instanceof ValidationError) {
+      return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
+    }
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!['admin', 'supervisor'].includes(user?.role || '')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id, name, phone, commissionRate, commissions, defaultTrialDays } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    const unsupportedFields = Object.keys(body).filter((field) =>
+      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'defaultTrialDays'].includes(field)
+    );
+    if (unsupportedFields.length > 0) {
+      return c.json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(',')}` }, 400);
+    }
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (name) updates.name = String(name).trim();
+    if (phone !== undefined) updates.phone = String(phone).trim();
+    if (commissionRate !== undefined) updates.commissionRate = Number(commissionRate);
+    if (commissions) updates.commissions = commissions;
+    if (defaultTrialDays !== undefined) updates.defaultTrialDays = Number(defaultTrialDays);
+
+    await adminDb.collection('delegates').doc(id).update(updates);
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Delegate] Error in update:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!['admin', 'supervisor'].includes(user?.role || '')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    }
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { id } = body;
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    const delegateRef = adminDb.collection('delegates').doc(id);
+    const delegateSnap = await delegateRef.get();
+    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+    const delegateData = delegateSnap.data() || {};
+    const unsettledCycleTotal = Number(delegateData?.totalRechargedAmount || 0);
+    if (unsettledCycleTotal > 0) {
+      return c.json({
+        success: false,
+        error: 'DELEGATE_HAS_UNSETTLED_COMMISSION',
+        unsettledCycleTotal
+      }, 409);
+    }
+
+    await delegateRef.delete();
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Delegate] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// People / Entity PIN Update
+workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { entityType, entityId, newPin } = body;
+    if (!entityType || !entityId || !['garages', 'supervisors', 'delegates', 'staff'].includes(entityType)) {
+      return c.json({ success: false, error: 'INVALID_ENTITY_TYPE' }, 400);
+    }
+
+    const normNewPin = validateNewPin(newPin, 'newPin');
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const callerRole = user?.role;
+    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
+
+    if (callerRole === 'supervisor' && entityType !== 'delegates') {
+      return c.json({ success: false, error: 'FORBIDDEN: Supervisors may manage delegate PINs only' }, 403);
+    }
+    if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+      if (entityType === 'staff') {
+        const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
+        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+          return c.json({ success: false, error: 'FORBIDDEN: Cannot manage staff outside your garage' }, 403);
+        }
+      } else if (entityType === 'garages' && entityId !== callerGarageId) {
+        return c.json({ success: false, error: 'FORBIDDEN: Cannot update PIN of other garages' }, 403);
+      } else if (entityType !== 'staff' && entityType !== 'garages') {
+        return c.json({ success: false, error: 'FORBIDDEN: Insufficient permissions' }, 403);
+      }
+    }
+
+    const pinCheck = await checkPinAvailabilityAcrossAll(normNewPin, entityId);
+    if (pinCheck.taken) {
+      return c.json({
+        success: false,
+        error: 'PIN_ALREADY_TAKEN',
+        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
+      }, 400);
+    }
+
+    await saveEntityPin(entityType, entityId, normNewPin);
+
+    const targetDocRef = adminDb.collection(entityType).doc(entityId);
+    const docSnap = await targetDocRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data() || {};
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if ('pin' in data) updates.pin = null;
+      if ('ownerPin' in data) updates.ownerPin = null;
+      if ('adminPin' in data) updates.adminPin = null;
+      if ('pinLookupHash' in data) updates.pinLookupHash = null;
+      await targetDocRef.set(updates, { merge: true });
+    }
+
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker People] Error in update-pin:', e);
+    if (e instanceof ValidationError) {
+      return c.json({ success: false, error: `INVALID_NEW_PIN: ${e.message}` }, e.statusCode as any);
+    }
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Admin Announcements Routes
+workerApp.post('/api/admin/announcements/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const data = { ...body, createdAt: new Date() };
+    const docRef = await adminDb.collection('announcements').add(data);
+    return c.json({ success: true, id: docRef.id });
+  } catch (e: any) {
+    console.error('[Worker Announcements] Error in create:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/announcements/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { id } = body;
+    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('announcements').doc(id).delete();
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Announcements] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/announcements/toggle', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { id, isActive } = body;
+    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('announcements').doc(id).update({ isActive: Boolean(isActive) });
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Announcements] Error in toggle:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Admin Coupons Routes
+workerApp.post('/api/admin/coupons/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const couponData = { ...body, usedCount: 0, createdAt: new Date() };
+    const docRef = await adminDb.collection('coupons').add(couponData);
+    return c.json({ success: true, id: docRef.id });
+  } catch (e: any) {
+    console.error('[Worker Coupons] Error in create:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/coupons/update', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { id, ...data } = body;
+    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('coupons').doc(id).update(data);
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Coupons] Error in update:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/coupons/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { id } = body;
+    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('coupons').doc(id).delete();
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Coupons] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Admin Packages Routes
+workerApp.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const rawPackage = await c.req.json().catch(() => ({}));
+    const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
+    const pkgData = {
+      name: validatedPackage.name,
+      price: validatedPackage.basePrice,
+      durationDays: validatedPackage.durationDays,
+      dailyCapacity: validatedPackage.dailyCapacity,
+      vehiclesCount: validatedPackage.dailyCapacity,
+      discountType: rawPackage.discountType ?? null,
+      discountValue: Number(rawPackage.discountValue ?? 0),
+      isUnlimited: validatedPackage.isUnlimited,
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    const docRef = await adminDb.collection('packages').add(pkgData);
+    return c.json({ success: true, id: docRef.id });
+  } catch (e: any) {
+    console.error('[Worker Packages] Error in create:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { id } = body;
+    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    await adminDb.collection('packages').doc(id).update({ isActive: false });
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('[Worker Packages] Error in delete:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Admin Extend Fair Use
+workerApp.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const garageId = validateId(c.req.param('id'), 'garageId');
+    const body = await c.req.json().catch(() => ({}));
+    const extraCars = Math.max(0, Number(body?.extraCars || 0));
+
+    let resultFairUse: any = null;
+    await adminDb.runTransaction(async (t: any) => {
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+
+      const garageData = garageSnap.data() || {};
+      const isUnlimited = Number(garageData.dailyCapacity || 0) === 0 || String(garageData.activePackageName || '').includes('مفتوح');
+      if (!isUnlimited) throw new Error('NOT_AN_UNLIMITED_PACKAGE');
+
+      let fairUse = garageData.unlimitedFairUse;
+      if (!fairUse || !fairUse.isActive) {
+        fairUse = initializeFairUse(garageData.durationDays || 30, garageData.activePackageName || '');
+      }
+
+      resultFairUse = manualAdminExtendFairUse(fairUse, extraCars);
+      t.set(garageRef, { unlimitedFairUse: resultFairUse }, { merge: true });
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: user?.uid || 'admin',
+        staffName: 'مدير النظام (Admin)',
+        actionType: 'fair_use_admin_extended',
+        plateNumber: `تمديد استثنائي للاستخدام العادل (+${extraCars > 0 ? extraCars : fairUse.stepAmount} سيارة)`,
+        timestamp: new Date(),
+        details: {
+          currentAllowance: resultFairUse.currentAllowance,
+          maxAllowance: resultFairUse.maxAllowance,
+          cycleCarsCount: resultFairUse.cycleCarsCount
+        }
+      });
+    });
+
+    return c.json({ success: true, unlimitedFairUse: resultFairUse });
+  } catch (err: any) {
+    console.error('[Worker Admin] Error in extend-fair-use:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Transactions: Recharge Garage
+workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
+    }
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({}));
+    const sanitized = sanitizePayload(body, ['garageId', 'packageId', 'adminDetails', 'idempotencyKey'], false);
+    const garageId = validateId(sanitized.garageId, 'garageId', true);
+    const packageId = validateId(sanitized.packageId, 'packageId', true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
+
+    const callerUid = user?.uid;
+    const adminDetails = sanitized.adminDetails || {};
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId, adminDetails });
+
+    const pkgSnap = await adminDb.doc(`packages/${packageId}`).get();
+    if (!pkgSnap.exists) return c.json({ success: false, error: 'PACKAGE_NOT_FOUND' }, 404);
+    const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
+    if (packageObj.isActive === false) return c.json({ success: false, error: 'PACKAGE_INACTIVE' }, 409);
+
+    const validatedPackage = validatePackageCatalogRecord(packageObj, packageObj.id);
+    const durationDays = validatedPackage.durationDays;
+    const basePrice = validatedPackage.basePrice;
+    const discountAmount = validatedPackage.discountAmount;
+    const price = validatedPackage.finalPrice;
+    const packageName = validatedPackage.name;
+    const isUnlimited = validatedPackage.isUnlimited;
+    const effCapacity = validatedPackage.dailyCapacity;
+
+    let resultData: any = null;
+
+    await adminDb.runTransaction(async (t: any) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+
+      const garageData = garageSnap.data() || {};
+      if (garageData.hasMonthlySubscribers === true && durationDays < 15) {
+        throw new Error('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION');
+      }
+
+      let baseDate = new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
+        if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
+          baseDate = currentExpDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + durationDays);
+
+      const referrerGarageId = garageData.referredByGarageId;
+      let referrerRef: any = null;
+      let referrerSnap: any = null;
+      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== garageId && price > 0 && durationDays >= 15;
+      if (isEligibleForReferral && referrerGarageId) {
+        referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
+        referrerSnap = await t.get(referrerRef);
+      }
+
+      const newRevenue = Number(((garageData.totalAdminRevenue || 0) + price).toFixed(2));
+      const updateData: any = {
+        totalAdminRevenue: newRevenue,
+        isLocked: false,
+        isTrial: false,
+        dailyCapacity: effCapacity,
+        activePackageName: packageName,
+        packageName: packageName,
+        lastRechargeDate: new Date(),
+        lastRechargeAmount: price,
+        lastRechargePackageName: packageName,
+        balanceExpiry: baseDate,
+        billingModel: 'subscription',
+        unlimitedFairUse: isUnlimited ? initializeFairUse(durationDays, packageName) : null
+      };
+
+      t.set(garageRef, updateData, { merge: true });
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      const staffNameText = adminDetails.staffName || 'مدير النظام (Admin)';
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: adminDetails.staffId ? validateId(adminDetails.staffId, 'staffId') : (callerUid || 'admin'),
+        staffName: staffNameText,
+        actionType: 'recharge',
+        plateNumber: `تجديد اشتراك: ${packageName} (${durationDays} يوم) - ${price} ج`,
+        timestamp: new Date(),
+        amount: price,
+        packageId: packageId || packageObj.id || 'direct_recharge',
+        details: {
+          packageName,
+          durationDays,
+          carsCount: effCapacity,
+          revenueAmount: price,
+          originalRevenueAmount: price,
+          discountAmount,
+          rechargedBy: staffNameText
+        }
+      });
+
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'recharge',
+        aggregateId: idempotencyKey || `direct_${garageId}_${Date.now()}`,
+        eventType: 'recharge_approved',
+        actorUid: callerUid || 'admin',
+        actorRole: 'admin',
+        idempotencyKey: idempotencyKey || undefined,
+        payload: { source: 'direct_admin_recharge', packageId, packageName, amount: price, originalAmount: basePrice, discountAmount, durationDays, dailyCapacity: effCapacity }
+      });
+
+      if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
+        const referrerData = referrerSnap.data() || {};
+        let refBaseDate = new Date();
+        if (referrerData.balanceExpiry) {
+          const rawExp = referrerData.balanceExpiry;
+          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
+          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
+            refBaseDate = refExpDate;
+          }
+        }
+        refBaseDate.setDate(refBaseDate.getDate() + 1);
+
+        t.set(referrerRef, {
+          balanceExpiry: refBaseDate,
+          totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
+          lastReferralRewardAt: new Date()
+        }, { merge: true });
+
+        const rewardLogRef = adminDb.collection('activity_logs').doc();
+        t.set(rewardLogRef, {
+          garageId: referrerGarageId,
+          garageName: referrerData.name || '',
+          staffId: null,
+          staffName: 'النظام — مكافأة إحالة تلقائية',
+          actionType: 'recharge',
+          plateNumber: `🎉 مكافأة إحالة تلقائية: تمديد الاشتراك +1 يوم مجاناً لإحالة ${garageData.name || ''}`,
+          timestamp: new Date(),
+          amount: 0,
+          packageId: 'referral_reward',
+          details: { type: 'referral_reward', referrerGarageId, referredGarageId: garageId, rewardDaysGiven: 1 }
+        });
+      }
+
+      resultData = {
+        newExpiry: baseDate.toISOString(),
+        totalAdminRevenue: newRevenue
+      };
+
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
+    });
+
+    return c.json({ success: true, data: resultData });
+  } catch (error: any) {
+    console.error('[Worker Transaction] Error in recharge-garage:', error);
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Transactions: Garage Self-Subscribe Using Balance
+workerApp.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const userRole = user?.role;
+    const userGarageId = user?.garageId || user?.entityId;
+    const callerUid = user?.uid;
+
+    const body = await c.req.json().catch(() => ({}));
+    const sanitized = sanitizePayload(body, ['garageId', 'packageId', 'packageData', 'idempotencyKey'], false);
+    const bodyGarageId = validateId(sanitized.garageId, 'garageId', false);
+    const packageId = validateId(sanitized.packageId, 'packageId', true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
+
+    const garageId = userRole === 'garage' ? userGarageId : (bodyGarageId || userGarageId);
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId });
+
+    if (userRole === 'garage' && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
+      return c.json({ success: false, error: 'UNAUTHORIZED_GARAGE_ACCESS' }, 403);
+    }
+    if (!['garage', 'admin'].includes(userRole || '')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Role not authorized for self subscribe' }, 403);
+    }
+    if (!garageId) {
+      return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
+    }
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    let resultData: any = null;
+
+    await adminDb.runTransaction(async (t: any) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
+      if (isDuplicate) {
+        resultData = cachedResult;
+        return;
+      }
+
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+
+      const garageData = garageSnap.data() || {};
+      const currentBalance = Number(garageData.balance || 0);
+
+      const settingsSnap = await t.get(adminDb.doc('system_config/global'));
+      const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
+      const subscriberFlatFee = systemConfig?.subscriberFlatFee !== undefined
+        ? Math.max(0, Number(systemConfig.subscriberFlatFee))
+        : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
+
+      let pkg: any = null;
+      if (packageId) {
+        const pkgRef = adminDb.doc(`packages/${packageId}`);
+        const pkgSnap = await t.get(pkgRef);
+        if (pkgSnap.exists) pkg = { id: pkgSnap.id, ...pkgSnap.data() };
+      }
+
+      if (!pkg) throw new Error('PACKAGE_NOT_FOUND');
+      if (pkg.isActive === false) throw new Error('PACKAGE_INACTIVE');
+
+      const validatedPackage = validatePackageCatalogRecord(pkg, pkg.id || packageId);
+      const durationDays = validatedPackage.durationDays;
+      let effectivePrice = validatedPackage.finalPrice;
+      if (garageData.hasMonthlySubscribers === true) {
+        effectivePrice += subscriberFlatFee;
+      }
+
+      if (currentBalance < effectivePrice) {
+        throw new Error(`INSUFFICIENT_BALANCE: الرصيد المتاح (${currentBalance} ج.م) غير كافٍ للاشتراك في هذه الباقة (${effectivePrice} ج.م)`);
+      }
+
+      const newBalance = currentBalance - effectivePrice;
+
+      let baseDate = new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
+        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
+          baseDate = expDate;
+        }
+      }
+      baseDate.setDate(baseDate.getDate() + durationDays);
+
+      const pkgName = validatedPackage.name;
+      const isUnlimitedPkg = validatedPackage.isUnlimited;
+      const effCapacity = validatedPackage.dailyCapacity;
+
+      t.set(garageRef, {
+        balance: newBalance,
+        balanceExpiry: baseDate,
+        dailyCapacity: effCapacity,
+        activePackageName: pkgName,
+        packageName: pkgName,
+        billingModel: 'subscription',
+        isLocked: false,
+        isTrial: false,
+        lastRechargeDate: new Date(),
+        lastRechargeAmount: effectivePrice,
+        lastRechargePackageName: pkgName,
+        unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName) : null
+      }, { merge: true });
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: callerUid || 'owner',
+        staffName: garageData.ownerName || 'مدير الجراج',
+        actionType: 'self_subscribe',
+        plateNumber: `تفعيل باقة بالرصيد: ${pkgName} (${durationDays} يوم)`,
+        timestamp: new Date(),
+        amount: effectivePrice,
+        packageId: pkg.id || packageId,
+        details: {
+          packageName: pkgName,
+          durationDays,
+          carsCount: effCapacity,
+          cost: effectivePrice,
+          previousBalance: currentBalance,
+          remainingBalance: newBalance
+        }
+      });
+
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'wallet',
+        aggregateId: garageId,
+        eventType: 'wallet_debited',
+        actorUid: callerUid || 'system',
+        actorRole: userRole || 'garage',
+        idempotencyKey,
+        payload: { amount: effectivePrice, previousBalance: currentBalance, newBalance, reason: 'package_purchase', packageId: pkg.id || packageId }
+      });
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'recharge',
+        aggregateId: idempotencyKey,
+        eventType: 'package_purchased',
+        actorUid: callerUid || 'system',
+        actorRole: userRole || 'garage',
+        idempotencyKey,
+        payload: { packageId: pkg.id || packageId, packageName: pkgName, amount: effectivePrice, durationDays, dailyCapacity: effCapacity, previousBalance: currentBalance, remainingBalance: newBalance }
+      });
+
+      resultData = {
+        garageId,
+        newBalance,
+        newExpiry: baseDate.toISOString(),
+        packageName: pkgName,
+        deductedAmount: effectivePrice
+      };
+
+      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
+    });
+
+    return c.json({ success: true, data: resultData });
+  } catch (error: any) {
+    console.error('[Worker Transaction] Error in garage-self-subscribe:', error);
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Transactions: Use Referral Reward Days
+workerApp.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const callerUid = user?.uid;
+    const callerRole = user?.role;
+    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
+
+    const body = await c.req.json().catch(() => ({}));
+    const sanitized = sanitizePayload(body, ['garageId', 'idempotencyKey'], false);
+    const garageId = validateId(sanitized.garageId, 'garageId', true);
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
+
+    if (callerRole !== 'admin' && callerRole !== 'garage') {
+      return c.json({ success: false, error: 'ADMIN_OR_GARAGE_ONLY' }, 403);
+    }
+    if (callerRole === 'garage' && callerGarageId !== garageId) {
+      return c.json({ success: false, error: 'FORBIDDEN: Cannot claim reward for another garage' }, 403);
+    }
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    let claimedDays = 0;
+    await adminDb.runTransaction(async (t: any) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/use-referral-reward', callerUid);
+      if (isDuplicate) {
+        claimedDays = cachedResult?.daysClaimed || 0;
+        return;
+      }
+
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+
+      const garageData = garageSnap.data() || {};
+      const rewardDays = Math.max(0, Number(garageData.totalReferralRewardDays || 0));
+      if (rewardDays <= 0) throw new Error('NO_REFERRAL_REWARDS_AVAILABLE');
+
+      claimedDays = rewardDays;
+      let baseDate = new Date();
+      const currentExpiry = garageData.balanceExpiry;
+      if (currentExpiry) {
+        const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
+        if (expDate > baseDate) baseDate = expDate;
+      }
+      baseDate.setDate(baseDate.getDate() + rewardDays);
+
+      t.update(garageRef, {
+        balanceExpiry: baseDate,
+        totalReferralRewardDays: 0,
+        isLocked: false,
+        lastReferralClaimAt: new Date()
+      });
+
+      const logRef = adminDb.collection('activity_logs').doc();
+      t.set(logRef, {
+        garageId,
+        garageName: garageData.name || '',
+        staffId: callerUid || null,
+        staffName: callerRole === 'admin' ? 'الإدارة' : 'صاحب الجراج (استخدام رصيد المكافآت)',
+        actionType: 'recharge',
+        plateNumber: `استخدام مكافأة إحالة — تمديد الاشتراك +${rewardDays} ${rewardDays === 1 ? 'يوم مجاني' : rewardDays === 2 ? 'يومان مجانيان' : 'أيام مجانية'}`,
+        timestamp: new Date(),
+        amount: 0,
+        details: { type: 'use_referral_reward', claimedDays: rewardDays, newExpiry: baseDate.toISOString() }
+      });
+
+      storeIdempotencyInTransaction(t, idempotencyKey, { daysClaimed: claimedDays }, '/api/transactions/use-referral-reward', callerUid);
+    });
+
+    return c.json({ success: true, daysClaimed: claimedDays });
+  } catch (e: any) {
+    console.error('[Worker Reward] Error in use-referral-reward:', e);
+    const { statusCode, message } = mapDomainErrorToStatus(e);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Garage Maintenance: Recalculate Cars Inside
+workerApp.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const body = await c.req.json().catch(() => ({}));
+    const { garageId } = body;
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    if (!canRunGarageMaintenance(user, 'recalculate-cars-inside')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+
+    const vehSnap = await adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get();
+    const actualCount = vehSnap.size;
+
+    await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
+    return c.json({ success: true, count: actualCount });
+  } catch (e: any) {
+    console.error('[Worker Garage] Error in recalculate-cars-inside:', e);
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Activity Logs Placeholder (Server generated only)
+workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
+  return c.json({ success: false, error: 'SERVER_GENERATED_ONLY' }, 403);
 });
 
 // CF2 Runtime Compatibility Spike Endpoints (Pre-production only, disabled in production)

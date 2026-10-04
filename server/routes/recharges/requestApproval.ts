@@ -175,6 +175,15 @@ requestApprovalRouter.post('/approve-recharge-request', requireAuth, financialRa
         delegateSnap = await t.get(delegateRef);
       }
 
+      const referrerGarageId = garageData.referredByGarageId;
+      let referrerRef: any = null;
+      let referrerSnap: any = null;
+      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== targetGarageId && durationDays >= 15;
+      if (isEligibleForReferral && referrerGarageId) {
+        referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
+        referrerSnap = await t.get(referrerRef);
+      }
+
       let commission = 0;
       if (referredByDelegate && targetDelegateId) {
         const currentMonthKey = new Date().toISOString().slice(0, 7);
@@ -292,6 +301,39 @@ requestApprovalRouter.post('/approve-recharge-request', requireAuth, financialRa
           idempotencyKey: idempotencyKey || undefined,
           eventCollectionPath: `delegates/${targetDelegateId}/events`,
           payload: { delegateId: targetDelegateId, commissionAmount: commission, sourceRechargeId: reqId, earnedAt: new Date().toISOString() }
+        });
+      }
+
+      if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
+        const referrerData = referrerSnap.data() || {};
+        let refBaseDate = new Date();
+        if (referrerData.balanceExpiry) {
+          const rawExp = referrerData.balanceExpiry;
+          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
+          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
+            refBaseDate = refExpDate;
+          }
+        }
+        refBaseDate.setDate(refBaseDate.getDate() + 1);
+
+        t.set(referrerRef, {
+          balanceExpiry: refBaseDate,
+          totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
+          lastReferralRewardAt: new Date()
+        }, { merge: true });
+
+        const rewardLogRef = adminDb.collection('activity_logs').doc();
+        t.set(rewardLogRef, {
+          garageId: referrerGarageId,
+          garageName: referrerData.name || '',
+          staffId: null,
+          staffName: 'النظام — مكافأة إحالة تلقائية',
+          actionType: 'recharge',
+          plateNumber: `🎉 مكافأة إحالة تلقائية: تمديد الاشتراك +1 يوم مجاناً لإحالة ${requestData.garageName || garageData.name || ''}`,
+          timestamp: new Date(),
+          amount: 0,
+          packageId: 'referral_reward',
+          details: { type: 'referral_reward', referrerGarageId, referredGarageId: targetGarageId, rewardDaysGiven: 1 }
         });
       }
 
