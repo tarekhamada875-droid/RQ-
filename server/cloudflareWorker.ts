@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canViewFinancialReport, canSubmitGarageApplication } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
@@ -3056,6 +3056,53 @@ workerApp.get('/api/garages/:id', requireWorkerAuth, async (c) => {
   } catch (err: any) {
     console.error('[Worker Garage] Error fetching garage:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/garages/trial-decision', requireWorkerAuth, async (c) => {
+  try {
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
+
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const garageId = validateId(body.garageId, 'garageId', true);
+    const trialDecision = body.trialDecision;
+    const allowedDecisions = ['continued', 'declined', 'dismissed', 'resolved'];
+    if (trialDecision !== null && !allowedDecisions.includes(trialDecision)) {
+      return c.json({ success: false, error: 'INVALID_TRIAL_DECISION' }, 400);
+    }
+
+    const user = c.get('user');
+    if (!canUpdateTrialDecision(user, garageId, trialDecision)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Trial decision is outside your authority' }, 403);
+    }
+
+    const garageRef = adminDb.doc(`garages/${garageId}`);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+
+    await garageRef.set({
+      trialDecision,
+      trialDecisionAt: trialDecision ? new Date() : null,
+      updatedAt: new Date()
+    }, { merge: true });
+
+    const logRef = adminDb.collection('activity_logs').doc();
+    await logRef.set({
+      garageId,
+      garageName: garageSnap.data()?.name || '',
+      staffId: user?.uid || null,
+      staffName: user?.displayName || 'مستخدم',
+      actionType: 'update_trial_decision',
+      plateNumber: trialDecision ? `قرار التجربة: ${trialDecision}` : 'مسح قرار التجربة',
+      timestamp: new Date(),
+      amount: 0,
+      details: { trialDecision }
+    });
+
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('[Worker Garage] Error updating trial decision:', error);
+    return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 400);
   }
 });
 

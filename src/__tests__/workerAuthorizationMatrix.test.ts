@@ -130,6 +130,24 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(response.status).toBe(200);
   });
 
+  it('allows a garage owner to submit the trial-expiry decision for the owned garage', async () => {
+    const response = await call('/api/garages/trial-decision', tokens.garage, {
+      method: 'POST',
+      body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'continued' })
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true });
+    expect(mockDb.records.get('garages/garage-a')).toMatchObject({ trialDecision: 'continued' });
+  });
+
+  it('denies a garage owner from submitting a trial decision for another garage', async () => {
+    const response = await call('/api/garages/trial-decision', tokens.garage, {
+      method: 'POST',
+      body: JSON.stringify({ garageId: 'garage-b', trialDecision: 'declined' })
+    });
+    expect(response.status).toBe(403);
+  });
+
   it('serves a live dashboard summary only within the caller garage scope', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed('garages/garage-a/projection_buckets/bucket-1', {
