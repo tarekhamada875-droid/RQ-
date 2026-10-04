@@ -94,6 +94,42 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(response.status).toBe(403);
   });
 
+  it('resolves a PIN-authenticated anonymous garage owner from the active server session', async () => {
+    mockDb.seed('garage_sessions/worker-uid', {
+      uid: 'worker-uid',
+      role: 'garage',
+      entityId: 'garage-a',
+      garageId: 'garage-a',
+      sessionId: 'garage-session-a',
+      isActive: true
+    });
+
+    const own = await call('/api/garages/garage-a', 'valid-worker-token', {
+      headers: { 'x-session-id': 'garage-session-a' }
+    });
+    expect(own.status).toBe(200);
+
+    const crossGarage = await call('/api/garages/garage-b', 'valid-worker-token', {
+      headers: { 'x-session-id': 'garage-session-a' }
+    });
+    expect(crossGarage.status).toBe(403);
+  });
+
+  it('resolves a PIN-authenticated anonymous admin from the active server session', async () => {
+    mockDb.seed('admin_sessions/worker-uid', {
+      uid: 'worker-uid',
+      role: 'admin',
+      entityId: 'auth_pin',
+      sessionId: 'admin-session-a',
+      isActive: true
+    });
+
+    const response = await call('/api/garages/garage-a', 'valid-worker-token', {
+      headers: { 'x-session-id': 'admin-session-a' }
+    });
+    expect(response.status).toBe(200);
+  });
+
   it('serves a live dashboard summary only within the caller garage scope', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed('garages/garage-a/projection_buckets/bucket-1', {

@@ -82,6 +82,28 @@ function workerSessionDefinition(role: string | undefined) {
   return role ? WORKER_SESSION_DEFINITIONS[role] : undefined;
 }
 
+async function resolveWorkerSessionUser(uid: string, sessionId: string, fallback: WorkerUser): Promise<WorkerUser> {
+  if (!adminDb || !uid || !sessionId) return fallback;
+
+  for (const [role, definition] of Object.entries(WORKER_SESSION_DEFINITIONS)) {
+    const sessionSnap = await adminDb.doc(`${definition.sessions}/${uid}`).get();
+    if (!sessionSnap.exists) continue;
+
+    const sessionData = sessionSnap.data() || {};
+    if (sessionData.uid !== uid || sessionData.isActive !== true || sessionData.sessionId !== sessionId) continue;
+
+    return {
+      uid,
+      role,
+      garageId: sessionData.garageId || (role === 'garage' ? sessionData.entityId : null),
+      entityId: sessionData.entityId || undefined,
+      displayName: sessionData.displayName || undefined,
+    };
+  }
+
+  return fallback;
+}
+
 function isAllowedWorkerOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
   const normalized = origin.replace(/\/+$/, '');
@@ -224,6 +246,26 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
           }
         }
       }
+    }
+
+    // PIN login uses Firebase Anonymous Auth. The anonymous UID is deliberately
+    // unrelated to the garage/admin document ID, so claims and direct document
+    // lookup cannot identify the caller. The verified server session created by
+    // /api/auth/verify-pin is the authoritative bridge between that UID and the
+    // actual role/entity. Resolve it before every protected business route.
+    const sessionId = (c.req.header('x-session-id') || '').trim();
+    if (role === 'worker' && sessionId) {
+      const sessionUser = await resolveWorkerSessionUser(decodedUid, sessionId, {
+        uid: decodedUid,
+        role,
+        garageId,
+        entityId,
+        displayName: decoded.displayName
+      });
+      role = sessionUser.role;
+      garageId = sessionUser.garageId || null;
+      c.set('user', sessionUser);
+      return next();
     }
 
     c.set('user', {
