@@ -641,6 +641,36 @@ If the user says `tokens ending`:
 9. Write a new handoff file with the next exact commands.
 10. Push documentation if safe.
 
+### Mandatory handoff chaining
+
+This protocol applies to **every future agent**, not only the current agent.
+
+When a future agent receives this handoff and the user says `tokens ending`, that agent must repeat the same process for the agent after him. The succession chain must never terminate at one handoff.
+
+The future agent must:
+
+1. Preserve this file and read it before working.
+2. Create or update a new current-status handoff containing the latest branch, commit, files, tests, deployment state, blockers, and next checkpoint.
+3. Explicitly tell the next agent to read the newest handoff first.
+4. Include the exact next commands and the exact next checkpoint; never write only “continue.”
+5. Carry forward the instruction that the next agent must repeat this protocol when the user says `tokens ending`.
+6. Keep all older handoff files unless they are clearly obsolete; if an older handoff is replaced, document which file is authoritative.
+7. Commit and push the updated handoff when safe, without exposing secrets.
+
+The handoff must contain this instruction verbatim or with the same meaning:
+
+> You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
+
+### Required succession filename
+
+The authoritative handoff should remain:
+
+```text
+RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md
+```
+
+If a separate dated handoff is needed, update the authoritative file in the same commit and identify the dated file as historical. The next agent must always know which handoff is authoritative.
+
 The new handoff must never say only “continue.” It must identify the exact next checkpoint and exact next files.
 
 ---
