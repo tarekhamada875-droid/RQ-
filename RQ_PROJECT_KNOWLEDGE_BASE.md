@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-05
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Current source of truth:** `main`  
-**Current verified commit:** `b1ecc68d2c220261df63c888058a0aa6c263045a`
+**Current verified commit:** `d1c8da5` (`docs: remove obsolete migration plans and refresh project memory`)
 
 ## 1. What RQ is
 

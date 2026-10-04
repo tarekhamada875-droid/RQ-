@@ -63,7 +63,7 @@ main
 Current known-good main commit at handoff:
 
 ```text
-b1ecc68 docs: require chained agent succession handoffs
+d1c8da5 docs: remove obsolete migration plans and refresh project memory
 ```
 
 Previous important commits:
