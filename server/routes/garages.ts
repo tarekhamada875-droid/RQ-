@@ -237,8 +237,10 @@ router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
       'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
       'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode', 
       'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId',
-      'hasMonthlySubscribers', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity',
-      'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt'
+      'hasMonthlySubscribers', 'allowMonthlySubscribers', 'subscriberFlatFee', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
+      'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt',
+      'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
+      'balance', 'balanceExpiry', 'totalReferralRewardDays', 'carsInside'
     ];
     for (const key of allowedKeys) {
       if (key in data && data[key] !== undefined) {

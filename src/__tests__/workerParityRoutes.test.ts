@@ -361,6 +361,29 @@ describe('Worker Route Parity Suite', () => {
   });
 
   describe('7. Garage Maintenance & Diagnostics', () => {
+    it('updates garage referredByGarageId and persists in database', async () => {
+      mockDb.seed('garages/garage-target', {
+        name: 'Target Garage',
+        referredByGarageId: null
+      });
+
+      const res = await call('/api/garages/update', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'garage-target',
+          referredByGarageId: 'garage-referrer',
+          referredByGarageName: 'Referrer Garage'
+        })
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+
+      const target = mockDb.records.get('garages/garage-target');
+      expect(target?.referredByGarageId).toBe('garage-referrer');
+      expect(target?.referredByGarageName).toBe('Referrer Garage');
+    });
+
     it('recalculates cars inside count accurately', async () => {
       mockDb.seed('garages/garage-a/vehicles/v1', { status: 'inside' });
       mockDb.seed('garages/garage-a/vehicles/v2', { status: 'inside' });

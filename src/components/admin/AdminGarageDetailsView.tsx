@@ -236,6 +236,8 @@ export const AdminGarageDetailsView = memo(({
     }
   };
 
+  const updateAppStoreGarage = useAppStore(state => state.updateGarage);
+
   const handleReferredByChange = async (refId: string) => {
     const refGarage = allGarages.find(g => g.id === refId);
     try {
@@ -243,13 +245,17 @@ export const AdminGarageDetailsView = memo(({
         referredByGarageId: refId || null,
         referredByGarageName: refGarage ? refGarage.name : null
       });
-      setSelectedGarageForDetails({
+      const updated: Garage = {
         ...selectedGarageForDetails,
         referredByGarageId: refId || undefined,
         referredByGarageName: refGarage ? refGarage.name : undefined
-      });
+      };
+      setSelectedGarageForDetails(updated);
+      if (typeof updateAppStoreGarage === 'function') {
+        updateAppStoreGarage(updated);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to update referred garage:', err);
     }
   };
 
