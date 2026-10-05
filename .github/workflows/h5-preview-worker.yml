@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: cloudflare-h5-preview
-      url: https://rq-hono-preview.workers.dev
+      url: https://rq-hono-preview.tarekhamada875.workers.dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
 
       - name: Smoke test public health and version
         env:
-          PREVIEW_URL: https://rq-hono-preview.workers.dev
+          PREVIEW_URL: https://rq-hono-preview.tarekhamada875.workers.dev
         run: |
           for attempt in 1 2 3 4 5; do
             health=$(curl --fail --silent --show-error --max-time 20 "$PREVIEW_URL/api/health" || true)
@@ -91,7 +91,7 @@ jobs:
 
       - name: Smoke test unauthenticated protection
         env:
-          PREVIEW_URL: https://rq-hono-preview.workers.dev
+          PREVIEW_URL: https://rq-hono-preview.tarekhamada875.workers.dev
         run: |
           status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 20 "$PREVIEW_URL/api/garages/garage-a")
           test "$status" = "401" || test "$status" = "403" || test "$status" = "503"
