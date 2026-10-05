@@ -719,3 +719,37 @@ Security and tenant isolation
 > Maintainability
 > Architectural elegance
 ```
+
+
+---
+
+## Latest chained handoff status — 2026-10-05 15:10 (tokens ending)
+
+- **Active branch:** `migration/unified-hono`
+- **Current commit:** `0c6c620` (`docs: record delegate login entry blocker`)
+- **Remote migration branch:** synchronized at `0c6c620`
+- **Production `main`:** unchanged; no production deployment or production data mutation was performed.
+- **Completed migration checkpoints:** H0, H1, H2, H3, H4, and H5.
+- **Preview Worker:** `https://rq-hono-preview.tarekhamada875.workers.dev`
+- **Preview Firebase auth:** dedicated Firebase Admin SDK service-account secret is configured only on the isolated preview Worker as `FIREBASE_SERVICE_ACCOUNT_JSON`. The downloaded private-key file was deleted from the Sandbox after configuration. Do not copy this secret to `main` or production.
+- **Preview CORS:** temporary connected-browser origin was removed. `wrangler.preview.toml` is restored to `ALLOWED_ORIGINS = "http://localhost:5173"`.
+- **Temporary UI:** stopped. No diagnostic page or temporary browser service remains running.
+- **Latest validation:** H5 Preview Worker and Production Gate both passed for final evidence/rollback commit `0c6c620` (Production Gate run `37307396451`; H5 Preview Worker run `37307396264`).
+
+### H6 results
+
+- **QA Admin:** PASS for Firebase-authenticated login, Worker session establishment, Admin dashboard initialization, Firestore-backed dashboard data, and read-only navigation through Overview, Garages, and People.
+- **Synthetic QA Delegate record:** an existing synthetic delegate named `QA--Delegate` was found. Its PIN was updated through the supported Admin profile editor for testing; the PIN value is intentionally not recorded in this handoff or any evidence file.
+- **QA Delegate:** **BLOCKED before login**. After a clean Admin logout, the visible app presents only the generic garage/Admin PIN keypad. `DelegateLoginView` and the `delegate_login` state exist, but `useGarageApp.ts` only maps hash routes `#/admin`, `#admin`, and `#/admin_login` to Admin login. No visible or direct URL entry point reaches `delegate_login`. No application code was modified to bypass this test blocker.
+- **Remaining H6 roles:** Garage Owner, Staff, and Supervisor were not tested because the common role-entry/session path is not currently reachable through the supported UI. Treat them as BLOCKED until role entry is made available or an approved test harness is provided.
+- **Evidence file:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, updated in commit `0c6c620`.
+
+### Exact next-agent instructions
+
+1. Repeat the succession protocol: read this handoff, `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`, and the latest H6 evidence before acting.
+2. Verify `git status`, the remote branch SHA, the final workflow status for `0c6c620`, preview health/version, and that the preview secret remains present by name only. Do not print or retrieve secret values.
+3. Do **not** begin H7, H8 production cutover, or H9 Express decommissioning. H6 is incomplete.
+4. Do not modify application code as part of the test-only acceptance task merely to bypass the Delegate blocker. The next authorized product/engineering decision is to expose a supported Delegate-login route/entry affordance or provide an approved test harness; once available, resume H6 with synthetic data only.
+5. When role entry is available, test Delegate first, then Garage Owner, Staff, and Supervisor, recording PASS/FAIL/BLOCKED/NOT APPLICABLE with tenant-isolation, authorization, persistence, duplicate, logout, refresh, and forbidden-action evidence.
+6. Preserve production safety: never deploy `migration/unified-hono` to the production Worker, never copy `FIREBASE_SERVICE_ACCOUNT_JSON` to production, and never use real customer or financial data.
+7. If the owner says `tokens ending` again, stop implementation and append a new exact handoff section with the current commit, branch, deployment state, evidence, blockers, and next instructions; do not rely on conversation history.
