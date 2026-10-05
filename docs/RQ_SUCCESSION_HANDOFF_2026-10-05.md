@@ -11,7 +11,8 @@ The authoritative continuation protocol remains [`RQ_UNIFIED_HONO_SUCCESSION_HAN
 - Repository: `tarekhamada875-droid/RQ-`
 - Working directory: `/home/ubuntu/RQ`
 - Active branch: `migration/unified-hono`
-- Active commit: `37eaa208e5107ef8bcae392576a0460e1c587f00` — `fix: use account scoped preview worker hostname`
+- Code checkpoint before succession docs: `37eaa208e5107ef8bcae392576a0460e1c587f00` — `fix: use account scoped preview worker hostname`
+- Final handoff documentation commit: `5bae486` — `docs: activate unified hono succession handoff`
 - Remote migration branch: synchronized at the active commit
 - Production `origin/main`: `bb12fbe90eb97b6638546f292f5de50aab03d81a`
 - Working tree: clean
