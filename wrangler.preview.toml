@@ -4,7 +4,7 @@ compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]
 
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,https://3000-il0378d4a3epymkl8ly4m-857f77b7.sg2.manus.computer"
+ALLOWED_ORIGINS = "http://localhost:5173,https://3000-il0378d4a3epymkl8ly4m-857f77b7.sg2.manus.computer,https://3001-il0378d4a3epymkl8ly4m-857f77b7.sg2.manus.computer"
 ENVIRONMENT = "preproduction"
 WORKER_VERSION = "1.0.0-h5-preview"
 FIREBASE_PROJECT_ID = "gen-lang-client-0091669619"
