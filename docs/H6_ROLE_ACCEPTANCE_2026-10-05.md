@@ -40,6 +40,7 @@
 9. Admin read-only navigation reached the Overview, Garages, and People screens. The People screen showed one existing synthetic delegate (`QA--Delegate`) and one supervisor; PIN fields were redacted from the list. The existing synthetic delegate PIN was updated through the supported profile editor for a later role test; the value is intentionally not recorded here.
 10. Delegate Phase 1 is **BLOCKED** at the role-entry step. After clean Admin logout, the application presents only the generic garage/admin PIN keypad. The state machine contains `delegate_login` and `DelegateLoginView`, but `useGarageApp` only maps URL hashes for `#/admin`, `#/admin_login`, and `#/admin`; there is no visible or direct URL route to enter `delegate_login`. No application code was changed to bypass this blocker.
 11. The role-entry repair was deployed in `800bdbf`. The visible Delegate action was verified in the isolated Sandbox browser, and the new regression test passed. GitHub’s H5 workflow successfully deployed and smoke-tested the preview; direct unauthenticated requests from this Sandbox still receive Cloudflare edge `403 error code: 1010`, so no new role-authentication claim is made.
+12. A reversible preview-only CORS allowance was tested in `6a6cf45`: the local UI reached the isolated Worker from the Sandbox browser and recovered from its initial offline state. The allowance was removed in `d6a6c95`, and cleanup workflow `37315470556` passed. The preview is locked down again; role credentials remain the only missing H6 input.
 
 ## Next step
 
