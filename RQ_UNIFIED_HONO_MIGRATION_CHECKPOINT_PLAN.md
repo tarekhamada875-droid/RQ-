@@ -7,12 +7,13 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 ## Current succession status — 2026-10-05
 
 - **Active branch:** `migration/unified-hono`
-- **Current commit:** `5bae486` (`docs: activate unified hono succession handoff`)
+- **Current commit:** `800bdbf` (`fix(auth): expose supported delegate login entry`)
 - **Production `main`:** unchanged; `origin/main` is `bb12fbe`
 - **Completed:** H0 baseline protection, H1 route inventory, H2 domain-policy and billing extraction, H3 canonical Hono API/local adapter, H4 Fetch/Hono test migration, and H5 dual-runtime preview deployment.
 - **Preview:** `https://rq-hono-preview.tarekhamada875.workers.dev` — health/version and unauthenticated protection passed; GitHub H5 workflow passed at run `37290805011`.
 - **Production:** `https://rq.tarekhamada875.workers.dev` remains on `1.0.0-production`; no cutover has occurred.
-- **Next checkpoint:** H6 production-equivalent human role testing against the isolated preview, using synthetic data only. H7–H9 remain blocked until H6 evidence is complete.
+- **H6 progress:** the supported Delegate-login entry point is now available through the visible login action and `#/delegate` route; the repair passed the local quality gate and preview deployment workflow `37313750139`.
+- **Next checkpoint:** H6 production-equivalent human role testing against the isolated preview, starting with Delegate authentication and then Garage Owner, Staff, and Supervisor. H7–H9 remain blocked until H6 evidence is complete.
 - **Succession rule:** If the owner says `tokens ending`, stop implementation and create the next chained handoff before any other work.
 
 ## Current production architecture

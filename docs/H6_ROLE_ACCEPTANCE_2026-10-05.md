@@ -42,4 +42,6 @@
 
 ## Next step
 
-Admin authentication, dashboard initialization, and initial read-only navigation pass through the connected browser. Delegate testing is blocked until the product exposes a supported Delegate-login entry point or an approved test harness is provided. Do not modify application code as part of this test-only acceptance task. Keep the dedicated preproduction service-account secret on the isolated preview Worker; never copy it to `main` or production.
+The supported Delegate-login entry point was added in migration commit `800bdbf` without changing the existing login flow: the main login screen now exposes the existing Delegate login view, and `#/delegate` is a supported direct route. The change passed the full local quality gate and was deployed to the isolated preview by H5 workflow `37313750139`; browser verification confirmed that the visible action opens the phone/PIN Delegate login screen.
+
+Resume H6 with synthetic Delegate credentials, then test Garage Owner, Staff, and Supervisor through the same preview UI. Do not begin H7 until those role workflows, tenant isolation, persistence, duplicate handling, logout, refresh, and forbidden-action checks are recorded. Keep the dedicated preproduction service-account secret on the isolated preview Worker; never copy it to `main` or production.
