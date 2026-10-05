@@ -42,6 +42,7 @@ import {
 } from './unlimitedFairUse';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { mapDomainErrorToStatus } from './routes/helpers';
+import { canManageStaffForGarage } from './domain/authorization';
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
@@ -359,10 +360,7 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   app.post('/api/staff/create', requireAuth, async (req: AuthRequest, res: any) => {
     try {
       const { name, phone, pin, garageId, role, permissions } = req.body || {};
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin' && (!callerGarageId || callerGarageId !== garageId)) {
+      if (!canManageStaffForGarage(req.user, garageId)) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' });
       }
 
@@ -518,12 +516,9 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const { id, name, phone, role, permissions } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin') {
+      if (req.user?.role !== 'admin') {
         const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        if (!targetStaffSnap.exists || !canManageStaffForGarage(req.user, targetStaffSnap.data()?.garageId)) {
           return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' });
         }
       }
@@ -547,12 +542,9 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const { id } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin') {
+      if (req.user?.role !== 'admin') {
         const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        if (!targetStaffSnap.exists || !canManageStaffForGarage(req.user, targetStaffSnap.data()?.garageId)) {
           return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' });
         }
       }

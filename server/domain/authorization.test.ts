@@ -5,6 +5,7 @@ import {
   canClaimAdminSession,
   canSubmitGarageApplication,
   canInvalidateAllSessions,
+  canManageStaffForGarage,
   canManageGarageScopedData,
   canRunGarageMaintenance,
   canViewFinancialReport,
@@ -29,6 +30,29 @@ describe('garage-scoped authorization policy', () => {
     expect(canManageGarageScopedData({ role: 'garage' }, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(undefined, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(null, 'garage_target')).toBe(false);
+  });
+});
+
+describe('staff-management garage-scope policy', () => {
+  it('keeps admins global and resolves a garage owner from entityId when needed', () => {
+    expect(canManageStaffForGarage({ role: 'admin' }, 'garage_target')).toBe(true);
+    expect(canManageStaffForGarage({ role: 'garage', entityId: 'garage_target' }, 'garage_target')).toBe(true);
+  });
+
+  it.each([
+    ['garage owner', { role: 'garage', garageId: 'garage_target' }],
+    ['staff member', { role: 'staff', garageId: 'garage_target' }],
+    ['delegate with explicit scope', { role: 'delegate', garageId: 'garage_target' }]
+  ])('allows %s only for the matching target garage', (_label, principal) => {
+    expect(canManageStaffForGarage(principal, 'garage_target')).toBe(true);
+    expect(canManageStaffForGarage(principal, 'garage_other')).toBe(false);
+  });
+
+  it('denies missing scope, empty targets, and unsupported principals', () => {
+    expect(canManageStaffForGarage({ role: 'garage' }, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage({ role: 'supervisor' }, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage(undefined, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage({ role: 'garage', garageId: 'garage_target' }, '')).toBe(false);
   });
 });
 

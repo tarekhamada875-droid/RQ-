@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { calculateFinancialReport } from './financialReporting';
@@ -3156,10 +3156,7 @@ workerApp.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { name, phone, pin, garageId, role, permissions } = body;
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin' && (!callerGarageId || callerGarageId !== garageId)) {
+    if (!canManageStaffForGarage(user, garageId)) {
       return c.json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' }, 403);
     }
 
@@ -3207,12 +3204,9 @@ workerApp.post('/api/staff/update', requireWorkerAuth, async (c) => {
     const { id, name, phone, role, permissions } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin') {
+    if (user?.role !== 'admin') {
       const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
         return c.json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' }, 403);
       }
     }
@@ -3238,12 +3232,9 @@ workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     const { id } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin') {
+    if (user?.role !== 'admin') {
       const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
         return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
       }
     }
