@@ -14,7 +14,7 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 - **Production:** `https://rq.tarekhamada875.workers.dev` remains on `1.0.0-production`; no cutover has occurred.
 - **H6 progress:** the supported Delegate-login entry point is now available through the visible login action and `#/delegate` route; the repair passed the local quality gate and preview deployment workflow `37313750139`.
 - **Preview connectivity:** a reversible browser-origin CORS test succeeded on the isolated Worker and was removed; cleanup workflow `37315470556` passed, leaving preview configuration locked down.
-- **Next checkpoint:** H6 production-equivalent human role testing against the isolated preview, starting with Delegate authentication and then Garage Owner, Staff, and Supervisor. H7–H9 remain blocked until H6 evidence is complete.
+- **Next checkpoint:** H6 follow-up on Delegate refresh persistence, then production-equivalent testing of Garage Owner, Staff, and Supervisor against the isolated preview. H7–H9 remain blocked until H6 evidence is complete.
 - **Succession rule:** If the owner says `tokens ending`, stop implementation and create the next chained handoff before any other work.
 
 ## Current production architecture
