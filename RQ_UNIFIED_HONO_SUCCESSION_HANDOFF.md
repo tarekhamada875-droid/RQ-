@@ -41,16 +41,16 @@ Do not treat this as a quick cleanup. It is a staged migration with rollback pro
 ## Latest chained handoff status — 2026-10-05
 
 - **Active branch:** `migration/unified-hono`
-- **Current commit:** `5bae486` (`docs: activate unified hono succession handoff`)
+- **Current commit:** `0522efb` (`docs(h6): checkpoint remaining role fixtures`)
 - **Remote migration branch:** synchronized at the same commit
 - **Production `main`:** unchanged at `bb12fbe90eb97b6638546f292f5de50aab03d81a`
 - **Completed checkpoints:** H0, H1, H2, H3, H4, and H5.
 - **H5 preview URL:** `https://rq-hono-preview.tarekhamada875.workers.dev`
-- **H5 evidence:** GitHub Actions run `37290805011` passed both preview-bundle verification and isolated Worker deployment/smoke tests; Production Gate run `37290805144` also passed.
+- **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the current handoff commit.
 - **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
-- **Current blockers:** H6 human role testing has not been completed; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
-- **Exact next checkpoint:** H6 preview role testing for Admin, Delegate, Garage Owner, Staff, and Supervisor using synthetic data only. Use the acceptance task and preview URL; record allowed/forbidden outcomes, tenant isolation, session behavior, and mobile/desktop behavior.
-- **Exact next files:** `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`, `docs/H5_DUAL_RUNTIME_FINDINGS_2026-10-05.md`, `server/cloudflareWorker.ts`, `server/api.ts`, and the relevant role/service tests under `src/__tests__/`.
+- **Current blockers:** H6 browser acceptance remains incomplete for Garage Owner, Staff, and Supervisor; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
+- **Exact next checkpoint:** Verify or recreate the Staff fixture, then test Garage Owner, Staff, and Supervisor against the isolated preview using synthetic data only. Delegate login, refresh persistence, and logout are accepted. Record allowed/forbidden outcomes, tenant isolation, session behavior, and logout/refresh behavior in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`.
+- **Exact next files:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `server/cloudflareWorker.ts`, `server/api.ts`, and the relevant role/service tests under `src/__tests__/`.
 
 > You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
 
