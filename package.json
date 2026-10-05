@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:hono": "RQ_API_RUNTIME=hono tsx server.ts",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build:cloudrun": "esbuild server/cloudRun.ts --bundle --platform=node --format=cjs --packages=bundle --outfile=dist/cloud-run.cjs",

@@ -8,26 +8,32 @@ async function readBody(request: IncomingMessage): Promise<Buffer> {
 }
 
 /** Converts Node HTTP requests to Fetch requests for the canonical Hono app. */
+export async function handleNodeApiRequest(
+  nodeRequest: IncomingMessage,
+  nodeResponse: ServerResponse,
+  app = api
+): Promise<void> {
+  try {
+    const protocol = (nodeRequest.headers['x-forwarded-proto'] as string | undefined) || 'http';
+    const host = nodeRequest.headers.host || '127.0.0.1';
+    const body = await readBody(nodeRequest);
+    const method = nodeRequest.method || 'GET';
+    const request = new Request(`${protocol}://${host}${nodeRequest.url || '/'}`, {
+      method,
+      headers: nodeRequest.headers as Record<string, string>,
+      body: ['GET', 'HEAD'].includes(method) ? undefined : body
+    });
+    const response = await app.fetch(request);
+    nodeResponse.statusCode = response.status;
+    response.headers.forEach((value, key) => nodeResponse.setHeader(key, value));
+    nodeResponse.end(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    writeAdapterError(nodeResponse, error);
+  }
+}
+
 export function createNodeApiServer(app = api): Server {
-  return createServer(async (nodeRequest, nodeResponse) => {
-    try {
-      const protocol = (nodeRequest.headers['x-forwarded-proto'] as string | undefined) || 'http';
-      const host = nodeRequest.headers.host || '127.0.0.1';
-      const body = await readBody(nodeRequest);
-      const method = nodeRequest.method || 'GET';
-      const request = new Request(`${protocol}://${host}${nodeRequest.url || '/'}`, {
-        method,
-        headers: nodeRequest.headers as Record<string, string>,
-        body: ['GET', 'HEAD'].includes(method) ? undefined : body
-      });
-      const response = await app.fetch(request);
-      nodeResponse.statusCode = response.status;
-      response.headers.forEach((value, key) => nodeResponse.setHeader(key, value));
-      nodeResponse.end(Buffer.from(await response.arrayBuffer()));
-    } catch (error) {
-      writeAdapterError(nodeResponse, error);
-    }
-  });
+  return createServer((nodeRequest, nodeResponse) => handleNodeApiRequest(nodeRequest, nodeResponse, app));
 }
 
 function writeAdapterError(response: ServerResponse, error: unknown): void {
