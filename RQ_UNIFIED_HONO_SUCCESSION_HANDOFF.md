@@ -46,7 +46,7 @@ Do not treat this as a quick cleanup. It is a staged migration with rollback pro
 - **Production `main`:** unchanged at `bb12fbe90eb97b6638546f292f5de50aab03d81a`
 - **Completed checkpoints:** H0, H1, H2, H3, H4, and H5.
 - **H5 preview URL:** `https://rq-hono-preview.tarekhamada875.workers.dev`
-- **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the current handoff commit.
+- **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the preceding functional/configuration checkpoint commit `0522efb`; subsequent commits are documentation-only.
 - **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
 - **Current blockers:** H6 browser acceptance remains incomplete for Garage Owner, Staff, and Supervisor; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
 - **Exact next checkpoint:** Verify or recreate the Staff fixture, then test Garage Owner, Staff, and Supervisor against the isolated preview using synthetic data only. Delegate login, refresh persistence, and logout are accepted. Record allowed/forbidden outcomes, tenant isolation, session behavior, and logout/refresh behavior in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`.
