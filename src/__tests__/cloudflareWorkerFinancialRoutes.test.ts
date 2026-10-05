@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -54,7 +54,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('1. POST /api/recharge-requests/create creates pending request', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/create', {
+    const unauthRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ garageId: testGarageId })
@@ -62,7 +62,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(unauthRes.status).toBe(401);
 
     // Valid creation (using admin token because operator is restricted from mutating)
-    const createRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/create', {
+    const createRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('2. POST /api/recharge-requests/process approves recharge and grants subscription', async () => {
     // Create request first
-    const createRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/create', {
+    const createRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const testIdempKey = `idemp_appr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     // Process/Approve (using admin token)
-    const processRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/process', {
+    const processRes = await api.fetch(new Request('http://localhost/api/recharge-requests/process', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('3. POST /api/recharge-requests/reject rejects pending request', async () => {
     // Create request first
-    const createRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/create', {
+    const createRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const testIdempKey = `idemp_rej_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     // Reject
-    const rejectRes = await workerApp.fetch(new Request('http://localhost/api/recharge-requests/reject', {
+    const rejectRes = await api.fetch(new Request('http://localhost/api/recharge-requests/reject', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('4. POST /api/transactions/admin-topup-balance adds direct wallet credit', async () => {
     const testIdempKey = `idemp_topup_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const topupRes = await workerApp.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
+    const topupRes = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
   it('5. POST /api/delegate/withdraw-commission settles delegate account', async () => {
     const testIdempKey = `idemp_settle_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const settleRes = await workerApp.fetch(new Request('http://localhost/api/delegate/withdraw-commission', {
+    const settleRes = await api.fetch(new Request('http://localhost/api/delegate/withdraw-commission', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -204,7 +204,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
   });
 
   it('6. GET /api/financial-summary returns aggregated financial totals', async () => {
-    const summaryRes = await workerApp.fetch(new Request('http://localhost/api/financial-summary', {
+    const summaryRes = await api.fetch(new Request('http://localhost/api/financial-summary', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 

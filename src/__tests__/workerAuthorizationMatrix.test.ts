@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 const tokens = {
   admin: 'valid-admin-token',
@@ -23,7 +23,7 @@ const tokens = {
 } as const;
 
 async function call(path: string, token: string, init: RequestInit = {}) {
-  return workerApp.fetch(new Request(`http://localhost${path}`, {
+  return api.fetch(new Request(`http://localhost${path}`, {
     ...init,
     headers: {
       authorization: `Bearer ${token}`,

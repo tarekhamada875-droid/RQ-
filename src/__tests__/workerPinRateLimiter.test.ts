@@ -13,7 +13,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 class MemoryStorage {
   private readonly values = new Map<string, unknown>();
@@ -101,7 +101,7 @@ describe('Worker PIN rate limiter', () => {
     });
 
     async function verifyPin(pin: string, sessionId: string, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }) {
-      return workerApp.fetch(new Request('http://localhost/api/auth/verify-pin', {
+      return api.fetch(new Request('http://localhost/api/auth/verify-pin', {
         method: 'POST',
         headers: {
           authorization: 'Bearer valid-admin-token',
@@ -113,7 +113,7 @@ describe('Worker PIN rate limiter', () => {
     }
 
     async function postAuth(path: string, body: Record<string, unknown>, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }) {
-      return workerApp.fetch(new Request(`http://localhost${path}`, {
+      return api.fetch(new Request(`http://localhost${path}`, {
         method: 'POST',
         headers: {
           authorization: 'Bearer valid-admin-token',

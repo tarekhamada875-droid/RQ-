@@ -14,7 +14,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF1 — Cloudflare Worker Deployment Contract', () => {
   it('verifies wrangler.toml exists and declares production and preproduction environments', () => {
@@ -32,7 +32,7 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
   });
 
   it('serves GET /api/health with operational JSON response from worker', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/health', {
+    const res = await api.fetch(new Request('http://localhost/api/health', {
       method: 'GET'
     }));
 
@@ -44,7 +44,7 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
   });
 
   it('serves GET /api/version with version and environment metadata', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/version', {
+    const res = await api.fetch(new Request('http://localhost/api/version', {
       method: 'GET'
     }));
 
@@ -57,7 +57,7 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
   });
 
   it('applies scoped CORS headers for allowed origins', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/version', {
+    const res = await api.fetch(new Request('http://localhost/api/version', {
       method: 'OPTIONS',
       headers: {
         'Origin': 'https://rq-acg.pages.dev',
