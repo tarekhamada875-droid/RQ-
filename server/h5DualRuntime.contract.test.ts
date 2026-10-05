@@ -78,13 +78,9 @@ afterAll(async () => {
 });
 
 describe('H5 — synthetic Hono and Express runtime comparison', () => {
-  it('agrees on public health and records the Express version-route gap', async () => {
+  it('agrees on public health and version contracts', async () => {
     await compareCase('health', '/api/health');
-    const [hono, express] = await Promise.all([honoRequest('/api/version'), expressRequest('/api/version')]);
-    expect(hono.status).toBe(200);
-    expect(express.status).toBe(404);
-    expect(hono.body).toMatchObject({ status: 'operational' });
-    expect(express.body).toMatchObject({ success: false });
+    await compareCase('version', '/api/version');
   });
 
   it('agrees on unauthenticated mutation authorization outcomes', async () => {
@@ -105,7 +101,7 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     }
   });
 
-  it('records the current operator-token policy divergence without allowing a synthetic write', async () => {
+  it('agrees on operator-token mutation blocking without allowing a synthetic write', async () => {
     const init: RequestInit = {
       method: 'POST',
       headers: {
@@ -118,11 +114,8 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     try {
       for (const path of ['/api/subscribers/add', '/api/vehicles/check-in']) {
         const [hono, express] = await Promise.all([honoRequest(path, init), expressRequest(path, init)]);
-        // Hono deliberately blocks operator-token mutations (403); Express currently
-        // accepts the operator identity and reaches route validation (400). This is
-        // a recorded H5 migration finding, not an equivalence claim.
         expect(hono.status, `${path}: Hono operator policy`).toBe(403);
-        expect(express.status, `${path}: Express legacy behavior`).toBe(400);
+        expect(express.status, `${path}: Express operator policy`).toBe(403);
         expect(hono.body).toMatchObject({ success: false });
         expect(express.body).toMatchObject({ success: false });
       }

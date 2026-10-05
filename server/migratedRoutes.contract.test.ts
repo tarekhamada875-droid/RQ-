@@ -47,7 +47,7 @@ describe('migrated route HTTP contracts', () => {
     }
   });
 
-  it('keeps authenticated invalid-request envelopes before any Firestore mutation', async () => {
+  it('blocks backend operator mutations before route validation or Firestore mutation', async () => {
     process.env.BACKEND_OPERATOR_TOKEN = 'route-contract-test-secret';
     const paths = [
       '/api/subscribers/add',
@@ -60,7 +60,7 @@ describe('migrated route HTTP contracts', () => {
     for (const path of paths) {
       const response = await post(path, {}, { 'x-backend-operator-token': 'route-contract-test-secret' });
       const payload = await response.json() as { success: boolean; error?: string };
-      expect(response.status, path).toBe(400);
+      expect(response.status, path).toBe(403);
       expect(payload.success, path).toBe(false);
       expect(payload.error, path).toBeDefined();
     }

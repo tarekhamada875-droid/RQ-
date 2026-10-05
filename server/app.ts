@@ -162,6 +162,15 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       version
     });
   });
+  app.get('/api/version', (_req, res) => {
+    res.json({
+      version: process.env.GIT_COMMIT_SHA || '1.0.0',
+      environment: process.env.NODE_ENV || 'production',
+      runtime: 'express',
+      status: 'operational',
+      timestamp: new Date().toISOString()
+    });
+  });
 
   // Public / Authenticated GET System Config (for wallet number, flat fee, maintenance status, etc.)
   app.get('/api/system-config', async (_req, res) => {
