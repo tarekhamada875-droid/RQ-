@@ -756,9 +756,9 @@ Security and tenant isolation
 
 ### Continuation update — 2026-10-05 after supported role-entry repair
 
-- **Active branch/commit:** `migration/unified-hono` at `800bdbf` (`fix(auth): expose supported delegate login entry`); synchronized with `origin/migration/unified-hono`.
+- **Active branch/commit:** `migration/unified-hono` at `4d6d867` (`test(h6): cover delegate login entry`); synchronized with `origin/migration/unified-hono`.
 - **Change:** the existing Delegate login view is now reachable from the main login screen and through `#/delegate` (plus `#/delegate_login` aliases). Existing garage/Admin PIN behavior was preserved.
-- **Validation:** focused tests (15 passed), full local gate passed, and H5 preview workflow `37313750139` passed including deployment and health/version/unauthenticated smoke checks.
+- **Validation:** focused tests (15 passed before the added regression; 7 component tests including the new regression passed afterward), TypeScript passed, full local gate passed before the docs/test-only follow-up, and H5 preview workflow `37313750139` passed including deployment and health/version/unauthenticated smoke checks.
 - **Browser evidence:** isolated Sandbox browser confirmed the visible `دخول المندوب` action opens the Delegate phone/PIN login screen. The temporary local frontend and host exception were stopped and reverted; no test-only Vite configuration remains.
 - **H6 blocker status:** the role-entry blocker is resolved. Delegate authentication and the remaining Garage Owner, Staff, and Supervisor workflows are still not accepted because synthetic credentials were not available in the isolated browser session.
 - **Exact next actions:** use the isolated preview UI with synthetic credentials; test Delegate first, then Garage Owner, Staff, and Supervisor; record login/session establishment, tenant isolation, persistence, duplicate/idempotency behavior, logout, refresh, and forbidden actions in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`. Do not start H7, H8, or H9, and never deploy the migration branch to production.
