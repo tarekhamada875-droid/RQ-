@@ -7,7 +7,7 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 ## Current succession status — 2026-10-05
 
 - **Active branch:** `migration/unified-hono`
-- **Current commit:** `0522efb` (`docs(h6): checkpoint remaining role fixtures`)
+- **Current commit:** `a7446f0` (`docs(h6): align succession status`)
 - **Production `main`:** unchanged; `origin/main` is `bb12fbe`
 - **Completed:** H0 baseline protection, H1 route inventory, H2 domain-policy and billing extraction, H3 canonical Hono API/local adapter, H4 Fetch/Hono test migration, and H5 dual-runtime preview deployment.
 - **Preview:** `https://rq-hono-preview.tarekhamada875.workers.dev` — health/version and unauthenticated protection passed; final locked-down cleanup workflow `37324129640` passed for commit `0522efb`.
