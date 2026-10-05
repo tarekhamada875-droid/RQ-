@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -32,7 +32,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
 
   it('1. POST /api/garages/create creates new garage record and pin', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/garages/create', {
+    const unauthRes = await api.fetch(new Request('http://localhost/api/garages/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'New Test Garage', pin: '9876' })
@@ -40,7 +40,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(unauthRes.status).toBe(401);
 
     const testPin = String(Math.floor(10000000 + Math.random() * 90000000));
-    const createRes = await workerApp.fetch(new Request('http://localhost/api/garages/create', {
+    const createRes = await api.fetch(new Request('http://localhost/api/garages/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
   });
 
   it('2. POST /api/garages/update updates garage configuration fields', async () => {
-    const updateRes = await workerApp.fetch(new Request('http://localhost/api/garages/update', {
+    const updateRes = await api.fetch(new Request('http://localhost/api/garages/update', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
   });
 
   it('3. POST /api/garages/delete initiates garage deletion job', async () => {
-    const deleteRes = await workerApp.fetch(new Request('http://localhost/api/garages/delete', {
+    const deleteRes = await api.fetch(new Request('http://localhost/api/garages/delete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
   });
 
   it('4. GET /api/garages and GET /api/garages/:id return live garage data', async () => {
-    const listRes = await workerApp.fetch(new Request('http://localhost/api/garages', {
+    const listRes = await api.fetch(new Request('http://localhost/api/garages', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -109,7 +109,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(listBody.success).toBe(true);
     expect(Array.isArray(listBody.garages)).toBe(true);
 
-    const getRes = await workerApp.fetch(new Request(`http://localhost/api/garages/${testGarageId}`, {
+    const getRes = await api.fetch(new Request(`http://localhost/api/garages/${testGarageId}`, {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
