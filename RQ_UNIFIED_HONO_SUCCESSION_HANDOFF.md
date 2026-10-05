@@ -38,6 +38,22 @@ Firebase Authentication + Firestore
 
 Do not treat this as a quick cleanup. It is a staged migration with rollback protection.
 
+## Latest chained handoff status — 2026-10-05
+
+- **Active branch:** `migration/unified-hono`
+- **Current commit:** `37eaa208e5107ef8bcae392576a0460e1c587f00`
+- **Remote migration branch:** synchronized at the same commit
+- **Production `main`:** unchanged at `bb12fbe90eb97b6638546f292f5de50aab03d81a`
+- **Completed checkpoints:** H0, H1, H2, H3, H4, and H5.
+- **H5 preview URL:** `https://rq-hono-preview.tarekhamada875.workers.dev`
+- **H5 evidence:** GitHub Actions run `37290805011` passed both preview-bundle verification and isolated Worker deployment/smoke tests; Production Gate run `37290805144` also passed.
+- **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
+- **Current blockers:** H6 human role testing has not been completed; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
+- **Exact next checkpoint:** H6 preview role testing for Admin, Delegate, Garage Owner, Staff, and Supervisor using synthetic data only. Use the acceptance task and preview URL; record allowed/forbidden outcomes, tenant isolation, session behavior, and mobile/desktop behavior.
+- **Exact next files:** `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`, `docs/H5_DUAL_RUNTIME_FINDINGS_2026-10-05.md`, `server/cloudflareWorker.ts`, `server/api.ts`, and the relevant role/service tests under `src/__tests__/`.
+
+> You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
+
 ---
 
 ## Repository and access

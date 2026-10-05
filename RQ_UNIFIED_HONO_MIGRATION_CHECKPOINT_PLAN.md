@@ -4,6 +4,17 @@
 
 Evaluate and, if successful, migrate RQ from the current dual-runtime structure to a unified Hono Web-Standards backend without risking the working production deployment.
 
+## Current succession status — 2026-10-05
+
+- **Active branch:** `migration/unified-hono`
+- **Current commit:** `37eaa20` (`fix: use account scoped preview worker hostname`)
+- **Production `main`:** unchanged; `origin/main` is `bb12fbe`
+- **Completed:** H0 baseline protection, H1 route inventory, H2 domain-policy and billing extraction, H3 canonical Hono API/local adapter, H4 Fetch/Hono test migration, and H5 dual-runtime preview deployment.
+- **Preview:** `https://rq-hono-preview.tarekhamada875.workers.dev` — health/version and unauthenticated protection passed; GitHub H5 workflow passed at run `37290805011`.
+- **Production:** `https://rq.tarekhamada875.workers.dev` remains on `1.0.0-production`; no cutover has occurred.
+- **Next checkpoint:** H6 production-equivalent human role testing against the isolated preview, using synthetic data only. H7–H9 remain blocked until H6 evidence is complete.
+- **Succession rule:** If the owner says `tokens ending`, stop implementation and create the next chained handoff before any other work.
+
 ## Current production architecture
 
 ```text
