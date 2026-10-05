@@ -208,6 +208,7 @@ export default function App() {
           loginPhone={loginPhone}
           setLoginPhone={setLoginPhone}
           handleGarageLogin={handleGarageLogin}
+          onDelegateLogin={() => setView('delegate_login')}
           isLoading={isLoading || !isAuthReady}
           closeKeyboard={closeKeyboard}
         />
@@ -383,6 +384,7 @@ export default function App() {
       loginPhone={loginPhone}
       setLoginPhone={setLoginPhone}
       handleGarageLogin={handleGarageLogin}
+      onDelegateLogin={() => setView('delegate_login')}
       isLoading={isLoading || !isAuthReady}
       closeKeyboard={closeKeyboard}
     />;
