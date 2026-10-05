@@ -7,6 +7,7 @@ import { initializeFairUse } from '../../unlimitedFairUse';
 import { sanitizePayload, validateId, validateIdempotencyKey } from '../../validation';
 import { mapDomainErrorToStatus } from '../helpers';
 import { validatePackageCatalogRecord } from '../../packageCatalog';
+import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from '../../domain/subscriptionBilling';
 
 export const directRechargeRouter = Router();
 
@@ -81,24 +82,18 @@ directRechargeRouter.post('/recharge-garage', requireAuth, financialRateLimiter(
         throw new Error('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION');
       }
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
-          baseDate = currentExpDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const referrerGarageId = garageData.referredByGarageId;
       let referrerRef: any = null;
       let referrerSnap: any = null;
-      const isEligibleForReferral =
-        Boolean(referrerGarageId) &&
-        referrerGarageId !== garageId &&
-        price > 0 &&
-        durationDays >= 15;
+      const isEligibleForReferral = decideReferralReward({
+        referrerGarageId,
+        targetGarageId: garageId,
+        durationDays,
+        price,
+        requiresPositivePrice: true
+      }).eligible;
 
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
@@ -160,15 +155,7 @@ directRechargeRouter.post('/recharge-garage', requireAuth, financialRateLimiter(
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
-        let refBaseDate = new Date();
-        if (referrerData.balanceExpiry) {
-          const rawExp = referrerData.balanceExpiry;
-          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
-          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
-            refBaseDate = refExpDate;
-          }
-        }
-        refBaseDate.setDate(refBaseDate.getDate() + 1);
+        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
 
         t.set(referrerRef, {
           balanceExpiry: refBaseDate,

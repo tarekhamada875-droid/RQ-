@@ -17,6 +17,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
+import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { calculateFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboardSummary';
 import { decideGarageDeletion } from './domain/garageDeletion';
@@ -2260,7 +2261,7 @@ const handleApproveRechargeRequest = async (c: any) => {
       const referrerGarageId = garageData.referredByGarageId;
       let referrerRef: any = null;
       let referrerSnap: any = null;
-      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== targetGarageId && durationDays >= 15;
+      const isEligibleForReferral = decideReferralReward({ referrerGarageId, targetGarageId, durationDays }).eligible;
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
         referrerSnap = await t.get(referrerRef);
@@ -2298,15 +2299,7 @@ const handleApproveRechargeRequest = async (c: any) => {
         effectiveRevenue += subscriberFlatFee;
       }
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-          baseDate = expDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       t.set(garageRef, {
         balanceExpiry: baseDate,
@@ -2380,15 +2373,7 @@ const handleApproveRechargeRequest = async (c: any) => {
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
-        let refBaseDate = new Date();
-        if (referrerData.balanceExpiry) {
-          const rawExp = referrerData.balanceExpiry;
-          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
-          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
-            refBaseDate = refExpDate;
-          }
-        }
-        refBaseDate.setDate(refBaseDate.getDate() + 1);
+        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
 
         t.set(referrerRef, {
           balanceExpiry: refBaseDate,
@@ -3768,20 +3753,18 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
         throw new Error('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION');
       }
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
-          baseDate = currentExpDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const referrerGarageId = garageData.referredByGarageId;
       let referrerRef: any = null;
       let referrerSnap: any = null;
-      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== garageId && price > 0 && durationDays >= 15;
+      const isEligibleForReferral = decideReferralReward({
+        referrerGarageId,
+        targetGarageId: garageId,
+        durationDays,
+        price,
+        requiresPositivePrice: true
+      }).eligible;
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
         referrerSnap = await t.get(referrerRef);
@@ -3841,15 +3824,7 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
-        let refBaseDate = new Date();
-        if (referrerData.balanceExpiry) {
-          const rawExp = referrerData.balanceExpiry;
-          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
-          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
-            refBaseDate = refExpDate;
-          }
-        }
-        refBaseDate.setDate(refBaseDate.getDate() + 1);
+        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
 
         t.set(referrerRef, {
           balanceExpiry: refBaseDate,
@@ -3962,15 +3937,7 @@ workerApp.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, asy
 
       const newBalance = currentBalance - effectivePrice;
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-          baseDate = expDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const pkgName = validatedPackage.name;
       const isUnlimitedPkg = validatedPackage.isUnlimited;
@@ -4090,13 +4057,7 @@ workerApp.post('/api/transactions/use-referral-reward', requireWorkerAuth, async
       if (rewardDays <= 0) throw new Error('NO_REFERRAL_REWARDS_AVAILABLE');
 
       claimedDays = rewardDays;
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
-        if (expDate > baseDate) baseDate = expDate;
-      }
-      baseDate.setDate(baseDate.getDate() + rewardDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, rewardDays);
 
       t.update(garageRef, {
         balanceExpiry: baseDate,

@@ -7,6 +7,7 @@ import { initializeFairUse } from '../../unlimitedFairUse';
 import { sanitizePayload, validateId, validateIdempotencyKey } from '../../validation';
 import { mapDomainErrorToStatus } from '../helpers';
 import { validatePackageCatalogRecord } from '../../packageCatalog';
+import { extendSubscriptionExpiry } from '../../domain/subscriptionBilling';
 
 export const selfSubscriptionRouter = Router();
 
@@ -90,15 +91,7 @@ selfSubscriptionRouter.post('/garage-self-subscribe', requireAuth, financialRate
 
       const newBalance = currentBalance - effectivePrice;
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-          baseDate = expDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const pkgName = validatedPackage.name;
       const isUnlimitedPkg = validatedPackage.isUnlimited;

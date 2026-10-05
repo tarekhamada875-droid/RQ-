@@ -4,6 +4,7 @@ import { adminDb } from '../../firebaseAdmin';
 import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from '../../idempotency';
 import { sanitizePayload, validateId, validateIdempotencyKey } from '../../validation';
 import { mapDomainErrorToStatus } from '../helpers';
+import { extendSubscriptionExpiry } from '../../domain/subscriptionBilling';
 
 export const referralRewardsRouter = Router();
 
@@ -50,16 +51,7 @@ referralRewardsRouter.post('/use-referral-reward', requireAuth, financialRateLim
       }
 
       claimedDays = rewardDays;
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
-        if (expDate > baseDate) {
-          baseDate = expDate;
-        }
-      }
-
-      baseDate.setDate(baseDate.getDate() + rewardDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, rewardDays);
 
       t.update(garageRef, {
         balanceExpiry: baseDate,
