@@ -122,3 +122,12 @@ Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff
 - **Regression coverage:** A test using the Worker/anonymous identity verifies successful PIN-based role claim and asserts that unrelated role/profile lookups do not run before the claim.
 - **Validation:** **PASS** — focused PIN suite 9/9; full suite 99 files / 567 tests; TypeScript lint; Cloudflare Worker build; `npm run ci:check`; `npm run maintainability:check`; and `git diff --check`.
 - **Status:** The change is tested locally but not yet deployed to preview. It is a targeted latency optimization, not proof of the exact slow stage or a completed fix. The current synthetic session remains active; it will be revoked through the supported session-revoke endpoint before any fresh Owner UI retest. No additional PIN was submitted. Owner UI acceptance remains **BLOCKED**; Staff/Supervisor are **NOT TESTED**; production remains untouched.
+
+## 2026-10-06 continuation — Supervisor browser acceptance
+
+- **Target/boundary:** isolated `rq-hono-preview` Worker through the temporary Vite UI; production and `main` were not used for mutations.
+- **Synthetic fixture:** existing `QA--Supervisor` (`01000000002`). A temporary synthetic PIN was entered through the supported Admin editor; the value is intentionally omitted.
+- **Supervisor login:** **PASS**. The original generic login UI accepted the synthetic credential and opened the restricted Supervisor dashboard. The browser UI showed `QA--Supervisor`, and non-secret local session state contained `app_supervisor` with `app_view=admin_dashboard`; this distinguishes the Supervisor dashboard from the Delegate dashboard even though its first visible section lists assigned delegates.
+- **Supervisor refresh persistence:** **PASS**. A full navigation to the preview base URL restored the Supervisor dashboard and retained the `QA--Supervisor` session state.
+- **Supervisor logout:** **INCOMPLETE**. The supported logout challenge was opened, but the temporary Supervisor credential used for login was not accepted by the logout challenge. Two attempts remained after the test; no further guesses were made, and no destructive action was performed. Logout must be retested with the correct supported verification credential before H6 can be closed.
+- **Current H6 status:** Supervisor login/refresh are accepted; Supervisor logout is outstanding. Garage Owner and Staff remain outstanding. H7–H9 remain blocked.
