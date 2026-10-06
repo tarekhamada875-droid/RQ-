@@ -63,7 +63,7 @@ main
 Current known-good main commit at handoff:
 
 ```text
-d1c8da5 docs: remove obsolete migration plans and refresh project memory
+bb12fbe docs: align handoff with cleanup commit
 ```
 
 Previous important commits:
