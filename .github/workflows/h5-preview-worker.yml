@@ -35,10 +35,13 @@ jobs:
       - name: Enforce owner UI/UX freeze
         run: |
           git fetch origin main --no-tags
-          merge_base=$(git merge-base origin/main HEAD) || {
-            echo "Unable to enforce owner UI/UX freeze: no merge base between origin/main and HEAD."
+          main_ref=FETCH_HEAD
+          merge_base=$(git merge-base "$main_ref" HEAD) || {
+            echo "Unable to enforce owner UI/UX freeze: no merge base between fetched main and HEAD."
             exit 1
           }
+          echo "UI freeze fetched-main commit: $(git rev-parse "$main_ref")"
+          echo "UI freeze merge base: $merge_base"
           forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^src/components/auth/(AdminLoginView|DelegateLoginView)\.tsx$' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
@@ -46,6 +49,7 @@ jobs:
             exit 1
           fi
           app_diff_hash=$(git diff "$merge_base" HEAD -- src/App.tsx | sha256sum | cut -d' ' -f1)
+          echo "UI freeze src/App.tsx diff hash: $app_diff_hash"
           if [ "$app_diff_hash" != "f2bd1a90431e34564ad344a26911d1ef3dbde6a2aa34946c5c06d539ec0fff9e" ]; then
             echo "UI/UX freeze violation: src/App.tsx contains an unapproved change."
             exit 1
