@@ -20,8 +20,6 @@ import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { logDiagnostic } from './utils/authDiagnosticLogger';
 
 import { LoginView } from './components/auth/LoginView';
-import { AdminLoginView } from './components/auth/AdminLoginView';
-import { DelegateLoginView } from './components/auth/DelegateLoginView';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Loaded only when the related route or confirmation is opened.
@@ -56,8 +54,6 @@ export default function App() {
     vehicles,
     todayTransactions,
     allGarages,
-    adminPin,
-    setAdminPin,
     activeAdminPin,
     walletNumber,
     subscriptionPrices,
@@ -119,7 +115,6 @@ export default function App() {
     handleInitiateLogout,
     closeKeyboard,
     handleGarageLogin,
-    handleDelegateLogin,
     handleDelegateRecharge,
     handleDelegateBalanceTopupRequest,
     handleCheckIn,
@@ -202,7 +197,9 @@ export default function App() {
       isLoading,
     });
 
-    if (view === 'login') {
+    // All unauthenticated roles use one shared PIN login screen. The server
+    // resolves the authenticated role after this single credential submission.
+    if (view === 'login' || view === 'admin_login' || view === 'delegate_login') {
       return (
         <LoginView 
           loginPhone={loginPhone}
@@ -210,20 +207,6 @@ export default function App() {
           handleGarageLogin={handleGarageLogin}
           isLoading={isLoading || !isAuthReady}
           closeKeyboard={closeKeyboard}
-        />
-      );
-    }
-
-    if (view === 'admin_login') {
-      return (
-        <AdminLoginView 
-          adminPin={adminPin}
-          setAdminPin={setAdminPin}
-          setView={setView}
-          showToast={showToast}
-          closeKeyboard={closeKeyboard}
-          correctAdminPin={activeAdminPin}
-          onLogin={handleGarageLogin}
         />
       );
     }
@@ -252,16 +235,6 @@ export default function App() {
             showToast={showToast}
           />
         </ErrorBoundary>
-      );
-    }
-
-    if (view === 'delegate_login') {
-      return (
-        <DelegateLoginView 
-          onLogin={handleDelegateLogin}
-          isLoading={isLoading}
-          onBack={() => setView('login')}
-        />
       );
     }
 
@@ -411,7 +384,7 @@ export default function App() {
     );
   }
 
-  const isLoggedIn = Boolean(view && view !== 'login');
+  const isLoggedIn = Boolean(view && !['login', 'admin_login', 'delegate_login'].includes(view));
 
   return (
     <div 
