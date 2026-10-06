@@ -157,3 +157,11 @@ Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff
 - **Browser verification:** Repeating the same logged-out local-state tampering against the updated isolated preview showed the session-loading guard, then returned to the generic login screen. The Admin shell no longer rendered.
 - **Validation:** `npm run lint` passed; `npm run build` passed; `git diff --check` passed. The fix is migration-branch only and has not been deployed to production.
 - **H6 status:** This specific UI guard finding is resolved on the migration branch. Remaining H6 browser work is tenant-isolation and forbidden-action coverage beyond the automated matrix; H7–H9 remain blocked until the complete evidence is reviewed.
+
+## 2026-10-06 continuation — full suite and integrated report
+
+- **Full repository validation:** **PASS** — 100 test files and 570 tests passed. Deliberate failure-path stderr was expected and covered network, 401/403/409/500, server rejection, and fail-closed session behavior.
+- **Preview deployment:** **PASS** — H5 Preview Worker and Production Gate both passed for `b7af7c3`. The isolated Worker reported `status=ok`, `runtime=cloudflare-worker`, `environment=preproduction`, and version `1.0.0-h5-preview`.
+- **Correction to earlier note:** The protected-view fix is now deployed to the isolated pre-production preview. It remains absent from production and `main`.
+- **Integrated report:** Created `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` with the complete feature-by-role matrix. Remaining browser cells are explicitly marked **BLOCKED** where approved Delegate/Beta fixtures or safe role-specific records were unavailable; no unsupported passes were inferred.
+- **Current H6 status:** Core lifecycle and technical authorization suites pass. H6 remains **BLOCKED** pending approved synthetic Beta/Delegate fixtures and the remaining cross-garage/forbidden-action browser scenarios. H7–H9 remain blocked.
