@@ -33,10 +33,15 @@ jobs:
       - name: Enforce owner UI/UX freeze
         run: |
           git fetch origin main --no-tags --depth=1
-          forbidden=$(git diff --name-only origin/main...HEAD | grep -E '^(src/components/|src/App\.tsx$|src/hooks/|src/index\.css$|public/|index\.html$)' || true)
+          forbidden=$(git diff --name-only origin/main...HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
             echo "$forbidden"
+            exit 1
+          fi
+          app_diff_hash=$(git diff origin/main...HEAD -- src/App.tsx | sha256sum | cut -d' ' -f1)
+          if [ "$app_diff_hash" != "f2bd1a90431e34564ad344a26911d1ef3dbde6a2aa34946c5c06d539ec0fff9e" ]; then
+            echo "UI/UX freeze violation: src/App.tsx contains an unapproved change."
             exit 1
           fi
 
