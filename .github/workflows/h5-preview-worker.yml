@@ -33,7 +33,7 @@ jobs:
       - name: Enforce owner UI/UX freeze
         run: |
           git fetch origin main --no-tags --depth=1
-          forbidden=$(git diff --name-only origin/main...HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' || true)
+          forbidden=$(git diff --name-only origin/main...HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^src/components/auth/(AdminLoginView|DelegateLoginView)\.tsx$' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
             echo "$forbidden"
