@@ -30,6 +30,16 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Enforce owner UI/UX freeze
+        run: |
+          git fetch origin main --no-tags --depth=1
+          forbidden=$(git diff --name-only origin/main...HEAD | grep -E '^(src/components/|src/App\.tsx$|src/hooks/|src/index\.css$|public/|index\.html$)' || true)
+          if [ -n "$forbidden" ]; then
+            echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
+            echo "$forbidden"
+            exit 1
+          fi
+
       - name: Typecheck
         run: npm run lint
 

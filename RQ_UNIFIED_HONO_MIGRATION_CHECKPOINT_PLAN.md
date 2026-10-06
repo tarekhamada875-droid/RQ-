@@ -16,6 +16,7 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 - **Preview connectivity:** a reversible browser-origin CORS test succeeded on the isolated Worker and was removed; final cleanup workflow `37324129640` passed, leaving preview configuration locked down.
 - **Next checkpoint:** verify or recreate the Staff fixture, then complete H6 browser acceptance for Garage Owner, Staff, and Supervisor against the isolated preview. Delegate login, refresh persistence, and logout are accepted; H7–H9 remain blocked until the remaining H6 evidence is complete.
 - **Succession rule:** If the owner says `tokens ending`, stop implementation and create the next chained handoff before any other work.
+- **UI/UX freeze:** Do not add, remove, redesign, recolor, relabel, or reroute any user-visible screen or login flow. The migration may change backend adapters, tests, deployment files, and internal wiring only. Any UI change requires explicit owner approval before implementation.
 
 ## Current production architecture
 

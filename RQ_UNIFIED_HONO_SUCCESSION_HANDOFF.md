@@ -49,10 +49,13 @@ Do not treat this as a quick cleanup. It is a staged migration with rollback pro
 - **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the preceding functional/configuration checkpoint commit `0522efb`; subsequent commits are documentation-only.
 - **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
 - **Current blockers:** H6 browser acceptance remains incomplete for Garage Owner, Staff, and Supervisor; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
-- **Exact next checkpoint:** Verify or recreate the Staff fixture, then test Garage Owner, Staff, and Supervisor against the isolated preview using synthetic data only. Delegate login, refresh persistence, and logout are accepted. Record allowed/forbidden outcomes, tenant isolation, session behavior, and logout/refresh behavior in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`.
+- **Owner UI decision:** Preserve the production UI/UX exactly. Do not add the Delegate login button, phone/PIN entry screen, hash-route entry, colors, labels, screens, or other visible changes. The original login UI has been restored in commit `3ae92a8`.
+- **Exact next checkpoint:** Verify or recreate the Staff fixture, then test only the already-existing supported role flows against the isolated preview using synthetic data. Do not add a new UI entry point to make testing easier. Record allowed/forbidden outcomes, tenant isolation, session behavior, and logout/refresh behavior in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`.
 - **Exact next files:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `server/cloudflareWorker.ts`, `server/api.ts`, and the relevant role/service tests under `src/__tests__/`.
 
 > You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
+
+> **Permanent UI freeze:** The migration branch must not modify `src/components/**`, `src/App.tsx`, `src/hooks/**`, `src/index.css`, `public/**`, `index.html`, or visible copy, styles, and routes. Backend adapters, tests, deployment configuration, and internal wiring may continue. If a task appears to require a UI change, stop and ask the owner instead of implementing it.
 
 ---
 
