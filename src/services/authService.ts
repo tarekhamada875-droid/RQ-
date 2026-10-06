@@ -33,6 +33,7 @@ export const authService = {
     input?: string;
     phone?: string;
     pin?: string;
+    expectedRole?: 'delegate';
     uid?: string;
     sessionId?: string;
     firebaseIdToken?: string;

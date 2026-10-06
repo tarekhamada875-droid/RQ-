@@ -66,6 +66,11 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
       return sendApiError(res, 400, 'SESSION_ID_REQUIRED', 'SESSION_ID_REQUIRED', req.correlationId);
     }
 
+    const expectedRole = credentials.expectedRole;
+    if (expectedRole !== undefined && expectedRole !== 'delegate') {
+      return res.status(400).json({ success: false, error: 'INVALID_ROLE_SCOPE' });
+    }
+
     // 1. Single Input PIN Verification (Canonical Path)
     if (rawInput) {
       const normInputPin = cleanPin(rawInput);
@@ -96,7 +101,7 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
       const adminCheck = verifyPinMatch(normInputPin, adminPinStored);
       if (adminCheck.matches) {
         matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
-        if (adminCheck.isLegacy) {
+        if (adminCheck.isLegacy && !expectedRole) {
           migratePinToHash('admin_settings', 'auth_pin', normInputPin);
         }
       }
@@ -106,7 +111,7 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
         const docs = collectionResults[index] || [];
         for (const docSnap of docs) {
           const data = { ...docSnap.data };
-          if (docSnap.isLegacyMatch) {
+          if (docSnap.isLegacyMatch && !expectedRole) {
             migratePinToHash(coll.name, docSnap.id, normInputPin);
           }
 
@@ -131,6 +136,12 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
 
       if (matches.length === 1) {
         const match = matches[0];
+        if (expectedRole && match.role !== expectedRole) {
+          return res.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+        }
+        if (expectedRole === 'delegate' && match.isLegacyMatch) {
+          migratePinToHash('delegates', match.id, normInputPin);
+        }
 
         if (effectiveUid && sessionId && adminDb) {
           try {

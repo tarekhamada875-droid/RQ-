@@ -331,6 +331,11 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
     if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
 
+    const expectedRole = credentials.expectedRole;
+    if (expectedRole !== undefined && expectedRole !== 'delegate') {
+      return c.json({ success: false, error: 'INVALID_ROLE_SCOPE' }, 400);
+    }
+
     const rawInput = credentials.pin || credentials.input;
     const normalizedPin = cleanPin(rawInput);
     if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -367,7 +372,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const adminCheck = verifyPinMatch(normalizedPin, adminPinStored);
     if (adminCheck.matches) {
       matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
-      if (adminCheck.isLegacy) await migratePinToHash('admin_settings', 'auth_pin', normalizedPin);
+      if (adminCheck.isLegacy && !expectedRole) await migratePinToHash('admin_settings', 'auth_pin', normalizedPin);
     }
 
     for (let index = 0; index < collectionsToCheck.length; index += 1) {
@@ -379,7 +384,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         delete account.adminPin;
         delete account.pinLookupHash;
         matches.push({ role: collection.role, id: docSnap.id, account: { id: docSnap.id, ...account }, isLegacyMatch: docSnap.isLegacyMatch });
-        if (docSnap.isLegacyMatch) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+        if (docSnap.isLegacyMatch && !expectedRole) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
       }
     }
     const matchResolutionMs = Date.now() - matchResolutionStartedAt;
@@ -388,6 +393,13 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     if (matches.length === 0) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
     const match = matches[0];
+    if (expectedRole && match.role !== expectedRole) {
+      return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    }
+    if (expectedRole === 'delegate' && match.isLegacyMatch) {
+      await migratePinToHash('delegates', match.id, normalizedPin);
+    }
+
     const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
     const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
     const entityColl = entityCollMap[match.role];

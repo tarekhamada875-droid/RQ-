@@ -42,7 +42,7 @@ jobs:
           }
           echo "UI freeze fetched-main commit: $(git rev-parse "$main_ref")"
           echo "UI freeze merge base: $merge_base"
-          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView)\.tsx|src/hooks/useGarageApp\.ts)$' || true)
+          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView|LoginView)\.tsx|src/hooks/(useGarageApp|useAdminAndGarageManagement)\.ts)$' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
             echo "$forbidden"
@@ -50,7 +50,7 @@ jobs:
           fi
           app_blob=$(git rev-parse "HEAD:src/App.tsx")
           echo "UI freeze src/App.tsx blob: $app_blob"
-          if [ "$app_blob" != "181aa2c75c31fb98a65a59b356b1194bb2746ff2" ]; then
+          if [ "$app_blob" != "0cae29bf6be740154857f1d5058f6dd37652de85" ]; then
             echo "UI/UX freeze violation: src/App.tsx content is not the approved security-repair version."
             exit 1
           fi
@@ -58,6 +58,27 @@ jobs:
           echo "UI freeze src/hooks/useGarageApp.ts blob: $garage_app_blob"
           if [ "$garage_app_blob" != "9066f11ee6c5a569d9967b1dafe4ecf6e18e83d2" ]; then
             echo "UI/UX freeze violation: src/hooks/useGarageApp.ts content is not the approved security-repair version."
+            exit 1
+          fi
+
+          login_view_blob=$(git rev-parse "HEAD:src/components/auth/LoginView.tsx")
+          echo "UI freeze src/components/auth/LoginView.tsx blob: $login_view_blob"
+          if [ "$login_view_blob" != "754f71e349804bebd660b5a3469ff16cde41ed58" ]; then
+            echo "UI/UX freeze violation: LoginView.tsx content is not the owner-approved Delegate-entry version."
+            exit 1
+          fi
+
+          delegate_login_blob=$(git rev-parse "HEAD:src/components/auth/DelegateLoginView.tsx")
+          echo "UI freeze src/components/auth/DelegateLoginView.tsx blob: $delegate_login_blob"
+          if [ "$delegate_login_blob" != "1b0a336347607396a8d85b0406ec7012cc6bf59f" ]; then
+            echo "UI/UX freeze violation: DelegateLoginView.tsx content is not the owner-approved PIN-only version."
+            exit 1
+          fi
+
+          admin_garage_management_blob=$(git rev-parse "HEAD:src/hooks/useAdminAndGarageManagement.ts")
+          echo "UI freeze src/hooks/useAdminAndGarageManagement.ts blob: $admin_garage_management_blob"
+          if [ "$admin_garage_management_blob" != "5bd832c57dcd6b7e2c83c2fa0cce8a8f88f5d681" ]; then
+            echo "UI/UX freeze violation: useAdminAndGarageManagement.ts content is not the owner-approved role-scoped Delegate auth version."
             exit 1
           fi
 

@@ -14,6 +14,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+import { computeLookupHash, hashPinWithUniqueSalt } from '../../server/utils';
 
 class MemoryStorage {
   private readonly values = new Map<string, unknown>();
@@ -105,7 +106,8 @@ describe('Worker PIN rate limiter', () => {
       sessionId: string,
       env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter },
       executionContext?: unknown,
-      authToken = 'valid-admin-token'
+      authToken = 'valid-admin-token',
+      expectedRole?: 'delegate'
     ) {
       return api.fetch(new Request('http://localhost/api/auth/verify-pin', {
         method: 'POST',
@@ -114,7 +116,7 @@ describe('Worker PIN rate limiter', () => {
           'content-type': 'application/json',
           'cf-connecting-ip': '198.51.100.20'
         },
-        body: JSON.stringify({ pin, sessionId })
+        body: JSON.stringify({ pin, sessionId, ...(expectedRole ? { expectedRole } : {}) })
       }), env, executionContext as any);
     }
 
@@ -181,6 +183,34 @@ describe('Worker PIN rate limiter', () => {
       } finally {
         docSpy.mockRestore();
       }
+    });
+
+    it('rejects a valid Admin PIN in Delegate-scoped login before migration or session claim', async () => {
+      const response = await verifyPin('12345678', 'delegate-scope-admin-pin', undefined, undefined, 'valid-worker-token', 'delegate');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: false, error: 'بيانات الدخول غير صحيحة' });
+      expect(mockDb.records.has('admin_sessions/worker-uid')).toBe(false);
+      expect(mockDb.records.has('delegate_sessions/worker-uid')).toBe(false);
+      expect(mockDb.records.get('private_pins/auth_pin')).toEqual({ pin: '12345678' });
+    });
+
+    it('claims a Delegate session for a valid PIN in Delegate-scoped login', async () => {
+      const delegatePin = '24681357';
+      mockDb.seed('private_pins/qa-delegate', {
+        entityType: 'delegates',
+        entityId: 'qa-delegate',
+        pin: hashPinWithUniqueSalt(delegatePin),
+        pinLookupHash: computeLookupHash(delegatePin)
+      });
+      mockDb.seed('delegates/qa-delegate', { name: 'QA Delegate' });
+
+      const response = await verifyPin(delegatePin, 'delegate-scoped-session', undefined, undefined, 'valid-worker-token', 'delegate');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ success: true, role: 'delegate', accountId: 'qa-delegate', sessionClaimed: true });
+      expect(mockDb.records.get('delegate_sessions/worker-uid')).toMatchObject({ role: 'delegate', entityId: 'qa-delegate', isActive: true });
+      expect(mockDb.records.has('admin_sessions/worker-uid')).toBe(false);
     });
 
     it('returns a successful claim without waiting for limiter reset and logs only safe timing fields', async () => {
