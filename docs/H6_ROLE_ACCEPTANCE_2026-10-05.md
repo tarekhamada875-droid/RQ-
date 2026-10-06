@@ -231,3 +231,32 @@ Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff
 A credential-free source review matched the exact visible balance message to `src/components/garage/SmartActionPrompt.tsx`. `src/App.tsx` renders `GarageDashboardView` only when `view === 'garage'` and a garage object is present. Within that component, the SmartActionPrompt is shown for balance/package/daily-capacity states; the exact “balance depleted” title is selected when the garage has no positive balance and has neither an active trial nor active paid package. This confirms that the observed page was the app's Garage dashboard view with its existing balance gate, not a separate login error or external instruction. No balance or payment control was used.
 
 **Updated interpretation:** Garage dashboard view rendering is **PASS** for this one observation. This page alone does not independently distinguish Garage Owner from Staff, confirm the authenticated session's authoritative role/garage scope, or satisfy refresh persistence, forbidden-action, or logout tests. Those remain **NOT VERIFIED / BLOCKED**; do not infer completion of Owner acceptance from the supplied PIN alone. The earlier PASS from a separate browser acceptance remains historical evidence. Further credential attempts remain paused pending a safe, credential-free way to validate the active role/session.
+
+
+## 2026-10-06 continuation — Garage Owner and synthetic Staff role/scope acceptance
+
+### Scope and test boundary
+
+- **Target:** isolated `rq-hono-preview` Worker, reached through temporary Vite UI origins on ports 5173 and 5174. Both origins were checked locally and publicly; each `/api/health` proxy path targeted only the pre-production Worker.
+- **Branch/production:** repository work remained on `migration/unified-hono`; neither `main` nor the production Worker was changed.
+- **Data:** synthetic pre-production accounts only. After the Owner login, the existing Garage dashboard displayed its balance-depleted gate. No contact link, wallet, balance, recharge, subscription, payment, vehicle, subscriber, or other financial/business control was used.
+- The earlier “unexpected balance screen” entry remains a true record of what was visible at that moment. The following safe read-only checks established the Garage view/session and role-specific scope; they do not imply that any payment or balance change occurred.
+
+### Garage Owner
+
+- The owner-supplied synthetic Garage Owner credential authenticated through the normal login UI and opened the Garage dashboard. Non-secret local state showed `app_view=garage`, `app_garage` present, and `app_staff` absent.
+- A full-page navigation to the same origin restored the Garage dashboard.
+- Read-only checks returned: `GET /api/auth/sessions` **200** with one active/current session; own `GET /api/garage-summary` **200**; a scope override to a deliberately nonexistent synthetic foreign-garage ID **403**; and `GET /api/admin/summary` **403**. No response body, token, session ID, garage ID, or financial value was retained.
+
+### Synthetic Staff
+
+- Using the authenticated synthetic Garage context, one phone-free Staff fixture named `H6 Preview Staff 20261006` was created through the garage-scoped preview API. A generated eight-digit test PIN was held privately in the isolated browser, entered through the visible numeric keypad, and cleared before the result was recorded; the PIN is not retained in this report. The fixture remains synthetic pre-production data for the owner’s planned account cleanup.
+- The visible login UI accepted the Staff PIN and opened the same garage-scoped operational view. Non-secret state showed `app_staff` for `H6 Preview Staff 20261006`, its garage ID matching `app_garage`, and `app_view=garage`.
+- A full-page refresh restored the Staff view and active session. Read-only checks returned: session list **200** with one active/current session; own Garage summary **200**; the deliberately nonexistent foreign-garage scope override **403**; and Admin summary **403**.
+
+### Session cleanup and result
+
+- After the acceptance checks, the current Garage Owner and Staff sessions were individually released through the app’s server-authoritative `POST /api/auth/release-session` endpoint; each returned **200 / success**. Reloading both origins returned to the generic login screen. This cleanup is **not** counted as a new normal logout-challenge test; prior supported logout-challenge PASS evidence for the existing synthetic role fixtures remains separate.
+- Temporary Vite services/configurations and browser captures from this run were removed. The complete local Vitest suite passed **102 files / 577 tests** after the browser run.
+- **PASS:** fresh Garage Owner UI login/view, refresh persistence, own-garage read, foreign-scope denial, Admin-summary denial; fresh Staff UI login and role identity, refresh persistence, own-garage read, foreign-scope denial, Admin-summary denial; server-authoritative session cleanup. **No payment, balance mutation, transfer, contact action, or financial transaction occurred.**
+- The safe role-authentication/session/authorization slice is now supported by live browser and full-suite evidence for the five documented roles (Admin, Delegate, Garage Owner, Staff, Supervisor), combining this run with prior distinct-fixture evidence. This does **not** claim that every H6 product workflow (for example vehicle/subscriber lifecycle, financial/recharge/subscription operations, or mobile/PWA behavior) was exercised; those remain outside this safe non-payment acceptance run and must not be represented as passes. H7–H9 remain pending until the full H6 matrix is reviewed.
