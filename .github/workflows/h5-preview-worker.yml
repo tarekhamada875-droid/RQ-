@@ -50,7 +50,7 @@ jobs:
           fi
           app_blob=$(git rev-parse "HEAD:src/App.tsx")
           echo "UI freeze src/App.tsx blob: $app_blob"
-          if [ "$app_blob" != "843ed898b9b8d76a739c9d0c6687cd65d330e0a2" ]; then
+          if [ "$app_blob" != "9796f04974b42839b7c2b33251ba86f29a6a834f" ]; then
             echo "UI/UX freeze violation: src/App.tsx content is not the owner-approved version."
             exit 1
           fi

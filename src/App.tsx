@@ -4,9 +4,9 @@
  */
 
 import { useEffect, Suspense } from 'react';
-import { 
-  CheckCircle2, 
-  XCircle, 
+import {
+  CheckCircle2,
+  XCircle,
   X
 } from 'lucide-react';
 import { resolveShimmerColor } from './utils';
@@ -20,6 +20,8 @@ import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { logDiagnostic } from './utils/authDiagnosticLogger';
 
 import { LoginView } from './components/auth/LoginView';
+import { AdminLoginView } from './components/auth/AdminLoginView';
+import { DelegateLoginView } from './components/auth/DelegateLoginView';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // Loaded only when the related route or confirmation is opened.
@@ -54,6 +56,8 @@ export default function App() {
     vehicles,
     todayTransactions,
     allGarages,
+    adminPin,
+    setAdminPin,
     activeAdminPin,
     walletNumber,
     subscriptionPrices,
@@ -115,6 +119,7 @@ export default function App() {
     handleInitiateLogout,
     closeKeyboard,
     handleGarageLogin,
+    handleDelegateLogin,
     handleDelegateRecharge,
     handleDelegateBalanceTopupRequest,
     handleCheckIn,
@@ -197,11 +202,9 @@ export default function App() {
       isLoading,
     });
 
-    // All unauthenticated roles use one shared PIN login screen. The server
-    // resolves the authenticated role after this single credential submission.
-    if (view === 'login' || view === 'admin_login' || view === 'delegate_login') {
+    if (view === 'login') {
       return (
-        <LoginView 
+        <LoginView
           loginPhone={loginPhone}
           setLoginPhone={setLoginPhone}
           handleGarageLogin={handleGarageLogin}
@@ -211,10 +214,24 @@ export default function App() {
       );
     }
 
+    if (view === 'admin_login') {
+      return (
+        <AdminLoginView
+          adminPin={adminPin}
+          setAdminPin={setAdminPin}
+          setView={setView}
+          showToast={showToast}
+          closeKeyboard={closeKeyboard}
+          correctAdminPin={activeAdminPin}
+          onLogin={handleGarageLogin}
+        />
+      );
+    }
+
     if (view === 'admin_dashboard') {
       return (
         <ErrorBoundary>
-          <AdminDashboard 
+          <AdminDashboard
             allGarages={allGarages}
             isLoading={isLoading}
             createNewGarage={createNewGarage}
@@ -238,10 +255,20 @@ export default function App() {
       );
     }
 
+    if (view === 'delegate_login') {
+      return (
+        <DelegateLoginView
+          onLogin={handleDelegateLogin}
+          isLoading={isLoading}
+          onBack={() => setView('login')}
+        />
+      );
+    }
+
     if (view === 'delegate_dashboard' && delegate) {
       return (
         <ErrorBoundary>
-          <DelegateDashboardView 
+          <DelegateDashboardView
             delegate={delegate}
             allGarages={delegateGarages}
             onLogout={handleInitiateLogout}
@@ -262,7 +289,7 @@ export default function App() {
     if (view === 'admin_garage_details' && selectedGarageForDetails) {
       return (
         <ErrorBoundary>
-          <AdminGarageDetailsView 
+          <AdminGarageDetailsView
             selectedGarageForDetails={selectedGarageForDetails}
             setView={setView}
             setSelectedGarageForDetails={setSelectedGarageForDetails}
@@ -283,10 +310,10 @@ export default function App() {
       // Find the most up-to-date delegate data from our synced delegates list
       const liveDelegate = delegates.find(d => d.id === selectedDelegateForDetails.id) || selectedDelegateForDetails;
       if (!liveDelegate) return <div className="p-8 text-center">جاري التحميل...</div>;
-      
+
       return (
         <ErrorBoundary>
-          <AdminDelegateDetailsView 
+          <AdminDelegateDetailsView
             delegate={liveDelegate}
             setView={setView}
             setSelectedDelegate={setSelectedDelegateForDetails}
@@ -299,7 +326,7 @@ export default function App() {
     if (view === 'garage' && garage) {
       return (
         <ErrorBoundary>
-          <GarageDashboardView 
+          <GarageDashboardView
             garage={garage}
             currentStaff={currentStaff}
             isInputFocused={isInputFocused}
@@ -335,7 +362,7 @@ export default function App() {
 
     if (view === 'packages' && garage) {
       return (
-        <PackagesModal 
+        <PackagesModal
           packages={sortedPackages}
           onClose={() => setView('garage')}
           garageHourlyRate={garage.hourlyRate}
@@ -352,7 +379,7 @@ export default function App() {
     }
 
     // Safe fallback to login if state is inconsistent
-    return <LoginView 
+    return <LoginView
       loginPhone={loginPhone}
       setLoginPhone={setLoginPhone}
       handleGarageLogin={handleGarageLogin}
@@ -384,29 +411,29 @@ export default function App() {
     );
   }
 
-  const isLoggedIn = Boolean(view && !['login', 'admin_login', 'delegate_login'].includes(view));
+  const isLoggedIn = Boolean(view && view !== 'login');
 
   return (
-    <div 
+    <div
       className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`}
       style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}
     >
       <ErrorBoundary>
         <NetworkStatusBanner />
         {toast && (
-          <div 
+          <div
             className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"
           >
-            <div 
+            <div
               onClick={() => setToast(null)}
               role="alert"
               className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"
             >
               <div className="flex min-w-0 flex-1 items-start gap-3">
-                <div 
+                <div
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    toast.type === 'error' 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                    toast.type === 'error'
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                       : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   }`}
                 >
@@ -439,7 +466,7 @@ export default function App() {
 
         <Suspense fallback={null}>
           {showCheckInModal && garage && (
-            <CheckInModal 
+            <CheckInModal
               newPlateNumber={newPlateNumber}
               garage={garage}
               isLoading={isLoading}
@@ -450,7 +477,7 @@ export default function App() {
           )}
 
           {showCheckOutModal && selectedVehicle && garage && (
-            <CheckOutModal 
+            <CheckOutModal
               selectedVehicle={selectedVehicle}
               garage={garage}
               currentStaff={currentStaff}
@@ -464,7 +491,7 @@ export default function App() {
           )}
 
           {showDeleteConfirm && view === 'admin_garage_details' && selectedGarageForDetails && (
-            <DeleteGarageConfirmModal 
+            <DeleteGarageConfirmModal
               garage={selectedGarageForDetails}
               isLoading={isLoading}
               progress={garageDeletionProgress}
@@ -474,7 +501,7 @@ export default function App() {
           )}
 
           {showDeleteConfirm && selectedVehicle && (
-            <DeleteVehicleConfirmModal 
+            <DeleteVehicleConfirmModal
               vehicle={selectedVehicle}
               isLoading={isLoading}
               onConfirm={handleDeleteVehicle}
@@ -483,7 +510,7 @@ export default function App() {
           )}
 
           {showRecentExitWarning && recentVehicle && (
-            <RecentExitWarningModal 
+            <RecentExitWarningModal
               vehicle={recentVehicle}
               now={now}
               onConfirm={() => {
@@ -501,7 +528,7 @@ export default function App() {
           )}
 
           {showSubscriberWarning && subscriberWarningPlate && (
-            <SubscriberWarningModal 
+            <SubscriberWarningModal
               plateNumber={subscriberWarningPlate}
               onConfirm={() => {
                 setShowSubscriberWarning(false);
@@ -511,7 +538,7 @@ export default function App() {
           )}
 
           {showLogoutConfirm && (
-            <LogoutConfirmModal 
+            <LogoutConfirmModal
               onConfirm={handleLogout}
               onCancel={() => setShowLogoutConfirm(false)}
               onVerifyPin={firestoreService.verifyAdminPinForLogout}
