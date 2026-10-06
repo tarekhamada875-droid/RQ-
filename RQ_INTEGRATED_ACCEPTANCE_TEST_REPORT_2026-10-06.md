@@ -2,7 +2,7 @@
 
 ## Decision
 
-**BLOCKED — The owner-approved visible Delegate entry and PIN-only login are deployed and browser-accepted on the isolated pre-production Worker. The tested synthetic Delegate saw zero assigned garages; its read-only Admin-summary request returned HTTP 403. Earlier QA--Delegate Alpha/Beta results remain separate. H6 is not complete: this account cannot exercise garage membership and other role-specific/operational browser cells remain outstanding.** No production or `main` changes were made.
+**BLOCKED — H6 remains incomplete, but the live role-authentication/session/authorization slice now has browser evidence for Admin, Delegate, Garage Owner, Staff, and Supervisor on isolated pre-production fixtures. The latest Supervisor run passed UI login, refresh, and logout; Admin-summary, fake-garage-summary, and forbidden Supervisor-creation probes returned HTTP 403. The allowed garage-list endpoint returned 200, but its body was discarded and its returned-data scope remains unassessed. The newer synthetic Delegate account still showed zero garages; its membership/cross-garage scope remains separate from the prior QA Alpha/Beta fixture. Vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the safe non-payment boundary.** No production or `main` changes were made.
 
 ## Tested build and topology
 
@@ -43,7 +43,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Delegate | **PASS** — visible entry opened the PIN-only form and an owner-authorized synthetic PIN authenticated against preview | **PASS** on the prior QA fixture; refresh not retested for the new account | **PASS** on the prior QA fixture; the new test session was released with the app's server helper for cleanup (not a logout-challenge test) | Prior QA fixture: Alpha visible, Beta absent, direct Beta reads returned **403**. New account: **0 garages** visible; Admin-summary GET returned **403** | Cross-garage scope for the zero-garage account, commission/settlement, and other operational workflows remain **BLOCKED/NOT TESTED** |
 | Garage Owner | **PASS** | **PASS** | **PASS** | Synthetic garage scope: **PASS** | Vehicle/subscriber/recharge/report lifecycle: **BLOCKED** to avoid unapproved writes |
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
-| Supervisor | **PASS** | **PASS** | **PASS** | Restricted Supervisor dashboard: **PASS** | Unsupported admin tabs and direct denial browser checks: **BLOCKED** |
+| Supervisor | **PASS** — synthetic fixture authenticated through visible keypad | **PASS** — restricted view and one active/current session restored | **PASS** — normal UI logout returned to login and cleared role/token state | Restricted People/Delegates view: **PASS**; Admin summary, fake-garage dashboard summary, and Supervisor-create denial: **403**. `GET /api/garages` returned **200**, body discarded | Existing-garage list/detail scope, remaining Admin-only tabs, and operational workflows remain **NOT ASSESSED/BLOCKED** |
 
 ## Complete feature-by-role matrix
 
@@ -57,11 +57,11 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Dashboard/navigation | PASS | PASS | PASS | PASS | PASS | Routing and role matrix tests; Delegate PIN-only browser login loaded its dashboard |
 | Garage creation | BLOCKED | BLOCKED | N/A | N/A | N/A | Authorization tests pass; browser workflow blocked |
 | Garage approval/rejection | BLOCKED | N/A | N/A | N/A | N/A | Server authorization tests pass |
-| Garage details/status | BLOCKED | BLOCKED — tested new account showed 0 garages; prior QA fixture scope evidence is separate | PASS | N/A | BLOCKED | Scope tests pass; detailed browser coverage blocked for the new account |
+| Garage details/status | BLOCKED | BLOCKED — tested new account showed 0 garages; prior QA fixture scope evidence is separate | PASS | N/A | BLOCKED — garage-list status 200, body discarded; detail scope not assessed | Supervisor `GET /api/garages` returned 200 but its body was discarded; fake-garage dashboard summary returned 403; existing garage details were not probed |
 | Garage deletion/maintenance | BLOCKED | N/A | N/A | N/A | N/A | Maintenance/deletion authorization tests pass |
 | Staff management | BLOCKED | N/A | N/A | N/A | N/A | Authorization tests pass; browser mutation blocked |
 | Delegate management | BLOCKED | N/A | N/A | N/A | BLOCKED | Delegate/supervisor authorization tests pass |
-| Supervisor management | BLOCKED | N/A | N/A | N/A | N/A | Authorization tests pass; browser mutation blocked |
+| Supervisor management | BLOCKED | N/A | N/A | N/A | N/A | Admin-only create route returned 200 for one synthetic fixture; Supervisor empty-body create returned 403; edit/delete UI not tested |
 | Recharge requests | BLOCKED | BLOCKED | BLOCKED | N/A | N/A | Financial/request/idempotency tests pass |
 | Recharge approval/rejection | BLOCKED | N/A | N/A | N/A | N/A | Transaction authorization/idempotency tests pass |
 | Manual wallet top-up | BLOCKED | N/A | N/A | N/A | N/A | Manual-credit authorization tests pass |
@@ -84,7 +84,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Audit/history | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Operation trace/audit tests pass |
 | Offline/retry | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Resilience/API boundary tests pass |
 | Mobile/PWA | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Not run in this acceptance continuation |
-| Cross-garage isolation | BLOCKED | **PASS** for prior QA Garage Alpha/Beta direct reads; **BLOCKED/NOT TESTED** for the new zero-garage account | BLOCKED | BLOCKED | BLOCKED | Prior QA fixture showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403. New account showed 0 garages; its Admin-summary GET returned 403. Automated scope tests pass; other roles remain unverified |
+| Cross-garage isolation | BLOCKED | **PASS** for prior QA Garage Alpha/Beta direct reads; **BLOCKED/NOT TESTED** for the new zero-garage account | BLOCKED | BLOCKED | **BLOCKED/NOT TESTED** — fake nonexistent garage-summary returned 403; existing foreign-garage data not probed | Prior QA fixture showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403. New Delegate showed 0 garages. Owner/Staff own-garage and fake-scope checks are recorded below. Supervisor’s fake-ID summary returned 403; `GET /api/garages` returned 200 but its body was discarded, so list scope remains unassessed. |
 
 ## Security finding and fix
 
@@ -163,3 +163,14 @@ This addendum supplements (and, for the later retest, supersedes the earlier inc
 - **Cleanup/safety:** both current test sessions were released with the server-authoritative release endpoint (**200 / success**), and reloading each origin returned to the generic login screen. This cleanup is not counted as a normal logout-challenge acceptance. The temporary UI services, configs, and browser captures were removed. No contact/transfer/payment/recharge/balance/subscription/vehicle/subscriber operation was performed. The new synthetic Staff fixture remains in pre-production for the owner’s planned test-account cleanup; no PIN or record identifier is retained here.
 - **Regression gate:** `npx vitest run` passed **102 files / 577 tests** after the browser checks.
 - **Disposition:** fresh Garage Owner and Staff login/view/refresh, own-garage access, nonexistent foreign-scope denial, and Admin-summary denial are **PASS**. Combined with the earlier separate-fixture browser evidence, the role-auth/session/authorization slice has live acceptance evidence for Admin, Delegate, Garage Owner, Staff, and Supervisor. The broader H6 feature matrix—including vehicle/subscriber workflows, financial/recharge/subscription operations, and mobile/PWA checks—was not exercised in this explicitly non-payment run; the full H6 checkpoint should not be marked complete until those cells are addressed or explicitly accepted as out of scope. Production and `main` remain untouched.
+
+
+## 2026-10-06 continuation — synthetic Supervisor browser acceptance
+
+A single synthetic Supervisor fixture was created through the Admin-only H5 preview route (**200**); its generated PIN and record ID were not retained. The visible PIN keypad authenticated the Supervisor, and the browser rendered the restricted People/Delegates view. After a full-page refresh, the restricted view returned and the server-authoritative session list showed one active/current session (**200**).
+
+Status-only authorization probes returned **200** for `GET /api/garages` (its body was canceled and no record scope was assessed), **403** for `GET /api/admin/summary`, **403** for a dashboard-summary request using a deliberately nonexistent synthetic garage ID, and **403** for an empty-body `POST /api/supervisors/create` (no record was created). The standard visible logout challenge succeeded with the owner-authorized verification credential and returned to login; post-logout local role state and Firebase token were absent.
+
+Temporary 5174–5176 preview UIs were stopped, temporary configs removed, and their browser storage/caches cleared. The synthetic Supervisor account remains in pre-production for the owner’s planned test-account cleanup. No financial, payment, recharge, vehicle, subscriber, production, or `main` operation occurred.
+
+**Disposition:** Supervisor UI login, restricted dashboard, refresh persistence, logout, and the tested role denials **PASS**. The general garage-list route returned 200, but its body was deliberately discarded; whether the list is appropriately scoped remains **NOT ASSESSED**. H6 remains incomplete because vehicle/subscriber, financial/recharge/subscription, and mobile/PWA cells were not exercised in this safe non-payment run. No production or `main` changes were made.

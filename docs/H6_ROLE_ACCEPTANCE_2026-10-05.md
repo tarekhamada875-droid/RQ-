@@ -6,7 +6,13 @@
 - **Browser:** isolated Sandbox browser
 - **Frontend under test:** temporary Vite UI configured to call the preview Worker
 - **Production:** not modified or used for data mutation
-- **Test data:** no records created or changed
+- **Test data:** the initial setup created or changed no records; later synthetic fixtures and mutations are documented in the dated continuations below.
+
+## Current consolidated status — 2026-10-06
+
+The latest safe non-payment browser continuation accepted the role-authentication/session/authorization slice for Admin, Delegate, Garage Owner, Staff, and Supervisor. The Supervisor loaded the restricted People/Delegates view, persisted across a full-page refresh, and completed the normal UI logout. Admin-summary, fake-garage-summary, and Supervisor-create probes returned **403**. The allowed `GET /api/garages` route returned **200**, but its body was discarded, so the scope of that returned list remains unassessed.
+
+**H6 as a whole remains incomplete.** Vehicle/subscriber workflows, financial/recharge/subscription flows, and mobile/PWA checks were not exercised under the explicit non-payment boundary. Historical rows below are snapshots from their respective test stages; later dated continuations provide the current outcomes. No production or `main` change occurred.
 
 ## Phase 0 / deployment evidence
 
@@ -260,3 +266,14 @@ A credential-free source review matched the exact visible balance message to `sr
 - Temporary Vite services/configurations and browser captures from this run were removed. The complete local Vitest suite passed **102 files / 577 tests** after the browser run.
 - **PASS:** fresh Garage Owner UI login/view, refresh persistence, own-garage read, foreign-scope denial, Admin-summary denial; fresh Staff UI login and role identity, refresh persistence, own-garage read, foreign-scope denial, Admin-summary denial; server-authoritative session cleanup. **No payment, balance mutation, transfer, contact action, or financial transaction occurred.**
 - The safe role-authentication/session/authorization slice is now supported by live browser and full-suite evidence for the five documented roles (Admin, Delegate, Garage Owner, Staff, Supervisor), combining this run with prior distinct-fixture evidence. This does **not** claim that every H6 product workflow (for example vehicle/subscriber lifecycle, financial/recharge/subscription operations, or mobile/PWA behavior) was exercised; those remain outside this safe non-payment acceptance run and must not be represented as passes. H7–H9 remain pending until the full H6 matrix is reviewed.
+
+
+## 2026-10-06 continuation — synthetic Supervisor UI and authorization acceptance
+
+- **Target/branch:** isolated `rq-hono-preview` Worker through temporary same-origin Vite origins on ports 5175 and 5176, both health-checked as pre-production. Repository remained on `migration/unified-hono`; `main` and production were not used or changed.
+- **Fixture:** the authenticated Admin-only preview route created one synthetic Supervisor record (**HTTP 200**). A generated eight-digit PIN was kept only in transient browser storage for the login and then cleared; no PIN or record ID is retained here. The synthetic account remains in pre-production for the owner’s planned account cleanup.
+- **UI/session:** the generated PIN was entered through the visible keypad and the Supervisor view loaded. The rendered Admin dashboard was restricted to the People/Delegates view (`app_admin_tab=people`, Supervisor state present); the subordinate-delegate list rendered. A full-page refresh restored that view; read-only `GET /api/auth/sessions` returned **200** with one active/current session.
+- **Role/scope probes:** read-only `GET /api/garages` returned **200**, but the response body was canceled/discarded; its record scope was not assessed. `GET /api/admin/summary` returned **403**. A dashboard-summary request for a deliberately nonexistent synthetic garage ID returned **403**. An empty-body `POST /api/supervisors/create` returned **403** before any record was created. No response payload or identifiers were retained.
+- **Logout:** the visible Supervisor logout challenge accepted the owner-authorized Admin verification credential and returned to the generic login screen. Post-logout state was `app_view=login`, with no Supervisor marker and no Firebase token in the origin. This was a normal UI logout flow.
+- **Cleanup/safety:** the Admin setup session was separately released through the server-authoritative Admin self-release endpoint (**200**); subsequent protected session-list/Admin-summary checks returned **403**. Temporary Vite services on ports 5174–5176 were stopped, their untracked configs removed, and test-origin browser storage/caches cleared. No payment, recharge, transfer, balance, contact, subscription, vehicle, subscriber, production, or `main` operation occurred.
+- **Disposition:** Supervisor UI login, restricted view, refresh persistence, UI logout, Admin-summary denial, fake-garage-summary denial, and forbidden Supervisor creation are **PASS**. The allowed garage-list route’s **200** status is recorded, but its body was deliberately discarded, so the scope of that list remains **NOT ASSESSED**. H6’s safe role-auth/session/authorization slice now has fresh browser evidence across Admin, Delegate, Garage Owner, Staff, and Supervisor. H6 as a whole remains **incomplete**: vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the explicit non-payment boundary. Do not mark those cells as passed or begin H7–H9 until the complete matrix is reviewed.
