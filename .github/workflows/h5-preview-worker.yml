@@ -48,10 +48,10 @@ jobs:
             echo "$forbidden"
             exit 1
           fi
-          app_diff_hash=$(git diff "$merge_base" HEAD -- src/App.tsx | sha256sum | cut -d' ' -f1)
-          echo "UI freeze src/App.tsx diff hash: $app_diff_hash"
-          if [ "$app_diff_hash" != "f2bd1a90431e34564ad344a26911d1ef3dbde6a2aa34946c5c06d539ec0fff9e" ]; then
-            echo "UI/UX freeze violation: src/App.tsx contains an unapproved change."
+          app_blob=$(git rev-parse "HEAD:src/App.tsx")
+          echo "UI freeze src/App.tsx blob: $app_blob"
+          if [ "$app_blob" != "843ed898b9b8d76a739c9d0c6687cd65d330e0a2" ]; then
+            echo "UI/UX freeze violation: src/App.tsx content is not the owner-approved version."
             exit 1
           fi
 
