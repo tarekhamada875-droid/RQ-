@@ -48,8 +48,6 @@ export function useGarageApp() {
       const hash = (window.location.hash || '').toLowerCase();
       if (hash === '#/admin' || hash === '#admin' || hash === '#/admin_login') {
         setView('admin_login');
-      } else if (hash === '#/delegate' || hash === '#delegate' || hash === '#/delegate_login') {
-        setView('delegate_login');
       }
     };
     handleHash();

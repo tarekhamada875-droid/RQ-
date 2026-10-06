@@ -13,7 +13,6 @@ import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSub
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from '../components/admin/garage-details/AdminGarageFinancialsSection';
-import { LoginView } from '../components/auth/LoginView';
 import type { Garage } from '../types';
 
 // Mock audio soundManager
@@ -97,24 +96,6 @@ const renderWithTheme = (ui: React.ReactElement) => {
 };
 
 describe('Modularized Admin Components Integrity', () => {
-  it('exposes the supported delegate login entry from the main login view', () => {
-    const onDelegateLogin = vi.fn();
-
-    render(
-      <LoginView
-        loginPhone=""
-        setLoginPhone={vi.fn()}
-        handleGarageLogin={vi.fn().mockResolvedValue(undefined)}
-        onDelegateLogin={onDelegateLogin}
-        isLoading={false}
-        closeKeyboard={vi.fn()}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'دخول المندوب' }));
-    expect(onDelegateLogin).toHaveBeenCalledTimes(1);
-  });
-
   it('renders AdminGarageHeroAndStats with correct status and KPI stats', () => {
     const onToggleLock = vi.fn();
     const onOpenEditPin = vi.fn();
