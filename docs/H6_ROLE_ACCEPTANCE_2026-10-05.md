@@ -131,3 +131,14 @@ Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff
 - **Supervisor refresh persistence:** **PASS**. A full navigation to the preview base URL restored the Supervisor dashboard and retained the `QA--Supervisor` session state.
 - **Supervisor logout:** **INCOMPLETE**. The supported logout challenge was opened, but the temporary Supervisor credential used for login was not accepted by the logout challenge. Two attempts remained after the test; no further guesses were made, and no destructive action was performed. Logout must be retested with the correct supported verification credential before H6 can be closed.
 - **Current H6 status:** Supervisor login, refresh persistence, and logout are accepted. Garage Owner and Staff remain outstanding. H7–H9 remain blocked.
+
+## 2026-10-06 continuation — Garage Owner and Staff browser acceptance
+
+- **Target/boundary:** isolated `rq-hono-preview` Worker through the temporary Vite UI. Production, `main`, and real-user data were not used.
+- **Garage Owner login:** **PASS**. The supplied synthetic Garage Owner PIN opened the Garage dashboard. Non-secret local session state showed `app_view=garage` and an `app_garage` record for the synthetic test garage. The first-login UI displayed the existing synthetic free-trial activation notice (2-day trial, zero charge); it was dismissed and no paid recharge, wallet, balance, subscription purchase, vehicle, or financial operation was performed.
+- **Garage Owner refresh persistence:** **PASS**. Full navigation to the preview base URL restored the Garage dashboard and retained the garage session.
+- **Garage Owner logout:** **PASS**. The supported logout challenge was completed with the authorized Admin verification credential and the browser returned to the generic login screen.
+- **Staff login:** **PASS**. The supplied synthetic Staff PIN opened the same garage-scoped operational view. Non-secret local session state showed `app_staff` with name `staff test`, the synthetic garage ID, and `app_view=garage`; this confirms the result was Staff rather than Garage Owner.
+- **Staff refresh persistence:** **PASS**. Full navigation to the preview base URL restored the staff garage view.
+- **Staff logout:** **PASS**. The supported logout challenge was completed with the authorized Admin verification credential and the browser returned to the generic login screen.
+- **Current H6 status:** Admin, Delegate, Supervisor, Garage Owner, and Staff core login/refresh/logout flows have browser evidence. Remaining H6 work is tenant isolation, forbidden-action checks, duplicate/session behavior, and any role-specific operational checks required by the integrated acceptance task. H7–H9 remain blocked until that evidence is recorded.
