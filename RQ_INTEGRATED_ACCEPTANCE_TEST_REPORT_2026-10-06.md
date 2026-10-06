@@ -2,14 +2,15 @@
 
 ## Decision
 
-**BLOCKED — Delegate Alpha/Beta isolation and restricted-read browser probes pass, but integrated H6 acceptance remains incomplete.** The owner-approved phone-free Delegate entry and role-scoped PIN authentication are implemented and validated locally on `migration/unified-hono`; they have not been deployed to the preview or browser-accepted. Other role-specific browser coverage remains incomplete. No production or `main` changes were made.
+**BLOCKED — The owner-approved visible Delegate entry and PIN-only login are deployed and browser-accepted on the isolated pre-production Worker. The tested synthetic Delegate saw zero assigned garages; its read-only Admin-summary request returned HTTP 403. Earlier QA--Delegate Alpha/Beta results remain separate. H6 is not complete: this account cannot exercise garage membership and other role-specific/operational browser cells remain outstanding.** No production or `main` changes were made.
 
 ## Tested build and topology
 
 - **Repository:** `tarekhamada875-droid/RQ-`
 - **Branch:** `migration/unified-hono`
-- **Commit:** `b7af7c3989d94f2a7460049f6ed4106d5319f3df`
-- **Frontend:** isolated temporary Vite preview UI
+- **Auth/UI source commit:** `b4c5d28`
+- **Validated deployment head:** `5af9bf0` (H5 run `37500199178`; Production Gate run `37500199167`)
+- **Frontend:** temporary local Vite UI from the migration branch; same-origin `/api` proxy to the isolated Worker only
 - **Backend:** `rq-hono-preview.tarekhamada875.workers.dev`
 - **Runtime:** Cloudflare Worker, pre-production
 - **Verified health:** `status=ok`, `runtime=cloudflare-worker`, `environment=preproduction`
@@ -22,7 +23,7 @@
 
 | Check | Result |
 |---|---|
-| Full Vitest suite | **PASS — 100 files / 570 tests** |
+| Full Vitest suite | **PASS — 102 files / 577 tests** |
 | Focused H6 authorization matrix | **PASS — 12 files / 63 tests** |
 | Protected-view regression suite | **PASS — 37 tests in focused run** |
 | TypeScript lint | **PASS** |
@@ -39,7 +40,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Role | Login | Refresh | Logout | Dashboard/scope | Remaining browser coverage |
 |---|---|---|---|---|---|
 | Admin | **PASS** | **PASS** | **PASS** | **PASS** for isolated Admin dashboard | Detail tabs, mutations, audit, duplicate actions: **BLOCKED** |
-| Delegate | **PASS** — prior browser acceptance authenticated through the existing PIN screen after local view selection; the new visible PIN-only flow is **implemented/tested locally**, pending preview/browser verification | **PASS** — full base-URL reload restored the dashboard | **PASS** — supported logout returned to login | **PASS** — Alpha visible; Beta absent in the refreshed UI/API; direct Beta record and summary GETs both returned **403** | Current branch's new entry/PIN-only flow is not yet preview-deployed or browser-tested; commission, settlement, and other operational workflows remain **BLOCKED** |
+| Delegate | **PASS** — visible entry opened the PIN-only form and an owner-authorized synthetic PIN authenticated against preview | **PASS** on the prior QA fixture; refresh not retested for the new account | **PASS** on the prior QA fixture; the new test session was released with the app's server helper for cleanup (not a logout-challenge test) | Prior QA fixture: Alpha visible, Beta absent, direct Beta reads returned **403**. New account: **0 garages** visible; Admin-summary GET returned **403** | Cross-garage scope for the zero-garage account, commission/settlement, and other operational workflows remain **BLOCKED/NOT TESTED** |
 | Garage Owner | **PASS** | **PASS** | **PASS** | Synthetic garage scope: **PASS** | Vehicle/subscriber/recharge/report lifecycle: **BLOCKED** to avoid unapproved writes |
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
 | Supervisor | **PASS** | **PASS** | **PASS** | Restricted Supervisor dashboard: **PASS** | Unsupported admin tabs and direct denial browser checks: **BLOCKED** |
@@ -53,10 +54,10 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Login/session | PASS | PASS | PASS | PASS | PASS | Session route and role tests; browser evidence |
 | Refresh/heartbeat | PASS | PASS | PASS | PASS | PASS | Session enforcement tests; browser refresh evidence |
 | Logout/revocation | PASS | PASS | PASS | PASS | PASS | Logout/session tests; browser evidence |
-| Dashboard/navigation | PASS | BLOCKED | PASS | PASS | PASS | Routing and role matrix tests |
+| Dashboard/navigation | PASS | PASS | PASS | PASS | PASS | Routing and role matrix tests; Delegate PIN-only browser login loaded its dashboard |
 | Garage creation | BLOCKED | BLOCKED | N/A | N/A | N/A | Authorization tests pass; browser workflow blocked |
 | Garage approval/rejection | BLOCKED | N/A | N/A | N/A | N/A | Server authorization tests pass |
-| Garage details/status | BLOCKED | BLOCKED | PASS | N/A | BLOCKED | Scope tests pass; detailed browser coverage blocked |
+| Garage details/status | BLOCKED | BLOCKED — tested new account showed 0 garages; prior QA fixture scope evidence is separate | PASS | N/A | BLOCKED | Scope tests pass; detailed browser coverage blocked for the new account |
 | Garage deletion/maintenance | BLOCKED | N/A | N/A | N/A | N/A | Maintenance/deletion authorization tests pass |
 | Staff management | BLOCKED | N/A | N/A | N/A | N/A | Authorization tests pass; browser mutation blocked |
 | Delegate management | BLOCKED | N/A | N/A | N/A | BLOCKED | Delegate/supervisor authorization tests pass |
@@ -75,7 +76,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Trial leads/decisions | BLOCKED | N/A | BLOCKED | N/A | N/A | Trial decision route tests pass |
 | Reports/calculator | BLOCKED | BLOCKED | BLOCKED | N/A | BLOCKED | Financial-report authorization tests pass |
 | Staff statistics | BLOCKED | N/A | BLOCKED | N/A | N/A | Scope policy tests pass |
-| Delegate commissions/settlement | BLOCKED | BLOCKED | N/A | N/A | N/A | Commission tests pass; Delegate fixture unavailable |
+| Delegate commissions/settlement | BLOCKED | BLOCKED | N/A | N/A | N/A | Commission tests pass; browser workflow not tested and current Delegate account has no garage assignment |
 | Announcements | BLOCKED | N/A | BLOCKED | BLOCKED | BLOCKED | No complete browser evidence |
 | Appearance/language | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | No complete browser evidence |
 | Admin PIN/security | BLOCKED | N/A | N/A | N/A | N/A | PIN rotation/logout tests pass |
@@ -83,7 +84,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Audit/history | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Operation trace/audit tests pass |
 | Offline/retry | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Resilience/API boundary tests pass |
 | Mobile/PWA | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Not run in this acceptance continuation |
-| Cross-garage isolation | BLOCKED | **PASS** for QA Garage Alpha/Beta direct reads; other Delegate scenarios remain **BLOCKED** | BLOCKED | BLOCKED | BLOCKED | Delegate UI showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403; Admin-summary GET as Delegate returned 403. Automated scope tests pass; other roles remain unverified |
+| Cross-garage isolation | BLOCKED | **PASS** for prior QA Garage Alpha/Beta direct reads; **BLOCKED/NOT TESTED** for the new zero-garage account | BLOCKED | BLOCKED | BLOCKED | Prior QA fixture showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403. New account showed 0 garages; its Admin-summary GET returned 403. Automated scope tests pass; other roles remain unverified |
 
 ## Security finding and fix
 
@@ -93,14 +94,14 @@ The migration branch now exposes authoritative `isSessionReady` and blocks all n
 
 ## Remaining bounded next task
 
-Continue only the remaining H6 browser cells with existing synthetic fixtures: safe role-specific forbidden reads/actions and approved non-financial operational workflows where appropriate. Delegate Alpha/Beta direct-read isolation is verified. The owner-approved visible Delegate entry and PIN-only form are implemented locally in source commit `b4c5d2825e9c8c098779126c0e0a8828c0b766fb`, but have not been pushed, preview-deployed, or browser-verified. Do not merge to `main` until all required cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
+Continue only the remaining H6 browser cells with existing synthetic fixtures: safe role-specific forbidden reads/actions and approved non-financial operational workflows where appropriate. The owner-approved visible Delegate entry and PIN-only form in source commit `b4c5d28` were browser-accepted against the isolated Worker; the new synthetic account showed zero garages, so its cross-garage scope remains unverified. Existing QA Garage Alpha/Beta direct-read isolation evidence is recorded separately. Do not merge to `main` until all required cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
 
 ## Cleanup and rollback
 
-- Browser sessions were logged out through supported UI flows.
+- Earlier role sessions were logged out through supported UI flows; the new Delegate test session was released with the app's server-authoritative session helper and the browser returned to login. This cleanup is not counted as a logout-challenge acceptance.
 - The local tampering flag was removed and the browser returned to generic login.
 - No production records, payment, wallet, or real-user data were changed.
-- Rollback of the security repair is commit `23b3b7e`; current migration head is `b7af7c3`.
+- Rollback of the security repair remains commit `23b3b7e`; tested Delegate auth/UI source commit is `b4c5d28`. The current documentation head is recorded in the succession handoff.
 
 
 ## 2026-10-06 continuation — Delegate Alpha/Beta isolation and restricted reads
@@ -128,3 +129,13 @@ Focused automated authorization/session regression run: **PASS — 8 files / 61 
 - **Regression evidence:** UI tests cover the visible entry, PIN-only form, and return action. Worker and Express integration tests verify wrong-role rejection without migration/session creation and successful Delegate-only session claim. The full suite passed **102 files / 577 tests**; TypeScript lint, production/server/Worker build, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` passed. The H5 UI-freeze logic was simulated locally and passed against the exact pinned blobs; GitHub Actions was not run.
 - **Credential/data boundary:** The PIN supplied in chat was not used, copied into source, or recorded in evidence. The existing synthetic preview account and its data were not touched by this implementation.
 - **Disposition:** The new flow is **PASS locally** but remains **pending preview deployment and browser acceptance**. H6 remains **BLOCKED** overall for the remaining browser role/scope/forbidden-action cells. H7–H9 remain blocked. No push or deployment was performed.
+
+
+## 2026-10-06 continuation — PIN-only Delegate preview acceptance
+
+- The visible Delegate entry and phone-free PIN form from source commit `b4c5d28` were verified in a temporary local Vite UI, routed through a same-origin `/api` proxy only to `rq-hono-preview`. The Worker health response was **200** and reported `preproduction` / `1.0.0-h5-preview`. H5 Preview Worker run [37500199178](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37500199178) and Production Gate run [37500199167](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37500199167) passed at branch head `5af9bf0`.
+- The owner-authorized synthetic Delegate PIN succeeded through the visible UI and loaded the Delegate dashboard. No phone number was requested. The dashboard showed **0 garages**, **0 pending requests**, zero monthly commission, and no matching garage records.
+- A read-only `GET /api/admin/summary` via the app's authenticated API client returned **HTTP 403** under this Delegate session. No response body was retained.
+- The account had no visible garage assignment, so Alpha/Beta or other direct garage membership could not be tested for this account. Prior Alpha/Beta evidence refers to a separate synthetic fixture. The new test session was released through the app's server-authoritative helper, the browser returned to the generic login screen, and temporary local session identifiers were cleared. The normal logout challenge was not exercised.
+- A first direct cross-origin browser request was blocked by CORS and produced no usable HTTP response; no result was inferred from it. The same-origin proxy health check succeeded before the valid login attempt. The temporary Vite service and config were stopped/removed. No account/garage/financial record, `main`, production Worker, or Pages frontend was changed.
+- **Disposition:** visible entry, PIN-only login, dashboard load, and Admin-summary denial **PASS**. Cross-garage scope for this zero-garage account and remaining role-specific/operational H6 cells are **BLOCKED/NOT TESTED**. H6 remains incomplete; H7–H9 remain blocked.
