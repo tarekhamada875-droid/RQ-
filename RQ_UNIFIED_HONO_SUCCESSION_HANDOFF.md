@@ -783,3 +783,12 @@ Security and tenant isolation
 - **Implementation observation:** `src/api/apiClient.ts` enforces a 15,000 ms default timeout. The Hono route checks the PIN rate limiter, performs concurrent account-PIN lookups, and then claims a session transactionally; the exact slow stage remains unknown.
 - **Cleanup:** the temporary local Vite service was stopped, `vite.config.ts` restored, and the test-origin screenshots/HTML/text artifacts removed. No deployment or application-code edit was made in this continuation.
 - **Exact next actions:** obtain credential-free stage timings/request IDs for the preview auth route (prefer a temporary Worker Tail or safe timing logs), inspect the rate-limit and Firestore lookup/transaction durations, and determine whether either timed-out request created a synthetic session before retrying. Then rerun Owner, Staff, and Supervisor acceptance. Keep H7–H9 blocked; never deploy to production or copy preview secrets.
+
+### Follow-up — 2026-10-06 post-fix Owner retest
+
+- An approved synthetic Owner credential was entered once through the isolated Sandbox browser after the `waitUntil` auth-response fix was deployed. The credential value is intentionally omitted from all repository notes.
+- The preview-only UI proxy and direct Worker health/version checks were healthy, but `POST /api/auth/verify-pin` again hit the 15,002 ms client timeout. The UI returned to generic login; no dashboard or successful response was observed.
+- Cloudflare Observability queries for the preview auth route and timing marker returned no matching event for the narrow interval. This is **inconclusive**, not evidence that the Worker did not run. The request may have reached session claim; its server-side result is unknown.
+- The browser's canonical session identifier is a client-generated device key and does not prove a role session was committed. Do not infer success or failure from that key alone.
+- **Current H6 status:** Owner acceptance remains **BLOCKED**; Staff and Supervisor remain **NOT TESTED**. Do not submit more role PINs until the timed-out request's session outcome can be checked through reliable, credential-free diagnostics. Keep H7–H9 blocked; production remains untouched.
+- **Cleanup:** the temporary Vite UI/config and test-origin captures were stopped/removed.
