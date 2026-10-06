@@ -4,17 +4,17 @@
 
 Evaluate and, if successful, migrate RQ from the current dual-runtime structure to a unified Hono Web-Standards backend without risking the working production deployment.
 
-## Current succession status — 2026-10-05
+## Current succession status — 2026-10-06
 
 - **Active branch:** `migration/unified-hono`
-- **Current commit:** latest synchronized commit on `origin/migration/unified-hono` (verify with `git rev-parse HEAD`)
+- **H6 retest base commit:** `6faa5795dbde816aaef3c74e34fe9e0f4dad9f11`; verify the resulting documentation-only head with `git rev-parse HEAD`.
 - **Production `main`:** unchanged; `origin/main` is `bb12fbe`
 - **Completed:** H0 baseline protection, H1 route inventory, H2 domain-policy and billing extraction, H3 canonical Hono API/local adapter, H4 Fetch/Hono test migration, and H5 dual-runtime preview deployment.
 - **Preview:** `https://rq-hono-preview.tarekhamada875.workers.dev` — health/version and unauthenticated protection passed; final locked-down cleanup workflow `37324129640` passed for commit `0522efb`.
 - **Production:** `https://rq.tarekhamada875.workers.dev` remains on `1.0.0-production`; no cutover has occurred.
-- **H6 progress:** the supported Delegate-login entry point is now available through the visible login action and `#/delegate` route; the repair passed the local quality gate and preview deployment workflow `37313750139`.
-- **Preview connectivity:** a reversible browser-origin CORS test succeeded on the isolated Worker and was removed; final cleanup workflow `37324129640` passed, leaving preview configuration locked down.
-- **Next checkpoint:** verify or recreate the Staff fixture, then complete H6 browser acceptance for Garage Owner, Staff, and Supervisor against the isolated preview. Delegate login, refresh persistence, and logout are accepted; H7–H9 remain blocked until the remaining H6 evidence is complete.
+- **H6 progress:** Delegate login/refresh/logout and the earlier Admin login/dashboard checks are accepted. The existing Garage Owner, Staff, and Supervisor fixtures were verified and assigned synthetic test PINs. Two Garage Owner `POST /api/auth/verify-pin` attempts through the supported UI hit the 15-second frontend timeout with no observed HTTP status; Staff/Supervisor login was not attempted.
+- **Preview connectivity:** preview health/version reads still return 200; the temporary local UI and Vite configuration were stopped/restored after testing. A narrow Cloudflare telemetry query did not expose route-level invocation records for the test window, so the auth-path cause is unresolved.
+- **Next checkpoint:** diagnose preview-only PIN-verification latency with credential-free request-stage timings before any more role-login attempts. Then complete H6 browser acceptance for Garage Owner, Staff, and Supervisor using synthetic fixtures. H7–H9 remain blocked until the remaining H6 evidence is complete.
 - **Succession rule:** If the owner says `tokens ending`, stop implementation and create the next chained handoff before any other work.
 - **UI/UX freeze:** Do not add, remove, redesign, recolor, relabel, or reroute any user-visible screen or login flow. The migration may change backend adapters, tests, deployment files, and internal wiring only. The owner has explicitly approved one narrow exception: route every unauthenticated role through the existing original `LoginView`, with no visual redesign. No other UI change is approved.
 

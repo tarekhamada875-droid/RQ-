@@ -50,3 +50,32 @@
 The supported Delegate-login entry point was added in migration commit `800bdbf` without changing the existing login flow: the main login screen now exposes the existing Delegate login view, and `#/delegate` is a supported direct route. The change passed the full local quality gate and was deployed to the isolated preview by H5 workflow `37313750139`; browser verification confirmed that the visible action opens the phone/PIN Delegate login screen.
 
 Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff, and Supervisor through the same preview UI. Delegate refresh persistence and logout are accepted. Do not begin H7 until the remaining role workflows, tenant isolation, persistence, duplicate handling, logout, refresh, and forbidden-action checks are recorded. Keep the dedicated preproduction service-account secret on the isolated preview Worker; never copy it to `main` or production.
+
+## 2026-10-06 continuation — preview role acceptance
+
+### Scope and safety
+
+- **Target:** isolated `rq-hono-preview` Worker only; production Worker and `main` were not changed.
+- **Frontend:** temporary local Vite UI with a same-origin proxy targeting only the preview Worker.
+- **Test fixtures:** existing `New Test Garage`, `Synthetic Test Staff`, and `QA--Supervisor`; no account was created or deleted. Dedicated synthetic PINs were assigned through the supported Admin UI; values are intentionally omitted and remain on the isolated preview for continuation.
+- No vehicle, wallet, balance, rate, recharge, subscription, or other financial operation was performed.
+- Temporary Vite service was stopped, `vite.config.ts` restored, and screenshots/HTML/text artifacts from this test origin removed.
+
+### Results
+
+| Role/check | Result | Evidence |
+|---|---|---|
+| QA Admin | **PASS** | Admin login, dashboard initialization, read-only navigation, and base-URL refresh had passed earlier in this test chain. The supported logout challenge completed; `/api/auth/verify-admin-pin` and `/api/auth/release-session` returned 200, and the UI returned to the generic login screen. |
+| Synthetic fixtures | **PASS** | The garage and supervisor fixtures were found; one existing `Synthetic Test Staff` record was visible. The staff fixture was not recreated. |
+| Garage Owner login | **BLOCKED** | After assigning the dedicated synthetic PIN through the supported PIN-update service, two shared-login submissions reached `POST /api/auth/verify-pin` but had no browser-observed HTTP status at 15,002 ms and 15,001 ms. The UI remained in “verifying” state. Reload returned to the generic login screen with an empty PIN field; no Garage dashboard or successful session claim was observed. Because the client aborted at its timeout, the server-side outcome of either request is unknown. |
+| Staff login | **NOT TESTED** | Deferred after the shared PIN-verification request timed out twice; avoid creating further rate-limit/session ambiguity until the endpoint is diagnosed. |
+| Supervisor login | **NOT TESTED** | Same shared PIN-verification path; deferred for the same reason. |
+| Preview health/version | **PASS** | Read-only `GET /api/health` and `GET /api/version` returned 200 in 3.83 s and 2.97 s respectively after the login attempts. |
+
+### Findings and next step
+
+1. `src/api/apiClient.ts` sets `DEFAULT_API_TIMEOUT_MS` to 15,000 ms. The two `verify-pin` browser resource entries ended at that boundary with no HTTP status, rather than an observed Worker 4xx/5xx response. The cause is **not yet proven**.
+2. The Hono handler first checks the PIN rate limiter, then concurrently reads the Admin PIN and four role collections, then claims a session in a Firestore transaction. More than one stage may contribute; do not assume Firestore or the rate limiter is the cause without timing evidence.
+3. A narrow Cloudflare Observability query for the test interval returned no route-level preview invocation records through the available query. This is inconclusive and does not prove that the Worker did not receive or complete the requests.
+4. Do not retry more role PINs until the preview auth path can be observed reliably; an aborted browser request may have an unknown server-side result. Capture safe, credential-free timing/request-ID diagnostics for each auth stage on the isolated preview, then re-run H6 with the existing synthetic fixtures.
+5. H6 remains **incomplete**. Do not begin H7, H8, or H9. Do not increase the client timeout merely to mask the unmeasured backend delay, and do not change the frozen UI as a test workaround.

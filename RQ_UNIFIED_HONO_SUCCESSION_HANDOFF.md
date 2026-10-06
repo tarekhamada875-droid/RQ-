@@ -38,7 +38,7 @@ Firebase Authentication + Firestore
 
 Do not treat this as a quick cleanup. It is a staged migration with rollback protection.
 
-## Latest chained handoff status — 2026-10-05
+## Latest chained handoff status — 2026-10-06
 
 - **Active branch:** `migration/unified-hono`
 - **Current commit:** latest synchronized commit on `origin/migration/unified-hono` (verify with `git rev-parse HEAD`)
@@ -48,10 +48,10 @@ Do not treat this as a quick cleanup. It is a staged migration with rollback pro
 - **H5 preview URL:** `https://rq-hono-preview.tarekhamada875.workers.dev`
 - **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the preceding functional/configuration checkpoint commit `0522efb`; subsequent commits are documentation-only.
 - **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
-- **Current blockers:** H6 browser acceptance remains incomplete for Garage Owner, Staff, and Supervisor; therefore H7 quality-gate signoff, H8 production cutover, and H9 Express decommissioning must not begin.
+- **Current blockers:** H6 remains incomplete. Two synthetic Garage Owner PIN verifications on the preview hit the 15-second frontend timeout without an observed HTTP status; Staff and Supervisor login were not attempted. Do not begin H7 quality-gate signoff, H8 production cutover, or H9 Express decommissioning.
 - **Owner UI decision:** Preserve the production UI/UX exactly, with one explicit exception requested on 2026-10-06: all unauthenticated roles must render the existing original `LoginView`. The separate Admin and Delegate login components were removed as obsolete in commit `31a30eb`; no visual redesign, new button, phone field, color, label, screen, or route was approved.
-- **Exact next checkpoint:** Verify or recreate the Staff fixture, then test only the already-existing supported role flows against the isolated preview using synthetic data. Do not add a new UI entry point to make testing easier. Record allowed/forbidden outcomes, tenant isolation, session behavior, and logout/refresh behavior in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`.
-- **Exact next files:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `server/cloudflareWorker.ts`, `server/api.ts`, and the relevant role/service tests under `src/__tests__/`.
+- **Exact next checkpoint:** Diagnose preview-only `POST /api/auth/verify-pin` latency with credential-free request-stage timings; do not submit more role PINs until the aborted request’s server-side outcome can be observed. Then resume the existing synthetic Garage Owner, Staff, and Supervisor workflows. Do not add a UI entry point or alter the frozen UI for testing.
+- **Exact next files:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `src/api/apiClient.ts`, `server/cloudflareWorker.ts`, `server/utils.ts`, and the role/session tests under `src/__tests__/`.
 
 > You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
 
@@ -769,3 +769,15 @@ Security and tenant isolation
 - **H6 blocker status:** the role-entry blocker is resolved. Delegate authentication and the remaining Garage Owner, Staff, and Supervisor workflows are still not accepted because synthetic credentials were not available in the isolated browser session.
 - **Automated H6 evidence:** 14 role/session/authorization test files passed with 129 tests, including session authority, delegate locking, garage scope, logout/refresh, and forbidden-action coverage. This does not substitute for browser acceptance.
 - **Exact next actions:** use the isolated preview UI with synthetic credentials; test Delegate first, then Garage Owner, Staff, and Supervisor; record login/session establishment, tenant isolation, persistence, duplicate/idempotency behavior, logout, refresh, and forbidden actions in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`. Do not start H7, H8, or H9, and never deploy the migration branch to production.
+
+### Continuation update — 2026-10-06 H6 preview retest
+
+- **Retest base:** clean `migration/unified-hono` branch at `6faa5795dbde816aaef3c74e34fe9e0f4dad9f11` before this documentation update; `main` and production were not changed.
+- **Admin:** the approved synthetic Admin flow had already reached dashboard/read-only navigation and refresh. The official logout challenge and session release both returned HTTP 200; the app returned to the generic login screen.
+- **Fixtures:** the existing `New Test Garage`, `Synthetic Test Staff`, and `QA--Supervisor` records were verified. Synthetic PINs were assigned through the supported Admin UI and remain on the isolated preview for continuation; no values are recorded here. No account was created or deleted.
+- **Garage Owner:** the supported PIN-update service was used, then the shared login UI submitted `POST /api/auth/verify-pin` twice. Browser resource entries ended at 15,002 ms and 15,001 ms with no HTTP status; the UI remained on “verifying.” A full reload showed the generic login screen with no role dashboard. The server-side result of the aborted requests is unknown; do not infer that no session was created.
+- **Staff/Supervisor:** login acceptance was not attempted after the common verification path timed out twice. Do not repeat until safe request-stage diagnostics can resolve the ambiguous server-side outcome.
+- **Preview health:** read-only `/api/health` and `/api/version` both returned 200 after the attempts. Cloudflare telemetry lookup returned no route-level invocation records for the narrow test window, which is inconclusive.
+- **Implementation observation:** `src/api/apiClient.ts` enforces a 15,000 ms default timeout. The Hono route checks the PIN rate limiter, performs concurrent account-PIN lookups, and then claims a session transactionally; the exact slow stage remains unknown.
+- **Cleanup:** the temporary local Vite service was stopped, `vite.config.ts` restored, and the test-origin screenshots/HTML/text artifacts removed. No deployment or application-code edit was made in this continuation.
+- **Exact next actions:** obtain credential-free stage timings/request IDs for the preview auth route (prefer a temporary Worker Tail or safe timing logs), inspect the rate-limit and Firestore lookup/transaction durations, and determine whether either timed-out request created a synthetic session before retrying. Then rerun Owner, Staff, and Supervisor acceptance. Keep H7–H9 blocked; never deploy to production or copy preview secrets.
