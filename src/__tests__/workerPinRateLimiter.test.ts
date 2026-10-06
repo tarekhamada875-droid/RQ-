@@ -100,11 +100,17 @@ describe('Worker PIN rate limiter', () => {
       mockDb.seed('private_pins/auth_pin', { pin: '12345678' });
     });
 
-    async function verifyPin(pin: string, sessionId: string, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }, executionContext?: unknown) {
+    async function verifyPin(
+      pin: string,
+      sessionId: string,
+      env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter },
+      executionContext?: unknown,
+      authToken = 'valid-admin-token'
+    ) {
       return api.fetch(new Request('http://localhost/api/auth/verify-pin', {
         method: 'POST',
         headers: {
-          authorization: 'Bearer valid-admin-token',
+          authorization: `Bearer ${authToken}`,
           'content-type': 'application/json',
           'cf-connecting-ip': '198.51.100.20'
         },
@@ -153,6 +159,28 @@ describe('Worker PIN rate limiter', () => {
       const allowedAgain = await verifyPin('87654321', 'after-success');
       expect(allowedAgain.status).toBe(200);
       expect(await allowedAgain.json()).toMatchObject({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    });
+
+    it('verifies an anonymous identity and claims a PIN role without prior-role lookups', async () => {
+      const docSpy = vi.spyOn(mockDb, 'doc');
+
+      try {
+        const response = await verifyPin('12345678', 'anonymous-login-session', undefined, undefined, 'valid-worker-token');
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ success: true, role: 'admin', sessionClaimed: true });
+
+        const requestedPaths = docSpy.mock.calls.map(([path]) => path);
+        expect(requestedPaths).not.toContain('admins/worker-uid');
+        expect(requestedPaths).not.toContain('staff/worker-uid');
+        expect(requestedPaths).not.toContain('garages/worker-uid');
+        expect(requestedPaths).not.toContain('supervisor_sessions/worker-uid');
+        expect(requestedPaths).not.toContain('delegate_sessions/worker-uid');
+        expect(requestedPaths).not.toContain('garage_sessions/worker-uid');
+        expect(requestedPaths).not.toContain('staff_sessions/worker-uid');
+        expect(requestedPaths.filter((path) => path === 'admin_sessions/worker-uid')).toHaveLength(1);
+      } finally {
+        docSpy.mockRestore();
+      }
     });
 
     it('returns a successful claim without waiting for limiter reset and logs only safe timing fields', async () => {

@@ -189,7 +189,11 @@ workerApp.use('*', cors({
 }));
 
 // Helper: Worker Authentication Middleware
-async function requireWorkerAuth(c: any, next: () => Promise<void>) {
+async function requireWorkerAuth(
+  c: any,
+  next: () => Promise<void>,
+  options: { skipRoleResolution?: boolean } = {}
+) {
   // Check diagnostic / operator token first
   const operatorToken = c.req.header('x-backend-operator-token');
   const configuredToken = c.env?.BACKEND_OPERATOR_TOKEN || process.env.BACKEND_OPERATOR_TOKEN;
@@ -230,7 +234,7 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
     let garageId = (decoded as any).garageId || null;
     const entityId = (decoded as any).entityId || decodedUid;
 
-    if (adminDb && (!role || role === 'worker')) {
+    if (!options.skipRoleResolution && adminDb && (!role || role === 'worker')) {
       const adminDoc = await adminDb.doc(`admins/${decodedUid}`).get();
       if (adminDoc.exists) {
         role = 'admin';
@@ -255,7 +259,7 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
     // /api/auth/verify-pin is the authoritative bridge between that UID and the
     // actual role/entity. Resolve it before every protected business route.
     const sessionId = (c.req.header('x-session-id') || '').trim();
-    if (role === 'worker' && sessionId) {
+    if (!options.skipRoleResolution && role === 'worker' && sessionId) {
       const sessionUser = await resolveWorkerSessionUser(decodedUid, sessionId, {
         uid: decodedUid,
         role,
@@ -310,7 +314,9 @@ workerApp.get('/api/version', (c) => {
 workerApp.post('/api/auth/verify-pin', async (c) => {
   const routeStartedAt = Date.now();
   const authStartedAt = Date.now();
-  const authResult = await requireWorkerAuth(c, async () => undefined);
+  // PIN login is establishing the role session, so resolving a prior role session
+  // here would add serial Firestore reads without contributing to authentication.
+  const authResult = await requireWorkerAuth(c, async () => undefined, { skipRoleResolution: true });
   if (authResult instanceof Response) return authResult;
   const authMs = Date.now() - authStartedAt;
 
