@@ -41,14 +41,16 @@ Do not treat this as a quick cleanup. It is a staged migration with rollback pro
 ## Latest chained handoff status — 2026-10-06
 
 - **Active branch:** `migration/unified-hono`
-- **Current commit:** latest synchronized commit on `origin/migration/unified-hono` (verify with `git rev-parse HEAD`)
+- **Current commit:** `b903c74d3d97bd0210996bcd731913910668d073` (local and remote synchronized)
 - **Remote migration branch:** synchronized at the same commit
-- **Production `main`:** unchanged at `bb12fbe90eb97b6638546f292f5de50aab03d81a`
+- **Remote `main`:** `690d8f0c1f723b823e0beabe2526fddbee8fbba7`, a documentation-only update from common base `bb12fbe90eb97b6638546f292f5de50aab03d81a`; production Worker remains unchanged on `1.0.0-production`.
 - **Completed checkpoints:** H0, H1, H2, H3, H4, and H5.
 - **H5 preview URL:** `https://rq-hono-preview.tarekhamada875.workers.dev`
-- **H5 evidence:** GitHub Actions run `37324129640` passed preview-bundle verification, isolated Worker deployment, public health/version smoke tests, and unauthenticated protection checks for the preceding functional/configuration checkpoint commit `0522efb`; subsequent commits are documentation-only.
+- **Latest H5 evidence:** GitHub Actions [run 37444771435](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37444771435) passed preview-bundle verification, isolated Worker deployment, public health/version (200), and unauthenticated-protection checks. Production Gate [run 37444771321](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37444771321) passed.
 - **Live production version:** `1.0.0-production`; **live preview version:** `1.0.0-h5-preview`.
+- **Resolved H5 gate failure:** the initial UI-freeze failure was caused by a depth-1 checkout/fetch with no merge base; after deepening history, the gate’s hash of rendered `git diff` output still differed between CI and local. The gate now uses full history, the freshly fetched main ref, an explicit fail-closed merge-base check, unchanged forbidden-path rules, and the exact approved App.tsx Git blob. Only `.github/workflows/h5-preview-worker.yml` changed; no UI source or runtime behavior changed.
 - **Current blockers:** H6 remains incomplete. Two synthetic Garage Owner PIN verifications on the preview hit the 15-second frontend timeout without an observed HTTP status; Staff and Supervisor login were not attempted. Do not begin H7 quality-gate signoff, H8 production cutover, or H9 Express decommissioning.
+- **Preview source note:** the GitHub runner’s H5 smoke returned 200 for `/api/health` and `/api/version`; a direct Sandbox probe received Cloudflare 403/error 1010, so the runner smoke is the verified reachability evidence.
 - **Owner UI decision:** Preserve the production UI/UX exactly, with one explicit exception requested on 2026-10-06: all unauthenticated roles must render the existing original `LoginView`. The separate Admin and Delegate login components were removed as obsolete in commit `31a30eb`; no visual redesign, new button, phone field, color, label, screen, or route was approved.
 - **Exact next checkpoint:** Diagnose preview-only `POST /api/auth/verify-pin` latency with credential-free request-stage timings; do not submit more role PINs until the aborted request’s server-side outcome can be observed. Then resume the existing synthetic Garage Owner, Staff, and Supervisor workflows. Do not add a UI entry point or alter the frozen UI for testing.
 - **Exact next files:** `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `src/api/apiClient.ts`, `server/cloudflareWorker.ts`, `server/utils.ts`, and the role/session tests under `src/__tests__/`.
