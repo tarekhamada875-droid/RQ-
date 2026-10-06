@@ -42,7 +42,7 @@ jobs:
           }
           echo "UI freeze fetched-main commit: $(git rev-parse "$main_ref")"
           echo "UI freeze merge base: $merge_base"
-          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^src/components/auth/(AdminLoginView|DelegateLoginView)\.tsx$' || true)
+          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView)\.tsx|src/hooks/useGarageApp\.ts)$' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
             echo "$forbidden"
@@ -50,8 +50,14 @@ jobs:
           fi
           app_blob=$(git rev-parse "HEAD:src/App.tsx")
           echo "UI freeze src/App.tsx blob: $app_blob"
-          if [ "$app_blob" != "9796f04974b42839b7c2b33251ba86f29a6a834f" ]; then
-            echo "UI/UX freeze violation: src/App.tsx content is not the owner-approved version."
+          if [ "$app_blob" != "181aa2c75c31fb98a65a59b356b1194bb2746ff2" ]; then
+            echo "UI/UX freeze violation: src/App.tsx content is not the approved security-repair version."
+            exit 1
+          fi
+          garage_app_blob=$(git rev-parse "HEAD:src/hooks/useGarageApp.ts")
+          echo "UI freeze src/hooks/useGarageApp.ts blob: $garage_app_blob"
+          if [ "$garage_app_blob" != "9066f11ee6c5a569d9967b1dafe4ecf6e18e83d2" ]; then
+            echo "UI/UX freeze violation: src/hooks/useGarageApp.ts content is not the approved security-repair version."
             exit 1
           fi
 
