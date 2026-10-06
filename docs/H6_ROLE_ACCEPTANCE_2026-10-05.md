@@ -107,3 +107,11 @@ Resume H6 by verifying the Staff fixture creation, then test Garage Owner, Staff
 - **Telemetry:** A narrow Cloudflare Observability query for the preview timing marker and route returned no matching event during the test window. This is inconclusive; it does not prove the Worker did not receive the request or that no session was claimed. The cause and server-side outcome remain unknown.
 - **Safe continuation:** Do not retry Owner, Staff, or Supervisor PIN logins until the server-side outcome of the timed-out request can be established and reliable credential-free tracing is available. Staff and Supervisor remain **NOT TESTED**; H6 and H7–H9 remain blocked. No PIN value is recorded here.
 - **Cleanup:** The temporary Vite service was stopped; its preview-only config and test-origin screenshots, HTML, and console artifacts were removed.
+
+## 2026-10-06 read-only post-timeout session reconciliation
+
+- **Method:** Without submitting another PIN, the same isolated preview browser identity and device-session header were used for the existing read-only `GET /api/auth/sessions` endpoint.
+- **Session evidence:** The endpoint returned **200** with one active/current session. Its sanitized summary reported `createdAt` and `lastActive` as `2026-10-06T11:43:40.385Z`; it returned no role or raw session identifier.
+- **Scope evidence:** A read-only `GET /api/garage-summary` with the same identity returned **200**. Response values were not retained. This confirms the active session can access garage-scoped data; that endpoint also permits Staff/Admin, so it does not independently identify the role.
+- **Interpretation:** The session was created shortly after the 15-second timeout, and the only role-login attempt at that time was the synthetic Garage Owner attempt. This is strong evidence that the backend committed its session after the browser stopped waiting. The UI remained on the generic login screen and did not receive a success response; Owner UI acceptance remains **BLOCKED**, not PASS.
+- **Next:** diagnose the >15-second path with credential-free timing/correlation for auth/session resolution, rate limiting, PIN lookup, and session claim. Do not submit another Owner PIN while this active session exists. Staff/Supervisor remain **NOT TESTED**; H6 and H7–H9 remain blocked. Production remains untouched.

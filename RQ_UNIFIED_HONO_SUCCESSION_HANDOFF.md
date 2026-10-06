@@ -792,3 +792,11 @@ Security and tenant isolation
 - The browser's canonical session identifier is a client-generated device key and does not prove a role session was committed. Do not infer success or failure from that key alone.
 - **Current H6 status:** Owner acceptance remains **BLOCKED**; Staff and Supervisor remain **NOT TESTED**. Do not submit more role PINs until the timed-out request's session outcome can be checked through reliable, credential-free diagnostics. Keep H7–H9 blocked; production remains untouched.
 - **Cleanup:** the temporary Vite UI/config and test-origin captures were stopped/removed.
+
+### Read-only session reconciliation — 2026-10-06
+
+- Without another PIN attempt, the same isolated browser identity called `GET /api/auth/sessions`: **200**, one active/current session. The safe session summary reported `createdAt`/`lastActive` `2026-10-06T11:43:40.385Z` and omitted role and raw IDs.
+- A read-only `GET /api/garage-summary` with that identity also returned **200**; data values were intentionally discarded. That endpoint permits garage, staff, or admin scope, so it is supporting scope evidence rather than a role label.
+- The session was created shortly after the 15-second client timeout; the only role login attempted at that time was Garage Owner. This strongly indicates the backend committed the Owner test session after the browser aborted. It does **not** mean the UI acceptance passed: the UI remained at login.
+- **Current next step:** diagnose why the Worker response exceeds the 15-second client timeout using credential-free timing or a temporary Worker Tail. Do not re-submit the Owner PIN while this active session exists. After the response-path issue is resolved, verify UI dashboard/persistence/logout acceptance; then proceed to Staff and Supervisor. H6/H7–H9 remain blocked; production is untouched.
+- **Cleanup:** the temporary preview UI/config and diagnostic captures were stopped/removed after the read-only checks.
