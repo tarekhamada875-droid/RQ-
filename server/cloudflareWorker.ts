@@ -308,8 +308,11 @@ workerApp.get('/api/version', (c) => {
 // router is not bundled into Cloudflare, so keep the server-owned PIN lookup,
 // validation, and atomic session claim here.
 workerApp.post('/api/auth/verify-pin', async (c) => {
+  const routeStartedAt = Date.now();
+  const authStartedAt = Date.now();
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;
+  const authMs = Date.now() - authStartedAt;
 
   try {
     const credentials = await c.req.json().catch(() => ({} as Record<string, any>));
@@ -327,6 +330,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
     const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    const rateLimitStartedAt = Date.now();
     let pinLimit: Awaited<ReturnType<typeof checkWorkerPinRateLimit>>;
     try {
       pinLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
@@ -334,6 +338,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       console.error('[Worker Auth] PIN rate limiter unavailable:', error?.message || 'unknown');
       return c.json({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' }, 503);
     }
+    const rateLimitMs = Date.now() - rateLimitStartedAt;
     if (pinLimit.allowed === false) {
       return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinLimit.resetAt }, 429);
     }
@@ -344,11 +349,14 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       { name: 'delegates', role: 'delegate' },
       { name: 'supervisors', role: 'supervisor' }
     ];
+    const pinLookupStartedAt = Date.now();
     const [adminPinStored, ...collectionResults] = await Promise.all([
       getAdminPin(),
       ...collectionsToCheck.map((collection) => queryAccountWherePin(collection.name, normalizedPin))
     ]);
+    const pinLookupMs = Date.now() - pinLookupStartedAt;
 
+    const matchResolutionStartedAt = Date.now();
     const matches: Array<{ role: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; id: string; account?: any; isLegacyMatch?: boolean }> = [];
     const adminCheck = verifyPinMatch(normalizedPin, adminPinStored);
     if (adminCheck.matches) {
@@ -368,6 +376,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         if (docSnap.isLegacyMatch) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
       }
     }
+    const matchResolutionMs = Date.now() - matchResolutionStartedAt;
 
     if (matches.length > 1) return c.json({ success: false, error: 'PIN_NOT_UNIQUE' });
     if (matches.length === 0) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
@@ -380,6 +389,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
     if (!adminDb || !entityColl || !secColl) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
 
+    const sessionClaimStartedAt = Date.now();
     await adminDb.runTransaction(async (transaction: any) => {
       const entityRef = adminDb.doc(`${entityColl}/${entityDocId}`);
       const securityRef = adminDb.doc(`${secColl}/${effectiveUid}`);
@@ -394,12 +404,53 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(securityRef, sessionData, { merge: true });
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
     });
+    const sessionClaimMs = Date.now() - sessionClaimStartedAt;
 
+    const rawCorrelationId = String(c.get('correlationId') || '');
+    const correlationId = /^[A-Za-z0-9._:-]{1,128}$/.test(rawCorrelationId) ? rawCorrelationId : 'invalid';
+    const limiterResetStartedAt = Date.now();
+    const limiterResetPromise = resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp)
+      .then(() => {
+        console.info('[Worker Auth] verify-pin limiter reset complete', {
+          correlationId,
+          durationMs: Date.now() - limiterResetStartedAt
+        });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : '';
+        const errorCode = /^PIN_RATE_LIMITER_[A-Z0-9_]+$/.test(message) ? message : 'UNKNOWN';
+        console.error('[Worker Auth] PIN rate limiter reset failed after successful claim:', { correlationId, errorCode });
+      });
+    let executionContext: { waitUntil?: (promise: Promise<unknown>) => void } | undefined;
     try {
-      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
-    } catch (error: any) {
-      console.error('[Worker Auth] PIN rate limiter reset failed after successful claim:', error?.message || 'unknown');
+      executionContext = c.executionCtx as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
+    } catch {
+      executionContext = undefined;
     }
+    let resetDeferred = false;
+    if (typeof executionContext?.waitUntil === 'function') {
+      try {
+        executionContext.waitUntil(limiterResetPromise);
+        resetDeferred = true;
+      } catch {
+        await limiterResetPromise;
+      }
+    } else {
+      await limiterResetPromise;
+    }
+
+    console.info('[Worker Auth] verify-pin timing', {
+      correlationId,
+      outcome: 'success',
+      role: match.role,
+      authMs,
+      rateLimitMs,
+      pinLookupMs,
+      matchResolutionMs,
+      sessionClaimMs,
+      totalMs: Date.now() - routeStartedAt,
+      resetDeferred
+    });
 
     return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
   } catch (error: any) {

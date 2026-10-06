@@ -100,7 +100,7 @@ describe('Worker PIN rate limiter', () => {
       mockDb.seed('private_pins/auth_pin', { pin: '12345678' });
     });
 
-    async function verifyPin(pin: string, sessionId: string, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }) {
+    async function verifyPin(pin: string, sessionId: string, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }, executionContext?: unknown) {
       return api.fetch(new Request('http://localhost/api/auth/verify-pin', {
         method: 'POST',
         headers: {
@@ -109,7 +109,7 @@ describe('Worker PIN rate limiter', () => {
           'cf-connecting-ip': '198.51.100.20'
         },
         body: JSON.stringify({ pin, sessionId })
-      }), env);
+      }), env, executionContext as any);
     }
 
     async function postAuth(path: string, body: Record<string, unknown>, env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter }) {
@@ -153,6 +153,55 @@ describe('Worker PIN rate limiter', () => {
       const allowedAgain = await verifyPin('87654321', 'after-success');
       expect(allowedAgain.status).toBe(200);
       expect(await allowedAgain.json()).toMatchObject({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    });
+
+    it('returns a successful claim without waiting for limiter reset and logs only safe timing fields', async () => {
+      let releaseReset!: () => void;
+      const resetGate = new Promise<void>((resolve) => { releaseReset = resolve; });
+      const delayedLimiter: PinRateLimiterNamespace = {
+        idFromName: (name) => limiter.idFromName(String(name)),
+        get: (id) => {
+          const base = limiter.get(String(id));
+          return {
+            fetch: async (input, init) => {
+              const command = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+              if (command.action === 'reset') await resetGate;
+              return base.fetch(input, init);
+            }
+          };
+        }
+      };
+      const backgroundTasks: Promise<unknown>[] = [];
+      const executionContext = { waitUntil: (promise: Promise<unknown>) => backgroundTasks.push(promise) };
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const responsePromise = verifyPin('12345678', 'synthetic-delayed-reset-session', { PIN_RATE_LIMITER: delayedLimiter }, executionContext);
+
+      try {
+        const outcome = await Promise.race([
+          responsePromise.then((response) => ({ response })),
+          new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), 500))
+        ]);
+        expect('timeout' in outcome).toBe(false);
+        if ('timeout' in outcome) return;
+
+        expect(outcome.response.status).toBe(200);
+        expect(await outcome.response.json()).toMatchObject({ success: true, role: 'admin', sessionClaimed: true });
+        expect(backgroundTasks).toHaveLength(1);
+
+        const timingCall = infoSpy.mock.calls.find(([message]) => message === '[Worker Auth] verify-pin timing');
+        expect(timingCall).toBeDefined();
+        const timing = JSON.stringify(timingCall?.[1] || {});
+        expect(timing).toContain('"resetDeferred":true');
+        expect(timing).toContain('"sessionClaimMs"');
+        expect(timing).not.toContain('12345678');
+        expect(timing).not.toContain('synthetic-delayed-reset-session');
+        expect(timing).not.toContain('admin-uid');
+      } finally {
+        releaseReset();
+        await Promise.allSettled(backgroundTasks);
+        await responsePromise.catch(() => undefined);
+        infoSpy.mockRestore();
+      }
     });
 
     it('supports admin PIN verification and explicit admin session claim', async () => {
