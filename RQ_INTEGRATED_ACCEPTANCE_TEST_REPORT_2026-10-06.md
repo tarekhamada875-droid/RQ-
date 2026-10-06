@@ -2,7 +2,7 @@
 
 ## Decision
 
-**BLOCKED — core security and role lifecycle checks pass, but the integrated acceptance is not complete.** `QA Garage Alpha` was approved and the synthetic `QA--Delegate` fixture was prepared in the isolated preview. The remaining browser scenarios could not be completed because the preview browser entered a persistent data-loading state before the Delegate isolation probe. No production or `main` changes were made.
+**BLOCKED — Delegate Alpha/Beta isolation and restricted-read browser probes pass, but integrated H6 acceptance remains incomplete.** The owner-approved phone-free Delegate entry and role-scoped PIN authentication are implemented and validated locally on `migration/unified-hono`; they have not been deployed to the preview or browser-accepted. Other role-specific browser coverage remains incomplete. No production or `main` changes were made.
 
 ## Tested build and topology
 
@@ -39,7 +39,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Role | Login | Refresh | Logout | Dashboard/scope | Remaining browser coverage |
 |---|---|---|---|---|---|
 | Admin | **PASS** | **PASS** | **PASS** | **PASS** for isolated Admin dashboard | Detail tabs, mutations, audit, duplicate actions: **BLOCKED** |
-| Delegate | **PASS** from prior evidence | **PASS** from prior evidence | **PASS** from prior evidence | Alpha approved; Alpha/Beta boundary: **BLOCKED** — browser session became unreliable before probe | Delegate requests, commissions, settlement, forbidden actions: **BLOCKED** |
+| Delegate | **PASS** — prior browser acceptance authenticated through the existing PIN screen after local view selection; the new visible PIN-only flow is **implemented/tested locally**, pending preview/browser verification | **PASS** — full base-URL reload restored the dashboard | **PASS** — supported logout returned to login | **PASS** — Alpha visible; Beta absent in the refreshed UI/API; direct Beta record and summary GETs both returned **403** | Current branch's new entry/PIN-only flow is not yet preview-deployed or browser-tested; commission, settlement, and other operational workflows remain **BLOCKED** |
 | Garage Owner | **PASS** | **PASS** | **PASS** | Synthetic garage scope: **PASS** | Vehicle/subscriber/recharge/report lifecycle: **BLOCKED** to avoid unapproved writes |
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
 | Supervisor | **PASS** | **PASS** | **PASS** | Restricted Supervisor dashboard: **PASS** | Unsupported admin tabs and direct denial browser checks: **BLOCKED** |
@@ -83,7 +83,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Audit/history | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Operation trace/audit tests pass |
 | Offline/retry | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Resilience/API boundary tests pass |
 | Mobile/PWA | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Not run in this acceptance continuation |
-| Cross-garage isolation | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Automated scope tests pass; Alpha approval and Delegate fixture prepared, but browser probe was blocked by preview loading state |
+| Cross-garage isolation | BLOCKED | **PASS** for QA Garage Alpha/Beta direct reads; other Delegate scenarios remain **BLOCKED** | BLOCKED | BLOCKED | BLOCKED | Delegate UI showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403; Admin-summary GET as Delegate returned 403. Automated scope tests pass; other roles remain unverified |
 
 ## Security finding and fix
 
@@ -93,7 +93,7 @@ The migration branch now exposes authoritative `isSessionReady` and blocks all n
 
 ## Remaining bounded next task
 
-Restore a stable isolated-preview browser session, then execute only the blocked browser cells for Delegate Alpha/Beta scope, cross-garage URL/data probes, forbidden actions, and one non-financial vehicle workflow per permitted role. The synthetic Alpha approval and Delegate fixture are already prepared. Do not merge to `main` until those cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
+Continue only the remaining H6 browser cells with existing synthetic fixtures: safe role-specific forbidden reads/actions and approved non-financial operational workflows where appropriate. Delegate Alpha/Beta direct-read isolation is verified. The owner-approved visible Delegate entry and PIN-only form are implemented locally in source commit `b4c5d2825e9c8c098779126c0e0a8828c0b766fb`, but have not been pushed, preview-deployed, or browser-verified. Do not merge to `main` until all required cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
 
 ## Cleanup and rollback
 
@@ -101,3 +101,30 @@ Restore a stable isolated-preview browser session, then execute only the blocked
 - The local tampering flag was removed and the browser returned to generic login.
 - No production records, payment, wallet, or real-user data were changed.
 - Rollback of the security repair is commit `23b3b7e`; current migration head is `b7af7c3`.
+
+
+## 2026-10-06 continuation — Delegate Alpha/Beta isolation and restricted reads
+
+- **Target:** isolated pre-production Worker through a temporary local Vite UI routed only to the preview. The synthetic `QA--Delegate` PIN was reset through the supported Admin editor because its prior value was unavailable; the temporary value is omitted from this report. No production, `main`, deployment, merge, financial operation, or destructive operation occurred.
+- **Login entry:** the visible Admin login did not expose a normal Delegate-entry action, and `#/delegate` alone did not select the Delegate view. To preserve the frozen UI, the existing public Delegate view was selected through local browser state; the actual phone/PIN form then authenticated the synthetic Delegate. Authentication is accepted, but ordinary user-facing discoverability/routing remains **BLOCKED**.
+- **Scope and persistence:** after login, the dashboard showed **QA Garage Alpha only**. A full-page base-URL reload restored the Delegate session, and the authenticated dashboard API returned Alpha only (one garage); **QA Garage Beta** was absent.
+- **Forbidden direct reads:** under the Delegate session, read-only GETs for the Beta garage record and its dashboard summary each returned **HTTP 403**. A read-only Admin-summary GET also returned **HTTP 403**. No write endpoint was called; neither the Beta ID nor protected response data was retained.
+- **Logout/cleanup:** the supported logout challenge completed and returned the browser to the generic login screen. The temporary PIN and Beta reference were cleared from browser session storage; the temporary Vite service/config and generated build outputs were removed. The existing Delegate fixture remains on the temporary synthetic PIN because its earlier value was unavailable; no PIN is recorded here.
+- **Disposition:** Delegate Alpha visibility, Beta hiding, the two cross-garage denials, the restricted Admin-summary denial, refresh persistence, and logout are **PASS**. Delegate login-entry discoverability and other required role-specific H6 cells remain **BLOCKED**. H7–H9 remain blocked.
+
+
+## 2026-10-06 continuation — Delegate entry-path investigation and focused regressions
+
+Source review confirmed that the app persists its selected view in `app_view`; the only hash handlers are the Admin routes `#/admin`, `#admin`, and `#/admin_login`. Although `App.tsx` renders `DelegateLoginView` for `delegate_login`, no component exposes a transition to that view, and `#/delegate` is not handled. The normal visible login therefore has no Delegate entry. The prior acceptance selected the existing public view via local browser state, then authenticated through the actual Delegate phone/PIN screen and server. This proves the role's login/session behavior but not an ordinary user entry path. The UI is frozen and no code change was made; the route/entry gap remains **BLOCKED** pending an owner-approved decision.
+
+Focused automated authorization/session regression run: **PASS — 8 files / 61 tests** (`workerAuthorizationMatrix`, `delegateScopeIsolation`, `workerSessionRoutes`, `claimDelegateSession`, `phase2SessionEnforcement`, `stage2SessionEnforcement`, `vehicleOperationsScopeEnforcement`, and `authViewGuard`). This supplements but does not replace browser evidence. H6 remains **BLOCKED** for the normal Delegate entry path and other required role-specific browser coverage; H7–H9 remain blocked.
+
+
+## 2026-10-06 continuation — owner-approved phone-free Delegate sign-in
+
+- **Approval and scope:** The owner approved adding a visible Delegate sign-in action and removing the phone-number prompt from Delegate sign-in, on `migration/unified-hono` only. The implementation is local and unpushed in source commit `b4c5d2825e9c8c098779126c0e0a8828c0b766fb`. No preview deployment, production change, `main` change, or preview-data mutation occurred.
+- **UI behavior:** The normal login now has a visible Delegate sign-in action; the existing Delegate view accepts a PIN without requesting a phone number. Existing account phone fields/data are unchanged, and no broader UI redesign was made.
+- **Authentication boundary:** The client marks the PIN request as Delegate-scoped. Both the Hono Worker and transitional Express route reject a valid PIN belonging to another role before legacy credential migration or session claim. Generic role login remains unscoped and unchanged.
+- **Regression evidence:** UI tests cover the visible entry, PIN-only form, and return action. Worker and Express integration tests verify wrong-role rejection without migration/session creation and successful Delegate-only session claim. The full suite passed **102 files / 577 tests**; TypeScript lint, production/server/Worker build, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` passed. The H5 UI-freeze logic was simulated locally and passed against the exact pinned blobs; GitHub Actions was not run.
+- **Credential/data boundary:** The PIN supplied in chat was not used, copied into source, or recorded in evidence. The existing synthetic preview account and its data were not touched by this implementation.
+- **Disposition:** The new flow is **PASS locally** but remains **pending preview deployment and browser acceptance**. H6 remains **BLOCKED** overall for the remaining browser role/scope/forbidden-action cells. H7–H9 remain blocked. No push or deployment was performed.
