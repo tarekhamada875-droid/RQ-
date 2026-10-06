@@ -347,6 +347,7 @@ export function useGarageApp() {
     user,
     setUser,
     isAuthReady,
+    isSessionReady,
     isLandscapeMobile,
     view,
     setView,

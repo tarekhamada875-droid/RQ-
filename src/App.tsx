@@ -36,6 +36,7 @@ const SubscriberWarningModal = lazyWithRetry(() => import('./components/modals/S
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
 import { firestoreService } from './services';
+import { shouldWaitForSessionReady } from './utils/authViewGuard';
 
 // Lazy Loaded Dashboard Views
 const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -47,6 +48,7 @@ const GarageDashboardView = lazyWithRetry(() => import('./components/garage/Gara
 export default function App() {
   const {
     isAuthReady,
+    isSessionReady,
     isLandscapeMobile,
     view,
     setView,
@@ -401,6 +403,18 @@ export default function App() {
   // --- Initial Loading State ---
   if (!isAuthReady) {
     logDiagnostic('APP_WAITING_FOR_AUTH_READY', { isAuthReady, isLoading, view });
+    return (
+      <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">
+          جاري تحميل البيانات...
+        </p>
+      </div>
+    );
+  }
+
+  if (shouldWaitForSessionReady(view, isSessionReady)) {
+    logDiagnostic('APP_WAITING_FOR_SESSION_READY', { isAuthReady, isSessionReady, view });
     return (
       <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
