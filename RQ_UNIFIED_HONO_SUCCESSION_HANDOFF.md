@@ -808,3 +808,27 @@ Security and tenant isolation
 - Regression coverage passed for a Worker/anonymous identity claiming a PIN role without the unnecessary pre-login lookups. Validation: **9/9** focused PIN tests; **567/567** full tests; lint; Cloudflare Worker build; `npm run ci:check`; maintainability check; and `git diff --check`.
 - This is a targeted performance optimization based on code inspection, not proof that it alone fixes the timeout. It is locally tested and **not yet deployed**. No new PIN was submitted.
 - **Next actions:** commit/push to `migration/unified-hono`; wait for H5 Preview Worker and Production Gate; verify the isolated preview health/version; revoke the currently active synthetic session with the supported hashed-session revoke endpoint; then perform one fresh Owner UI login retest. If the response still takes over 15 seconds, add/enable reliable preview-only stage tracing before continuing. Do not test Staff/Supervisor until the Owner route responds; keep H6/H7–H9 blocked and production untouched.
+
+### Latest chained handoff status — 2026-10-06 17:12 (tokens ending)
+
+- **Active repository state:** detached HEAD at `dc5575d` (`docs: complete integrated acceptance status`), matching the current `origin/migration/unified-hono` head before this documentation checkpoint. The next agent must check out `migration/unified-hono` after synchronizing.
+- **Changed files in this checkpoint:** `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`. No application source files changed in this continuation.
+- **Production/main:** untouched. No production deployment, merge to `main`, payment, financial operation, or real-user data mutation occurred.
+- **Preview:** isolated pre-production `rq-hono-preview` Worker; prior verified version remains `1.0.0-h5-preview`. Do not copy or print any preview secret values.
+- **QA Garage Alpha:** **PASS**. Admin approved the pending `QA Garage Alpha` registration submitted by `QA--Delegate`; the registration queue then showed no pending requests.
+- **QA Delegate fixture:** **PASS**. The existing synthetic `QA--Delegate` record received a temporary synthetic eight-digit PIN through the supported Admin profile editor. The PIN is intentionally omitted from this handoff and all evidence files.
+- **Browser blocker:** Delegate Alpha/Beta isolation and browser forbidden-action probes were not completed. After returning from the Delegate profile, the isolated preview browser entered a persistent data-loading state. No browser isolation PASS is inferred.
+- **Automated validation:** corrected focused Vitest run **14 files / 99 tests passed**, including delegate scope isolation, vehicle garage scope, session enforcement, forbidden actions, and the protected-view guard. The earlier failed command was only a harness syntax error from passing Jest's unsupported `--runInBand` option to Vitest.
+- **H6 decision:** **BLOCKED**. Core role lifecycle evidence and automated authorization evidence pass; H6 cannot advance to H7 until a stable browser session completes the remaining Alpha/Beta tenant-isolation and role-specific forbidden-action probes.
+
+#### Exact next-agent commands
+
+1. Read `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`.
+2. Run `git fetch origin && git checkout migration/unified-hono && git status --short --branch`; verify the pushed documentation checkpoint and do not reset or discard the three documentation files.
+3. Verify preview health/version without printing secrets. Do not deploy to production or merge to `main`.
+4. Restore a stable isolated-preview browser session. Use the existing synthetic fixtures only; do not create real-user or financial data.
+5. Log in as `QA--Delegate`, verify `QA Garage Alpha` is visible and `QA Garage Beta` is hidden, then perform read-only/direct-URL cross-garage probes and record server denials. Execute role-specific forbidden-action checks without unapproved writes.
+6. Update both H6 evidence files with PASS/N/A/BLOCKED results. Advance to H7 only if every required H6 cell is supported by browser or explicitly accepted evidence.
+7. If the owner says `tokens ending` again, stop implementation and append another exact chained handoff section with the current commit, branch, changed files, tests, deployment state, blockers, and next checkpoint before doing anything else.
+
+> You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.

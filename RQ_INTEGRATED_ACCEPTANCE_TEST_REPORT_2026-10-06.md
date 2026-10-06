@@ -2,7 +2,7 @@
 
 ## Decision
 
-**BLOCKED — core security and role lifecycle checks pass, but the integrated acceptance is not complete.** The remaining browser scenarios require approved synthetic Delegate/Beta data and additional role-specific fixtures that were not safely available in the isolated preview context. No production or `main` changes were made.
+**BLOCKED — core security and role lifecycle checks pass, but the integrated acceptance is not complete.** `QA Garage Alpha` was approved and the synthetic `QA--Delegate` fixture was prepared in the isolated preview. The remaining browser scenarios could not be completed because the preview browser entered a persistent data-loading state before the Delegate isolation probe. No production or `main` changes were made.
 
 ## Tested build and topology
 
@@ -39,7 +39,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Role | Login | Refresh | Logout | Dashboard/scope | Remaining browser coverage |
 |---|---|---|---|---|---|
 | Admin | **PASS** | **PASS** | **PASS** | **PASS** for isolated Admin dashboard | Detail tabs, mutations, audit, duplicate actions: **BLOCKED** |
-| Delegate | **PASS** from prior evidence | **PASS** from prior evidence | **PASS** from prior evidence | Alpha/Beta boundary: **BLOCKED** — approved Beta fixture unavailable | Delegate requests, commissions, settlement, forbidden actions: **BLOCKED** |
+| Delegate | **PASS** from prior evidence | **PASS** from prior evidence | **PASS** from prior evidence | Alpha approved; Alpha/Beta boundary: **BLOCKED** — browser session became unreliable before probe | Delegate requests, commissions, settlement, forbidden actions: **BLOCKED** |
 | Garage Owner | **PASS** | **PASS** | **PASS** | Synthetic garage scope: **PASS** | Vehicle/subscriber/recharge/report lifecycle: **BLOCKED** to avoid unapproved writes |
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
 | Supervisor | **PASS** | **PASS** | **PASS** | Restricted Supervisor dashboard: **PASS** | Unsupported admin tabs and direct denial browser checks: **BLOCKED** |
@@ -83,7 +83,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Audit/history | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Operation trace/audit tests pass |
 | Offline/retry | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Resilience/API boundary tests pass |
 | Mobile/PWA | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Not run in this acceptance continuation |
-| Cross-garage isolation | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Automated scope tests pass; Beta browser fixture unavailable |
+| Cross-garage isolation | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Automated scope tests pass; Alpha approval and Delegate fixture prepared, but browser probe was blocked by preview loading state |
 
 ## Security finding and fix
 
@@ -93,7 +93,7 @@ The migration branch now exposes authoritative `isSessionReady` and blocks all n
 
 ## Remaining bounded next task
 
-Provision or identify approved synthetic **Garage Beta**, **QA Delegate**, and role-specific test records in the isolated preview. Then execute only the blocked browser cells for cross-garage scope, forbidden actions, and one non-financial vehicle workflow per permitted role. Do not merge to `main` until those cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
+Restore a stable isolated-preview browser session, then execute only the blocked browser cells for Delegate Alpha/Beta scope, cross-garage URL/data probes, forbidden actions, and one non-financial vehicle workflow per permitted role. The synthetic Alpha approval and Delegate fixture are already prepared. Do not merge to `main` until those cells are recorded as PASS, N/A, or BLOCKED with owner acceptance.
 
 ## Cleanup and rollback
 
