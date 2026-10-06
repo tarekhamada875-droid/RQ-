@@ -811,7 +811,7 @@ Security and tenant isolation
 
 ### Latest chained handoff status — 2026-10-06 17:12 (tokens ending)
 
-- **Active repository state:** documentation checkpoint `b1032c5` (`docs: record H6 succession handoff`) is pushed to `origin/migration/unified-hono`. The current sandbox remains detached at that commit; the next agent must check out `migration/unified-hono` after synchronizing.
+- **Active repository state:** documentation checkpoint `1238dd3` (`docs: correct succession checkpoint reference`) is pushed to `origin/migration/unified-hono`. It includes the prior documentation checkpoint `b1032c5`; the current sandbox remains detached at `1238dd3`, and the next agent must check out `migration/unified-hono` after synchronizing.
 - **Changed files in this checkpoint:** `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`. No application source files changed in this continuation.
 - **Production/main:** untouched. No production deployment, merge to `main`, payment, financial operation, or real-user data mutation occurred.
 - **Preview:** isolated pre-production `rq-hono-preview` Worker; prior verified version remains `1.0.0-h5-preview`. Do not copy or print any preview secret values.
