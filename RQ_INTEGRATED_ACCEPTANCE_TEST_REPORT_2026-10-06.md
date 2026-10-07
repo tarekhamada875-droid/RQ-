@@ -219,3 +219,7 @@ The mobile/PWA audit found that the existing HTML registered `/sw.js` while the 
 ## 2026-10-07 — PWA correction disposition
 
 The proposed missing-service-worker correction was rejected by the enforced UI/UX freeze because it introduced the protected `public/sw.js` path. The source addition was removed and no PWA behavior was deployed. PWA registration/offline behavior remains OPEN/BLOCKED pending explicit approval and review under the freeze policy.
+
+## 2026-10-07 — Vehicle/subscriber technical regression continuation
+
+A non-destructive cross-runtime regression run passed **13 files / 62 tests** for vehicle authorization and lifecycle characterization, subscriber lifecycle/routes, package catalog, and monthly subscriber packages. Deliberate validation/idempotency/scope failures were expected and passed. This does not convert the browser workflow rows to PASS: those remain BLOCKED under the no-unapproved-write boundary.

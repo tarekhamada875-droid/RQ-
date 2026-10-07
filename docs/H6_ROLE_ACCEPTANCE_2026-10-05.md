@@ -340,3 +340,9 @@ Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Ru
 ## 2026-10-07 — PWA correction disposition
 
 The attempted `public/sw.js` addition was rejected by the repository’s enforced UI/UX freeze because `public/sw.js` is a protected path without explicit recorded approval. The source addition was removed; no PWA source change is retained. The earlier local build validation proved the proposed asset would build, but it is not a deployed or accepted correction. PWA registration/offline behavior remains **OPEN/BLOCKED** pending explicit freeze approval and a separately reviewed implementation.
+
+## 2026-10-07 — Vehicle/subscriber technical regression continuation
+
+- Non-destructive technical suite: **PASS — 13 files / 62 tests** covering Hono and Express vehicle routes, vehicle scope/authorization, check-in/out characterization, deletion locks, subscriber lifecycle/routes, package catalog, and monthly subscriber packages.
+- Expected failure-path diagnostics covered validation, duplicate/idempotency, immutable-plate, and cross-scope rejection behavior; no live or preview record was written.
+- This strengthens technical evidence only. Browser lifecycle cells remain **BLOCKED** because exercising them would require approved synthetic operational writes; no vehicle, subscriber, package, financial, or production action was performed.

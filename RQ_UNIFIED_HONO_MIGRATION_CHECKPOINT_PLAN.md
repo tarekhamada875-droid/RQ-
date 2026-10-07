@@ -481,3 +481,7 @@ The PWA registration contract was corrected by supplying the previously missing 
 ## 2026-10-07 — PWA freeze disposition
 
 The attempted service-worker asset correction was rejected by the repository UI/UX freeze (`public/sw.js` is a protected path). The source change was removed. Mobile/PWA registration and offline behavior remain open until explicit freeze approval is recorded; no production change occurred.
+
+## 2026-10-07 — Vehicle/subscriber technical evidence
+
+The non-destructive cross-runtime vehicle/subscriber/package suite passed **13 files / 62 tests**. Browser workflow acceptance remains separate and BLOCKED where it would require approved synthetic operational writes; no live or preview business record was changed.

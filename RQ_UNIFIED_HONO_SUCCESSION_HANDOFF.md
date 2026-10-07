@@ -986,3 +986,10 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - The H5 Preview Worker failed only at the enforced UI/UX-freeze check because the attempted commit introduced protected path `public/sw.js`.
 - Production Gate passed, but the Preview failure means the PWA correction is not accepted or deployed.
 - The source addition was removed. Evidence now records the PWA registration/offline behavior as OPEN/BLOCKED pending explicit owner approval under the freeze policy.
+
+## Vehicle/subscriber technical regression continuation — 2026-10-07
+
+- Ran the non-destructive cross-runtime suite covering vehicle check-in/out, vehicle authorization/scope/deletion locks, subscriber lifecycle/routes, package catalog, and monthly subscriber packages: **13 files / 62 tests PASS**.
+- Expected failure-path diagnostics were validation, duplicate/idempotency, immutable-plate, and scope rejection cases.
+- No live/preview business record, financial value, vehicle, subscriber, package, production, or `main` state was changed.
+- Browser workflow cells remain BLOCKED because they require approved synthetic operational writes; technical tests do not substitute for those human-flow cells.
