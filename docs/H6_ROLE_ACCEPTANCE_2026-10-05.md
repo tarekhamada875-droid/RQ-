@@ -432,3 +432,8 @@ This does not establish authenticated mobile role workflows, offline business be
 ## 2026-10-07 authenticated mobile continuation — blocked by preview transport
 
 An isolated Chromium session used the authorized synthetic Admin credential at 390×844 portrait with five touch points. The keypad accepted the full credential sequence, but no Admin dashboard evidence was obtained. The same-origin preview proxy returned HTML 500 responses for `/api/health` and `/api/version`; the Vite proxy logged `EPROTO ... wrong version number` when connecting to the isolated Worker. The UI remained at the login/orientation guard. This is **BLOCKED/UNVERIFIED**, not a product PASS or FAIL: no authenticated mobile workflow was claimed, no mutation/payment occurred, and temporary services/artifacts were removed.
+
+
+## 2026-10-07 authenticated mobile Admin continuation — PASS
+
+After the preview Worker recovered and direct health returned HTTP 200, a fresh same-origin preview was tested in Chromium at 390×844 portrait with five touch points. The authorized synthetic Admin keypad sequence opened the full read-only Admin dashboard, including synthetic garage metrics and role navigation. After a full page reload, reapplying the intended portrait emulation restored the same dashboard with the session still valid. This establishes **PASS for Admin mobile login, dashboard rendering, and session persistence**. No mutation, payment, or financial control was activated; other role-specific mobile workflows remain untested.

@@ -295,3 +295,8 @@ A sandbox Chromium DevTools Protocol session completed a real 390×844 portrait 
 ## 2026-10-07 authenticated mobile continuation — transport-blocked
 
 The authorized synthetic Admin keypad sequence was entered in a 390×844 portrait, five-touch Chromium session, but no dashboard was observed. The temporary same-origin proxy returned HTML 500 for health/version and logged a TLS `EPROTO wrong version number` while reaching the isolated preview Worker. The result is **BLOCKED/UNVERIFIED** due to preview transport; no application pass/fail is inferred, and no write, payment, production, or `main` operation occurred.
+
+
+## 2026-10-07 authenticated mobile Admin result
+
+With the isolated preview Worker healthy again, Chromium at 390×844 portrait and five touch points completed the authorized synthetic Admin login. The full read-only Admin dashboard rendered with synthetic metrics/navigation, and after reload plus restoration of the intended emulation metrics the dashboard returned with the session still valid. **Admin mobile login, dashboard, and session persistence: PASS.** No business mutation or financial workflow was run; other roles remain untested on mobile.

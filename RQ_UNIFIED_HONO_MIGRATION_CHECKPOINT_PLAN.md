@@ -538,3 +538,8 @@ Real sandbox Chromium emulation at 390×844 portrait with five touch points pass
 ## 2026-10-07 authenticated mobile continuation — transport block
 
 The mobile shell passed, but the authorized synthetic Admin mobile login could not reach a dashboard because the temporary same-origin preview proxy returned HTML 500 and Node logged TLS `EPROTO wrong version number` when contacting the isolated Worker. Keep authenticated mobile workflows **BLOCKED/UNVERIFIED** until preview transport is healthy; do not infer a product regression or close H6.
+
+
+## 2026-10-07 authenticated mobile Admin result
+
+The isolated preview Worker recovered to HTTP 200 health. A 390×844 portrait, five-touch Chromium session completed synthetic Admin login, rendered the read-only dashboard, and restored the dashboard session after reload once the test harness reapplied portrait metrics. Admin mobile login/dashboard/session persistence is **PASS**. Other role-specific mobile workflows and financial/recharge/subscription workflows remain open.

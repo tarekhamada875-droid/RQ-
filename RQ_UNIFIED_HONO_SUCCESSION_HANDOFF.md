@@ -1112,3 +1112,8 @@ A local headless Chromium DevTools Protocol session completed a real 390×844 po
 ## 2026-10-07 authenticated mobile continuation — blocked by preview transport
 
 A 390×844 portrait, five-touch Chromium session accepted the authorized synthetic Admin keypad sequence, but no dashboard evidence was obtained. The temporary same-origin proxy returned HTML 500 for `/api/health` and `/api/version`; Vite logged TLS `EPROTO wrong version number` when reaching the isolated preview Worker. The UI remained at the login/orientation guard. Treat authenticated mobile workflows as **BLOCKED/UNVERIFIED**, not PASS or FAIL, until preview transport is healthy. No business mutation, payment, production, or `main` operation occurred; temporary services and artifacts were removed.
+
+
+## 2026-10-07 authenticated mobile Admin acceptance
+
+After direct preview health recovered to HTTP 200, a fresh same-origin preview was tested with Chromium at 390×844 portrait and five touch points. The authorized synthetic Admin keypad sequence opened the full read-only Admin dashboard with synthetic metrics/navigation. After reload, restoring the intended portrait emulation returned the dashboard with the session still valid. **Admin mobile login, dashboard rendering, and session persistence: PASS.** No mutation, payment, production, or `main` operation occurred; other mobile roles and financial workflows remain open.
