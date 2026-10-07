@@ -1137,3 +1137,8 @@ A temporary synthetic Supervisor was provisioned through the desktop Admin Peopl
 ## 2026-10-07 temporary Delegate mobile acceptance
 
 A temporary synthetic Delegate was provisioned through desktop Admin, then tested in a separate 390×844 portrait, five-touch Chromium session. PIN-only login opened the restricted Delegate dashboard with garage, performance, pending-request, and commission-summary sections; Admin navigation was absent. No financial action was activated. The temporary Delegate was revoked through the supported details flow and verified absent. **Delegate mobile login/restricted dashboard: PASS.**
+
+
+## 2026-10-07 Staff mobile continuation
+
+Staff mobile acceptance is **BLOCKED/UNVERIFIED**. The supported Admin Staff-create operation was attempted against synthetic QA Garage Alpha and QA Garage Beta; both returned without a created temporary Staff, so no Staff PIN or mobile workflow was tested. No temporary Staff record or other test artifact remains. Next investigation should focus on the Staff-create transport/response path before retrying.

@@ -457,3 +457,8 @@ A temporary synthetic Supervisor was provisioned through the desktop Admin Peopl
 ## 2026-10-07 temporary Delegate mobile acceptance — PASS
 
 A temporary synthetic Delegate was provisioned through the desktop Admin People UI. In a separate 390×844 portrait, five-touch Chromium session, the PIN-only Delegate entry flow opened the restricted Delegate dashboard. The dashboard rendered `لوحة المندوب`, `جراجاتي`, performance reporting, pending requests, and commission summary content; no Admin navigation or controls were exposed. No recharge, wallet, settlement, purchase, or other financial action was activated. The temporary Delegate was revoked through the supported Delegate details flow; the Admin list returned to the single pre-existing synthetic Delegate and no temporary name remained. **Delegate mobile login and restricted dashboard rendering: PASS.**
+
+
+## 2026-10-07 Staff mobile continuation — BLOCKED/UNVERIFIED
+
+Staff mobile acceptance was not claimed. The supported Admin garage Staff-create flow was attempted against synthetic QA Garage Alpha and then active QA Garage Beta. The first expired-garage attempt returned without a record; the active-garage request remained in `جاري الإضافة...` and then returned without creating the temporary Staff. No Staff PIN was used for login, no mobile Staff workflow was run, and verification showed no `Mobile QA Staff` record. Temporary preview/browser artifacts were removed. This is **BLOCKED/UNVERIFIED**, not a product PASS or FAIL; the remaining issue is the Staff-create transport/response path.

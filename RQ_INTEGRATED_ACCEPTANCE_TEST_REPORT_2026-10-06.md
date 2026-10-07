@@ -320,3 +320,8 @@ A temporary synthetic Supervisor was created via the desktop Admin People UI, th
 ## 2026-10-07 temporary Delegate mobile result
 
 A desktop-provisioned synthetic Delegate completed the PIN-only login in a separate 390×844 portrait, five-touch session. The restricted Delegate dashboard rendered garage, performance, pending-request, and commission-summary sections without Admin navigation. The temporary Delegate was revoked afterward and verified absent. **Delegate mobile login/restricted dashboard: PASS.** No recharge, wallet, settlement, or purchase workflow was run.
+
+
+## 2026-10-07 Staff mobile continuation
+
+Staff mobile coverage remains **BLOCKED/UNVERIFIED**. The supported Admin Staff-create flow was attempted against two synthetic garages; no temporary Staff record was created, and therefore no Staff PIN login or mobile dashboard test was performed. No business or financial mutation was left behind.

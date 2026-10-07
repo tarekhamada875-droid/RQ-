@@ -563,3 +563,8 @@ Supervisor mobile acceptance is **PASS**: a desktop-provisioned synthetic Superv
 ## 2026-10-07 temporary Delegate mobile result
 
 Delegate mobile acceptance is **PASS**: a temporary synthetic Delegate logged in at 390×844 portrait with five-touch emulation and saw the restricted Delegate dashboard, including garage and performance sections without Admin navigation. The temporary Delegate was revoked and verified absent. Staff and Garage Owner mobile coverage remains open; financial/recharge/wallet/subscription-purchase flows remain intentionally untested.
+
+
+## 2026-10-07 Staff mobile continuation
+
+Staff mobile acceptance remains **BLOCKED/UNVERIFIED**: supported Admin Staff creation returned without creating a record on both an expired synthetic garage and the active QA Garage Beta. No Staff mobile login was attempted and no temporary Staff data remains. Garage Owner mobile coverage and financial/recharge/wallet/subscription-purchase flows remain open.
