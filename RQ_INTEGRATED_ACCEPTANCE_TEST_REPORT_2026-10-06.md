@@ -336,3 +336,17 @@ A separate synthetic free-trial Owner garage authenticated successfully (HTTP 20
 The supported Admin delete flow was invoked for the Owner test garage and returned HTTP 200. The Worker implementation sets `isDeleting=true`, creates a `garage_deletion_jobs` record with `status=running`, and returns `deletionStarted=true`; it does not perform the physical deletion inline. The garage remained in the refreshed Admin list, and no in-repository job consumer was found. **Owner test-data cleanup is BLOCKED/UNVERIFIED**; no direct database mutation or repeated delete request was made.
 
 A focused Admin Staff state-synchronization fix and regression test were added. Local validation passed: **102 test files / 583 tests**, lint, production build, CI check, maintainability check, and diff check. No production or `main` deployment/change occurred. **Overall H6 remains OPEN/BLOCKED**, including the previously documented Supervisor permission-scope inconsistency and other required cells. H7–H9 remain pending.
+
+
+## 2026-10-07 continuation — isolated-preview synthetic fixture cleanup
+
+- The sole `Staff QA` entry associated with the synthetic garage `H6 Staff Operational 20261007` was deleted in the supported Admin Staff panel. The refreshed panel showed **0 staff**.
+- The exact named garage was then deleted using the standard Admin detail menu and confirmation dialog. The UI displayed deletion progress (50/100), returned to the Admin garage list, and a fresh navigation/reload showed `H6 Staff Operational 20261007` absent.
+- The current Worker implementation at `bb53570` performs owned-data cleanup, removes the garage root, sets the `garage_deletion_jobs` record to `completed`, then returns success. The runtime UI completion and fresh list absence are observed; the job document itself was not directly read. No direct Firestore mutation or repeat delete request was made.
+- The normal Admin logout challenge returned to the generic login screen. The temporary Vite service and its untracked preview-only config were stopped/removed. No production, `main`, financial, vehicle, subscriber, or unrelated-record operation occurred.
+- **Cleanup disposition: PASS** for the two specifically named synthetic fixtures via supported Admin UI. This does **not** close H6: Staff operational acceptance, Owner persistence/listener health, and financial/recharge/subscription workflows remain open or intentionally untested. H7–H9 remain blocked.
+
+
+### Post-cleanup local validation
+
+The focused deletion/policy/Worker suite passed **3 files / 13 tests**. `npm run ci:check` passed clean-install verification, TypeScript lint, **102 Vitest files / 584 tests**, production bundling, and artifact verification; `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were removed.

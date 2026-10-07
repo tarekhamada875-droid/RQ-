@@ -579,3 +579,18 @@ A temporary Staff account authenticated in 390×844 portrait, five-touch Chromiu
 A synthetic free-trial Owner account authenticated in the same mobile viewport (HTTP 200, role `garage`) and rendered its dashboard with no horizontal overflow or Admin-only labels. Initial Owner login/dashboard rendering are PASS; session persistence and further Owner workflows remain untested. One Firestore Listen-channel failure and one uncaptured console error leave real-time listener health OPEN/UNVERIFIED.
 
 Owner-fixture cleanup is not verified: the supported Admin delete endpoint returned HTTP 200 but, per Worker source, only sets `isDeleting=true`, writes a running deletion-job record, and responds `deletionStarted=true`. The garage remained listed after reload; repository search found no in-repository job consumer. Do not claim physical deletion, repeat the request, or mutate the database directly. H6 remains OPEN/BLOCKED pending this cleanup disposition, Staff operational acceptance in a safe non-financial context, Owner persistence/listener checks, the previously documented Supervisor permission-scope mismatch, and all remaining required role cells. Financial workflows remain intentionally untested. H7–H9 remain pending; no production or `main` change is authorized by this status.
+
+
+## 2026-10-07 H6 cleanup continuation — inline Hono deletion completion
+
+The prior note at the end of this plan accurately describes the earlier `deletionStarted=true` behavior, but it is superseded by source commit `bb53570` (`fix: complete Hono garage deletion before success`) on `migration/unified-hono`. The H5 Preview Worker workflow and Production Gate for that source head completed successfully.
+
+In the isolated preview, the sole synthetic `Staff QA` entry was deleted through the named garage’s Admin Staff panel; the refreshed panel showed zero staff. The named synthetic garage `H6 Staff Operational 20261007` was then deleted through the supported Admin detail-menu confirmation flow. The UI displayed progress (50/100), returned to the Admin garage list, and after a fresh navigation/reload the target garage was absent. No other record was targeted; no direct Firestore mutation or retry was used.
+
+Source review confirms the current Worker route calls `deleteGarageOwnedData`, deletes the garage root, writes `garage_deletion_jobs.status=completed`, and then returns success. The UI’s return to the list and fresh-list absence are runtime evidence of success; the job document itself was not directly queried. Normal Admin logout returned to the generic preview login screen. The temporary preview UI process/config were stopped and removed. Production and `main` remain untouched.
+
+**Disposition:** the two named synthetic cleanup items are **PASS** through the supported preview UI. H6 remains **OPEN/BLOCKED** for the separate Staff operational gate, Owner persistence/listener checks, and intentionally untested financial/recharge/subscription workflows. H7–H9 remain paused; this continuation does not authorize a production cutover.
+
+### Post-cleanup validation — 2026-10-07
+
+The focused garage-deletion/operational-policy/Worker regression run passed **3 files / 13 tests**. `npm run ci:check` passed clean-install verification, TypeScript lint, **102 Vitest files / 584 tests**, production build, and artifact verification. `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were cleaned. The change remains confined to `migration/unified-hono`; the H5 Preview Worker and Production Gate had both passed for source head `bb53570`. H6 is still OPEN/BLOCKED; H7 has not begun.

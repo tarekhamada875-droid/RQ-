@@ -493,3 +493,18 @@ Staff mobile acceptance was not claimed. The supported Admin garage Staff-create
 The Admin Staff panel now synchronizes successful Staff create/delete results into its live list and surfaces localized failure feedback. A focused component regression test covers immediate create/delete visibility. Full local validation passed: **102 Vitest files / 583 tests**, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
 
 **H6 remains OPEN.** This continuation does not resolve the Supervisor permission-scope mismatch, remaining role/route acceptance cells, the Staff zero-balance gate, Owner listener/persistence questions, or intentionally untested financial workflows. H7–H9 remain pending; production and `main` remain untouched.
+
+
+## 2026-10-07 continuation — isolated-preview H6 fixture cleanup
+
+- **Scope:** Isolated `rq-hono-preview` only, through the temporary Vite UI whose `/api` proxy was pinned to the preview Worker. No production or `main` mutation occurred.
+- **Staff fixture:** The sole `Staff QA` entry in `H6 Staff Operational 20261007` was removed through the garage-scoped Admin Staff panel and its confirmation dialog. The refreshed panel displayed **0 staff** / “no staff registered for this garage.”
+- **Garage fixture:** After Staff cleanup, the exact synthetic garage `H6 Staff Operational 20261007` was deleted through the standard Admin detail overflow → delete → confirm flow. The UI displayed deletion progress (50/100), then returned to the Admin garage list. A fresh navigation/reload showed the named garage absent.
+- **Completion evidence and limit:** At source head `bb53570`, the Worker deletion route calls `deleteGarageOwnedData`, deletes the garage root, sets `garage_deletion_jobs.status` to `completed`, and only then returns success. The UI returned to the list after the request and the refreshed Admin list omitted the garage. The underlying job document was not queried directly; no direct Firestore mutation or repeated delete request was made.
+- **Session/service cleanup:** Normal Admin logout verification returned the browser to the generic login screen. The temporary Vite service was stopped, its untracked config removed, and port 4173 verified closed.
+- **Boundary:** Only the two named synthetic fixtures were removed. No payment, wallet, recharge, subscription purchase, vehicle/subscriber operation, or unrelated-record edit occurred.
+- **Disposition:** The Staff and garage fixture cleanup is **PASS** through the supported preview UI, with physical absence of the garage confirmed by a fresh Admin list. H6 overall remains **OPEN/BLOCKED**: Staff operational access beyond the exhausted-balance gate, Owner listener/persistence checks, and intentionally untested financial/recharge/subscription workflows remain outstanding; do not begin H7–H9.
+
+### Validation after cleanup
+
+The focused deletion/policy/Worker regression run passed **3 files / 13 tests**. The full `npm run ci:check` passed its clean-install verification, TypeScript lint, full suite (**102 files / 584 tests**), production build, and artifact checks. `npm run maintainability:check` and `git diff --check` also passed. Generated `dist/` and `build/` artifacts were removed afterward.
