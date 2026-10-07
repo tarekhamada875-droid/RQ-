@@ -215,3 +215,7 @@ The isolated preview-only Admin session was revalidated without repeating creden
 ## 2026-10-07 — PWA service-worker contract
 
 The mobile/PWA audit found that the existing HTML registered `/sw.js` while the source public asset was missing. A minimal lifecycle-only service worker was added; it performs no caching and does not intercept API, Firebase, or authenticated data requests. TypeScript and the production web build passed, including output assertions for the manifest and service-worker assets. This validates the PWA asset contract only, not offline business-data behavior.
+
+## 2026-10-07 — PWA correction disposition
+
+The proposed missing-service-worker correction was rejected by the enforced UI/UX freeze because it introduced the protected `public/sw.js` path. The source addition was removed and no PWA behavior was deployed. PWA registration/offline behavior remains OPEN/BLOCKED pending explicit approval and review under the freeze policy.

@@ -980,3 +980,9 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - Added a minimal lifecycle-only `public/sw.js`: `install` calls `skipWaiting`, `activate` calls `clients.claim`, and there is intentionally no fetch/cache handler. Authenticated API, Firebase, and business data remain network-authoritative.
 - `npm run lint` and `npm run build:web` passed; the build output contained `sw.js` and `manifest.json`, and generated output was removed afterward.
 - This corrects the PWA asset contract only; offline business behavior, mobile visual/interaction coverage, and the remaining H6 workflow cells are still open.
+
+## PWA freeze disposition — 2026-10-07 continuation
+
+- The H5 Preview Worker failed only at the enforced UI/UX-freeze check because the attempted commit introduced protected path `public/sw.js`.
+- Production Gate passed, but the Preview failure means the PWA correction is not accepted or deployed.
+- The source addition was removed. Evidence now records the PWA registration/offline behavior as OPEN/BLOCKED pending explicit owner approval under the freeze policy.

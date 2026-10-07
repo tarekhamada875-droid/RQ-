@@ -477,3 +477,7 @@ The isolated preview-only Admin UI acceptance continued successfully after the a
 ## 2026-10-07 — Mobile/PWA asset correction
 
 The PWA registration contract was corrected by supplying the previously missing `/sw.js`. The worker is intentionally network-only: no authenticated/API/Firebase traffic is cached or intercepted. Lint and production web build validation passed. Mobile visual/interaction coverage and offline business behavior remain separate acceptance cells.
+
+## 2026-10-07 — PWA freeze disposition
+
+The attempted service-worker asset correction was rejected by the repository UI/UX freeze (`public/sw.js` is a protected path). The source change was removed. Mobile/PWA registration and offline behavior remain open until explicit freeze approval is recorded; no production change occurred.

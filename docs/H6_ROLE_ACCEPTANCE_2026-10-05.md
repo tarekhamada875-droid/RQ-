@@ -336,3 +336,7 @@ Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Ru
 - **Correction:** Added a minimal lifecycle-only `public/sw.js` that activates and claims clients but deliberately does not cache or intercept API, Firebase, or authenticated application traffic.
 - **Validation:** `npm run lint` passed; `npm run build:web` passed; the production output contained `sw.js`, `manifest.json`, and the manifest/service-worker references in `index.html`; generated build output was removed afterward.
 - **Boundary:** This is a PWA installability/lifecycle correction only. Offline business-data behavior is not claimed, and no user, financial, or application records were changed.
+
+## 2026-10-07 — PWA correction disposition
+
+The attempted `public/sw.js` addition was rejected by the repository’s enforced UI/UX freeze because `public/sw.js` is a protected path without explicit recorded approval. The source addition was removed; no PWA source change is retained. The earlier local build validation proved the proposed asset would build, but it is not a deployed or accepted correction. PWA registration/offline behavior remains **OPEN/BLOCKED** pending explicit freeze approval and a separately reviewed implementation.
