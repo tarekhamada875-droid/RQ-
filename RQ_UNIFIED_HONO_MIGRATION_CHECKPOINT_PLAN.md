@@ -465,3 +465,7 @@ The stated Supervisor boundary is now enforced locally: monitoring reads remain 
 ## H6 Supervisor read-boundary correction — 2026-10-07
 
 The Supervisor monitoring boundary is now explicit: global overview only through the Worker, sanitized to operational fields; no direct garage/detail, vehicle, subscriber, or daily-counter reads through Firestore Rules or scoped Worker routes. Sensitive identity, contact, PIN, rates, balances, revenue, and commission fields are excluded. Delegate monitoring remains readable. Focused tests and the local Rules Emulator passed; full gates and preview redeployment remain required before H6 closure.
+
+### 2026-10-07 H6 continuation — Admin preview smoke
+
+A read-only synthetic Admin dashboard smoke passed through a temporary local proxy connected only to the isolated preview Worker. Existing synthetic Alpha/Beta fixture entries rendered and the supported logout returned to the generic login screen. No production, `main`, financial, destructive, or fixture-mutating operation was performed. This evidence is narrow and does not close H6; remaining role-specific, isolation, forbidden-action, and mobile/PWA cells remain subject to the H6 gate.

@@ -313,3 +313,11 @@ Validation passed: focused Hono/Express authorization suite **5 files / 61 tests
 The global Supervisor monitoring boundary is now explicit and enforced. The Worker’s `GET /api/garages` remains available to Supervisor but returns only `id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, and `isTrial`; identity, contact, PIN, rates, balances, revenue, and commission fields are excluded. Supervisor direct garage detail, vehicle, subscriber, and daily-counter reads are denied by Firestore Rules and the existing scoped Worker routes. Delegate monitoring reads remain available.
 
 Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Rules Emulator test, which confirmed delegate monitoring read allowed, direct garage/nested reads denied, and six mutation attempts denied. No live record contents were inspected.
+
+## 2026-10-07 continuation — synthetic Admin preview smoke
+
+- **Environment:** isolated local frontend proxy connected only to `rq-hono-preview` (`1.0.0-h5-preview`); no production Pages or Worker requests were used.
+- **Admin UI load:** **PASS**. The existing authorized synthetic Admin credential authenticated through the visible PIN keypad and loaded the Admin dashboard.
+- **Synthetic fixture visibility:** **PASS** for this smoke only. The dashboard rendered the existing synthetic `QA Garage Alpha` and `QA Garage Beta` fixture entries, together with other synthetic preview fixtures. No record was edited, created, deleted, exported, or used for a financial operation.
+- **Logout:** **PASS**. The supported logout-verification flow returned the browser to the generic PIN login screen.
+- **Boundary:** This is a narrow Admin dashboard/fixture-load smoke check. It does not close the remaining H6 role-specific operational, tenant-isolation, forbidden-action, mobile/PWA, or financial-cell gaps. H7–H9 remain blocked.

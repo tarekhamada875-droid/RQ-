@@ -960,3 +960,9 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - `GET /api/garages` now gives Supervisor a sanitized global overview containing only `id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, and `isTrial`. Sensitive identity/contact/PIN/rate/balance/revenue/commission fields are omitted.
 - Firestore Rules now deny Supervisor direct reads of garage documents, garage lists, vehicles, subscribers, and daily counters. Existing Worker direct-detail/dashboard routes continue to deny Supervisor through garage scope policy. Delegate monitoring reads remain allowed.
 - Focused validation passed **3 files / 65 tests**; the Rules Emulator passed with delegate read allowed, direct garage/nested reads denied, and six mutation attempts denied. Full gates, commit/push, and preview redeployment remain next.
+
+### 2026-10-07 continuation — Admin preview smoke
+
+- **Result:** Synthetic Admin preview UI smoke **PASS**. A temporary local frontend proxy routed only `/api/*` to `rq-hono-preview`; the Admin dashboard loaded, showed the existing synthetic QA Garage Alpha and QA Garage Beta entries, and the supported logout returned to the generic PIN login screen.
+- **Safety:** No credential was recorded. No account, garage, vehicle, subscriber, financial value, production resource, `main`, or application source was modified. The throwaway proxy configuration and service were removed afterward; the branch remained clean.
+- **Disposition:** This is narrow dashboard/fixture-load evidence only. H6 remains open for the broader role-specific operational, isolation, forbidden-action, mobile/PWA, and financial-boundary review. H7–H9 remain blocked.

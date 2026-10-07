@@ -203,3 +203,7 @@ The owner-approved policy was applied locally: Supervisor remains read/monitorin
 The previously open Supervisor list/detail mismatch is resolved locally. Supervisor global garage monitoring is now a sanitized Worker response containing only operational overview fields (`id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, `isTrial`). Sensitive identity/contact/PIN/rate/balance/revenue/commission fields are removed. Direct Firestore reads for garage documents, vehicles, subscribers, and daily counters are denied to Supervisor; individual Worker garage/detail routes already deny Supervisor by scope policy. Delegate monitoring reads remain available.
 
 Focused tests passed **3 files / 65 tests** and the Rules Emulator test passed. The correction is ready for full local gates and preview deployment; no live record body was inspected.
+
+## 2026-10-07 continuation — Admin preview smoke evidence
+
+A synthetic preview-only Admin smoke was completed through a temporary local frontend proxy targeting only the isolated Hono preview Worker. The Admin dashboard loaded successfully and displayed the existing synthetic Alpha/Beta fixture entries; the supported logout flow returned to the PIN login screen. No application data was created, edited, deleted, exported, or used for payment/financial activity. This narrow smoke does not close the remaining H6 matrix gaps; H7–H9 remain blocked.
