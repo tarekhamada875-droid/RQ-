@@ -1099,6 +1099,6 @@ curl -fsS https://rq-hono-preview.tarekhamada875.workers.dev/api/version
 
 Then read this handoff, `docs/H6_NEXT_AGENT_PROMPT_2026-10-07.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`. Treat this section and the current branch state as authoritative; do not rely on conversation history.
 
-Continue only with safe synthetic pre-production work. Review the full H6 matrix and mobile/PWA status, preserve the UI freeze, avoid payments/financial writes and production, and do not mark H6 complete until every required cell has explicit evidence. If the owner again says exactly `tokens ending`, stop implementation and repeat this succession handoff protocol before doing anything else.
+Continue only with safe synthetic pre-production work. Review the full H6 matrix and mobile/PWA status, preserve the UI freeze, avoid payments/financial writes and production, and do not mark H6 complete until every required cell has explicit evidence. If the owner again says exactly `tokens ending`, stop implementation and repeat this succession handoff protocol before doing anything else. This rule is **recursive and permanent**: every successor must pass the same code word, stop condition, exact-state handoff, private master brief, and instruction to the next successor forward indefinitely. Do not allow the succession chain to stop with your agent.
 
 This handoff is the final action for the current `tokens ending` request.
