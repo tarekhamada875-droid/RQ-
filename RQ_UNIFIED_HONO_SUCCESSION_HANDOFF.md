@@ -1132,3 +1132,8 @@ The 390×844 portrait, five-touch synthetic Admin session opened the normal **Ga
 ## 2026-10-07 temporary Supervisor mobile acceptance
 
 A temporary synthetic Supervisor was provisioned through the desktop Admin People UI, then logged in from a separate 390×844 portrait, five-touch Chromium session. The generated PIN opened the restricted delegate-monitoring dashboard without Admin navigation or controls. The temporary synthetic Supervisor records were deleted via the supported Admin UI and verified absent. **Supervisor mobile login/restricted dashboard: PASS.** No financial or production operation occurred.
+
+
+## 2026-10-07 temporary Delegate mobile acceptance
+
+A temporary synthetic Delegate was provisioned through desktop Admin, then tested in a separate 390×844 portrait, five-touch Chromium session. PIN-only login opened the restricted Delegate dashboard with garage, performance, pending-request, and commission-summary sections; Admin navigation was absent. No financial action was activated. The temporary Delegate was revoked through the supported details flow and verified absent. **Delegate mobile login/restricted dashboard: PASS.**

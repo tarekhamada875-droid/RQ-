@@ -315,3 +315,8 @@ The 390×844 portrait Admin session opened the normal **Garages** and **People**
 ## 2026-10-07 temporary Supervisor mobile result
 
 A temporary synthetic Supervisor was created via the desktop Admin People UI, then tested in a separate 390×844 portrait, five-touch session. The generated PIN opened the restricted Supervisor dashboard with delegate-scoped monitoring content and without Admin navigation. The temporary synthetic records were deleted afterward and verified absent. **Supervisor mobile login/restricted dashboard: PASS.** No financial workflow was run.
+
+
+## 2026-10-07 temporary Delegate mobile result
+
+A desktop-provisioned synthetic Delegate completed the PIN-only login in a separate 390×844 portrait, five-touch session. The restricted Delegate dashboard rendered garage, performance, pending-request, and commission-summary sections without Admin navigation. The temporary Delegate was revoked afterward and verified absent. **Delegate mobile login/restricted dashboard: PASS.** No recharge, wallet, settlement, or purchase workflow was run.

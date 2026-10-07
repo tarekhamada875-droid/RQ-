@@ -558,3 +558,8 @@ Admin mobile acceptance now includes the dashboard plus normal read-only **Garag
 ## 2026-10-07 temporary Supervisor mobile result
 
 Supervisor mobile acceptance is **PASS**: a desktop-provisioned synthetic Supervisor logged in at 390×844 portrait with five-touch emulation and saw only the restricted delegate-monitoring dashboard. Temporary synthetic Supervisor records were deleted and verified absent. Delegate, Staff, and Garage Owner mobile role coverage remains open; financial/recharge/wallet/subscription-purchase flows remain intentionally untested.
+
+
+## 2026-10-07 temporary Delegate mobile result
+
+Delegate mobile acceptance is **PASS**: a temporary synthetic Delegate logged in at 390×844 portrait with five-touch emulation and saw the restricted Delegate dashboard, including garage and performance sections without Admin navigation. The temporary Delegate was revoked and verified absent. Staff and Garage Owner mobile coverage remains open; financial/recharge/wallet/subscription-purchase flows remain intentionally untested.

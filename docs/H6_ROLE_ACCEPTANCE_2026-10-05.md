@@ -452,3 +452,8 @@ In the same 390×844 portrait, five-touch pre-production session, the synthetic 
 ## 2026-10-07 temporary Supervisor mobile acceptance — PASS
 
 A temporary synthetic Supervisor was provisioned through the desktop Admin People UI because mobile provisioning is guarded by the orientation layer. In a separate 390×844 portrait, five-touch Chromium session, its generated PIN opened the restricted Supervisor dashboard. The visible result showed the delegate-scoped monitoring list and did not expose the Admin navigation or Admin controls. No financial, recharge, wallet, or subscription action was used. The temporary Supervisor fixtures were then deleted through the supported Admin UI; verification showed zero remaining records with the synthetic test name. **Supervisor mobile login and restricted-dashboard rendering: PASS.**
+
+
+## 2026-10-07 temporary Delegate mobile acceptance — PASS
+
+A temporary synthetic Delegate was provisioned through the desktop Admin People UI. In a separate 390×844 portrait, five-touch Chromium session, the PIN-only Delegate entry flow opened the restricted Delegate dashboard. The dashboard rendered `لوحة المندوب`, `جراجاتي`, performance reporting, pending requests, and commission summary content; no Admin navigation or controls were exposed. No recharge, wallet, settlement, purchase, or other financial action was activated. The temporary Delegate was revoked through the supported Delegate details flow; the Admin list returned to the single pre-existing synthetic Delegate and no temporary name remained. **Delegate mobile login and restricted dashboard rendering: PASS.**
