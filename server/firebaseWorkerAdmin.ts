@@ -160,7 +160,14 @@ class FirestoreBatch {
 
 class FirestoreTransaction extends FirestoreBatch {
   constructor(private readonly transactionId: string) { super(); }
-  async get(ref: DocumentReference): Promise<DocumentSnapshot> { return new DocumentSnapshot(await activeDb!.getDocument(ref.name, this.transactionId)); }
+  async get(ref: DocumentReference | QueryReference): Promise<DocumentSnapshot | { empty: boolean; docs: DocumentSnapshot[] }> {
+    if (ref instanceof QueryReference) {
+      const rawDocuments = await activeDb!.query(ref, this.transactionId);
+      const docs = rawDocuments.map((raw) => new DocumentSnapshot(raw));
+      return { empty: docs.length === 0, docs };
+    }
+    return new DocumentSnapshot(await activeDb!.getDocument(ref.name, this.transactionId));
+  }
   get id(): string { return this.transactionId; }
   get pendingWrites(): Array<{ reference: string; data: JsonMap; method: string }> { return this.writes; }
 }
@@ -197,7 +204,7 @@ class FirestoreRest {
     if (!response.ok) throw new Error(`FIRESTORE_GET_FAILED:${response.status}`);
     return response.json();
   }
-  async query(query: QueryReference): Promise<any[]> {
+  async query(query: QueryReference, transaction?: string): Promise<any[]> {
     const from: JsonMap = { collectionId: query.collectionPath.split('/').pop() || '', allDescendants: query.allDescendants };
     const structuredQuery: JsonMap = { from: [from] };
     if (query.filters.length === 1) {
@@ -208,7 +215,7 @@ class FirestoreRest {
     }
     if (query.sort) structuredQuery.orderBy = [{ field: { fieldPath: query.sort.field }, direction: query.sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }];
     if (query.maxResults) structuredQuery.limit = query.maxResults;
-    const response = await firestoreRequest(`${this.documentsRoot}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery }) });
+    const response = await firestoreRequest(`${this.documentsRoot}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery, ...(transaction ? { transaction } : {}) }) });
     if (!response.ok) throw new Error(`FIRESTORE_QUERY_FAILED:${response.status}`);
     const rows = await response.json() as Array<{ document?: any }>;
     return rows.filter((row) => row.document).map((row) => row.document);
