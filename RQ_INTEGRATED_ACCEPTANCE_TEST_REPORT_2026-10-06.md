@@ -2,7 +2,7 @@
 
 ## Decision
 
-**BLOCKED — H6 remains incomplete, but the live role-authentication/session/authorization slice now has browser evidence for Admin, Delegate, Garage Owner, Staff, and Supervisor on isolated pre-production fixtures. The latest Supervisor run passed UI login, refresh, and logout; Admin-summary, fake-garage-summary, and forbidden Supervisor-creation probes returned HTTP 403. The allowed garage-list endpoint returned 200, but its body was discarded and its returned-data scope remains unassessed. The newer synthetic Delegate account still showed zero garages; its membership/cross-garage scope remains separate from the prior QA Alpha/Beta fixture. Vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the safe non-payment boundary.** No production or `main` changes were made.
+**OPEN — H6 remains incomplete. Browser login/session evidence covers Admin, Delegate, Garage Owner, Staff, and Supervisor, but a source audit found a Supervisor permission mismatch: the garage-list endpoint and direct Firestore rules grant global reads, while Hono single-garage and dashboard-summary routes deny Supervisor. The live list body was discarded, so no actual document fields were inspected. Admin-summary, fake-garage-summary, and forbidden Supervisor-creation probes returned HTTP 403; the UI login, refresh, and logout passed. Vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the safe non-payment boundary.** No production or `main` changes were made.
 
 ## Tested build and topology
 
@@ -43,11 +43,11 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Delegate | **PASS** — visible entry opened the PIN-only form and an owner-authorized synthetic PIN authenticated against preview | **PASS** on the prior QA fixture; refresh not retested for the new account | **PASS** on the prior QA fixture; the new test session was released with the app's server helper for cleanup (not a logout-challenge test) | Prior QA fixture: Alpha visible, Beta absent, direct Beta reads returned **403**. New account: **0 garages** visible; Admin-summary GET returned **403** | Cross-garage scope for the zero-garage account, commission/settlement, and other operational workflows remain **BLOCKED/NOT TESTED** |
 | Garage Owner | **PASS** | **PASS** | **PASS** | Synthetic garage scope: **PASS** | Vehicle/subscriber/recharge/report lifecycle: **BLOCKED** to avoid unapproved writes |
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
-| Supervisor | **PASS** — synthetic fixture authenticated through visible keypad | **PASS** — restricted view and one active/current session restored | **PASS** — normal UI logout returned to login and cleared role/token state | Restricted People/Delegates view: **PASS**; Admin summary, fake-garage dashboard summary, and Supervisor-create denial: **403**. `GET /api/garages` returned **200**, body discarded | Existing-garage list/detail scope, remaining Admin-only tabs, and operational workflows remain **NOT ASSESSED/BLOCKED** |
+| Supervisor | **PASS** — synthetic fixture authenticated through visible keypad | **PASS** — restricted view and one active/current session restored | **PASS** — normal UI logout returned to login and cleared role/token state | Restricted People/Delegates view: **PASS**; Admin summary, fake-garage dashboard summary, and Supervisor-create denial: **403**. `GET /api/garages` returned **200**; source audit shows an unfiltered global list | Global-list versus per-garage permission mismatch **OPEN**; live record fields were not inspected |
 
 ## Complete feature-by-role matrix
 
-`PASS` means browser evidence and technical evidence were both available. `BLOCKED` means the scenario was not safely verifiable with the available synthetic fixture or browser context. `N/A` means the role is intentionally not permitted to perform the capability; the denial is covered technically where noted.
+`PASS` means browser evidence and technical evidence were both available. `BLOCKED` means the scenario was not safely verifiable with the available synthetic fixture or browser context. `OPEN` means the observed permission surfaces conflict or the intended role boundary is not defined. `N/A` means the role is intentionally not permitted to perform the capability; the denial is covered technically where noted.
 
 | Capability | Admin | Delegate | Garage owner | Staff | Supervisor | Technical evidence |
 |---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Dashboard/navigation | PASS | PASS | PASS | PASS | PASS | Routing and role matrix tests; Delegate PIN-only browser login loaded its dashboard |
 | Garage creation | BLOCKED | BLOCKED | N/A | N/A | N/A | Authorization tests pass; browser workflow blocked |
 | Garage approval/rejection | BLOCKED | N/A | N/A | N/A | N/A | Server authorization tests pass |
-| Garage details/status | BLOCKED | BLOCKED — tested new account showed 0 garages; prior QA fixture scope evidence is separate | PASS | N/A | BLOCKED — garage-list status 200, body discarded; detail scope not assessed | Supervisor `GET /api/garages` returned 200 but its body was discarded; fake-garage dashboard summary returned 403; existing garage details were not probed |
+| Garage details/status | BLOCKED | BLOCKED — tested new account showed 0 garages; prior QA fixture scope evidence is separate | PASS | N/A | **OPEN** — unfiltered list allowed; individual Hono detail/summary denied; Firestore read allowed | `GET /api/garages` status 200 and source returns all documents for Supervisor; no live fields inspected. Firestore rules permit Supervisor reads; Worker detail/summary use `canManageGarageScopedData` and deny Supervisor. |
 | Garage deletion/maintenance | BLOCKED | N/A | N/A | N/A | N/A | Maintenance/deletion authorization tests pass |
 | Staff management | BLOCKED | N/A | N/A | N/A | N/A | Authorization tests pass; browser mutation blocked |
 | Delegate management | BLOCKED | N/A | N/A | N/A | BLOCKED | Delegate/supervisor authorization tests pass |
@@ -84,7 +84,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Audit/history | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Operation trace/audit tests pass |
 | Offline/retry | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Resilience/API boundary tests pass |
 | Mobile/PWA | BLOCKED | BLOCKED | BLOCKED | BLOCKED | BLOCKED | Not run in this acceptance continuation |
-| Cross-garage isolation | BLOCKED | **PASS** for prior QA Garage Alpha/Beta direct reads; **BLOCKED/NOT TESTED** for the new zero-garage account | BLOCKED | BLOCKED | **BLOCKED/NOT TESTED** — fake nonexistent garage-summary returned 403; existing foreign-garage data not probed | Prior QA fixture showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403. New Delegate showed 0 garages. Owner/Staff own-garage and fake-scope checks are recorded below. Supervisor’s fake-ID summary returned 403; `GET /api/garages` returned 200 but its body was discarded, so list scope remains unassessed. |
+| Cross-garage isolation | BLOCKED | **PASS** for prior QA Garage Alpha/Beta direct reads; **BLOCKED/NOT TESTED** for the new zero-garage account | BLOCKED | BLOCKED | **OPEN** — global list/Firestore read versus denied Hono detail/summary | Prior QA fixture showed Alpha only after refresh; direct Beta record and dashboard-summary GETs returned 403. New Delegate showed 0 garages. Owner/Staff own-garage and fake-scope checks are recorded below. Supervisor list is global by source; direct Hono item/summary paths deny Supervisor, while Firestore permits broad reads; actual response fields were not inspected. |
 
 ## Security finding and fix
 
@@ -174,3 +174,12 @@ Status-only authorization probes returned **200** for `GET /api/garages` (its bo
 Temporary 5174–5176 preview UIs were stopped, temporary configs removed, and their browser storage/caches cleared. The synthetic Supervisor account remains in pre-production for the owner’s planned test-account cleanup. No financial, payment, recharge, vehicle, subscriber, production, or `main` operation occurred.
 
 **Disposition:** Supervisor UI login, restricted dashboard, refresh persistence, logout, and the tested role denials **PASS**. The general garage-list route returned 200, but its body was deliberately discarded; whether the list is appropriately scoped remains **NOT ASSESSED**. H6 remains incomplete because vehicle/subscriber, financial/recharge/subscription, and mobile/PWA cells were not exercised in this safe non-payment run. No production or `main` changes were made.
+
+
+## 2026-10-07 continuation — Supervisor global-read scope audit
+
+Source review resolves what the previously discarded Supervisor list response would contain by policy, without fetching any garage records. `server/cloudflareWorker.ts:3076–3096` allows `admin`, `supervisor`, and `delegate`; only the delegate path applies a filter. For a Supervisor the Worker queries the whole `garages` collection and returns every stored document without field redaction in this handler. `firestore.rules:653–686` also allows active Supervisors to read/list garage documents and read nested vehicles/subscribers, while `useGarageSync.ts:173–185` subscribes to the full garages collection in `admin_dashboard`. The current role models/query path have no Supervisor-to-garage assignment field.
+
+The Hono single-garage and dashboard-summary routes use `canManageGarageScopedData` and reject Supervisor; the focused role matrix covers that denial. This differs from the global list/Firestore permissions. H6 calls for Supervisor monitoring but does not define whether this is global or assignment-scoped. No record contents were inspected, so the report does not claim that any particular sensitive field was returned. This is an **open policy-consistency finding**, not a pass for cross-garage isolation. No source, UI, rules, accounts, production, or `main` were changed. Focused local regression: **27/27 tests pass** across the Worker authorization matrix and garage-route tests; the existing list test covers Admin only, not Supervisor.
+
+**Required before closing H6:** explicitly set the Supervisor read boundary, then align Worker and Firestore permissions and add tests for the chosen list/detail behavior and sensitive-field redaction. Until then, keep Supervisor garage-list/detail scope **OPEN** and do not represent it as a tenant-isolation pass.
