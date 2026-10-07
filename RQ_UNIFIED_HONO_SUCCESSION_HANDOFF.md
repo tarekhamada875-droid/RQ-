@@ -966,3 +966,10 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - **Result:** Synthetic Admin preview UI smoke **PASS**. A temporary local frontend proxy routed only `/api/*` to `rq-hono-preview`; the Admin dashboard loaded, showed the existing synthetic QA Garage Alpha and QA Garage Beta entries, and the supported logout returned to the generic PIN login screen.
 - **Safety:** No credential was recorded. No account, garage, vehicle, subscriber, financial value, production resource, `main`, or application source was modified. The throwaway proxy configuration and service were removed afterward; the branch remained clean.
 - **Disposition:** This is narrow dashboard/fixture-load evidence only. H6 remains open for the broader role-specific operational, isolation, forbidden-action, mobile/PWA, and financial-boundary review. H7–H9 remain blocked.
+
+## Admin People-fixture acceptance — 2026-10-07 continuation
+
+- The previously observed Admin login wait was not a failed login: browser resource timing and diagnostic events show the second request completed successfully after approximately 5.6 seconds, and the UI transitioned to `admin_dashboard` with `isLoading: false`.
+- In the isolated preview-only local proxy, the authenticated Admin dashboard loaded. The read-only People view showed the synthetic QA delegate; the Supervisors tab showed `H6 Synthetic Supervisor 2026-10-06` and `QA--Supervisor`.
+- No add/edit/delete controls were activated, no PIN or credential was recorded, and no application or fixture data was modified.
+- This extends Admin-side fixture evidence only. H6 remains open for Supervisor operational login and isolation, forbidden-action coverage, mobile/PWA acceptance, and financial-boundary review.

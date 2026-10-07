@@ -321,3 +321,11 @@ Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Ru
 - **Synthetic fixture visibility:** **PASS** for this smoke only. The dashboard rendered the existing synthetic `QA Garage Alpha` and `QA Garage Beta` fixture entries, together with other synthetic preview fixtures. No record was edited, created, deleted, exported, or used for a financial operation.
 - **Logout:** **PASS**. The supported logout-verification flow returned the browser to the generic PIN login screen.
 - **Boundary:** This is a narrow Admin dashboard/fixture-load smoke check. It does not close the remaining H6 role-specific operational, tenant-isolation, forbidden-action, mobile/PWA, or financial-cell gaps. H7–H9 remain blocked.
+
+## 2026-10-07 — Admin People-fixture acceptance
+
+- The second synthetic Admin login completed successfully after approximately 5.6 seconds; the earlier screenshot had been captured while the request was still in flight.
+- The authenticated Admin dashboard loaded in the isolated preview-only local proxy.
+- Read-only People inspection showed the synthetic QA delegate and the Supervisors tab showed both `H6 Synthetic Supervisor 2026-10-06` and `QA--Supervisor`.
+- No add, edit, delete, PIN reveal, or other mutation control was activated. No credentials or sensitive values were recorded.
+- This extends the prior Admin dashboard smoke evidence; Supervisor operational login, isolation, forbidden-action, mobile/PWA, and financial-boundary checks remain open.

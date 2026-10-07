@@ -207,3 +207,7 @@ Focused tests passed **3 files / 65 tests** and the Rules Emulator test passed. 
 ## 2026-10-07 continuation — Admin preview smoke evidence
 
 A synthetic preview-only Admin smoke was completed through a temporary local frontend proxy targeting only the isolated Hono preview Worker. The Admin dashboard loaded successfully and displayed the existing synthetic Alpha/Beta fixture entries; the supported logout flow returned to the PIN login screen. No application data was created, edited, deleted, exported, or used for payment/financial activity. This narrow smoke does not close the remaining H6 matrix gaps; H7–H9 remain blocked.
+
+## 2026-10-07 — Read-only Admin People acceptance
+
+The isolated preview-only Admin session was revalidated without repeating credential submission after the request completed. The Admin dashboard loaded, and the People section exposed the synthetic QA delegate plus both the H6 synthetic Supervisor and QA Supervisor entries. This was a read-only fixture visibility check; no records, credentials, PINs, or application state were changed. The result is supporting evidence only and does not close the remaining Supervisor-specific operational matrix.

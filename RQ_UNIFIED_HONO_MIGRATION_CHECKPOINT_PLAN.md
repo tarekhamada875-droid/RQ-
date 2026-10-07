@@ -469,3 +469,7 @@ The Supervisor monitoring boundary is now explicit: global overview only through
 ### 2026-10-07 H6 continuation — Admin preview smoke
 
 A read-only synthetic Admin dashboard smoke passed through a temporary local proxy connected only to the isolated preview Worker. Existing synthetic Alpha/Beta fixture entries rendered and the supported logout returned to the generic login screen. No production, `main`, financial, destructive, or fixture-mutating operation was performed. This evidence is narrow and does not close H6; remaining role-specific, isolation, forbidden-action, and mobile/PWA cells remain subject to the H6 gate.
+
+## 2026-10-07 — Additional H6 evidence: Admin People fixtures
+
+The isolated preview-only Admin UI acceptance continued successfully after the authentication request completed. The Admin People view showed the synthetic delegate and both synthetic/QA Supervisor records. The check was read-only and did not activate mutation controls. H6 remains open for the remaining Supervisor role, isolation, forbidden-action, mobile/PWA, and financial-boundary cells.
