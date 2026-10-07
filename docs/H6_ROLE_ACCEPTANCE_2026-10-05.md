@@ -372,3 +372,12 @@ The H5 Preview Worker deployed successfully for commit `7bc3d3f`; browser-side c
 The Supervisor role claim succeeded. `GET /api/garages` returned HTTP 200 with 13 monitoring records whose observed field names were limited to `id`, `name`, `status`, `isTrial`, `carsInside`, `dailyCapacity`, and `todayCount`; no PIN, phone, owner/contact, rate, balance, revenue, commission, wallet, or auth-pin fields were present. A specific garage dashboard-detail request and Admin summary request both returned HTTP 403. Valid-but-nonexistent synthetic vehicle check-in and subscriber update probes returned HTTP 403, as did empty-body Supervisor create and Delegate update probes at the authorization boundary. The temporary Supervisor fixture was removed with an authenticated Admin delete returning HTTP 200.
 
 The normal UI shell still did not transition reliably from the keypad after the backend session claim and displayed the generic connection/loading state; therefore this evidence validates the deployed Worker/API authorization boundary, not a complete visual UI lifecycle pass. H6 remains **OPEN/BLOCKED** pending the remaining browser lifecycle cells and resolution of the frontend authenticated-login/loading issue.
+
+
+## 2026-10-07 corrected browser UI routing verification
+
+The earlier generic connection/loading observation was traced to the temporary Sandbox test harness: the public `*.manus.computer` host was not recognized by the frontend API URL resolver, so UI requests bypassed the same-origin preview proxy and targeted the default Worker. No application login defect was established. Re-running with the preview API base explicitly pinned to the same-origin proxy produced the expected result.
+
+The supplied synthetic Admin PIN reached the full Admin dashboard, including the system navigation and 13-garage overview. A temporary synthetic Supervisor was then created, and a fresh anonymous identity completed the normal keypad login; the UI reached the restricted Supervisor dashboard showing only the delegate list rather than Admin controls. The Supervisor fixture was deleted with HTTP 200, both test sessions were released with HTTP 200, Firebase transient auth state was cleared, and the temporary proxy was removed. No production or financial operation occurred.
+
+The remaining H6 work is the safe Garage Owner/Staff vehicle and subscriber lifecycle matrix. The previous UI blocker is **RESOLVED as a test-harness routing issue**, not an application login failure.
