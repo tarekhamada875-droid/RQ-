@@ -973,3 +973,10 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - In the isolated preview-only local proxy, the authenticated Admin dashboard loaded. The read-only People view showed the synthetic QA delegate; the Supervisors tab showed `H6 Synthetic Supervisor 2026-10-06` and `QA--Supervisor`.
 - No add/edit/delete controls were activated, no PIN or credential was recorded, and no application or fixture data was modified.
 - This extends Admin-side fixture evidence only. H6 remains open for Supervisor operational login and isolation, forbidden-action coverage, mobile/PWA acceptance, and financial-boundary review.
+
+## PWA service-worker asset correction — 2026-10-07 continuation
+
+- The mobile/PWA audit found an existing registration for `/sw.js` in `index.html` with no source `public/sw.js` asset.
+- Added a minimal lifecycle-only `public/sw.js`: `install` calls `skipWaiting`, `activate` calls `clients.claim`, and there is intentionally no fetch/cache handler. Authenticated API, Firebase, and business data remain network-authoritative.
+- `npm run lint` and `npm run build:web` passed; the build output contained `sw.js` and `manifest.json`, and generated output was removed afterward.
+- This corrects the PWA asset contract only; offline business behavior, mobile visual/interaction coverage, and the remaining H6 workflow cells are still open.

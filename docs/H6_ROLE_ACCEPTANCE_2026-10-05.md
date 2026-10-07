@@ -329,3 +329,10 @@ Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Ru
 - Read-only People inspection showed the synthetic QA delegate and the Supervisors tab showed both `H6 Synthetic Supervisor 2026-10-06` and `QA--Supervisor`.
 - No add, edit, delete, PIN reveal, or other mutation control was activated. No credentials or sensitive values were recorded.
 - This extends the prior Admin dashboard smoke evidence; Supervisor operational login, isolation, forbidden-action, mobile/PWA, and financial-boundary checks remain open.
+
+## 2026-10-07 — PWA asset contract correction
+
+- **Finding:** `index.html` registered `/sw.js`, but the source `public/` tree did not contain that asset; local development therefore logged a failed service-worker registration.
+- **Correction:** Added a minimal lifecycle-only `public/sw.js` that activates and claims clients but deliberately does not cache or intercept API, Firebase, or authenticated application traffic.
+- **Validation:** `npm run lint` passed; `npm run build:web` passed; the production output contained `sw.js`, `manifest.json`, and the manifest/service-worker references in `index.html`; generated build output was removed afterward.
+- **Boundary:** This is a PWA installability/lifecycle correction only. Offline business-data behavior is not claimed, and no user, financial, or application records were changed.

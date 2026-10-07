@@ -473,3 +473,7 @@ A read-only synthetic Admin dashboard smoke passed through a temporary local pro
 ## 2026-10-07 — Additional H6 evidence: Admin People fixtures
 
 The isolated preview-only Admin UI acceptance continued successfully after the authentication request completed. The Admin People view showed the synthetic delegate and both synthetic/QA Supervisor records. The check was read-only and did not activate mutation controls. H6 remains open for the remaining Supervisor role, isolation, forbidden-action, mobile/PWA, and financial-boundary cells.
+
+## 2026-10-07 — Mobile/PWA asset correction
+
+The PWA registration contract was corrected by supplying the previously missing `/sw.js`. The worker is intentionally network-only: no authenticated/API/Firebase traffic is cached or intercepted. Lint and production web build validation passed. Mobile visual/interaction coverage and offline business behavior remain separate acceptance cells.

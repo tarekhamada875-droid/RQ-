@@ -211,3 +211,7 @@ A synthetic preview-only Admin smoke was completed through a temporary local fro
 ## 2026-10-07 — Read-only Admin People acceptance
 
 The isolated preview-only Admin session was revalidated without repeating credential submission after the request completed. The Admin dashboard loaded, and the People section exposed the synthetic QA delegate plus both the H6 synthetic Supervisor and QA Supervisor entries. This was a read-only fixture visibility check; no records, credentials, PINs, or application state were changed. The result is supporting evidence only and does not close the remaining Supervisor-specific operational matrix.
+
+## 2026-10-07 — PWA service-worker contract
+
+The mobile/PWA audit found that the existing HTML registered `/sw.js` while the source public asset was missing. A minimal lifecycle-only service worker was added; it performs no caching and does not intercept API, Firebase, or authenticated data requests. TypeScript and the production web build passed, including output assertions for the manifest and service-worker assets. This validates the PWA asset contract only, not offline business-data behavior.
