@@ -350,3 +350,14 @@ A focused Admin Staff state-synchronization fix and regression test were added. 
 ### Post-cleanup local validation
 
 The focused deletion/policy/Worker suite passed **3 files / 13 tests**. `npm run ci:check` passed clean-install verification, TypeScript lint, **102 Vitest files / 584 tests**, production bundling, and artifact verification; `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were removed.
+
+
+## 2026-10-07 continuation — Owner persistence retest and delete timeout
+
+A separate synthetic free-trial fixture, `H6 Owner Listener Retest 20261007`, was tested only on the isolated preview. Its Owner dashboard returned after one full-page reload with the same 48-hour trial balance and preserved local session presence (**desktop reload persistence: PASS**). Sampled Firestore Listen resource entries reported HTTP 200 (12 before and 11 after reload), with no filtered console/unhandled errors captured; no data-change event was generated, so listener delivery remains **OPEN/UNVERIFIED**. The Sandbox browser stayed at 1280×1100 with zero touch points; mobile behavior was not tested.
+
+The supported Admin delete flow for this newly created fixture remained at 50%. The browser's resource-timing entry showed status 0 at approximately 15.0 seconds, matching the API client's default 15-second timeout; no successful delete response or deletion-job status was observed. A later fresh Admin Garage list omitted this exact fixture. Record the evidence as **absent from the fresh list, with backend completion response/job status unverified**—not as a directly confirmed job completion. No retry or direct database mutation occurred. The older Owner cleanup blocker documented above remains separate and unresolved. Owner and Admin logout returned to the generic login screen; the temporary preview UI/config were stopped/removed and port 4173 was closed.
+
+At the owner's request, only the `/api/garages/delete` frontend call now has a 30,000 ms timeout. Its regression test checks the serialized request and the actual timeout timer. This is a longer wait budget, not an async job-status solution; operations exceeding 30 seconds can still leave an ambiguous client outcome.
+
+Validation passed: focused deletion/policy/Worker tests **4 files / 14 tests**; `npm run ci:check` **102 files / 584 tests**, production bundling and artifact verification; `npm run maintainability:check`; and `git diff --check`. Generated build artifacts were cleaned. H6 remains **OPEN/BLOCKED**; Supervisor authorization findings, real-time Owner listener delivery, mobile Owner acceptance, the earlier Owner cleanup item, other required role cells, and restricted financial scenarios remain outstanding. H7–H9 remain pending; production and `main` were untouched.

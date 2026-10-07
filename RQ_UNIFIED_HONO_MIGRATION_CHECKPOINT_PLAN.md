@@ -594,3 +594,16 @@ Source review confirms the current Worker route calls `deleteGarageOwnedData`, d
 ### Post-cleanup validation — 2026-10-07
 
 The focused garage-deletion/operational-policy/Worker regression run passed **3 files / 13 tests**. `npm run ci:check` passed clean-install verification, TypeScript lint, **102 Vitest files / 584 tests**, production build, and artifact verification. `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were cleaned. The change remains confined to `migration/unified-hono`; the H5 Preview Worker and Production Gate had both passed for source head `bb53570`. H6 is still OPEN/BLOCKED; H7 has not begun.
+
+
+## 2026-10-07 H6 Owner reload retest and delete-timeout correction
+
+A separately named synthetic preview fixture, `H6 Owner Listener Retest 20261007`, authenticated through the supported Owner UI. After one full-page reload, the same Owner dashboard and 48-hour free-trial balance returned, with local session-presence state retained; bounded desktop reload persistence is **PASS**. The sampled Firestore Listen resources reported status 200 (12 before and 11 after refresh), and no filtered console/unhandled errors were captured, but no synthetic data-change event was exercised. Real-time listener delivery therefore remains **OPEN/UNVERIFIED**. The browser was desktop-sized with zero touch points; no mobile result is claimed.
+
+The exact new fixture's standard Admin deletion flow remained at 50%. Its browser resource-timing entry ended with status 0 at approximately 15 seconds, consistent with the API client's default timeout. No success response or deletion-job status was observed. A later fresh Admin garage list omitted the target; record only **absent from fresh Admin list, completion response/job status unverified**. No retry or direct database mutation was performed. The older Owner fixture cleanup blocker is a separate record and remains unresolved. The Owner and Admin sessions were signed out normally; the temporary preview process/config were stopped/removed, and port 4173 was closed.
+
+Per the owner's explicit direction, `garageService.deleteGarage` now passes `timeoutMs: 30_000` only to the `/api/garages/delete` request. The regression test verifies the request body and that the API client schedules a 30,000 ms timeout. This improves the wait window but does not implement asynchronous deletion-status polling; operations exceeding 30 seconds may still produce an ambiguous client result and warrant a durable status flow.
+
+**Validation:** focused deletion/policy/Worker tests passed (**4 files / 14 tests**); `npm run ci:check` passed (**102 Vitest files / 584 tests**, production bundling and artifact verification); `npm run maintainability:check` and `git diff --check` passed. Build artifacts were removed.
+
+**Disposition:** this continuation closes only the bounded desktop reload-persistence check and confirms the new synthetic name is absent from a fresh Admin list. It does not close Owner listener delivery, mobile Owner acceptance, the older Owner cleanup blocker, Staff operational acceptance, Supervisor permission findings, other role/route cells, or intentionally untested financial workflows. H6 remains **OPEN/BLOCKED**; H7–H9 remain pending. No production deploy, production mutation, or `main` change occurred.

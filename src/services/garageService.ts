@@ -323,7 +323,8 @@ export const garageService = {
 
       await apiFetch('/api/garages/delete', {
         method: 'POST',
-        body: { garageId: id }
+        body: { garageId: id },
+        timeoutMs: 30_000
       });
 
       onProgress?.({ total: 100, processed: 100, percentage: 100, phase: 'complete' });

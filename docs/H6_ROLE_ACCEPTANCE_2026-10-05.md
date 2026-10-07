@@ -508,3 +508,23 @@ The Admin Staff panel now synchronizes successful Staff create/delete results in
 ### Validation after cleanup
 
 The focused deletion/policy/Worker regression run passed **3 files / 13 tests**. The full `npm run ci:check` passed its clean-install verification, TypeScript lint, full suite (**102 files / 584 tests**), production build, and artifact checks. `npm run maintainability:check` and `git diff --check` also passed. Generated `dist/` and `build/` artifacts were removed afterward.
+
+
+## 2026-10-07 Owner reload/listener retest and delete-timeout follow-up
+
+**Scope:** A separate synthetic fixture, `H6 Owner Listener Retest 20261007`, was created through the supported Admin UI on the isolated preview. It used the free two-day trial, no phone number, and the minimum required rate field; no vehicle, checkout, payment, recharge, wallet, settlement, or purchase action was used. This is distinct from the older Owner fixture whose cleanup remains **BLOCKED/UNVERIFIED** in the section above.
+
+| Check | Observed evidence | Disposition |
+|---|---|---|
+| Owner session persistence | The Owner dashboard returned after a full preview-page reload with the same 48-hour trial balance; local session-presence booleans remained true. | **PASS** for one desktop reload only. |
+| Firestore listener sample | 12 pre-refresh and 11 post-refresh `firestore.googleapis.com` Listen resource entries reported status 200; filtered console diagnostics and unhandled errors/rejections were empty. No synthetic data-change event was generated. | **OPEN/UNVERIFIED** for real-time event delivery; the earlier listener concern is not closed. |
+| Mobile behavior | Sandbox browser remained desktop-sized (1280×1100) with zero touch points. | **NOT TESTED**; no mobile acceptance is claimed. |
+| New fixture cleanup | The standard Admin delete flow remained at 50% while the browser request exceeded its 15-second default. A resource-timing entry showed status 0 at about 15.0 seconds; no successful delete response or job-status record was observed. A later fresh Admin Garage list no longer showed this exact fixture. | **Absent from fresh Admin list; backend completion response/job status unverified.** No retry or direct database mutation was made. |
+
+The normal Owner and Admin logout flows returned the Sandbox browser to the generic login screen. The temporary preview UI and config were stopped/removed, and port 4173 was verified closed. No production or `main` action occurred.
+
+At the owner's direction, the frontend garage-delete request now explicitly uses a **30-second** timeout (`src/services/garageService.ts`); `src/__tests__/deleteGarage.test.ts` verifies both the actual serialized request and the 30,000 ms timer. This extends the client wait budget only; it does not add job polling or prove that larger deletions complete within 30 seconds. If an operation can exceed that window, a durable status/polling flow is still needed to avoid an ambiguous client timeout.
+
+**Validation after this change:** the focused delete/policy/Worker suite passed **4 files / 14 tests**; `npm run ci:check` passed with **102 Vitest files / 584 tests**, production bundling, and artifact verification. `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were removed.
+
+**H6 remains OPEN/BLOCKED.** The listener's real-time delivery, mobile Owner behavior, the older Owner-fixture cleanup blocker, the Supervisor permission-scope mismatch, remaining role/route cells, Staff operational gate, and intentionally untested financial workflows remain unresolved. H7–H9 remain pending.
