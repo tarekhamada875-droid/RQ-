@@ -523,3 +523,8 @@ The subscriber `409` blocker was a Worker adapter defect, not stale data: transa
 ## 2026-10-07 H6 addendum — PWA shell evidence
 
 The connected-browser check validated the built PWA shell: the web build passed, the existing manifest served successfully with standalone display, and the generated root-scoped service worker activated with static precaching and font-only runtime caching. No API or authenticated business-data caching was detected. The available connected browser exposed a landscape desktop viewport and did not provide mobile emulation, so mobile visual/touch/orientation and authenticated mobile workflow acceptance remain blocked. This does not close H6 or permit H7–H9.
+
+
+## 2026-10-07 final H6 matrix disposition
+
+Final local gates passed on the migration branch: 102 Vitest files / 582 tests, TypeScript lint, web/server/Cloudflare Worker builds, CI check, maintainability check, and diff check. H6 remains open because true mobile-device/touch acceptance is unavailable in the connected browser environment and financial/recharge/wallet/subscription-purchase workflows remain intentionally untested. H7–H9 remain blocked; no production or `main` change is authorized by this disposition.

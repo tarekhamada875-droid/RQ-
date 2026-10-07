@@ -413,3 +413,10 @@ Subscriber lifecycle is now **PASS** for this bounded preview acceptance. H6 sti
 - **Service-worker boundary:** the generated worker precaches static application assets and uses font-only runtime caching. Credential-free inspection found no `/api/` route or authenticated business-data caching.
 - **Mobile limitation:** the connected browser exposed a landscape desktop viewport; no mobile device emulation or narrow touch viewport was available through the current browser tool. Therefore mobile visual, touch-target, orientation, and authenticated mobile workflow acceptance remain **BLOCKED/UNTESTED**.
 - **Cleanup:** the temporary preview service/configuration and generated artifacts were removed; the worktree remained clean. No login was submitted and no account or synthetic record was changed during this check.
+
+
+## 2026-10-07 final H6 matrix review — local gate disposition
+
+The final local validation for the current migration branch passed: Vitest **102 files / 582 tests**, TypeScript lint, web/server/Cloudflare Worker builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. The latest isolated-preview evidence also confirms the sanitized Supervisor monitoring boundary and bounded Owner vehicle plus Subscriber lifecycle flows. The connected-browser built-PWA shell and service-worker evidence are recorded above.
+
+H6 remains **OPEN/BLOCKED**, not complete. The remaining blockers are the unavailable true mobile-device viewport/touch acceptance and the intentionally untested financial, recharge, wallet, and subscription-purchase workflows. Those boundaries must not be represented as PASS. H7, H8, and H9 remain blocked; production and `main` remain untouched.

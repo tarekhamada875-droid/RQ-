@@ -278,3 +278,10 @@ Focused tests passed 16/16; full Vitest passed 102 files/582 tests; TypeScript, 
 - Static precaching and Google Fonts caching were observed in the generated worker; no `/api/` or authenticated business-data caching route was present.
 - The connected browser exposed a landscape desktop viewport rather than a mobile-emulation viewport. Mobile visual/touch/orientation and authenticated mobile workflow cells therefore remain **BLOCKED/UNTESTED**. H6 remains open; H7–H9 remain blocked.
 - Temporary preview services/configuration/build output were removed. No login was submitted, no records were mutated, and production/main were untouched.
+
+
+## 2026-10-07 final H6 matrix review
+
+The current migration branch passed the final local gates: 102 Vitest files / 582 tests, TypeScript lint, production/server/Worker builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. The latest evidence supersedes earlier historical findings where applicable: Supervisor monitoring is locally corrected and sanitized, and bounded Owner vehicle plus Subscriber lifecycle acceptance passed in isolated preview.
+
+**Final disposition: OPEN/BLOCKED.** Mobile device/touch acceptance is not proven with the available browser environment, and financial/recharge/wallet/subscription-purchase workflows remain intentionally untested. H6 is not complete; H7–H9 remain blocked. No production or `main` change occurred.
