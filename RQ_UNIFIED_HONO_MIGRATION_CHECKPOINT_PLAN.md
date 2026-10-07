@@ -533,3 +533,8 @@ Final local gates passed on the migration branch: 102 Vitest files / 582 tests, 
 ## 2026-10-07 mobile-emulation shell result
 
 Real sandbox Chromium emulation at 390×844 portrait with five touch points passed the PWA login-shell, layout, and harmless keypad touch smoke check. The standalone manifest and active root-scoped service worker were also verified. Authenticated mobile workflows, offline business behavior, and all financial/recharge/subscription workflows remain open or untested; this result does not close H6.
+
+
+## 2026-10-07 authenticated mobile continuation — transport block
+
+The mobile shell passed, but the authorized synthetic Admin mobile login could not reach a dashboard because the temporary same-origin preview proxy returned HTML 500 and Node logged TLS `EPROTO wrong version number` when contacting the isolated Worker. Keep authenticated mobile workflows **BLOCKED/UNVERIFIED** until preview transport is healthy; do not infer a product regression or close H6.

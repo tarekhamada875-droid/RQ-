@@ -427,3 +427,8 @@ H6 remains **OPEN/BLOCKED**, not complete. The remaining blockers are the unavai
 A local headless Chromium session used DevTools Protocol emulation at **390×844 portrait**, device scale 1, Android mobile user agent, and five touch points. The login shell loaded in the isolated built preview; a harmless touch on the numeric keypad registered; all visible controls fit within the viewport, with a minimum visible control height of 46 px. The manifest reported `display=standalone` and `/` as `start_url`; the root-scoped service worker was active. This establishes **PASS for the mobile/PWA shell, layout, and touch-target smoke check**.
 
 This does not establish authenticated mobile role workflows, offline business behavior, financial/recharge/subscription behavior, or full mobile lifecycle acceptance. Those remain **BLOCKED/UNTESTED** under the non-payment and UI-freeze boundaries.
+
+
+## 2026-10-07 authenticated mobile continuation — blocked by preview transport
+
+An isolated Chromium session used the authorized synthetic Admin credential at 390×844 portrait with five touch points. The keypad accepted the full credential sequence, but no Admin dashboard evidence was obtained. The same-origin preview proxy returned HTML 500 responses for `/api/health` and `/api/version`; the Vite proxy logged `EPROTO ... wrong version number` when connecting to the isolated Worker. The UI remained at the login/orientation guard. This is **BLOCKED/UNVERIFIED**, not a product PASS or FAIL: no authenticated mobile workflow was claimed, no mutation/payment occurred, and temporary services/artifacts were removed.

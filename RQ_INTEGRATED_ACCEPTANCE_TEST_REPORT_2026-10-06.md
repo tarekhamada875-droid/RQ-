@@ -290,3 +290,8 @@ The current migration branch passed the final local gates: 102 Vitest files / 58
 ## 2026-10-07 mobile-emulation shell result
 
 A sandbox Chromium DevTools Protocol session completed a real 390×844 portrait emulation with five touch points against the isolated built preview. The login shell loaded, a harmless keypad touch registered, all visible controls fit within the viewport with a minimum 46 px height, the standalone manifest served correctly, and the root-scoped service worker was active. **Mobile/PWA shell, layout, and touch-target smoke: PASS.** Authenticated mobile role workflows, offline business behavior, and financial/recharge/subscription workflows remain untested and do not become PASS by this shell result.
+
+
+## 2026-10-07 authenticated mobile continuation — transport-blocked
+
+The authorized synthetic Admin keypad sequence was entered in a 390×844 portrait, five-touch Chromium session, but no dashboard was observed. The temporary same-origin proxy returned HTML 500 for health/version and logged a TLS `EPROTO wrong version number` while reaching the isolated preview Worker. The result is **BLOCKED/UNVERIFIED** due to preview transport; no application pass/fail is inferred, and no write, payment, production, or `main` operation occurred.

@@ -1107,3 +1107,8 @@ This handoff is the final action for the current `tokens ending` request.
 ## 2026-10-07 mobile-emulation shell verification
 
 A local headless Chromium DevTools Protocol session completed a real 390×844 portrait emulation with five touch points against the isolated built preview. The login shell loaded, a harmless keypad touch registered, all visible controls fit within the viewport with a minimum 46 px height, the standalone manifest served correctly, and the root-scoped service worker was active. This is **PASS for the mobile/PWA shell, layout, and touch-target smoke check**. Authenticated mobile role workflows, offline business behavior, and financial/recharge/subscription workflows remain untested; H6 stays open and H7–H9 remain blocked. Temporary preview/Chromium services and artifacts were removed; production and `main` were untouched.
+
+
+## 2026-10-07 authenticated mobile continuation — blocked by preview transport
+
+A 390×844 portrait, five-touch Chromium session accepted the authorized synthetic Admin keypad sequence, but no dashboard evidence was obtained. The temporary same-origin proxy returned HTML 500 for `/api/health` and `/api/version`; Vite logged TLS `EPROTO wrong version number` when reaching the isolated preview Worker. The UI remained at the login/orientation guard. Treat authenticated mobile workflows as **BLOCKED/UNVERIFIED**, not PASS or FAIL, until preview transport is healthy. No business mutation, payment, production, or `main` operation occurred; temporary services and artifacts were removed.
