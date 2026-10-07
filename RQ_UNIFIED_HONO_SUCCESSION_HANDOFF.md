@@ -1127,3 +1127,8 @@ A credential-free built PWA preview at 390×844 portrait loaded the login shell 
 ## 2026-10-07 Admin mobile read-only navigation acceptance
 
 The 390×844 portrait, five-touch synthetic Admin session opened the normal **Garages** and **People** screens and rendered their read-only synthetic lists. No add/edit/delete or financial control was activated; no credential or record changed. Admin mobile read-only navigation is **PASS**.
+
+
+## 2026-10-07 temporary Supervisor mobile acceptance
+
+A temporary synthetic Supervisor was provisioned through the desktop Admin People UI, then logged in from a separate 390×844 portrait, five-touch Chromium session. The generated PIN opened the restricted delegate-monitoring dashboard without Admin navigation or controls. The temporary synthetic Supervisor records were deleted via the supported Admin UI and verified absent. **Supervisor mobile login/restricted dashboard: PASS.** No financial or production operation occurred.

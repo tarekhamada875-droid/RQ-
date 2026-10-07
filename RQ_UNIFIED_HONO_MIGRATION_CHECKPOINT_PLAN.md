@@ -553,3 +553,8 @@ The credential-free PWA shell loaded online at 390×844 portrait with an active 
 ## 2026-10-07 Admin mobile read-only navigation
 
 Admin mobile acceptance now includes the dashboard plus normal read-only **Garages** and **People** screens at 390×844 portrait with five-touch emulation. Both rendered synthetic data successfully; no write or financial control was activated. **PASS.**
+
+
+## 2026-10-07 temporary Supervisor mobile result
+
+Supervisor mobile acceptance is **PASS**: a desktop-provisioned synthetic Supervisor logged in at 390×844 portrait with five-touch emulation and saw only the restricted delegate-monitoring dashboard. Temporary synthetic Supervisor records were deleted and verified absent. Delegate, Staff, and Garage Owner mobile role coverage remains open; financial/recharge/wallet/subscription-purchase flows remain intentionally untested.
