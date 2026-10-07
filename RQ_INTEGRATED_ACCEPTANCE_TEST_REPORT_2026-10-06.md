@@ -361,3 +361,27 @@ The supported Admin delete flow for this newly created fixture remained at 50%. 
 At the owner's request, only the `/api/garages/delete` frontend call now has a 30,000 ms timeout. Its regression test checks the serialized request and the actual timeout timer. This is a longer wait budget, not an async job-status solution; operations exceeding 30 seconds can still leave an ambiguous client outcome.
 
 Validation passed: focused deletion/policy/Worker tests **4 files / 14 tests**; `npm run ci:check` **102 files / 584 tests**, production bundling and artifact verification; `npm run maintainability:check`; and `git diff --check`. Generated build artifacts were cleaned. H6 remains **OPEN/BLOCKED**; Supervisor authorization findings, real-time Owner listener delivery, mobile Owner acceptance, the earlier Owner cleanup item, other required role cells, and restricted financial scenarios remain outstanding. H7–H9 remain pending; production and `main` were untouched.
+
+
+## 2026-10-07 final H6 matrix reconciliation — current disposition
+
+This reconciliation is the current snapshot and supersedes earlier matrix cells where later dated evidence above is more specific. Historical observations remain preserved; no earlier result is silently reclassified.
+
+| H6 area | Current status | Evidence and limitation |
+|---|---|---|
+| Admin mobile dashboard and read-only navigation | **PASS** | Synthetic Admin login, dashboard/session persistence, Garages, and People screens were exercised at 390×844 portrait. Admin mutations and financial controls were not exercised. |
+| Delegate mobile restricted dashboard | **PASS** | Synthetic PIN-only Delegate login rendered the restricted dashboard without Admin navigation. Recharge, wallet, settlement, and purchase flows were not run. |
+| Garage Owner vehicle lifecycle | **PASS** for the bounded preview flow | Synthetic Owner check-in, inside-vehicle list, and check-out returned HTTP 200 with the required session context. |
+| Garage Owner subscriber lifecycle | **PASS** for the bounded preview flow | Synthetic subscriber add, update, renew, and delete each returned HTTP 200 after the transaction-query adapter fix. |
+| Garage Owner session/listener | **PARTIAL** — desktop reload **PASS**; event delivery **OPEN/UNVERIFIED** | One desktop full-page reload restored the Owner dashboard/session. Sampled Listen resources returned HTTP 200, but no synthetic data-change event was generated. Owner mobile authenticated workflow coverage remains incomplete. |
+| Staff login and own-scope checks (separate historical fixture) | **PASS**, bounded | Prior synthetic Staff login/session and own-garage checks remain valid evidence; they do not prove Staff operational access in the active-trial retest. |
+| Staff operational access beyond the exhausted-balance gate | **OPEN/BLOCKED** | An active synthetic two-day free-trial context was selected. One supported Admin Staff-create submission yielded no observed success response, new Staff row, or usable credential within the existing client wait. No Staff login or operational workflow was attempted; no retry or timeout change was made, per owner direction. |
+| Staff mobile operational workflows | **OPEN/BLOCKED** | Earlier Staff mobile authentication/layout reached the exhausted-balance gate. The active-trial create attempt did not provide a Staff identity for a new mobile operational test. |
+| Supervisor restricted UI | **PASS** for bounded login/dashboard checks | Synthetic Supervisor login and restricted dashboard rendering were verified, including mobile. The broader global-versus-assigned garage-read boundary remains **OPEN** where noted above; this is not a cross-garage-isolation PASS. |
+| PWA shell and offline safety gate | **PASS** for bounded shell checks | At 390×844, the shell, manifest/service-worker registration, layout/touch smoke, and offline guard were exercised. Authenticated business operations while offline remain untested/unsupported. |
+| Owner fixture cleanup | **PARTIAL / OPEN** | The latest Owner fixture was absent from a fresh Admin list, but its delete response/job completion was not observed after the client timeout. The older Owner cleanup item is separately **BLOCKED/UNVERIFIED**; no direct database mutation or repeat delete was made. |
+| Financial, recharge, wallet, transfer, settlement, package/subscription purchase or renewal workflows | **OPEN/BLOCKED — intentionally untested** | No payment, wallet top-up, recharge approval, transfer/settlement, subscription/package purchase, or other financial write was performed. Unit tests do not convert these browser acceptance cells to PASS. |
+
+**Overall decision: H6 OPEN/BLOCKED.** The Supervisor garage-read policy boundary, Staff operational gate, Owner real-time listener delivery and cleanup evidence, and intentionally untested financial workflows remain unresolved. H7 (Production Cutover Decision) has **not** started. Production and `main` remain untouched.
+
+The associated code commit `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` was pushed to `migration/unified-hono`. For that code head, the H5 Preview Worker run [37656824592](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656824592) and Production Gate run [37656832793](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656832793) completed successfully. Local validation passed **102 Vitest files / 584 tests**, lint, builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.

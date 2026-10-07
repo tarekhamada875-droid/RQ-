@@ -607,3 +607,20 @@ Per the owner's explicit direction, `garageService.deleteGarage` now passes `tim
 **Validation:** focused deletion/policy/Worker tests passed (**4 files / 14 tests**); `npm run ci:check` passed (**102 Vitest files / 584 tests**, production bundling and artifact verification); `npm run maintainability:check` and `git diff --check` passed. Build artifacts were removed.
 
 **Disposition:** this continuation closes only the bounded desktop reload-persistence check and confirms the new synthetic name is absent from a fresh Admin list. It does not close Owner listener delivery, mobile Owner acceptance, the older Owner cleanup blocker, Staff operational acceptance, Supervisor permission findings, other role/route cells, or intentionally untested financial workflows. H6 remains **OPEN/BLOCKED**; H7–H9 remain pending. No production deploy, production mutation, or `main` change occurred.
+
+
+## 2026-10-07 H6 final continuation — Staff active-trial retest and matrix status
+
+The garage-delete timeout fix is on pushed migration-branch commit `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`. For that code head, H5 Preview Worker run [37656824592](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656824592) and Production Gate run [37656832793](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656832793) both passed. Local validation passed 102 Vitest files / 584 tests, lint, builds, `npm run ci:check`, maintainability, and `git diff --check`.
+
+To test Staff access without performing a financial action, the isolated preview Admin flow was opened against a synthetic garage with an active two-day free trial. One Staff-create submission yielded no observed success response, Staff row, or usable credential within the existing client wait. No retry was made and no Staff login/operational workflow was attempted. The owner directed that this timeout remain unchanged and the cell be recorded **OPEN/BLOCKED**; no Staff timeout code was changed. The 30-second timeout remains limited to `/api/garages/delete`.
+
+The current H6 matrix status is:
+
+- **PASS, bounded:** Admin read-only mobile navigation; Delegate and Supervisor restricted mobile dashboards; PWA shell/offline guard; Owner desktop reload persistence; Owner vehicle check-in/list/check-out; Owner subscriber add/update/renew/delete; prior separate-fixture Staff authentication/scope checks.
+- **OPEN/BLOCKED:** Staff operational access beyond the balance gate (no trial-context Staff identity was created); Owner real-time listener event delivery (no data-change event tested); Supervisor global-versus-assigned garage-read boundary; Owner cleanup completion/job status where only fresh-list absence was observed; remaining untested role/route cells.
+- **OPEN/BLOCKED — intentionally untested:** payment, recharge, wallet top-up, transfer/settlement, package/subscription purchase or renewal, and other financial writes. These are not PASS based on unit tests or non-financial smoke checks.
+
+The supported Admin logout completed through the preview UI; PIN verification and server session release returned HTTP 200. The temporary proxy/config/captures were removed and port 4173 was verified closed. No production or `main` mutation occurred.
+
+**Decision:** H6 remains **OPEN/BLOCKED**. H7 has not started; do not begin production cutover until the remaining required cells are either safely verified or explicitly accepted out of scope by the owner. Production remains on its existing release and rollback target.

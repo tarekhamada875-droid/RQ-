@@ -528,3 +528,16 @@ At the owner's direction, the frontend garage-delete request now explicitly uses
 **Validation after this change:** the focused delete/policy/Worker suite passed **4 files / 14 tests**; `npm run ci:check` passed with **102 Vitest files / 584 tests**, production bundling, and artifact verification. `npm run maintainability:check` and `git diff --check` passed. Generated `dist/` and `build/` artifacts were removed.
 
 **H6 remains OPEN/BLOCKED.** The listener's real-time delivery, mobile Owner behavior, the older Owner-fixture cleanup blocker, the Supervisor permission-scope mismatch, remaining role/route cells, Staff operational gate, and intentionally untested financial workflows remain unresolved. H7–H9 remain pending.
+
+
+## 2026-10-07 Staff operational access retest in valid trial context — OPEN/BLOCKED
+
+**Scope:** Isolated `rq-hono-preview` only, through the temporary same-origin frontend proxy. The selected synthetic garage had an active two-day free trial; no paid package or financial action was used.
+
+- The supported Admin Staff-create flow was submitted once for a temporary synthetic Staff identity. The request remained pending through the existing client wait and yielded no observed success response, new Staff row, or usable Staff credential. No second submission or retry was made.
+- Because no Staff identity/PIN was obtained, Staff login, operational dashboard access, check-in/check-out, subscriber actions, and Staff cross-garage denials were not tested in this trial context. Earlier Staff authentication and scope PASS evidence belongs to a separate synthetic fixture and does not establish operational access beyond the balance gate.
+- At the owner's direction, the Staff-create timeout is **left unchanged** and this acceptance cell is recorded **OPEN/BLOCKED**. The separately requested 30-second timeout remains scoped only to `/api/garages/delete`; no Staff timeout or UI behavior was changed.
+- No payment, recharge, wallet, package purchase, transfer, settlement, or other financial write was attempted.
+- **Cleanup:** The supported Admin logout flow completed; the visible app returned to generic login, `/api/auth/verify-pin` returned HTTP 200, and `/api/auth/release-session` returned HTTP 200. The temporary Vite proxy/config and this continuation's browser captures were removed, and port 4173 was verified closed.
+
+The Staff operational gate remains **OPEN/BLOCKED**, not a product PASS or FAIL. H6 remains **OPEN/BLOCKED**; H7 has not started. Production and `main` were not accessed for mutation.
