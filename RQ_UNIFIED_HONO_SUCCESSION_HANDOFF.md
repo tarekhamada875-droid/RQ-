@@ -1217,3 +1217,18 @@ Then read this handoff’s newest section, `docs/H6_NEXT_AGENT_PROMPT_2026-10-07
 The first engineering investigation should be the Staff-create transport/response path using synthetic pre-production data only. Do not retry uncontrolled live writes, do not record or guess PINs, do not use production, do not deploy Firestore rules, and do not make financial writes. If Staff creation becomes healthy, create exactly one temporary Staff through the supported Admin flow, test the restricted 390×844 mobile session, delete the fixture through the supported UI, and document only observable evidence. Then address the remaining Garage Owner mobile cell. Preserve the UI freeze and remain on `migration/unified-hono`; never merge to `main`.
 
 This handoff is the final action for the current **“tokens ending”** request. The succession chain is recursive and permanent: the next agent must repeat this exact-state handoff protocol if the owner later says **“tokens ending”** again.
+
+### Portable owner authorization and credential boundary
+
+The owner explicitly authorized the successor to continue as the project’s senior engineering operator on the migration branch, without asking for routine confirmation, within the following scope:
+
+- Use synthetic pre-production data freely for testing, including creating, modifying, and deleting temporary fixtures through supported application/Admin flows.
+- Use the connected browser or an isolated test browser when available for pre-production acceptance checks.
+- Diagnose, implement, test, document, commit, and push the work required to complete H6 on `migration/unified-hono`.
+- Run local and CI quality gates, inspect the isolated preview Worker, and publish documentation-only evidence updates.
+- Clean up all temporary fixtures and test artifacts after each bounded test.
+- Continue autonomously until H6 is complete or an explicit blocker is documented.
+
+This authorization does **not** transfer browser cookies, session claims, filesystem state, or secret values to a future agent. The owner supplied an Admin credential in the originating conversation, but the actual PIN/password is intentionally not copied into this repository or handoff because this file is portable and may be committed or shared. A successor must use a credential available in its own authorized active session or create a temporary synthetic credential through the supported Admin flow; it must never guess, log, or commit credentials, tokens, PINs, or passwords.
+
+The successor must preserve these non-negotiable boundaries: synthetic pre-production only; no real-user data; no production mutations or deployments; no `main` merge; no live Firestore Rules deployment; no payments, wallet top-ups, recharge approvals, settlements, subscription purchases, or other financial writes; preserve the UI freeze; and record unsupported cells as `BLOCKED`, `OPEN`, or `NOT TESTED` rather than inferring a pass.
