@@ -31,6 +31,7 @@ interface AdminGarageDetailsViewProps {
   setShowDeleteConfirm: (show: boolean) => void;
   updateGarageRate: (garage: Garage, field: keyof Garage, value: number) => Promise<void>;
   staffList: Staff[];
+  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   packages?: Package[];
@@ -45,6 +46,7 @@ export const AdminGarageDetailsView = memo(({
   setShowDeleteConfirm,
   updateGarageRate: _updateGarageRate,
   staffList,
+  setStaffList,
   isLoading,
   setIsLoading,
   packages: _packages,
@@ -261,23 +263,43 @@ export const AdminGarageDetailsView = memo(({
 
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffForm.name || !staffForm.pin) return;
+    const name = staffForm.name.trim();
+    if (!name || !staffForm.pin) return;
     setIsLoading(true);
     try {
       const pinCheck = await firestoreService.isPinTaken(staffForm.pin);
       if (pinCheck.taken) {
-        setIsLoading(false);
+        const { showToast } = useAppStore.getState();
+        showToast?.(
+          adminLang === 'en' ? 'This PIN is already in use.' : 'الرمز مستخدم بالفعل',
+          'error'
+        );
         return;
       }
-      await firestoreService.addStaff({
-        name: staffForm.name,
+      const staffData: Omit<Staff, 'id'> = {
+        name,
         pin: staffForm.pin,
         garageId: selectedGarageForDetails.id,
         role: 'staff'
-      });
+      };
+      const created = await firestoreService.addStaff(staffData);
+      if (!created?.id) throw new Error('STAFF_CREATE_MISSING_ID');
+      setStaffList((current) => [
+        ...current.filter((staff) => staff.id !== created.id),
+        { ...staffData, id: created.id },
+      ]);
       setShowAddStaffModal(false);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error('Failed to add Staff.');
+      const { showToast } = useAppStore.getState();
+      const message = error instanceof Error ? error.message : '';
+      const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN';
+      showToast?.(
+        adminLang === 'en'
+          ? (pinAlreadyTaken ? 'This PIN is already in use.' : 'Unable to add Staff. Please try again.')
+          : (pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.'),
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -288,9 +310,15 @@ export const AdminGarageDetailsView = memo(({
     setIsLoading(true);
     try {
       await firestoreService.removeStaff(staffId);
+      setStaffList((current) => current.filter((staff) => staff.id !== staffId));
       setStaffToDelete(null);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      console.error('Failed to delete Staff.');
+      const { showToast } = useAppStore.getState();
+      showToast?.(
+        adminLang === 'en' ? 'Unable to delete Staff. Please try again.' : 'تعذر حذف الموظف. يرجى المحاولة مرة أخرى.',
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }

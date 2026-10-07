@@ -97,6 +97,7 @@ export default function App() {
     isInputFocused,
     setIsInputFocused,
     staffList,
+    setStaffList,
     rechargeRequests,
     delegateRequests,
     currentStaff,
@@ -299,6 +300,7 @@ export default function App() {
             setShowDeleteConfirm={setShowDeleteConfirm}
             updateGarageRate={updateGarageRate}
             staffList={staffList}
+            setStaffList={setStaffList}
             isLoading={isLoading}
             setIsLoading={setIsLoading}
             packages={sortedPackages}

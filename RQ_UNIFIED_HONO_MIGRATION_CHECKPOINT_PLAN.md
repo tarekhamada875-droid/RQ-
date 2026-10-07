@@ -568,3 +568,14 @@ Delegate mobile acceptance is **PASS**: a temporary synthetic Delegate logged in
 ## 2026-10-07 Staff mobile continuation
 
 Staff mobile acceptance remains **BLOCKED/UNVERIFIED**: supported Admin Staff creation returned without creating a record on both an expired synthetic garage and the active QA Garage Beta. No Staff mobile login was attempted and no temporary Staff data remains. Garage Owner mobile coverage and financial/recharge/wallet/subscription-purchase flows remain open.
+
+
+## 2026-10-07 Staff and Garage Owner mobile continuation
+
+The Staff-create UI correction now updates the Admin's in-memory Staff list immediately after successful create/delete and presents localized failures; the focused component regression test passed. Full local validation also passed: 102 Vitest files / 583 tests, TypeScript lint, production/web/server/Cloudflare build, `npm run ci:check`, maintainability, and `git diff --check`.
+
+A temporary Staff account authenticated in 390×844 portrait, five-touch Chromium (HTTP 200, role `staff`) with no horizontal overflow. The exhausted-balance gate prevented access to the operational dashboard; no financial action was taken. Staff authentication/layout are PASS, but Staff operational acceptance is BLOCKED/UNVERIFIED. The Staff fixture was removed through Admin and verified absent.
+
+A synthetic free-trial Owner account authenticated in the same mobile viewport (HTTP 200, role `garage`) and rendered its dashboard with no horizontal overflow or Admin-only labels. Initial Owner login/dashboard rendering are PASS; session persistence and further Owner workflows remain untested. One Firestore Listen-channel failure and one uncaptured console error leave real-time listener health OPEN/UNVERIFIED.
+
+Owner-fixture cleanup is not verified: the supported Admin delete endpoint returned HTTP 200 but, per Worker source, only sets `isDeleting=true`, writes a running deletion-job record, and responds `deletionStarted=true`. The garage remained listed after reload; repository search found no in-repository job consumer. Do not claim physical deletion, repeat the request, or mutate the database directly. H6 remains OPEN/BLOCKED pending this cleanup disposition, Staff operational acceptance in a safe non-financial context, Owner persistence/listener checks, the previously documented Supervisor permission-scope mismatch, and all remaining required role cells. Financial workflows remain intentionally untested. H7–H9 remain pending; no production or `main` change is authorized by this status.

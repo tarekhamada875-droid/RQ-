@@ -325,3 +325,14 @@ A desktop-provisioned synthetic Delegate completed the PIN-only login in a separ
 ## 2026-10-07 Staff mobile continuation
 
 Staff mobile coverage remains **BLOCKED/UNVERIFIED**. The supported Admin Staff-create flow was attempted against two synthetic garages; no temporary Staff record was created, and therefore no Staff PIN login or mobile dashboard test was performed. No business or financial mutation was left behind.
+
+
+## 2026-10-07 Staff and Garage Owner mobile continuation
+
+In the isolated preview, Chromium at 390×844 portrait with five touch points authenticated the temporary Staff account successfully (`/api/auth/verify-pin` HTTP 200, server role `staff`). The page fit without horizontal overflow, but QA Garage Beta showed an exhausted-balance/package-contact gate instead of the operational Staff dashboard. No call, package purchase, transfer, top-up, or financial write was attempted. Staff authentication and mobile layout are **PASS**; operational Staff acceptance is **BLOCKED/UNVERIFIED** pending an authorized non-financial test context. The temporary Staff record was removed through Admin and verified absent after reload.
+
+A separate synthetic free-trial Owner garage authenticated successfully (HTTP 200, role `garage`). At 390×844/five-touch, the garage name and Owner dashboard rendered with no horizontal overflow and no Admin-only labels. A trial-activation confirmation was visible over the dashboard. **Owner login/initial dashboard render: PASS.** Session persistence, Owner navigation and operational workflows remain untested. The probe also recorded one failed Firestore Listen-channel request and one console error whose exact text was not captured; listener health remains **OPEN/UNVERIFIED**.
+
+The supported Admin delete flow was invoked for the Owner test garage and returned HTTP 200. The Worker implementation sets `isDeleting=true`, creates a `garage_deletion_jobs` record with `status=running`, and returns `deletionStarted=true`; it does not perform the physical deletion inline. The garage remained in the refreshed Admin list, and no in-repository job consumer was found. **Owner test-data cleanup is BLOCKED/UNVERIFIED**; no direct database mutation or repeated delete request was made.
+
+A focused Admin Staff state-synchronization fix and regression test were added. Local validation passed: **102 test files / 583 tests**, lint, production build, CI check, maintainability check, and diff check. No production or `main` deployment/change occurred. **Overall H6 remains OPEN/BLOCKED**, including the previously documented Supervisor permission-scope inconsistency and other required cells. H7–H9 remain pending.

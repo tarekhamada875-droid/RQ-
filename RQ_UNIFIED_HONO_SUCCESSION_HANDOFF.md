@@ -1232,3 +1232,30 @@ The owner explicitly authorized the successor to continue as the project’s sen
 This authorization does **not** transfer browser cookies, session claims, filesystem state, or secret values to a future agent. The owner supplied an Admin credential in the originating conversation, but the actual PIN/password is intentionally not copied into this repository or handoff because this file is portable and may be committed or shared. A successor must use a credential available in its own authorized active session or create a temporary synthetic credential through the supported Admin flow; it must never guess, log, or commit credentials, tokens, PINs, or passwords.
 
 The successor must preserve these non-negotiable boundaries: synthetic pre-production only; no real-user data; no production mutations or deployments; no `main` merge; no live Firestore Rules deployment; no payments, wallet top-ups, recharge approvals, settlements, subscription purchases, or other financial writes; preserve the UI freeze; and record unsupported cells as `BLOCKED`, `OPEN`, or `NOT TESTED` rather than inferring a pass.
+
+
+## 2026-10-07 H6 Staff and Owner continuation — current checkpoint
+
+This update follows the prior `TOKEN-ENDING SUCCESSION HANDOFF — 2026-10-07` and supersedes its Staff-blocked/Owner-not-tested mobile status for the bounded checks below. The owner explicitly authorized bounded synthetic pre-production Staff and Garage Owner checks and cleanup. Work remains on `migration/unified-hono`; the branch base at continuation start was `231f0e3` (`docs: clarify portable owner authorization`). Do not modify or merge `main`.
+
+### Completed evidence
+
+- **Staff authentication/layout:** a synthetic Staff login returned HTTP 200 with role `staff` in Chromium at 390×844 portrait, DPR 1, five touch points, and no horizontal overflow. QA Garage Beta rendered an exhausted-balance/package-contact gate, not the operational Staff dashboard. No call, package purchase, wallet action, payment, or financial write was used. Record **authentication/layout PASS**, but **operational Staff acceptance BLOCKED/UNVERIFIED** until a non-financial test context is available. The temporary Staff record was deleted through Admin and absent after a refreshed list read; the pre-existing Mobile QA Staff was not changed.
+- **Garage Owner authentication/dashboard:** one synthetic free-trial garage authenticated through the normal keypad with HTTP 200 and server-derived role `garage`. At 390×844 portrait/five-touch, the dashboard and garage name were visible, the document did not overflow horizontally, and no Admin-only labels appeared. A trial-activation confirmation over the dashboard was visible. Record **initial login/dashboard rendering PASS** only; Owner reload persistence and further workflows were not tested. The probe recorded one failed Firestore Listen-channel request and one console error; its exact text was not captured, so listener health remains OPEN/UNVERIFIED.
+- **Admin Staff UI correction:** `AdminGarageDetailsView` now updates the live Staff list after successful create/delete and surfaces localized failure feedback; `useGarageApp`/`App` pass the existing list setter. A focused regression test covers visible create/delete state. Files changed: `src/App.tsx`, `src/hooks/useGarageApp.ts`, `src/components/admin/AdminGarageDetailsView.tsx`, and `src/__tests__/modularizedComponents.test.tsx`.
+- **Local validation:** 102 Vitest files / 583 tests passed; lint, build, `ci:check`, maintainability, and `git diff --check` completed successfully.
+
+### Cleanup and release disposition
+
+- The temporary Staff record was deleted and verified absent.
+- The temporary Owner garage's supported Admin delete flow returned HTTP 200, but its actual semantics are asynchronous: `server/cloudflareWorker.ts` sets `isDeleting=true`, writes `garage_deletion_jobs/{id}` with `status=running`, then returns `deletionStarted=true`. After a full Admin UI reload the garage remained listed and displayed an active label. Source search found no in-repository deletion-job consumer. **Physical cleanup is BLOCKED/UNVERIFIED.** Do not claim deletion, repeat the request, or bypass the supported flow with direct database mutation. Determine whether an authorized external processor exists or repair the supported deletion lifecycle before calling cleanup complete.
+- H6 is still **OPEN/BLOCKED**. The previously documented Supervisor permission-scope inconsistency, Staff operational access behind the zero-balance gate, Owner listener/persistence checks, other required role cells, and intentionally untested financial flows remain unresolved. H7–H9 remain pending.
+- No production Worker/Pages deployment, production mutation, live Firestore Rules deployment, payment, `main` change, or merge occurred in this continuation. Verify `git status`, the containing commit, and branch workflows after publication.
+
+### Next safe actions
+
+1. Finish publication only on `migration/unified-hono`, then verify its Production Gate and isolated-preview workflow results; do not deploy production or merge to `main`.
+2. Resolve the deletion-job consumer/status question without direct live-database mutation; verify the synthetic Owner fixture is actually absent before claiming cleanup.
+3. Continue Staff mobile only when a supported synthetic non-financial fixture can reach the operational dashboard; never top up or purchase a subscription for test acceptance.
+4. Re-run the Owner mobile page after the listener/persistence diagnosis, documenting visible evidence and avoiding payment-related actions.
+5. Continue the unresolved Supervisor/Delegate and other H6 items in `docs/H6_NEXT_AGENT_PROMPT_2026-10-07.md`; do not close H6 or start H7–H9 while any required acceptance or scope finding remains open.

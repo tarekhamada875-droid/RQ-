@@ -462,3 +462,34 @@ A temporary synthetic Delegate was provisioned through the desktop Admin People 
 ## 2026-10-07 Staff mobile continuation — BLOCKED/UNVERIFIED
 
 Staff mobile acceptance was not claimed. The supported Admin garage Staff-create flow was attempted against synthetic QA Garage Alpha and then active QA Garage Beta. The first expired-garage attempt returned without a record; the active-garage request remained in `جاري الإضافة...` and then returned without creating the temporary Staff. No Staff PIN was used for login, no mobile Staff workflow was run, and verification showed no `Mobile QA Staff` record. Temporary preview/browser artifacts were removed. This is **BLOCKED/UNVERIFIED**, not a product PASS or FAIL; the remaining issue is the Staff-create transport/response path.
+
+
+## 2026-10-07 Staff and Garage Owner mobile continuation
+
+**Environment:** Isolated pre-production preview, reached through a temporary same-origin frontend proxy limited to preview `/api` calls. Chromium mobile emulation used a 390×844 portrait viewport, DPR 1, and five touch points. No production, `main`, Firestore Rules deployment, payment, wallet top-up, recharge, settlement, or subscription purchase was used.
+
+### Staff — partial PASS; operational dashboard BLOCKED/UNVERIFIED
+
+- A temporary Staff fixture on synthetic QA Garage Beta was authenticated through the normal keypad. `/api/auth/verify-pin` returned HTTP 200 and the server-derived role was `staff`.
+- At 390×844, the viewport and document were both 390×844 with no horizontal overflow; the login screen was no longer present.
+- The post-login page showed the garage's exhausted-balance/package-contact gate rather than the normal operational Staff dashboard. No package, call, transfer, top-up, or other financial action was activated. No displayed wallet/contact value is copied into this report.
+- **Result:** Staff PIN authentication and mobile shell/layout are **PASS**. Full Staff dashboard and operational workflow acceptance are **BLOCKED/UNVERIFIED** because this synthetic garage had no usable free-trial/paid balance, and financial writes are outside the permitted test boundary.
+- The temporary Staff fixture was deleted through the supported Admin UI and was absent from the Staff list after reload; the pre-existing Mobile QA Staff record was left untouched.
+
+### Garage Owner — initial login and dashboard render PASS; further workflows OPEN
+
+- One clearly named synthetic free-trial garage was created through the supported Admin UI. The normal Owner keypad login returned HTTP 200 from `/api/auth/verify-pin` with role `garage`.
+- At 390×844 portrait with five touch points, document width matched the viewport, horizontal overflow was false, the fixture name was visible, and no Admin-only labels were visible. The Owner dashboard rendered; its first view included the expected trial-activation success confirmation over the dashboard.
+- **Result:** Owner mobile authentication and initial dashboard rendering are **PASS**. Session persistence after reload, Owner navigation, vehicle/subscriber workflows, and financial flows were not tested in this bounded check.
+- The probe recorded one failed Firestore Listen-channel request and one console error; the exact console text was not captured. Therefore real-time listener health is **OPEN/UNVERIFIED**, not inferred from the successful initial dashboard render.
+
+### Temporary-data cleanup status
+
+- Staff test data: deleted through the supported Admin flow and verified absent after reload.
+- Owner test garage: the supported Admin delete UI returned HTTP 200. Source review confirms this endpoint only marks the garage `isDeleting=true`, writes a `garage_deletion_jobs` record with `status=running`, and returns `deletionStarted=true`; it does not delete documents inline. After a full Admin-page reload, the garage remained listed and its details still displayed an active label. Repository search found no in-repository deletion-job consumer. **Physical Owner-fixture cleanup is BLOCKED/UNVERIFIED.** Do not claim the fixture was deleted, do not issue another delete request, and do not bypass the supported flow with direct database mutation.
+
+### Source correction and local validation
+
+The Admin Staff panel now synchronizes successful Staff create/delete results into its live list and surfaces localized failure feedback. A focused component regression test covers immediate create/delete visibility. Full local validation passed: **102 Vitest files / 583 tests**, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+
+**H6 remains OPEN.** This continuation does not resolve the Supervisor permission-scope mismatch, remaining role/route acceptance cells, the Staff zero-balance gate, Owner listener/persistence questions, or intentionally untested financial workflows. H7–H9 remain pending; production and `main` remain untouched.
