@@ -346,3 +346,10 @@ The attempted `public/sw.js` addition was rejected by the repository’s enforce
 - Non-destructive technical suite: **PASS — 13 files / 62 tests** covering Hono and Express vehicle routes, vehicle scope/authorization, check-in/out characterization, deletion locks, subscriber lifecycle/routes, package catalog, and monthly subscriber packages.
 - Expected failure-path diagnostics covered validation, duplicate/idempotency, immutable-plate, and cross-scope rejection behavior; no live or preview record was written.
 - This strengthens technical evidence only. Browser lifecycle cells remain **BLOCKED** because exercising them would require approved synthetic operational writes; no vehicle, subscriber, package, financial, or production action was performed.
+
+## 2026-10-07 — Synthetic operational-fixture attempt
+
+- Owner-approved isolated preview testing began with one synthetic garage form using a free trial and non-financial test values; no payment, balance, package purchase, or production resource was used.
+- The authenticated browser request to `/api/garages/create` exceeded the client’s 15-second timeout. The UI reset its loading state; no successful creation response or record identifier was observed.
+- No retry was made, so no duplicate or partial write was intentionally created. A subsequent direct credential-free probe confirmed `/api/system-config` returns 200 and `/api/garages/create` correctly rejects unauthenticated requests with 401.
+- Disposition: browser vehicle/subscriber fixture setup remains **BLOCKED** by the authenticated preview mutation timeout; technical suites remain PASS. Temporary proxy/configuration were removed.

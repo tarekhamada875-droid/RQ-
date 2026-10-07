@@ -485,3 +485,7 @@ The attempted service-worker asset correction was rejected by the repository UI/
 ## 2026-10-07 — Vehicle/subscriber technical evidence
 
 The non-destructive cross-runtime vehicle/subscriber/package suite passed **13 files / 62 tests**. Browser workflow acceptance remains separate and BLOCKED where it would require approved synthetic operational writes; no live or preview business record was changed.
+
+## 2026-10-07 — Synthetic fixture setup disposition
+
+An owner-approved synthetic garage fixture setup was attempted with a free trial and no financial action. The authenticated create request timed out at the client; no successful response or record identifier was observed and no retry was made. Credential-free direct probes confirmed preview configuration health and the unauthenticated create-route denial. Browser vehicle/subscriber workflows remain blocked pending a stable authenticated preview mutation path.

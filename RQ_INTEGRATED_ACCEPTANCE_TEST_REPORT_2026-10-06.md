@@ -223,3 +223,7 @@ The proposed missing-service-worker correction was rejected by the enforced UI/U
 ## 2026-10-07 — Vehicle/subscriber technical regression continuation
 
 A non-destructive cross-runtime regression run passed **13 files / 62 tests** for vehicle authorization and lifecycle characterization, subscriber lifecycle/routes, package catalog, and monthly subscriber packages. Deliberate validation/idempotency/scope failures were expected and passed. This does not convert the browser workflow rows to PASS: those remain BLOCKED under the no-unapproved-write boundary.
+
+## 2026-10-07 — Synthetic operational-fixture attempt
+
+Owner-approved synthetic preview setup was attempted through the Admin UI using a free-trial garage fixture and no financial action. The authenticated `/api/garages/create` call exceeded the client timeout; no success response or identifier was observed and no retry was made. Direct credential-free probes later showed `/api/system-config` 200 and unauthenticated garage creation 401, so the preview backend and authorization gate are reachable. Browser vehicle/subscriber setup remains BLOCKED by the authenticated mutation timeout.

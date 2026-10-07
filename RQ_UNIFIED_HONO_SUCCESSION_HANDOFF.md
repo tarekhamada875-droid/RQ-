@@ -993,3 +993,10 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - Expected failure-path diagnostics were validation, duplicate/idempotency, immutable-plate, and scope rejection cases.
 - No live/preview business record, financial value, vehicle, subscriber, package, production, or `main` state was changed.
 - Browser workflow cells remain BLOCKED because they require approved synthetic operational writes; technical tests do not substitute for those human-flow cells.
+
+## Synthetic operational-fixture attempt — 2026-10-07 continuation
+
+- Owner-approved synthetic browser setup used a temporary local proxy to the isolated preview Worker. A free-trial garage fixture was prepared with non-financial test values; no payment or balance action was used.
+- Authenticated `POST /api/garages/create` exceeded the client’s 15-second timeout. No success response, record ID, or confirmed creation was observed; no retry was made.
+- Credential-free direct probes returned `/api/system-config` 200 and unauthenticated `/api/garages/create` 401, confirming the preview backend and route gate are reachable. The temporary proxy/config were removed and the worktree remains clean.
+- Browser vehicle/subscriber setup remains BLOCKED by the authenticated mutation timeout; technical vehicle/subscriber tests remain passing.
