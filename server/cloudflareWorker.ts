@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, toSupervisorGarageMonitoringRecord } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
@@ -3088,10 +3088,12 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
     }
 
     const snap = await query.get();
-    const garages = snap.docs.map((docSnap: any) => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    }));
+    const garages = snap.docs.map((docSnap: any) => {
+      const garageData = docSnap.data() || {};
+      return user?.role === 'supervisor'
+        ? toSupervisorGarageMonitoringRecord(docSnap.id, garageData)
+        : { id: docSnap.id, ...garageData };
+    });
 
     return c.json({ success: true, garages });
   } catch (err: any) {

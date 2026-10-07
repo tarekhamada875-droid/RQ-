@@ -70,6 +70,19 @@ export function canManageDelegates(principal: AuthorizationPrincipal | null | un
   return principal?.role === 'admin';
 }
 
+/** Exposes only non-sensitive operational fields for the Supervisor global monitoring list. */
+export function toSupervisorGarageMonitoringRecord(
+  garageId: string,
+  garage: Record<string, unknown>,
+): Record<string, unknown> {
+  const allowedFields = ['name', 'status', 'dailyCapacity', 'carsInside', 'todayCount', 'isTrial'] as const;
+  const monitoringRecord: Record<string, unknown> = { id: garageId };
+  for (const field of allowedFields) {
+    if (garage[field] !== undefined) monitoringRecord[field] = garage[field];
+  }
+  return monitoringRecord;
+}
+
 /**
  * Decides whether a principal may manage garage-scoped records.
  * This pure policy intentionally preserves the current route contract:

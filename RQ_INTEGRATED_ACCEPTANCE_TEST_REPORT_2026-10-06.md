@@ -197,3 +197,9 @@ The route-side audit found a split rather than a unified policy: subscriber rout
 ## 2026-10-07 correction follow-up
 
 The owner-approved policy was applied locally: Supervisor remains read/monitoring-only. Firestore Rules now deny Supervisor writes to delegates, subscribers, and daily counters; Hono and Express delegate update/delete are Admin-only through shared `canManageDelegates` policy. Focused regression coverage passed **5 files / 61 tests**. The repeatable Rules Emulator test passed with monitoring reads allowed and six mutation attempts denied. This correction is not deployed; H6 remains blocked on the broader unrun acceptance matrix and preview verification.
+
+## 2026-10-07 Supervisor read-boundary correction
+
+The previously open Supervisor list/detail mismatch is resolved locally. Supervisor global garage monitoring is now a sanitized Worker response containing only operational overview fields (`id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, `isTrial`). Sensitive identity/contact/PIN/rate/balance/revenue/commission fields are removed. Direct Firestore reads for garage documents, vehicles, subscribers, and daily counters are denied to Supervisor; individual Worker garage/detail routes already deny Supervisor by scope policy. Delegate monitoring reads remain available.
+
+Focused tests passed **3 files / 65 tests** and the Rules Emulator test passed. The correction is ready for full local gates and preview deployment; no live record body was inspected.

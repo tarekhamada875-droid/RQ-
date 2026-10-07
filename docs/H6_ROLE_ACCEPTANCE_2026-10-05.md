@@ -307,3 +307,9 @@ The rules result is evidence of a real policy mismatch, not a PASS for Superviso
 Following the owner-approved H6 policy, the mismatch was corrected locally on `migration/unified-hono`: Supervisor direct writes are now denied in Firestore Rules for delegates, subscribers, and daily counters; Hono and Express delegate update/delete are now Admin-only; Supervisor read/monitoring grants remain unchanged. The shared `canManageDelegates` policy prevents Hono/Express drift.
 
 Validation passed: focused Hono/Express authorization suite **5 files / 61 tests**, including new Supervisor delegate-denial coverage, and the committed local Rules Emulator test **PASS**: Supervisor monitoring reads allowed and six mutation attempts denied. No preview or production deployment has occurred.
+
+## Supervisor read-boundary correction — 2026-10-07
+
+The global Supervisor monitoring boundary is now explicit and enforced. The Worker’s `GET /api/garages` remains available to Supervisor but returns only `id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, and `isTrial`; identity, contact, PIN, rates, balances, revenue, and commission fields are excluded. Supervisor direct garage detail, vehicle, subscriber, and daily-counter reads are denied by Firestore Rules and the existing scoped Worker routes. Delegate monitoring reads remain available.
+
+Validation passed: focused Worker/domain suite **3 files / 65 tests** and the Rules Emulator test, which confirmed delegate monitoring read allowed, direct garage/nested reads denied, and six mutation attempts denied. No live record contents were inspected.

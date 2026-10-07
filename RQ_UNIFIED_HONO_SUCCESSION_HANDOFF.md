@@ -954,3 +954,9 @@ This handoff is the final action for the current `tokens ending` request. The ne
 - Added regression coverage in domain, Express-side policy, Worker parity, and a repeatable `npm run test:rules` Firestore Rules Emulator test.
 - Validation so far: focused suite **5 files / 61 tests PASS**; Rules Emulator test **PASS** with monitoring reads allowed and six Supervisor mutation attempts denied.
 - No preview/production deployment, live Firebase write, `main` change, or use of the supplied admin credential occurred. Full quality gates remain next; H6 stays blocked until broader acceptance and preview verification pass.
+
+## Supervisor read-boundary correction — 2026-10-07 continuation
+- The owner approved proceeding with the recommended monitoring-only read boundary.
+- `GET /api/garages` now gives Supervisor a sanitized global overview containing only `id`, `name`, `status`, `dailyCapacity`, `carsInside`, `todayCount`, and `isTrial`. Sensitive identity/contact/PIN/rate/balance/revenue/commission fields are omitted.
+- Firestore Rules now deny Supervisor direct reads of garage documents, garage lists, vehicles, subscribers, and daily counters. Existing Worker direct-detail/dashboard routes continue to deny Supervisor through garage scope policy. Delegate monitoring reads remain allowed.
+- Focused validation passed **3 files / 65 tests**; the Rules Emulator passed with delegate read allowed, direct garage/nested reads denied, and six mutation attempts denied. Full gates, commit/push, and preview redeployment remain next.

@@ -62,6 +62,25 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(await response.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Garage scope required' });
   });
 
+  it('returns only sanitized operational fields for the Supervisor global monitoring list', async () => {
+    mockDb.seed('garages/garage-a', {
+      id: 'garage-a', name: 'Garage Alpha', status: 'approved', dailyCapacity: 40,
+      carsInside: 3, todayCount: 8, isTrial: false, phone: '01000000000',
+      ownerName: 'Owner', pin: '12345678', balance: 500, totalRevenue: 9000
+    });
+    const response = await call('/api/garages', tokens.supervisor);
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.garages).toEqual(expect.arrayContaining([{
+      id: 'garage-a', name: 'Garage Alpha', status: 'approved', dailyCapacity: 40,
+      carsInside: 3, todayCount: 8, isTrial: false
+    }]));
+    expect(body.garages[0]).not.toHaveProperty('phone');
+    expect(body.garages[0]).not.toHaveProperty('pin');
+    expect(body.garages[0]).not.toHaveProperty('balance');
+    expect(body.garages[0]).not.toHaveProperty('totalRevenue');
+  });
+
   it.each([
     ['/api/admin/summary', 'GET'],
     ['/api/financial-summary', 'GET'],

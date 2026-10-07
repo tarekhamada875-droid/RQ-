@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',
@@ -35,12 +35,13 @@ try {
   });
 
   const db = env.authenticatedContext('sup-uid').firestore();
-  const readChecks = [
-    getDoc(doc(db, 'delegates/del-1')),
-    getDoc(doc(db, 'garages/g-1/subscribers/sub-1')),
-    getDoc(doc(db, 'garages/g-1/daily_counts/2026-10-07'))
-  ];
-  await Promise.all(readChecks.map(assertSucceeds));
+  await assertSucceeds(getDoc(doc(db, 'delegates/del-1')));
+  await Promise.all([
+    assertFails(getDoc(doc(db, 'garages/g-1'))),
+    assertFails(getDocs(collection(db, 'garages'))),
+    assertFails(getDoc(doc(db, 'garages/g-1/subscribers/sub-1'))),
+    assertFails(getDoc(doc(db, 'garages/g-1/daily_counts/2026-10-07')))
+  ]);
 
   const deniedWrites = [
     updateDoc(doc(db, 'delegates/del-1'), { name: 'Should Be Denied' }),
@@ -51,7 +52,7 @@ try {
     setDoc(doc(db, 'garages/g-1/daily_counts/2026-10-08'), { dateId: '2026-10-08', count: 1, limit: 10 })
   ];
   await Promise.all(deniedWrites.map(assertFails));
-  console.log('Supervisor rules test passed: read monitoring allowed; six mutation attempts denied.');
+  console.log('Supervisor rules test passed: delegate monitoring read allowed; direct garage/nested reads and six mutation attempts denied.');
 } finally {
   await env.cleanup();
 }

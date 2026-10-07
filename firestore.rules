@@ -651,11 +651,11 @@ service cloud.firestore {
 
     match /garages/{garageId} {
       allow get: if isValidId(garageId) && (
-        isAdmin() || isSupervisor() ||
+        isAdmin() ||
         isGarageSession(garageId) ||
         isDelegateForGarage(garageId)
       );
-      allow list: if isAdmin() || isSupervisor();
+      allow list: if isAdmin();
       allow create: if false; // Garages are strictly created via server API
       allow delete: if false; // Server-only via Admin SDK
       
@@ -673,7 +673,7 @@ service cloud.firestore {
       
       match /vehicles/{vehicleId} {
         allow read: if isValidId(garageId) && (
-          isAdmin() || isSupervisor() ||
+          isAdmin() ||
           isGarageSession(garageId) ||
           isDelegateForGarage(garageId)
         );
@@ -681,8 +681,8 @@ service cloud.firestore {
       }
 
       match /subscribers/{subscriberId} {
-        allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
-        allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
+        allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
+        allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
         allow create: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
                       !isGarageDeleting(garageId) &&
                       isValidSubscriberCreate(garageId, subscriberId);
@@ -709,7 +709,7 @@ service cloud.firestore {
     match /garages/{garageId}/daily_counts/{dateId} {
       allow get: if isSignedIn() && isValidId(garageId) && isValidId(dateId) &&
         (isGarageSession(garageId) || isAdmin() ||
-         isSupervisor() || isDelegateForGarage(garageId));
+         isDelegateForGarage(garageId));
       allow list: if isAdmin();
 
       allow create: if (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&

@@ -461,3 +461,7 @@ Treat this as an **H6 blocker and policy decision point**. Do not advance H7, ch
 ## H6 security correction follow-up — 2026-10-07
 
 The stated Supervisor boundary is now enforced locally: monitoring reads remain available, while direct writes to delegates, subscribers, and daily counters are denied by Firestore Rules; Hono and Express delegate update/delete are Admin-only through the shared domain policy. Focused route/domain tests passed **5 files / 61 tests**, and the repeatable local Rules Emulator test passed. The correction remains un-deployed; H6 cannot close until the full matrix and preview verification are complete.
+
+## H6 Supervisor read-boundary correction — 2026-10-07
+
+The Supervisor monitoring boundary is now explicit: global overview only through the Worker, sanitized to operational fields; no direct garage/detail, vehicle, subscriber, or daily-counter reads through Firestore Rules or scoped Worker routes. Sensitive identity, contact, PIN, rates, balances, revenue, and commission fields are excluded. Delegate monitoring remains readable. Focused tests and the local Rules Emulator passed; full gates and preview redeployment remain required before H6 closure.
