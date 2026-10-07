@@ -543,3 +543,8 @@ The mobile shell passed, but the authorized synthetic Admin mobile login could n
 ## 2026-10-07 authenticated mobile Admin result
 
 The isolated preview Worker recovered to HTTP 200 health. A 390×844 portrait, five-touch Chromium session completed synthetic Admin login, rendered the read-only dashboard, and restored the dashboard session after reload once the test harness reapplied portrait metrics. Admin mobile login/dashboard/session persistence is **PASS**. Other role-specific mobile workflows and financial/recharge/subscription workflows remain open.
+
+
+## 2026-10-07 offline safety-gate result
+
+The credential-free PWA shell loaded online at 390×844 portrait with an active service worker; when network emulation was disabled and the page reloaded, the explicit offline guard blocked login and business controls. Offline safety gate is **PASS**. Offline authenticated business operation remains intentionally unsupported/unverified.

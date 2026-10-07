@@ -437,3 +437,8 @@ An isolated Chromium session used the authorized synthetic Admin credential at 3
 ## 2026-10-07 authenticated mobile Admin continuation — PASS
 
 After the preview Worker recovered and direct health returned HTTP 200, a fresh same-origin preview was tested in Chromium at 390×844 portrait with five touch points. The authorized synthetic Admin keypad sequence opened the full read-only Admin dashboard, including synthetic garage metrics and role navigation. After a full page reload, reapplying the intended portrait emulation restored the same dashboard with the session still valid. This establishes **PASS for Admin mobile login, dashboard rendering, and session persistence**. No mutation, payment, or financial control was activated; other role-specific mobile workflows remain untested.
+
+
+## 2026-10-07 offline safety-gate continuation — PASS
+
+A credential-free built PWA preview was loaded at 390×844 portrait with an active root-scoped service worker. Online, the login shell rendered normally. After DevTools network emulation was set offline and the page was reloaded, the app displayed its explicit Arabic offline guard (`مفيش اتصال بالإنترنت`) and did not expose login or business-operation controls. This is **PASS for the offline safety gate / operation blocking**. It is not a claim that authenticated business data or workflows operate offline; those remain intentionally unsupported and untested.

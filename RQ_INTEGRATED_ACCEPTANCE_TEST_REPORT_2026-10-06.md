@@ -300,3 +300,8 @@ The authorized synthetic Admin keypad sequence was entered in a 390×844 portrai
 ## 2026-10-07 authenticated mobile Admin result
 
 With the isolated preview Worker healthy again, Chromium at 390×844 portrait and five touch points completed the authorized synthetic Admin login. The full read-only Admin dashboard rendered with synthetic metrics/navigation, and after reload plus restoration of the intended emulation metrics the dashboard returned with the session still valid. **Admin mobile login, dashboard, and session persistence: PASS.** No business mutation or financial workflow was run; other roles remain untested on mobile.
+
+
+## 2026-10-07 offline safety-gate result
+
+At 390×844 portrait, the credential-free PWA login shell loaded online with an active service worker. Under offline network emulation and reload, the app showed its explicit offline guard and withheld login/business controls. **Offline safety gate: PASS.** Authenticated offline business operation remains unsupported/unverified and is not represented as PASS.

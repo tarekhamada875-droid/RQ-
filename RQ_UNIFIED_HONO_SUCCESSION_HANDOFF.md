@@ -1117,3 +1117,8 @@ A 390×844 portrait, five-touch Chromium session accepted the authorized synthet
 ## 2026-10-07 authenticated mobile Admin acceptance
 
 After direct preview health recovered to HTTP 200, a fresh same-origin preview was tested with Chromium at 390×844 portrait and five touch points. The authorized synthetic Admin keypad sequence opened the full read-only Admin dashboard with synthetic metrics/navigation. After reload, restoring the intended portrait emulation returned the dashboard with the session still valid. **Admin mobile login, dashboard rendering, and session persistence: PASS.** No mutation, payment, production, or `main` operation occurred; other mobile roles and financial workflows remain open.
+
+
+## 2026-10-07 offline safety-gate acceptance
+
+A credential-free built PWA preview at 390×844 portrait loaded the login shell online with an active service worker. With DevTools network emulation offline and a reload, the app displayed its explicit offline guard and withheld login/business-operation controls. **Offline safety gate: PASS.** This does not enable or validate authenticated offline business workflows; those remain intentionally unsupported/unverified.
