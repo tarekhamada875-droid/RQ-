@@ -197,7 +197,8 @@ export const garageService = {
     try {
       const json = await apiFetch('/api/garages/create', {
         method: 'POST',
-        body: data
+        body: data,
+        timeoutMs: 60_000
       });
 
       return { success: true, id: json.id };
