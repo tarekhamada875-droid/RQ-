@@ -285,3 +285,8 @@ Focused tests passed 16/16; full Vitest passed 102 files/582 tests; TypeScript, 
 The current migration branch passed the final local gates: 102 Vitest files / 582 tests, TypeScript lint, production/server/Worker builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. The latest evidence supersedes earlier historical findings where applicable: Supervisor monitoring is locally corrected and sanitized, and bounded Owner vehicle plus Subscriber lifecycle acceptance passed in isolated preview.
 
 **Final disposition: OPEN/BLOCKED.** Mobile device/touch acceptance is not proven with the available browser environment, and financial/recharge/wallet/subscription-purchase workflows remain intentionally untested. H6 is not complete; H7–H9 remain blocked. No production or `main` change occurred.
+
+
+## 2026-10-07 mobile-emulation shell result
+
+A sandbox Chromium DevTools Protocol session completed a real 390×844 portrait emulation with five touch points against the isolated built preview. The login shell loaded, a harmless keypad touch registered, all visible controls fit within the viewport with a minimum 46 px height, the standalone manifest served correctly, and the root-scoped service worker was active. **Mobile/PWA shell, layout, and touch-target smoke: PASS.** Authenticated mobile role workflows, offline business behavior, and financial/recharge/subscription workflows remain untested and do not become PASS by this shell result.

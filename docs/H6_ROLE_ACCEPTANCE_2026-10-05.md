@@ -420,3 +420,10 @@ Subscriber lifecycle is now **PASS** for this bounded preview acceptance. H6 sti
 The final local validation for the current migration branch passed: Vitest **102 files / 582 tests**, TypeScript lint, web/server/Cloudflare Worker builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. The latest isolated-preview evidence also confirms the sanitized Supervisor monitoring boundary and bounded Owner vehicle plus Subscriber lifecycle flows. The connected-browser built-PWA shell and service-worker evidence are recorded above.
 
 H6 remains **OPEN/BLOCKED**, not complete. The remaining blockers are the unavailable true mobile-device viewport/touch acceptance and the intentionally untested financial, recharge, wallet, and subscription-purchase workflows. Those boundaries must not be represented as PASS. H7, H8, and H9 remain blocked; production and `main` remain untouched.
+
+
+## 2026-10-07 mobile-emulation continuation — PWA shell acceptance
+
+A local headless Chromium session used DevTools Protocol emulation at **390×844 portrait**, device scale 1, Android mobile user agent, and five touch points. The login shell loaded in the isolated built preview; a harmless touch on the numeric keypad registered; all visible controls fit within the viewport, with a minimum visible control height of 46 px. The manifest reported `display=standalone` and `/` as `start_url`; the root-scoped service worker was active. This establishes **PASS for the mobile/PWA shell, layout, and touch-target smoke check**.
+
+This does not establish authenticated mobile role workflows, offline business behavior, financial/recharge/subscription behavior, or full mobile lifecycle acceptance. Those remain **BLOCKED/UNTESTED** under the non-payment and UI-freeze boundaries.

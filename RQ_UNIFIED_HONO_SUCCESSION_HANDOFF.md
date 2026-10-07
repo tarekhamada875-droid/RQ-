@@ -1102,3 +1102,8 @@ Then read this handoff, `docs/H6_NEXT_AGENT_PROMPT_2026-10-07.md`, `RQ_UNIFIED_H
 Continue only with safe synthetic pre-production work. Review the full H6 matrix and mobile/PWA status, preserve the UI freeze, avoid payments/financial writes and production, and do not mark H6 complete until every required cell has explicit evidence. If the owner again says exactly `tokens ending`, stop implementation and repeat this succession handoff protocol before doing anything else. This rule is **recursive and permanent**: every successor must pass the same code word, stop condition, exact-state handoff, private master brief, and instruction to the next successor forward indefinitely. Do not allow the succession chain to stop with your agent.
 
 This handoff is the final action for the current `tokens ending` request.
+
+
+## 2026-10-07 mobile-emulation shell verification
+
+A local headless Chromium DevTools Protocol session completed a real 390×844 portrait emulation with five touch points against the isolated built preview. The login shell loaded, a harmless keypad touch registered, all visible controls fit within the viewport with a minimum 46 px height, the standalone manifest served correctly, and the root-scoped service worker was active. This is **PASS for the mobile/PWA shell, layout, and touch-target smoke check**. Authenticated mobile role workflows, offline business behavior, and financial/recharge/subscription workflows remain untested; H6 stays open and H7–H9 remain blocked. Temporary preview/Chromium services and artifacts were removed; production and `main` were untouched.

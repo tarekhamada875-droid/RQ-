@@ -528,3 +528,8 @@ The connected-browser check validated the built PWA shell: the web build passed,
 ## 2026-10-07 final H6 matrix disposition
 
 Final local gates passed on the migration branch: 102 Vitest files / 582 tests, TypeScript lint, web/server/Cloudflare Worker builds, CI check, maintainability check, and diff check. H6 remains open because true mobile-device/touch acceptance is unavailable in the connected browser environment and financial/recharge/wallet/subscription-purchase workflows remain intentionally untested. H7–H9 remain blocked; no production or `main` change is authorized by this disposition.
+
+
+## 2026-10-07 mobile-emulation shell result
+
+Real sandbox Chromium emulation at 390×844 portrait with five touch points passed the PWA login-shell, layout, and harmless keypad touch smoke check. The standalone manifest and active root-scoped service worker were also verified. Authenticated mobile workflows, offline business behavior, and all financial/recharge/subscription workflows remain open or untested; this result does not close H6.
