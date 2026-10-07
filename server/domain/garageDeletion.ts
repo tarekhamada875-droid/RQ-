@@ -17,6 +17,7 @@ export interface GarageDeletionGarageState {
 export interface GarageDeletionJobState {
   readonly exists: boolean;
   readonly status?: string;
+  readonly garageName?: string;
 }
 
 export type GarageDeletionDecision =
@@ -32,6 +33,12 @@ export function decideGarageDeletion(
   if (!garage.exists) {
     if (job.exists && job.status === 'completed') {
       return { ok: true, value: { kind: 'already_deleted', garageId: command.garageId } };
+    }
+    if (job.exists && job.status === 'running') {
+      return {
+        ok: true,
+        value: { kind: 'delete', garageId: command.garageId, garageName: job.garageName || '', resume: true },
+      };
     }
     return { ok: false, error: 'GARAGE_NOT_FOUND' };
   }

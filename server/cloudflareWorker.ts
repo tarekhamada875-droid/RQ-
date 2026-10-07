@@ -22,6 +22,7 @@ import { calculateFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboardSummary';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
+import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
 import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
@@ -3034,10 +3035,11 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
     const garageRef = adminDb.doc(`garages/${garageId}`);
     const [garageSnap, deletionJobSnap] = await Promise.all([garageRef.get(), deletionJobRef.get()]);
     const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
+    const deletionJobData = deletionJobSnap.exists ? deletionJobSnap.data() || {} : {};
     const deletionDecision = decideGarageDeletion(
       { callerRole: user.role, garageId },
       garageDocumentToDeletionState(garageSnap.exists ? garageData : null),
-      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobSnap.data() || {} : null)
+      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobData : null)
     );
     if (deletionDecision.ok === false) {
       if (deletionDecision.error === 'GARAGE_NOT_FOUND') {
@@ -3049,21 +3051,56 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
       return c.json({ success: true, alreadyDeleted: true });
     }
 
-    await garageRef.set({
-      isDeleting: true,
-      deletionStartedAt: new Date(),
-      deletionStartedBy: user?.uid || null
-    }, { merge: true });
-
+    const now = new Date();
+    const jobGarageName = typeof deletionJobData.garageName === 'string' ? deletionJobData.garageName : '';
+    const garageName = typeof garageData.name === 'string'
+      ? garageData.name
+      : (jobGarageName || deletionDecision.value.garageName || garageId);
+    if (garageSnap.exists) {
+      await garageRef.set({
+        isDeleting: true,
+        deletionStartedAt: deletionJobData.startedAt || now,
+        deletionStartedBy: deletionJobData.startedBy || user?.uid || null
+      }, { merge: true });
+    }
     await deletionJobRef.set({
       garageId,
+      garageName,
       status: 'running',
-      updatedAt: new Date(),
-      startedAt: new Date(),
-      startedBy: user?.uid || null
+      updatedAt: now,
+      startedAt: deletionJobData.startedAt || now,
+      startedBy: deletionJobData.startedBy || user?.uid || null
     }, { merge: true });
 
-    return c.json({ success: true, deletionStarted: true });
+    await deleteGarageOwnedData(adminDb, garageId);
+
+    const logRef = adminDb.collection('activity_logs').doc();
+    await logRef.set({
+      garageId,
+      garageName,
+      staffId: user?.uid || null,
+      staffName: user?.displayName || 'الإدارة',
+      actionType: 'garage_delete',
+      plateNumber: `حذف جراج: ${garageName}`,
+      timestamp: new Date(),
+      amount: 0,
+      details: {
+        deletedByRole: user?.role || 'admin',
+        deletedByUid: user?.uid || null
+      }
+    });
+
+    await garageRef.delete();
+    await deletionJobRef.set({
+      garageId,
+      garageName,
+      status: 'completed',
+      updatedAt: new Date(),
+      completedAt: new Date(),
+      completedBy: user?.uid || null
+    }, { merge: true });
+
+    return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker Garage] Error deleting garage:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);

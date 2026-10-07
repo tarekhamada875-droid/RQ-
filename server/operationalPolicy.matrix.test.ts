@@ -45,8 +45,8 @@ describe('non-financial operational policy matrix', () => {
       value: { kind: 'already_deleted', garageId: 'garage_1' },
     });
     expect(decideGarageDeletion({ callerRole: 'admin', garageId: 'garage_1' }, missingGarage, { exists: true, status: 'running' })).toEqual({
-      ok: false,
-      error: 'GARAGE_NOT_FOUND',
+      ok: true,
+      value: { kind: 'delete', garageId: 'garage_1', garageName: '', resume: true },
     });
     expect(decideGarageDeletion({ callerRole: 'admin', garageId: 'garage_1' }, garage, { exists: true, status: 'running' })).toMatchObject({
       ok: true,

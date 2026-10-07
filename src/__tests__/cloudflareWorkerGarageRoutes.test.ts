@@ -81,7 +81,19 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.success).toBe(true);
   });
 
-  it('3. POST /api/garages/delete initiates garage deletion job', async () => {
+  it('3. POST /api/garages/delete removes only owned data in bounded batches and completes the job', async () => {
+    for (let index = 0; index < 401; index += 1) {
+      mockDb.seed(`garages/${testGarageId}/vehicles/vehicle-${index}`, { plateNumber: `TEST${index}` });
+    }
+    mockDb.seed(`garages/${testGarageId}/subscribers/subscriber-1`, { plateNumber: 'TEST-SUBSCRIBER' });
+    mockDb.seed(`activity_logs/old-garage-log`, { garageId: testGarageId, actionType: 'old' });
+    mockDb.seed(`recharge_requests/garage-request`, { garageId: testGarageId });
+    mockDb.seed(`staff/garage-staff`, { garageId: testGarageId });
+    mockDb.seed(`garage_sessions/garage-session`, { entityId: testGarageId });
+    mockDb.seed(`private_pins/garage-pin`, { entityId: testGarageId, entityType: 'garages' });
+    mockDb.seed(`pin_reservations/garage-pin-reservation`, { entityId: testGarageId, entityType: 'garages' });
+    mockDb.seed(`private_pins/unrelated-pin`, { entityId: testGarageId, entityType: 'staff' });
+
     const deleteRes = await api.fetch(new Request('http://localhost/api/garages/delete', {
       method: 'POST',
       headers: {
@@ -96,10 +108,47 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(deleteRes.status).toBe(200);
     const body = await deleteRes.json() as any;
     expect(body.success).toBe(true);
-    expect(body.deletionStarted).toBe(true);
+    expect(body.deletionStarted).toBeUndefined();
+    expect(mockDb.records.has(`garages/${testGarageId}`)).toBe(false);
+    expect([...mockDb.records.keys()].some((path) => path.startsWith(`garages/${testGarageId}/vehicles/`))).toBe(false);
+    expect(mockDb.records.has(`garages/${testGarageId}/subscribers/subscriber-1`)).toBe(false);
+    expect(mockDb.records.has('recharge_requests/garage-request')).toBe(false);
+    expect(mockDb.records.has('staff/garage-staff')).toBe(false);
+    expect(mockDb.records.has('garage_sessions/garage-session')).toBe(false);
+    expect(mockDb.records.has('private_pins/garage-pin')).toBe(false);
+    expect(mockDb.records.has('pin_reservations/garage-pin-reservation')).toBe(false);
+    expect(mockDb.records.has('private_pins/unrelated-pin')).toBe(true);
+    expect(mockDb.records.get(`garage_deletion_jobs/${testGarageId}`)?.status).toBe('completed');
+    const deletionLogs = [...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.garageId === testGarageId);
+    expect(deletionLogs).toHaveLength(1);
+    expect(deletionLogs[0][1].actionType).toBe('garage_delete');
   });
 
-  it('4. GET /api/garages and GET /api/garages/:id return live garage data', async () => {
+  it('4. POST /api/garages/delete resumes a running job after the garage root was removed', async () => {
+    mockDb.records.delete(`garages/${testGarageId}`);
+    mockDb.seed(`garage_deletion_jobs/${testGarageId}`, {
+      garageId: testGarageId,
+      garageName: 'Synthetic Resume Garage',
+      status: 'running'
+    });
+    mockDb.seed(`garages/${testGarageId}/events/leftover-event`, { type: 'synthetic' });
+
+    const deleteRes = await api.fetch(new Request('http://localhost/api/garages/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ garageId: testGarageId })
+    }), workerEnv);
+
+    expect(deleteRes.status).toBe(200);
+    expect(await deleteRes.json()).toMatchObject({ success: true });
+    expect(mockDb.records.has(`garages/${testGarageId}/events/leftover-event`)).toBe(false);
+    expect(mockDb.records.get(`garage_deletion_jobs/${testGarageId}`)?.status).toBe('completed');
+  });
+
+  it('5. GET /api/garages and GET /api/garages/:id return live garage data', async () => {
     const listRes = await api.fetch(new Request('http://localhost/api/garages', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
