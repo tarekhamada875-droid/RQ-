@@ -392,3 +392,14 @@ With the required Firebase token and `X-Session-ID` header, the Owner-scoped veh
 Subscriber add was then attempted twice with fresh synthetic plates and valid date ranges. Both attempts returned HTTP 409 with the existing Arabic conflict response (“هذا المشترك مسجل بالفعل”), including the second attempt using the validated `ownerName`/plate payload. Because no subscriber-add success or record ID was obtained, update/renew/delete were not attempted against a guessed identifier. This cell is **OPEN/BLOCKED** and is recorded as a product-level preview finding, not a PASS.
 
 The synthetic garage deletion was started by the authorized Admin route with HTTP 200 and `deletionStarted=true`; the Owner and Admin sessions were released with HTTP 200 where authenticated, transient browser auth state was cleared, and the temporary proxy was stopped. No production, payment, recharge, balance, subscription purchase, or live-user data was used.
+
+
+## 2026-10-07 subscriber conflict fix and live lifecycle retest
+
+Root cause identified in `server/firebaseWorkerAdmin.ts`: the Cloudflare REST Firestore transaction adapter implemented only document reads. The subscriber add route calls `transaction.get(query)` for the legacy plate duplicate check; the adapter treated that query as a document reference, so the result did not have a valid `empty` query-snapshot property and every fresh subscriber was falsely rejected as already registered. The fix adds transaction-aware `runQuery` propagation and returns a proper `{ empty, docs }` snapshot for transactional queries.
+
+Validation before deployment: focused subscriber route tests 16/16 passed, TypeScript lint passed, Cloudflare Worker build passed, full Vitest suite passed (102 files, 582 tests), production bundle/CI check passed, and maintainability passed. Commit: `9c51979`.
+
+After preview deployment, a fresh synthetic free-trial garage and Owner session were created in the isolated preview. Using a fresh synthetic plate and the required Firebase token plus `X-Session-ID`, live subscriber lifecycle passed: add HTTP 200 with an ID, update HTTP 200, renew HTTP 200, and delete HTTP 200. The temporary garage deletion was then started through the authorized Admin route with HTTP 200/`deletionStarted=true`; Owner/Admin sessions were released and transient browser state was cleared. No production, payment, balance, or live-user data was used.
+
+Subscriber lifecycle is now **PASS** for this bounded preview acceptance. H6 still requires the separately documented mobile/PWA review before closure.

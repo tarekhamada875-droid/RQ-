@@ -513,3 +513,8 @@ The earlier connection/loading observation was caused by the temporary public Sa
 ## 2026-10-07 vehicle/subscriber lifecycle attempt
 
 The isolated preview accepted one synthetic free-trial Garage fixture and a fresh Owner keypad login. With Firebase authentication plus `X-Session-ID`, Owner-scoped vehicle check-in, inside listing, and check-out returned HTTP 200. Subscriber add returned HTTP 409 (“هذا المشترك مسجل بالفعل”) on two fresh synthetic-plate attempts with valid date ranges; no subscriber ID was produced and no guessed update/renew/delete was attempted. Vehicle lifecycle is supported by this bounded live route evidence; subscriber lifecycle remains OPEN/BLOCKED pending diagnosis. The synthetic garage deletion was started with HTTP 200/`deletionStarted=true`; sessions and transient auth were cleaned up. H7–H9 remain paused.
+
+
+## 2026-10-07 subscriber blocker resolved
+
+The subscriber `409` blocker was a Worker adapter defect, not stale data: transactional Firestore queries were unsupported by `FirestoreTransaction.get`, so the add route's legacy duplicate query did not return a query snapshot. Commit `9c51979` adds transaction-aware REST `runQuery` support. All local gates passed, including 102 Vitest files/582 tests and production/maintainability checks. Live isolated-preview retest passed subscriber add, update, renew, and delete (HTTP 200 each); the synthetic garage deletion started successfully and sessions were released. H6's remaining scope is the mobile/PWA acceptance review. H7–H9 remain paused.

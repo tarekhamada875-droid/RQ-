@@ -262,3 +262,10 @@ A synthetic free-trial Garage Owner fixture was created in the isolated preview 
 Subscriber creation was attempted twice using fresh synthetic plates and valid date ranges. Both returned HTTP 409 with the existing-subscriber conflict message. No subscriber record ID was obtained, so update/renew/delete were not run against an unknown record. Subscriber lifecycle remains **OPEN/BLOCKED**; vehicle lifecycle is **PASS** for this bounded Owner-scoped route flow.
 
 The synthetic Garage deletion was started through the authorized Admin route with HTTP 200 and `deletionStarted=true`; sessions and transient auth state were cleaned up. No financial or production operation occurred.
+
+
+## 2026-10-07 subscriber transaction-query fix and live retest
+
+The repeatable preview `409` was traced to the Cloudflare REST Firestore adapter: `FirestoreTransaction.get` accepted only document references although the subscriber add route performs a transactional query. The query was therefore not returned as a query snapshot, causing the duplicate guard to interpret every fresh plate as existing. Commit `9c51979` adds transaction-aware `runQuery` support and a proper `{ empty, docs }` result.
+
+Focused tests passed 16/16; full Vitest passed 102 files/582 tests; TypeScript, Cloudflare build, production bundle/CI, and maintainability checks passed. After preview deployment, a fresh synthetic garage/Owner session completed subscriber add, update, renew, and delete with HTTP 200 for each operation. The synthetic garage deletion started with HTTP 200/`deletionStarted=true`, and all sessions/transient state were cleaned. Subscriber lifecycle is now **PASS** for the bounded isolated-preview test. Mobile/PWA acceptance remains open.
