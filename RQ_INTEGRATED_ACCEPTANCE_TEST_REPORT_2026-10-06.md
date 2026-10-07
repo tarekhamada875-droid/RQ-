@@ -237,3 +237,12 @@ Owner-approved synthetic preview setup was attempted through the Admin UI using 
 - Full local suite: **PASS — 102 files / 582 tests**. Lint, production/server/Worker build, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` passed.
 - Direct Sandbox access to the isolated preview returned Cloudflare edge `403 error code: 1010` for read-only health/version probes. No new authenticated browser result is inferred from that response.
 - **Decision remains OPEN:** the locally enforced Supervisor sanitized monitoring/read-only boundary still needs isolated-preview redeployment and browser verification; browser vehicle/subscriber lifecycle acceptance remains blocked by the prior authenticated mutation timeout; financial/recharge/subscription and mobile/PWA cells remain untested. H7–H9 remain blocked.
+
+
+## 2026-10-07 isolated-preview Supervisor verification
+
+The corrected migration commit `7bc3d3f` passed the H5 Preview Worker deployment and browser-side health/version probes returned HTTP 200 for the pre-production Worker. A fresh anonymous identity was used for a temporary synthetic Supervisor fixture; the fixture was deleted after testing, and no production or financial operation occurred.
+
+Supervisor acceptance evidence: role claim HTTP 200; sanitized `GET /api/garages` HTTP 200 with 13 records and only the observed monitoring fields `id`, `name`, `status`, `isTrial`, `carsInside`, `dailyCapacity`, and `todayCount`; no sensitive PIN, phone, owner/contact, rate, balance, revenue, commission, wallet, or auth-pin fields. Direct garage detail and Admin summary reads returned HTTP 403. Valid-but-nonexistent synthetic vehicle check-in and subscriber update probes returned HTTP 403; empty-body Supervisor create and Delegate update probes also returned HTTP 403. Temporary fixture deletion returned HTTP 200.
+
+The normal UI keypad shell still showed the generic connection/loading state rather than transitioning reliably after authentication, so this is Worker/API boundary evidence and not a complete visual lifecycle pass. H6 remains OPEN/BLOCKED until the UI login/loading issue and remaining safe browser lifecycle cells are resolved.
