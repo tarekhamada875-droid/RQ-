@@ -518,3 +518,8 @@ The isolated preview accepted one synthetic free-trial Garage fixture and a fres
 ## 2026-10-07 subscriber blocker resolved
 
 The subscriber `409` blocker was a Worker adapter defect, not stale data: transactional Firestore queries were unsupported by `FirestoreTransaction.get`, so the add route's legacy duplicate query did not return a query snapshot. Commit `9c51979` adds transaction-aware REST `runQuery` support. All local gates passed, including 102 Vitest files/582 tests and production/maintainability checks. Live isolated-preview retest passed subscriber add, update, renew, and delete (HTTP 200 each); the synthetic garage deletion started successfully and sessions were released. H6's remaining scope is the mobile/PWA acceptance review. H7–H9 remain paused.
+
+
+## 2026-10-07 H6 addendum — PWA shell evidence
+
+The connected-browser check validated the built PWA shell: the web build passed, the existing manifest served successfully with standalone display, and the generated root-scoped service worker activated with static precaching and font-only runtime caching. No API or authenticated business-data caching was detected. The available connected browser exposed a landscape desktop viewport and did not provide mobile emulation, so mobile visual/touch/orientation and authenticated mobile workflow acceptance remain blocked. This does not close H6 or permit H7–H9.

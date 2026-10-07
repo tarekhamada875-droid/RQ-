@@ -403,3 +403,13 @@ Validation before deployment: focused subscriber route tests 16/16 passed, TypeS
 After preview deployment, a fresh synthetic free-trial garage and Owner session were created in the isolated preview. Using a fresh synthetic plate and the required Firebase token plus `X-Session-ID`, live subscriber lifecycle passed: add HTTP 200 with an ID, update HTTP 200, renew HTTP 200, and delete HTTP 200. The temporary garage deletion was then started through the authorized Admin route with HTTP 200/`deletionStarted=true`; Owner/Admin sessions were released and transient browser state was cleared. No production, payment, balance, or live-user data was used.
 
 Subscriber lifecycle is now **PASS** for this bounded preview acceptance. H6 still requires the separately documented mobile/PWA review before closure.
+
+
+## 2026-10-07 continuation — connected-browser built-PWA shell acceptance
+
+- **Target:** isolated built web artifact served through a temporary local preview proxy to the pre-production Worker; connected My Browser only. Production, `main`, live Firestore Rules, and financial routes were not used.
+- **Build:** `npm run build:web` passed; generated `sw.js`, Workbox runtime, and the existing `manifest.json`.
+- **PWA shell:** the connected browser loaded the login shell successfully. The manifest returned HTTP 200 with `display=standalone`, `start_url=/`, and one configured icon. The generated service worker registered with root scope and became active.
+- **Service-worker boundary:** the generated worker precaches static application assets and uses font-only runtime caching. Credential-free inspection found no `/api/` route or authenticated business-data caching.
+- **Mobile limitation:** the connected browser exposed a landscape desktop viewport; no mobile device emulation or narrow touch viewport was available through the current browser tool. Therefore mobile visual, touch-target, orientation, and authenticated mobile workflow acceptance remain **BLOCKED/UNTESTED**.
+- **Cleanup:** the temporary preview service/configuration and generated artifacts were removed; the worktree remained clean. No login was submitted and no account or synthetic record was changed during this check.

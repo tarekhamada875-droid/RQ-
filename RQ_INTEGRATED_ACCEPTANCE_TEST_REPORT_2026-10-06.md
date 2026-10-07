@@ -269,3 +269,12 @@ The synthetic Garage deletion was started through the authorized Admin route wit
 The repeatable preview `409` was traced to the Cloudflare REST Firestore adapter: `FirestoreTransaction.get` accepted only document references although the subscriber add route performs a transactional query. The query was therefore not returned as a query snapshot, causing the duplicate guard to interpret every fresh plate as existing. Commit `9c51979` adds transaction-aware `runQuery` support and a proper `{ empty, docs }` result.
 
 Focused tests passed 16/16; full Vitest passed 102 files/582 tests; TypeScript, Cloudflare build, production bundle/CI, and maintainability checks passed. After preview deployment, a fresh synthetic garage/Owner session completed subscriber add, update, renew, and delete with HTTP 200 for each operation. The synthetic garage deletion started with HTTP 200/`deletionStarted=true`, and all sessions/transient state were cleaned. Subscriber lifecycle is now **PASS** for the bounded isolated-preview test. Mobile/PWA acceptance remains open.
+
+
+## 2026-10-07 continuation — connected-browser built-PWA shell
+
+- The production web build passed and generated the service worker and existing manifest without changing tracked source.
+- In the connected browser, the isolated built preview loaded the login shell; the manifest returned 200 with standalone display; the service worker became active at root scope.
+- Static precaching and Google Fonts caching were observed in the generated worker; no `/api/` or authenticated business-data caching route was present.
+- The connected browser exposed a landscape desktop viewport rather than a mobile-emulation viewport. Mobile visual/touch/orientation and authenticated mobile workflow cells therefore remain **BLOCKED/UNTESTED**. H6 remains open; H7–H9 remain blocked.
+- Temporary preview services/configuration/build output were removed. No login was submitted, no records were mutated, and production/main were untouched.
