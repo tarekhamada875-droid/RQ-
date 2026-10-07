@@ -1036,3 +1036,69 @@ Subscriber add returned HTTP 409 with the existing-subscriber conflict response 
 The live subscriber conflict was diagnosed and fixed in commit `9c51979`. `server/firebaseWorkerAdmin.ts` now supports query reads inside Firestore transactions and returns proper query snapshots; the previous adapter treated `transaction.get(query)` as a document read, making `legacyMatches.empty` invalid and falsely reporting every new plate as a duplicate.
 
 Local validation passed: focused subscriber tests 16/16, full suite 102 files/582 tests, TypeScript, Cloudflare build, production gate, and maintainability. Isolated preview live retest passed add/update/renew/delete with HTTP 200. The synthetic garage was located by its unique test prefix, deletion started with HTTP 200, and all Owner/Admin sessions were released. Next scope is the H6 mobile/PWA acceptance review; do not begin H7–H9 yet.
+
+
+## TOKEN-ENDING SUCCESSION HANDOFF — 2026-10-07 11:06 (+03:00)
+
+The owner said **“tokens ending.”** Per the succession protocol, implementation is stopped. This section is the authoritative current checkpoint for the next agent and supersedes earlier token-ending snapshots where they conflict. If the owner says `tokens ending` again, stop immediately, append another exact current-state handoff, commit/push it to `migration/unified-hono`, and instruct the next agent to repeat this protocol.
+
+### Exact repository and deployment state
+
+- Repository: `/home/ubuntu/rq-repo`
+- Remote: `tarekhamada875-droid/RQ-`
+- Branch: `migration/unified-hono`
+- Local HEAD before this documentation checkpoint: `b9a1f268775ac05a9ef0ac107e3d63d7628b425f` (`docs: record successful subscriber lifecycle retest`)
+- `origin/migration/unified-hono` before this checkpoint: same SHA `b9a1f268775ac05a9ef0ac107e3d63d7628b425f`
+- `origin/main`: `690d8f0c1f723b823e0beabe2526fddbee8fbba7`; production/main was not changed or merged
+- Worktree before this checkpoint: clean; `git diff --check` passed
+- Preview Worker: `https://rq-hono-preview.tarekhamada875.workers.dev`
+- Preview health/version: HTTP 200; environment `preproduction`; version `1.0.0-h5-preview`; `adminSdk=true`
+- Production was not deployed, accessed for mutation, or changed
+
+### Final workflow state before this checkpoint
+
+All checks for `b9a1f26` passed:
+
+- H5 Preview Worker: [run 37590672662](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37590672662) — success
+- Production Gate: [run 37590679183](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37590679183) — success
+- A duplicate Production Gate run for the same SHA also completed successfully: run `37590672646`
+
+### Completed subscriber fix and evidence
+
+Commit `9c51979` fixed the Cloudflare REST Firestore adapter so `FirestoreTransaction.get(query)` propagates a transaction-aware `runQuery` and returns a proper query snapshot. Before the fix, the subscriber duplicate check treated every fresh plate as an existing subscriber and returned HTTP 409.
+
+The isolated preview retest used synthetic, non-financial data only: subscriber add returned HTTP 200 with an ID; update returned HTTP 200; renew returned HTTP 200; delete returned HTTP 200. The synthetic garage was located by its unique test prefix and deletion started with HTTP 200/`deletionStarted=true`. Owner/Admin sessions were released, transient browser state was removed, and the temporary proxy/config was removed. No payment, balance, recharge, subscription purchase, production, or real-user data was used.
+
+Local validation recorded before deployment: focused subscriber tests 16/16; full Vitest 102 files/582 tests; TypeScript lint; Cloudflare Worker build; production bundle/CI check; maintainability; and `git diff --check` all passed.
+
+### Current H6 disposition
+
+H6 is still **OPEN/BLOCKED**, not complete. Subscriber and bounded Owner vehicle lifecycle evidence is now passing. Remaining/open boundaries include:
+
+1. Mobile/PWA acceptance is not complete. The attempted `public/sw.js` correction was removed because the enforced UI/UX freeze rejected that protected path without explicit approval. No PWA correction is deployed or accepted.
+2. Financial/recharge/subscription workflows remain intentionally untested under the non-payment boundary.
+3. The full role-specific operational and mobile matrix still requires review before H7.
+4. Keep H7, H8, and H9 blocked. Do not merge to `main`, deploy production, deploy live Firestore Rules, or perform financial writes.
+
+### Exact next-agent protocol and commands
+
+On resumption, the next agent must first run:
+
+```bash
+cd /home/ubuntu/rq-repo
+git fetch origin main migration/unified-hono
+git checkout migration/unified-hono
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/migration/unified-hono
+git rev-parse origin/main
+git diff --check
+curl -fsS https://rq-hono-preview.tarekhamada875.workers.dev/api/health
+curl -fsS https://rq-hono-preview.tarekhamada875.workers.dev/api/version
+```
+
+Then read this handoff, `docs/H6_NEXT_AGENT_PROMPT_2026-10-07.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`. Treat this section and the current branch state as authoritative; do not rely on conversation history.
+
+Continue only with safe synthetic pre-production work. Review the full H6 matrix and mobile/PWA status, preserve the UI freeze, avoid payments/financial writes and production, and do not mark H6 complete until every required cell has explicit evidence. If the owner again says exactly `tokens ending`, stop implementation and repeat this succession handoff protocol before doing anything else.
+
+This handoff is the final action for the current `tokens ending` request.
