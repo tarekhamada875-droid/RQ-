@@ -1122,3 +1122,8 @@ After direct preview health recovered to HTTP 200, a fresh same-origin preview w
 ## 2026-10-07 offline safety-gate acceptance
 
 A credential-free built PWA preview at 390×844 portrait loaded the login shell online with an active service worker. With DevTools network emulation offline and a reload, the app displayed its explicit offline guard and withheld login/business-operation controls. **Offline safety gate: PASS.** This does not enable or validate authenticated offline business workflows; those remain intentionally unsupported/unverified.
+
+
+## 2026-10-07 Admin mobile read-only navigation acceptance
+
+The 390×844 portrait, five-touch synthetic Admin session opened the normal **Garages** and **People** screens and rendered their read-only synthetic lists. No add/edit/delete or financial control was activated; no credential or record changed. Admin mobile read-only navigation is **PASS**.

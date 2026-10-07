@@ -548,3 +548,8 @@ The isolated preview Worker recovered to HTTP 200 health. A 390×844 portrait, f
 ## 2026-10-07 offline safety-gate result
 
 The credential-free PWA shell loaded online at 390×844 portrait with an active service worker; when network emulation was disabled and the page reloaded, the explicit offline guard blocked login and business controls. Offline safety gate is **PASS**. Offline authenticated business operation remains intentionally unsupported/unverified.
+
+
+## 2026-10-07 Admin mobile read-only navigation
+
+Admin mobile acceptance now includes the dashboard plus normal read-only **Garages** and **People** screens at 390×844 portrait with five-touch emulation. Both rendered synthetic data successfully; no write or financial control was activated. **PASS.**

@@ -305,3 +305,8 @@ With the isolated preview Worker healthy again, Chromium at 390×844 portrait an
 ## 2026-10-07 offline safety-gate result
 
 At 390×844 portrait, the credential-free PWA login shell loaded online with an active service worker. Under offline network emulation and reload, the app showed its explicit offline guard and withheld login/business controls. **Offline safety gate: PASS.** Authenticated offline business operation remains unsupported/unverified and is not represented as PASS.
+
+
+## 2026-10-07 Admin mobile read-only navigation
+
+The 390×844 portrait Admin session opened the normal **Garages** and **People** navigation screens and rendered their synthetic read-only lists. No write control was used. **Admin mobile read-only navigation: PASS.**

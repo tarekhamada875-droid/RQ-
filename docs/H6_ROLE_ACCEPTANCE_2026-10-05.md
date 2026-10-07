@@ -442,3 +442,8 @@ After the preview Worker recovered and direct health returned HTTP 200, a fresh 
 ## 2026-10-07 offline safety-gate continuation — PASS
 
 A credential-free built PWA preview was loaded at 390×844 portrait with an active root-scoped service worker. Online, the login shell rendered normally. After DevTools network emulation was set offline and the page was reloaded, the app displayed its explicit Arabic offline guard (`مفيش اتصال بالإنترنت`) and did not expose login or business-operation controls. This is **PASS for the offline safety gate / operation blocking**. It is not a claim that authenticated business data or workflows operate offline; those remain intentionally unsupported and untested.
+
+
+## 2026-10-07 Admin mobile read-only navigation — PASS
+
+In the same 390×844 portrait, five-touch pre-production session, the synthetic Admin dashboard opened the **Garages** screen and then the **People** screen through the normal navigation. Both rendered their read-only synthetic lists and summary content without errors. No add/edit/delete controls were activated and no credentials or records were changed. **Admin mobile read-only navigation: PASS.**
