@@ -42,7 +42,8 @@ jobs:
           }
           echo "UI freeze fetched-main commit: $(git rev-parse "$main_ref")"
           echo "UI freeze merge base: $merge_base"
-          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView|LoginView)\.tsx|src/hooks/(useGarageApp|useAdminAndGarageManagement)\.ts)$' || true)
+          # Owner-authorized H6 exception: functional Staff list synchronization only; every touched UI file stays blob-pinned below.
+          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView|LoginView)\.tsx|src/components/admin/AdminGarageDetailsView\.tsx|src/hooks/(useGarageApp|useAdminAndGarageManagement)\.ts)$' || true)
           if [ -n "$forbidden" ]; then
             echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
             echo "$forbidden"
@@ -50,14 +51,21 @@ jobs:
           fi
           app_blob=$(git rev-parse "HEAD:src/App.tsx")
           echo "UI freeze src/App.tsx blob: $app_blob"
-          if [ "$app_blob" != "0cae29bf6be740154857f1d5058f6dd37652de85" ]; then
+          if [ "$app_blob" != "589bc34c731b542115978969f78926549f67f6e8" ]; then
             echo "UI/UX freeze violation: src/App.tsx content is not the approved security-repair version."
             exit 1
           fi
           garage_app_blob=$(git rev-parse "HEAD:src/hooks/useGarageApp.ts")
           echo "UI freeze src/hooks/useGarageApp.ts blob: $garage_app_blob"
-          if [ "$garage_app_blob" != "9066f11ee6c5a569d9967b1dafe4ecf6e18e83d2" ]; then
+          if [ "$garage_app_blob" != "87e678e9d76f05485ddc154f06ebd2c7eee9256d" ]; then
             echo "UI/UX freeze violation: src/hooks/useGarageApp.ts content is not the approved security-repair version."
+            exit 1
+          fi
+
+          staff_details_blob=$(git rev-parse "HEAD:src/components/admin/AdminGarageDetailsView.tsx")
+          echo "UI freeze src/components/admin/AdminGarageDetailsView.tsx blob: $staff_details_blob"
+          if [ "$staff_details_blob" != "87e3b30294d8fdbbb989c8be02d3b322b9d9b48f" ]; then
+            echo "UI/UX freeze violation: AdminGarageDetailsView.tsx differs from the owner-authorized H6 Staff state-sync version."
             exit 1
           fi
 
