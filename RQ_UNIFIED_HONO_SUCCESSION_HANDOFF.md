@@ -1022,3 +1022,10 @@ Observed Supervisor results: monitoring list HTTP 200 with 13 records and only s
 ## 2026-10-07 corrected browser UI verification addendum
 
 The previous UI connection/loading observation was a false blocker from the temporary Sandbox harness: the public `*.manus.computer` host was not recognized by the frontend API URL resolver, so UI calls bypassed the same-origin preview proxy. After explicitly pinning the preview API base to the proxy, the normal Admin keypad flow reached the full Admin dashboard and a fresh synthetic Supervisor keypad flow reached the restricted delegate-only dashboard. The temporary fixture was deleted, both sessions were released, transient auth state was cleared, and the proxy was removed. H6 should now proceed to the safe Garage Owner/Staff vehicle and subscriber lifecycle matrix; do not begin H7–H9 yet.
+
+
+## 2026-10-07 isolated-preview vehicle/subscriber lifecycle addendum
+
+A synthetic free-trial Garage was created successfully in the isolated preview and logged into through the normal Owner keypad. The Owner-scoped vehicle flow passed with HTTP 200 for check-in, inside listing, and check-out when the required Firebase token and `X-Session-ID` were supplied. The first missing-session-header diagnostic correctly returned 403 and did not mutate data.
+
+Subscriber add returned HTTP 409 with the existing-subscriber conflict response on two fresh synthetic plates and valid date ranges. No subscriber ID was obtained, so no guessed update/renew/delete was attempted. Treat vehicle lifecycle as bounded live PASS and subscriber lifecycle as OPEN/BLOCKED product finding. Authorized Admin garage deletion returned HTTP 200/`deletionStarted=true`; Owner/Admin sessions were released and transient auth cleared. Do not begin H7–H9; investigate the preview subscriber conflict next.

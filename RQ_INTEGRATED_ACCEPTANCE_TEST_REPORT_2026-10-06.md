@@ -253,3 +253,12 @@ The normal UI keypad shell still showed the generic connection/loading state rat
 The prior generic connection/loading result came from the temporary Sandbox harness sending frontend API calls to the default Worker because the public `*.manus.computer` hostname was not recognized as same-origin by `getApiUrl`; it was not a confirmed application login failure. With the preview API base explicitly pinned to the same-origin proxy, the normal Admin keypad login reached the full Admin dashboard and the normal synthetic Supervisor keypad login reached the restricted delegate-only Supervisor dashboard.
 
 A temporary Supervisor fixture and both synthetic sessions were cleaned up successfully: fixture deletion HTTP 200, session release HTTP 200, and transient Firebase auth state cleared. No production or financial operation occurred. The previous UI blocker is therefore RESOLVED as a test-harness routing issue. Remaining H6 scope is the safe Garage Owner/Staff vehicle and subscriber lifecycle matrix.
+
+
+## 2026-10-07 isolated-preview vehicle/subscriber lifecycle attempt
+
+A synthetic free-trial Garage Owner fixture was created in the isolated preview (HTTP 200; approximately 10 seconds). Normal keypad login reached the Garage view. With Firebase authentication and the required session header, vehicle check-in, inside listing, and check-out each returned HTTP 200. A first diagnostic call missing `X-Session-ID` returned 403 and was not counted as a product failure.
+
+Subscriber creation was attempted twice using fresh synthetic plates and valid date ranges. Both returned HTTP 409 with the existing-subscriber conflict message. No subscriber record ID was obtained, so update/renew/delete were not run against an unknown record. Subscriber lifecycle remains **OPEN/BLOCKED**; vehicle lifecycle is **PASS** for this bounded Owner-scoped route flow.
+
+The synthetic Garage deletion was started through the authorized Admin route with HTTP 200 and `deletionStarted=true`; sessions and transient auth state were cleaned up. No financial or production operation occurred.

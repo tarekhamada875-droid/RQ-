@@ -381,3 +381,14 @@ The earlier generic connection/loading observation was traced to the temporary S
 The supplied synthetic Admin PIN reached the full Admin dashboard, including the system navigation and 13-garage overview. A temporary synthetic Supervisor was then created, and a fresh anonymous identity completed the normal keypad login; the UI reached the restricted Supervisor dashboard showing only the delegate list rather than Admin controls. The Supervisor fixture was deleted with HTTP 200, both test sessions were released with HTTP 200, Firebase transient auth state was cleared, and the temporary proxy was removed. No production or financial operation occurred.
 
 The remaining H6 work is the safe Garage Owner/Staff vehicle and subscriber lifecycle matrix. The previous UI blocker is **RESOLVED as a test-harness routing issue**, not an application login failure.
+
+
+## 2026-10-07 isolated-preview vehicle/subscriber lifecycle attempt
+
+A synthetic free-trial Garage Owner fixture was created through the isolated preview with a bounded 90-second request; creation returned HTTP 200 after approximately 10 seconds. A fresh Owner keypad login reached `app_view=garage` with garage state present and no staff marker.
+
+With the required Firebase token and `X-Session-ID` header, the Owner-scoped vehicle flow passed: check-in HTTP 200, inside-vehicle listing HTTP 200, and check-out HTTP 200. No financial or payment action was used. An initial diagnostic request without `X-Session-ID` returned 403 and created no record; it was not counted as a product failure.
+
+Subscriber add was then attempted twice with fresh synthetic plates and valid date ranges. Both attempts returned HTTP 409 with the existing Arabic conflict response (“هذا المشترك مسجل بالفعل”), including the second attempt using the validated `ownerName`/plate payload. Because no subscriber-add success or record ID was obtained, update/renew/delete were not attempted against a guessed identifier. This cell is **OPEN/BLOCKED** and is recorded as a product-level preview finding, not a PASS.
+
+The synthetic garage deletion was started by the authorized Admin route with HTTP 200 and `deletionStarted=true`; the Owner and Admin sessions were released with HTTP 200 where authenticated, transient browser auth state was cleared, and the temporary proxy was stopped. No production, payment, recharge, balance, subscription purchase, or live-user data was used.

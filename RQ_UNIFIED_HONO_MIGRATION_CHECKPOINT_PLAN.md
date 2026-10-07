@@ -508,3 +508,8 @@ The H5 Preview Worker for `7bc3d3f` deployed successfully and browser-side healt
 ## Corrected browser UI routing verification — 2026-10-07
 
 The earlier connection/loading observation was caused by the temporary public Sandbox harness: `getApiUrl` did not classify the `*.manus.computer` host as same-origin, so UI requests bypassed the preview proxy and targeted the default Worker. With the preview API base explicitly pinned to the same-origin proxy, the normal Admin login reached the full dashboard and the normal synthetic Supervisor login reached the restricted delegate-only dashboard. The temporary Supervisor fixture was deleted and both test sessions were released; no production or financial operation occurred. The prior UI blocker is resolved as a harness-routing issue. Continue H6 with the safe Garage Owner/Staff vehicle and subscriber lifecycle matrix.
+
+
+## 2026-10-07 vehicle/subscriber lifecycle attempt
+
+The isolated preview accepted one synthetic free-trial Garage fixture and a fresh Owner keypad login. With Firebase authentication plus `X-Session-ID`, Owner-scoped vehicle check-in, inside listing, and check-out returned HTTP 200. Subscriber add returned HTTP 409 (“هذا المشترك مسجل بالفعل”) on two fresh synthetic-plate attempts with valid date ranges; no subscriber ID was produced and no guessed update/renew/delete was attempted. Vehicle lifecycle is supported by this bounded live route evidence; subscriber lifecycle remains OPEN/BLOCKED pending diagnosis. The synthetic garage deletion was started with HTTP 200/`deletionStarted=true`; sessions and transient auth were cleaned up. H7–H9 remain paused.
