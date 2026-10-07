@@ -65,6 +65,11 @@ export function canSubmitGarageApplication(principal: AuthorizationPrincipal | n
   return principal?.role === 'admin' || principal?.role === 'delegate';
 }
 
+/** Delegate records are global administrative data; Supervisors may monitor but not mutate them. */
+export function canManageDelegates(principal: AuthorizationPrincipal | null | undefined): boolean {
+  return principal?.role === 'admin';
+}
+
 /**
  * Decides whether a principal may manage garage-scoped records.
  * This pure policy intentionally preserves the current route contract:

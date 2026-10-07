@@ -629,13 +629,12 @@ service cloud.firestore {
 
     match /delegates/{delegateId} {
       allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isDelegateSession(delegateId));
-      allow create: if (isAdmin() || isSupervisor()) && isValidDelegate(incoming()) && isValidId(delegateId);
+      allow create: if isAdmin() && isValidDelegate(incoming()) && isValidId(delegateId);
       allow update: if isValidId(delegateId) && (
         isAdmin() || 
-        isSupervisor() ||
         (isDelegateSession(delegateId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
       );
-      allow delete: if (isAdmin() || isSupervisor()) && isValidId(delegateId);
+      allow delete: if isAdmin() && isValidId(delegateId);
     }
 
     match /staff/{staffId} {
@@ -684,13 +683,13 @@ service cloud.firestore {
       match /subscribers/{subscriberId} {
         allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
         allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
-        allow create: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+        allow create: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
                       !isGarageDeleting(garageId) &&
                       isValidSubscriberCreate(garageId, subscriberId);
-        allow update: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+        allow update: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
                       !isGarageDeleting(garageId) &&
                       isValidSubscriberUpdate(garageId, subscriberId);
-        allow delete: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId));
+        allow delete: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
       }
     }
 
@@ -713,13 +712,13 @@ service cloud.firestore {
          isSupervisor() || isDelegateForGarage(garageId));
       allow list: if isAdmin();
 
-      allow create: if (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+      allow create: if (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
                        !isGarageDeleting(garageId) &&
                        !exists(/databases/$(database)/documents/garages/$(garageId)/daily_counts/$(dateId)) &&
                        request.resource.data.count <= 1 &&
                        request.resource.data.dateId == dateId;
 
-      allow update: if (isGarageSession(garageId) || isAdmin() || isSupervisor() || isDelegateForGarage(garageId)) &&
+      allow update: if (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
                        !isGarageDeleting(garageId) &&
                        (
                          request.resource.data.count == resource.data.count + 1 ||

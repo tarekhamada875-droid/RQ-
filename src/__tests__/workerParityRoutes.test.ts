@@ -147,6 +147,27 @@ describe('Worker Route Parity Suite', () => {
   });
 
   describe('3. Delegate Management', () => {
+    it('denies Supervisor delegate mutations before any database write', async () => {
+      mockDb.seed('delegates/supervisor-target', {
+        id: 'supervisor-target',
+        name: 'Protected Delegate',
+        totalRechargedAmount: 0
+      });
+
+      const updateRes = await call('/api/delegates/update', tokens.supervisor, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'supervisor-target', name: 'Must Not Change' })
+      });
+      const deleteRes = await call('/api/delegates/delete', tokens.supervisor, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'supervisor-target' })
+      });
+
+      expect(updateRes.status).toBe(403);
+      expect(deleteRes.status).toBe(403);
+      expect(mockDb.records.get('delegates/supervisor-target')?.name).toBe('Protected Delegate');
+    });
+
     it('allows admin to create delegate and enforces unsettled commission guard on delete', async () => {
       const createRes = await call('/api/delegates/create', tokens.admin, {
         method: 'POST',

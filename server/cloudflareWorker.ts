@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
@@ -3438,8 +3438,8 @@ workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
 workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    if (!canManageDelegates(user)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id, name, phone, commissionRate, commissions, defaultTrialDays } = body;
@@ -3469,8 +3469,8 @@ workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
 workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    if (!canManageDelegates(user)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;

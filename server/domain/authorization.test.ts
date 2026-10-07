@@ -6,6 +6,7 @@ import {
   canSubmitGarageApplication,
   canInvalidateAllSessions,
   canManageStaffForGarage,
+  canManageDelegates,
   canManageGarageScopedData,
   canRunGarageMaintenance,
   canViewFinancialReport,
@@ -30,6 +31,15 @@ describe('garage-scoped authorization policy', () => {
     expect(canManageGarageScopedData({ role: 'garage' }, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(undefined, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(null, 'garage_target')).toBe(false);
+  });
+});
+
+describe('global delegate mutation authorization policy', () => {
+  it('allows only Admin and denies Supervisor and other roles', () => {
+    expect(canManageDelegates({ role: 'admin' })).toBe(true);
+    expect(canManageDelegates({ role: 'supervisor' })).toBe(false);
+    expect(canManageDelegates({ role: 'delegate' })).toBe(false);
+    expect(canManageDelegates(undefined)).toBe(false);
   });
 });
 

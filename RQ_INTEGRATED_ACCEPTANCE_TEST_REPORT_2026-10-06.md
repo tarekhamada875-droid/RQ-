@@ -183,3 +183,17 @@ Source review resolves what the previously discarded Supervisor list response wo
 The Hono single-garage and dashboard-summary routes use `canManageGarageScopedData` and reject Supervisor; the focused role matrix covers that denial. This differs from the global list/Firestore permissions. H6 calls for Supervisor monitoring but does not define whether this is global or assignment-scoped. No record contents were inspected, so the report does not claim that any particular sensitive field was returned. This is an **open policy-consistency finding**, not a pass for cross-garage isolation. No source, UI, rules, accounts, production, or `main` were changed. Focused local regression: **27/27 tests pass** across the Worker authorization matrix and garage-route tests; the existing list test covers Admin only, not Supervisor.
 
 **Required before closing H6:** explicitly set the Supervisor read boundary, then align Worker and Firestore permissions and add tests for the chosen list/detail behavior and sensitive-field redaction. Until then, keep Supervisor garage-list/detail scope **OPEN** and do not represent it as a tenant-isolation pass.
+
+
+## 2026-10-07 security-policy audit addendum — Supervisor direct writes
+
+A local Firestore Rules Emulator validation confirmed that the current direct rules grant a Supervisor write access to `delegates` (update/delete), garage-scoped `subscribers` (update/delete), and `garages/{garageId}/daily_counts/{dateId}` (create/update), when the synthetic payload satisfies the schema. This conflicts with the H6 criterion that Supervisor mutations are forbidden.
+
+The route-side audit found a split rather than a unified policy: subscriber routes and vehicle routes deny Supervisor through shared garage/staff scope checks, while delegate update/delete routes allow Supervisor in both Hono and Express. Daily `daily_stats` mutation is only a vehicle-operation side effect; no dedicated `daily_counts` application endpoint was found.
+
+**Result:** confirmed authorization mismatch; H6 remains **BLOCKED**. No source or rules change was made, no live Firebase write was attempted, and production/main remain untouched. The next implementation step requires an explicit policy decision, then one aligned Rules/Hono/Express/test correction.
+
+
+## 2026-10-07 correction follow-up
+
+The owner-approved policy was applied locally: Supervisor remains read/monitoring-only. Firestore Rules now deny Supervisor writes to delegates, subscribers, and daily counters; Hono and Express delegate update/delete are Admin-only through shared `canManageDelegates` policy. Focused regression coverage passed **5 files / 61 tests**. The repeatable Rules Emulator test passed with monitoring reads allowed and six mutation attempts denied. This correction is not deployed; H6 remains blocked on the broader unrun acceptance matrix and preview verification.

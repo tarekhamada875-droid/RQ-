@@ -288,3 +288,22 @@ The previous preview browser probe established that Supervisor `GET /api/garages
 - By contrast, Hono `GET /api/garages/:id` and `/dashboard-summary` use `canManageGarageScopedData`; that policy permits Admin globally and Garage/Staff within their own garage, but denies Supervisor. `src/__tests__/workerAuthorizationMatrix.test.ts` covers this denial. The focused command `npx vitest run src/__tests__/workerAuthorizationMatrix.test.ts src/__tests__/cloudflareWorkerGarageRoutes.test.ts` passed **2 files / 27 tests**; the garage-list test currently covers Admin, not Supervisor.
 
 **Security interpretation:** the H6 plan permits Supervisor monitoring but does not define global versus assigned-record scope. Current routes/rules therefore configure global collection/Firestore reads while Hono item/detail reads deny Supervisor—a cross-surface policy mismatch. The raw list handler could return any sensitive legacy fields present in documents, but no live response fields or values were inspected, so no actual field exposure is asserted. Treat global list access as implemented, not as a pass for cross-garage isolation. No source, UI, Firestore-rule, account, or production behavior was changed. Before H6 can close, document the intended Supervisor data boundary and align the Worker/Firestore paths and tests to it; until then, this scope cell remains **OPEN**.
+
+
+## Security addendum — Supervisor mutation boundary audit (2026-10-07)
+
+**Disposition: BLOCKED / OPEN — no permission change made.** The H6 requirement says Supervisor mutations are forbidden, but the implemented authorization surfaces do not agree:
+
+- Hono and Express subscriber mutation routes deny Supervisor through `canManageGarageScopedData`.
+- Hono and Express vehicle operations deny Supervisor through vehicle garage-scope authorization; their `daily_stats` writes are server-side transaction side effects, not a direct Supervisor route.
+- Hono and Express delegate update/delete explicitly authorize Supervisor.
+- A local Firestore Rules Emulator probe, using only synthetic data and a demo project, confirmed Supervisor direct writes currently succeed for delegate update/delete, subscriber update/delete, and daily-count create/update.
+
+The rules result is evidence of a real policy mismatch, not a PASS for Supervisor mutation behavior. No live write, deployment, production access, or rules change occurred. H6 remains blocked; align the intended Supervisor policy across Rules, Hono, Express, and regression tests before closure.
+
+
+## Supervisor mutation correction — 2026-10-07
+
+Following the owner-approved H6 policy, the mismatch was corrected locally on `migration/unified-hono`: Supervisor direct writes are now denied in Firestore Rules for delegates, subscribers, and daily counters; Hono and Express delegate update/delete are now Admin-only; Supervisor read/monitoring grants remain unchanged. The shared `canManageDelegates` policy prevents Hono/Express drift.
+
+Validation passed: focused Hono/Express authorization suite **5 files / 61 tests**, including new Supervisor delegate-denial coverage, and the committed local Rules Emulator test **PASS**: Supervisor monitoring reads allowed and six mutation attempts denied. No preview or production deployment has occurred.

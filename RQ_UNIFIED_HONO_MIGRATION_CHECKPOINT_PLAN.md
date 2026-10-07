@@ -449,3 +449,15 @@ Remove Express only after the unified Hono architecture has proved itself.
 The experiment is a good idea, but the branch should be treated as a **controlled migration project**, not a quick cleanup.
 
 Do not delete the current `main` branch at the beginning. Preserve it as the known-good production baseline, build and test the unified Hono architecture separately, and merge it into `main` only after the complete gate passes.
+
+
+## H6 security addendum — Supervisor direct-write mismatch (2026-10-07)
+
+The stated Supervisor boundary is “permitted monitoring and recharge workflows; forbidden mutation and financial actions.” A local Firestore Rules Emulator probe disproved the current implementation’s alignment with that boundary: schema-valid Supervisor writes succeeded for delegate update/delete, subscriber update/delete, and daily-counter create/update. Route inspection found subscriber and vehicle routes deny Supervisor, but delegate update/delete allow Supervisor in both Hono and Express. No dedicated daily-counter mutation endpoint exists; vehicle `daily_stats` writes are guarded server-side by vehicle scope.
+
+Treat this as an **H6 blocker and policy decision point**. Do not advance H7, change permissions, deploy rules, or claim parity until the intended Supervisor mutation scope is chosen and consistently enforced/tested in Firestore Rules, Hono, Express, and the acceptance matrix.
+
+
+## H6 security correction follow-up — 2026-10-07
+
+The stated Supervisor boundary is now enforced locally: monitoring reads remain available, while direct writes to delegates, subscribers, and daily counters are denied by Firestore Rules; Hono and Express delegate update/delete are Admin-only through the shared domain policy. Focused route/domain tests passed **5 files / 61 tests**, and the repeatable local Rules Emulator test passed. The correction remains un-deployed; H6 cannot close until the full matrix and preview verification are complete.
