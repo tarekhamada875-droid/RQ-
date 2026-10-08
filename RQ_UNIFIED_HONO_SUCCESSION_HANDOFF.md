@@ -16,7 +16,8 @@
 
 Immediately before this handoff refresh, the latest workflow-verified branch head was `807d8ec8184ebc833043377699aac97aff629d0d`. Its H5 Preview Worker [run 37734277773](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734277773) and Production Gate [run 37734277788](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734277788) both passed. That commit contains documentation synchronization only. The preceding source/test commit is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`; it changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. This handoff refresh is documentation-only; verify actual branch and current HEAD/workflows before acting.
 
-The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. The exact Cloudflare Pages preview-to-Worker pairing has not been verified. Earlier browser sessions used a temporary local Vite proxy; that is diagnostic evidence only and does not satisfy the Pages-to-Worker H6 gate. If no safe Pages preview exists, record BLOCKED rather than using production.
+The latest workflow-verified branch head is `81e9f37f510d9563e9214761aa90587ea4306c07`; H5 Preview Worker [run 37734648176](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734648176) and Production Gate [run 37734648186](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734648186) both passed. The exact Cloudflare Pages preview deployment `14be67d2-25d5-447c-99f7-1ae21beac5ed` serves this commit at `https://migration-unified-hono.rq-acg.pages.dev`.
+The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`, reporting `1.0.0-h5-preview` and healthy pre-production status. Read-only bundle inspection found that the Pages preview still compiled the production Worker origin. The Cloudflare Pages **preview environment only** was corrected to target `rq-hono-preview`; production configuration was preserved unchanged. A fresh Pages deployment is required before browser acceptance. Earlier browser sessions used a temporary local Vite proxy; that remains diagnostic evidence only.
 
 ## Current H6 status — OPEN/BLOCKED
 
@@ -26,7 +27,7 @@ The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.d
 | Supervisor garage-read policy | **OPEN.** Global-versus-assigned monitoring scope requires an explicit owner decision before changing Worker, Firestore, or UI permissions. |
 | Garage Owner listener/cleanup | **OPEN/PARTIAL.** Bounded desktop reload persistence passed; real listener event delivery is unverified. Cleanup status must be supported by completion evidence, not list absence alone. |
 | Financial acceptance | **OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal without an authorized isolated financial sandbox. |
-| Automation and Pages path | No Playwright dependency/configuration/H6 E2E script is currently present, and the Pages-to-Worker browser path is unverified. Do not claim automated or production-equivalent browser acceptance. |
+| Automation and Pages path | Exact Pages preview deployment and Worker candidate are identified; fresh redeployment after the preview-origin correction is pending. No Playwright dependency/configuration/H6 E2E script is present. Do not claim automated or production-equivalent browser acceptance. |
 
 The process rewrite does not change any acceptance status. H7 has **not** started. H6 and H7 cannot guarantee “100% bug-free”; report residual risk accurately.
 
@@ -36,7 +37,7 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 
 ## Next safe actions
 
-1. Follow the controlled runbook's baseline and confirm the same candidate commit is served by an isolated Cloudflare Pages preview and `rq-hono-preview`. If unavailable, stop at BLOCKED.
+1. Verify the fresh Pages preview deployment for `81e9f37f510d9563e9214761aa90587ea4306c07` compiles API calls to `rq-hono-preview`, then confirm the same candidate Worker health/version. If unavailable, stop at BLOCKED.
 2. Reconcile the previous Staff-create attempt through read-only UI/list evidence and safe preview correlation/timing metadata. Do not change the timeout or resubmit blindly.
 3. Obtain the Supervisor scope decision before permission edits. Continue only safe Owner listener/mobile and other role cases, one role/context at a time.
 4. No Playwright harness exists. Manual H6 testing may continue through the controlled runbook; do not build a harness just to restart acceptance. If automated browser coverage is required by the owner or an acceptance gate, scope it as a separate opt-in test-infrastructure task; fail closed for production, store no credentials, and disable blind retries.

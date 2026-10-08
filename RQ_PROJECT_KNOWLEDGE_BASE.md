@@ -140,7 +140,7 @@ C7 historical financial reconciliation remains deferred until the owner approves
 
 ### Unified Hono H6 status — 2026-10-08
 
-H6 remains **OPEN/BLOCKED**. The next agent must follow `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`; the repository has no Playwright dependency/configuration or H6 E2E script, and previous temporary Vite-proxy sessions do not establish the required Cloudflare Pages-preview-to-Worker acceptance path. Staff operational access in a valid free-trial context, the Supervisor global-versus-assigned garage-read policy, Owner listener delivery/cleanup evidence, and untested financial workflows remain unresolved. No production cutover is authorized by this status; H7 is not started.
+H6 remains **OPEN/BLOCKED**. The exact Pages preview deployment for the current migration head was identified at `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`; a preview-only Pages environment correction now targets the Worker, pending fresh deployment verification. The repository has no Playwright dependency/configuration or H6 E2E script. Staff operational access in a valid free-trial context, the Supervisor global-versus-assigned garage-read policy, Owner listener delivery/cleanup evidence, and untested financial workflows remain unresolved. No production cutover is authorized by this status; H7 is not started.
 
 ## 8. Repository map
 
