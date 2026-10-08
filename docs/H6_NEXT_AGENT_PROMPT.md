@@ -4,7 +4,7 @@
 
 ## Mission
 
-Close Checkpoint H6 through reproducible, evidence-based role and security acceptance using synthetic pre-production data only. Follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority and `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the coverage catalog/matrix. H7 remains HOLD until all required H6 gates are resolved.
+Close Checkpoint H6 through reproducible, evidence-based role and security acceptance using synthetic pre-production data only. Follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority, use [`H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) as the focused Staff/Supervisor/Owner field checklist, and use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the coverage catalog/matrix. H7 remains HOLD until all required H6 gates are resolved.
 
 No process can guarantee “100% bug-free.” Reduce risk, record residual risks honestly, and do not call a blocked or untested scenario a pass.
 
@@ -26,7 +26,7 @@ The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.d
 
 ## Required execution order
 
-1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `AGENTS.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`, the integrated acceptance coverage catalog, and the current observability runbook. Treat the runbook and current handoff as controlling; use the two reports as existing evidence.
+1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `AGENTS.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`, `docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`, the integrated acceptance coverage catalog, and the current observability runbook. Treat the controlling runbook and current handoff as authoritative; use the role/integrated reports as existing evidence.
 2. Verify the non-production Pages preview and `rq-hono-preview` Worker are for the same candidate commit. Use read-only health/version checks. Never access production or modify `main`.
 3. Preserve the partial Staff transport reconciliation. Do not change the Staff timeout, replay or delete the Staff fixture, top up balances, or buy a package; only proceed with Staff operational testing if a safe credential/test fixture is separately authorized and available.
 4. Obtain the Supervisor read-scope decision before attempting to change permissions. Continue safe Owner listener/mobile and other matrix cases only through supported preview paths, one role/context and one mutation at a time.

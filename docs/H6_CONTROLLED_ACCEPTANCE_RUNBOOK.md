@@ -10,6 +10,8 @@ No test plan, CI run, or acceptance cycle can prove an application is **100% bug
 
 This runbook controls **how current H6 work is executed**. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` remains the coverage catalog and feature-by-role matrix. If an older example conflicts with this runbook, current owner instructions, or the synthetic-only boundary, do not perform that action; mark it OPEN/BLOCKED and document why.
 
+For a concise operator sequence for the currently unresolved role cases, see [`H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](H6_MANUAL_REMAINING_ROLES_RUNBOOK.md). It is a field checklist only and does not supersede this runbook.
+
 Never use production, `main`, real-user data, real payments, live financial writes, or a live Firestore Rules deployment for H6. Do not redesign the UI. Do not write secrets, PINs, bearer/session tokens, or sensitive payloads into reports, screenshots, source, or test fixtures.
 
 ## Result vocabulary
@@ -52,7 +54,7 @@ Create a small, run-specific synthetic fixture manifest before any mutation. Use
 
 **Supervisor boundary:** The global-versus-assigned garage monitoring policy remains unresolved. Do not widen or narrow Worker, Firestore, or client permissions to make a test pass. Obtain an explicit owner decision on the intended scope first. Until then, relevant cases remain OPEN/BLOCKED.
 
-**Staff trial context:** Use only an already active synthetic free-trial context for non-financial operational checks. Do not top up a balance, purchase a package, or manufacture a paid state. The latest Staff-create attempt yielded no observed success, Staff row, or usable credential within the existing client wait. Before any new create attempt, reconcile that prior request by read-only UI/list evidence and safe preview Worker correlation/timing logs. Do not retry an ambiguous mutation, and do not change the Staff-create timeout without a separately authorized decision.
+**Staff trial context:** Use only an already active synthetic free-trial context for non-financial operational checks. Do not top up a balance, purchase a package, or manufacture a paid state. The latest handoff reconciles the earlier delayed create: read-only inspection found exactly one synthetic `Mobile QA Staff` row in `QA Garage Beta`, with its PIN masked. Treat Staff transport as PARTIAL and operational access as OPEN/BLOCKED; no usable Staff credential or active-trial context is confirmed. Do not replay creation, reset the PIN, delete the row, or change the Staff-create timeout. Continue only if an owner-authorized credential and a verified active-trial context are already available.
 
 **Financial scope:** Recharge approval, wallet top-up, transfer/settlement, payment, and package/subscription purchase or renewal remain OPEN/BLOCKED unless a dedicated isolated payment/ledger sandbox is confirmed and explicitly authorized. Synthetic naming alone does not make a financial write safe. Otherwise, do not perform these flows and do not mark them PASS.
 
@@ -69,7 +71,7 @@ The requirements below remain mandatory before adding broader authenticated or m
 - capture sanitized route, status, duration, correlation/operation ID where safe, console errors, and screenshot evidence without request bodies, auth headers, PINs, tokens, or personal/financial data;
 - stop when a mutation has an ambiguous outcome rather than replaying it.
 
-Use Playwright for deterministic repeatable journeys once that harness exists. Use a supported browser session for visual or human-only checks as needed. A manual browser test is valid evidence when properly captured, but it is not an automated E2E result. Vitest/API/rules tests complement browser acceptance; they do not replace it.
+Use the existing opt-in Playwright smoke only for its documented login-shell and read-only health/version scope. Use a supported browser session for visual or human-only role checks. A manual browser test is valid evidence when properly captured, but it is not an automated E2E result. Any broader role automation needs separate review; Vitest/API/rules tests complement browser acceptance and do not replace it.
 
 ## Phase 3 — Execute one role and one scenario at a time
 
@@ -127,6 +129,6 @@ At closeout, reconcile every matrix cell as PASS, FAIL, BLOCKED, OPEN/UNVERIFIED
 
 H6 can be marked complete only when the required role workflows have evidence through the verified Cloudflare Pages preview to the isolated preview Worker; no role is silently downgraded; required desktop/mobile popup behavior passes; authorization/scope and persistence checks are complete; cleanup is confirmed; no UI/UX redesign was introduced; and every required matrix cell is resolved. Any explicitly excluded cell requires a written owner scope/risk decision and must remain labeled untested—not tested or passed.
 
-The current H6 blockers are: Staff operational access in an active-trial context; the Supervisor global-versus-assigned read policy; Owner real-time listener delivery and remaining cleanup evidence; missing verified Pages-to-Worker browser evidence; and financial workflows without a dedicated safe sandbox. The repository also lacks a Playwright harness. These do not become PASS through documentation updates or unit tests.
+The current H6 blockers are: Staff operational access in an active-trial context; the Supervisor global-versus-assigned read policy; Owner real-time listener delivery and remaining cleanup evidence; fresh verified Pages-to-Worker role-acceptance evidence; and financial workflows without a dedicated safe sandbox. The minimal Playwright smoke is not role E2E and closes none of these blockers. They do not become PASS through documentation updates or unit tests.
 
 H7 is a separate GO/HOLD decision. It requires the plan's full tests, lint, production build, CI, maintainability, release smoke, preview role acceptance, route parity, Firebase authentication/session coverage, no unexplained user-visible warnings, and a rehearsed rollback. If H6 or any H7 condition remains blocked, the result is **HOLD/NO-GO**: keep production and `main` unchanged. H6/H7 evidence can reduce risk; neither can certify “100% bug-free.”
