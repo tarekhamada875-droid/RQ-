@@ -27,7 +27,7 @@ The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.d
 | Supervisor garage-read policy | **OPEN.** Global-versus-assigned monitoring scope requires an explicit owner decision before changing Worker, Firestore, or UI permissions. |
 | Garage Owner listener/cleanup | **OPEN/PARTIAL.** Bounded desktop reload persistence passed; real listener event delivery is unverified. Cleanup status must be supported by completion evidence, not list absence alone. |
 | Financial acceptance | **OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal without an authorized isolated financial sandbox. |
-| Admin browser acceptance | **OPEN/UNVERIFIED; reconciliation BLOCKED.** One Admin login through the fresh Pages preview reached verification, then returned to the generic login without a dashboard, observed status, or safe success evidence. Source audit identified the preview Worker CORS allowlist as missing the stable migration Pages origin; a preview-only config fix is prepared, but no browser retry has been made. |
+| Admin browser acceptance | **PASS, bounded.** After the preview-only CORS allowlist fix, one fresh Admin login through `https://migration-unified-hono.rq-acg.pages.dev` reached the Admin dashboard, read-only navigation/counts rendered, and normal PIN-confirmed logout returned to the generic login. No Admin mutation or financial action was performed. |
 | Automation and Pages path | Exact Pages preview deployment and Worker candidate are identified and the fresh deployment passed. No Playwright dependency/configuration/H6 E2E script is present. Do not claim automated or production-equivalent browser acceptance. |
 
 The process rewrite does not change any acceptance status. H7 has **not** started. H6 and H7 cannot guarantee “100% bug-free”; report residual risk accurately.
@@ -38,7 +38,7 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 
 ## Next safe actions
 
-1. Deploy and verify the preview-only CORS allowlist fix for `https://migration-unified-hono.rq-acg.pages.dev`; only after a fresh deployment is confirmed may one controlled Admin login be attempted again. Do not retry the old ambiguous request or use production.
+1. Preserve the bounded Admin PASS and continue only with the remaining unresolved H6 cells: Staff operational access, Supervisor scope decision, Owner listener/cleanup evidence, and blocked financial workflows. Do not repeat the Admin login unless new evidence requires it.
 2. Reconcile the previous Staff-create attempt through read-only UI/list evidence and safe preview correlation/timing metadata. Do not change the timeout or resubmit blindly.
 3. Obtain the Supervisor scope decision before permission edits. Continue only safe Owner listener/mobile and other role cases, one role/context at a time.
 4. No Playwright harness exists. Manual H6 testing may continue through the controlled runbook; do not build a harness just to restart acceptance. If automated browser coverage is required by the owner or an acceptance gate, scope it as a separate opt-in test-infrastructure task; fail closed for production, store no credentials, and disable blind retries.

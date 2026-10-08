@@ -563,3 +563,8 @@ The approved read-only reconciliation procedure was attempted for the single Pag
 ### Source diagnosis and bounded remediation
 
 A read-only source audit found that `wrangler.preview.toml` allowed only `http://localhost:5173`, while the stable non-production Pages origin is `https://migration-unified-hono.rq-acg.pages.dev`. The Worker therefore could not echo the real preview origin for authenticated CORS requests; the Admin PIN/session implementation itself is covered by passing focused tests. The preview-only allowlist was updated to include the stable migration origin, with production configuration unchanged. Focused CORS, Worker contract, dual-runtime, and authentication tests passed **4 files / 28 tests**. No browser retry has been made; deployment and fresh-preview verification are required before reconsidering the acceptance cell.
+
+
+## 2026-10-08 continuation — fresh Admin Pages-preview acceptance — PASS, bounded
+
+After the preview-only CORS allowlist correction was deployed, the stable migration Pages preview `https://migration-unified-hono.rq-acg.pages.dev` passed a single controlled Admin login. The verification state completed and the Admin dashboard rendered its read-only navigation, dashboard counts, garage summary, and synthetic pre-production records. No Admin mutation, garage creation/deletion, staff operation, financial action, or export was performed. The normal supported PIN-confirmed Admin logout completed and returned the browser to the generic login surface. This closes the affected Admin authentication/dashboard cell as **PASS for the bounded desktop preview flow**; it does not close the remaining H6 blockers or authorize production.
