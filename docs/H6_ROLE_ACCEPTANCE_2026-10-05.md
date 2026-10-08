@@ -559,3 +559,7 @@ The Staff operational gate remains **OPEN/BLOCKED**, not a product PASS or FAIL.
 ## 2026-10-08 continuation — Admin authentication reconciliation — BLOCKED
 
 The approved read-only reconciliation procedure was attempted for the single Pages-preview Admin login. The browser result exposed no frontend correlation or operation identifier, and no usable preview Worker trace was available through the configured observability tools. Per the runbook, the request cannot be classified as success or failure and was not replayed. The Admin authentication case remains **OPEN/UNVERIFIED**, with reconciliation **BLOCKED** pending an approved safe correlation/trace source.
+
+### Source diagnosis and bounded remediation
+
+A read-only source audit found that `wrangler.preview.toml` allowed only `http://localhost:5173`, while the stable non-production Pages origin is `https://migration-unified-hono.rq-acg.pages.dev`. The Worker therefore could not echo the real preview origin for authenticated CORS requests; the Admin PIN/session implementation itself is covered by passing focused tests. The preview-only allowlist was updated to include the stable migration origin, with production configuration unchanged. Focused CORS, Worker contract, dual-runtime, and authentication tests passed **4 files / 28 tests**. No browser retry has been made; deployment and fresh-preview verification are required before reconsidering the acceptance cell.
