@@ -9,3 +9,8 @@ yarn.lock
 pnpm-lock.yaml
 .env*
 !.env.example
+
+# Local Playwright preview smoke output
+/.playwright-preview-results/
+/playwright-report/
+/test-results/

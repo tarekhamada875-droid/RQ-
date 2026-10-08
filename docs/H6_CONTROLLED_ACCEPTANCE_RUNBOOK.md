@@ -58,7 +58,9 @@ Create a small, run-specific synthetic fixture manifest before any mutation. Use
 
 ## Phase 2 — Prepare repeatable browser coverage
 
-The current repository has no Playwright dependency, configuration, or H6 end-to-end script. Do not claim Playwright automation exists. Before describing future H6 coverage as automated, add an opt-in test-infrastructure change with a dedicated reviewable commit and a validated isolated-preview target. The harness must:
+An opt-in Playwright smoke is now available at `playwright.preview.config.ts` with its single read-only test in `e2e/preview/readonly-smoke.spec.ts`. It checks the generic login shell and credential-free `GET /api/health` and `/api/version` calls to the isolated Worker from the exact stable Pages preview. It uses a fresh context, one worker, zero retries, no screenshots/traces, and is not wired into default CI. This is **not** authenticated role-acceptance automation and closes no H6 role or mutation cell.
+
+The requirements below remain mandatory before adding broader authenticated or mutating H6 automation; the minimal smoke intentionally does not implement those workflows. Any expansion requires a separately reviewed, opt-in change with a validated isolated-preview target. The harness must:
 
 - require an explicit non-production base URL and fail closed for production hosts;
 - receive test credentials only through the authorized runtime secret mechanism or a current authorized session, never committed files or screenshots;

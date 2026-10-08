@@ -22,7 +22,7 @@ The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.d
 - **Supervisor global-versus-assigned garage-read policy: OPEN.** Obtain the owner's explicit product boundary before any permission-code or Firestore-rules change. Do not guess or test with live writes.
 - **Garage Owner listener delivery and cleanup: OPEN/PARTIAL.** One desktop reload passed; no data-change event was used to verify listener delivery. Deletion/list evidence has limits recorded in the reports; use supported flows and do not claim completion without completion evidence.
 - **Financial workflows: OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal. Proceed only with a confirmed isolated financial sandbox and explicit authorization; otherwise keep blocked.
-- **Automation:** the current package has no Playwright dependency/configuration or H6 E2E script. Do not claim Playwright coverage exists. Add an opt-in, environment-driven E2E harness as a separate test-infrastructure task before calling subsequent browser coverage automated.
+- **Automation:** an opt-in Playwright smoke now checks only the unauthenticated login shell and read-only health/version calls to the isolated Worker; see [`docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`](H6_PLAYWRIGHT_PREVIEW_HARNESS.md). Run it only after verifying the Pages/Worker pairing for the candidate. It is not role-acceptance E2E, is not in default CI, and does not close H6 cells. Authenticated or mutating browser automation requires a separate reviewed scope and authorized secret handling.
 
 ## Required execution order
 
