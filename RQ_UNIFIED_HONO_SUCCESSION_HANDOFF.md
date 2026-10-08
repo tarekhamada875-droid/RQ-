@@ -55,3 +55,13 @@ If the owner sends exactly **“tokens ending”**, stop feature work and browse
 4. Provide the next agent with the runbook and explicit boundaries, then stop current feature work.
 
 Older handoff chronology is retained in Git history and dated acceptance reports; this file is the single current succession instruction.
+
+## 2026-10-08 tokens ending — succession snapshot
+
+Feature work and browser testing stop here per the exact owner marker.
+
+- **Authorized branch:** `migration/unified-hono`; local and remote HEAD: `512a994899b8fb170dc7296f280d98a35f94c5df` (`docs: reconcile live owner listener result`). Worktree was clean before this handoff append; no production or `main` changes were made.
+- **Documentation state:** The latest evidence records the live Owner listener attempt as **OPEN/UNVERIFIED**: one synthetic hourly check-in remained ambiguous, no retry was made, and no listener count update appeared. The synthetic fixture later disappeared from a fresh Admin list after deletion UI progress reached 50%; cleanup is **PARTIAL**, not confirmed job completion. Staff transport is **PARTIAL** with Staff operational access **OPEN/BLOCKED**. Supervisor scope is **OPEN** pending an explicit product boundary. Financial flows remain **OPEN/BLOCKED** and intentionally untested. H6 is not complete; H7 must not start.
+- **Validation evidence:** The latest focused listener source/lifecycle validation passed **2 files / 15 tests**. Earlier recorded full gates remain valid for their documented code heads; do not represent the current docs-only head as a fresh full-suite result until rerun.
+- **Workflow state at handoff:** Production Gate run `37750093991` for `512a994` is **pending**; H5 Preview Worker run `37750094004` is **in progress**. The preceding H5 run `37748274895` for `5226c6e` completed successfully. Do not infer current-head deployment success until the pending/in-progress runs settle and are checked.
+- **Safe next commands:** inspect the two current workflow runs; if they pass, perform credential-free preview health/version and exact Pages/Worker pairing checks; then only resume an explicitly bounded unresolved H6 cell. Do not replay the ambiguous vehicle mutation, change timeouts, modify Supervisor permissions/rules, perform financial writes, access production, merge to `main`, or start H7.
