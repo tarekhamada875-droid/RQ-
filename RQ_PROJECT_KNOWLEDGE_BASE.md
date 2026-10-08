@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-08
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` (do not modify for the Unified Hono migration task).
-**Active migration branch:** `migration/unified-hono`; immediately before this status synchronization, the last workflow-verified baseline was `1f6a55885bcb49e1381d3dc33bef3c3869245d15` on 2026-10-08, with H5 Preview Worker [37750206169](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206169) and Production Gate [37750206265](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206265) passing for that exact head. The only post-30cccf runtime/config change is preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. Verify the actual branch/head before acting.
+**Active migration branch:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1` on 2026-10-08, with H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) passing for that exact head. This commit adds opt-in read-only Playwright test infrastructure and documentation, not product behavior. The only post-30cccf runtime/config change remains preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. A later docs-only synchronization may have a newer SHA; verify the actual branch/head before acting.
 
 ## 1. What RQ is
 
