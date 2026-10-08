@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-08
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` (do not modify for the Unified Hono migration task).
-**Active migration branch:** `migration/unified-hono`; immediately before this documentation synchronization, the last workflow-verified baseline was `721932ee36b40e38cc0d79a8ff385668a01cf447` on 2026-10-08, with H5 Preview Worker and Production Gate passing for that exact head. Verify the actual branch/head before acting.
+**Active migration branch:** `migration/unified-hono`; immediately before this status synchronization, the last workflow-verified baseline was `1f6a55885bcb49e1381d3dc33bef3c3869245d15` on 2026-10-08, with H5 Preview Worker [37750206169](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206169) and Production Gate [37750206265](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206265) passing for that exact head. The only post-30cccf runtime/config change is preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. Verify the actual branch/head before acting.
 
 ## 1. What RQ is
 
@@ -140,7 +140,7 @@ C7 historical financial reconciliation remains deferred until the owner approves
 
 ### Unified Hono H6 status — 2026-10-08
 
-H6 remains **OPEN/BLOCKED**. The exact Pages preview deployment for the current migration head was identified at `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`; a preview-only Pages environment correction now targets the Worker, pending fresh deployment verification. The repository has no Playwright dependency/configuration or H6 E2E script. Staff operational access in a valid free-trial context, the Supervisor global-versus-assigned garage-read policy, Owner listener delivery/cleanup evidence, and untested financial workflows remain unresolved. No production cutover is authorized by this status; H7 is not started.
+H6 remains **OPEN/BLOCKED**. The stable Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. A preview-only CORS allowlist correction was deployed; a recorded fresh non-production Pages/Worker pairing produced one bounded Admin login/dashboard/read-only-navigation/logout PASS. Reverify the exact deployment against the current candidate before further browser acceptance. Read-only Staff inspection found one synthetic `Mobile QA Staff` row with its PIN masked: Staff transport is **PARTIAL**, while Staff operational access remains **OPEN/BLOCKED**. The Supervisor global-versus-assigned garage-read policy, Owner listener delivery/cleanup evidence, and intentionally untested financial workflows also remain unresolved. There is no Playwright dependency/configuration or H6 E2E script; do not claim automated browser coverage. No production cutover is authorized; H7 has not started.
 
 ## 8. Repository map
 

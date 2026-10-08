@@ -14,10 +14,9 @@
 
 ## Current branch and validation context
 
-Immediately before this handoff refresh, the latest workflow-verified branch head was `807d8ec8184ebc833043377699aac97aff629d0d`. Its H5 Preview Worker [run 37734277773](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734277773) and Production Gate [run 37734277788](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734277788) both passed. That commit contains documentation synchronization only. The preceding source/test commit is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`; it changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. This handoff refresh is documentation-only; verify actual branch and current HEAD/workflows before acting.
+Immediately before this status reconciliation, the latest workflow-verified branch head was `1f6a55885bcb49e1381d3dc33bef3c3869245d15`. Its H5 Preview Worker [run 37750206169](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206169) and Production Gate [run 37750206265](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37750206265) both passed. The latest application-source change remains `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`, which sets the `/api/garages/delete` timeout to 30 seconds and tests it. Commit `40da805` changes only `wrangler.preview.toml` to allow the stable migration Pages origin for the isolated preview Worker; production `wrangler.toml` was unchanged. Later commits through `1f6a558` are documentation-only. Verify the actual branch, current HEAD, workflow status, and deployment identity before acting.
 
-The latest workflow-verified branch head is `81e9f37f510d9563e9214761aa90587ea4306c07`; H5 Preview Worker [run 37734648176](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734648176) and Production Gate [run 37734648186](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37734648186) both passed. The exact Cloudflare Pages preview deployment `14be67d2-25d5-447c-99f7-1ae21beac5ed` serves this commit at `https://migration-unified-hono.rq-acg.pages.dev`.
-The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`, reporting `1.0.0-h5-preview` and healthy pre-production status. Read-only bundle inspection found that the Pages preview still compiled the production Worker origin. The Cloudflare Pages **preview environment only** was corrected to target `rq-hono-preview`; production configuration was preserved unchanged. A fresh Pages deployment is required before browser acceptance. Earlier browser sessions used a temporary local Vite proxy; that remains diagnostic evidence only.
+The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`; the isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. A bounded Admin login/dashboard/read-only navigation/logout **PASS** is recorded on the stable Pages URL after the preview-only CORS correction. This is evidence for that recorded preview session, not proof that the URL currently serves the latest candidate commit; verify the exact Pages build and Worker version before further browser testing. Earlier local Vite-proxy results remain diagnostic only. Production configuration remains unchanged.
 
 ## Current H6 status — OPEN/BLOCKED
 
@@ -56,7 +55,9 @@ If the owner sends exactly **“tokens ending”**, stop feature work and browse
 
 Older handoff chronology is retained in Git history and dated acceptance reports; this file is the single current succession instruction.
 
-## 2026-10-08 tokens ending — succession snapshot
+## Historical snapshot — exact “tokens ending” succession on 2026-10-08 (superseded)
+
+The following point-in-time snapshot was accurate when written for `512a994`. It is retained for succession history only; the branch and workflow state below were superseded by later commits. Use the current branch/CI state in the section above and verify it afresh.
 
 Feature work and browser testing stop here per the exact owner marker.
 
