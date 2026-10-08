@@ -545,3 +545,12 @@ At the owner's direction, the frontend garage-delete request now explicitly uses
 - **Cleanup:** The supported Admin logout flow completed; the visible app returned to generic login, `/api/auth/verify-pin` returned HTTP 200, and `/api/auth/release-session` returned HTTP 200. The temporary Vite proxy/config and this continuation's browser captures were removed, and port 4173 was verified closed.
 
 The Staff operational gate remains **OPEN/BLOCKED**, not a product PASS or FAIL. H6 remains **OPEN/BLOCKED**; H7 has not started. Production and `main` were not accessed for mutation.
+
+
+## 2026-10-08 continuation — fresh Pages preview Admin login attempt — OPEN/UNVERIFIED
+
+- **Target:** fresh Cloudflare Pages preview `https://61f30fef.rq-acg.pages.dev` for migration commit `b91ae0c8779b80357fc80172b44639507c9bfc33`; its configured API origin targeted the isolated `rq-hono-preview` Worker. Production and `main` were not used.
+- **Browser:** isolated Sandbox browser, desktop viewport. The login surface rendered through the Pages preview.
+- **Action/result:** one synthetic Admin login submission reached the visible verification state, then returned to the generic login screen. No Admin dashboard, observed HTTP status, correlation evidence, or usable success response was available through the browser result.
+- **Retry rule:** no retry was made because the authentication mutation outcome was not safely observable. No Staff-create, financial, destructive, or other mutation was attempted.
+- **Disposition:** Admin Pages-preview authentication is **OPEN/UNVERIFIED**. Dependent Admin read-only reconciliation and Staff continuation remain blocked until the authentication result can be reconciled through an approved safe evidence source. H6 remains **OPEN/BLOCKED**; H7 has not started.
