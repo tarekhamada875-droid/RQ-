@@ -385,3 +385,8 @@ This reconciliation is the current snapshot and supersedes earlier matrix cells 
 **Overall decision: H6 OPEN/BLOCKED.** The Supervisor garage-read policy boundary, Staff operational gate, Owner real-time listener delivery and cleanup evidence, and intentionally untested financial workflows remain unresolved. H7 (Production Cutover Decision) has **not** started. Production and `main` remain untouched.
 
 The associated code commit `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` was pushed to `migration/unified-hono`. For that code head, the H5 Preview Worker run [37656824592](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656824592) and Production Gate run [37656832793](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37656832793) completed successfully. Local validation passed **102 Vitest files / 584 tests**, lint, builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+
+
+## 2026-10-08 H6 process-control update
+
+The controlled procedure is now [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md); the integrated role task is a coverage catalog, not permission to execute every legacy example. The official Pages-preview-to-`rq-hono-preview` pairing has not yet been verified. Prior local Vite-proxy runs remain diagnostic only. The repository has no Playwright harness, so no automated browser-acceptance claim is made. The Staff active-trial attempt, Supervisor read-scope decision, Owner listener/cleanup evidence, and financial cases retain their previous OPEN/BLOCKED status. This process update does not close H6 or authorize H7/production; no approach can guarantee zero bugs.

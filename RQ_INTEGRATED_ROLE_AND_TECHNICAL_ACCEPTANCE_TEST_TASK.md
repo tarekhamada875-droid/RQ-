@@ -20,7 +20,11 @@ Log in as one role
 
 Do not test the UI in isolation and then assume the backend is correct. Do not run backend tests and then assume a human can use the feature. Each important workflow must pass both dimensions together.
 
-This is a **test-only task**. Do not modify application code, business rules, UI/UX, Firebase configuration, billing, database identity, or production data. Use only approved synthetic pre-production accounts and records.
+## Current execution control — 2026-10-08
+
+[`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) is the controlling procedure for H6 target selection, safety boundaries, timeouts/retries, evidence, cleanup, and readiness status. This document remains the coverage catalog and feature-by-role matrix. Its detailed examples are not permission to perform financial or destructive actions; the runbook's restrictions and the owner's current directions take precedence.
+
+This remains **test-only for application behavior**. A browser-test harness may be added only as a separate, narrowly scoped test-infrastructure change covered by the runbook. Do not modify application behavior, business rules, UI/UX, Firebase configuration/rules, billing, database identity, production data, or production traffic as part of acceptance.
 
 ## Required reading
 
@@ -29,10 +33,11 @@ Before starting:
 1. `AGENTS.md`
 2. `RQ_PROJECT_KNOWLEDGE_BASE.md`
 3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
-4. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
-5. `docs/OBSERVABILITY_RUNBOOK.md`
+4. `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`
+5. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
+6. `docs/OBSERVABILITY_RUNBOOK.md` for safe metadata collection only; use its current Cloudflare instructions.
 
-This document is self-contained and is the **primary execution task**. Do not create separate duplicate acceptance tasks for the same role workflows.
+This document is the **coverage catalog and primary feature-by-role matrix**. The controlled runbook is the execution authority. Do not create duplicate acceptance tasks for the same role workflows.
 
 If the owner says the exact phrase `tokens ending`, stop and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
@@ -81,6 +86,8 @@ Every scenario must be marked:
 - **PASS** — human result and technical checks both match expectations.
 - **FAIL** — a user-facing or technical expectation is wrong.
 - **BLOCKED** — required access, deployment, account, data, or safe test boundary is unavailable.
+- **OPEN/UNVERIFIED** — the result is ambiguous or evidence is incomplete; do not infer a pass.
+- **NOT RUN** — the scenario has not been attempted.
 - **NOT APPLICABLE** — the role is intentionally not allowed to perform the action; record the authorization reason and verify denial.
 
 For every scenario, record these fields:
@@ -132,6 +139,8 @@ Cloudflare Pages frontend → Cloudflare Worker API → Firebase Auth/Firestore
 ```
 
 Do not call a Cloudflare SPA fallback an API success.
+
+`npm run release:smoke` is environment-driven. For H6, set `SMOKE_BASE_URL` to the verified preview Worker, `SMOKE_FRONTEND_URL` to the verified Cloudflare Pages preview, and `SMOKE_EXPECTED_VERSION` to that preview's expected version. Never point this H6 smoke at production. If the exact Pages-to-Worker pairing is unavailable, mark the gate BLOCKED instead of substituting a local Vite proxy.
 
 ---
 
@@ -606,4 +615,4 @@ A visible success message alone is not enough. A passing unit test alone is not 
 
 ## Exact instruction to the executing agent
 
-> Execute `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` from the RQ repository. Test the real application in a browser as platform admin, delegate, garage owner, staff member, and supervisor. For every human action, immediately verify the related backend authorization, scope, persistence, audit, idempotency, error, and security behavior using safe approved tools. Use only synthetic pre-production data. Do not modify code or business logic. Mark every scenario PASS, FAIL, BLOCKED, or NOT APPLICABLE. Do not infer a technical pass from a visible UI result. Produce `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_<YYYY-MM-DD>.md` with the complete feature-by-role matrix and one bounded next task. If access or evidence is unavailable, report BLOCKED rather than guessing.
+> Start with `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`, then use this document as the scenario catalog and matrix. Verify the exact Cloudflare Pages preview → `rq-hono-preview` Worker pairing before browser acceptance; a local proxy is diagnostic only. Use synthetic pre-production data and one role/context at a time. Do not access production or `main`, perform financial writes, or blindly retry ambiguous mutations. Mark every cell with evidence-backed status; do not infer backend success from UI alone. Update the existing H6 reports and handoff. H6/H7 cannot certify “100% bug-free”; while a required gate is open, H7 must be HOLD/NO-GO.

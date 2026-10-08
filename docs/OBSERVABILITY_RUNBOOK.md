@@ -2,11 +2,11 @@
 
 **Status:** Controlled synthetic pre-production
 **Owner:** RQ project owner and authorized operators
-**Last reviewed:** 2026-09-25
+**Last reviewed:** 2026-10-08
 
 ## Scope and safety boundary
 
-The current Cloudflare Pages → Railway → Firebase deployment is authorized for synthetic pre-production only. Do not use this runbook to inspect, repair, delete, export, or reconcile unknown customer or financial data. Before real users, revenue, customer imports, or destructive migrations, establish a separate staging environment and obtain the required owner decisions.
+The current production topology is Cloudflare Pages → Cloudflare Worker → Firebase. H6 acceptance must use the isolated Pages preview and `rq-hono-preview` Worker only; do not substitute the production URLs. Do not use this runbook to inspect, repair, delete, export, or reconcile unknown customer or financial data. Before real users, revenue, customer imports, or destructive migrations, establish a separate staging environment and obtain the required owner decisions.
 
 The backend remains authoritative. Diagnostic traces are not accounting records, authorization records, or a replacement for domain events and idempotency records.
 
@@ -36,7 +36,7 @@ Domain events may carry correlation and operation IDs for linkage, but their red
 ## How to investigate a failed request
 
 1. Ask the operator for the frontend correlation ID shown in the API error or browser diagnostics.
-2. Search Railway logs for the exact correlation ID and, if available, operation ID.
+2. Use Cloudflare Workers Observability or an authorized read-only `wrangler tail` against the **preview Worker only** to find the exact correlation ID and, if available, operation ID. If safe preview logs/traces are unavailable, mark the test BLOCKED; do not add a temporary endpoint or inspect production to work around it.
 3. Classify the response by status and safe error code:
    - `4xx`: caller input, authorization, session, scope, rate-limit, or idempotency issue;
    - `5xx`: service, dependency, or unexpected backend failure;
@@ -49,29 +49,27 @@ Never paste tokens, request bodies, PINs, phone numbers, plates, or customer dat
 
 ## Health and deployment metadata
 
-The public readiness endpoint is:
+For H6, the read-only preview readiness endpoints are:
 
 ```text
-GET https://rq-production-af02.up.railway.app/api/health
+GET https://rq-hono-preview.tarekhamada875.workers.dev/api/health
+GET https://rq-hono-preview.tarekhamada875.workers.dev/api/version
 ```
 
-Expected healthy response fields:
+The current production Worker is `https://rq.tarekhamada875.workers.dev`; production health is an owner/release-operator check and is not part of H6 role testing. Never use a production read as a substitute for a missing preview deployment.
 
-- `status: "ok"`
-- `adminSdk: true`
-- ISO `timestamp`
-- deployed commit in `version` when Railway provides `RAILWAY_GIT_COMMIT_SHA` or `GIT_COMMIT_SHA`
+Expected healthy preview responses include `status: "ok"` and `adminSdk: true` at `/api/health`, and `status: "operational"` at `/api/version`. Compare the reported version/environment with the exact preview deployment expected for the candidate commit. Do not treat a Cloudflare Pages SPA fallback, a local proxy response, or a health result alone as proof of role acceptance.
 
-A non-200 response or `adminSdk: false` is a deployment readiness failure. Do not treat a loaded Cloudflare page as proof that the API or Firebase Admin SDK is healthy.
+A non-200 response, `adminSdk: false`, wrong runtime/environment, or unexpected version is a preview readiness failure. Do not query `/api/system-config` or inspect financial settings as a health check.
 
 ## Rollback procedure
 
-1. Stop rollout or traffic promotion.
-2. Capture the failing commit, health response, frontend deployment URL, and correlation IDs.
-3. Use the last known-good Git commit or Railway deployment as the rollback target.
-4. Recheck `/api/health`, `/api/system-config`, CORS from `https://rq-acg.pages.dev`, and a synthetic read-only workflow.
-5. Confirm no financial or destructive operation was retried automatically.
-6. Record the rollback result and preserve the failing commit for diagnosis.
+1. Stop any preview promotion or proposed cutover; H6/H7 do not authorize production traffic changes.
+2. Capture the failing migration commit, preview Pages/Worker identities, health/version result, and safe correlation IDs.
+3. Keep production on its existing known-good Worker/Pages deployment. Do not merge to `main` or deploy a migration commit as an improvised rollback.
+4. If production was changed through a separately approved release, only the authorized release operator follows the current Cloudflare rollback procedure to the last known-good release, then verifies health/version and a synthetic read-only smoke.
+5. Confirm no financial or destructive operation was retried automatically; record any ambiguous mutation as OPEN/UNVERIFIED.
+6. Preserve the failing migration commit for diagnosis and record the rollback result without copying secrets or payloads.
 
 Rollback is a deployment action, not a data-repair action. Do not downgrade Firebase billing, change the named Firestore database, or run repair scripts as part of rollback.
 
@@ -117,4 +115,4 @@ Billing activation and spend-control changes are account-level owner actions. Th
 
 ## C9 exit evidence
 
-C9 is complete only when a simulated failed request can be traced from the frontend correlation ID to Railway logs and the operation trace without exposing sensitive payloads, and when health, rollback, incident, backup/restore, and billing-control procedures are recorded for the release candidate.
+C9 is complete only when a simulated failed request can be traced from the frontend correlation ID to authorized Cloudflare Worker preview logs and the operation trace without exposing sensitive payloads, and when health, rollback, incident, backup/restore, and billing-control procedures are recorded for the release candidate.

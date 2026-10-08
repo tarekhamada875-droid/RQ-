@@ -302,62 +302,39 @@ rq-hono-preview
 
 ---
 
-# Checkpoint H6 — Production-equivalent smoke and role testing
+# Checkpoint H6 — Controlled preview acceptance and role testing
 
 ## Objective
 
-Test the new architecture as a human user, not only as a developer.
+Test the new architecture as a human user, not only as a developer, using repeatable evidence on the isolated preview.
 
-## Tasks
+## Controlling procedure
 
-Use the preview stack to test:
+Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) for the execution order, safety rules, evidence fields, retry/timeout handling, fixture cleanup, and status vocabulary. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` remains the coverage catalog and matrix. The runbook controls where older examples conflict; its restrictions do not authorize production access, financial writes, or changes to permissions.
 
-### Admin
+## Execution sequence
 
-- Login and logout
-- Dashboard summaries
-- Create/update/delete garages
-- Manage staff, supervisors, and delegates
-- Packages, coupons, announcements
-- Recharge and subscription operations
-- Reports and financial data
-- Session management
+1. Record branch, exact commit, clean worktree, workflow status, preview Pages URL, preview Worker URL/version, browser, and pre-existing defects.
+2. Verify the tested Pages preview serves the candidate frontend and its API calls target only `rq-hono-preview`. If this Pages-to-Worker path cannot be verified, mark it BLOCKED; a temporary local Vite proxy is diagnostic only and does not satisfy this exit gate.
+3. Use run-specific synthetic fixtures and a manifest. Keep writes serialized; after an ambiguous mutation timeout, reconcile through approved read-only UI/preview observability and do not blindly retry.
+4. Test one role in a fresh browser context at a time, covering the existing matrix's allowed and denied actions, server-derived role/scope, persistence, and relevant audit/idempotency behavior. Use desktop and 390×844 portrait/touch coverage where the case applies.
+5. Resolve the Supervisor global-versus-assigned policy explicitly before changing permissions. Use an active synthetic free-trial context for Staff; do not purchase a package or top up a balance. Leave unresolved outcomes OPEN/BLOCKED.
+6. Do not execute payment, recharge approval, wallet, transfer/settlement, or package/subscription purchase/renewal without a dedicated isolated financial sandbox and explicit authorization. Otherwise retain those cells as OPEN/BLOCKED.
+7. Use the supported UI for cleanup; confirm deletion/job completion evidence and fresh-list absence. Release sessions and remove temporary proxy/configuration artifacts.
 
-### Delegate
+## Automation status
 
-- Dashboard and commission data
-- Garage applications
-- Tenant isolation
-- Forbidden admin actions
-
-### Garage owner
-
-- Login and logout
-- Dashboard and vehicle flows
-- Subscribers and packages
-- Trial-expiry popup actions
-- Self-subscription
-- Referral reward claim
-- Forbidden cross-garage actions
-
-### Staff
-
-- Check-in and check-out
-- Vehicle history
-- Subscriber operations allowed to staff
-- Forbidden admin and cross-garage operations
-
-### Supervisor
-
-- Permitted monitoring and recharge workflows
-- Forbidden mutation and financial actions
+The repository currently has no Playwright dependency, configuration, or H6 E2E script. Do not claim automated browser coverage. An opt-in, environment-driven Playwright harness is a separate test-infrastructure task; it must fail closed for production, keep credentials out of source/storage state, serialize mutations, and disable blind retries. Vitest/API/rules tests complement but do not replace the Pages-to-Worker browser gate.
 
 ## Exit criteria
 
-- All role workflows work through Cloudflare Pages to the preview Worker.
+- All required role workflows have evidence through the verified Cloudflare Pages preview to the isolated preview Worker; no temporary local proxy is substituted for this gate.
 - No role is silently downgraded to an anonymous or worker role.
-- Popup actions work on mobile and desktop.
+- Required popup actions work on mobile and desktop.
+- Every required feature-by-role cell is resolved with evidence; authorization/scope, persistence, and cleanup are verified where applicable. Explicit owner exclusions remain labeled untested and include the accepted residual risk.
 - No UI/UX redesign is introduced.
+
+H6 is **OPEN/BLOCKED** until these criteria are met. Documentation updates, green unit tests, or a successful health endpoint alone do not close role acceptance.
 
 ---
 
@@ -369,7 +346,7 @@ Decide whether the unified Hono branch is actually ready to replace the current 
 
 ## Required approval conditions
 
-The migration is ready only if:
+H7 is an evidence-based **GO/HOLD** decision, not a guarantee of zero defects. A GO is eligible only after H6 is complete and every condition below is satisfied; if H6 or another required gate is blocked, record **HOLD/NO-GO** and keep production unchanged. The migration is ready only if:
 
 - Full tests pass.
 - Lint passes.
@@ -382,6 +359,7 @@ The migration is ready only if:
 - Firebase authentication and session lifecycle tests pass.
 - No unexplained warnings affect user-visible behavior.
 - Rollback has been rehearsed.
+- The owner has explicitly approved the release decision and any documented residual risks.
 
 If any condition fails, keep the current production Worker and continue fixing the migration branch.
 
@@ -624,3 +602,10 @@ The current H6 matrix status is:
 The supported Admin logout completed through the preview UI; PIN verification and server session release returned HTTP 200. The temporary proxy/config/captures were removed and port 4173 was verified closed. No production or `main` mutation occurred.
 
 **Decision:** H6 remains **OPEN/BLOCKED**. H7 has not started; do not begin production cutover until the remaining required cells are either safely verified or explicitly accepted out of scope by the owner. Production remains on its existing release and rollback target.
+
+
+## 2026-10-08 H6 controlled-process adoption — current instruction
+
+`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md` is now the controlling H6 procedure. It replaces ad hoc click-throughs and makes the required Pages-preview-to-`rq-hono-preview` binding, serialized writes, no-blind-retry rule, evidence schema, cleanup confirmation, and explicit HOLD/NO-GO behavior mandatory. The older `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` remains the feature coverage catalog; its historical financial/destructive examples are not permission to run those actions under the current safety boundary.
+
+Current H6 status is unchanged: **OPEN/BLOCKED** for a verified Pages-to-Worker browser path, Staff operational access in a valid free-trial context, the Supervisor global-versus-assigned policy, Owner listener event delivery/cleanup evidence, and financial cases without an authorized isolated sandbox. No Playwright harness is currently present; the next agent must not claim E2E automation until a separate opt-in harness is implemented and validated. H7 must remain **HOLD/NO-GO** while required gates are unresolved. Neither this plan nor successful CI can certify “100% bug-free.” Production and `main` remain untouched.
