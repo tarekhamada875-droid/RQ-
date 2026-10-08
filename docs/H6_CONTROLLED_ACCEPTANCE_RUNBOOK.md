@@ -38,7 +38,13 @@ Use read-only `/api/health` and `/api/version` checks against the preview Worker
 
 The repository's `npm run release:smoke` is environment-driven and can target any URL supplied to it. For H6, set `SMOKE_BASE_URL` to the preview Worker, `SMOKE_FRONTEND_URL` to the verified Pages preview, and `SMOKE_EXPECTED_VERSION` to the preview's expected version. Never set these to production as part of H6. If a verified Pages preview is unavailable, do not report the smoke as an H6 pass.
 
-Record the run date, commit, Pages URL, Worker URL/version, browser/device, viewport, test aliases, and pre-existing failures. Never print environment values or enable shell tracing around secrets.
+Record the run date, commit, Pages URL, Worker URL/version, browser/device, test aliases, and pre-existing failures. Never print environment values or enable shell tracing around secrets.
+
+## Existing evidence — reuse, do not restart
+
+Before testing, read `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` for chronological browser observations and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` for the reconciled feature-by-role statuses. Read the exact-commit workflow evidence linked there and in the current checkpoint plan. Existing results are scoped to their recorded commit, fixture, browser, and frontend path; do not silently broaden a PASS.
+
+Do **not** rebuild the RQ application or repeat the entire role matrix from scratch. Reuse valid prior PASS evidence, then work the OPEN/BLOCKED/NOT RUN cells and any regression cases invalidated by a relevant source or deployment change. The previously passed H5/Production Gate workflows validate the code/build gates for their exact head; they do not close H6 role acceptance. Previous local Vite-proxy browser results may support their recorded behaviors, but they do not close the missing Pages-to-Worker path. If prior evidence is incomplete, first use safe read-only reconciliation; never recreate a write merely to regenerate a missing log or screenshot.
 
 ## Phase 1 — Resolve policy and test-data preconditions
 

@@ -24,6 +24,8 @@ Do not test the UI in isolation and then assume the backend is correct. Do not r
 
 [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) is the controlling procedure for H6 target selection, safety boundaries, timeouts/retries, evidence, cleanup, and readiness status. This document remains the coverage catalog and feature-by-role matrix. Its detailed examples are not permission to perform financial or destructive actions; the runbook's restrictions and the owner's current directions take precedence.
 
+**Current H6 restriction:** recharge submission/approval/rejection, wallet top-up, transfer/settlement, balance changes, package/subscription purchase or renewal, self-subscription, and financial reward claims are coverage references only. Do not create the associated financial fixtures or perform those writes without the isolated sandbox and explicit authorization required by the runbook. Otherwise mark the applicable cells OPEN/BLOCKED. Delete only run-specific synthetic fixtures through supported UI after confirming their scope.
+
 This remains **test-only for application behavior**. A browser-test harness may be added only as a separate, narrowly scoped test-infrastructure change covered by the runbook. Do not modify application behavior, business rules, UI/UX, Firebase configuration/rules, billing, database identity, production data, or production traffic as part of acceptance.
 
 ## Required reading
@@ -69,8 +71,7 @@ Prepare:
 - active, expired, and trial subscriber records;
 - valid, exited, duplicate, and recently exited vehicle records;
 - active, inactive, custom, duration, capacity, unlimited, and fair-use package records where supported;
-- pending, approved, rejected, and synthetic recharge requests;
-- synthetic wallet/balance and ledger records;
+- financial/recharge/wallet/ledger fixtures only if the controlled runbook's isolated-sandbox and authorization gates are met; otherwise do not prepare them and keep those cells OPEN/BLOCKED;
 - synthetic trial-lead record;
 - synthetic announcement;
 - synthetic session on a second browser/device.

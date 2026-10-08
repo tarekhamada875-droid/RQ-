@@ -1,6 +1,10 @@
 # RQ Integrated Acceptance Test Report — 2026-10-06
 
-## Decision
+## Current disposition — 2026-10-08
+
+**H6 remains OPEN/BLOCKED.** The controlling execution procedure is [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md). Existing evidence in this report and `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` should be reused within its recorded scope; do not rebuild the application or repeat the entire role matrix. Continue the unresolved or evidence-invalidated cases only. The exact Pages-preview-to-`rq-hono-preview` browser path, Staff operational access, Supervisor garage-read policy, Owner listener/cleanup evidence, and financial cases remain unresolved. This report's earlier dated decision and matrices are historical snapshots, not current instructions.
+
+## Historical decision snapshot — 2026-10-06
 
 **OPEN — H6 remains incomplete. Browser login/session evidence covers Admin, Delegate, Garage Owner, Staff, and Supervisor, but a source audit found a Supervisor permission mismatch: the garage-list endpoint and direct Firestore rules grant global reads, while Hono single-garage and dashboard-summary routes deny Supervisor. The live list body was discarded, so no actual document fields were inspected. Admin-summary, fake-garage-summary, and forbidden Supervisor-creation probes returned HTTP 403; the UI login, refresh, and logout passed. Vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the safe non-payment boundary.** No production or `main` changes were made.
 

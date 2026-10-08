@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-08
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` (do not modify for the Unified Hono migration task).
-**Active migration branch:** `migration/unified-hono`; the last verified head was `dcf27645c651c11643d9f87d81d4e26c8a842f29` on 2026-10-08. Verify the actual branch/head before acting.
+**Active migration branch:** `migration/unified-hono`; the last workflow-verified baseline before the current evidence-clarification update was `c36d4906cc7fdb39b89a10dcc1f224476669a8bb` on 2026-10-08, with H5 Preview Worker and Production Gate passing for that exact head. Verify the actual branch/head before acting.
 
 ## 1. What RQ is
 

@@ -9,12 +9,12 @@
 
 1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, and `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
 2. Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority. Use [`docs/H6_NEXT_AGENT_PROMPT.md`](docs/H6_NEXT_AGENT_PROMPT.md) for the current bounded next steps.
-3. Use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the role/feature coverage catalog, not as permission to perform every legacy example. Use the current integrated acceptance report and role report for evidence; older dated notes are historical and may be superseded by later evidence.
+3. Use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the role/feature coverage catalog, not as permission to perform every legacy example. Reuse existing scoped evidence in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`; do not rebuild the app or repeat the whole matrix. Run only unresolved cases or regressions invalidated by relevant changes. Older dated notes are historical and may be superseded by later evidence.
 4. Before acting, verify actual branch, HEAD, remote state, worktree, preview deployment identity, and workflow status. No browser session, credential, local proxy, or secret transfers to the next agent.
 
 ## Current branch and validation context
 
-The last verified task head before the 2026-10-08 process-document rewrite was `dcf27645c651c11643d9f87d81d4e26c8a842f29`; the code/test change before it is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`. The latter changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. H5 Preview Worker and Production Gate passed for those recorded heads. A new documentation-only commit may supersede the recorded HEAD; always verify rather than assuming these SHAs are current.
+The last workflow-verified migration-branch head before these evidence-clarification edits was `c36d4906cc7fdb39b89a10dcc1f224476669a8bb`. Its H5 Preview Worker [run 37730948348](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948348) and Production Gate [run 37730948379](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948379) both passed. The preceding source/test commit is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`; it changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. These docs may be committed as a later docs-only head; verify actual branch and current HEAD/workflows before acting.
 
 The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. The exact Cloudflare Pages preview-to-Worker pairing has not been verified. Earlier browser sessions used a temporary local Vite proxy; that is diagnostic evidence only and does not satisfy the Pages-to-Worker H6 gate. If no safe Pages preview exists, record BLOCKED rather than using production.
 

@@ -1,14 +1,18 @@
 # H6 Role-Based Acceptance Evidence — 2026-10-05
 
+## Evidence precedence — 2026-10-08
+
+This is a chronological evidence record, not the current execution procedure. Future H6 work must follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) and use the newest consolidated status in `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` and the checkpoint plan. Results below are scoped to their recorded commit, browser, fixture, and frontend path; historical PASS snapshots do not supersede later OPEN/BLOCKED results. Reuse valid evidence and test unresolved or invalidated cases only—do not rebuild the application or repeat the entire matrix.
+
 ## Scope
 
 - **Target:** unified Hono migration preview Worker (`rq-hono-preview`)
 - **Browser:** isolated Sandbox browser
-- **Frontend under test:** temporary Vite UI configured to call the preview Worker
+- **Frontend for the initial browser sessions:** temporary Vite UI configured to call the preview Worker; this does not satisfy the current Pages-preview-to-Worker gate
 - **Production:** not modified or used for data mutation
 - **Test data:** the initial setup created or changed no records; later synthetic fixtures and mutations are documented in the dated continuations below.
 
-## Current consolidated status — 2026-10-06
+## Historical consolidated status — 2026-10-06
 
 The latest safe non-payment browser continuation accepted the role-authentication/session slice for Admin, Delegate, Garage Owner, Staff, and Supervisor. The Supervisor loaded the restricted People/Delegates view, persisted across a full-page refresh, and completed normal UI logout. Admin-summary, fake-garage-summary, and Supervisor-create probes returned **403**. The Supervisor `GET /api/garages` probe returned **200**; source review confirms it is unfiltered and returns raw collection documents, while Firestore rules permit broad Supervisor reads. Hono single-garage/detail-summary routes deny Supervisor, creating an **OPEN** cross-surface policy mismatch. No live list fields or values were inspected; this is not a cross-garage-isolation pass.
 
