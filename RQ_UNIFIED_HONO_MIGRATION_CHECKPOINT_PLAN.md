@@ -6,9 +6,9 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 
 ## Current status — 2026-10-08
 
-- **Authorized branch/prior verified head:** `migration/unified-hono`; `c36d4906cc7fdb39b89a10dcc1f224476669a8bb` was the last workflow-verified head before the current evidence-clarification update. Verify actual local/remote HEAD and workflows before acting.
-- **Exact-head workflows:** H5 Preview Worker [37730948348](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948348) and Production Gate [37730948379](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948379) both passed for that SHA. The Production Gate is validation; it did not deploy production.
-- **Latest relevant source/test change:** `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` sets the garage-delete client timeout to 30 seconds and tests that value. No application code changed in `c36d490`.
+- **Authorized branch/prior verified head:** `migration/unified-hono`; immediately before this documentation synchronization, the last workflow-verified head was `721932ee36b40e38cc0d79a8ff385668a01cf447`. Verify actual local/remote HEAD and workflows before acting.
+- **Exact-head workflows:** H5 Preview Worker [37732250392](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37732250392) and Production Gate [37732250425](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37732250425) both passed for that SHA. The Production Gate is validation; it did not deploy production.
+- **Latest relevant source/test change:** `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` sets the garage-delete client timeout to 30 seconds and tests that value. Later commits through `721932e` changed documentation only.
 - **Production:** `main` and the current production Worker/Pages remain unchanged; no cutover is authorized.
 - **H6 execution authority:** follow `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`; use the detailed role report and integrated report as existing evidence, not as new instructions. Reuse valid evidence and work unresolved/invalidated cells only; do not rebuild the application or repeat the entire matrix.
 - **H6 remains OPEN/BLOCKED:** the Pages-preview-to-`rq-hono-preview` browser pairing is not verified; Staff operational access in a valid free-trial context is unresolved; the Supervisor global-versus-assigned read policy needs an owner decision; Owner listener delivery and some cleanup evidence remain unresolved; financial workflows remain intentionally blocked without an isolated sandbox.
