@@ -23,7 +23,7 @@ The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.d
 
 | Area | Status and limitation |
 |---|---|
-| Staff operational access | **OPEN/BLOCKED.** One Admin Staff-create attempt in an active synthetic two-day free-trial context produced no observed success response, row, or usable credential. No retry was made; the owner directed that the Staff-create timeout remain unchanged. Reconcile the prior request read-only before any further write. |
+| Staff operational access | **PARTIAL / OPEN/BLOCKED.** Read-only inspection of the documented `QA Garage Beta` fixture found exactly one synthetic Staff row, `Mobile QA Staff`, with its PIN masked. This reconciles the prior ambiguous request as a likely late backend completion after the client wait ended; no retry or deletion was performed. Staff login and operational workflows remain untested because no usable PIN was exposed. |
 | Supervisor garage-read policy | **OPEN.** Global-versus-assigned monitoring scope requires an explicit owner decision before changing Worker, Firestore, or UI permissions. |
 | Garage Owner listener/cleanup | **OPEN/PARTIAL.** Bounded desktop reload persistence passed; real listener event delivery is unverified. Cleanup status must be supported by completion evidence, not list absence alone. |
 | Financial acceptance | **OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal without an authorized isolated financial sandbox. |
@@ -39,7 +39,7 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 ## Next safe actions
 
 1. Preserve the bounded Admin PASS and continue only with the remaining unresolved H6 cells: Staff operational access, Supervisor scope decision, Owner listener/cleanup evidence, and blocked financial workflows. Do not repeat the Admin login unless new evidence requires it.
-2. Reconcile the previous Staff-create attempt through read-only UI/list evidence and safe preview correlation/timing metadata. Do not change the timeout or resubmit blindly.
+2. Preserve the partial Staff transport reconciliation. Do not change the timeout, replay Staff-create, delete `Mobile QA Staff`, or infer Staff operational PASS from row existence; continue only if a safe credential/test fixture is separately authorized and available.
 3. Obtain the Supervisor scope decision before permission edits. Continue only safe Owner listener/mobile and other role cases, one role/context at a time.
 4. No Playwright harness exists. Manual H6 testing may continue through the controlled runbook; do not build a harness just to restart acceptance. If automated browser coverage is required by the owner or an acceptance gate, scope it as a separate opt-in test-infrastructure task; fail closed for production, store no credentials, and disable blind retries.
 5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
