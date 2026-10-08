@@ -14,7 +14,7 @@
 
 ## Current branch and validation context
 
-The last workflow-verified migration-branch head before these evidence-clarification edits was `c36d4906cc7fdb39b89a10dcc1f224476669a8bb`. Its H5 Preview Worker [run 37730948348](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948348) and Production Gate [run 37730948379](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37730948379) both passed. The preceding source/test commit is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`; it changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. These docs may be committed as a later docs-only head; verify actual branch and current HEAD/workflows before acting.
+Immediately before this handoff refresh, the latest workflow-verified branch head was `afacab9e863d7d419613c691f5ddc59e5f7bd7e2`. Its H5 Preview Worker [run 37731958464](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37731958464) and Production Gate [run 37731958465](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37731958465) both passed. That commit contains documentation clarifications only. The preceding source/test commit is `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`; it changes only the `/api/garages/delete` frontend timeout to 30 seconds and adds its regression test. This handoff refresh is also documentation-only; verify actual branch and current HEAD/workflows before acting.
 
 The isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. The exact Cloudflare Pages preview-to-Worker pairing has not been verified. Earlier browser sessions used a temporary local Vite proxy; that is diagnostic evidence only and does not satisfy the Pages-to-Worker H6 gate. If no safe Pages preview exists, record BLOCKED rather than using production.
 
@@ -39,7 +39,7 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 1. Follow the controlled runbook's baseline and confirm the same candidate commit is served by an isolated Cloudflare Pages preview and `rq-hono-preview`. If unavailable, stop at BLOCKED.
 2. Reconcile the previous Staff-create attempt through read-only UI/list evidence and safe preview correlation/timing metadata. Do not change the timeout or resubmit blindly.
 3. Obtain the Supervisor scope decision before permission edits. Continue only safe Owner listener/mobile and other role cases, one role/context at a time.
-4. Create a separate opt-in, environment-driven Playwright harness before claiming automated browser coverage; fail closed for production, store no credentials, and disable blind retries.
+4. No Playwright harness exists. Manual H6 testing may continue through the controlled runbook; do not build a harness just to restart acceptance. If automated browser coverage is required by the owner or an acceptance gate, scope it as a separate opt-in test-infrastructure task; fail closed for production, store no credentials, and disable blind retries.
 5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
 6. Do not start H7 until H6 exits are satisfied or the owner explicitly revises scope and accepts the documented residual risk. H7 is GO/HOLD; H8 production replacement requires every gate and explicit approval.
 
