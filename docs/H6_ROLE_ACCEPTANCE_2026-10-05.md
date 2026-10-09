@@ -591,3 +591,11 @@ The verified Pages preview and isolated Worker were used on the migration candid
 The prepared Staff session opened the same active-trial synthetic garage with 24 hours remaining. The Staff dashboard and scoped subscriber count loaded; the Staff menu did not expose Admin or Supervisor management controls. No financial control was opened. No active vehicle operation fixture/control was available in the current Staff view, so permitted vehicle mutation was not run. Staff login/dashboard/scope is **PASS, bounded**; Staff operational mutation remains **OPEN/BLOCKED**.
 
 Supervisor is retired by owner-approved commit `8e0e347` and is **N/A — role retired** for current manual acceptance. Financial workflows remain intentionally **OPEN/BLOCKED**.
+
+## 2026-10-09 credentialed synthetic fixture continuation
+
+The supplied synthetic Owner credential opened `H6 Vehicle Subscriber Lab 20261007` in the isolated preview. The supplied plate `ب ب ب 555` was already visible in the Owner garage and was reported as currently inside. The only exposed action was exit invoicing, which was not selected because it could create a financial record. No checkout, payment, recharge, renewal, deletion, or second mutation was performed; Owner listener delivery remains **OPEN/UNVERIFIED**.
+
+A separate isolated Sandbox session opened the same garage as Staff. The Staff menu exposed Staff-facing controls and no Admin or Supervisor management controls. The same supplied plate was visible as already inside. Exit invoicing was not selected. Staff scope remains **PASS, bounded**; operational mutation remains **OPEN/BLOCKED** because no safe non-financial mutation was available for an already-inside fixture.
+
+The Owner universal logout attempt was rejected by the preview, and the Staff logout dialog was canceled without submission after unreliable keypad automation. No financial or checkout action was performed.

@@ -77,3 +77,10 @@ Feature work and browser testing stop here per the exact owner marker.
 - **Supervisor:** owner-approved retirement in `8e0e347`; current disposition **N/A — role retired**. Do not create or authenticate Supervisor fixtures.
 - **Financial:** remains **OPEN/BLOCKED** without a dedicated isolated financial sandbox; no financial write was performed in this continuation.
 - **H6/H7:** H6 remains **OPEN/BLOCKED** and H7 remains **HOLD/NO-GO**.
+
+## 2026-10-09 credentialed fixture continuation
+
+- **Owner:** supplied synthetic Owner credential authenticated in the isolated preview to `H6 Vehicle Subscriber Lab 20261007`. Plate `ب ب ب 555` was already inside and correctly visible in Owner scope. Only exit invoicing was offered; it was not selected. Listener evidence remains **OPEN/UNVERIFIED**.
+- **Staff:** supplied synthetic Staff credential authenticated in a separate isolated Sandbox browser to the same garage. Staff navigation showed Staff-facing controls without Admin/Supervisor management controls. Plate `ب ب ب 555` was already inside and visible in Staff scope. Exit invoicing was not selected. Staff operational mutation remains **OPEN/BLOCKED**.
+- **Safety/session note:** The Owner universal logout attempt was rejected by preview; no further Owner logout PIN attempts were made. The Staff logout dialog was canceled without submission after unreliable keypad automation. No financial, checkout, recharge, renewal, or deletion action was performed.
+- **Disposition:** H6 remains **OPEN/BLOCKED**; H7 remains **HOLD/NO-GO**.

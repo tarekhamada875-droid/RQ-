@@ -431,3 +431,13 @@ The target guard accepted the approved Pages origin and rejected missing, produc
 ### Current disposition
 
 H6 remains **OPEN/BLOCKED**. Supervisor is **N/A — role retired** under the owner-approved `8e0e347` change. Financial cases remain **OPEN/BLOCKED** without an isolated financial sandbox. H7 remains **HOLD/NO-GO**.
+
+## 2026-10-09 credentialed synthetic fixture continuation
+
+The supplied synthetic Owner and Staff credentials were used only against the isolated migration Pages preview. The Owner session resolved to `H6 Vehicle Subscriber Lab 20261007`, with the active 24-hour trial visible. The supplied fixture `ب ب ب 555` was already present in the Owner garage and the UI reported that the vehicle was currently inside. The only available action was issuing an exit invoice; it was not selected because it could create a financial record. No checkout, payment, recharge, renewal, deletion, or second mutation was performed. The Owner listener cell therefore remains **OPEN/UNVERIFIED**.
+
+A separate isolated Sandbox browser session authenticated as Staff to the same synthetic garage. The Staff menu displayed the Staff context and Staff-facing controls, including recharge/package navigation, history, appearance, terms, and logout, without Admin or Supervisor management controls. The same supplied fixture `ب ب ب 555` was visible as already inside the garage. The only available action was exit invoicing, which was not selected. Staff scope is **PASS, bounded**; Staff operational mutation remains **OPEN/BLOCKED** because the safe non-financial mutation control was unavailable while the fixture was already inside.
+
+The Owner universal logout attempt was rejected by the preview; no further Owner logout PIN attempts were made. The Staff logout dialog was canceled without submission after browser automation produced an unreliable keypad state. Both sessions were left on their dashboards with no financial or checkout action performed. This is a session-cleanup limitation, not a product acceptance result.
+
+H6 remains **OPEN/BLOCKED** and H7 remains **HOLD/NO-GO**.
