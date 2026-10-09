@@ -9,65 +9,10 @@ import { canManageDelegates } from '../domain/authorization';
 
 const router = Router();
 
-function withoutPinFields<T extends Record<string, any>>(data: T): Omit<T, 'pin' | 'ownerPin' | 'adminPin' | 'pinHash' | 'pinLookupHash'> {
-  const sanitized = { ...data };
-  delete sanitized.pin;
-  delete sanitized.ownerPin;
-  delete sanitized.adminPin;
-  delete sanitized.pinHash;
-  delete sanitized.pinLookupHash;
-  return sanitized;
-}
-
 export function getUnsettledDelegateCycleTotal(delegateData: Record<string, any>): number {
   const total = Number(delegateData?.totalRechargedAmount || 0);
   return Number.isFinite(total) && total > 0 ? total : 0;
 }
-
-// Secure Server API: Delegate dashboard data (the client is not allowed to list these collections)
-router.get('/dashboard', requireAuth, async (req: AuthRequest, res: any) => {
-  try {
-    if (req.user?.role !== 'delegate' || !req.user.entityId || !adminDb) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN' });
-    }
-
-    const delegateId = req.user.entityId;
-    const delegateRef = adminDb.collection('delegates').doc(delegateId);
-    const [delegateSnap, createdGaragesSnap, referredGaragesSnap, requestsSnap] = await Promise.all([
-      delegateRef.get(),
-      adminDb.collection('garages').where('createdByDelegateId', '==', delegateId).get(),
-      adminDb.collection('garages').where('referrerId', '==', delegateId).get(),
-      adminDb.collection('recharge_requests').where('delegateId', '==', delegateId).get()
-    ]);
-
-    if (!delegateSnap.exists) {
-      return res.status(404).json({ success: false, error: 'DELEGATE_NOT_FOUND' });
-    }
-
-    const garagesById = new Map<string, any>();
-    for (const snapshot of [createdGaragesSnap, referredGaragesSnap]) {
-      for (const garage of snapshot.docs) garagesById.set(garage.id, withoutPinFields({ id: garage.id, ...garage.data() }));
-    }
-
-    const requests = requestsSnap.docs
-      .map((request) => ({ id: request.id, ...request.data() }))
-      .sort((a: any, b: any) => {
-        const left = a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime();
-        const right = b.createdAt?.toMillis?.() || new Date(b.createdAt || 0).getTime();
-        return right - left;
-      });
-
-    return res.json({
-      success: true,
-      delegate: withoutPinFields({ id: delegateSnap.id, ...delegateSnap.data() }),
-      garages: Array.from(garagesById.values()),
-      requests
-    });
-  } catch (e: any) {
-    console.error('[Server Delegate] Error loading dashboard:', e);
-    return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-  }
-});
 
 // Secure Server API: Create Delegate (Admin Only)
 router.post('/create', requireAuth, async (req: AuthRequest, res: any) => {

@@ -407,6 +407,8 @@ Remove Express only after the unified Hono architecture has proved itself.
 
 The Express inventory is recorded in [`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`](docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md). Hono is now the local `dev` default; `dev:express` remains the explicit fallback. The unused Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired after an exact repository/workflow audit found no active Cloud Run deployment. Express is still imported by transitional route modules plus characterization and dual-runtime tests, so the dependency and route surface remain. Production, `main`, Firestore rules, financial behavior, and role policy remain unchanged.
 
+The next H9 slice retired only the redundant read-only Express `GET /api/delegates/dashboard` handler. The production Hono route already owns that exact frontend path; focused Fetch-native coverage verifies scoped delegate-session resolution, sanitized delegate/garage data, and request results (**3 files / 22 tests**, including retained Express delegate tests and the dual-runtime contract). Delegate mutations, settlement, financial routes, and maintenance routes were not removed.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.

@@ -91,6 +91,8 @@ The existing route inventory identifies these Express capabilities as requiring 
 
 These are not ordinary frontend routes. H9 must either preserve them behind a supported Hono maintenance route or explicitly retire them with owner-approved operational documentation and tests.
 
+Retired in the current H9 slice: the Express `GET /api/delegates/dashboard` handler. The frontend already calls this exact path, and the Hono Worker owns the replacement with the same response shape plus explicit PIN-field sanitization. Fetch-native coverage now verifies scoped delegate-session resolution, the delegate and two garage sources, the request list, and absence of PIN fields. The explicit `dev:express` fallback no longer serves this legacy dashboard alias; all other delegate mutation and settlement routes remain mounted.
+
 ## Safe H9 sequence
 
 1. **Inventory complete:** retain this document and the existing H1 route inventory as the source of truth.
@@ -109,8 +111,8 @@ The first implementation slice should be **test and runtime decoupling, not Expr
 - Keep the Express comparison suite as a characterization guard during this slice.
 - Do not change production configuration, Firestore rules, financial behavior, or role policy.
 
-The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback. The third slice retires `server/cloudRun.ts` and `build:cloudrun`; Dockerfile and Express local/container compatibility remain until their consumers are separately retired.
+The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback. The third slice retires `server/cloudRun.ts` and `build:cloudrun`; Dockerfile and Express local/container compatibility remain until their consumers are separately retired. The fourth slice retires the redundant Express delegate dashboard handler after focused Hono replacement coverage passed (**3 files / 22 tests**); financial, settlement, and maintenance routes remain untouched.
 
 ## H9 status
 
-**H9 in progress.** Cloud Run-specific entrypoint/build support is retired. Express remains required for local/container compatibility and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support and the redundant Express delegate dashboard handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.

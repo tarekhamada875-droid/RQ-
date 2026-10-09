@@ -237,6 +237,9 @@ export const mockAdminAuth = {
       const gId = token.substring('valid-garage-token-'.length);
       return { uid: `garage-uid-${gId}`, email: `garage-${gId}@test.com`, role: 'garage', garageId: gId };
     }
+    if (token === 'valid-delegate-token-delegate-a') {
+      return { uid: 'delegate-uid', email: 'delegate@test.com', role: 'delegate', entityId: 'delegate-a' };
+    }
     if (token === 'valid-delegate-token' || token === 'delegate-token') {
       return { uid: 'delegate-uid', email: 'delegate@test.com', role: 'delegate' };
     }

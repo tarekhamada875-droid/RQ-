@@ -61,6 +61,30 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
+  describe('0. Delegate dashboard replacement', () => {
+    it('serves the scoped dashboard through Hono without exposing PIN fields', async () => {
+      mockDb.seed('delegate_sessions/delegate-uid', {
+        uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-session', isActive: true
+      });
+      mockDb.seed('delegates/delegate-a', { name: 'Delegate A', phone: '01000000000', pin: 'secret-pin' });
+      mockDb.seed('garages/created-garage', { name: 'Created Garage', createdByDelegateId: 'delegate-a', pin: 'garage-pin' });
+      mockDb.seed('garages/referred-garage', { name: 'Referred Garage', referrerId: 'delegate-a' });
+      mockDb.seed('recharge_requests/request-a', { delegateId: 'delegate-a', createdAt: new Date('2026-10-09T10:00:00Z') });
+
+      const response = await call('/api/delegates/dashboard', 'valid-delegate-token-delegate-a', {
+        headers: { 'x-session-id': 'delegate-session' }
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({ success: true, delegate: { id: 'delegate-a', name: 'Delegate A' } });
+      expect(body.delegate).not.toHaveProperty('pin');
+      expect(body.garages).toHaveLength(2);
+      expect(body.garages.every((garage: Record<string, unknown>) => !('pin' in garage))).toBe(true);
+      expect(body.requests).toHaveLength(1);
+    });
+  });
+
   describe('1. Staff Management', () => {
     it('allows admin and garage owner to create, update, and delete staff', async () => {
       // Create staff for garage-a

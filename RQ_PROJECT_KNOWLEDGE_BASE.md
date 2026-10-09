@@ -150,7 +150,7 @@ The owner explicitly accepted the documented H6 residual risks and instructed th
 - `src/domain/`: pure business decisions and policy helpers.
 - `server/cloudflareWorker.ts`: current production Hono Worker API and route authority.
 - `server/app.ts`: transitional Express composition used by the explicit local compatibility command and existing integration tests.
-- `server/routes/`: transitional Express route modules and characterization references; do not delete until the Hono consolidation is complete.
+- `server/routes/`: transitional Express route modules and characterization references; the read-only delegate dashboard handler was retired in H9 after Hono replacement coverage passed; do not delete remaining modules until their route-specific disposition is complete.
 - `server/domain/`: pure backend decision modules.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
