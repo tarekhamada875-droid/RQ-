@@ -66,3 +66,14 @@ Feature work and browser testing stop here per the exact owner marker.
 - **Validation evidence:** The latest focused listener source/lifecycle validation passed **2 files / 15 tests**. Earlier recorded full gates remain valid for their documented code heads; do not represent the current docs-only head as a fresh full-suite result until rerun.
 - **Workflow state at handoff:** Production Gate run `37750093991` for `512a994` is **pending**; H5 Preview Worker run `37750094004` is **in progress**. The preceding H5 run `37748274895` for `5226c6e` completed successfully. Do not infer current-head deployment success until the pending/in-progress runs settle and are checked.
 - **Safe next commands:** inspect the two current workflow runs; if they pass, perform credential-free preview health/version and exact Pages/Worker pairing checks; then only resume an explicitly bounded unresolved H6 cell. Do not replay the ambiguous vehicle mutation, change timeouts, modify Supervisor permissions/rules, perform financial writes, access production, merge to `main`, or start H7.
+
+
+## 2026-10-09 continuation — Owner and Staff evidence
+
+- **Candidate:** `8e0e3478697a8665ad558df3e22aa45445254419` on `migration/unified-hono`; local branch was fast-forwarded to the remote and production/`main` remained untouched.
+- **Pages/Worker:** credential-free health/version checks passed for the isolated Worker (`1.0.0-h5-preview`, preproduction). The Pages preview bundle resolved `/api` calls to `rq-hono-preview`; no production request was used for acceptance.
+- **Owner:** `H6 Vehicle Subscriber Lab 20261007` showed an active trial and one synthetic subscriber. One supported synthetic subscriber-name change visibly persisted. Listener delivery remains **OPEN/UNVERIFIED** because safe event/correlation evidence was unavailable. The old ambiguous event and partial cleanup were not replayed.
+- **Staff:** active-trial Staff dashboard and garage scope loaded with one synthetic subscriber/record. Staff-facing navigation was visible without Admin/Supervisor management controls. No financial action was opened. No active vehicle operation fixture/control was available; operational mutation remains **OPEN/BLOCKED**. Login/dashboard/scope is **PASS, bounded**.
+- **Supervisor:** owner-approved retirement in `8e0e347`; current disposition **N/A — role retired**. Do not create or authenticate Supervisor fixtures.
+- **Financial:** remains **OPEN/BLOCKED** without a dedicated isolated financial sandbox; no financial write was performed in this continuation.
+- **H6/H7:** H6 remains **OPEN/BLOCKED** and H7 remains **HOLD/NO-GO**.

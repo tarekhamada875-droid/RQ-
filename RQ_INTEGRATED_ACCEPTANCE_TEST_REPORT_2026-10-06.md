@@ -405,3 +405,29 @@ The target guard accepted the approved Pages origin and rejected missing, produc
 
 
 **Exact harness-commit validation:** The harness was committed as `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1`. H5 Preview Worker [run 37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [run 37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) both passed for that exact head. H5 successfully verified the preview bundle and deployed the isolated Worker; the separate Playwright smoke was run locally. Production Gate did not deploy production. Reverify the exact Pages deployment/candidate pairing before treating a future run as H6 browser evidence.
+
+
+## 2026-10-09 continuation — Owner and Staff bounded preview evidence
+
+**Target:** verified migration Pages preview `https://migration-unified-hono.rq-acg.pages.dev` with API origin `https://rq-hono-preview.tarekhamada875.workers.dev`; production and `main` were not used. The candidate branch is `migration/unified-hono` at `8e0e3478697a8665ad558df3e22aa45445254419`. Health/version checks reported healthy pre-production Worker status and version `1.0.0-h5-preview`.
+
+### Garage Owner
+
+- Synthetic fixture: `H6 Vehicle Subscriber Lab 20261007`.
+- Active trial context showed 24 hours remaining.
+- One synthetic subscriber was visible in the Owner scope.
+- A single supported non-financial subscriber-name update was submitted manually. The resulting synthetic name `test sub changed` was visible in the same scoped list after the save.
+- No renewal, wallet, recharge, payment, deletion, checkout, or second mutation was performed.
+- Visible persistence is **PASS, bounded**. Real-time listener delivery cannot be proven from the available sanitized browser evidence because no safe event/correlation record was exposed; the listener cell remains **OPEN/UNVERIFIED**. Prior ambiguous check-in and partial cleanup evidence were not replayed.
+
+### Staff
+
+- Synthetic fixture: active-trial Staff context in `H6 Vehicle Subscriber Lab 20261007`; 24 hours remained.
+- Staff dashboard and garage scope loaded, and one synthetic subscriber/record was visible.
+- The Staff menu exposed Staff-facing items and no Admin or Supervisor management controls. Financial/recharge/package controls were not opened.
+- No vehicle operation was available in the current Staff view, so no check-in, checkout, subscriber mutation, wallet, renewal, or payment action was performed.
+- Staff login/dashboard/scope is **PASS, bounded**. Permitted operational mutation remains **OPEN/BLOCKED** because the required active vehicle operation fixture/control was unavailable.
+
+### Current disposition
+
+H6 remains **OPEN/BLOCKED**. Supervisor is **N/A — role retired** under the owner-approved `8e0e347` change. Financial cases remain **OPEN/BLOCKED** without an isolated financial sandbox. H7 remains **HOLD/NO-GO**.
