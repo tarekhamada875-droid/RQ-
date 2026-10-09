@@ -88,4 +88,54 @@ describe('Worker session lifecycle routes', () => {
     }));
     expect(response.status).toBe(403);
   });
+
+  it('refreshes a valid garage device session without removing another active device', async () => {
+    const now = new Date();
+    mockDb.seed('garage_sessions/garage-uid-garage-a', {
+      uid: 'garage-uid-garage-a',
+      role: 'garage',
+      entityId: 'garage-a',
+      sessionId: 'device-a',
+      isActive: true,
+      activeSessionIds: ['device-a', 'device-b'],
+      lastActive: now
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-a', {
+      sessionId: 'device-a', entityId: 'garage-a', isActive: true, lastActive: now
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-b', {
+      sessionId: 'device-b', entityId: 'garage-a', isActive: true, lastActive: now
+    });
+    mockDb.seed('garages/garage-a', { currentSessionId: 'device-a', activeSessionIds: ['device-a', 'device-b'], lastActive: now });
+
+    const response = await request('/api/auth/validate-or-refresh-session', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-garage-token-garage-a', 'x-session-id': 'device-a' },
+      body: JSON.stringify({ uid: 'garage-uid-garage-a', sessionId: 'device-a', role: 'garage', entityId: 'garage-a' })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, valid: true });
+    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a/sessions/device-a')?.isActive).toBe(true);
+    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a/sessions/device-b')?.isActive).toBe(true);
+    expect(mockDb.records.get('garages/garage-a')?.activeSessionIds).toEqual(['device-a', 'device-b']);
+  });
+
+  it('expires an inactive garage device session and marks the root session inactive', async () => {
+    const expired = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    mockDb.seed('garage_sessions/garage-uid-garage-a', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'device-a', isActive: true, lastActive: expired
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-a', { sessionId: 'device-a', isActive: true, lastActive: expired });
+
+    const response = await request('/api/auth/validate-or-refresh-session', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-garage-token-garage-a', 'x-session-id': 'device-a' },
+      body: JSON.stringify({ uid: 'garage-uid-garage-a', sessionId: 'device-a', role: 'garage', entityId: 'garage-a' })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: false, valid: false, error: 'SESSION_EXPIRED' });
+    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a')?.isActive).toBe(false);
+  });
 });

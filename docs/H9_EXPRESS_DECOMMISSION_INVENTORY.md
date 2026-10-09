@@ -110,6 +110,8 @@ The first implementation slice should be **test and runtime decoupling, not Expr
 - Keep the Express comparison suite as a characterization guard during this slice.
 - Do not change production configuration, Firestore rules, financial behavior, or role policy.
 
+The first slice now adds Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical.
+
 ## H9 status
 
 **Inventory complete; decommissioning not started.** Express remains required for compatibility until the conversion and Cloud Run decisions are completed. The H8 production release and rollback tag remain unchanged.
