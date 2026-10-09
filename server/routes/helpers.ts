@@ -73,6 +73,9 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('NO_REFERRAL_REWARDS_AVAILABLE')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'لا توجد مكافآت إحالة متاحة للاستخدام' };
   }
+  if (errMsg.includes('NOT_AN_UNLIMITED_PACKAGE')) {
+    return { statusCode: 400, code: 'INVALID_REQUEST', message: 'تمديد الاستخدام العادل متاح للباقات المفتوحة فقط' };
+  }
 
   if (
     errMsg.includes('FORBIDDEN') ||
