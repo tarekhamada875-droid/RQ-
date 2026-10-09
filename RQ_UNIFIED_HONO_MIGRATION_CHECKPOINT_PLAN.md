@@ -4,16 +4,16 @@
 
 Evaluate and, if successful, migrate RQ from the current dual-runtime structure to a unified Hono Web-Standards backend without risking the working production deployment.
 
-## Current status — 2026-10-08
+## Current status — 2026-10-09
 
 - **Authorized branch/verified code-test baseline:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1`. A subsequent documentation-only synchronization may produce a newer HEAD; verify actual local/remote HEAD and workflows before acting.
 - **Exact-head workflows:** H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) both passed for that SHA. The Production Gate is validation; it did not deploy production.
 - **Latest relevant source/config/test changes:** `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` sets and tests the 30-second garage-delete timeout. `40da805` changes only `wrangler.preview.toml` to allow the stable migration Pages origin; production `wrangler.toml` remains unchanged. `ae8ab80` adds only opt-in read-only Playwright test infrastructure and documentation, not product behavior.
 - **Production:** `main` and the current production Worker/Pages remain unchanged; no cutover is authorized.
 - **H6 execution authority:** follow `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`; use the detailed role report and integrated report as existing evidence, not as new instructions. Reuse valid evidence and work unresolved/invalidated cells only; do not rebuild the application or repeat the entire matrix.
-- **H6 remains OPEN/BLOCKED:** the Pages-to-preview-Worker pairing and preview-only CORS correction were verified for a recorded fresh non-production deployment, followed by one bounded Admin login/dashboard/read-only navigation/logout **PASS**. Reverify exact deployment identity against the next candidate before additional browser acceptance. Staff operational access in a valid free-trial context is unresolved; the Supervisor global-versus-assigned read policy needs an owner decision; Owner listener delivery and some cleanup evidence remain unresolved; financial workflows remain intentionally blocked without an isolated sandbox.
+- **H6 remains OPEN/BLOCKED:** the Pages-to-preview-Worker pairing and preview-only CORS correction were verified for a recorded fresh non-production deployment, followed by one bounded Admin login/dashboard/read-only navigation/logout **PASS**. The current local candidate passed `npm run ci:check` (**103 files / 592 tests**), the synthetic Firestore Rules Emulator suite, maintainability, and whitespace checks. Reverify exact-head workflows and deployment identity against the current candidate before additional browser acceptance. Staff operational access in a valid free-trial context is unresolved; Owner listener delivery and some cleanup evidence remain unresolved; financial workflows remain intentionally blocked without an isolated sandbox. Supervisor is retired by explicit owner decision; local denial/preservation regressions are validated, but the candidate preview must be verified before treating the change as deployed.
 - **Automation:** an opt-in read-only Playwright smoke checks the generic login shell and isolated Worker health/version endpoints; it is not role-acceptance E2E and is not in default CI. See `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; do not claim that it closes any H6 role cell.
-- **UI/UX:** preserve the freeze; no redesign or business-rule changes are authorized by this status.
+- **UI/UX:** preserve the freeze; no redesign is authorized. The sole role-policy exception is the explicitly owner-approved, non-destructive Supervisor retirement; no other business-rule changes are authorized by this status.
 - **Next checkpoint:** H7 is **HOLD/NO-GO** until required H6 gates close. No process can guarantee zero bugs; document residual risk honestly.
 - **Succession rule:** if the owner says exactly `tokens ending`, follow the protocol in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` before doing other work.
 
@@ -39,7 +39,7 @@ The current Cloudflare Worker is the production backend. Express remains as tran
 2. Do not redesign the UI or UX.
 3. Do not change business rules unless a migration defect requires an explicitly documented correction.
 4. Do not remove Express until all gates in this plan are complete.
-5. Keep Firebase authentication, Firestore data, tenant isolation, role permissions, idempotency, audit logging, and session behavior unchanged.
+5. Keep Firebase authentication, Firestore data, tenant isolation, role permissions, idempotency, audit logging, and session behavior unchanged except for explicit, documented owner-approved policy decisions; Supervisor retirement is such a decision and must preserve legacy records.
 6. Every checkpoint must pass before the next checkpoint begins.
 7. The existing Cloudflare Worker remains the rollback target throughout the migration.
 
@@ -250,7 +250,7 @@ Make the test suite validate the production architecture directly.
   - Delegate
   - Garage owner
   - Staff
-  - Supervisor
+  - Retired Supervisor negative-path tests only; preserve existing records
 - Test both allowed and forbidden operations.
 - Test tenant isolation and cross-garage URL manipulation.
 - Test session release, expiry, refresh, and multi-device behavior.
@@ -316,7 +316,7 @@ Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANC
 2. Verify the tested Pages preview serves the candidate frontend and its API calls target only `rq-hono-preview`. If this Pages-to-Worker path cannot be verified, mark it BLOCKED; a temporary local Vite proxy is diagnostic only and does not satisfy this exit gate.
 3. Use run-specific synthetic fixtures and a manifest. Keep writes serialized; after an ambiguous mutation timeout, reconcile through approved read-only UI/preview observability and do not blindly retry.
 4. Test one role in a fresh browser context at a time, covering the existing matrix's allowed and denied actions, server-derived role/scope, persistence, and relevant audit/idempotency behavior. Use desktop and 390×844 portrait/touch coverage where the case applies.
-5. Resolve the Supervisor global-versus-assigned policy explicitly before changing permissions. Use an active synthetic free-trial context for Staff; do not purchase a package or top up a balance. Leave unresolved outcomes OPEN/BLOCKED.
+5. Supervisor is retired by owner decision: do not perform manual role acceptance or inspect/change legacy records; require local denial-and-preservation regressions only. Use an active synthetic free-trial context for Staff; do not purchase a package or top up a balance. Leave unresolved outcomes OPEN/BLOCKED.
 6. Do not execute payment, recharge approval, wallet, transfer/settlement, or package/subscription purchase/renewal without a dedicated isolated financial sandbox and explicit authorization. Otherwise retain those cells as OPEN/BLOCKED.
 7. Use the supported UI for cleanup; confirm deletion/job completion evidence and fresh-list absence. Release sessions and remove temporary proxy/configuration artifacts.
 

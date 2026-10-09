@@ -1,13 +1,13 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-08
+**Last updated:** 2026-10-09
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` (do not modify for the Unified Hono migration task).
 **Active migration branch:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1` on 2026-10-08, with H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) passing for that exact head. This commit adds opt-in read-only Playwright test infrastructure and documentation, not product behavior. The only post-30cccf runtime/config change remains preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. A later docs-only synchronization may have a newer SHA; verify the actual branch/head before acting.
 
 ## 1. What RQ is
 
-RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, supervisors, and admin operations.
+RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, and Admin operations. The Supervisor role has been retired by owner decision; existing legacy Supervisor records are preserved and do not represent active accounts.
 
 The application is in **controlled synthetic pre-production**. There are currently no real users, customer records, or live financial data. Synthetic pre-production is not permission to touch unknown data, accept real revenue, perform destructive migrations, or claim final production readiness.
 
@@ -138,9 +138,9 @@ C10 evidence still concerns:
 
 C7 historical financial reconciliation remains deferred until the owner approves the accounting period and source-of-truth policy. Any reconciliation must start read-only and use synthetic/exported data.
 
-### Unified Hono H6 status — 2026-10-08
+### Unified Hono H6 status — 2026-10-09
 
-H6 remains **OPEN/BLOCKED**. The stable Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. A preview-only CORS allowlist correction was deployed; a recorded fresh non-production Pages/Worker pairing produced one bounded Admin login/dashboard/read-only-navigation/logout PASS. Reverify the exact deployment against the current candidate before further browser acceptance. Read-only Staff inspection found one synthetic `Mobile QA Staff` row with its PIN masked: Staff transport is **PARTIAL**, while Staff operational access remains **OPEN/BLOCKED**. The Supervisor global-versus-assigned garage-read policy, Owner listener delivery/cleanup evidence, and intentionally untested financial workflows also remain unresolved. An opt-in read-only Playwright smoke exists; it is not role-acceptance E2E, is not in default CI, and closes no H6 role cells. No production cutover is authorized; H7 has not started.
+H6 remains **OPEN/BLOCKED**. The stable Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. A preview-only CORS allowlist correction was deployed; recorded fresh non-production pairing produced one bounded Admin login/dashboard/read-only-navigation/logout PASS. Reverify exact deployment identity for the current candidate before further browser acceptance. Staff transport is **PARTIAL**, while Staff operational access in an active-trial context remains **OPEN/BLOCKED**. Owner listener delivery/cleanup evidence is unresolved; financial workflows remain intentionally untested/blocked without an isolated sandbox. Supervisor is retired: legacy authentication/session/API access is denied, client Rules deny its access, and existing account/session records are preserved. The current local candidate passed `npm run ci:check` (**103 files / 592 tests**, including TypeScript/build/artifact checks), focused retirement tests (**6 files / 95 tests**), the synthetic Firestore Rules Emulator suite, `npm run maintainability:check`, and `git diff --check`. Those local results do not establish a preview deployment; verify exact-head workflows and Pages/Worker identity before browser acceptance. The opt-in read-only Playwright smoke is not role-acceptance E2E, is not in default CI, and closes no H6 role cells. No production cutover is authorized; H7 remains HOLD.
 
 ## 8. Repository map
 

@@ -326,7 +326,6 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
     const secCollMap = [
       { role: 'admin', coll: 'admin_sessions' },
-      { role: 'supervisor', coll: 'supervisor_sessions' },
       { role: 'delegate', coll: 'delegate_sessions' },
       { role: 'garage', coll: 'garage_sessions' },
       { role: 'staff', coll: 'staff_sessions' }
@@ -358,7 +357,6 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
           const entityCollMap: Record<string, string> = {
             admin: 'admin_settings',
-            supervisor: 'supervisors',
             delegate: 'delegates',
             garage: 'garages',
             staff: 'staff'

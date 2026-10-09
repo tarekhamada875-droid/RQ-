@@ -213,6 +213,39 @@ describe('Worker PIN rate limiter', () => {
       expect(mockDb.records.has('admin_sessions/worker-uid')).toBe(false);
     });
 
+    it('rejects a preserved legacy Supervisor PIN without creating a session or changing records', async () => {
+      const supervisorPin = '13572468';
+      mockDb.seed('private_pins/legacy-supervisor', {
+        entityType: 'supervisors',
+        entityId: 'legacy-supervisor',
+        pin: hashPinWithUniqueSalt(supervisorPin),
+        pinLookupHash: computeLookupHash(supervisorPin)
+      });
+      const legacyRecord = { name: 'Preserved legacy Supervisor', role: 'supervisor' };
+      mockDb.seed('supervisors/legacy-supervisor', legacyRecord);
+
+      const response = await verifyPin(supervisorPin, 'retired-supervisor-session', undefined, undefined, 'valid-worker-token');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: false, error: 'بيانات الدخول غير صحيحة' });
+      expect(mockDb.records.has('supervisor_sessions/worker-uid')).toBe(false);
+      expect(mockDb.records.get('supervisors/legacy-supervisor')).toEqual(legacyRecord);
+    });
+
+    it('does not migrate a plain legacy Supervisor PIN during rejected login', async () => {
+      const supervisorPin = '86421357';
+      const legacyRecord = { name: 'Plain legacy Supervisor', role: 'supervisor', pin: supervisorPin };
+      mockDb.seed('supervisors/plain-legacy-supervisor', legacyRecord);
+
+      const response = await verifyPin(supervisorPin, 'plain-legacy-supervisor-session', undefined, undefined, 'valid-worker-token');
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: false, error: 'بيانات الدخول غير صحيحة' });
+      expect(mockDb.records.get('supervisors/plain-legacy-supervisor')).toEqual(legacyRecord);
+      expect(mockDb.records.has('private_pins/plain-legacy-supervisor')).toBe(false);
+      expect(mockDb.records.has('supervisor_sessions/worker-uid')).toBe(false);
+    });
+
     it('returns a successful claim without waiting for limiter reset and logs only safe timing fields', async () => {
       let releaseReset!: () => void;
       const resetGate = new Promise<void>((resolve) => { releaseReset = resolve; });

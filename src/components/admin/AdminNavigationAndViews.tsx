@@ -34,7 +34,6 @@ interface AdminNavigationAndViewsProps {
   setActiveTab: (tab: any) => void;
   currentSupervisor: Supervisor | null;
   delegates: Delegate[];
-  supervisors: Supervisor[];
   rechargeRequests: RechargeRequest[];
   pendingGarages: Garage[];
   packages: Package[];
@@ -71,7 +70,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   setActiveTab,
   currentSupervisor,
   delegates,
-  supervisors,
   rechargeRequests,
   pendingGarages,
   packages,
@@ -213,7 +211,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('أسعار الاشتراكات')}</span>
             </button>
 
-            {/* Tab 5: People (Delegates, Supervisors) */}
+            {/* Tab 5: People (Delegates) */}
             <button
               type="button"
               onClick={() => setActiveTab('people')}
@@ -283,7 +281,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors' ? (
         <AdminPeopleView
           delegates={delegates}
-          supervisors={supervisors}
           currentSupervisor={currentSupervisor}
           allGarages={approvedGarages}
           onSelectDelegate={onSelectDelegate}

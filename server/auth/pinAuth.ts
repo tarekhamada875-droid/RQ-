@@ -111,7 +111,7 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
         const docs = collectionResults[index] || [];
         for (const docSnap of docs) {
           const data = { ...docSnap.data };
-          if (docSnap.isLegacyMatch && !expectedRole) {
+          if (docSnap.isLegacyMatch && !expectedRole && coll.role !== 'supervisor') {
             migratePinToHash(coll.name, docSnap.id, normInputPin);
           }
 
@@ -136,6 +136,11 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
 
       if (matches.length === 1) {
         const match = matches[0];
+        // Legacy Supervisor records remain stored and their PINs remain reserved,
+        // but retirement forbids issuing any new Supervisor session.
+        if (match.role === 'supervisor') {
+          return res.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+        }
         if (expectedRole && match.role !== expectedRole) {
           return res.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
         }
@@ -147,14 +152,12 @@ pinAuthRouter.post('/api/auth/verify-pin', requireFirebaseUser, async (req: Auth
           try {
             const entityCollMap: Record<string, string> = {
               admin: 'admin_settings',
-              supervisor: 'supervisors',
               delegate: 'delegates',
               garage: 'garages',
               staff: 'staff'
             };
             const secCollMap: Record<string, string> = {
               admin: 'admin_sessions',
-              supervisor: 'supervisor_sessions',
               delegate: 'delegate_sessions',
               garage: 'garage_sessions',
               staff: 'staff_sessions'

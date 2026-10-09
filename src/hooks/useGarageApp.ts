@@ -202,7 +202,6 @@ export function useGarageApp() {
   const {
     allGarages,
     delegates,
-    supervisors,
     staffList,
     setStaffList,
     rechargeRequests,
@@ -219,7 +218,6 @@ export function useGarageApp() {
     setGarage,
     delegate,
     setDelegate,
-    currentSupervisor,
     selectedGarageForDetails,
     setSelectedGarageForDetails,
     setVehicles,
@@ -397,7 +395,6 @@ export function useGarageApp() {
     showSubscribers,
     setShowSubscribers,
     currentSupervisor,
-    supervisors,
     isInputFocused,
     setIsInputFocused,
     staffList,

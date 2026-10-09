@@ -136,6 +136,13 @@ export function useGarageSession({
     }
   }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
 
+  // Retire stale browser sessions without touching their preserved Firestore records.
+  useEffect(() => {
+    if (!currentSupervisor) return;
+    logDiagnostic('RETIRED_SUPERVISOR_SESSION_CLEARED');
+    handleLogout(true);
+  }, [currentSupervisor, handleLogout]);
+
   const handleInitiateLogout = () => {
     setShowLogoutConfirm(true);
   };

@@ -8,7 +8,7 @@
 ## Start here
 
 1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, and `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
-2. Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority. Use [`docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) for the concise Staff/Supervisor/Owner field checklist and [`docs/H6_NEXT_AGENT_PROMPT.md`](docs/H6_NEXT_AGENT_PROMPT.md) for the current bounded next steps.
+2. Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority. Use [`docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) for the concise Staff/Owner field checklist and [`docs/H6_NEXT_AGENT_PROMPT.md`](docs/H6_NEXT_AGENT_PROMPT.md) for the current bounded next steps.
 3. Use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the role/feature coverage catalog, not as permission to perform every legacy example. Reuse existing scoped evidence in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`; do not rebuild the app or repeat the whole matrix. Run only unresolved cases or regressions invalidated by relevant changes. Older dated notes are historical and may be superseded by later evidence.
 4. Before acting, verify actual branch, HEAD, remote state, worktree, preview deployment identity, and workflow status. No browser session, credential, local proxy, or secret transfers to the next agent.
 
@@ -23,7 +23,7 @@ The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pag
 | Area | Status and limitation |
 |---|---|
 | Staff operational access | **PARTIAL / OPEN/BLOCKED.** Read-only inspection of the documented `QA Garage Beta` fixture found exactly one synthetic Staff row, `Mobile QA Staff`, with its PIN masked. This reconciles the prior ambiguous request as a likely late backend completion after the client wait ended; no retry or deletion was performed. Staff login and operational workflows remain untested because no usable PIN was exposed. |
-| Supervisor garage-read policy | **OPEN.** Global-versus-assigned monitoring scope requires an explicit owner decision before changing Worker, Firestore, or UI permissions. |
+| Supervisor role | **N/A — retired by owner decision.** Manual login/scope testing is prohibited; local denial-and-preservation regressions are required. Existing legacy records remain untouched. |
 | Garage Owner listener/cleanup | **OPEN/PARTIAL.** Bounded desktop reload persistence passed and source/lifecycle tests passed **2 files / 15 tests**. One live synthetic hourly check-in was submitted once, but no success response or listener count update appeared; it remains an ambiguous/open mutation with no retry. The fixture deletion reached 50% and the fixture later disappeared from a fresh Admin list, providing partial cleanup evidence only—not confirmed job completion. |
 | Financial acceptance | **OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal without an authorized isolated financial sandbox. |
 | Admin browser acceptance | **PASS, bounded.** After the preview-only CORS allowlist fix, one fresh Admin login through `https://migration-unified-hono.rq-acg.pages.dev` reached the Admin dashboard, read-only navigation/counts rendered, and normal PIN-confirmed logout returned to the generic login. No Admin mutation or financial action was performed. |
@@ -37,9 +37,9 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 
 ## Next safe actions
 
-1. Preserve the bounded Admin PASS and continue only with the remaining unresolved H6 cells: Staff operational access, Supervisor scope decision, Owner listener/cleanup evidence, and blocked financial workflows. Do not repeat the Admin login unless new evidence requires it.
+1. Preserve the bounded Admin PASS and continue only with unresolved H6 cells: Staff operational access, Owner listener/cleanup evidence, current-candidate Pages-to-Worker acceptance, and blocked financial workflows. Supervisor is N/A for manual acceptance; do not revisit its former scope decision or inspect legacy records.
 2. Preserve the partial Staff transport reconciliation. Do not change the timeout, replay Staff-create, delete `Mobile QA Staff`, or infer Staff operational PASS from row existence; continue only if a safe credential/test fixture is separately authorized and available.
-3. Obtain the Supervisor scope decision before permission edits. Continue only safe Owner listener/mobile and other role cases, one role/context at a time.
+3. Do not perform Supervisor manual acceptance or modify preserved legacy records. Continue only safe Owner listener/mobile and other active-role cases, one role/context at a time.
 4. The opt-in Playwright harness covers only the read-only shell/health smoke; run it only after verifying the Pages/Worker candidate pairing. Continue manual H6 testing under the runbook. Do not infer role PASS from the smoke or expand it to authenticated/mutating journeys without separately approved scope, runtime secret handling, serialized writes, verified cleanup, and no blind retries.
 5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
 6. Do not start H7 until H6 exits are satisfied or the owner explicitly revises scope and accepts the documented residual risk. H7 is GO/HOLD; H8 production replacement requires every gate and explicit approval.

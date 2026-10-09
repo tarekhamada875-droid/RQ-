@@ -7,7 +7,6 @@ import {
   canInvalidateAllSessions,
   canManageStaffForGarage,
   canManageDelegates,
-  toSupervisorGarageMonitoringRecord,
   canManageGarageScopedData,
   canRunGarageMaintenance,
   canViewFinancialReport,
@@ -41,19 +40,6 @@ describe('global delegate mutation authorization policy', () => {
     expect(canManageDelegates({ role: 'supervisor' })).toBe(false);
     expect(canManageDelegates({ role: 'delegate' })).toBe(false);
     expect(canManageDelegates(undefined)).toBe(false);
-  });
-});
-
-describe('Supervisor garage monitoring redaction policy', () => {
-  it('keeps operational fields and removes sensitive identity and financial fields', () => {
-    expect(toSupervisorGarageMonitoringRecord('garage-a', {
-      name: 'Garage Alpha', status: 'approved', dailyCapacity: 40, carsInside: 3,
-      todayCount: 8, isTrial: false, phone: '01000000000', ownerName: 'Owner',
-      pin: '12345678', balance: 500, totalRevenue: 9000, hourlyRate: 20
-    })).toEqual({
-      id: 'garage-a', name: 'Garage Alpha', status: 'approved', dailyCapacity: 40,
-      carsInside: 3, todayCount: 8, isTrial: false
-    });
   });
 });
 
@@ -109,12 +95,11 @@ describe('admin-session authorization policy', () => {
     })).toBe(false);
   });
 
-  it('allows self-release or release by an active admin/supervisor only', () => {
-    const base = { targetUid: 'target_uid', isActiveAdmin: false, isActiveSupervisor: false };
+  it('allows self-release or release by an active admin only', () => {
+    const base = { targetUid: 'target_uid', isActiveAdmin: false };
     expect(canReleaseSession({ ...base, actorUid: 'target_uid' })).toBe(true);
     expect(canReleaseSession({ ...base, actorUid: 'other_uid' })).toBe(false);
     expect(canReleaseSession({ ...base, actorUid: 'other_uid', isActiveAdmin: true })).toBe(true);
-    expect(canReleaseSession({ ...base, actorUid: 'other_uid', isActiveSupervisor: true })).toBe(true);
   });
 });
 

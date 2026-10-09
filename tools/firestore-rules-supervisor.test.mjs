@@ -1,5 +1,6 @@
 import fs from 'node:fs';
-import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
+import assert from 'node:assert/strict';
+import { initializeTestEnvironment, assertFails } from '@firebase/rules-unit-testing';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const env = await initializeTestEnvironment({
@@ -12,11 +13,15 @@ const env = await initializeTestEnvironment({
 });
 
 try {
+  const legacySupervisor = { name: 'Synthetic Preserved Supervisor', role: 'supervisor' };
+  const legacySession = {
+    uid: 'sup-uid', role: 'supervisor', entityId: 'sup-1', sessionId: 'legacy-session', isActive: true
+  };
+
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    await setDoc(doc(db, 'supervisor_sessions/sup-uid'), {
-      uid: 'sup-uid', role: 'supervisor', entityId: 'sup-1', isActive: true
-    });
+    await setDoc(doc(db, 'supervisor_sessions/sup-uid'), legacySession);
+    await setDoc(doc(db, 'supervisors/sup-1'), legacySupervisor);
     await setDoc(doc(db, 'delegates/del-1'), {
       name: 'Synthetic Delegate', phone: '', role: 'delegate', createdAt: new Date(), totalRechargedAmount: 0
     });
@@ -35,15 +40,25 @@ try {
   });
 
   const db = env.authenticatedContext('sup-uid').firestore();
-  await assertSucceeds(getDoc(doc(db, 'delegates/del-1')));
-  await Promise.all([
-    assertFails(getDoc(doc(db, 'garages/g-1'))),
-    assertFails(getDocs(collection(db, 'garages'))),
-    assertFails(getDoc(doc(db, 'garages/g-1/subscribers/sub-1'))),
-    assertFails(getDoc(doc(db, 'garages/g-1/daily_counts/2026-10-07')))
-  ]);
+  const deniedReads = [
+    getDoc(doc(db, 'supervisor_sessions/sup-uid')),
+    getDoc(doc(db, 'supervisors/sup-1')),
+    getDocs(collection(db, 'supervisors')),
+    getDoc(doc(db, 'delegates/del-1')),
+    getDoc(doc(db, 'garages/g-1')),
+    getDocs(collection(db, 'garages')),
+    getDoc(doc(db, 'garages/g-1/subscribers/sub-1')),
+    getDoc(doc(db, 'garages/g-1/daily_counts/2026-10-07'))
+  ];
+  await Promise.all(deniedReads.map(assertFails));
 
   const deniedWrites = [
+    updateDoc(doc(db, 'supervisor_sessions/sup-uid'), { lastActive: new Date() }),
+    deleteDoc(doc(db, 'supervisor_sessions/sup-uid')),
+    setDoc(doc(db, 'supervisor_sessions/new-uid'), legacySession),
+    updateDoc(doc(db, 'supervisors/sup-1'), { name: 'Must Not Change' }),
+    deleteDoc(doc(db, 'supervisors/sup-1')),
+    setDoc(doc(db, 'supervisors/new-id'), legacySupervisor),
     updateDoc(doc(db, 'delegates/del-1'), { name: 'Should Be Denied' }),
     deleteDoc(doc(db, 'delegates/del-1')),
     updateDoc(doc(db, 'garages/g-1/subscribers/sub-1'), { ownerName: 'Should Be Denied', phone: '001' }),
@@ -52,7 +67,14 @@ try {
     setDoc(doc(db, 'garages/g-1/daily_counts/2026-10-08'), { dateId: '2026-10-08', count: 1, limit: 10 })
   ];
   await Promise.all(deniedWrites.map(assertFails));
-  console.log('Supervisor rules test passed: delegate monitoring read allowed; direct garage/nested reads and six mutation attempts denied.');
+
+  await env.withSecurityRulesDisabled(async (context) => {
+    const storedDb = context.firestore();
+    assert.deepEqual((await getDoc(doc(storedDb, 'supervisor_sessions/sup-uid'))).data(), legacySession);
+    assert.deepEqual((await getDoc(doc(storedDb, 'supervisors/sup-1'))).data(), legacySupervisor);
+  });
+
+  console.log('Supervisor rules test passed: all legacy Supervisor reads/writes denied; preserved records unchanged; non-Supervisor mutation attempts denied.');
 } finally {
   await env.cleanup();
 }

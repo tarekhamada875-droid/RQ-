@@ -65,22 +65,9 @@ export function canSubmitGarageApplication(principal: AuthorizationPrincipal | n
   return principal?.role === 'admin' || principal?.role === 'delegate';
 }
 
-/** Delegate records are global administrative data; Supervisors may monitor but not mutate them. */
+/** Delegate records are global administrative data and are managed by Admin only. */
 export function canManageDelegates(principal: AuthorizationPrincipal | null | undefined): boolean {
   return principal?.role === 'admin';
-}
-
-/** Exposes only non-sensitive operational fields for the Supervisor global monitoring list. */
-export function toSupervisorGarageMonitoringRecord(
-  garageId: string,
-  garage: Record<string, unknown>,
-): Record<string, unknown> {
-  const allowedFields = ['name', 'status', 'dailyCapacity', 'carsInside', 'todayCount', 'isTrial'] as const;
-  const monitoringRecord: Record<string, unknown> = { id: garageId };
-  for (const field of allowedFields) {
-    if (garage[field] !== undefined) monitoringRecord[field] = garage[field];
-  }
-  return monitoringRecord;
 }
 
 /**
@@ -148,10 +135,9 @@ export function canReleaseSession(input: Readonly<{
   actorUid: unknown;
   targetUid: unknown;
   isActiveAdmin: boolean;
-  isActiveSupervisor: boolean;
 }>): boolean {
   if (input.actorUid === input.targetUid) return true;
-  return input.isActiveAdmin || input.isActiveSupervisor;
+  return input.isActiveAdmin;
 }
 
 export function canUpdateTrialDecision(

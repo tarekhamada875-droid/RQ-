@@ -8,7 +8,6 @@ export const activeSessionsRouter = Router();
 
 const sessionCollections: Record<string, { sessions: string; entity: string }> = {
   admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
-  supervisor: { sessions: 'supervisor_sessions', entity: 'supervisors' },
   delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
   garage: { sessions: 'garage_sessions', entity: 'garages' },
   staff: { sessions: 'staff_sessions', entity: 'staff' }
@@ -98,7 +97,6 @@ activeSessionsRouter.post('/api/auth/invalidate-all-sessions', requireAuth, asyn
     const now = new Date();
     const sessionCollList = [
       { name: 'admin_sessions', entityCollection: 'admin_settings', fixedEntityId: 'auth_pin' },
-      { name: 'supervisor_sessions', entityCollection: 'supervisors' },
       { name: 'delegate_sessions', entityCollection: 'delegates' },
       { name: 'garage_sessions', entityCollection: 'garages' },
       { name: 'staff_sessions', entityCollection: 'staff' }

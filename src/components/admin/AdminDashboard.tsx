@@ -36,9 +36,8 @@ interface AdminDashboardProps {
   packages: Package[];
   onLogout: () => void;
   rechargeRequests: RechargeRequest[];
-  // Supervisor addition
+  // Retained only to constrain stale legacy Supervisor client state.
   currentSupervisor?: Supervisor | null;
-  supervisors?: Supervisor[];
   currentAdminPin: string;
   currentWalletNumber: string;
   onUpdateWalletNumber: (wallet: string) => Promise<void>;
@@ -59,7 +58,6 @@ export const AdminDashboard = memo(({
   onLogout,
   rechargeRequests,
   currentSupervisor = null,
-  supervisors = [],
   currentAdminPin,
   currentWalletNumber,
   onUpdateWalletNumber,
@@ -72,7 +70,12 @@ export const AdminDashboard = memo(({
   const [adminSearch, setAdminSearch] = React.useState<string>('');
   const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'wallet' | 'admin-pin' | 'announcements' | 'global_settings' | 'catalog_settings' | 'active_sessions' | 'partners_calculator'>('app_admin_tab', 'overview');
 
-  // Ensure supervisor is restricted to delegates view
+  // Older browser storage may point at the retired Supervisor tab.
+  React.useEffect(() => {
+    if (activeTab === 'supervisors') setActiveTab('people');
+  }, [activeTab, setActiveTab]);
+
+  // Keep any stale legacy Supervisor state on the Delegates-only People view.
   React.useEffect(() => {
     if (currentSupervisor && (activeTab !== 'people' && activeTab !== 'delegates' && activeTab !== 'supervisors')) {
       setActiveTab('people');
@@ -471,7 +474,6 @@ export const AdminDashboard = memo(({
           setActiveTab={setActiveTab}
           currentSupervisor={currentSupervisor}
           delegates={delegates}
-          supervisors={supervisors}
           rechargeRequests={rechargeRequests}
           pendingGarages={pendingGarages}
           packages={packages}

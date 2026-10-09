@@ -2,7 +2,7 @@
 
 ## Evidence precedence — 2026-10-08
 
-This is a chronological evidence record, not the current execution procedure. Future H6 work must follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) and use the newest consolidated status in `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` and the checkpoint plan. Results below are scoped to their recorded commit, browser, fixture, and frontend path; historical PASS snapshots do not supersede later OPEN/BLOCKED results. Reuse valid evidence and test unresolved or invalidated cases only—do not rebuild the application or repeat the entire matrix.
+This is a chronological evidence record, not the current execution procedure. Future H6 work must follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) and use the newest consolidated status in `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` and the checkpoint plan. Results below are scoped to their recorded commit, browser, fixture, and frontend path; historical PASS snapshots do not supersede later OPEN/BLOCKED results. **Owner decision on 2026-10-09 retired Supervisor; prior Supervisor login/scope PASS results below are historical only, no new role login is authorized, and legacy records must be preserved.** Reuse valid evidence and test unresolved or invalidated cases only—do not rebuild the application or repeat the entire matrix.
 
 ## Scope
 

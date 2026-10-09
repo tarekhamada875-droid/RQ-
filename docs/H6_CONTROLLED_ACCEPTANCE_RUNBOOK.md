@@ -1,6 +1,6 @@
 # H6 Controlled Acceptance Runbook
 
-**Status:** H6 remains OPEN/BLOCKED as of 2026-10-08.
+**Status:** H6 remains OPEN/BLOCKED as of 2026-10-09.
 **Scope:** `migration/unified-hono` and the isolated `rq-hono-preview` Worker only.
 **Purpose:** Replace exploratory clicking and ambiguous evidence with a repeatable, risk-controlled acceptance run.
 
@@ -52,7 +52,7 @@ Do **not** rebuild the RQ application or repeat the entire role matrix from scra
 
 Create a small, run-specific synthetic fixture manifest before any mutation. Use a unique label such as `H6-<date>-<run-id>`. Record only safe aliases, role, intended scope, purpose, creation path, and cleanup state—not credentials or sensitive IDs. Inspect for an existing matching fixture before creating another. Use the supported UI/API path that the case is intended to accept.
 
-**Supervisor boundary:** The global-versus-assigned garage monitoring policy remains unresolved. Do not widen or narrow Worker, Firestore, or client permissions to make a test pass. Obtain an explicit owner decision on the intended scope first. Until then, relevant cases remain OPEN/BLOCKED.
+**Supervisor retirement:** The owner has decided this role is no longer wanted. Do not create, log in as, or manually test a Supervisor identity; do not delete or alter existing Supervisor account/session records. The migration branch now denies legacy Supervisor authentication and protected access, retires management/PIN-update routes, removes Supervisor controls from the Delegates-focused People view, and denies client access in Firestore Rules. Local regression coverage includes Worker/Express PIN/session behavior and the Firestore Rules Emulator. These local results do not prove the candidate preview deployment is updated; verify exact-head workflows and Pages/Worker identity before acceptance. Treat older Supervisor browser evidence as historical; current active-role scope is **N/A — role retired**, with denial regressions required.
 
 **Staff trial context:** Use only an already active synthetic free-trial context for non-financial operational checks. Do not top up a balance, purchase a package, or manufacture a paid state. The latest handoff reconciles the earlier delayed create: read-only inspection found exactly one synthetic `Mobile QA Staff` row in `QA Garage Beta`, with its PIN masked. Treat Staff transport as PARTIAL and operational access as OPEN/BLOCKED; no usable Staff credential or active-trial context is confirmed. Do not replay creation, reset the PIN, delete the row, or change the Staff-create timeout. Continue only if an owner-authorized credential and a verified active-trial context are already available.
 
@@ -89,7 +89,7 @@ The minimum role-oriented focus for the current run is:
 | Delegate | Restricted dashboard, assigned-scope reads, and safe denial of out-of-scope/admin actions. | Keep the zero-garage fixture distinct from Alpha/Beta fixtures. |
 | Garage Owner | Desktop reload persistence, listener delivery after one harmless synthetic change, vehicle/subscriber workflows, mobile navigation and popup behavior. | Listener delivery and portions of mobile coverage remain OPEN; avoid payment-related actions. |
 | Staff | Login in the active free-trial context, allowed vehicle/subscriber operations, and forbidden admin/cross-garage actions. | No trial-context Staff identity is currently confirmed; reconcile the previous create attempt first. No balance top-up or purchase. |
-| Supervisor | Restricted monitoring and safe denial cases after the owner defines global-versus-assigned scope. | Do not edit permission code or live rules to guess policy. |
+| Supervisor (retired) | No manual role acceptance. Verify only the non-destructive denial regressions for legacy PINs, sessions, APIs, and rules. | Preserve existing account/session records; never create, clean up, or deploy live rules for this role. |
 
 For listener acceptance, generate one harmless, supported synthetic change and verify the same event reaches the active listener; successful connection/status codes without an event do not pass delivery. For cleanup, use the supported UI and verify both the operation's completion evidence and fresh-list absence. If deletion is asynchronous, inspect only a documented read-only job status; absence from a list alone is partial evidence.
 
@@ -129,6 +129,6 @@ At closeout, reconcile every matrix cell as PASS, FAIL, BLOCKED, OPEN/UNVERIFIED
 
 H6 can be marked complete only when the required role workflows have evidence through the verified Cloudflare Pages preview to the isolated preview Worker; no role is silently downgraded; required desktop/mobile popup behavior passes; authorization/scope and persistence checks are complete; cleanup is confirmed; no UI/UX redesign was introduced; and every required matrix cell is resolved. Any explicitly excluded cell requires a written owner scope/risk decision and must remain labeled untested—not tested or passed.
 
-The current H6 blockers are: Staff operational access in an active-trial context; the Supervisor global-versus-assigned read policy; Owner real-time listener delivery and remaining cleanup evidence; fresh verified Pages-to-Worker role-acceptance evidence; and financial workflows without a dedicated safe sandbox. The minimal Playwright smoke is not role E2E and closes none of these blockers. They do not become PASS through documentation updates or unit tests.
+The current H6 blockers are: Staff operational access in an active-trial context; Owner real-time listener delivery and remaining cleanup evidence; fresh verified Pages-to-Worker role-acceptance evidence for the current candidate; and financial workflows without a dedicated safe sandbox. Supervisor is retired by owner decision and is **N/A for manual role acceptance**; its local denial regressions must remain green, but prior Supervisor browser PASS evidence is historical and does not imply continued access. The minimal Playwright smoke is not role E2E and closes none of these blockers. They do not become PASS through documentation updates or unit tests.
 
 H7 is a separate GO/HOLD decision. It requires the plan's full tests, lint, production build, CI, maintainability, release smoke, preview role acceptance, route parity, Firebase authentication/session coverage, no unexplained user-visible warnings, and a rehearsed rollback. If H6 or any H7 condition remains blocked, the result is **HOLD/NO-GO**: keep production and `main` unchanged. H6/H7 evidence can reduce risk; neither can certify “100% bug-free.”

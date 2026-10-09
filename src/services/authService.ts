@@ -210,14 +210,6 @@ export const authService = {
     return authService.claimDelegateSession(delegateId, sessionId, deviceInfo);
   },
 
-  updateSupervisorSession: async (id: string, _meta?: any) => {
-    if (!id) return;
-    try {
-      await setDoc(doc(db, 'supervisor_sessions', id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {
-      console.error('[AuthService] Error updating supervisor session:', e);
-    }
-  },
 
   updateStaffSession: async (id: string, _meta?: any) => {
     if (!id) return;

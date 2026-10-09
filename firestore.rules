@@ -102,8 +102,8 @@ service cloud.firestore {
     }
 
     function isSupervisor() {
-      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.isActive == true;
+      // Retired role: preserved legacy documents never grant client access.
+      return false;
     }
 
     function isDelegate() {
@@ -139,9 +139,8 @@ service cloud.firestore {
     }
 
     function isSupervisorSession(supervisorId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.isActive == true &&
-             get(/databases/$(database)/documents/supervisor_sessions/$(request.auth.uid)).data.entityId == supervisorId;
+      // Retired role: no legacy session may access Supervisor records.
+      return false;
     }
 
     function isDelegateSession(delegateId) {
@@ -507,11 +506,8 @@ service cloud.firestore {
     }
 
     match /supervisor_sessions/{sessionUid} {
-      allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
-      // Sessions can ONLY be created by the Server via Firebase Admin SDK
-      allow create: if false;
-      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
-      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      // Retired-role sessions are preserved but inaccessible through client rules.
+      allow read, write: if false;
     }
 
     match /garage_sessions/{sessionDocId} {
@@ -618,13 +614,8 @@ service cloud.firestore {
     }
 
     match /supervisors/{supervisorId} {
-      allow read: if isSignedIn() && (isAdmin() || isSupervisorSession(supervisorId));
-      allow create: if isAdmin() && isValidSupervisor(incoming()) && isValidId(supervisorId);
-      allow update: if isValidId(supervisorId) && (
-        isAdmin() || 
-        (isSupervisorSession(supervisorId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
-      );
-      allow delete: if isAdmin() && isValidId(supervisorId);
+      // Role retirement is non-destructive: keep existing records but deny client access.
+      allow read, write: if false;
     }
 
     match /delegates/{delegateId} {

@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, toSupervisorGarageMonitoringRecord } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
@@ -74,7 +74,6 @@ let configuredAllowedOrigins = '';
 
 const WORKER_SESSION_DEFINITIONS: Record<string, { sessions: string; entity: string }> = {
   admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
-  supervisor: { sessions: 'supervisor_sessions', entity: 'supervisors' },
   delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
   garage: { sessions: 'garage_sessions', entity: 'garages' },
   staff: { sessions: 'staff_sessions', entity: 'staff' }
@@ -274,6 +273,10 @@ async function requireWorkerAuth(
       return next();
     }
 
+    if (role === 'supervisor') {
+      return c.json({ success: false, error: 'ROLE_RETIRED' }, 403);
+    }
+
     c.set('user', {
       uid: decodedUid,
       email: decoded.email,
@@ -385,7 +388,9 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         delete account.adminPin;
         delete account.pinLookupHash;
         matches.push({ role: collection.role, id: docSnap.id, account: { id: docSnap.id, ...account }, isLegacyMatch: docSnap.isLegacyMatch });
-        if (docSnap.isLegacyMatch && !expectedRole) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+        if (docSnap.isLegacyMatch && !expectedRole && collection.role !== 'supervisor') {
+          await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+        }
       }
     }
     const matchResolutionMs = Date.now() - matchResolutionStartedAt;
@@ -394,6 +399,8 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     if (matches.length === 0) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
     const match = matches[0];
+    // Keep legacy Supervisor PINs reserved during retirement, but never issue a session.
+    if (match.role === 'supervisor') return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
     if (expectedRole && match.role !== expectedRole) {
       return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
     }
@@ -401,8 +408,8 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       await migratePinToHash('delegates', match.id, normalizedPin);
     }
 
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
     const entityColl = entityCollMap[match.role];
     const secColl = secCollMap[match.role];
     const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
@@ -582,8 +589,9 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     if (String(uid).trim() !== effectiveUid) return c.json({ success: false, valid: false, error: 'UID_MISMATCH' }, 401);
     if (!adminDb) return c.json({ success: false, valid: false, error: 'DATABASE_UNAVAILABLE' }, 503);
 
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    if (role === 'supervisor') return c.json({ success: false, valid: false, error: 'ROLE_RETIRED' }, 403);
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
     const secColl = secCollMap[role];
     const entityColl = entityCollMap[role];
     if (!secColl || !entityColl) return c.json({ success: false, valid: false, error: 'INVALID_ROLE' });
@@ -628,15 +636,13 @@ workerApp.post('/api/auth/release-session', async (c) => {
     const role = typeof body.role === 'string' ? body.role.trim() : '';
     const entityId = typeof body.entityId === 'string' ? body.entityId.trim() : '';
     if (!verifiedUid || !targetUid || !sessionId || !role) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (role === 'supervisor') return c.json({ success: false, error: 'ROLE_RETIRED' }, 410);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
 
     let authorized = verifiedUid === targetUid;
     if (!authorized) {
-      const [adminSnap, supervisorSnap] = await Promise.all([
-        adminDb.doc(`admin_sessions/${verifiedUid}`).get(),
-        adminDb.doc(`supervisor_sessions/${verifiedUid}`).get()
-      ]);
-      authorized = Boolean((adminSnap.exists && adminSnap.data()?.isActive) || (supervisorSnap.exists && supervisorSnap.data()?.isActive));
+      const adminSnap = await adminDb.doc(`admin_sessions/${verifiedUid}`).get();
+      authorized = Boolean(adminSnap.exists && adminSnap.data()?.isActive);
     }
     if (!authorized) return c.json({ success: false, error: 'FORBIDDEN: Unauthorized session release' }, 403);
 
@@ -1026,10 +1032,9 @@ workerApp.get('/api/admin/summary', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
-    const [garagesSnap, delegatesSnap, supervisorsSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
+    const [garagesSnap, delegatesSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
       adminDb.collection('garages').get(),
       adminDb.collection('delegates').get(),
-      adminDb.collection('supervisors').get(),
       adminDb.collection('recharge_requests').where('status', '==', 'pending').get(),
       adminDb.collection('announcements').where('isActive', '==', true).get()
     ]);
@@ -1050,7 +1055,6 @@ workerApp.get('/api/admin/summary', requireWorkerAuth, async (c) => {
         totalGarages: garagesSnap.size,
         activeGarages,
         totalDelegates: delegatesSnap.size,
-        totalSupervisors: supervisorsSnap.size,
         pendingRechargeRequests: rechargeRequestsSnap.size,
         activeAnnouncements: announcementsSnap.size,
         timestamp: new Date().toISOString()
@@ -2539,7 +2543,7 @@ workerApp.post('/api/transactions/reject-recharge-request', requireWorkerAuth, h
 workerApp.get('/api/recharge-requests', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
+    if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
@@ -3111,7 +3115,7 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
 workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor', 'delegate'].includes(user?.role || '')) {
+    if (!['admin', 'delegate'].includes(user?.role || '')) {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
@@ -3123,12 +3127,7 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
     }
 
     const snap = await query.get();
-    const garages = snap.docs.map((docSnap: any) => {
-      const garageData = docSnap.data() || {};
-      return user?.role === 'supervisor'
-        ? toSupervisorGarageMonitoringRecord(docSnap.id, garageData)
-        : { id: docSnap.id, ...garageData };
-    });
+    const garages = snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
 
     return c.json({ success: true, garages });
   } catch (err: any) {
@@ -3338,90 +3337,10 @@ workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Supervisors Management Routes
-workerApp.post('/api/supervisors/create', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { name, phone, pin, permissions } = body;
-    const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-    const normPin = validateNewPin(pin);
-
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
-    if (pinCheck.taken) {
-      return c.json({
-        success: false,
-        error: 'PIN_ALREADY_TAKEN',
-        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
-      }, 400);
-    }
-
-    const supRef = adminDb.collection('supervisors').doc();
-    const supId = supRef.id;
-
-    await saveEntityPin('supervisors', supId, normPin);
-    await supRef.set({
-      name: normName.trim(),
-      phone: phone ? String(phone).trim() : '',
-      permissions: permissions || {},
-      createdAt: new Date()
-    });
-
-    return c.json({ success: true, id: supId });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in create:', e);
-    if (e instanceof ValidationError) {
-      return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
-    }
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-workerApp.post('/api/supervisors/update', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, permissions } = body;
-    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    const updates: Record<string, any> = { updatedAt: new Date() };
-    if (name) updates.name = String(name).trim();
-    if (phone !== undefined) updates.phone = String(phone).trim();
-    if (permissions) updates.permissions = permissions;
-
-    await adminDb.collection('supervisors').doc(id).update(updates);
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in update:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-workerApp.post('/api/supervisors/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id } = body;
-    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await adminDb.collection('supervisors').doc(id).delete();
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
+// Retired role endpoints remain as explicit, non-mutating tombstones for old clients.
+workerApp.post('/api/supervisors/create', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
+workerApp.post('/api/supervisors/update', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
+workerApp.post('/api/supervisors/delete', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
 
 // Delegates Management Routes
 workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
@@ -3540,7 +3459,7 @@ workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { entityType, entityId, newPin } = body;
-    if (!entityType || !entityId || !['garages', 'supervisors', 'delegates', 'staff'].includes(entityType)) {
+    if (!entityType || !entityId || !['garages', 'delegates', 'staff'].includes(entityType)) {
       return c.json({ success: false, error: 'INVALID_ENTITY_TYPE' }, 400);
     }
 
@@ -3550,10 +3469,7 @@ workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const callerRole = user?.role;
     const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
 
-    if (callerRole === 'supervisor' && entityType !== 'delegates') {
-      return c.json({ success: false, error: 'FORBIDDEN: Supervisors may manage delegate PINs only' }, 403);
-    }
-    if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+    if (callerRole !== 'admin') {
       if (entityType === 'staff') {
         const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
         if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {

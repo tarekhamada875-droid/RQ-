@@ -1,14 +1,14 @@
 # RQ Integrated Acceptance Test Report — 2026-10-06
 
-## Current disposition — 2026-10-08
+## Current disposition — 2026-10-09
 
-**H6 remains OPEN/BLOCKED.** The controlling execution procedure is [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md). Existing evidence in this report and `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` should be reused within its recorded scope; do not rebuild the application or repeat the entire role matrix. Continue the unresolved or evidence-invalidated cases only. The exact Pages-preview-to-`rq-hono-preview` browser path, Staff operational access, Supervisor garage-read policy, Owner listener/cleanup evidence, and financial cases remain unresolved. This report's earlier dated decision and matrices are historical snapshots, not current instructions.
+**H6 remains OPEN/BLOCKED.** The owner retired Supervisor; no manual login or scope testing is required. Local migration-branch regressions deny legacy Supervisor PIN login without migrating or changing records, reject Worker/Express session validation/release and protected access, and deny client Firestore access. The current local candidate passed `npm run ci:check` (**103 files / 592 tests**, including TypeScript/build/artifact checks), the focused retirement suite (**6 files / 95 tests**), `npm run test:rules` with synthetic emulator records, `npm run maintainability:check`, and `git diff --check`. These are local-source results only; the candidate preview deployment and Pages-to-Worker identity have not yet been verified. Existing records remain preserved. The controlling procedure is [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md). Continue only unresolved/evidence-invalidated cases: Staff operational access, Owner listener/cleanup evidence, fresh candidate Pages-to-Worker acceptance, and intentionally blocked financial cases. The older role tables below are historical snapshots; their Supervisor PASS/OPEN outcomes no longer describe an active role.
 
 ## Historical decision snapshot — 2026-10-06
 
 **OPEN — H6 remains incomplete. Browser login/session evidence covers Admin, Delegate, Garage Owner, Staff, and Supervisor, but a source audit found a Supervisor permission mismatch: the garage-list endpoint and direct Firestore rules grant global reads, while Hono single-garage and dashboard-summary routes deny Supervisor. The live list body was discarded, so no actual document fields were inspected. Admin-summary, fake-garage-summary, and forbidden Supervisor-creation probes returned HTTP 403; the UI login, refresh, and logout passed. Vehicle/subscriber, financial/recharge/subscription, and mobile/PWA workflows were not exercised under the safe non-payment boundary.** No production or `main` changes were made.
 
-## Tested build and topology
+## Historical tested build and topology — 2026-10-06 baseline
 
 - **Repository:** `tarekhamada875-droid/RQ-`
 - **Branch:** `migration/unified-hono`
@@ -39,7 +39,9 @@
 
 Expected error logs in the full suite were from deliberate failure-path tests (network errors, 401/403/409/500 handling, server rejection, and fail-closed session behavior); the suite remained green.
 
-## Role-by-role browser results
+## Historical role-by-role browser results — 2026-10-06 (Supervisor results superseded)
+
+The table below preserves its original observations for audit history. Do not treat the Supervisor results as current authorization: that role is retired and its active-role disposition is N/A.
 
 | Role | Login | Refresh | Logout | Dashboard/scope | Remaining browser coverage |
 |---|---|---|---|---|---|
@@ -49,7 +51,7 @@ Expected error logs in the full suite were from deliberate failure-path tests (n
 | Staff | **PASS** | **PASS** | **PASS** | Synthetic garage scope and Staff identity: **PASS** | Vehicle lifecycle, wrong-garage and owner/admin denial browser checks: **BLOCKED** |
 | Supervisor | **PASS** — synthetic fixture authenticated through visible keypad | **PASS** — restricted view and one active/current session restored | **PASS** — normal UI logout returned to login and cleared role/token state | Restricted People/Delegates view: **PASS**; Admin summary, fake-garage dashboard summary, and Supervisor-create denial: **403**. `GET /api/garages` returned **200**; source audit shows an unfiltered global list | Global-list versus per-garage permission mismatch **OPEN**; live record fields were not inspected |
 
-## Complete feature-by-role matrix
+## Historical complete feature-by-role matrix — 2026-10-06 (Supervisor column superseded by N/A)
 
 `PASS` means browser evidence and technical evidence were both available. `BLOCKED` means the scenario was not safely verifiable with the available synthetic fixture or browser context. `OPEN` means the observed permission surfaces conflict or the intended role boundary is not defined. `N/A` means the role is intentionally not permitted to perform the capability; the denial is covered technically where noted.
 

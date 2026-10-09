@@ -93,7 +93,6 @@ export default function App() {
     showSubscribers,
     setShowSubscribers,
     currentSupervisor,
-    supervisors,
     isInputFocused,
     setIsInputFocused,
     staffList,
@@ -248,7 +247,6 @@ export default function App() {
             onLogout={handleInitiateLogout}
             rechargeRequests={rechargeRequests}
             currentSupervisor={currentSupervisor}
-            supervisors={supervisors}
             currentAdminPin={activeAdminPin}
             currentWalletNumber={effectiveWalletNumber}
             onUpdateWalletNumber={firestoreService.updateWalletNumber}

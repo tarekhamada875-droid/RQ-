@@ -1,7 +1,7 @@
 # H6 Manual Runbook — Remaining Role Checks
 
-**Prepared:** 2026-10-08 for the next manual acceptance session
-**Scope:** Staff, Supervisor, and Garage Owner only, on the isolated pre-production preview
+**Prepared:** 2026-10-09 for the next manual acceptance session
+**Scope:** Staff and Garage Owner only, on the isolated pre-production preview
 **Authority:** This is a quick field checklist subordinate to [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md). If there is a conflict, follow the controlled runbook and the latest status in [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](../RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
 
 ## Goal for the session
@@ -13,7 +13,7 @@ This guide cannot guarantee completion in one session or prove the app is bug-fr
 ## Current known state — do not overwrite with older notes
 
 - **Staff:** one synthetic `Mobile QA Staff` row was later found in `QA Garage Beta`; its PIN was masked. Transport reconciliation is **PARTIAL**. Staff login and operational access are **OPEN/BLOCKED**. No usable Staff credential or confirmed active-trial test context is recorded.
-- **Supervisor:** the global-versus-assigned-garage read policy has no recorded owner decision. Source evidence shows a global garage-list read but narrower Hono detail/summary denial. Do not open or inspect an unfiltered garage list before policy and data-scope are resolved.
+- **Supervisor:** the owner retired this role. Do not create or log in as a Supervisor, inspect its legacy records, or delete/update stored account/session documents. Regression denial checks belong in local Worker/Express/Firestore tests, not this manual preview runbook. Existing account/session records are preserved.
 - **Garage Owner:** one live synthetic hourly check-in for `H6 Owner Listener 20261008` using the prior synthetic plate was attempted once and is **OPEN/UNVERIFIED**. Do not repeat it. The fixture later disappeared from a fresh Admin list after deletion UI progress reached 50%; cleanup is **PARTIAL**, not confirmed job completion.
 - **Already covered:** Admin has a bounded login/dashboard/read-only-navigation/logout PASS. Delegate login/session evidence exists for its documented synthetic fixtures. Keep these scoped; don't replay them just to create fresh evidence.
 - **Automation:** the optional Playwright smoke covers only the unauthenticated shell and read-only Worker health/version calls. It is not a role test and closes no role cell.
@@ -74,48 +74,27 @@ A dashboard/login alone does not prove operational access. Attempt one operation
 
 **Staff PASS bar:** role login/session, correct garage scope, persistence/logout, and at least the required safe operational action must have both visible and approved technical evidence. If only the login/read-only dashboard is verified, record **PARTIAL**, not operational PASS.
 
-## 2. Supervisor — pause for the policy decision first
+## Supervisor role — retired; no field testing
 
-### 2A. Record the product policy
+The owner has retired the role. Its former global-versus-assigned scope question no longer gates active-role acceptance. Do not provision, authenticate, inspect, delete, or edit legacy Supervisor records. Verify only that local regression tests deny legacy PIN login, session validation/release, protected Worker/Express APIs, and client Firestore access while preserving those records. No live Rules deployment is authorized by this runbook.
 
-Before Supervisor garage-scope testing, the owner must explicitly select and record one policy:
+## 2. Garage Owner — listener evidence and cleanup without replay
 
-- [ ] **Assigned-only:** Supervisor may see only explicitly assigned synthetic garages.
-- [ ] **Global:** Supervisor may see the global set; the owner must specify which fields/data are permitted and confirm the pre-production dataset contains no real or out-of-scope records.
-
-If neither decision is made—or if the safe data boundary is unknown—do not open the Supervisor garage list or probe the API. Record **OPEN/BLOCKED — policy/data scope not defined**. Do not change Worker, Firestore, or UI permissions to make a test pass.
-
-### 2B. Restricted session and permitted view
-
-Only after 2A is complete:
-
-1. Use the existing synthetic `QA-Supervisor` identity in a fresh private context. Enter any authorized credential privately. If no valid credential is available, stop as **BLOCKED**; do not reset or create an identity as a workaround.
-2. Submit once. On success, confirm the restricted Supervisor dashboard and the explicitly permitted People/Delegates view render.
-3. Confirm only synthetic, in-policy rows are visible. Under **assigned-only**, verify the assigned garage is present and the unassigned synthetic garage is absent. Under **global**, inspect only data expressly covered by the owner's recorded scope.
-4. **Do not open the current unfiltered `GET /api/garages` response or inspect raw garage documents.** If a visible list unexpectedly includes out-of-policy data, stop without reading its fields; record only the fact of the scope leak and its safe evidence reference.
-5. Confirm admin-only navigation (garage creation/deletion, wallet, PIN rotation, global settings, package configuration, settlements, unrelated garage access) is hidden or disabled. Do not submit any management or financial action to test denial.
-6. Use only existing technical authorization tests or an approved non-mutating test harness to verify backend denials. If that evidence is unavailable, mark the backend-denial cell **BLOCKED**; do not handcraft privileged requests.
-7. Refresh, log out normally, press Back, and confirm the stale session cannot display protected data.
-
-**Supervisor PASS bar:** the owner policy is recorded; the UI data scope matches it; the role/session and permitted reads work; denied actions are verified safely at both UI and technical layers; refresh/logout are safe. If the policy is undecided, keep this role **OPEN** even if login succeeds.
-
-## 3. Garage Owner — listener evidence and cleanup without replay
-
-### 3A. Reconcile the old attempt; do not repeat it
+### 2A. Reconcile the old attempt; do not repeat it
 
 1. In the supported Admin list, perform one fresh read-only check for `H6 Owner Listener 20261008`.
 2. If it is absent, record **fresh-list absence only**. Do not delete or recreate that same fixture. If it is present, do not delete it unless it is clearly a fixture created by the current run and its state is understood.
 3. The earlier hourly check-in using the prior synthetic plate had no observed success response or listener update. Do **not** retry, refresh-and-resubmit, or probe the record directly in Firestore. Its outcome remains **OPEN/UNVERIFIED**.
 4. The prior deletion UI reached 50% and the fixture later disappeared from the list. That is **PARTIAL cleanup evidence**, not proof of the background deletion job's completion. Do not run another delete merely to obtain a cleaner status.
 
-### 3B. Owner session and mobile shell
+### 2B. Owner session and mobile shell
 
 1. Continue only with an existing authorized synthetic Garage Owner credential and a verified synthetic garage. If no usable credential/fixture is available, mark **BLOCKED**; do not reset PINs or create a new garage just to proceed.
 2. In a fresh private context, log in once through the verified Pages preview. Confirm the Owner identity and exactly its own garage scope.
 3. Reuse the prior desktop reload-persistence PASS unless a relevant code/deployment change invalidated it. Do not repeat login solely for new evidence.
 4. If mobile coverage is still required and a session is safely available, use a real test phone or 390×844 portrait/touch viewport. Check dashboard fit, navigation/drawer, one non-mutating modal open/close, keyboard/loading behavior, and logout. Do not change language, package, trial, balance, or account settings to force a result.
 
-### 3C. Live listener — only with an approved harmless synthetic event
+### 2C. Live listener — only with an approved harmless synthetic event
 
 The listener check is not safe to improvise. Continue only if the owner has approved a supported change that (a) touches a document/event the Owner listener actually subscribes to, (b) uses a new run-specific synthetic fixture, (c) has no financial/payment side effect, and (d) has a known supported cleanup path. If any condition is missing, leave the listener cell **OPEN/BLOCKED**.
 
@@ -130,13 +109,13 @@ If all conditions are met:
 
 **Owner PASS bar:** use the prior scoped login/reload evidence where still valid. Mark listener delivery PASS only when the approved event visibly arrives once, is correctly scoped, persists, and has safe technical evidence. Preserve old ambiguous attempt and partial cleanup as such.
 
-## 4. Financial and deferred cases — leave blocked
+## 3. Financial and deferred cases — leave blocked
 
 Do not perform payment, recharge submission/approval, wallet top-up, balance change, transfer/settlement, package/subscription purchase/renewal, or financial reward testing in this run. Keep those cells **OPEN/BLOCKED — no authorized isolated financial sandbox**. The same applies to any role action whose visible confirmation would create one of those changes.
 
-Do not try to close the entire feature matrix by rushing through every screen. After Staff, Supervisor, and Owner blockers, list the remaining NOT RUN/BLOCKED cells from the integrated matrix (including relevant cross-garage, offline/retry, audit/history, subscriber/vehicle, and mobile/PWA cases) for a separate safe pass.
+Do not try to close the entire feature matrix by rushing through every screen. After Staff and Owner blockers, list the remaining NOT RUN/BLOCKED cells from the integrated matrix (including relevant cross-garage, offline/retry, audit/history, subscriber/vehicle, and mobile/PWA cases) for a separate safe pass.
 
-## 5. Closeout — copy this for each case
+## 4. Closeout — copy this for each case
 
 ```text
 Run alias/date:
@@ -144,7 +123,7 @@ Candidate commit:
 Pages deployment identity / Worker version:
 Role alias / synthetic fixture alias:
 Scenario:
-Precondition and policy (if Supervisor):
+Precondition / role-retirement disposition (if relevant):
 Visible action and result:
 Safe technical evidence (route/status/correlation, if available):
 Scope/persistence result:

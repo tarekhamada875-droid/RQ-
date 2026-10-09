@@ -83,4 +83,37 @@ describe('Express PIN authentication role scope', () => {
     expect(mockDb.records.get('delegate_sessions/worker-uid')).toMatchObject({ role: 'delegate', entityId: 'qa-delegate', isActive: true });
     expect(mockDb.records.has('admin_sessions/worker-uid')).toBe(false);
   });
+
+  it('rejects a legacy Supervisor PIN without changing its record or claiming a session', async () => {
+    const pin = '13572468';
+    mockDb.seed('private_pins/legacy-supervisor', {
+      entityType: 'supervisors',
+      entityId: 'legacy-supervisor',
+      pin: hashPinWithUniqueSalt(pin),
+      pinLookupHash: computeLookupHash(pin)
+    });
+    const record = { name: 'Preserved legacy Supervisor', role: 'supervisor' };
+    mockDb.seed('supervisors/legacy-supervisor', record);
+
+    const response = await verifyPin({ pin });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    expect(mockDb.records.has('supervisor_sessions/worker-uid')).toBe(false);
+    expect(mockDb.records.get('supervisors/legacy-supervisor')).toEqual(record);
+  });
+
+  it('does not migrate a plain legacy Supervisor PIN during rejected login', async () => {
+    const pin = '86421357';
+    const legacyRecord = { name: 'Plain legacy Supervisor', role: 'supervisor', pin };
+    mockDb.seed('supervisors/plain-legacy-supervisor', legacyRecord);
+
+    const response = await verifyPin({ pin });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    expect(mockDb.records.get('supervisors/plain-legacy-supervisor')).toEqual(legacyRecord);
+    expect(mockDb.records.has('private_pins/plain-legacy-supervisor')).toBe(false);
+    expect(mockDb.records.has('supervisor_sessions/worker-uid')).toBe(false);
+  });
 });
