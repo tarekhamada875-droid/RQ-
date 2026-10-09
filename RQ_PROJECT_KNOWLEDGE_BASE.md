@@ -27,7 +27,7 @@ Firebase Authentication + Firestore
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
-- Express remains transitional infrastructure for local development, Cloud Run compatibility, and existing integration tests; it is not the production API path.
+- Express remains transitional infrastructure for local compatibility and existing integration tests; it is not the production API path. The unused Cloud Run-specific entrypoint was retired during H9; no Cloud Run deployment workflow is active.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
 - `wrangler.toml` is the production Worker deployment configuration.
 
@@ -149,13 +149,12 @@ The owner explicitly accepted the documented H6 residual risks and instructed th
 - `src/services/`: frontend service contracts and display-read adapters.
 - `src/domain/`: pure business decisions and policy helpers.
 - `server/cloudflareWorker.ts`: current production Hono Worker API and route authority.
-- `server/app.ts`: transitional Express composition used by local development, Cloud Run compatibility, and existing integration tests.
+- `server/app.ts`: transitional Express composition used by the explicit local compatibility command and existing integration tests.
 - `server/routes/`: transitional Express route modules and characterization references; do not delete until the Hono consolidation is complete.
 - `server/domain/`: pure backend decision modules.
-- `server/cloudRun.ts`: retained Node/Cloud Run-compatible API-only process entrypoint.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
-- `wrangler.toml`, `Dockerfile`: deployment/runtime contracts; inspect before removing legacy compatibility files.
+- `wrangler.toml`: active Worker deployment contract. `Dockerfile`: generic Node/container compatibility artifact; it is not an active Cloud Run deployment contract.
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`: Firebase configuration.
 
 ## 9. Cleanup and documentation policy
@@ -178,7 +177,7 @@ Keep these active:
 - `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
 - `docs/OBSERVABILITY_RUNBOOK.md`
 
-Keep `Dockerfile` and `server/cloudRun.ts` only as transitional local/Cloud Run compatibility until the Hono consolidation checkpoint explicitly retires them. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts.
+The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. Keep the generic `Dockerfile` only while the Express compatibility runtime remains useful for local/container tests.
 
 Unreferenced metadata candidates still require external-consumer review before deletion:
 

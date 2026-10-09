@@ -405,7 +405,7 @@ Remove Express only after the unified Hono architecture has proved itself.
 
 ## H9 status — 2026-10-09
 
-The read-only Express inventory is complete and recorded in [`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`](docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md). Express is not yet removable: it remains the default local `dev` runtime, supports `build:server` and `build:cloudrun`, backs the Cloud Run compatibility entrypoint, and is imported by transitional route modules plus characterization and dual-runtime tests. The first H9 slice is test/runtime decoupling and Fetch-native coverage, not dependency deletion. Production, `main`, Firestore rules, financial behavior, and role policy remain unchanged.
+The Express inventory is recorded in [`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`](docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md). Hono is now the local `dev` default; `dev:express` remains the explicit fallback. The unused Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired after an exact repository/workflow audit found no active Cloud Run deployment. Express is still imported by transitional route modules plus characterization and dual-runtime tests, so the dependency and route surface remain. Production, `main`, Firestore rules, financial behavior, and role policy remain unchanged.
 
 ## Tasks
 
@@ -413,7 +413,7 @@ The read-only Express inventory is complete and recorded in [`docs/H9_EXPRESS_DE
 - Convert or remove Express-only tests.
 - Remove `server/routes/*` only after their behavior exists in shared services/Hono routes.
 - Remove Express middleware and types only when no longer referenced.
-- Remove or explicitly retire Cloud Run support.
+- Cloud Run-specific support is retired; do not add a deployment or billing-dependent replacement without separate owner approval.
 - Update `package.json` scripts.
 - Update documentation and deployment configuration.
 - Run the entire production gate again.

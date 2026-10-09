@@ -4,13 +4,13 @@
 **Production release:** `rq-unified-hono-h8-2026-10-09` (`8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`)  
 **Authorized work branch:** `migration/unified-hono`  
 **Rollback tag:** `rq-production-baseline-before-hono-migration` (`bb12fbe90eb97b6638546f292f5de50aab03d81a`)  
-**Scope of this document:** read-only inventory and sequencing; no production behavior change.
+**Scope of this document:** controlled inventory and reversible decommissioning sequencing; no production behavior change.
 
 ## Current finding
 
-Express is **not yet removable**. The unified Hono Worker is the production backend, but Express remains a live local/Cloud Run compatibility runtime and is imported by transitional route modules, middleware, adapters, and integration/dual-runtime tests.
+Express is **not yet removable**. The unified Hono Worker is the production backend, but Express remains a live local compatibility runtime and is imported by transitional route modules, middleware, adapters, and integration/dual-runtime tests. The unused Cloud Run-specific entrypoint has now been retired after an exact repository/workflow audit found no active Cloud Run deployment.
 
-Immediate deletion would break at least the local `dev` path, `build:server`, `build:cloudrun`, Cloud Run compatibility, and existing Express characterization coverage. H9 must therefore proceed in reversible slices.
+Immediate Express deletion would break at least the local `dev:express` fallback, `build:server`, and existing Express characterization coverage. H9 must therefore proceed in reversible slices.
 
 ## Dependency and script inventory
 
@@ -19,7 +19,6 @@ Immediate deletion would break at least the local `dev` path, `build:server`, `b
 - Express-backed scripts:
   - `dev:express` → `tsx server.ts` (explicit compatibility fallback).
   - `build:server` → bundles `server.ts` for the Node runtime.
-  - `build:cloudrun` → bundles `server/cloudRun.ts`.
   - `start` → runs `dist/server.cjs`.
 - Hono-first local path: `dev` and `dev:hono` → `RQ_API_RUNTIME=hono tsx server.ts`.
 - Production path: Cloudflare Worker via `build:cloudflare` and the main-branch deployment workflow; it does not use Express.
@@ -75,7 +74,7 @@ The initial search found **31 files** importing Express directly:
 `npm run dev:hono`     -> RQ_API_RUNTIME=hono -> Fetch/Hono adapter from server/nodeAdapter.ts
 `npm run dev:express`  -> RQ_API_RUNTIME unset -> Express app from server/app.ts
 Cloudflare Worker      -> server/cloudflareWorker.ts
-Cloud Run               -> server/cloudRun.ts -> Express createApp()
+Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 ```
 
 `server/app.ts` mounts the transitional Express routers for auth, vehicles, subscribers, delegates, transactions/recharges, garages, and reports, plus JSON, CORS, correlation, timeout, operation-trace, fallback, and error middleware.
@@ -97,10 +96,9 @@ These are not ordinary frontend routes. H9 must either preserve them behind a su
 1. **Inventory complete:** retain this document and the existing H1 route inventory as the source of truth.
 2. **Characterization conversion:** add Fetch/Hono equivalents for any still-required Express-only tests; keep Express tests until their replacement coverage passes.
 3. **Runtime default decision:** switch local `dev` to Hono only after local development, static serving, and Node adapter checks pass; retain an explicit legacy compatibility command temporarily.
-4. **Cloud Run decision:** verify whether `server/cloudRun.ts` is still required. Do not remove it or its build script until deployment configuration and owner intent are confirmed.
-5. **Route retirement:** remove Express routers only in groups whose behavior is covered by shared domain tests and Hono route tests. Do not remove financial or maintenance paths based only on frontend absence.
-6. **Dependency removal:** remove `express`, `@types/express`, and related middleware only after the import census reaches zero for required runtime and test code.
-7. **Full gate:** run tests, lint, web/Node/Cloudflare builds, CI, maintainability, preview smoke, production smoke, and rollback verification.
+4. **Route retirement:** remove Express routers only in groups whose behavior is covered by shared domain tests and Hono route tests. Do not remove financial or maintenance paths based only on frontend absence.
+5. **Dependency removal:** remove `express`, `@types/express`, and related middleware only after the import census reaches zero for required runtime and test code.
+6. **Full gate:** run tests, lint, web/Node/Cloudflare builds, CI, maintainability, preview smoke, production smoke, and rollback verification.
 
 ## First reversible slice
 
@@ -111,8 +109,8 @@ The first implementation slice should be **test and runtime decoupling, not Expr
 - Keep the Express comparison suite as a characterization guard during this slice.
 - Do not change production configuration, Firestore rules, financial behavior, or role policy.
 
-The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback; production and Cloud Run entrypoints are unchanged.
+The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback. The third slice retires `server/cloudRun.ts` and `build:cloudrun`; Dockerfile and Express local/container compatibility remain until their consumers are separately retired.
 
 ## H9 status
 
-**Inventory complete; decommissioning not started.** Express remains required for compatibility until the conversion and Cloud Run decisions are completed. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support is retired. Express remains required for local/container compatibility and characterization tests. The H8 production release and rollback tag remain unchanged.
