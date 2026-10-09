@@ -417,7 +417,7 @@ The current H9 boundary is recorded in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`
 
 Under owner-approved Option A, the first sensitive-route step is fair-use path alignment: Hono now accepts both the canonical admin path and the existing frontend `/api/garages/:id/extend-fair-use` path. This is a compatibility fix plus Fetch-native evidence only; the Express entitlement route remains mounted until authorization, entitlement-boundary, audit, retry/idempotency, and owner-approval evidence is complete.
 
-Fair-use boundary coverage now includes non-admin denial, finite-package rejection, missing-garage handling, and default-step extension (**3 files / 16 focused tests**). Hono now supports optional transactional idempotency with replay and key-reuse rejection, and the frontend sends generated keys. The Express fallback still requires matching idempotency persistence before its retirement can be approved.
+Fair-use boundary coverage now includes non-admin denial, finite-package rejection, missing-garage handling, and default-step extension (**3 files / 16 focused tests**). Hono and Express now support optional transactional idempotency with replay and key-reuse rejection, and the frontend sends generated keys. Dual-runtime integration coverage passes (**4 files / 21 focused tests**). The Express fallback remains mounted pending the final sensitive-route retirement decision.
 
 ## Tasks
 

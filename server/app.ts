@@ -271,9 +271,20 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
 
       const garageId = validateId(req.params.id, 'garageId');
       const extraCars = Math.max(0, Number(req.body?.extraCars || 0));
+      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
+      const requestFingerprint = createRequestFingerprint({ garageId, extraCars });
 
       let resultFairUse: any = null;
+      let resultData: any = null;
       await adminDb.runTransaction(async (t: any) => {
+        if (idempotencyKey) {
+          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/admin/garages/:id/extend-fair-use', req.user?.uid, requestFingerprint);
+          if (duplicate.isDuplicate) {
+            resultData = duplicate.cachedResult;
+            return;
+          }
+        }
+
         const garageRef = adminDb.doc(`garages/${garageId}`);
         const garageSnap = await t.get(garageRef);
         if (!garageSnap.exists) {
@@ -310,9 +321,14 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
             cycleCarsCount: resultFairUse.cycleCarsCount
           }
         });
+
+        resultData = { success: true, unlimitedFairUse: resultFairUse };
+        if (idempotencyKey) {
+          storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/admin/garages/:id/extend-fair-use', req.user?.uid, requestFingerprint);
+        }
       });
 
-      return res.json({ success: true, unlimitedFairUse: resultFairUse });
+      return res.json(resultData || { success: true, unlimitedFairUse: resultFairUse });
     } catch (err: any) {
       console.error('[Server Admin] Error in extend-fair-use:', err);
       const { statusCode, message } = mapDomainErrorToStatus(err);
