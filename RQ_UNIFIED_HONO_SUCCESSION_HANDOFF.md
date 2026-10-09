@@ -1,7 +1,7 @@
 # RQ Unified Hono Migration — Current Succession Handoff
 
-**Updated:** 2026-10-08
-**Active task:** Checkpoint H6 — controlled human role/security acceptance
+**Updated:** 2026-10-09
+**Active task:** Checkpoint H7 — evidence-based production cutover decision
 **Authorized branch:** `migration/unified-hono` only
 **Production:** `main` and the deployed Cloudflare Pages/Worker remain untouched.
 
@@ -18,7 +18,7 @@ The latest workflow-verified code/test baseline for this handoff is `ae8ab8099e1
 
 The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`; the isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. A bounded Admin login/dashboard/read-only navigation/logout **PASS** is recorded on the stable Pages URL after the preview-only CORS correction. This is evidence for that recorded preview session, not proof that the URL currently serves the latest candidate commit; verify the exact Pages build and Worker version before further browser testing. Earlier local Vite-proxy results remain diagnostic only. Production configuration remains unchanged.
 
-## Current H6 status — OPEN/BLOCKED
+## Current H6 status — OWNER-ACCEPTED CLOSURE WITH RESIDUAL RISK
 
 | Area | Status and limitation |
 |---|---|
@@ -29,7 +29,7 @@ The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pag
 | Admin browser acceptance | **PASS, bounded.** After the preview-only CORS allowlist fix, one fresh Admin login through `https://migration-unified-hono.rq-acg.pages.dev` reached the Admin dashboard, read-only navigation/counts rendered, and normal PIN-confirmed logout returned to the generic login. No Admin mutation or financial action was performed. |
 | Automation and Pages path | An opt-in Playwright read-only smoke is documented in `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; it checks the generic login shell and isolated Worker health/version endpoints. It is not authenticated role-acceptance E2E, is not in CI, and does not waive fresh candidate-pairing verification. |
 
-The process rewrite does not change any acceptance status. H7 has **not** started. H6 and H7 cannot guarantee “100% bug-free”; report residual risk accurately.
+On 2026-10-09, the owner explicitly accepted the documented H6 residual risks and instructed the project to consider H6 complete for scope purposes and begin H7. This is an owner-approved scope decision, not a claim that the previously unresolved cells are PASS and not a guarantee of “100% bug-free.” H7 is now in progress and must independently evaluate every H7 gate; production and `main` remain unchanged.
 
 ## Required boundaries
 
@@ -37,12 +37,12 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 
 ## Next safe actions
 
-1. Preserve the bounded Admin PASS and continue only with unresolved H6 cells: Staff operational access, Owner listener/cleanup evidence, current-candidate Pages-to-Worker acceptance, and blocked financial workflows. Supervisor is N/A for manual acceptance; do not revisit its former scope decision or inspect legacy records.
+1. Treat the owner-accepted H6 residuals as explicitly out of scope for this H7 decision: Staff operational mutation, Owner listener/cleanup evidence, and financial workflows remain documented as OPEN/BLOCKED or OPEN/UNVERIFIED and must not be relabeled PASS.
 2. Preserve the partial Staff transport reconciliation. Do not change the timeout, replay Staff-create, delete `Mobile QA Staff`, or infer Staff operational PASS from row existence; continue only if a safe credential/test fixture is separately authorized and available.
 3. Do not perform Supervisor manual acceptance or modify preserved legacy records. Continue only safe Owner listener/mobile and other active-role cases, one role/context at a time.
 4. The opt-in Playwright harness covers only the read-only shell/health smoke; run it only after verifying the Pages/Worker candidate pairing. Continue manual H6 testing under the runbook. Do not infer role PASS from the smoke or expand it to authenticated/mutating journeys without separately approved scope, runtime secret handling, serialized writes, verified cleanup, and no blind retries.
 5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
-6. Do not start H7 until H6 exits are satisfied or the owner explicitly revises scope and accepts the documented residual risk. H7 is GO/HOLD; H8 production replacement requires every gate and explicit approval.
+6. Complete H7's independent gates: full tests, lint, build, CI, maintainability, preview release smoke, route parity, Firebase auth/session coverage, warning review, rollback rehearsal, and explicit release approval. H7 is GO/HOLD; H8 production replacement requires every gate and separate approval.
 
 ## Mandatory succession protocol — exact message “tokens ending”
 
@@ -54,6 +54,13 @@ If the owner sends exactly **“tokens ending”**, stop feature work and browse
 4. Provide the next agent with the runbook and explicit boundaries, then stop current feature work.
 
 Older handoff chronology is retained in Git history and dated acceptance reports; this file is the single current succession instruction.
+
+## 2026-10-09 owner decision and H7 start
+
+- **Decision:** The owner instructed: “let’s consider H6 is done … so we can start H7.” This closes H6 for scope purposes with explicit acceptance of the documented residual risk.
+- **Residual risks carried forward:** Staff operational mutation remains OPEN/BLOCKED; Owner listener delivery remains OPEN/UNVERIFIED and cleanup evidence PARTIAL; financial workflows remain OPEN/BLOCKED without an isolated financial sandbox. Supervisor remains N/A because the role is retired.
+- **H7 status:** **IN PROGRESS.** Current-head H5 Preview Worker run `37914850034` and Production Gate run `37914850071` passed. Local `npm ci`, `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and preview `npm run release:smoke` all passed on this checkout; generated build outputs were removed afterward.
+- **H7 boundary:** This does not authorize production access, a merge to `main`, a production deployment, financial writes, a retry of the ambiguous listener/vehicle mutation, or relabeling residual H6 cells as PASS.
 
 ## Historical snapshot — exact “tokens ending” succession on 2026-10-08 (superseded)
 

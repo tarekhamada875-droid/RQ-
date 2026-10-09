@@ -1,6 +1,6 @@
 # H6 Controlled Acceptance Runbook
 
-**Status:** H6 remains OPEN/BLOCKED as of 2026-10-09.
+**Status:** H6 was closed for scope by explicit owner residual-risk acceptance on 2026-10-09; unresolved cells remain labeled OPEN/BLOCKED or OPEN/UNVERIFIED. H7 is now in progress.
 **Scope:** `migration/unified-hono` and the isolated `rq-hono-preview` Worker only.
 **Purpose:** Replace exploratory clicking and ambiguous evidence with a repeatable, risk-controlled acceptance run.
 
@@ -125,10 +125,10 @@ Use only supported application flows to release sessions and remove fixtures cre
 
 At closeout, reconcile every matrix cell as PASS, FAIL, BLOCKED, OPEN/UNVERIFIED, NOT RUN, or N/A with a reason. Record the exact branch/head, Pages/Worker deployment identity, workflow status, tests run, fixtures created/removed, unresolved risks, and next bounded action. Remove temporary local proxies/configuration and sanitized browser artifacts when no longer needed.
 
-## H6 exit and H7 hold
+## H6 exit and H7 transition
 
 H6 can be marked complete only when the required role workflows have evidence through the verified Cloudflare Pages preview to the isolated preview Worker; no role is silently downgraded; required desktop/mobile popup behavior passes; authorization/scope and persistence checks are complete; cleanup is confirmed; no UI/UX redesign was introduced; and every required matrix cell is resolved. Any explicitly excluded cell requires a written owner scope/risk decision and must remain labeled untested—not tested or passed.
 
 The current H6 blockers are: Staff operational access in an active-trial context; Owner real-time listener delivery and remaining cleanup evidence; fresh verified Pages-to-Worker role-acceptance evidence for the current candidate; and financial workflows without a dedicated safe sandbox. Supervisor is retired by owner decision and is **N/A for manual role acceptance**; its local denial regressions must remain green, but prior Supervisor browser PASS evidence is historical and does not imply continued access. The minimal Playwright smoke is not role E2E and closes none of these blockers. They do not become PASS through documentation updates or unit tests.
 
-H7 is a separate GO/HOLD decision. It requires the plan's full tests, lint, production build, CI, maintainability, release smoke, preview role acceptance, route parity, Firebase authentication/session coverage, no unexplained user-visible warnings, and a rehearsed rollback. If H6 or any H7 condition remains blocked, the result is **HOLD/NO-GO**: keep production and `main` unchanged. H6/H7 evidence can reduce risk; neither can certify “100% bug-free.”
+On 2026-10-09 the owner explicitly accepted the documented H6 residual risks and instructed that H6 be considered complete for scope purposes so H7 could begin. Staff operational access, Owner listener/cleanup evidence, and financial workflows remain unresolved or intentionally blocked; they are accepted residual risks, not PASS results. H7 is a separate GO/HOLD decision. It requires the plan's full tests, lint, production build, CI, maintainability, release smoke, preview role acceptance, route parity, Firebase authentication/session coverage, no unexplained user-visible warnings, and a rehearsed rollback. If any H7 condition remains blocked, the result is **HOLD/NO-GO**: keep production and `main` unchanged. H6/H7 evidence can reduce risk; neither can certify “100% bug-free.”
