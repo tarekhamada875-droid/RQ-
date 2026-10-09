@@ -88,3 +88,19 @@ Feature work and browser testing stop here per the exact owner marker.
 ### Session-state correction
 
 The Owner logout dialog did not transition immediately after submission, so no additional PIN was entered. A final My Browser check showed the Owner at the login screen, confirming eventual logout. The Staff Sandbox session remained on its dashboard after its unsent logout dialog was canceled. Neither session performed checkout or financial activity.
+
+## 2026-10-09 tokens-ending succession snapshot
+
+Per the exact owner marker `tokens ending`, feature work and browser testing stop here.
+
+- **Authorized branch:** `migration/unified-hono`.
+- **Current HEAD:** `6e53f0aff402e8f9da9f862bc9a3c2015ceadc7d` (`docs: clarify H6 session cleanup evidence`). Local HEAD matches `origin/migration/unified-hono`; worktree was clean before this handoff append. No `main` or production change was made.
+- **Files changed by the current documentation sequence:** `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`. The current continuation contains documentation only; application source was not changed.
+- **Latest local validation:** On the unchanged application code at `8e0e347` before these documentation-only commits, `npm test` passed **103 test files / 592 tests**; `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` also passed. The docs-only HEAD `6e53f0a` has not been represented as a fresh full-suite run.
+- **GitHub workflows for current HEAD:** H5 Preview Worker run `37914550577` completed **successfully**. Production Gate run `37914550562` was **in progress** at snapshot time; do not infer its result until it settles and is inspected.
+- **Preview/deployment context:** The documented isolated Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`; the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. Verify the exact Pages-to-Worker candidate pairing again after the current Production Gate settles. Do not access production.
+- **Acceptance disposition:** Admin PASS; Delegate restricted-scope PASS; Owner login/scope and visible synthetic persistence PASS, bounded; Owner real-time listener evidence **OPEN/UNVERIFIED**; Staff login/dashboard/scope PASS, bounded; Staff operational mutation **OPEN/BLOCKED** because the supplied synthetic plate was already inside and only exit invoicing was offered; Supervisor **N/A — retired**; financial workflows **OPEN/BLOCKED** without an isolated financial sandbox; H6 **OPEN/BLOCKED**; H7 **HOLD/NO-GO**.
+- **Synthetic browser boundary:** The supplied synthetic plate was used only in isolated preview contexts. No checkout, exit invoice, payment, recharge, renewal, deletion, or other financial action was submitted. The Owner session ultimately reached the login screen. The separate Staff sandbox session remained on its dashboard after its unsent logout dialog was canceled.
+- **Safe next commands:** inspect Production Gate run `37914550562`; if it passes, perform only credential-free health/version and exact Pages/Worker pairing checks; reconcile the final matrix without reopening financial or ambiguous listener cases; keep H7 on HOLD until every required H6 exit is resolved or the owner explicitly accepts residual risk. Do not retry the ambiguous listener/vehicle event, do not submit exit invoicing, do not perform financial writes, do not modify Supervisor policy, do not merge to `main`, and do not deploy production.
+
+This succession section is the stopping point for the current agent. Never include credentials, tokens, passwords, session identifiers, or private payloads in follow-up handoffs.
