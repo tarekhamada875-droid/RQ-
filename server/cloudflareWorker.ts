@@ -19,7 +19,8 @@ import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { calculateFinancialReport } from './financialReporting';
-import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboardSummary';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
+import { calculateDailyProjection } from './projections';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
@@ -3177,6 +3178,76 @@ workerApp.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     return c.json({ success: true, data: { garageId, date: today, ...reconciliation } });
   } catch (err: any) {
     console.error('[Worker Garage] Error in reconciliation:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+workerApp.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!canRunGarageMaintenance(user, 'dashboard-summary/rebuild')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { garageId, date } = body;
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    const targetDate = date || new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    if (!isValidDateKey(targetDate)) throw new Error('INVALID_DATE');
+
+    const dayStart = new Date(`${targetDate}T00:00:00+03:00`);
+    const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const [bucketSnap, eventsSnap, garageSnap, dailyStatsSnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', targetDate).get(),
+      adminDb.collection(`garages/${garageId}/events`)
+        .where('occurredAt', '>=', dayStart.toISOString())
+        .where('occurredAt', '<', nextDayStart.toISOString())
+        .orderBy('occurredAt', 'asc')
+        .get(),
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`).get()
+    ]);
+    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+
+    const eventProjection = calculateDailyProjection(
+      eventsSnap.docs.map((doc: any) => doc.data() || {}),
+      targetDate
+    );
+    const summary = aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {}));
+    const reconciliation = reconcileDashboardSummary(summary, eventProjection);
+    const legacy = garageSnap.data() || {};
+    const dailyStats = dailyStatsSnap.data() || {};
+    const legacyDifferences = {
+      activeVehicleCount: summary.activeVehicleCount - Number(legacy.carsInside || 0),
+      entriesToday: summary.entriesToday - Number(dailyStats.count || 0),
+      grossRevenue: Number((summary.grossRevenue - Number(dailyStats.revenue || 0)).toFixed(2))
+    };
+    const summaryData = {
+      ...summary,
+      garageId,
+      dateId: targetDate,
+      rebuiltAt: new Date().toISOString(),
+      rebuiltBy: user?.uid || 'admin',
+      eventProjection,
+      reconciliation,
+      legacyDifferences
+    };
+    await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).set(summaryData, { merge: true });
+    return c.json({
+      success: true,
+      data: {
+        summary: summaryData,
+        bucketCount: bucketSnap.size,
+        eventCount: eventsSnap.size,
+        consistentWithEvents: reconciliation.consistent,
+        legacyDifferences
+      }
+    });
+  } catch (err: any) {
+    console.error('[Worker Garage] Error rebuilding dashboard summary:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);
     return c.json({ success: false, error: message }, statusCode as any);
   }

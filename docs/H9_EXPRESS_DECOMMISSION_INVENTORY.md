@@ -83,7 +83,7 @@ Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 The existing route inventory identifies these Express capabilities as requiring an explicit disposition before removal:
 
 - `POST /api/garages/reconciliation` — a Fetch-native Hono mirror and synthetic read-only contract coverage have been added on `migration/unified-hono`; the Express handler remains mounted pending telemetry comparison and operational owner confirmation.
-- `POST /api/garages/dashboard-summary/rebuild`
+- `POST /api/garages/dashboard-summary/rebuild` — a Fetch-native Hono mirror and synthetic Express/Hono characterization are now present on `migration/unified-hono`; the Express route remains mounted pending an isolated operational rehearsal and separate retirement review.
 - `POST /api/garages/rebuild-projections`
 - `POST /api/auth/invalidate-all-sessions`
 
@@ -98,6 +98,8 @@ Also retired in this slice: the Express `POST /api/garages/trial-decision` handl
 Also retired in this slice: both duplicate Express fair-use handlers (`POST /api/garages/:id/extend-fair-use` and `POST /api/admin/garages/:id/extend-fair-use`). Hono now owns both paths. Retirement was gated on Hono boundary coverage plus dual-runtime idempotency replay and key-reuse tests; the frontend continues using the legacy path as a Hono alias.
 
 Also retired in this H9 continuation: the Express `POST /api/garages/recalculate-cars-inside` handler after synthetic dual-runtime response/state, authorization, and malformed-input characterization and explicit owner authorization to transfer maintenance ownership. The Hono handler remains supported and tested; the Express fallback now returns 404 for this path. Focused post-retirement validation passed **5 files / 66 tests**; the full local suite passed **103 files / 609 tests**, along with lint, builds, `npm run ci:check`, maintainability, and whitespace checks. Express itself and all other maintenance routes remain unchanged.
+
+Added the Fetch-native Hono mirror for `POST /api/garages/dashboard-summary/rebuild` with dual-runtime synthetic tests for projection aggregation, event consistency and day boundaries, persisted summary shape, authorization, and errors. Focused characterization passes **10 tests**; the full local suite passes **103 files / 613 tests**, with lint, builds, `npm run ci:check`, maintainability, and whitespace checks. The Express route remains available as fallback/characterization; no preview or live rebuild was executed.
 
 The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
 

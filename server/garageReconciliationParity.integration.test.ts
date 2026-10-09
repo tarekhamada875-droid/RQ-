@@ -20,7 +20,7 @@ vi.mock('./middleware', async (importOriginal) => {
     ...actual,
     requireAuth(req: any, _res: any, next: () => void) {
       req.user = {
-        uid: 'reconciliation-test-user',
+        uid: req.header('x-test-uid') || (req.header('x-test-role') === 'admin' ? 'admin-uid' : 'reconciliation-test-user'),
         role: req.header('x-test-role') || 'garage',
         garageId: req.header('x-test-garage-id') || 'reconciliation-test-garage'
       };
@@ -70,8 +70,26 @@ async function callHonoRecalculate(token: string, body: Record<string, unknown>)
   }));
 }
 
+async function callHonoSummaryRebuild(token: string, body: Record<string, unknown>) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return api.fetch(new Request('http://localhost/api/garages/dashboard-summary/rebuild', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  }));
+}
+
 async function callExpress(role: string, body: Record<string, unknown>) {
   return fetch(`${expressUrl}/api/garages/reconciliation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
+    body: JSON.stringify(body)
+  });
+}
+
+async function callExpressSummaryRebuild(role: string, body: Record<string, unknown>) {
+  return fetch(`${expressUrl}/api/garages/dashboard-summary/rebuild`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-test-role': role },
     body: JSON.stringify(body)
@@ -178,5 +196,131 @@ describe('garage active-vehicle recalculation Hono contract', () => {
       expect(await hono.json()).toEqual({ success: false, error: 'INVALID_REQUEST' });
     }
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+});
+
+describe('dashboard-summary rebuild dual-runtime characterization', () => {
+  const targetDate = '2026-09-18';
+
+  function seedSummaryRebuildFixture() {
+    const dayStart = new Date(`${targetDate}T00:00:00+03:00`);
+    const eventAt = (offset: number) => new Date(dayStart.getTime() + offset).toISOString();
+    mockDb.seed(`garages/${garageId}`, { carsInside: 2 });
+    mockDb.seed(`garages/${garageId}/daily_stats/${targetDate}`, { count: 1, revenue: 15 });
+    mockDb.seed(`garages/${garageId}/projection_buckets/shard-a`, {
+      dateId: targetDate, activeVehicleCount: 2, entriesToday: 1, exitsToday: 1,
+      grossRevenue: 20, refundTotal: 5, netRevenue: 15
+    });
+    mockDb.seed(`garages/${garageId}/projection_buckets/shard-b`, {
+      dateId: targetDate, activeVehicleCount: 1, entriesToday: 0, exitsToday: 0,
+      grossRevenue: 0, refundTotal: 0, netRevenue: 0
+    });
+    mockDb.seed(`garages/${garageId}/projection_buckets/other-day`, {
+      dateId: '2026-09-17', activeVehicleCount: 100, entriesToday: 100
+    });
+    mockDb.seed(`garages/${garageId}/events/enter`, {
+      occurredAt: eventAt(60_000), eventType: 'vehicle_entered'
+    });
+    mockDb.seed(`garages/${garageId}/events/exit`, {
+      occurredAt: eventAt(120_000), eventType: 'vehicle_exited', payload: { cost: 20 }
+    });
+    mockDb.seed(`garages/${garageId}/events/refund`, {
+      occurredAt: eventAt(180_000), eventType: 'vehicle_refunded', payload: { refundAmount: 5 }
+    });
+    mockDb.seed(`garages/${garageId}/events/before-day`, {
+      occurredAt: eventAt(-1), eventType: 'vehicle_entered'
+    });
+    mockDb.seed(`garages/${garageId}/events/next-day`, {
+      occurredAt: eventAt(24 * 60 * 60 * 1000), eventType: 'vehicle_entered'
+    });
+    mockDb.seed(`garages/${garageId}/dashboard_summary/current`, { preservedField: 'keep-on-merge' });
+  }
+
+  it('matches synthetic Admin summary, projection, boundary counts, and persisted read-model fields', async () => {
+    seedSummaryRebuildFixture();
+    const body = { garageId, date: targetDate };
+    const hono = await callHonoSummaryRebuild('valid-admin-token', body);
+    const honoBody = await hono.json() as any;
+    const persistedAfterHono = structuredClone(mockDb.records.get(`garages/${garageId}/dashboard_summary/current`));
+
+    expect(hono.status).toBe(200);
+    expect(honoBody).toMatchObject({
+      success: true,
+      data: {
+        bucketCount: 2,
+        eventCount: 3,
+        consistentWithEvents: true,
+        legacyDifferences: { activeVehicleCount: 1, entriesToday: 0, grossRevenue: 5 },
+        summary: {
+          garageId,
+          dateId: targetDate,
+          activeVehicleCount: 3,
+          entriesToday: 1,
+          exitsToday: 1,
+          grossRevenue: 20,
+          refundTotal: 5,
+          netRevenue: 15,
+          projectionVersion: 1,
+          rebuiltBy: 'admin-uid',
+          eventProjection: { count: 1, exitsCount: 1, grossRevenue: 20, refundRevenue: 5, netRevenue: 15, revenue: 15 },
+          reconciliation: { consistent: true }
+        }
+      }
+    });
+    expect(persistedAfterHono).toMatchObject(honoBody.data.summary);
+    expect(persistedAfterHono.preservedField).toBe('keep-on-merge');
+
+    mockDb.seed(`garages/${garageId}/dashboard_summary/current`, { preservedField: 'keep-on-merge' });
+    const expressResponse = await callExpressSummaryRebuild('admin', body);
+    const expressBody = await expressResponse.json() as any;
+    const persistedAfterExpress = mockDb.records.get(`garages/${garageId}/dashboard_summary/current`);
+    expect(expressResponse.status).toBe(hono.status);
+    const withoutRebuiltAt = (summary: Record<string, unknown>) => Object.fromEntries(
+      Object.entries(summary).filter(([key]) => key !== 'rebuiltAt')
+    );
+    expect(expressBody.success).toBe(honoBody.success);
+    expect(expressBody.data).toMatchObject({
+      bucketCount: honoBody.data.bucketCount,
+      eventCount: honoBody.data.eventCount,
+      consistentWithEvents: honoBody.data.consistentWithEvents,
+      legacyDifferences: honoBody.data.legacyDifferences
+    });
+    expect(withoutRebuiltAt(expressBody.data.summary)).toEqual(withoutRebuiltAt(honoBody.data.summary));
+    expect(withoutRebuiltAt(persistedAfterExpress)).toEqual(withoutRebuiltAt(persistedAfterHono));
+  });
+
+  it('denies non-Admins in both runtimes without writes', async () => {
+    seedSummaryRebuildFixture();
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const body = { garageId, date: targetDate };
+    const [hono, expressResponse] = await Promise.all([
+      callHonoSummaryRebuild('valid-garage-token-reconciliation-test-garage', body),
+      callExpressSummaryRebuild('garage', body)
+    ]);
+    expect(hono.status).toBe(403);
+    expect(hono.status).toBe(expressResponse.status);
+    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
+  it('denies unauthenticated Hono requests without writes', async () => {
+    seedSummaryRebuildFixture();
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const hono = await callHonoSummaryRebuild('', { garageId, date: targetDate });
+    expect(hono.status).toBe(401);
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
+  it('matches Admin malformed-input and missing-garage contracts without writing', async () => {
+    for (const body of [{}, { garageId, date: '2026-02-30' }, { garageId: 'missing-summary-garage', date: targetDate }]) {
+      const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+      const [hono, expressResponse] = await Promise.all([
+        callHonoSummaryRebuild('valid-admin-token', body),
+        callExpressSummaryRebuild('admin', body)
+      ]);
+      expect(hono.status).toBe(expressResponse.status);
+      expect(await hono.json()).toEqual(await expressResponse.json());
+      expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+    }
   });
 });
