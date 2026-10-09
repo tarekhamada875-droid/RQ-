@@ -84,3 +84,7 @@ Feature work and browser testing stop here per the exact owner marker.
 - **Staff:** supplied synthetic Staff credential authenticated in a separate isolated Sandbox browser to the same garage. Staff navigation showed Staff-facing controls without Admin/Supervisor management controls. Plate `ب ب ب 555` was already inside and visible in Staff scope. Exit invoicing was not selected. Staff operational mutation remains **OPEN/BLOCKED**.
 - **Safety/session note:** The Owner universal logout attempt was rejected by preview; no further Owner logout PIN attempts were made. The Staff logout dialog was canceled without submission after unreliable keypad automation. No financial, checkout, recharge, renewal, or deletion action was performed.
 - **Disposition:** H6 remains **OPEN/BLOCKED**; H7 remains **HOLD/NO-GO**.
+
+### Session-state correction
+
+The Owner logout dialog did not transition immediately after submission, so no additional PIN was entered. A final My Browser check showed the Owner at the login screen, confirming eventual logout. The Staff Sandbox session remained on its dashboard after its unsent logout dialog was canceled. Neither session performed checkout or financial activity.

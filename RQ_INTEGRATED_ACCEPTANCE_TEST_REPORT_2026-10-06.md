@@ -441,3 +441,7 @@ A separate isolated Sandbox browser session authenticated as Staff to the same s
 The Owner universal logout attempt was rejected by the preview; no further Owner logout PIN attempts were made. The Staff logout dialog was canceled without submission after browser automation produced an unreliable keypad state. Both sessions were left on their dashboards with no financial or checkout action performed. This is a session-cleanup limitation, not a product acceptance result.
 
 H6 remains **OPEN/BLOCKED** and H7 remains **HOLD/NO-GO**.
+
+### Session-state correction
+
+The Owner logout dialog did not transition immediately after submission, so no additional PIN was entered. A final My Browser check subsequently showed the Owner at the login screen, confirming that the logout eventually completed. The Staff Sandbox session remained on its dashboard after its unsent logout dialog was canceled. Neither session performed checkout or financial activity.

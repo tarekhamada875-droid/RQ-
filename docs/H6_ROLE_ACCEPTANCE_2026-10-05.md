@@ -599,3 +599,7 @@ The supplied synthetic Owner credential opened `H6 Vehicle Subscriber Lab 202610
 A separate isolated Sandbox session opened the same garage as Staff. The Staff menu exposed Staff-facing controls and no Admin or Supervisor management controls. The same supplied plate was visible as already inside. Exit invoicing was not selected. Staff scope remains **PASS, bounded**; operational mutation remains **OPEN/BLOCKED** because no safe non-financial mutation was available for an already-inside fixture.
 
 The Owner universal logout attempt was rejected by the preview, and the Staff logout dialog was canceled without submission after unreliable keypad automation. No financial or checkout action was performed.
+
+### Session-state correction
+
+The Owner logout dialog did not transition immediately after submission, so no additional PIN was entered. A final My Browser check subsequently showed the Owner at the login screen, confirming that logout eventually completed. The Staff Sandbox session remained on its dashboard after its unsent logout dialog was canceled. Neither session performed checkout or financial activity.
