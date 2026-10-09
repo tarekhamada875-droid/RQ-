@@ -5,7 +5,8 @@
   "packageManager": "npm@10.8.2",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "RQ_API_RUNTIME=hono tsx server.ts",
+    "dev:express": "tsx server.ts",
     "dev:hono": "RQ_API_RUNTIME=hono tsx server.ts",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",

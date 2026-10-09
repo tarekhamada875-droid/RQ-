@@ -17,11 +17,11 @@ Immediate deletion would break at least the local `dev` path, `build:server`, `b
 - Runtime dependency: `express` `^5.2.1`.
 - Type dependency: `@types/express` `^5.0.6`.
 - Express-backed scripts:
-  - `dev` → `tsx server.ts` (Express by default).
+  - `dev:express` → `tsx server.ts` (explicit compatibility fallback).
   - `build:server` → bundles `server.ts` for the Node runtime.
   - `build:cloudrun` → bundles `server/cloudRun.ts`.
   - `start` → runs `dist/server.cjs`.
-- Hono-compatible local path: `dev:hono` → `RQ_API_RUNTIME=hono tsx server.ts`.
+- Hono-first local path: `dev` and `dev:hono` → `RQ_API_RUNTIME=hono tsx server.ts`.
 - Production path: Cloudflare Worker via `build:cloudflare` and the main-branch deployment workflow; it does not use Express.
 
 ## Express import census
@@ -68,11 +68,12 @@ The initial search found **31 files** importing Express directly:
 
 ## Runtime topology
 
-`server.ts` currently selects the Express app by default and the Hono adapter only when `RQ_API_RUNTIME=hono`:
+`server.ts` retains Express as the code-level compatibility default, while package scripts now make Hono the local development default:
 
 ```text
-RQ_API_RUNTIME unset  -> Express app from server/app.ts
-RQ_API_RUNTIME=hono   -> Fetch/Hono adapter from server/nodeAdapter.ts
+`npm run dev`          -> RQ_API_RUNTIME=hono -> Fetch/Hono adapter from server/nodeAdapter.ts
+`npm run dev:hono`     -> RQ_API_RUNTIME=hono -> Fetch/Hono adapter from server/nodeAdapter.ts
+`npm run dev:express`  -> RQ_API_RUNTIME unset -> Express app from server/app.ts
 Cloudflare Worker      -> server/cloudflareWorker.ts
 Cloud Run               -> server/cloudRun.ts -> Express createApp()
 ```
@@ -110,7 +111,7 @@ The first implementation slice should be **test and runtime decoupling, not Expr
 - Keep the Express comparison suite as a characterization guard during this slice.
 - Do not change production configuration, Firestore rules, financial behavior, or role policy.
 
-The first slice now adds Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical.
+The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback; production and Cloud Run entrypoints are unchanged.
 
 ## H9 status
 
