@@ -185,3 +185,33 @@ Do not delete `readiness/firestore-decision-gate` as part of H9 implementation. 
 ### Required final report
 
 Report the exact route selected, files changed, focused test counts, full-gate results, workflow URLs/status, current HEAD, whether Express was retired, and any residual risk. Do not claim production behavior changed unless a separately approved production deployment actually occurred.
+
+
+## 2026-10-09 production-safety release gate
+
+This handoff is ready for the next agent and is intentionally **not** a production deployment authorization.
+
+The only permitted path is:
+
+```text
+migration/unified-hono
+  -> route-specific parity evidence
+  -> H9 inventory/disposition update
+  -> local quality gates and migration-branch CI
+  -> explicit H9 closure review
+  -> separate explicit owner approval for production replacement
+  -> reviewed merge to main
+  -> controlled production deployment
+  -> health/version and bounded smoke verification
+```
+
+Until the separate production approval exists, the next agent must:
+
+- work only on `migration/unified-hono`;
+- leave `main`, production Pages/Worker, Firestore rules, and production data unchanged;
+- use synthetic pre-production data only;
+- avoid financial writes, destructive deletion, and blind retries of ambiguous mutations;
+- preserve the Express fallback and sensitive handlers until their route-specific evidence and disposition are complete;
+- stop after migration-branch validation if H9 or the production approval gate is not explicitly closed.
+
+A green test suite, a clean branch, or a successful preview does **not** by itself authorize a merge to `main` or a production deployment.
