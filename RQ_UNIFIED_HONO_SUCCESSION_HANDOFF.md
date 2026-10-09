@@ -1,7 +1,7 @@
 # RQ Unified Hono Migration — Current Succession Handoff
 
 **Updated:** 2026-10-09
-**Active task:** Checkpoint H7 — evidence-based production cutover decision
+**Active task:** Checkpoint H8 — controlled replacement decision preparation
 **Authorized branch:** `migration/unified-hono` only
 **Production:** `main` and the deployed Cloudflare Pages/Worker remain untouched.
 
@@ -29,7 +29,7 @@ The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pag
 | Admin browser acceptance | **PASS, bounded.** After the preview-only CORS allowlist fix, one fresh Admin login through `https://migration-unified-hono.rq-acg.pages.dev` reached the Admin dashboard, read-only navigation/counts rendered, and normal PIN-confirmed logout returned to the generic login. No Admin mutation or financial action was performed. |
 | Automation and Pages path | An opt-in Playwright read-only smoke is documented in `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; it checks the generic login shell and isolated Worker health/version endpoints. It is not authenticated role-acceptance E2E, is not in CI, and does not waive fresh candidate-pairing verification. |
 
-On 2026-10-09, the owner explicitly accepted the documented H6 residual risks and instructed the project to consider H6 complete for scope purposes and begin H7. This is an owner-approved scope decision, not a claim that the previously unresolved cells are PASS and not a guarantee of “100% bug-free.” H7 is now in progress and must independently evaluate every H7 gate; production and `main` remain unchanged.
+On 2026-10-09, the owner explicitly accepted the documented H6 residual risks and instructed the project to consider H6 complete for scope purposes and begin H7. This is an owner-approved scope decision, not a claim that the previously unresolved cells are PASS and not a guarantee of “100% bug-free.” H7 has now completed **GO**; production and `main` remain unchanged.
 
 ## Required boundaries
 
@@ -42,7 +42,7 @@ Use synthetic pre-production data only. Do not modify `main`, merge to it, deplo
 3. Do not perform Supervisor manual acceptance or modify preserved legacy records. Continue only safe Owner listener/mobile and other active-role cases, one role/context at a time.
 4. The opt-in Playwright harness covers only the read-only shell/health smoke; run it only after verifying the Pages/Worker candidate pairing. Continue manual H6 testing under the runbook. Do not infer role PASS from the smoke or expand it to authenticated/mutating journeys without separately approved scope, runtime secret handling, serialized writes, verified cleanup, and no blind retries.
 5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
-6. Complete H7's independent gates: full tests, lint, build, CI, maintainability, preview release smoke, route parity, Firebase auth/session coverage, warning review, rollback rehearsal, and explicit release approval. H7 is GO/HOLD; H8 production replacement requires every gate and separate approval.
+6. H7 is **GO** under the owner's explicit residual-risk approval. Prepare H8 only after a separate explicit production-replacement approval; do not merge `main` or deploy production yet.
 
 ## Mandatory succession protocol — exact message “tokens ending”
 
@@ -59,8 +59,9 @@ Older handoff chronology is retained in Git history and dated acceptance reports
 
 - **Decision:** The owner instructed: “let’s consider H6 is done … so we can start H7.” This closes H6 for scope purposes with explicit acceptance of the documented residual risk.
 - **Residual risks carried forward:** Staff operational mutation remains OPEN/BLOCKED; Owner listener delivery remains OPEN/UNVERIFIED and cleanup evidence PARTIAL; financial workflows remain OPEN/BLOCKED without an isolated financial sandbox. Supervisor remains N/A because the role is retired.
-- **H7 status:** **IN PROGRESS.** Current-head H5 Preview Worker run `37914850034` and Production Gate run `37914850071` passed. Local `npm ci`, `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and preview `npm run release:smoke` all passed on this checkout; generated build outputs were removed afterward.
+- **H7 status:** **GO.** The owner confirmed that the accepted H6 residual risks are sufficient for the preview-role condition. Current-head H5 Preview Worker run `37918619708` and Production Gate run `37918619552` passed. Local `npm ci`, `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, focused route-parity/auth/session tests (**2 files / 18 tests**), rollback rehearsal, and preview `npm run release:smoke` all passed on this checkout; generated build outputs were removed afterward. Known test-only React `act(...)`, dependency-engine, and build-tool deprecation warnings did not affect user-visible behavior.
 - **H7 boundary:** This does not authorize production access, a merge to `main`, a production deployment, financial writes, a retry of the ambiguous listener/vehicle mutation, or relabeling residual H6 cells as PASS.
+- **Next gate:** H8 requires a separate explicit production-replacement approval. Keep `main` and production unchanged until that approval; the recommended method is a reviewed merge, release tag, controlled deployment, and post-deployment health/version/role smoke.
 
 ## Historical snapshot — exact “tokens ending” succession on 2026-10-08 (superseded)
 

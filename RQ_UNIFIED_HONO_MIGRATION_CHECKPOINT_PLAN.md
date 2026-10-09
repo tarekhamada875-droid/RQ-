@@ -14,7 +14,7 @@ Evaluate and, if successful, migrate RQ from the current dual-runtime structure 
 - **H6 is closed for scope by explicit owner residual-risk acceptance:** the Pages-to-preview-Worker pairing and preview-only CORS correction were verified for a recorded fresh non-production deployment, followed by one bounded Admin login/dashboard/read-only navigation/logout **PASS**. Staff operational access remains **OPEN/BLOCKED**, Owner listener delivery remains **OPEN/UNVERIFIED** with partial cleanup evidence, and financial workflows remain intentionally blocked without an isolated sandbox; these are accepted residual risks, not PASS results. Supervisor is retired by explicit owner decision; local denial/preservation regressions are validated. **H7 is now IN PROGRESS** and must independently evaluate its GO/HOLD conditions against the exact candidate.
 - **Automation:** an opt-in read-only Playwright smoke checks the generic login shell and isolated Worker health/version endpoints; it is not role-acceptance E2E and is not in default CI. See `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; do not claim that it closes any H6 role cell.
 - **UI/UX:** preserve the freeze; no redesign is authorized. The sole role-policy exception is the explicitly owner-approved, non-destructive Supervisor retirement; no other business-rule changes are authorized by this status.
-- **Next checkpoint:** H7 is **HOLD/NO-GO** until required H6 gates close. No process can guarantee zero bugs; document residual risk honestly.
+- **Next checkpoint:** H7 is **GO** under the owner's explicit acceptance of the documented H6 residual risks. Current-head workflows, local quality gates, preview release smoke, focused route-parity/auth/session tests, and rollback rehearsal passed. H8 production replacement remains a separate explicit approval gate. No process can guarantee zero bugs; document residual risk honestly.
 - **Succession rule:** if the owner says exactly `tokens ending`, follow the protocol in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` before doing other work.
 
 Dated H6 continuation sections later in this plan preserve test history. Any point-in-time “next checkpoint” or “continue H6” notes in those addenda are historical; follow this current status and `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md` instead.
@@ -360,6 +360,10 @@ H7 is an evidence-based **GO/HOLD** decision, not a guarantee of zero defects. A
 - The owner has explicitly approved the release decision and any documented residual risks.
 
 If any condition fails, keep the current production Worker and continue fixing the migration branch.
+
+### H7 decision record — 2026-10-09
+
+**Decision: GO.** The owner confirmed that the accepted H6 residual risks are sufficient for the preview-role condition. Full local quality gates and preview release smoke passed; focused route-parity/auth/session coverage passed (**2 files / 18 tests**); the protected rollback baseline was rehearsed at `bb12fbe90eb97b6638546f292f5de50aab03d81a`; and exact-head H5 Preview Worker run `37918619708` plus Production Gate run `37918619552` passed for `34f6c124520fec9c0e831d969b689806f477e3e2`. This GO does not merge `main`, deploy production, or authorize financial or ambiguous-mutation actions. H8 requires a separate explicit approval.
 
 ---
 
