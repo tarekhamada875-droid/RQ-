@@ -15,7 +15,6 @@ The low-risk Express compatibility surfaces have been retired only after Hono re
 | `POST /api/garages/create` | `POST /api/garages/create` | Account creation / financial-adjacent | Creates a garage, stores a PIN, initializes balance/trial/package state, and writes an activity log. | Dual-runtime characterization for role scope, PIN uniqueness, idempotency, delegate quota, trial initialization, and activity-log shape; explicit approval before removing the Express fallback. |
 | `POST /api/garages/update` | `POST /api/garages/update` | Admin account mutation | Updates identity, access, package, lock, capacity, balance, and balance-expiry fields through a broad allowlist. | Field-by-field parity matrix, especially balance/balance-expiry and session/lock fields; no removal based only on frontend coverage. |
 | `POST /api/garages/delete` | `POST /api/garages/delete` | Destructive / financial-adjacent | Marks deletion, creates a resumable deletion job, deletes owned data, and writes an audit log. | Destructive-flow rehearsal in an isolated fixture, retry/idempotency and partial-failure tests, full cleanup proof, rollback procedure, and explicit approval. |
-| `POST /api/garages/recalculate-cars-inside` | `POST /api/garages/recalculate-cars-inside` | Maintenance mutation | Rebuilds the garage active-vehicle count from vehicle records. Hono/Express synthetic response-and-state parity, Admin-only denial, and missing-input behavior are now directly characterized; the Express handler remains mounted. | Explicit transfer of maintenance ownership and route-retirement review remain required; no preview/live mutation or Express retirement is authorized by local test evidence. |
 | `POST /api/garages/reconciliation` | `POST /api/garages/reconciliation` | Maintenance / diagnostics | Reads event, vehicle, daily-stat, and projection state and reports reconciliation results. The Hono Fetch-native handler and synthetic contract coverage are present on `migration/unified-hono`; Express remains mounted. | Read-only parity coverage is recorded below. Telemetry comparison and operational owner confirmation that Hono is the supported diagnostic path remain open; do not retire Express yet. |
 | `POST /api/garages/dashboard-summary/rebuild` | `POST /api/garages/dashboard-summary/rebuild` | Admin projection maintenance | Rebuilds dashboard projection state and writes the summary used by operational and revenue views. | Projection rebuild parity, stale/fresh summary validation, event consistency, and rollback/rebuild rehearsal. |
 | `POST /api/garages/rebuild-projections` | `POST /api/garages/rebuild-projections` | Maintenance / projection mutation | Rebuilds daily projections from authoritative event data. | Event-ledger replay parity, idempotency/retry behavior, and isolated operational rehearsal. |
@@ -31,9 +30,9 @@ This is migration-branch code/test evidence only. It is not proof of operational
 
 ### Cars-inside recalculation characterization — 2026-10-09
 
-The Hono and Express implementations of `POST /api/garages/recalculate-cars-inside` were compared using only an in-memory Firestore fixture. Tests verify that both return the same Admin response and persist the count derived from `status === 'inside'`; non-Admin requests are denied with matching response and no writes; and missing/empty `garageId` is rejected consistently without writes. No live or preview mutation was performed. Focused characterization validation passes **6 tests** in `server/garageReconciliationParity.integration.test.ts` (including the three reconciliation parity tests recorded above).
+Using only an in-memory Firestore fixture, tests compared the Hono and Express `POST /api/garages/recalculate-cars-inside` implementations for Admin response/state, non-Admin denial, and missing-input validation. This parity evidence was reviewed and the owner explicitly authorized the maintenance-ownership transfer and retirement of only the Express route. The Express registration is now removed; Hono remains the supported owner. Current tests retain the synthetic Hono behavior checks and assert that the Express fallback returns 404 for this route. Focused validation passed **5 files / 66 tests**; the full local suite passed **103 files / 609 tests**, with lint, all builds, `npm run ci:check`, maintainability, and whitespace checks green. No preview or live mutation was performed.
 
-These results establish route-level synthetic behavior parity, not permission to transfer operational ownership. Keep Express mounted until that separate disposition is approved; the Hono implementation was not changed in this slice.
+This is a migration-branch-only route retirement. It does not remove Express as a runtime, change other maintenance handlers, merge to `main`, or authorize deployment to production.
 
 ### Option A first step: path alignment
 
@@ -47,6 +46,7 @@ The boundary suite now also verifies non-admin denial without writes, finite-pac
 - Express `GET /api/delegates/dashboard`
 - Express `GET /api/garages/:id/dashboard-summary`
 - Express `POST /api/garages/trial-decision`
+- Express `POST /api/garages/recalculate-cars-inside` (owner-authorized maintenance-ownership transfer; Hono remains the supported route and the Express fallback now returns 404)
 
 ## H9 conclusion
 

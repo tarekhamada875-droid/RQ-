@@ -83,7 +83,6 @@ Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 The existing route inventory identifies these Express capabilities as requiring an explicit disposition before removal:
 
 - `POST /api/garages/reconciliation` — a Fetch-native Hono mirror and synthetic read-only contract coverage have been added on `migration/unified-hono`; the Express handler remains mounted pending telemetry comparison and operational owner confirmation.
-- `POST /api/garages/recalculate-cars-inside` — both Hono and Express handlers are covered by synthetic dual-runtime response/state, authorization, and missing-input tests; the Express handler remains mounted pending explicit maintenance-ownership transfer.
 - `POST /api/garages/dashboard-summary/rebuild`
 - `POST /api/garages/rebuild-projections`
 - `POST /api/auth/invalidate-all-sessions`
@@ -97,6 +96,8 @@ Retired in this slice: the Express `GET /api/garages/:id/dashboard-summary` hand
 Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, vehicle, subscriber, delegate-settlement, and maintenance mutations remain mounted.
 
 Also retired in this slice: both duplicate Express fair-use handlers (`POST /api/garages/:id/extend-fair-use` and `POST /api/admin/garages/:id/extend-fair-use`). Hono now owns both paths. Retirement was gated on Hono boundary coverage plus dual-runtime idempotency replay and key-reuse tests; the frontend continues using the legacy path as a Hono alias.
+
+Also retired in this H9 continuation: the Express `POST /api/garages/recalculate-cars-inside` handler after synthetic dual-runtime response/state, authorization, and malformed-input characterization and explicit owner authorization to transfer maintenance ownership. The Hono handler remains supported and tested; the Express fallback now returns 404 for this path. Focused post-retirement validation passed **5 files / 66 tests**; the full local suite passed **103 files / 609 tests**, along with lint, builds, `npm run ci:check`, maintainability, and whitespace checks. Express itself and all other maintenance routes remain unchanged.
 
 The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
 
@@ -122,14 +123,14 @@ The first slice added Fetch-native Worker coverage for valid garage-session refr
 
 ## H9 status
 
-**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, and the Express trial-decision handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express trial-decision handler, and the Express cars-inside recalculation handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
 
 ### Read-only garage reconciliation slice — 2026-10-09
 
 `server/cloudflareWorker.ts` now exposes the existing Admin-only `POST /api/garages/reconciliation` capability through the Fetch-native Worker. The implementation uses the existing pure `reconcileGarageState` reducer, performs only garage/vehicle/daily-stat/event reads, applies the Africa/Cairo day boundary, and preserves the Express response/error contract. `src/__tests__/cloudflareWorkerGarageRoutes.test.ts` adds synthetic coverage for response parity, day boundaries, authorization, validation, missing-garage behavior, and absence of writes. The Express characterization handler is intentionally retained; this does not retire the route or authorize production deployment.
 
-Focused route/domain/authorization and dual-runtime validation passed **5 files / 67 tests**. Full local validation passed **103 files / 610 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, maintainability, and whitespace checks before this documentation-only update. Telemetry equivalence and operational owner confirmation remain unresolved gates before any Express retirement.
+Focused route/domain/authorization and dual-runtime validation passed **5 files / 67 tests**. Full local validation passed **103 files / 610 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, maintainability, and whitespace checks before this documentation-only update. Telemetry equivalence and operational owner confirmation remain unresolved gates before retiring the Express reconciliation route.
 
 ### Cars-inside recalculation characterization — 2026-10-09
 
-Added direct synthetic dual-runtime characterization for `POST /api/garages/recalculate-cars-inside` in `server/garageReconciliationParity.integration.test.ts`. It compares Admin status/body and resulting `carsInside`, verifies equivalent non-Admin denial without writes, and compares missing/empty ID handling. All cases use the in-memory Firestore mock; no preview or live data was mutated. The existing Hono handler is unchanged, and the Express fallback remains mounted until maintenance ownership is explicitly transferred.
+Before retirement, direct synthetic dual-runtime characterization for `POST /api/garages/recalculate-cars-inside` compared Admin status/body and resulting `carsInside`, non-Admin denial without writes, and missing/empty ID handling. Following explicit owner approval, only the Express route registration was removed. Hono continues as the supported owner with synthetic count, authorization, and validation tests; Express fallback coverage asserts this endpoint returns 404. No preview or live data was mutated.

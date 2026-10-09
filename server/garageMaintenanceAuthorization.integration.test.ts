@@ -31,7 +31,6 @@ vi.mock('./summaryTelemetry', () => ({ recordSummaryRead: vi.fn() }));
 import garagesRouter from './routes/garages';
 
 const maintenanceRoutes = [
-  ['/api/garages/recalculate-cars-inside', { garageId: 'garage_1' }],
   ['/api/garages/reconciliation', { garageId: 'garage_1' }],
   ['/api/garages/dashboard-summary/rebuild', { garageId: 'garage_1', date: '2026-09-18' }],
   ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }]
@@ -60,7 +59,13 @@ async function post(path: string, role: string, body: Record<string, unknown>) {
     request.on('error', rejectResponse);
     request.end(payload);
   });
-  return { status: response.status, json: JSON.parse(response.body) as Record<string, unknown> };
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(response.body) as Record<string, unknown>;
+  } catch {
+    // The Express fallback's default 404 response is HTML, not a JSON route envelope.
+  }
+  return { status: response.status, json, body: response.body };
 }
 
 beforeAll(async () => {
@@ -92,7 +97,6 @@ describe('garage reconciliation and projection maintenance authorization routes'
   });
 
   it.each([
-    ['/api/garages/recalculate-cars-inside', { garageId: 'garage_1' }, 400, 'INVALID_REQUEST'],
     ['/api/garages/reconciliation', { garageId: 'garage_1' }, 500, 'ADMIN_SDK_NOT_INITIALIZED'],
     ['/api/garages/dashboard-summary/rebuild', { garageId: 'garage_1', date: '2026-09-18' }, 400, 'INVALID_REQUEST'],
     ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }, 400, 'INVALID_REQUEST']
@@ -101,6 +105,12 @@ describe('garage reconciliation and projection maintenance authorization routes'
 
     expect(response.status).toBe(expectedStatus);
     expect(response.json).toEqual({ success: false, error: expectedError });
+  });
+
+  it('does not expose the retired recalculation endpoint on the Express fallback', async () => {
+    const response = await post('/api/garages/recalculate-cars-inside', 'admin', { garageId: 'garage_1' });
+
+    expect(response.status).toBe(404);
   });
 });
 

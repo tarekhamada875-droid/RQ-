@@ -78,14 +78,6 @@ async function callExpress(role: string, body: Record<string, unknown>) {
   });
 }
 
-async function callExpressRecalculate(role: string, body: Record<string, unknown>) {
-  return fetch(`${expressUrl}/api/garages/recalculate-cars-inside`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
-    body: JSON.stringify(body)
-  });
-}
-
 beforeAll(async () => {
   const app = express();
   app.use(express.json());
@@ -149,8 +141,8 @@ describe('garage reconciliation dual-runtime characterization', () => {
   });
 });
 
-describe('garage active-vehicle recalculation dual-runtime characterization', () => {
-  it('matches Admin response and persisted count across runtimes using a synthetic fixture', async () => {
+describe('garage active-vehicle recalculation Hono contract', () => {
+  it('recalculates the count from inside vehicles and persists it using a synthetic fixture', async () => {
     mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 99 });
     mockDb.seed(`garages/${garageId}/vehicles/inside-1`, { status: 'inside' });
     mockDb.seed(`garages/${garageId}/vehicles/inside-2`, { status: 'inside' });
@@ -164,39 +156,26 @@ describe('garage active-vehicle recalculation dual-runtime characterization', ()
     expect(honoBody).toEqual({ success: true, count: 2 });
     expect(honoGarage.carsInside).toBe(2);
 
-    mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 99 });
-    const expressResponse = await callExpressRecalculate('admin', { garageId });
-    const expressBody = await expressResponse.json();
-    expect(expressResponse.status).toBe(hono.status);
-    expect(expressBody).toEqual(honoBody);
     expect(mockDb.records.get(`garages/${garageId}`)).toEqual(honoGarage);
   });
 
-  it('denies non-Admins without changing any synthetic records in either runtime', async () => {
+  it('denies non-Admins without changing any synthetic records', async () => {
     mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 7 });
     mockDb.seed(`garages/${garageId}/vehicles/inside-1`, { status: 'inside' });
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-    const [hono, expressResponse] = await Promise.all([
-      callHonoRecalculate('valid-garage-token-reconciliation-test-garage', { garageId }),
-      callExpressRecalculate('garage', { garageId })
-    ]);
+    const hono = await callHonoRecalculate('valid-garage-token-reconciliation-test-garage', { garageId });
 
     expect(hono.status).toBe(403);
-    expect(hono.status).toBe(expressResponse.status);
-    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
-  it('matches Admin missing and empty garageId validation without writes', async () => {
+  it('rejects missing and empty garageId without writes', async () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
     for (const body of [{}, { garageId: '' }]) {
-      const [hono, expressResponse] = await Promise.all([
-        callHonoRecalculate('valid-admin-token', body),
-        callExpressRecalculate('admin', body)
-      ]);
+      const hono = await callHonoRecalculate('valid-admin-token', body);
       expect(hono.status).toBe(400);
-      expect(hono.status).toBe(expressResponse.status);
-      expect(await hono.json()).toEqual(await expressResponse.json());
+      expect(await hono.json()).toEqual({ success: false, error: 'INVALID_REQUEST' });
     }
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });

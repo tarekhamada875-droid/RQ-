@@ -295,27 +295,6 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
   }
 });
 
-// Secure Server API: Update Garage Trial Decision
-// Secure Server API: Recalculate Cars Inside
-router.post('/recalculate-cars-inside', requireAuth, async (req: AuthRequest, res: any) => {
-  try {
-    if (!canRunGarageMaintenance(req.user, 'recalculate-cars-inside')) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
-    const { garageId } = req.body || {};
-    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-    const vehSnap = await adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get();
-    const actualCount = vehSnap.size;
-
-    await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
-    return res.json({ success: true, count: actualCount });
-  } catch (e: any) {
-    console.error('[Server Garage] Error in recalculate-cars-inside:', e);
-    return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-  }
-});
-
 // Read-only consistency diagnostics & Event Ledger reconciliation
 router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) => {
   try {
