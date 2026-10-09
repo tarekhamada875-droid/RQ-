@@ -55,7 +55,8 @@ export class MockQuery {
     protected readonly collectionPath: string,
     protected readonly wheres: Array<{ field: string; op: string; value: any }> = [],
     protected readonly limitVal?: number,
-    protected readonly isCollectionGroup: boolean = false
+    protected readonly isCollectionGroup: boolean = false,
+    protected readonly orderings: Array<{ field: string; direction: 'asc' | 'desc' }> = []
   ) {}
 
   where(field: string, op: string, value: any) {
@@ -64,12 +65,17 @@ export class MockQuery {
       this.collectionPath,
       [...this.wheres, { field, op, value }],
       this.limitVal,
-      this.isCollectionGroup
+      this.isCollectionGroup,
+      this.orderings
     );
   }
 
   limit(limitVal: number) {
-    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup);
+    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup, this.orderings);
+  }
+
+  orderBy(field: string, direction: 'asc' | 'desc' = 'asc') {
+    return new MockQuery(this.db, this.collectionPath, this.wheres, this.limitVal, this.isCollectionGroup, [...this.orderings, { field, direction }]);
   }
 
   async get() {
@@ -100,6 +106,8 @@ export class MockQuery {
             if (actualVal !== w.value) satisfiesWheres = false;
           } else if (w.op === '>=') {
             if (!(actualVal >= w.value)) satisfiesWheres = false;
+          } else if (w.op === '<') {
+            if (!(actualVal < w.value)) satisfiesWheres = false;
           } else if (w.op === '<=') {
             if (!(actualVal <= w.value)) satisfiesWheres = false;
           } else if (w.op === 'array-contains') {
@@ -114,6 +122,16 @@ export class MockQuery {
           docs.push(new MockDocumentSnapshot(id, true, data, new MockDocumentReference(id, path, this.db)));
         }
       }
+    }
+
+    for (const ordering of this.orderings) {
+      docs.sort((left, right) => {
+        const leftValue = left.data()?.[ordering.field];
+        const rightValue = right.data()?.[ordering.field];
+        if (leftValue === rightValue) return 0;
+        const comparison = leftValue < rightValue ? -1 : 1;
+        return ordering.direction === 'desc' ? -comparison : comparison;
+      });
     }
 
     if (this.limitVal !== undefined) {

@@ -23,6 +23,7 @@ import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboard
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
+import { reconcileGarageState } from './domain/garageReconciliation';
 import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
@@ -3133,6 +3134,51 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
   } catch (err: any) {
     console.error('[Worker Garage] Error listing garages:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Read-only consistency diagnostics & Event Ledger reconciliation.
+workerApp.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!canRunGarageMaintenance(user, 'reconciliation')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const garageId = validateId(body.garageId, 'garageId', true);
+    const garageRef = adminDb.doc(`garages/${garageId}`);
+    const garageSnap = await garageRef.get();
+    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    const dayStart = new Date(`${today}T00:00:00+03:00`);
+    const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
+      adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
+      adminDb.collection(`garages/${garageId}/events`)
+        .where('occurredAt', '>=', dayStart.toISOString())
+        .where('occurredAt', '<', nextDayStart.toISOString())
+        .orderBy('occurredAt', 'desc')
+        .get()
+    ]);
+    const reconciliation = reconcileGarageState({
+      today,
+      insideVehicleCount: insideSnap.size,
+      garage: garageSnap.data() || {},
+      dailyStats: dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {},
+      events: eventsSnap.docs.map((doc: any) => doc.data() || {})
+    });
+
+    return c.json({ success: true, data: { garageId, date: today, ...reconciliation } });
+  } catch (err: any) {
+    console.error('[Worker Garage] Error in reconciliation:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
   }
 });
 
