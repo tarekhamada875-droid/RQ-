@@ -403,6 +403,10 @@ This is unnecessary for RQ and should not be the default plan.
 
 Remove Express only after the unified Hono architecture has proved itself.
 
+## H9 status — 2026-10-09
+
+The read-only Express inventory is complete and recorded in [`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`](docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md). Express is not yet removable: it remains the default local `dev` runtime, supports `build:server` and `build:cloudrun`, backs the Cloud Run compatibility entrypoint, and is imported by transitional route modules plus characterization and dual-runtime tests. The first H9 slice is test/runtime decoupling and Fetch-native coverage, not dependency deletion. Production, `main`, Firestore rules, financial behavior, and role policy remain unchanged.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.
