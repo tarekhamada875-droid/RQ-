@@ -9,10 +9,10 @@
 
 ## Start here
 
-1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, and `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
-2. Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority. Use [`docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) for the concise Staff/Owner field checklist and [`docs/H6_NEXT_AGENT_PROMPT.md`](docs/H6_NEXT_AGENT_PROMPT.md) for the current bounded next steps.
-3. Use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the role/feature coverage catalog, not as permission to perform every legacy example. Reuse existing scoped evidence in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`; do not rebuild the app or repeat the whole matrix. Run only unresolved cases or regressions invalidated by relevant changes. Older dated notes are historical and may be superseded by later evidence.
-4. Before acting, verify actual branch, HEAD, remote state, worktree, preview deployment identity, and workflow status. No browser session, credential, local proxy, or secret transfers to the next agent.
+1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`, and `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`.
+2. Verify the actual checkout is `migration/unified-hono`, inspect HEAD/remote/worktree/CI, and treat the latest H9 section at the end of this file as the current execution authority.
+3. Do not restart H6 browser acceptance. H6/H7/H8 sections below are historical evidence; H8 is already deployed and H9 is the active checkpoint.
+4. Before implementation, select one sensitive route, add Fetch-native parity coverage, and preserve the Express characterization handler until route-specific evidence is complete. No browser session, credential, local proxy, or secret transfers to the next agent.
 
 ## Current branch and validation context
 
