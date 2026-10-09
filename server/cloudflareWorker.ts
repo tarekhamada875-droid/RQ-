@@ -3669,8 +3669,9 @@ workerApp.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Admin Extend Fair Use
-workerApp.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, async (c) => {
+// Admin Extend Fair Use. Keep the legacy frontend path as an alias until the
+// Express compatibility route is retired after sensitive-route approval.
+const handleExtendFairUse = async (c: any) => {
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
@@ -3721,7 +3722,10 @@ workerApp.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, asyn
     const { statusCode, message } = mapDomainErrorToStatus(err);
     return c.json({ success: false, error: message }, statusCode as any);
   }
-});
+};
+
+workerApp.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
+workerApp.post('/api/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
 
 // Transactions: Recharge Garage
 workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {

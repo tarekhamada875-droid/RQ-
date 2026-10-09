@@ -81,6 +81,38 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.success).toBe(true);
   });
 
+  it('2a. POST /api/garages/:id/extend-fair-use aliases the Hono admin fair-use handler', async () => {
+    mockDb.seed(`garages/${testGarageId}`, {
+      name: 'Unlimited Garage',
+      dailyCapacity: 0,
+      activePackageName: 'باقة مفتوحة',
+      durationDays: 30,
+      unlimitedFairUse: {
+        isActive: true,
+        tierType: 'monthly',
+        cycleCarsCount: 40,
+        currentAllowance: 1000,
+        maxAllowance: 5000,
+        stepAmount: 1000,
+        threshold: 100,
+        extensionsCount: 0
+      }
+    });
+
+    const response = await api.fetch(new Request(`http://localhost/api/garages/${testGarageId}/extend-fair-use`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ extraCars: 250 })
+    }), workerEnv);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, unlimitedFairUse: { maxAllowance: 5250, currentAllowance: 1250 } });
+    expect([...mockDb.records.values()].some((record) => record.actionType === 'fair_use_admin_extended')).toBe(true);
+  });
+
   it('3. POST /api/garages/delete removes only owned data in bounded batches and completes the job', async () => {
     for (let index = 0; index < 401; index += 1) {
       mockDb.seed(`garages/${testGarageId}/vehicles/vehicle-${index}`, { plateNumber: `TEST${index}` });

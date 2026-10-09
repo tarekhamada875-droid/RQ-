@@ -415,6 +415,8 @@ The next H9 slice retired the redundant Express `POST /api/garages/trial-decisio
 
 The current H9 boundary is recorded in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](docs/H9_SENSITIVE_ROUTE_DISPOSITION.md). Remaining Express garage routes perform account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. Further removal requires route-specific parity evidence and an explicit operational/owner disposition; no such sensitive operation is performed automatically in this slice.
 
+Under owner-approved Option A, the first sensitive-route step is fair-use path alignment: Hono now accepts both the canonical admin path and the existing frontend `/api/garages/:id/extend-fair-use` path. This is a compatibility fix plus Fetch-native evidence only; the Express entitlement route remains mounted until authorization, entitlement-boundary, audit, retry/idempotency, and owner-approval evidence is complete.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.

@@ -21,6 +21,10 @@ The low-risk Express compatibility surfaces have been retired only after Hono re
 | `POST /api/garages/rebuild-projections` | `POST /api/garages/rebuild-projections` | Maintenance / projection mutation | Rebuilds daily projections from authoritative event data. | Event-ledger replay parity, idempotency/retry behavior, and isolated operational rehearsal. |
 | `POST /api/garages/:id/extend-fair-use` | `POST /api/admin/garages/:id/extend-fair-use` | Entitlement / financial-adjacent | Extends a garage entitlement and changes service availability. | Authorization, entitlement boundary, audit, retry/idempotency, and owner approval before Express retirement. |
 
+### Option A first step: path alignment
+
+The Hono handler now serves both `/api/admin/garages/:id/extend-fair-use` and the existing frontend path `/api/garages/:id/extend-fair-use`. This resolves the route-path mismatch without deleting the Express fallback or changing production deployment. Fetch-native coverage verifies the legacy path, admin authorization, unlimited-package eligibility, fair-use allowance update, and audit-log creation. Express retirement remains pending the sensitive-route evidence listed above.
+
 ## Completed safe retirements
 
 - Cloud Run-specific entrypoint/build support
