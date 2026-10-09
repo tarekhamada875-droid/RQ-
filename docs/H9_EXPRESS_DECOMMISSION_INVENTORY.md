@@ -85,7 +85,6 @@ The existing route inventory identifies these Express capabilities as requiring 
 - `POST /api/garages/reconciliation`
 - `POST /api/garages/dashboard-summary/rebuild`
 - `POST /api/garages/rebuild-projections`
-- `POST /api/garages/:id/extend-fair-use`
 - `POST /api/auth/invalidate-all-sessions`
 
 These are not ordinary frontend routes. H9 must either preserve them behind a supported Hono maintenance route or explicitly retire them with owner-approved operational documentation and tests.
@@ -95,6 +94,8 @@ Retired in the current H9 slice: the Express `GET /api/delegates/dashboard` hand
 Retired in this slice: the Express `GET /api/garages/:id/dashboard-summary` handler. It was read-only but returned operational and revenue metrics, so removal was gated on Hono coverage for live projection data, fresh stored-summary fallback, stale-summary rejection, and cross-garage denial. The Hono route remains the active frontend path; garage mutations and admin projection/reconciliation maintenance routes remain mounted.
 
 Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, vehicle, subscriber, delegate-settlement, and maintenance mutations remain mounted.
+
+Also retired in this slice: both duplicate Express fair-use handlers (`POST /api/garages/:id/extend-fair-use` and `POST /api/admin/garages/:id/extend-fair-use`). Hono now owns both paths. Retirement was gated on Hono boundary coverage plus dual-runtime idempotency replay and key-reuse tests; the frontend continues using the legacy path as a Hono alias.
 
 The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
 

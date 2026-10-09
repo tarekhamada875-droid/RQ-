@@ -36,10 +36,6 @@ import {
   storeIdempotencyInTransaction,
   createRequestFingerprint
 } from './idempotency';
-import {
-  initializeFairUse,
-  manualAdminExtendFairUse
-} from './unlimitedFairUse';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { canManageStaffForGarage } from './domain/authorization';
@@ -259,80 +255,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
     } catch (e: any) {
       console.error('[Server Admin] Error in update-system-config:', e);
       return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  // Secure Server API: Admin Extend Garage Fair-Use Allowance
-  app.post('/api/admin/garages/:id/extend-fair-use', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-
-      const garageId = validateId(req.params.id, 'garageId');
-      const extraCars = Math.max(0, Number(req.body?.extraCars || 0));
-      const idempotencyKey = validateIdempotencyKey(req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']);
-      const requestFingerprint = createRequestFingerprint({ garageId, extraCars });
-
-      let resultFairUse: any = null;
-      let resultData: any = null;
-      await adminDb.runTransaction(async (t: any) => {
-        if (idempotencyKey) {
-          const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/admin/garages/:id/extend-fair-use', req.user?.uid, requestFingerprint);
-          if (duplicate.isDuplicate) {
-            resultData = duplicate.cachedResult;
-            return;
-          }
-        }
-
-        const garageRef = adminDb.doc(`garages/${garageId}`);
-        const garageSnap = await t.get(garageRef);
-        if (!garageSnap.exists) {
-          throw new Error('GARAGE_NOT_FOUND');
-        }
-
-        const garageData = garageSnap.data() || {};
-        const isUnlimited = Number(garageData.dailyCapacity || 0) === 0 || String(garageData.activePackageName || '').includes('مفتوح');
-        if (!isUnlimited) {
-          throw new Error('NOT_AN_UNLIMITED_PACKAGE');
-        }
-
-        let fairUse = garageData.unlimitedFairUse;
-        if (!fairUse || !fairUse.isActive) {
-          fairUse = initializeFairUse(garageData.durationDays || 30, garageData.activePackageName || '');
-        }
-
-        resultFairUse = manualAdminExtendFairUse(fairUse, extraCars);
-        t.set(garageRef, { unlimitedFairUse: resultFairUse }, { merge: true });
-
-        // Activity log
-        const logRef = adminDb.collection('activity_logs').doc();
-        t.set(logRef, {
-          garageId,
-          garageName: garageData.name || '',
-          staffId: req.user?.uid || 'admin',
-          staffName: 'مدير النظام (Admin)',
-          actionType: 'fair_use_admin_extended',
-          plateNumber: `تمديد استثنائي للاستخدام العادل (+${extraCars > 0 ? extraCars : fairUse.stepAmount} سيارة)`,
-          timestamp: new Date(),
-          details: {
-            currentAllowance: resultFairUse.currentAllowance,
-            maxAllowance: resultFairUse.maxAllowance,
-            cycleCarsCount: resultFairUse.cycleCarsCount
-          }
-        });
-
-        resultData = { success: true, unlimitedFairUse: resultFairUse };
-        if (idempotencyKey) {
-          storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/admin/garages/:id/extend-fair-use', req.user?.uid, requestFingerprint);
-        }
-      });
-
-      return res.json(resultData || { success: true, unlimitedFairUse: resultFairUse });
-    } catch (err: any) {
-      console.error('[Server Admin] Error in extend-fair-use:', err);
-      const { statusCode, message } = mapDomainErrorToStatus(err);
-      return res.status(statusCode).json({ success: false, error: message });
     }
   });
 

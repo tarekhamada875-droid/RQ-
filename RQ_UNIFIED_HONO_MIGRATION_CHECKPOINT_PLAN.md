@@ -419,6 +419,8 @@ Under owner-approved Option A, the first sensitive-route step is fair-use path a
 
 Fair-use boundary coverage now includes non-admin denial, finite-package rejection, missing-garage handling, and default-step extension (**3 files / 16 focused tests**). Hono and Express now support optional transactional idempotency with replay and key-reuse rejection, and the frontend sends generated keys. Dual-runtime integration coverage passes (**4 files / 21 focused tests**). The Express fallback remains mounted pending the final sensitive-route retirement decision.
 
+The fair-use retirement is now complete: both duplicate Express handlers were removed after dual-runtime idempotency and boundary evidence passed. Hono owns both the canonical admin path and the frontend legacy alias. Remaining Express-sensitive surfaces are garage creation/update/deletion, vehicle-count and projection maintenance, reconciliation, and other financial/operational routes.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.
