@@ -1,9 +1,11 @@
 # RQ Unified Hono Migration — Current Succession Handoff
 
 **Updated:** 2026-10-09
-**Active task:** Checkpoint H8 — controlled replacement decision preparation
+**Active task:** Checkpoint H9 — Express decommissioning, sensitive-route boundary
 **Authorized branch:** `migration/unified-hono` only
-**Production:** `main` and the deployed Cloudflare Pages/Worker remain untouched.
+**Production:** H8 is deployed; do not modify `main` or deploy production without a new explicit approval.
+
+> **Current-state override:** The latest dated section at the end of this file is authoritative. Earlier H6/H7/H8 sections are retained as historical evidence and must not be treated as current next steps.
 
 ## Start here
 
@@ -112,3 +114,74 @@ Per the exact owner marker `tokens ending`, feature work and browser testing sto
 - **Safe next commands:** inspect Production Gate run `37914550562`; if it passes, perform only credential-free health/version and exact Pages/Worker pairing checks; reconcile the final matrix without reopening financial or ambiguous listener cases; keep H7 on HOLD until every required H6 exit is resolved or the owner explicitly accepts residual risk. Do not retry the ambiguous listener/vehicle event, do not submit exit invoicing, do not perform financial writes, do not modify Supervisor policy, do not merge to `main`, and do not deploy production.
 
 This succession section is the stopping point for the current agent. Never include credentials, tokens, passwords, session identifiers, or private payloads in follow-up handoffs.
+
+
+## 2026-10-09 current H9 succession handoff — authoritative
+
+### Mission
+
+Continue Checkpoint H9, the controlled decommissioning of the transitional Express runtime. Work only on `migration/unified-hono`. The next agent must not modify `main`, deploy production, delete the Firestore decision branch, perform financial writes, or remove a sensitive Express route without route-specific evidence and the required owner/operational approval.
+
+### Verified repository state
+
+- `origin/main`: `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`, the H8 production merge (`Merge pull request #22`).
+- `origin/migration/unified-hono`: `e379864721c17f14f39f9c26cae9b9518f9fd48e`, `refactor: retire express fair use routes`.
+- `origin/readiness/firestore-decision-gate`: `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`, an older documentation-only Firestore decision branch. It is not the active migration branch and must not be used for H9 implementation.
+- `origin/HEAD` points to `origin/main`.
+- Production release/tag: `rq-unified-hono-h8-2026-10-09`; production is already on the unified Hono architecture.
+- The migration branch is ahead of `main` by 14 commits containing post-H8 H9 work. Do not infer that those commits are deployed to production.
+
+Before implementation, independently run `git status --short --branch`, `git fetch origin --no-tags`, verify the three remote branch tips, inspect current workflow status, and confirm the worktree is clean or record any intentional handoff change.
+
+### Completed H9 retirements
+
+The following compatibility surfaces have already been retired on `migration/unified-hono` after replacement coverage:
+
+- Cloud Run-specific entrypoint/build support.
+- Express `GET /api/delegates/dashboard`.
+- Express `GET /api/garages/:id/dashboard-summary`.
+- Express `POST /api/garages/trial-decision`.
+- Both duplicate Express fair-use handlers:
+  - `POST /api/garages/:id/extend-fair-use`
+  - `POST /api/admin/garages/:id/extend-fair-use`
+
+Fair-use retirement included transactional idempotency coverage: keyed replay returns the same result and key reuse with a different payload is rejected. Preserve this behavior.
+
+### Current safety boundary
+
+Express remains intentionally available for the explicit local fallback (`npm run dev:express`), remaining route groups, characterization tests, and transitional Node/container compatibility. Do not remove the Express dependency, `server/app.ts`, or the fallback runtime wholesale yet.
+
+The remaining sensitive routes are documented in `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md` and `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`:
+
+- `POST /api/garages/create`
+- `POST /api/garages/update`
+- `POST /api/garages/delete`
+- `POST /api/garages/recalculate-cars-inside`
+- `POST /api/garages/reconciliation`
+- `POST /api/garages/dashboard-summary/rebuild`
+- `POST /api/garages/rebuild-projections`
+
+These routes create accounts, mutate account/financial-adjacent state, delete data, extend or rebuild entitlements/projections, or perform maintenance/reconciliation. They are not safe for automatic deletion merely because the frontend currently calls the Hono path.
+
+### Recommended next implementation slice
+
+Choose one route and state the choice before editing. The safest next candidate is the read-only diagnostic parity for `POST /api/garages/reconciliation`; if a mutation is chosen instead, prefer `POST /api/garages/recalculate-cars-inside` before garage deletion or broad garage update.
+
+For the chosen route:
+
+1. Read both Express and Hono handlers and the shared domain/service code.
+2. Add Fetch-native Hono contract tests without real credentials or production data.
+3. Compare status codes, error envelopes/codes, role and garage scope authorization, Firestore reads/writes, audit/trace behavior, retry/idempotency behavior, and malformed-input handling.
+4. Use synthetic fixtures only; keep writes serialized and never blindly retry an ambiguous mutation.
+5. Run focused tests, then `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and the relevant preview/read-only smoke where applicable.
+6. Keep the Express characterization handler until parity evidence is complete and documented.
+7. If parity is proven, update both H9 documents and retire only that corresponding Express handler in a separate, reviewable commit. Otherwise document the blocker and retain the handler.
+8. Push only to `migration/unified-hono`; do not merge to `main` or deploy production.
+
+### Branch cleanup guidance
+
+Do not delete `readiness/firestore-decision-gate` as part of H9 implementation. It is a stale, separate documentation branch. If the owner later requests cleanup, first preserve or merge its two documentation files as appropriate, verify no open PR or dependent work uses it, and obtain the separate branch-deletion instruction. That cleanup is independent of Express retirement.
+
+### Required final report
+
+Report the exact route selected, files changed, focused test counts, full-gate results, workflow URLs/status, current HEAD, whether Express was retired, and any residual risk. Do not claim production behavior changed unless a separately approved production deployment actually occurred.
