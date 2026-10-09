@@ -510,7 +510,7 @@ export const adminService = {
     try {
       const res = await apiFetch(`/api/garages/${garageId}/extend-fair-use`, {
         method: 'POST',
-        body: { extraCars: extraCars || 0 }
+        body: { extraCars: extraCars || 0, idempotencyKey: generateIdempotencyKey('fair_use_extension') }
       });
       return res;
     } catch (error: any) {

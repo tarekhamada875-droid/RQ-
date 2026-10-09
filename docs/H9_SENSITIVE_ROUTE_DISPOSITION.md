@@ -25,7 +25,7 @@ The low-risk Express compatibility surfaces have been retired only after Hono re
 
 The Hono handler now serves both `/api/admin/garages/:id/extend-fair-use` and the existing frontend path `/api/garages/:id/extend-fair-use`. This resolves the route-path mismatch without deleting the Express fallback or changing production deployment. Fetch-native coverage verifies the legacy path, admin authorization, unlimited-package eligibility, fair-use allowance update, and audit-log creation. Express retirement remains pending the sensitive-route evidence listed above.
 
-The boundary suite now also verifies non-admin denial without writes, finite-package rejection, missing-garage handling, and default-step extension (**3 files / 16 focused tests**). A shared error-map entry makes `NOT_AN_UNLIMITED_PACKAGE` a client error in both runtimes instead of an internal server error. The route currently accepts no idempotency key and repeats are not deduplicated; this remains an explicit retry-risk blocker for Express retirement and any production cutover decision.
+The boundary suite now also verifies non-admin denial without writes, finite-package rejection, missing-garage handling, and default-step extension (**3 files / 16 focused tests**). A shared error-map entry makes `NOT_AN_UNLIMITED_PACKAGE` a client error in both runtimes instead of an internal server error. Hono now accepts an optional idempotency key, stores the result transactionally, replays the same keyed request, and rejects key reuse with a different payload; the frontend now sends a generated key. The Express compatibility fallback still lacks the matching persistence behavior, so Express retirement remains blocked on dual-runtime idempotency parity.
 
 ## Completed safe retirements
 
