@@ -62,8 +62,24 @@ async function callHono(token: string, body: Record<string, unknown>) {
   }));
 }
 
+async function callHonoRecalculate(token: string, body: Record<string, unknown>) {
+  return api.fetch(new Request('http://localhost/api/garages/recalculate-cars-inside', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body)
+  }));
+}
+
 async function callExpress(role: string, body: Record<string, unknown>) {
   return fetch(`${expressUrl}/api/garages/reconciliation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
+    body: JSON.stringify(body)
+  });
+}
+
+async function callExpressRecalculate(role: string, body: Record<string, unknown>) {
+  return fetch(`${expressUrl}/api/garages/recalculate-cars-inside`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-test-role': role },
     body: JSON.stringify(body)
@@ -130,5 +146,58 @@ describe('garage reconciliation dual-runtime characterization', () => {
     expect(hono.status).toBe(403);
     expect(hono.status).toBe(expressResponse.status);
     expect(await hono.json()).toEqual(await expressResponse.json());
+  });
+});
+
+describe('garage active-vehicle recalculation dual-runtime characterization', () => {
+  it('matches Admin response and persisted count across runtimes using a synthetic fixture', async () => {
+    mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 99 });
+    mockDb.seed(`garages/${garageId}/vehicles/inside-1`, { status: 'inside' });
+    mockDb.seed(`garages/${garageId}/vehicles/inside-2`, { status: 'inside' });
+    mockDb.seed(`garages/${garageId}/vehicles/outside-1`, { status: 'outside' });
+    mockDb.seed(`garages/${garageId}/vehicles/departed-1`, { status: 'departed' });
+
+    const hono = await callHonoRecalculate('valid-admin-token', { garageId });
+    const honoBody = await hono.json();
+    const honoGarage = structuredClone(mockDb.records.get(`garages/${garageId}`));
+    expect(hono.status).toBe(200);
+    expect(honoBody).toEqual({ success: true, count: 2 });
+    expect(honoGarage.carsInside).toBe(2);
+
+    mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 99 });
+    const expressResponse = await callExpressRecalculate('admin', { garageId });
+    const expressBody = await expressResponse.json();
+    expect(expressResponse.status).toBe(hono.status);
+    expect(expressBody).toEqual(honoBody);
+    expect(mockDb.records.get(`garages/${garageId}`)).toEqual(honoGarage);
+  });
+
+  it('denies non-Admins without changing any synthetic records in either runtime', async () => {
+    mockDb.seed(`garages/${garageId}`, { name: 'Synthetic Recalculation Garage', carsInside: 7 });
+    mockDb.seed(`garages/${garageId}/vehicles/inside-1`, { status: 'inside' });
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const [hono, expressResponse] = await Promise.all([
+      callHonoRecalculate('valid-garage-token-reconciliation-test-garage', { garageId }),
+      callExpressRecalculate('garage', { garageId })
+    ]);
+
+    expect(hono.status).toBe(403);
+    expect(hono.status).toBe(expressResponse.status);
+    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
+  it('matches Admin missing and empty garageId validation without writes', async () => {
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    for (const body of [{}, { garageId: '' }]) {
+      const [hono, expressResponse] = await Promise.all([
+        callHonoRecalculate('valid-admin-token', body),
+        callExpressRecalculate('admin', body)
+      ]);
+      expect(hono.status).toBe(400);
+      expect(hono.status).toBe(expressResponse.status);
+      expect(await hono.json()).toEqual(await expressResponse.json());
+    }
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 });

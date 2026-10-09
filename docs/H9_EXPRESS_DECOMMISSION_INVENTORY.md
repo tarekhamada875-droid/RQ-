@@ -83,6 +83,7 @@ Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 The existing route inventory identifies these Express capabilities as requiring an explicit disposition before removal:
 
 - `POST /api/garages/reconciliation` — a Fetch-native Hono mirror and synthetic read-only contract coverage have been added on `migration/unified-hono`; the Express handler remains mounted pending telemetry comparison and operational owner confirmation.
+- `POST /api/garages/recalculate-cars-inside` — both Hono and Express handlers are covered by synthetic dual-runtime response/state, authorization, and missing-input tests; the Express handler remains mounted pending explicit maintenance-ownership transfer.
 - `POST /api/garages/dashboard-summary/rebuild`
 - `POST /api/garages/rebuild-projections`
 - `POST /api/auth/invalidate-all-sessions`
@@ -127,4 +128,8 @@ The first slice added Fetch-native Worker coverage for valid garage-session refr
 
 `server/cloudflareWorker.ts` now exposes the existing Admin-only `POST /api/garages/reconciliation` capability through the Fetch-native Worker. The implementation uses the existing pure `reconcileGarageState` reducer, performs only garage/vehicle/daily-stat/event reads, applies the Africa/Cairo day boundary, and preserves the Express response/error contract. `src/__tests__/cloudflareWorkerGarageRoutes.test.ts` adds synthetic coverage for response parity, day boundaries, authorization, validation, missing-garage behavior, and absence of writes. The Express characterization handler is intentionally retained; this does not retire the route or authorize production deployment.
 
-Focused route/domain/authorization and dual-runtime validation passed **5 files / 64 tests**. Full local validation passed **103 files / 607 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, maintainability, and whitespace checks before this documentation-only update. Telemetry equivalence and operational owner confirmation remain unresolved gates before any Express retirement.
+Focused route/domain/authorization and dual-runtime validation passed **5 files / 67 tests**. Full local validation passed **103 files / 610 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, maintainability, and whitespace checks before this documentation-only update. Telemetry equivalence and operational owner confirmation remain unresolved gates before any Express retirement.
+
+### Cars-inside recalculation characterization — 2026-10-09
+
+Added direct synthetic dual-runtime characterization for `POST /api/garages/recalculate-cars-inside` in `server/garageReconciliationParity.integration.test.ts`. It compares Admin status/body and resulting `carsInside`, verifies equivalent non-Admin denial without writes, and compares missing/empty ID handling. All cases use the in-memory Firestore mock; no preview or live data was mutated. The existing Hono handler is unchanged, and the Express fallback remains mounted until maintenance ownership is explicitly transferred.
