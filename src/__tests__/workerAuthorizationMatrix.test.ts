@@ -227,4 +227,42 @@ describe('Worker role and garage-scope authorization matrix', () => {
     const crossGarage = await call('/api/garages/garage-b/dashboard-summary', tokens.garage);
     expect(crossGarage.status).toBe(403);
   });
+
+  it('serves a fresh stored dashboard summary when live buckets are absent', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed('garages/garage-a/dashboard_summary/current', {
+      dateId: today,
+      rebuiltAt: new Date().toISOString(),
+      activeVehicleCount: 4,
+      entriesToday: 2,
+      exitsToday: 1,
+      grossRevenue: 80,
+      refundTotal: 0,
+      netRevenue: 80
+    });
+
+    const response = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-summary-source')).toBe('stored_rebuild');
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: { garageId: 'garage-a', summary: { entriesToday: 2, grossRevenue: 80 } }
+    });
+  });
+
+  it('rejects a stale stored dashboard summary instead of serving outdated metrics', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed('garages/garage-a/dashboard_summary/current', {
+      dateId: today,
+      rebuiltAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+      grossRevenue: 999999,
+      netRevenue: 999999
+    });
+
+    const response = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ success: false, error: 'DASHBOARD_SUMMARY_STALE' });
+  });
 });
