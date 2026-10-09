@@ -6,8 +6,7 @@ import { sanitizePayload, validateId, validateString, validateNumber, validateId
 import { manualAdminExtendFairUse, initializeFairUse } from '../unlimitedFairUse';
 import { mapDomainErrorToStatus } from './helpers';
 import { calculateDailyProjection } from '../projections';
-import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
-import { recordSummaryRead, SummaryReadSource } from '../summaryTelemetry';
+import { aggregateProjectionBuckets, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { decideGarageDeletion } from '../domain/garageDeletion';
 import { reconcileGarageState } from '../domain/garageReconciliation';
 import { canRunGarageMaintenance, canSubmitGarageApplication, canUpdateTrialDecision } from '../domain/authorization';
@@ -441,65 +440,6 @@ router.post('/dashboard-summary/rebuild', requireAuth, async (req: AuthRequest, 
     console.error('[Server Garage] Error rebuilding dashboard summary:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);
     return res.status(statusCode).json({ success: false, error: message });
-  }
-});
-
-// Read-only dashboard summary. The summary is served only to the owning garage/staff or admin.
-router.get('/:id/dashboard-summary', requireAuth, async (req: AuthRequest, res: any) => {
-  const startedAt = Date.now();
-  let telemetrySource: SummaryReadSource = 'error';
-  let telemetrySuccess = false;
-  try {
-    if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-    const garageId = validateId(req.params.id, 'garageId', true);
-    const callerRole = req.user?.role;
-    const isAdmin = callerRole === 'admin';
-    const isGarageScoped = (callerRole === 'garage' || callerRole === 'staff') && req.user?.garageId === garageId;
-    if (!isAdmin && !isGarageScoped) return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage summary scope required' });
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const [bucketSnap, garageSnap, summarySnap] = await Promise.all([
-      adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', today).get(),
-      adminDb.doc(`garages/${garageId}`).get(),
-      adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get()
-    ]);
-    if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-    if (bucketSnap.empty) {
-      if (!summarySnap.exists) {
-        telemetrySource = 'not_ready';
-        return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' });
-      }
-      const storedSummary = summarySnap.data() || {};
-      if (!isFreshDashboardSummary(storedSummary, today)) {
-        telemetrySource = 'not_ready';
-        return res.status(404).json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' });
-      }
-      telemetrySource = 'stored_rebuild';
-      telemetrySuccess = true;
-      res.setHeader('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
-      res.setHeader('X-Summary-Source', telemetrySource);
-      return res.json({ success: true, data: { garageId, summary: storedSummary } });
-    }
-    const liveSummary = aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {}));
-    const summary = {
-      ...liveSummary,
-      activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
-      garageId,
-      dateId: today,
-      rebuiltAt: new Date().toISOString(),
-      source: 'live_projection_buckets'
-    };
-    telemetrySource = 'live_projection_buckets';
-    telemetrySuccess = true;
-    res.setHeader('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
-    res.setHeader('X-Summary-Source', telemetrySource);
-    res.setHeader('X-Summary-Bucket-Count', String(bucketSnap.size));
-    return res.json({ success: true, data: { garageId, summary, bucketCount: bucketSnap.size } });
-  } catch (e: any) {
-    console.error('[Server Garage] Error reading dashboard summary:', e);
-    const { statusCode, message } = mapDomainErrorToStatus(e);
-    return res.status(statusCode).json({ success: false, error: message });
-  } finally {
-    recordSummaryRead(telemetrySource, Date.now() - startedAt, telemetrySuccess);
   }
 });
 
