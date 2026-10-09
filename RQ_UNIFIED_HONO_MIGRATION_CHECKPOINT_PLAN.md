@@ -413,6 +413,8 @@ The following H9 slice strengthened Hono garage dashboard-summary coverage for l
 
 The next H9 slice retired the redundant Express `POST /api/garages/trial-decision` mutation after Fetch-native coverage verified owner continuation, admin clearing, activity-log creation, invalid-decision rejection, and staff denial (**4 files / 52 focused tests**). This is a non-financial garage state transition; financial, settlement, vehicle/subscriber, and maintenance mutations remain on their existing routes.
 
+The current H9 boundary is recorded in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](docs/H9_SENSITIVE_ROUTE_DISPOSITION.md). Remaining Express garage routes perform account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. Further removal requires route-specific parity evidence and an explicit operational/owner disposition; no such sensitive operation is performed automatically in this slice.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.

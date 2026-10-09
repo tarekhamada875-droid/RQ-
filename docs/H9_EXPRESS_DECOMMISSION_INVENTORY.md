@@ -96,6 +96,8 @@ Retired in this slice: the Express `GET /api/garages/:id/dashboard-summary` hand
 
 Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, vehicle, subscriber, delegate-settlement, and maintenance mutations remain mounted.
 
+The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
+
 ## Safe H9 sequence
 
 1. **Inventory complete:** retain this document and the existing H1 route inventory as the source of truth.
