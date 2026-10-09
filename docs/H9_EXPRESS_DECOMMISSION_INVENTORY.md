@@ -61,7 +61,6 @@ The initial search found **31 files** importing Express directly:
 - `server/garageMaintenanceAuthorization.integration.test.ts`
 - `server/manualCreditRoutes.integration.test.ts`
 - `server/subscriberRoutes.integration.test.ts`
-- `server/trialDecisionRoutes.integration.test.ts`
 - `server/vehicleGarageScopeAuthorization.integration.test.ts`
 - `server/h5DualRuntime.contract.test.ts` (uses the Express app as the comparison runtime)
 
@@ -95,6 +94,8 @@ Retired in the current H9 slice: the Express `GET /api/delegates/dashboard` hand
 
 Retired in this slice: the Express `GET /api/garages/:id/dashboard-summary` handler. It was read-only but returned operational and revenue metrics, so removal was gated on Hono coverage for live projection data, fresh stored-summary fallback, stale-summary rejection, and cross-garage denial. The Hono route remains the active frontend path; garage mutations and admin projection/reconciliation maintenance routes remain mounted.
 
+Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, vehicle, subscriber, delegate-settlement, and maintenance mutations remain mounted.
+
 ## Safe H9 sequence
 
 1. **Inventory complete:** retain this document and the existing H1 route inventory as the source of truth.
@@ -113,8 +114,8 @@ The first implementation slice should be **test and runtime decoupling, not Expr
 - Keep the Express comparison suite as a characterization guard during this slice.
 - Do not change production configuration, Firestore rules, financial behavior, or role policy.
 
-The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback. The third slice retires `server/cloudRun.ts` and `build:cloudrun`; Dockerfile and Express local/container compatibility remain until their consumers are separately retired. The fourth slice retires the redundant Express delegate dashboard handler after focused Hono replacement coverage passed (**3 files / 22 tests**); financial, settlement, and maintenance routes remain untouched. The fifth slice strengthens Hono garage-summary coverage for stored/live/stale data and scope denial. The sixth slice retires the Express garage dashboard-summary handler after the expanded Hono authorization matrix passed (**3 files / 36 tests**); financial writes and projection/reconciliation maintenance routes remain untouched.
+The first slice added Fetch-native Worker coverage for valid garage-session refresh and expiry in `src/__tests__/workerSessionRoutes.test.ts`, while retaining the five Express session characterization tests. The focused pair passes **2 files / 11 tests**. The Hono implementation intentionally treats the security session as authoritative during refresh and returns the Hono `error` envelope for expiry; the older Express suite remains the record of the transitional runtime's legacy behavior and is not relabeled as identical. The second slice makes `npm run dev` Hono-first and preserves `npm run dev:express` as the explicit fallback. The third slice retires `server/cloudRun.ts` and `build:cloudrun`; Dockerfile and Express local/container compatibility remain until their consumers are separately retired. The fourth slice retires the redundant Express delegate dashboard handler after focused Hono replacement coverage passed (**3 files / 22 tests**); financial, settlement, and maintenance routes remain untouched. The fifth slice strengthens Hono garage-summary coverage for stored/live/stale data and scope denial. The sixth slice retires the Express garage dashboard-summary handler after the expanded Hono authorization matrix passed (**3 files / 36 tests**); financial writes and projection/reconciliation maintenance routes remain untouched. The seventh slice retires the Express trial-decision handler after Fetch-native state-transition and authorization coverage passed (**4 files / 52 tests**); remaining financial and maintenance mutation surfaces are unchanged.
 
 ## H9 status
 
-**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, and the Express garage dashboard-summary handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, and the Express trial-decision handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.

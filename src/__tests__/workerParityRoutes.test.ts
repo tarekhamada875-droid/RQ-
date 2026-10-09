@@ -85,6 +85,39 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
+  describe('0.1. Trial decision replacement', () => {
+    it('records an owner decision, logs it, and allows admin clearing', async () => {
+      const owner = await call('/api/garages/trial-decision', tokens.garage, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'continued' })
+      });
+      expect(owner.status).toBe(200);
+      expect(mockDb.records.get('garages/garage-a')).toMatchObject({ trialDecision: 'continued' });
+      const ownerLogs = [...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.actionType === 'update_trial_decision');
+      expect(ownerLogs).toHaveLength(1);
+      expect(ownerLogs[0][1]).toMatchObject({ garageId: 'garage-a', details: { trialDecision: 'continued' } });
+
+      const admin = await call('/api/garages/trial-decision', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: null })
+      });
+      expect(admin.status).toBe(200);
+      expect(mockDb.records.get('garages/garage-a')).toMatchObject({ trialDecision: null });
+    });
+
+    it('rejects invalid decisions and staff callers without writing', async () => {
+      const invalid = await call('/api/garages/trial-decision', tokens.garage, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'pending' })
+      });
+      expect(invalid.status).toBe(400);
+
+      const staff = await call('/api/garages/trial-decision', tokens.staff, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'declined' })
+      });
+      expect(staff.status).toBe(403);
+      expect(mockDb.records.get('garages/garage-a')).not.toHaveProperty('trialDecision');
+      expect([...mockDb.records.keys()].some((path) => path.startsWith('activity_logs/'))).toBe(false);
+    });
+  });
+
   describe('1. Staff Management', () => {
     it('allows admin and garage owner to create, update, and delete staff', async () => {
       // Create staff for garage-a

@@ -9,7 +9,7 @@ import { calculateDailyProjection } from '../projections';
 import { aggregateProjectionBuckets, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { decideGarageDeletion } from '../domain/garageDeletion';
 import { reconcileGarageState } from '../domain/garageReconciliation';
-import { canRunGarageMaintenance, canSubmitGarageApplication, canUpdateTrialDecision } from '../domain/authorization';
+import { canRunGarageMaintenance, canSubmitGarageApplication } from '../domain/authorization';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from '../adapters/garageDeletionCleanupAdapter';
 
@@ -297,52 +297,6 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
 });
 
 // Secure Server API: Update Garage Trial Decision
-router.post('/trial-decision', requireAuth, async (req: AuthRequest, res: any) => {
-  try {
-    const { garageId, trialDecision } = req.body || {};
-    if (!garageId || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-    const validatedGarageId = validateId(garageId, 'garageId', true);
-
-    if (trialDecision !== null && !['continued', 'declined', 'dismissed', 'resolved'].includes(trialDecision)) {
-      return res.status(400).json({ success: false, error: 'INVALID_TRIAL_DECISION' });
-    }
-    if (!canUpdateTrialDecision(req.user, validatedGarageId, trialDecision)) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Trial decision is outside your authority' });
-    }
-
-    const garageRef = adminDb.collection('garages').doc(validatedGarageId);
-    const garageSnap = await garageRef.get();
-    if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-
-    const updates: Record<string, any> = {
-      trialDecision: trialDecision,
-      trialDecisionAt: trialDecision ? new Date() : null,
-      updatedAt: new Date()
-    };
-
-    await garageRef.update(updates);
-
-    const logRef = adminDb.collection('activity_logs').doc();
-    await logRef.set({
-      garageId: validatedGarageId,
-      garageName: garageSnap.data()?.name || '',
-      staffId: req.user?.uid || null,
-      staffName: req.user?.displayName || 'مستخدم',
-      actionType: 'update_trial_decision',
-      plateNumber: trialDecision ? `قرار التجربة: ${trialDecision}` : 'مسح قرار التجربة',
-      timestamp: new Date(),
-      amount: 0,
-      details: { trialDecision }
-    });
-
-    return res.json({ success: true });
-  } catch (e: any) {
-    console.error('[Server Garage] Error in trial decision:', e);
-    const { statusCode, message } = mapDomainErrorToStatus(e);
-    return res.status(statusCode).json({ success: false, error: message });
-  }
-});
-
 // Secure Server API: Recalculate Cars Inside
 router.post('/recalculate-cars-inside', requireAuth, async (req: AuthRequest, res: any) => {
   try {

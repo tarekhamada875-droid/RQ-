@@ -411,6 +411,8 @@ The next H9 slice retired only the redundant read-only Express `GET /api/delegat
 
 The following H9 slice strengthened Hono garage dashboard-summary coverage for live projection data, fresh stored-summary fallback, stale-summary rejection, and cross-garage denial, then retired only the redundant Express read-only handler. The Hono route remains the active frontend path; no financial writes or projection/reconciliation maintenance behavior was removed.
 
+The next H9 slice retired the redundant Express `POST /api/garages/trial-decision` mutation after Fetch-native coverage verified owner continuation, admin clearing, activity-log creation, invalid-decision rejection, and staff denial (**4 files / 52 focused tests**). This is a non-financial garage state transition; financial, settlement, vehicle/subscriber, and maintenance mutations remain on their existing routes.
+
 ## Tasks
 
 - Confirm no production or required test imports Express.
