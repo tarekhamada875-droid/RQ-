@@ -3253,6 +3253,58 @@ workerApp.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, asyn
   }
 });
 
+workerApp.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!canRunGarageMaintenance(user, 'rebuild-projections')) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+
+    const body = await c.req.json().catch(() => ({} as Record<string, any>));
+    const { garageId, date } = body;
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+
+    const targetDate = date || new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    if (!isValidDateKey(targetDate)) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
+
+    const dayStart = new Date(`${targetDate}T00:00:00+03:00`);
+    const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`)
+      .where('occurredAt', '>=', dayStart.toISOString())
+      .where('occurredAt', '<', nextDayStart.toISOString())
+      .orderBy('occurredAt', 'asc')
+      .get();
+
+    const lastEvent = eventsSnap.docs.at(-1);
+    const lastEventData = lastEvent?.data() || {};
+    const eventWatermark = {
+      lastProcessedOccurredAt: lastEventData.occurredAt || null,
+      lastProcessedEventId: lastEventData.eventId || lastEvent?.id || null,
+      projectionVersion: 1
+    };
+    const projection = calculateDailyProjection(
+      eventsSnap.docs.map((doc: any) => doc.data() || {}),
+      targetDate
+    );
+    const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
+    const projectionData = {
+      ...projection,
+      rebuiltAt: new Date().toISOString(),
+      eventWatermark,
+      rebuiltBy: user?.uid || 'admin'
+    };
+
+    await projectionRef.set(projectionData, { merge: true });
+    return c.json({ success: true, data: { garageId, date: targetDate, projection: projectionData } });
+  } catch (err: any) {
+    console.error('[Worker Garage] Error in rebuild-projections:', err);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
 workerApp.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
   const startedAt = Date.now();
   try {
