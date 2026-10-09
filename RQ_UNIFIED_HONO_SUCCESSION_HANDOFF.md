@@ -215,3 +215,11 @@ Until the separate production approval exists, the next agent must:
 - stop after migration-branch validation if H9 or the production approval gate is not explicitly closed.
 
 A green test suite, a clean branch, or a successful preview does **not** by itself authorize a merge to `main` or a production deployment.
+
+## 2026-10-09 H9 projection-rebuild continuation — preview data-isolation hold
+
+The Admin-only Hono `POST /api/garages/rebuild-projections` mirror and synthetic dual-runtime replay/retry tests are on `migration/unified-hono` at `dd7993d916ed38507dd1a0d7146dae18e06c1934`; the Express route remains mounted. Local validation passed **103 files / 616 tests**, lint, builds, CI/release checks, maintainability, and whitespace checks. Exact-head Production Gate [37948901820](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37948901820) and H5 Preview Worker [37948901788](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37948901788) passed.
+
+**Do not run an authenticated preview projection rebuild or read/write preview Firestore.** On 2026-10-09, `wrangler.preview.toml` and production `wrangler.toml` were inspected and both `FIREBASE_PROJECT_ID` and `FIREBASE_DATABASE_ID` were found to be identical. H5 deploys a separate Worker, but it is not a data-isolated Firebase target. Its successful workflow only deploys the Worker and checks health/version plus unauthenticated protection; it does not call the projection rebuild route. No preview Firestore read or mutation was made during this review.
+
+Before any operational rehearsal, the owner must establish and verify a genuinely isolated synthetic data/auth boundary for preview (separate project or otherwise explicitly reviewed isolated database and matching least-privilege credentials). Then use a specifically named synthetic garage/date, snapshot the exact destination `daily_stats` document before one request, compare the result with the synthetic event ledger, and rehearse rollback by restoring the exact prior document (or deleting only a newly created confirmed synthetic projection). Do not blindly retry an ambiguous request. Keep Express mounted, `main` and production untouched, and stop if preview still resolves to the production project/database.

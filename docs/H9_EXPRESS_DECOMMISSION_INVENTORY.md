@@ -84,7 +84,7 @@ The existing route inventory identifies these Express capabilities as requiring 
 
 - `POST /api/garages/reconciliation` — a Fetch-native Hono mirror and synthetic read-only contract coverage have been added on `migration/unified-hono`; the Express handler remains mounted pending telemetry comparison and operational owner confirmation.
 - `POST /api/garages/dashboard-summary/rebuild` — a Fetch-native Hono mirror and synthetic Express/Hono characterization are now present on `migration/unified-hono`; the Express route remains mounted pending an isolated operational rehearsal and separate retirement review.
-- `POST /api/garages/rebuild-projections` — a Fetch-native Hono mirror and synthetic Express/Hono replay/retry characterization are present on `migration/unified-hono`; the Express route remains mounted pending isolated operational rehearsal and separate retirement review.
+- `POST /api/garages/rebuild-projections` — a Fetch-native Hono mirror and synthetic Express/Hono replay/retry characterization are present on `migration/unified-hono`; Express remains mounted. **Preview rehearsal is on HOLD:** preview and production Wrangler configs currently specify the same Firebase project/database identifiers, so do not perform authenticated preview Firestore operations until an isolated synthetic data/auth target and rollback process are verified.
 - `POST /api/auth/invalidate-all-sessions`
 
 These are not ordinary frontend routes. H9 must either preserve them behind a supported Hono maintenance route or explicitly retire them with owner-approved operational documentation and tests.
@@ -102,6 +102,8 @@ Also retired in this H9 continuation: the Express `POST /api/garages/recalculate
 Added the Fetch-native Hono mirror for `POST /api/garages/dashboard-summary/rebuild` with dual-runtime synthetic tests for projection aggregation, event consistency and day boundaries, persisted summary shape, authorization, and errors. Focused characterization passes **10 tests**; the full local suite passes **103 files / 613 tests**, with lint, builds, `npm run ci:check`, maintainability, and whitespace checks. The Express route remains available as fallback/characterization; no preview or live rebuild was executed.
 
 Added the Fetch-native Hono mirror for `POST /api/garages/rebuild-projections` with synthetic Express/Hono tests for event replay, Cairo-day boundaries, event watermark, merge preservation, authorization, invalid input, and repeat-request stability. Focused validation passed **3 files / 34 tests**; the full suite passed **103 files / 616 tests**, with lint, builds, `npm run ci:check`, maintainability, and whitespace checks green. Express remains mounted as fallback/characterization; no real or preview rebuild was run.
+
+The 2026-10-09 operational review found that the preview Worker uses the same Firebase project and Firestore database identifiers as production. The passing H5 run deployed the Worker and tested health/version plus unauthenticated protection only; it performed no authenticated route call or Firestore operation. Preview data rehearsal and Express retirement remain blocked pending a genuinely isolated synthetic Firebase target and exact rollback evidence.
 
 The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
 
