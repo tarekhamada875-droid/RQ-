@@ -5,7 +5,7 @@ import { decideGarageDeletion } from './domain/garageDeletion';
 describe('garage deletion policy characterization', () => {
   it('converts legacy garage and deletion-job records into explicit state', () => {
     expect(garageDocumentToDeletionState({ name: 'Garage One', isDeleting: true })).toEqual({ exists: true, name: 'Garage One' });
-    expect(deletionJobDocumentToState({ status: 'running', updatedAt: new Date() })).toEqual({ exists: true, status: 'running' });
+    expect(deletionJobDocumentToState({ status: 'running', garageName: 'Garage One', updatedAt: new Date() })).toEqual({ exists: true, status: 'running', garageName: 'Garage One' });
     expect(deletionJobDocumentToState(null)).toEqual({ exists: false });
   });
 
@@ -31,8 +31,8 @@ describe('garage deletion policy characterization', () => {
     expect(decideGarageDeletion(
       { callerRole: 'admin', garageId: 'garage_1' },
       garageDocumentToDeletionState(null),
-      deletionJobDocumentToState({ status: 'running' }),
-    )).toEqual({ ok: false, error: 'GARAGE_NOT_FOUND' });
+      deletionJobDocumentToState({ status: 'running', garageName: 'Garage One' }),
+    )).toEqual({ ok: true, value: { kind: 'delete', garageId: 'garage_1', garageName: 'Garage One', resume: true } });
   });
 
   it('marks a running deletion job as resumable', () => {

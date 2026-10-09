@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -38,7 +38,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
   it('1. POST /api/vehicles/check-in validates inputs and checks in a vehicle', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    const unauthRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ garageId: testGarageId, plateNumber: 'أ ب ج 1234' })
@@ -46,7 +46,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(unauthRes.status).toBe(401);
 
     // Missing plate (using admin token because operator is restricted)
-    const missingPlateRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    const missingPlateRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(missingPlateRes.status).toBe(400);
 
     // Valid check-in
-    const validCheckInRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    const validCheckInRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(body.data.carsInside).toBe(1);
 
     // Replay idempotency
-    const replayRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    const replayRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
   it('2. POST /api/vehicles/check-out processes vehicle exit and calculates cost', async () => {
     // Check in vehicle first
-    await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +114,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }), workerEnv);
 
     // Check out
-    const checkOutRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/check-out', {
+    const checkOutRes = await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
   it('3. POST /api/vehicles/delete with refund handles accounting rollback and event ledger', async () => {
     // Check in and check out vehicle
-    await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       })
     }), workerEnv);
 
-    await workerApp.fetch(new Request('http://localhost/api/vehicles/check-out', {
+    await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }), workerEnv);
 
     // Delete with refund
-    const deleteRes = await workerApp.fetch(new Request('http://localhost/api/vehicles/delete', {
+    const deleteRes = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
 
   it('4. GET /api/vehicles/inside and GET /api/vehicles/history return live operational state', async () => {
     // Check in vehicle
-    await workerApp.fetch(new Request('http://localhost/api/vehicles/check-in', {
+    await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -196,7 +196,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }), workerEnv);
 
     // Query inside vehicles
-    const insideRes = await workerApp.fetch(new Request(`http://localhost/api/vehicles/inside?garageId=${testGarageId}`, {
+    const insideRes = await api.fetch(new Request(`http://localhost/api/vehicles/inside?garageId=${testGarageId}`, {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -207,7 +207,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(insideBody.vehicles.some((v: any) => v.id === 'لمن4321')).toBe(true);
 
     // Query activity history
-    const historyRes = await workerApp.fetch(new Request(`http://localhost/api/vehicles/history?garageId=${testGarageId}`, {
+    const historyRes = await api.fetch(new Request(`http://localhost/api/vehicles/history?garageId=${testGarageId}`, {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 

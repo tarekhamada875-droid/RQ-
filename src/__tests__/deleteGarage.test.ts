@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { firestoreService } from '../services';
 
 vi.mock('../firebase', () => ({
@@ -13,7 +13,11 @@ describe('v167 - Garage Deletion', () => {
     vi.clearAllMocks();
   });
 
-  it('1. should delete garage and report progress properly', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('uses a 30-second request timeout and reports progress properly', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
       if (String(url).includes('/api/garages/delete')) {
         return {
@@ -24,8 +28,9 @@ describe('v167 - Garage Deletion', () => {
       }
       return { ok: false, status: 404, json: async () => ({}) } as Response;
     });
-
+    const timeoutSpy = vi.spyOn(global, 'setTimeout');
     const progressLog: any[] = [];
+
     await firestoreService.deleteGarage('test_garage', (progress) => {
       progressLog.push(progress);
     });
@@ -34,6 +39,7 @@ describe('v167 - Garage Deletion', () => {
       method: 'POST',
       body: JSON.stringify({ garageId: 'test_garage' })
     }));
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
 
     expect(progressLog.length).toBeGreaterThan(0);
     expect(progressLog[progressLog.length - 1].percentage).toBe(100);

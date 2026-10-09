@@ -5,6 +5,8 @@ import {
   canClaimAdminSession,
   canSubmitGarageApplication,
   canInvalidateAllSessions,
+  canManageStaffForGarage,
+  canManageDelegates,
   canManageGarageScopedData,
   canRunGarageMaintenance,
   canViewFinancialReport,
@@ -29,6 +31,38 @@ describe('garage-scoped authorization policy', () => {
     expect(canManageGarageScopedData({ role: 'garage' }, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(undefined, 'garage_target')).toBe(false);
     expect(canManageGarageScopedData(null, 'garage_target')).toBe(false);
+  });
+});
+
+describe('global delegate mutation authorization policy', () => {
+  it('allows only Admin and denies Supervisor and other roles', () => {
+    expect(canManageDelegates({ role: 'admin' })).toBe(true);
+    expect(canManageDelegates({ role: 'supervisor' })).toBe(false);
+    expect(canManageDelegates({ role: 'delegate' })).toBe(false);
+    expect(canManageDelegates(undefined)).toBe(false);
+  });
+});
+
+describe('staff-management garage-scope policy', () => {
+  it('keeps admins global and resolves a garage owner from entityId when needed', () => {
+    expect(canManageStaffForGarage({ role: 'admin' }, 'garage_target')).toBe(true);
+    expect(canManageStaffForGarage({ role: 'garage', entityId: 'garage_target' }, 'garage_target')).toBe(true);
+  });
+
+  it.each([
+    ['garage owner', { role: 'garage', garageId: 'garage_target' }],
+    ['staff member', { role: 'staff', garageId: 'garage_target' }],
+    ['delegate with explicit scope', { role: 'delegate', garageId: 'garage_target' }]
+  ])('allows %s only for the matching target garage', (_label, principal) => {
+    expect(canManageStaffForGarage(principal, 'garage_target')).toBe(true);
+    expect(canManageStaffForGarage(principal, 'garage_other')).toBe(false);
+  });
+
+  it('denies missing scope, empty targets, and unsupported principals', () => {
+    expect(canManageStaffForGarage({ role: 'garage' }, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage({ role: 'supervisor' }, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage(undefined, 'garage_target')).toBe(false);
+    expect(canManageStaffForGarage({ role: 'garage', garageId: 'garage_target' }, '')).toBe(false);
   });
 });
 
@@ -61,12 +95,11 @@ describe('admin-session authorization policy', () => {
     })).toBe(false);
   });
 
-  it('allows self-release or release by an active admin/supervisor only', () => {
-    const base = { targetUid: 'target_uid', isActiveAdmin: false, isActiveSupervisor: false };
+  it('allows self-release or release by an active admin only', () => {
+    const base = { targetUid: 'target_uid', isActiveAdmin: false };
     expect(canReleaseSession({ ...base, actorUid: 'target_uid' })).toBe(true);
     expect(canReleaseSession({ ...base, actorUid: 'other_uid' })).toBe(false);
     expect(canReleaseSession({ ...base, actorUid: 'other_uid', isActiveAdmin: true })).toBe(true);
-    expect(canReleaseSession({ ...base, actorUid: 'other_uid', isActiveSupervisor: true })).toBe(true);
   });
 });
 

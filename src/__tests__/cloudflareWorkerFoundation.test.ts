@@ -12,11 +12,11 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
   it('1. Verifies correlation ID and operation ID injection in all responses', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/health', {
+    const res = await api.fetch(new Request('http://localhost/api/health', {
       headers: {
         'x-correlation-id': 'custom_corr_12345',
         'x-operation-id': 'custom_op_67890'
@@ -32,7 +32,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
   });
 
   it('2. Automatically generates correlation ID when missing from request', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/version'));
+    const res = await api.fetch(new Request('http://localhost/api/version'));
     expect(res.status).toBe(200);
     const corrId = res.headers.get('x-correlation-id');
     const opId = res.headers.get('x-operation-id');
@@ -44,7 +44,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
   });
 
   it('3. Serves GET /api/system-config with default fallback or database record', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/system-config'));
+    const res = await api.fetch(new Request('http://localhost/api/system-config'));
     expect(res.status).toBe(200);
     expect(res.headers.get('x-correlation-id')).toBeDefined();
 
@@ -56,7 +56,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
 
   it('4. Enforces authentication on POST /api/admin/update-system-config', async () => {
     // Missing credentials
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
+    const unauthRes = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletNumber: '01000000000' })
@@ -72,7 +72,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     const operatorToken = 'test-operator-token-32-chars-long!!';
     
     // 1. Should reject operator token on mutations
-    const opRes = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
+    const opRes = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(opBody.success).toBe(false);
 
     // 2. Should allow valid admin token
-    const adminRes = await workerApp.fetch(new Request('http://localhost/api/admin/update-system-config', {
+    const adminRes = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
 
   it('6. Verifies CORS policy rejects or handles disallowed origins gracefully', async () => {
     // Allowed origin
-    const allowedRes = await workerApp.fetch(new Request('http://localhost/api/health', {
+    const allowedRes = await api.fetch(new Request('http://localhost/api/health', {
       method: 'OPTIONS',
       headers: {
         'Origin': 'https://rq-acg.pages.dev',
@@ -113,7 +113,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(allowedRes.headers.get('access-control-allow-origin')).toBe('https://rq-acg.pages.dev');
 
     // Disallowed external origin
-    const disallowedRes = await workerApp.fetch(new Request('http://localhost/api/health', {
+    const disallowedRes = await api.fetch(new Request('http://localhost/api/health', {
       method: 'OPTIONS',
       headers: {
         'Origin': 'https://malicious-website.com',

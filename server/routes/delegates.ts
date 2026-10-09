@@ -5,6 +5,7 @@ import { recordDomainEventInTransaction } from '../events';
 import { checkIdempotencyInTransaction, storeIdempotencyInTransaction, createRequestFingerprint } from '../idempotency';
 import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
 import { validateString, validateNewPin, validateIdempotencyKey, ValidationError } from '../validation';
+import { canManageDelegates } from '../domain/authorization';
 
 const router = Router();
 
@@ -121,8 +122,8 @@ router.post('/create', requireAuth, async (req: AuthRequest, res: any) => {
 // Secure Server API: Update Delegate
 router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (!['admin', 'supervisor'].includes(req.user?.role || '')) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' });
+    if (!canManageDelegates(req.user)) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
     const { id, name, phone, commissionRate, commissions, defaultTrialDays } = req.body || {};
     if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
@@ -232,8 +233,8 @@ router.post('/settle-account', requireAuth, async (req: AuthRequest, res: any) =
 // Secure Server API: Delete Delegate
 router.post('/delete', requireAuth, async (req: AuthRequest, res: any) => {
   try {
-    if (!['admin', 'supervisor'].includes(req.user?.role || '')) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' });
+    if (!canManageDelegates(req.user)) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
     const { id } = req.body || {};
     if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });

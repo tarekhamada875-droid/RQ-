@@ -1,0 +1,174 @@
+name: H5 Preview Worker
+
+on:
+  push:
+    branches: [migration/unified-hono]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-h5-preview
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify preview bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Enforce owner UI/UX freeze
+        run: |
+          git fetch origin main --no-tags
+          main_ref=FETCH_HEAD
+          merge_base=$(git merge-base "$main_ref" HEAD) || {
+            echo "Unable to enforce owner UI/UX freeze: no merge base between fetched main and HEAD."
+            exit 1
+          }
+          echo "UI freeze fetched-main commit: $(git rev-parse "$main_ref")"
+          echo "UI freeze merge base: $merge_base"
+          # Owner-authorized H6 exceptions: Staff list synchronization and non-destructive Supervisor retirement; every changed UI file remains individually blob-pinned below.
+          forbidden=$(git diff --name-only "$merge_base" HEAD | grep -E '^(src/components/|src/hooks/|src/index\.css$|public/|index\.html$)' | grep -vE '^(src/components/auth/(AdminLoginView|DelegateLoginView|LoginView)\.tsx|src/components/admin/(AdminGarageDetailsView|AdminDashboard|AdminNavigationAndViews|AdminPeopleView)\.tsx|src/hooks/(useGarageApp|useAdminAndGarageManagement|useGarageSession|useGarageSync)\.ts)$' || true)
+          if [ -n "$forbidden" ]; then
+            echo "UI/UX freeze violation: these paths must not change without explicit owner approval:"
+            echo "$forbidden"
+            exit 1
+          fi
+          app_blob=$(git rev-parse "HEAD:src/App.tsx")
+          echo "UI freeze src/App.tsx blob: $app_blob"
+          if [ "$app_blob" != "66db528cfddc1bf56aae60af9f2d9a831ba9dc2c" ]; then
+            echo "UI/UX freeze violation: src/App.tsx content is not the approved security-repair version."
+            exit 1
+          fi
+          garage_app_blob=$(git rev-parse "HEAD:src/hooks/useGarageApp.ts")
+          echo "UI freeze src/hooks/useGarageApp.ts blob: $garage_app_blob"
+          if [ "$garage_app_blob" != "7cced15ef8172233feb4fe3afb7c4212c3f7271b" ]; then
+            echo "UI/UX freeze violation: src/hooks/useGarageApp.ts content is not the approved security-repair version."
+            exit 1
+          fi
+
+          staff_details_blob=$(git rev-parse "HEAD:src/components/admin/AdminGarageDetailsView.tsx")
+          echo "UI freeze src/components/admin/AdminGarageDetailsView.tsx blob: $staff_details_blob"
+          if [ "$staff_details_blob" != "87e3b30294d8fdbbb989c8be02d3b322b9d9b48f" ]; then
+            echo "UI/UX freeze violation: AdminGarageDetailsView.tsx differs from the owner-authorized H6 Staff state-sync version."
+            exit 1
+          fi
+
+          login_view_blob=$(git rev-parse "HEAD:src/components/auth/LoginView.tsx")
+          echo "UI freeze src/components/auth/LoginView.tsx blob: $login_view_blob"
+          if [ "$login_view_blob" != "754f71e349804bebd660b5a3469ff16cde41ed58" ]; then
+            echo "UI/UX freeze violation: LoginView.tsx content is not the owner-approved Delegate-entry version."
+            exit 1
+          fi
+
+          delegate_login_blob=$(git rev-parse "HEAD:src/components/auth/DelegateLoginView.tsx")
+          echo "UI freeze src/components/auth/DelegateLoginView.tsx blob: $delegate_login_blob"
+          if [ "$delegate_login_blob" != "1b0a336347607396a8d85b0406ec7012cc6bf59f" ]; then
+            echo "UI/UX freeze violation: DelegateLoginView.tsx content is not the owner-approved PIN-only version."
+            exit 1
+          fi
+
+          admin_garage_management_blob=$(git rev-parse "HEAD:src/hooks/useAdminAndGarageManagement.ts")
+          echo "UI freeze src/hooks/useAdminAndGarageManagement.ts blob: $admin_garage_management_blob"
+          if [ "$admin_garage_management_blob" != "5bd832c57dcd6b7e2c83c2fa0cce8a8f88f5d681" ]; then
+            echo "UI/UX freeze violation: useAdminAndGarageManagement.ts content is not the owner-approved role-scoped Delegate auth version."
+            exit 1
+          fi
+
+          for spec in \
+            "src/components/admin/AdminDashboard.tsx 36220f3985656ee5d49b83c1f745876de1504832" \
+            "src/components/admin/AdminNavigationAndViews.tsx 7392e480fb809a27a1a25466e0ffbf44d5eb8610" \
+            "src/components/admin/AdminPeopleView.tsx 09c5df109035bdfbf06b8bfe079819a59cfa61a9" \
+            "src/hooks/useGarageSession.ts c22bfaf412534b0aa3c2fd1f78b43b9fd24b2164" \
+            "src/hooks/useGarageSync.ts 0cbd0530798d0dc4774bff289586f38bec1ea938"
+          do
+            file=${spec%% *}
+            expected=${spec##* }
+            actual=$(git rev-parse "HEAD:$file")
+            echo "UI freeze $file blob: $actual"
+            if [ "$actual" != "$expected" ]; then
+              echo "UI/UX freeze violation: $file differs from the owner-approved Supervisor-retirement version."
+              exit 1
+            fi
+          done
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Focused H5 contract tests
+        run: npm test -- --run server/h5DualRuntime.contract.test.ts server/api.test.ts
+
+      - name: Build Cloudflare Worker
+        run: npm run build:cloudflare
+
+      - name: Verify Worker artifact
+        run: test -s dist/worker.js
+
+  deploy:
+    name: Deploy rq-hono-preview
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: cloudflare-h5-preview
+      url: https://rq-hono-preview.tarekhamada875.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build preview Worker bundle
+        run: npm run build:cloudflare
+
+      - name: Deploy isolated preview Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4.147.0 deploy --config wrangler.preview.toml --minify
+
+      - name: Smoke test public health and version
+        env:
+          PREVIEW_URL: https://rq-hono-preview.tarekhamada875.workers.dev
+        run: |
+          for attempt in 1 2 3 4 5; do
+            health=$(curl --fail --silent --show-error --max-time 20 "$PREVIEW_URL/api/health" || true)
+            version=$(curl --fail --silent --show-error --max-time 20 "$PREVIEW_URL/api/version" || true)
+            echo "$health"
+            echo "$version"
+            if echo "$health" | grep -Eiq 'ok|healthy|status' && echo "$version" | grep -Eiq 'version|h5-preview'; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Preview Worker health/version smoke test failed"
+          exit 1
+
+      - name: Smoke test unauthenticated protection
+        env:
+          PREVIEW_URL: https://rq-hono-preview.tarekhamada875.workers.dev
+        run: |
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 20 "$PREVIEW_URL/api/garages/garage-a")
+          test "$status" = "401" || test "$status" = "403" || test "$status" = "503"

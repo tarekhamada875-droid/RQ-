@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
@@ -13,7 +13,8 @@ import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSub
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from '../components/admin/garage-details/AdminGarageFinancialsSection';
-import type { Garage } from '../types';
+import { firestoreService } from '../services';
+import type { Garage, Staff } from '../types';
 
 // Mock audio soundManager
 vi.mock('../utils/sounds', () => ({
@@ -28,6 +29,9 @@ vi.mock('../services', () => ({
     updateGarage: vi.fn().mockResolvedValue(true),
     getGarageById: vi.fn().mockResolvedValue(null),
     adminTopupGarageBalance: vi.fn().mockResolvedValue(true),
+    isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
+    addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
+    removeStaff: vi.fn().mockResolvedValue(undefined),
     subscribeToGarageRechargeLogs: vi.fn(() => () => {}),
     subscribeToSubscribers: vi.fn(() => () => {}),
     onAnnouncementsChange: vi.fn(() => () => {}),
@@ -179,6 +183,7 @@ describe('Modularized Admin Components Integrity', () => {
         setShowDeleteConfirm={setShowDelete}
         updateGarageRate={vi.fn()}
         staffList={[]}
+        setStaffList={vi.fn()}
         isLoading={false}
         setIsLoading={vi.fn()}
       />
@@ -192,6 +197,49 @@ describe('Modularized Admin Components Integrity', () => {
     fireEvent.click(backBtn);
     expect(setView).toHaveBeenCalledWith('admin_dashboard');
     expect(setSelected).toHaveBeenCalledWith(null);
+  });
+
+  it('updates the visible Staff list immediately after successful create and delete', async () => {
+    vi.mocked(firestoreService.isPinTaken).mockResolvedValueOnce({ taken: false });
+    vi.mocked(firestoreService.addStaff).mockResolvedValueOnce({ id: 'staff_test_refresh' });
+    vi.mocked(firestoreService.removeStaff).mockResolvedValueOnce(undefined);
+
+    const TestHarness = () => {
+      const [staffList, setStaffList] = React.useState<Staff[]>([]);
+      const [isLoading, setIsLoading] = React.useState(false);
+      return (
+        <AdminGarageDetailsView
+          selectedGarageForDetails={mockGarage}
+          setView={vi.fn()}
+          setSelectedGarageForDetails={vi.fn()}
+          setShowDeleteConfirm={vi.fn()}
+          updateGarageRate={vi.fn()}
+          staffList={staffList}
+          setStaffList={setStaffList}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+        />
+      );
+    };
+
+    renderWithTheme(<TestHarness />);
+    fireEvent.click(screen.getByText('الإعدادات والتعريفة وطاقم العمل'));
+    fireEvent.click(screen.getByText('إضافة موظف'));
+    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد'), { target: { value: 'H Staff Probe' } });
+    fireEvent.click(screen.getByText('تأكيد الإضافة'));
+
+    expect(await screen.findByText('H Staff Probe')).toBeDefined();
+    expect(firestoreService.addStaff).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'H Staff Probe',
+      garageId: mockGarage.id,
+      role: 'staff',
+      pin: expect.stringMatching(/^\d{8}$/),
+    }));
+
+    fireEvent.click(screen.getByTitle('حذف الموظف'));
+    fireEvent.click(screen.getByText('تأكيد الحذف'));
+    await waitFor(() => expect(firestoreService.removeStaff).toHaveBeenCalledWith('staff_test_refresh'));
+    await waitFor(() => expect(screen.queryByText('H Staff Probe')).toBeNull());
   });
 });
 

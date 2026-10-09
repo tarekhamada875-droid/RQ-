@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:hono": "RQ_API_RUNTIME=hono tsx server.ts",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build:cloudrun": "esbuild server/cloudRun.ts --bundle --platform=node --format=cjs --packages=bundle --outfile=dist/cloud-run.cjs",
@@ -14,11 +15,13 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist build",
     "test": "vitest run",
+    "test:e2e:preview": "playwright test --config=playwright.preview.config.ts",
     "lint": "tsc --noEmit",
     "ci:check": "tsx tools/ci-check.ts",
     "benchmark": "tsx tools/performance-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
-    "maintainability:check": "tsx tools/maintainability-check.ts"
+    "maintainability:check": "tsx tools/maintainability-check.ts",
+    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-supervisor.test.mjs\""
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -36,6 +39,8 @@
     "@csstools/postcss-cascade-layers": "^6.0.0",
     "@csstools/postcss-color-mix-function": "^4.0.11",
     "@csstools/postcss-oklab-function": "^5.0.11",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/vite": "^4.1.14",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",

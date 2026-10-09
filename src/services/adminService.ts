@@ -3,7 +3,6 @@ import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { collection, query, where, onSnapshot, doc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 import type { 
-  Supervisor, 
   Staff, 
   Package, 
   Coupon, 
@@ -32,75 +31,6 @@ export interface FinancialReportFilters {
 }
 
 export const adminService = {
-  // Supervisors
-  addSupervisor: async (data: Omit<Supervisor, 'id'>) => {
-    try {
-      const res = await apiFetch('/api/supervisors/create', {
-        method: 'POST',
-        body: data
-      });
-      return { id: res.id };
-    } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل', { cause: error });
-      }
-      throw error;
-    }
-  },
-
-  removeSupervisor: async (id: string) => {
-    try {
-      await apiFetch('/api/supervisors/delete', {
-        method: 'POST',
-        body: { id }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `supervisors/${id}`);
-      throw error;
-    }
-  },
-
-  subscribeToSupervisors: (callback: (supervisors: Supervisor[]) => void) => {
-    const trackerUnsub = listenerTracker.register('supervisors');
-    const q = query(collection(db, 'supervisors'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supervisor));
-      callback(list);
-    }, (err) => {
-      console.warn('[adminService] subscribeToSupervisors listener error:', err);
-      callback([]);
-    });
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
-  },
-
-  updateSupervisor: async (id: string, data: Partial<Supervisor>) => {
-    try {
-      if (data.pin) {
-        await apiFetch('/api/people/update-pin', {
-          method: 'POST',
-          body: { entityType: 'supervisors', entityId: id, newPin: data.pin }
-        });
-      }
-      const { pin: _pin, ...otherFields } = data;
-      if (Object.keys(otherFields).length > 0) {
-        await apiFetch('/api/supervisors/update', {
-          method: 'POST',
-          body: { id, ...otherFields }
-        });
-      }
-    } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
-        throw new Error('الرمز مستخدم بالفعل', { cause: error });
-      }
-      handleFirestoreError(error, OperationType.UPDATE, `supervisors/${id}`);
-      throw error;
-    }
-  },
-
   // Staff
   addStaff: async (data: Omit<Staff, 'id'>) => {
     try {

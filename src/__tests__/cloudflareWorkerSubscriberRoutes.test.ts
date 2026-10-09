@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -32,7 +32,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
   it('1. POST /api/subscribers/add validates, prevents duplicates, and creates subscriber', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const unauthRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ garageId: testGarageId, subscriberData: {} })
@@ -40,7 +40,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(unauthRes.status).toBe(401);
 
     // Missing garage ID (using admin token because operator is restricted)
-    const missingGarageRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const missingGarageRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const testIdempKey = `idemp_sub_add_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     // Valid add
-    const addRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(body.id).toBeDefined();
 
     // Duplicate plate should return 409
-    const duplicateRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const duplicateRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
   it('2. POST /api/subscribers/renew extends subscription date range', async () => {
     // Add subscriber first
-    const addRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const subscriberId = addBody.id;
 
     // Renew
-    const renewRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/renew', {
+    const renewRes = await api.fetch(new Request('http://localhost/api/subscribers/renew', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -152,7 +152,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
   it('3. POST /api/subscribers/update updates subscriber metadata', async () => {
     // Add subscriber
-    const addRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const subscriberId = addBody.id;
 
     // Update
-    const updateRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/update', {
+    const updateRes = await api.fetch(new Request('http://localhost/api/subscribers/update', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
   it('4. POST /api/subscribers/delete removes subscriber record', async () => {
     // Add subscriber
-    const addRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/add', {
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +223,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const subscriberId = addBody.id;
 
     // Delete
-    const deleteRes = await workerApp.fetch(new Request('http://localhost/api/subscribers/delete', {
+    const deleteRes = await api.fetch(new Request('http://localhost/api/subscribers/delete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

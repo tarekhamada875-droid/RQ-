@@ -14,13 +14,15 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
+import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { calculateFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary } from './dashboardSummary';
 import { decideGarageDeletion } from './domain/garageDeletion';
 import { deletionJobDocumentToState, garageDocumentToDeletionState } from './adapters/garageDeletionAdapter';
+import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
 import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
@@ -72,7 +74,6 @@ let configuredAllowedOrigins = '';
 
 const WORKER_SESSION_DEFINITIONS: Record<string, { sessions: string; entity: string }> = {
   admin: { sessions: 'admin_sessions', entity: 'admin_settings' },
-  supervisor: { sessions: 'supervisor_sessions', entity: 'supervisors' },
   delegate: { sessions: 'delegate_sessions', entity: 'delegates' },
   garage: { sessions: 'garage_sessions', entity: 'garages' },
   staff: { sessions: 'staff_sessions', entity: 'staff' }
@@ -188,7 +189,11 @@ workerApp.use('*', cors({
 }));
 
 // Helper: Worker Authentication Middleware
-async function requireWorkerAuth(c: any, next: () => Promise<void>) {
+async function requireWorkerAuth(
+  c: any,
+  next: () => Promise<void>,
+  options: { skipRoleResolution?: boolean } = {}
+) {
   // Check diagnostic / operator token first
   const operatorToken = c.req.header('x-backend-operator-token');
   const configuredToken = c.env?.BACKEND_OPERATOR_TOKEN || process.env.BACKEND_OPERATOR_TOKEN;
@@ -229,7 +234,7 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
     let garageId = (decoded as any).garageId || null;
     const entityId = (decoded as any).entityId || decodedUid;
 
-    if (adminDb && (!role || role === 'worker')) {
+    if (!options.skipRoleResolution && adminDb && (!role || role === 'worker')) {
       const adminDoc = await adminDb.doc(`admins/${decodedUid}`).get();
       if (adminDoc.exists) {
         role = 'admin';
@@ -254,7 +259,7 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
     // /api/auth/verify-pin is the authoritative bridge between that UID and the
     // actual role/entity. Resolve it before every protected business route.
     const sessionId = (c.req.header('x-session-id') || '').trim();
-    if (role === 'worker' && sessionId) {
+    if (!options.skipRoleResolution && role === 'worker' && sessionId) {
       const sessionUser = await resolveWorkerSessionUser(decodedUid, sessionId, {
         uid: decodedUid,
         role,
@@ -266,6 +271,10 @@ async function requireWorkerAuth(c: any, next: () => Promise<void>) {
       garageId = sessionUser.garageId || null;
       c.set('user', sessionUser);
       return next();
+    }
+
+    if (role === 'supervisor') {
+      return c.json({ success: false, error: 'ROLE_RETIRED' }, 403);
     }
 
     c.set('user', {
@@ -307,8 +316,13 @@ workerApp.get('/api/version', (c) => {
 // router is not bundled into Cloudflare, so keep the server-owned PIN lookup,
 // validation, and atomic session claim here.
 workerApp.post('/api/auth/verify-pin', async (c) => {
-  const authResult = await requireWorkerAuth(c, async () => undefined);
+  const routeStartedAt = Date.now();
+  const authStartedAt = Date.now();
+  // PIN login is establishing the role session, so resolving a prior role session
+  // here would add serial Firestore reads without contributing to authentication.
+  const authResult = await requireWorkerAuth(c, async () => undefined, { skipRoleResolution: true });
   if (authResult instanceof Response) return authResult;
+  const authMs = Date.now() - authStartedAt;
 
   try {
     const credentials = await c.req.json().catch(() => ({} as Record<string, any>));
@@ -321,11 +335,17 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
     if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
 
+    const expectedRole = credentials.expectedRole;
+    if (expectedRole !== undefined && expectedRole !== 'delegate') {
+      return c.json({ success: false, error: 'INVALID_ROLE_SCOPE' }, 400);
+    }
+
     const rawInput = credentials.pin || credentials.input;
     const normalizedPin = cleanPin(rawInput);
     if (!normalizedPin || !isNewPinFormat(normalizedPin)) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
     const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    const rateLimitStartedAt = Date.now();
     let pinLimit: Awaited<ReturnType<typeof checkWorkerPinRateLimit>>;
     try {
       pinLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
@@ -333,6 +353,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       console.error('[Worker Auth] PIN rate limiter unavailable:', error?.message || 'unknown');
       return c.json({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' }, 503);
     }
+    const rateLimitMs = Date.now() - rateLimitStartedAt;
     if (pinLimit.allowed === false) {
       return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinLimit.resetAt }, 429);
     }
@@ -343,16 +364,19 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       { name: 'delegates', role: 'delegate' },
       { name: 'supervisors', role: 'supervisor' }
     ];
+    const pinLookupStartedAt = Date.now();
     const [adminPinStored, ...collectionResults] = await Promise.all([
       getAdminPin(),
       ...collectionsToCheck.map((collection) => queryAccountWherePin(collection.name, normalizedPin))
     ]);
+    const pinLookupMs = Date.now() - pinLookupStartedAt;
 
+    const matchResolutionStartedAt = Date.now();
     const matches: Array<{ role: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; id: string; account?: any; isLegacyMatch?: boolean }> = [];
     const adminCheck = verifyPinMatch(normalizedPin, adminPinStored);
     if (adminCheck.matches) {
       matches.push({ role: 'admin', id: 'admin', isLegacyMatch: adminCheck.isLegacy });
-      if (adminCheck.isLegacy) await migratePinToHash('admin_settings', 'auth_pin', normalizedPin);
+      if (adminCheck.isLegacy && !expectedRole) await migratePinToHash('admin_settings', 'auth_pin', normalizedPin);
     }
 
     for (let index = 0; index < collectionsToCheck.length; index += 1) {
@@ -364,21 +388,34 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         delete account.adminPin;
         delete account.pinLookupHash;
         matches.push({ role: collection.role, id: docSnap.id, account: { id: docSnap.id, ...account }, isLegacyMatch: docSnap.isLegacyMatch });
-        if (docSnap.isLegacyMatch) await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+        if (docSnap.isLegacyMatch && !expectedRole && collection.role !== 'supervisor') {
+          await migratePinToHash(collection.name, docSnap.id, normalizedPin);
+        }
       }
     }
+    const matchResolutionMs = Date.now() - matchResolutionStartedAt;
 
     if (matches.length > 1) return c.json({ success: false, error: 'PIN_NOT_UNIQUE' });
     if (matches.length === 0) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
 
     const match = matches[0];
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    // Keep legacy Supervisor PINs reserved during retirement, but never issue a session.
+    if (match.role === 'supervisor') return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    if (expectedRole && match.role !== expectedRole) {
+      return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+    }
+    if (expectedRole === 'delegate' && match.isLegacyMatch) {
+      await migratePinToHash('delegates', match.id, normalizedPin);
+    }
+
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
     const entityColl = entityCollMap[match.role];
     const secColl = secCollMap[match.role];
     const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
     if (!adminDb || !entityColl || !secColl) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
 
+    const sessionClaimStartedAt = Date.now();
     await adminDb.runTransaction(async (transaction: any) => {
       const entityRef = adminDb.doc(`${entityColl}/${entityDocId}`);
       const securityRef = adminDb.doc(`${secColl}/${effectiveUid}`);
@@ -393,12 +430,53 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(securityRef, sessionData, { merge: true });
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
     });
+    const sessionClaimMs = Date.now() - sessionClaimStartedAt;
 
+    const rawCorrelationId = String(c.get('correlationId') || '');
+    const correlationId = /^[A-Za-z0-9._:-]{1,128}$/.test(rawCorrelationId) ? rawCorrelationId : 'invalid';
+    const limiterResetStartedAt = Date.now();
+    const limiterResetPromise = resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp)
+      .then(() => {
+        console.info('[Worker Auth] verify-pin limiter reset complete', {
+          correlationId,
+          durationMs: Date.now() - limiterResetStartedAt
+        });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : '';
+        const errorCode = /^PIN_RATE_LIMITER_[A-Z0-9_]+$/.test(message) ? message : 'UNKNOWN';
+        console.error('[Worker Auth] PIN rate limiter reset failed after successful claim:', { correlationId, errorCode });
+      });
+    let executionContext: { waitUntil?: (promise: Promise<unknown>) => void } | undefined;
     try {
-      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
-    } catch (error: any) {
-      console.error('[Worker Auth] PIN rate limiter reset failed after successful claim:', error?.message || 'unknown');
+      executionContext = c.executionCtx as unknown as { waitUntil?: (promise: Promise<unknown>) => void };
+    } catch {
+      executionContext = undefined;
     }
+    let resetDeferred = false;
+    if (typeof executionContext?.waitUntil === 'function') {
+      try {
+        executionContext.waitUntil(limiterResetPromise);
+        resetDeferred = true;
+      } catch {
+        await limiterResetPromise;
+      }
+    } else {
+      await limiterResetPromise;
+    }
+
+    console.info('[Worker Auth] verify-pin timing', {
+      correlationId,
+      outcome: 'success',
+      role: match.role,
+      authMs,
+      rateLimitMs,
+      pinLookupMs,
+      matchResolutionMs,
+      sessionClaimMs,
+      totalMs: Date.now() - routeStartedAt,
+      resetDeferred
+    });
 
     return c.json({ success: true, role: match.role, accountId: match.id, account: match.account, sessionClaimed: true });
   } catch (error: any) {
@@ -511,8 +589,9 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     if (String(uid).trim() !== effectiveUid) return c.json({ success: false, valid: false, error: 'UID_MISMATCH' }, 401);
     if (!adminDb) return c.json({ success: false, valid: false, error: 'DATABASE_UNAVAILABLE' }, 503);
 
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', supervisor: 'supervisor_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', supervisor: 'supervisors', delegate: 'delegates', garage: 'garages', staff: 'staff' };
+    if (role === 'supervisor') return c.json({ success: false, valid: false, error: 'ROLE_RETIRED' }, 403);
+    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
+    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
     const secColl = secCollMap[role];
     const entityColl = entityCollMap[role];
     if (!secColl || !entityColl) return c.json({ success: false, valid: false, error: 'INVALID_ROLE' });
@@ -557,15 +636,13 @@ workerApp.post('/api/auth/release-session', async (c) => {
     const role = typeof body.role === 'string' ? body.role.trim() : '';
     const entityId = typeof body.entityId === 'string' ? body.entityId.trim() : '';
     if (!verifiedUid || !targetUid || !sessionId || !role) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (role === 'supervisor') return c.json({ success: false, error: 'ROLE_RETIRED' }, 410);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
 
     let authorized = verifiedUid === targetUid;
     if (!authorized) {
-      const [adminSnap, supervisorSnap] = await Promise.all([
-        adminDb.doc(`admin_sessions/${verifiedUid}`).get(),
-        adminDb.doc(`supervisor_sessions/${verifiedUid}`).get()
-      ]);
-      authorized = Boolean((adminSnap.exists && adminSnap.data()?.isActive) || (supervisorSnap.exists && supervisorSnap.data()?.isActive));
+      const adminSnap = await adminDb.doc(`admin_sessions/${verifiedUid}`).get();
+      authorized = Boolean(adminSnap.exists && adminSnap.data()?.isActive);
     }
     if (!authorized) return c.json({ success: false, error: 'FORBIDDEN: Unauthorized session release' }, 403);
 
@@ -955,10 +1032,9 @@ workerApp.get('/api/admin/summary', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
-    const [garagesSnap, delegatesSnap, supervisorsSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
+    const [garagesSnap, delegatesSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
       adminDb.collection('garages').get(),
       adminDb.collection('delegates').get(),
-      adminDb.collection('supervisors').get(),
       adminDb.collection('recharge_requests').where('status', '==', 'pending').get(),
       adminDb.collection('announcements').where('isActive', '==', true).get()
     ]);
@@ -979,7 +1055,6 @@ workerApp.get('/api/admin/summary', requireWorkerAuth, async (c) => {
         totalGarages: garagesSnap.size,
         activeGarages,
         totalDelegates: delegatesSnap.size,
-        totalSupervisors: supervisorsSnap.size,
         pendingRechargeRequests: rechargeRequestsSnap.size,
         activeAnnouncements: announcementsSnap.size,
         timestamp: new Date().toISOString()
@@ -1206,6 +1281,25 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
 
     let resultData: Record<string, any> = {};
     let isSubscriberAuthoritative = false;
+    try {
+      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+      const [subSnapRaw, subSnapPlate] = await Promise.all([
+        subscriberCollection.where('plateNumberRaw', '==', plateRaw).get(),
+        subscriberCollection.where('plateNumber', '==', plateNumber).get()
+      ]);
+      for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
+        const subData = doc.data() || {};
+        const startDate = subData.startDate || '';
+        const endDate = subData.endDate || '';
+        if (startDate && endDate && today >= startDate && today <= endDate) {
+          isSubscriberAuthoritative = true;
+          break;
+        }
+      }
+    } catch (subErr) {
+      console.warn('[Worker Check-In] Subscriber lookup failed before transaction:', subErr);
+      throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
+    }
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
@@ -1227,27 +1321,6 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
 
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garageData = garageSnap.data() || {};
-
-      isSubscriberAuthoritative = false;
-      try {
-        const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
-        const [subSnapRaw, subSnapPlate] = await Promise.all([
-          t.get(subscriberCollection.where('plateNumberRaw', '==', plateRaw)),
-          t.get(subscriberCollection.where('plateNumber', '==', plateNumber))
-        ]);
-        for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
-          const subData = doc.data() || {};
-          const startDate = subData.startDate || '';
-          const endDate = subData.endDate || '';
-          if (startDate && endDate && today >= startDate && today <= endDate) {
-            isSubscriberAuthoritative = true;
-            break;
-          }
-        }
-      } catch (subErr) {
-        console.warn('[Worker Check-In] Subscriber lookup failed inside transaction:', subErr);
-        throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
-      }
 
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
@@ -2260,7 +2333,7 @@ const handleApproveRechargeRequest = async (c: any) => {
       const referrerGarageId = garageData.referredByGarageId;
       let referrerRef: any = null;
       let referrerSnap: any = null;
-      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== targetGarageId && durationDays >= 15;
+      const isEligibleForReferral = decideReferralReward({ referrerGarageId, targetGarageId, durationDays }).eligible;
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
         referrerSnap = await t.get(referrerRef);
@@ -2298,15 +2371,7 @@ const handleApproveRechargeRequest = async (c: any) => {
         effectiveRevenue += subscriberFlatFee;
       }
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-          baseDate = expDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       t.set(garageRef, {
         balanceExpiry: baseDate,
@@ -2380,15 +2445,7 @@ const handleApproveRechargeRequest = async (c: any) => {
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
-        let refBaseDate = new Date();
-        if (referrerData.balanceExpiry) {
-          const rawExp = referrerData.balanceExpiry;
-          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
-          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
-            refBaseDate = refExpDate;
-          }
-        }
-        refBaseDate.setDate(refBaseDate.getDate() + 1);
+        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
 
         t.set(referrerRef, {
           balanceExpiry: refBaseDate,
@@ -2486,7 +2543,7 @@ workerApp.post('/api/transactions/reject-recharge-request', requireWorkerAuth, h
 workerApp.get('/api/recharge-requests', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
+    if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
@@ -2982,10 +3039,11 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
     const garageRef = adminDb.doc(`garages/${garageId}`);
     const [garageSnap, deletionJobSnap] = await Promise.all([garageRef.get(), deletionJobRef.get()]);
     const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
+    const deletionJobData = deletionJobSnap.exists ? deletionJobSnap.data() || {} : {};
     const deletionDecision = decideGarageDeletion(
       { callerRole: user.role, garageId },
       garageDocumentToDeletionState(garageSnap.exists ? garageData : null),
-      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobSnap.data() || {} : null)
+      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobData : null)
     );
     if (deletionDecision.ok === false) {
       if (deletionDecision.error === 'GARAGE_NOT_FOUND') {
@@ -2997,21 +3055,56 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
       return c.json({ success: true, alreadyDeleted: true });
     }
 
-    await garageRef.set({
-      isDeleting: true,
-      deletionStartedAt: new Date(),
-      deletionStartedBy: user?.uid || null
-    }, { merge: true });
-
+    const now = new Date();
+    const jobGarageName = typeof deletionJobData.garageName === 'string' ? deletionJobData.garageName : '';
+    const garageName = typeof garageData.name === 'string'
+      ? garageData.name
+      : (jobGarageName || deletionDecision.value.garageName || garageId);
+    if (garageSnap.exists) {
+      await garageRef.set({
+        isDeleting: true,
+        deletionStartedAt: deletionJobData.startedAt || now,
+        deletionStartedBy: deletionJobData.startedBy || user?.uid || null
+      }, { merge: true });
+    }
     await deletionJobRef.set({
       garageId,
+      garageName,
       status: 'running',
-      updatedAt: new Date(),
-      startedAt: new Date(),
-      startedBy: user?.uid || null
+      updatedAt: now,
+      startedAt: deletionJobData.startedAt || now,
+      startedBy: deletionJobData.startedBy || user?.uid || null
     }, { merge: true });
 
-    return c.json({ success: true, deletionStarted: true });
+    await deleteGarageOwnedData(adminDb, garageId);
+
+    const logRef = adminDb.collection('activity_logs').doc();
+    await logRef.set({
+      garageId,
+      garageName,
+      staffId: user?.uid || null,
+      staffName: user?.displayName || 'الإدارة',
+      actionType: 'garage_delete',
+      plateNumber: `حذف جراج: ${garageName}`,
+      timestamp: new Date(),
+      amount: 0,
+      details: {
+        deletedByRole: user?.role || 'admin',
+        deletedByUid: user?.uid || null
+      }
+    });
+
+    await garageRef.delete();
+    await deletionJobRef.set({
+      garageId,
+      garageName,
+      status: 'completed',
+      updatedAt: new Date(),
+      completedAt: new Date(),
+      completedBy: user?.uid || null
+    }, { merge: true });
+
+    return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker Garage] Error deleting garage:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
@@ -3022,7 +3115,7 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, async (c) => {
 workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor', 'delegate'].includes(user?.role || '')) {
+    if (!['admin', 'delegate'].includes(user?.role || '')) {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
@@ -3034,10 +3127,7 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
     }
 
     const snap = await query.get();
-    const garages = snap.docs.map((docSnap: any) => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    }));
+    const garages = snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
 
     return c.json({ success: true, garages });
   } catch (err: any) {
@@ -3156,10 +3246,7 @@ workerApp.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { name, phone, pin, garageId, role, permissions } = body;
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin' && (!callerGarageId || callerGarageId !== garageId)) {
+    if (!canManageStaffForGarage(user, garageId)) {
       return c.json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' }, 403);
     }
 
@@ -3207,12 +3294,9 @@ workerApp.post('/api/staff/update', requireWorkerAuth, async (c) => {
     const { id, name, phone, role, permissions } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin') {
+    if (user?.role !== 'admin') {
       const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
         return c.json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' }, 403);
       }
     }
@@ -3238,12 +3322,9 @@ workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     const { id } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin') {
+    if (user?.role !== 'admin') {
       const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
         return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
       }
     }
@@ -3256,90 +3337,10 @@ workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Supervisors Management Routes
-workerApp.post('/api/supervisors/create', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { name, phone, pin, permissions } = body;
-    const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-    const normPin = validateNewPin(pin);
-
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
-    if (pinCheck.taken) {
-      return c.json({
-        success: false,
-        error: 'PIN_ALREADY_TAKEN',
-        takenBy: { name: pinCheck.name || '', role: pinCheck.role }
-      }, 400);
-    }
-
-    const supRef = adminDb.collection('supervisors').doc();
-    const supId = supRef.id;
-
-    await saveEntityPin('supervisors', supId, normPin);
-    await supRef.set({
-      name: normName.trim(),
-      phone: phone ? String(phone).trim() : '',
-      permissions: permissions || {},
-      createdAt: new Date()
-    });
-
-    return c.json({ success: true, id: supId });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in create:', e);
-    if (e instanceof ValidationError) {
-      return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
-    }
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-workerApp.post('/api/supervisors/update', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, permissions } = body;
-    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    const updates: Record<string, any> = { updatedAt: new Date() };
-    if (name) updates.name = String(name).trim();
-    if (phone !== undefined) updates.phone = String(phone).trim();
-    if (permissions) updates.permissions = permissions;
-
-    await adminDb.collection('supervisors').doc(id).update(updates);
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in update:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-workerApp.post('/api/supervisors/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id } = body;
-    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await adminDb.collection('supervisors').doc(id).delete();
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Supervisor] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
+// Retired role endpoints remain as explicit, non-mutating tombstones for old clients.
+workerApp.post('/api/supervisors/create', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
+workerApp.post('/api/supervisors/update', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
+workerApp.post('/api/supervisors/delete', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
 
 // Delegates Management Routes
 workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
@@ -3393,8 +3394,8 @@ workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
 workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    if (!canManageDelegates(user)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id, name, phone, commissionRate, commissions, defaultTrialDays } = body;
@@ -3424,8 +3425,8 @@ workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
 workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!['admin', 'supervisor'].includes(user?.role || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin or Supervisor role required' }, 403);
+    if (!canManageDelegates(user)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;
@@ -3458,7 +3459,7 @@ workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { entityType, entityId, newPin } = body;
-    if (!entityType || !entityId || !['garages', 'supervisors', 'delegates', 'staff'].includes(entityType)) {
+    if (!entityType || !entityId || !['garages', 'delegates', 'staff'].includes(entityType)) {
       return c.json({ success: false, error: 'INVALID_ENTITY_TYPE' }, 400);
     }
 
@@ -3468,10 +3469,7 @@ workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const callerRole = user?.role;
     const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
 
-    if (callerRole === 'supervisor' && entityType !== 'delegates') {
-      return c.json({ success: false, error: 'FORBIDDEN: Supervisors may manage delegate PINs only' }, 403);
-    }
-    if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+    if (callerRole !== 'admin') {
       if (entityType === 'staff') {
         const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
         if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
@@ -3777,20 +3775,18 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
         throw new Error('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION');
       }
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const currentExpDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(currentExpDate.getTime()) && currentExpDate.getTime() > baseDate.getTime()) {
-          baseDate = currentExpDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const referrerGarageId = garageData.referredByGarageId;
       let referrerRef: any = null;
       let referrerSnap: any = null;
-      const isEligibleForReferral = Boolean(referrerGarageId) && referrerGarageId !== garageId && price > 0 && durationDays >= 15;
+      const isEligibleForReferral = decideReferralReward({
+        referrerGarageId,
+        targetGarageId: garageId,
+        durationDays,
+        price,
+        requiresPositivePrice: true
+      }).eligible;
       if (isEligibleForReferral && referrerGarageId) {
         referrerRef = adminDb.doc(`garages/${referrerGarageId}`);
         referrerSnap = await t.get(referrerRef);
@@ -3850,15 +3846,7 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
 
       if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
         const referrerData = referrerSnap.data() || {};
-        let refBaseDate = new Date();
-        if (referrerData.balanceExpiry) {
-          const rawExp = referrerData.balanceExpiry;
-          const refExpDate = new Date(rawExp.toDate ? rawExp.toDate() : rawExp);
-          if (!isNaN(refExpDate.getTime()) && refExpDate.getTime() > refBaseDate.getTime()) {
-            refBaseDate = refExpDate;
-          }
-        }
-        refBaseDate.setDate(refBaseDate.getDate() + 1);
+        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
 
         t.set(referrerRef, {
           balanceExpiry: refBaseDate,
@@ -3971,15 +3959,7 @@ workerApp.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, asy
 
       const newBalance = currentBalance - effectivePrice;
 
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = new Date(currentExpiry.toDate ? currentExpiry.toDate() : currentExpiry);
-        if (!isNaN(expDate.getTime()) && expDate.getTime() > baseDate.getTime()) {
-          baseDate = expDate;
-        }
-      }
-      baseDate.setDate(baseDate.getDate() + durationDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
 
       const pkgName = validatedPackage.name;
       const isUnlimitedPkg = validatedPackage.isUnlimited;
@@ -4099,13 +4079,7 @@ workerApp.post('/api/transactions/use-referral-reward', requireWorkerAuth, async
       if (rewardDays <= 0) throw new Error('NO_REFERRAL_REWARDS_AVAILABLE');
 
       claimedDays = rewardDays;
-      let baseDate = new Date();
-      const currentExpiry = garageData.balanceExpiry;
-      if (currentExpiry) {
-        const expDate = currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry);
-        if (expDate > baseDate) baseDate = expDate;
-      }
-      baseDate.setDate(baseDate.getDate() + rewardDays);
+      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, rewardDays);
 
       t.update(garageRef, {
         balanceExpiry: baseDate,

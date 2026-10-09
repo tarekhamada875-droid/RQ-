@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
@@ -31,7 +31,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
 
   it('1. POST /api/check-subscriber handles subscriber lookup and validations', async () => {
     // Missing garage ID
-    const missingGarageRes = await workerApp.fetch(new Request('http://localhost/api/check-subscriber', {
+    const missingGarageRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plateNumber: '123-abc' })
@@ -39,7 +39,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(missingGarageRes.status).toBe(400);
 
     // Non-existent subscriber lookup returns empty match gracefully
-    const notFoundRes = await workerApp.fetch(new Request('http://localhost/api/check-subscriber', {
+    const notFoundRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -57,11 +57,11 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
 
   it('2. GET /api/garage-summary requires auth and returns garage summary', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage'));
+    const unauthRes = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage'));
     expect(unauthRes.status).toBe(401);
 
     // Authenticated with admin token
-    const res = await workerApp.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage', {
+    const res = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -74,11 +74,11 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
 
   it('3. GET /api/admin/summary returns aggregated system statistics', async () => {
     // Unauthenticated
-    const unauthRes = await workerApp.fetch(new Request('http://localhost/api/admin/summary'));
+    const unauthRes = await api.fetch(new Request('http://localhost/api/admin/summary'));
     expect(unauthRes.status).toBe(401);
 
     // Authenticated as admin
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/summary', {
+    const res = await api.fetch(new Request('http://localhost/api/admin/summary', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -92,7 +92,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
   });
 
   it('4. GET /api/admin/monthly-subscribers-summary aggregates subscriber metrics', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
+    const res = await api.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -106,7 +106,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
   });
 
   it('5. GET /api/admin/subscribers lists subscriber records', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/subscribers?limit=10', {
+    const res = await api.fetch(new Request('http://localhost/api/admin/subscribers?limit=10', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -128,7 +128,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
       commissionRate: 10
     });
 
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/delegates', {
+    const res = await api.fetch(new Request('http://localhost/api/admin/delegates', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 
@@ -147,7 +147,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
   });
 
   it('7. GET /api/admin/delegates/:id handles lookup and 404 on unknown delegate', async () => {
-    const res = await workerApp.fetch(new Request('http://localhost/api/admin/delegates/non-existent-delegate-id', {
+    const res = await api.fetch(new Request('http://localhost/api/admin/delegates/non-existent-delegate-id', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
     }), workerEnv);
 

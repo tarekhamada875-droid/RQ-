@@ -12,17 +12,17 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
   it('1. Verifies health and version endpoints under worker runtime', async () => {
-    const healthRes = await workerApp.fetch(new Request('http://localhost/api/health'));
+    const healthRes = await api.fetch(new Request('http://localhost/api/health'));
     expect(healthRes.status).toBe(200);
     const healthBody = await healthRes.json() as any;
     expect(healthBody.status).toBe('ok');
     expect(healthBody.runtime).toBe('cloudflare-worker');
 
-    const versionRes = await workerApp.fetch(new Request('http://localhost/api/version'));
+    const versionRes = await api.fetch(new Request('http://localhost/api/version'));
     expect(versionRes.status).toBe(200);
     const versionBody = await versionRes.json() as any;
     expect(versionBody.version).toBe('1.0.0');
@@ -31,7 +31,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
 
   it('2. Verifies POST /api/test-auth-verify validation and error envelopes', async () => {
     // Missing token
-    const missingRes = await workerApp.fetch(new Request('http://localhost/api/test-auth-verify', {
+    const missingRes = await api.fetch(new Request('http://localhost/api/test-auth-verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -41,7 +41,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
     expect(missingBody.error).toBe('TOKEN_REQUIRED');
 
     // Invalid token format
-    const invalidRes = await workerApp.fetch(new Request('http://localhost/api/test-auth-verify', {
+    const invalidRes = await api.fetch(new Request('http://localhost/api/test-auth-verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -55,7 +55,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
   });
 
   it('3. Verifies spike endpoints are disabled in production environment', async () => {
-    const prodRes = await workerApp.fetch(new Request('http://localhost/api/test-auth-verify', {
+    const prodRes = await api.fetch(new Request('http://localhost/api/test-auth-verify', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer some_token' }
     }), { ENVIRONMENT: 'production' });
@@ -63,12 +63,12 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
     const prodBody = await prodRes.json() as any;
     expect(prodBody.error).toBe('SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION');
 
-    const prodReadRes = await workerApp.fetch(new Request('http://localhost/api/test-firestore-read'), {
+    const prodReadRes = await api.fetch(new Request('http://localhost/api/test-firestore-read'), {
       ENVIRONMENT: 'production'
     });
     expect(prodReadRes.status).toBe(403);
 
-    const prodWriteRes = await workerApp.fetch(new Request('http://localhost/api/test-firestore-write', {
+    const prodWriteRes = await api.fetch(new Request('http://localhost/api/test-firestore-write', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ payload: 'test' })
@@ -78,7 +78,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
 
   it('4. Verifies synthetic Firestore read and write spike endpoints', async () => {
     // Write synthetic document in preproduction
-    const writeRes = await workerApp.fetch(new Request('http://localhost/api/test-firestore-write', {
+    const writeRes = await api.fetch(new Request('http://localhost/api/test-firestore-write', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ payload: 'synthetic_spike_run' })
@@ -92,7 +92,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
     expect(writeBody.path).toContain('_spike_tests/');
 
     // Read synthetic document in preproduction
-    const readRes = await workerApp.fetch(new Request('http://localhost/api/test-firestore-read'), {
+    const readRes = await api.fetch(new Request('http://localhost/api/test-firestore-read'), {
       ENVIRONMENT: 'preproduction',
       FIREBASE_DATABASE_ID: 'ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759'
     });
@@ -104,7 +104,7 @@ describe('CF2 — Cloudflare Worker Runtime Compatibility Spike', () => {
 
   it('5. Verifies concurrent synthetic requests handling', async () => {
     const requests = Array.from({ length: 15 }, (_, i) =>
-      workerApp.fetch(new Request(`http://localhost/api/health?req=${i}`))
+      api.fetch(new Request(`http://localhost/api/health?req=${i}`))
     );
     const responses = await Promise.all(requests);
     for (const res of responses) {

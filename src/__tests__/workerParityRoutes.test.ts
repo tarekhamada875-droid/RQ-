@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 const tokens = {
   admin: 'valid-admin-token',
@@ -23,7 +23,7 @@ const tokens = {
 } as const;
 
 async function call(path: string, token: string, init: RequestInit = {}) {
-  return workerApp.fetch(new Request(`http://localhost${path}`, {
+  return api.fetch(new Request(`http://localhost${path}`, {
     ...init,
     headers: {
       authorization: `Bearer ${token}`,
@@ -115,38 +115,63 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
-  describe('2. Supervisor Management', () => {
-    it('restricts supervisor management to admin', async () => {
-      const forbidden = await call('/api/supervisors/create', tokens.garage, {
-        method: 'POST',
-        body: JSON.stringify({ name: 'مشرف', pin: '55667788' })
-      });
-      expect(forbidden.status).toBe(403);
+  describe('2. Retired Supervisor role', () => {
+    it('keeps legacy records unchanged and rejects create/update/delete endpoints', async () => {
+      const legacyRecord = { id: 'legacy-supervisor', name: 'Preserved QA Record', role: 'supervisor' };
+      mockDb.seed('supervisors/legacy-supervisor', legacyRecord);
 
-      const createRes = await call('/api/supervisors/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ name: 'مشرف رئيسي', phone: '01122334455', pin: '55667788' })
+      const create = await call('/api/supervisors/create', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ name: 'No new record', pin: '55667788' })
       });
-      expect(createRes.status).toBe(200);
-      const createBody = await createRes.json();
-      const supId = createBody.id;
-      expect(supId).toBeDefined();
+      const update = await call('/api/supervisors/update', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ id: 'legacy-supervisor', name: 'Must not change' })
+      });
+      const remove = await call('/api/supervisors/delete', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ id: 'legacy-supervisor' })
+      });
+      const pinRotation = await call('/api/people/update-pin', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ entityType: 'supervisors', entityId: 'legacy-supervisor', newPin: '88997766' })
+      });
 
-      const updateRes = await call('/api/supervisors/update', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: supId, name: 'مشرف رئيسي معدل' })
-      });
-      expect(updateRes.status).toBe(200);
+      for (const response of [create, update, remove]) {
+        expect(response.status).toBe(410);
+        expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
+      }
+      expect(pinRotation.status).toBe(400);
+      expect(await pinRotation.json()).toMatchObject({ success: false, error: 'INVALID_ENTITY_TYPE' });
+      expect(mockDb.records.get('supervisors/legacy-supervisor')).toEqual(legacyRecord);
+      expect([...mockDb.records.keys()].filter((key) => key.startsWith('supervisors/'))).toEqual(['supervisors/legacy-supervisor']);
+    });
 
-      const deleteRes = await call('/api/supervisors/delete', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: supId })
-      });
-      expect(deleteRes.status).toBe(200);
+    it('does not authenticate an old Supervisor token for protected routes', async () => {
+      const response = await call('/api/garages', tokens.supervisor);
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
     });
   });
 
   describe('3. Delegate Management', () => {
+    it('denies retired Supervisor tokens before any database write', async () => {
+      mockDb.seed('delegates/supervisor-target', {
+        id: 'supervisor-target',
+        name: 'Protected Delegate',
+        totalRechargedAmount: 0
+      });
+
+      const updateRes = await call('/api/delegates/update', tokens.supervisor, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'supervisor-target', name: 'Must Not Change' })
+      });
+      const deleteRes = await call('/api/delegates/delete', tokens.supervisor, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'supervisor-target' })
+      });
+
+      expect(updateRes.status).toBe(403);
+      expect(deleteRes.status).toBe(403);
+      expect(mockDb.records.get('delegates/supervisor-target')?.name).toBe('Protected Delegate');
+    });
+
     it('allows admin to create delegate and enforces unsettled commission guard on delete', async () => {
       const createRes = await call('/api/delegates/create', tokens.admin, {
         method: 'POST',

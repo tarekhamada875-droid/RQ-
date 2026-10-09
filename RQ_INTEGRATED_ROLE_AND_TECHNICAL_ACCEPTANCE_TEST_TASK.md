@@ -20,7 +20,15 @@ Log in as one role
 
 Do not test the UI in isolation and then assume the backend is correct. Do not run backend tests and then assume a human can use the feature. Each important workflow must pass both dimensions together.
 
-This is a **test-only task**. Do not modify application code, business rules, UI/UX, Firebase configuration, billing, database identity, or production data. Use only approved synthetic pre-production accounts and records.
+## Current execution control — 2026-10-09
+
+[`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) is the controlling procedure for H6 target selection, safety boundaries, timeouts/retries, evidence, cleanup, and readiness status. This document remains the coverage catalog and feature-by-role matrix. Its detailed examples are not permission to perform financial or destructive actions; the runbook's restrictions and the owner's current directions take precedence.
+
+**Current H6 restriction:** recharge submission/approval/rejection, wallet top-up, transfer/settlement, balance changes, package/subscription purchase or renewal, self-subscription, and financial reward claims are coverage references only. Do not create the associated financial fixtures or perform those writes without the isolated sandbox and explicit authorization required by the runbook. Otherwise mark the applicable cells OPEN/BLOCKED. Delete only run-specific synthetic fixtures through supported UI after confirming their scope.
+
+**Owner-approved role retirement override:** Supervisor is no longer an active product role. Do not create, authenticate, inspect, delete, or modify any legacy Supervisor account/session record. The old Supervisor-specific procedures and matrix outcomes below are historical coverage only; current active-role disposition is **N/A — role retired**, with technical denial/preservation regressions required. This replaces the former global-versus-assigned scope decision. No live Firestore Rules deployment is authorized.
+
+This remains test-only for other application behavior. A browser-test harness may be added only as a separate, narrowly scoped test-infrastructure change covered by the runbook. The approved Supervisor retirement is the sole application-policy exception here; no UI/UX redesign, business-rule change outside that retirement, Firebase configuration, billing, database identity, production data, or production traffic changes are authorized.
 
 ## Required reading
 
@@ -29,10 +37,11 @@ Before starting:
 1. `AGENTS.md`
 2. `RQ_PROJECT_KNOWLEDGE_BASE.md`
 3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
-4. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
-5. `docs/OBSERVABILITY_RUNBOOK.md`
+4. `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`
+5. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
+6. `docs/OBSERVABILITY_RUNBOOK.md` for safe metadata collection only; use its current Cloudflare instructions.
 
-This document is self-contained and is the **primary execution task**. Do not create separate duplicate acceptance tasks for the same role workflows.
+This document is the **coverage catalog and primary feature-by-role matrix**. The controlled runbook is the execution authority. Do not create duplicate acceptance tasks for the same role workflows.
 
 If the owner says the exact phrase `tokens ending`, stop and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
@@ -50,7 +59,7 @@ Use isolated synthetic data only.
 | `QA Delegate` | delegate | assigned/referred Garage Alpha only |
 | `QA Garage Owner` | garage account | Garage Alpha only |
 | `QA Staff` | staff member | permitted Garage Alpha operations |
-| `QA Supervisor` | supervisor | documented restricted admin scope |
+| Legacy Supervisor records | retired role | preserve existing records; do not create or test an identity |
 
 ### Required synthetic records
 
@@ -60,12 +69,11 @@ Prepare:
 - active, locked, suspended, and pending garage states where safe;
 - staff assigned to Alpha;
 - delegate assigned to Alpha but not Beta;
-- supervisor with restricted scope;
+- existing legacy Supervisor records, if present, preserved and excluded from fixtures;
 - active, expired, and trial subscriber records;
 - valid, exited, duplicate, and recently exited vehicle records;
 - active, inactive, custom, duration, capacity, unlimited, and fair-use package records where supported;
-- pending, approved, rejected, and synthetic recharge requests;
-- synthetic wallet/balance and ledger records;
+- financial/recharge/wallet/ledger fixtures only if the controlled runbook's isolated-sandbox and authorization gates are met; otherwise do not prepare them and keep those cells OPEN/BLOCKED;
 - synthetic trial-lead record;
 - synthetic announcement;
 - synthetic session on a second browser/device.
@@ -81,6 +89,8 @@ Every scenario must be marked:
 - **PASS** — human result and technical checks both match expectations.
 - **FAIL** — a user-facing or technical expectation is wrong.
 - **BLOCKED** — required access, deployment, account, data, or safe test boundary is unavailable.
+- **OPEN/UNVERIFIED** — the result is ambiguous or evidence is incomplete; do not infer a pass.
+- **NOT RUN** — the scenario has not been attempted.
 - **NOT APPLICABLE** — the role is intentionally not allowed to perform the action; record the authorization reason and verify denial.
 
 For every scenario, record these fields:
@@ -133,11 +143,13 @@ Cloudflare Pages frontend → Cloudflare Worker API → Firebase Auth/Firestore
 
 Do not call a Cloudflare SPA fallback an API success.
 
+`npm run release:smoke` is environment-driven. For H6, set `SMOKE_BASE_URL` to the verified preview Worker, `SMOKE_FRONTEND_URL` to the verified Cloudflare Pages preview, and `SMOKE_EXPECTED_VERSION` to that preview's expected version. Never point this H6 smoke at production. If the exact Pages-to-Worker pairing is unavailable, mark the gate BLOCKED instead of substituting a local Vite proxy.
+
 ---
 
-# Phase 1 — Common test for every role
+# Phase 1 — Common tests for active roles
 
-Run this sequence as Admin, Delegate, Garage Owner, Staff, and Supervisor.
+Run this sequence as Admin, Delegate, Garage Owner, and Staff. Supervisor is retired: do not perform a manual login or role test; use only local denial-and-preservation regressions as specified in Phase 6.
 
 | Human action | Technical verification at the same point | Expected result |
 |---|---|---|
@@ -179,7 +191,7 @@ Explicitly cover:
 - Requests and reviews.
 - Trial leads.
 - Subscription/package pricing.
-- People: delegates and supervisors.
+- People: delegates only.
 - Fair-use.
 - Partner/dividend calculator.
 - Settings/catalog.
@@ -261,7 +273,7 @@ Explicitly cover:
 9. Confirm settlement and verify historical records remain.
 10. Revoke only a synthetic delegate if explicitly approved.
 11. Confirm that revoked delegate cannot log in or submit a recharge.
-12. Repeat the same coverage for supervisor creation, restricted scope, and supervisor denial behavior.
+12. Do not create or manage a Supervisor identity; the retired-role N/A disposition and local denial regressions are covered in Phase 6.
 
 ## 2.7 Settings, fair use, wallet, PIN, announcements, and sessions
 
@@ -426,19 +438,9 @@ Log in as `QA Staff` assigned to Alpha.
 
 ---
 
-# Phase 6 — Supervisor: human action plus technical verification
+# Phase 6 — Supervisor retired (technical denial only; no field login)
 
-Log in as `QA Supervisor`.
-
-1. Confirm the supervisor dashboard and permitted people/delegate/supervisor views.
-2. Confirm selecting an unsupported admin tab returns to the permitted area.
-3. Review a permitted synthetic delegate/people record.
-4. Verify the response is scoped and safe.
-5. Attempt garage creation, deletion, wallet top-up, PIN rotation, global settings, package catalog changes, unrestricted reports, delegate revocation, settlement, and unrelated garage access.
-6. Confirm each is hidden or denied in the UI.
-7. Confirm direct backend calls would also be denied using the approved technical harness.
-8. Verify permitted audit/history views.
-9. Refresh, log out, press Back, and test revoked/expired session behavior.
+Supervisor is not an active role. Do not provision or use a Supervisor identity. Verify local regressions reject legacy PIN authentication, session refresh/release, protected APIs, and Firestore client access without changing preserved records. Record active-role Supervisor coverage as **N/A — role retired**; historical browser results are not ongoing authorization.
 
 ---
 
@@ -455,8 +457,8 @@ Run one complete chain through the application using synthetic records:
 7. Owner views the activity/report/history.
 8. Admin views the platform-level audit/report.
 9. Delegate views only its permitted commission/request history.
-10. Supervisor views only the restricted review scope.
-11. Each role logs out.
+10. No Supervisor action occurs; role retired (**N/A**).
+11. Each active role logs out.
 12. Verify every final state, event, amount, date, role, and scope is consistent.
 
 This chain is passed only when the same synthetic event is represented consistently in the appropriate user screens, backend response, persisted record, activity/history, audit event, and report.
@@ -531,7 +533,7 @@ If a technical observation cannot be made safely from the browser, mark it `BLOC
 
 The final report must include every cell. Use `PASS`, `FAIL`, `BLOCKED`, or `N/A — reason`.
 
-| Capability | Admin | Delegate | Garage owner | Staff | Supervisor | Technical evidence |
+| Capability | Admin | Delegate | Garage owner | Staff | Supervisor (retired; N/A) | Technical evidence |
 |---|---|---|---|---|---|---|
 | Login/session |  |  |  |  |  |  |
 | Refresh/heartbeat |  |  |  |  |  |  |
@@ -543,7 +545,7 @@ The final report must include every cell. Use `PASS`, `FAIL`, `BLOCKED`, or `N/A
 | Garage deletion/maintenance |  |  |  |  |  |  |
 | Staff management |  |  |  |  |  |  |
 | Delegate management |  |  |  |  |  |  |
-| Supervisor management |  |  |  |  |  |  |
+| Supervisor management (retired) | N/A | N/A | N/A | N/A | N/A — role retired | Worker/Express tombstone and PIN-update denial tests; records preserved |
 | Recharge requests |  |  |  |  |  |  |
 | Recharge approval/rejection |  |  |  |  |  |  |
 | Manual wallet top-up |  |  |  |  |  |  |
@@ -606,4 +608,4 @@ A visible success message alone is not enough. A passing unit test alone is not 
 
 ## Exact instruction to the executing agent
 
-> Execute `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` from the RQ repository. Test the real application in a browser as platform admin, delegate, garage owner, staff member, and supervisor. For every human action, immediately verify the related backend authorization, scope, persistence, audit, idempotency, error, and security behavior using safe approved tools. Use only synthetic pre-production data. Do not modify code or business logic. Mark every scenario PASS, FAIL, BLOCKED, or NOT APPLICABLE. Do not infer a technical pass from a visible UI result. Produce `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_<YYYY-MM-DD>.md` with the complete feature-by-role matrix and one bounded next task. If access or evidence is unavailable, report BLOCKED rather than guessing.
+> Start with `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`, then use this document as the scenario catalog and matrix. Verify the exact Cloudflare Pages preview → `rq-hono-preview` Worker pairing before browser acceptance; a local proxy is diagnostic only. Use synthetic pre-production data and one role/context at a time. Do not access production or `main`, perform financial writes, or blindly retry ambiguous mutations. Mark every cell with evidence-backed status; do not infer backend success from UI alone. Update the existing H6 reports and handoff. H6/H7 cannot certify “100% bug-free”; while a required gate is open, H7 must be HOLD/NO-GO.

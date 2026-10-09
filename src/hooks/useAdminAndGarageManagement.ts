@@ -262,12 +262,11 @@ export function useAdminAndGarageManagement({
     }
   }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setLoginPhone, setAdminPin, setActiveAdminPin, setUser, setIsLoading]);
 
-  const handleDelegateLogin = useCallback(async (phone: string, pin: string) => {
+  const handleDelegateLogin = useCallback(async (pin: string) => {
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
       return;
     }
-    const cleanPhone = normalizeDigits(phone || '').replace(/\D/g, '');
     const cleanPin = normalizeDigits(pin || '').replace(/\D/g, '');
     if (!cleanPin || cleanPin.length < 4) {
       showToast('الرقم السري غير صحيح', 'error');
@@ -290,20 +289,12 @@ export function useAdminAndGarageManagement({
         }
       }
 
-      let authRes = cleanPhone ? await authService.authenticateUserCredentials({ phone: cleanPhone, pin: cleanPin, uid: currentUser.uid, sessionId }) : null;
-      if (!authRes || !authRes.success) {
-        if (
-          authRes?.error === 'SESSION_OCCUPIED' ||
-          authRes?.error === 'DELEGATE_SESSION_OCCUPIED' ||
-          authRes?.error === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          authRes?.error?.includes('مستخدم على جهاز آخر') ||
-          authRes?.error?.includes('نشط حالياً على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-          return;
-        }
-        authRes = await authService.authenticateUserCredentials({ input: cleanPin, uid: currentUser.uid, sessionId });
-      }
+      const authRes = await authService.authenticateUserCredentials({
+        input: cleanPin,
+        expectedRole: 'delegate',
+        uid: currentUser.uid,
+        sessionId
+      });
 
       if (!authRes || !authRes.success || !authRes.role || authRes.role !== 'delegate') {
         const err = authRes?.error;
@@ -315,6 +306,8 @@ export function useAdminAndGarageManagement({
           err?.includes('نشط حالياً على جهاز آخر')
         ) {
           showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+        } else if (err === 'PIN_NOT_UNIQUE') {
+          showToast('رمز الدخول غير صالح حالياً، يرجى مراجعة الإدارة', 'error');
         } else if (err && err !== 'بيانات الدخول غير صحيحة' && err !== 'INVALID_PIN' && err !== 'تعذر الاتصال بخادم التحقق') {
           showToast(err, 'error');
         } else {

@@ -42,6 +42,7 @@ import {
 } from './unlimitedFairUse';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { mapDomainErrorToStatus } from './routes/helpers';
+import { canManageStaffForGarage } from './domain/authorization';
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
@@ -159,6 +160,15 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       timestamp: new Date().toISOString(),
       adminSdk: true,
       version
+    });
+  });
+  app.get('/api/version', (_req, res) => {
+    res.json({
+      version: process.env.GIT_COMMIT_SHA || '1.0.0',
+      environment: process.env.NODE_ENV || 'production',
+      runtime: 'express',
+      status: 'operational',
+      timestamp: new Date().toISOString()
     });
   });
 
@@ -311,58 +321,15 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   });
 
   // Secure Server API: Authoritative Garage Creation
-  app.post('/api/supervisors/create', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { name, phone, pin, permissions } = req.body || {};
-      const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-      const normPin = validateNewPin(pin);
-
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-      }
-
-      const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
-      if (pinCheck.taken) {
-        return res.status(400).json({
-          success: false,
-          error: 'PIN_ALREADY_TAKEN',
-          takenBy: { name: pinCheck.name || '', role: pinCheck.role }
-        });
-      }
-
-      const supRef = adminDb.collection('supervisors').doc();
-      const supId = supRef.id;
-
-      await saveEntityPin('supervisors', supId, normPin);
-
-      await supRef.set({
-        name: normName.trim(),
-        phone: phone ? String(phone).trim() : '',
-        permissions: permissions || {},
-        createdAt: new Date()
-      });
-
-      return res.json({ success: true, id: supId });
-    } catch (e: any) {
-      console.error('[Server Supervisor] Error in create:', e);
-      if (e instanceof ValidationError) {
-        return res.status(e.statusCode).json({ success: false, error: `INVALID_PIN: ${e.message}` });
-      }
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
+  app.post('/api/supervisors/create', requireAuth, (_req: AuthRequest, res: any) =>
+    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
+  );
 
   // Secure Server API: Create Delegate (Admin Only)
   app.post('/api/staff/create', requireAuth, async (req: AuthRequest, res: any) => {
     try {
       const { name, phone, pin, garageId, role, permissions } = req.body || {};
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin' && (!callerGarageId || callerGarageId !== garageId)) {
+      if (!canManageStaffForGarage(req.user, garageId)) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' });
       }
 
@@ -406,11 +373,11 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
     }
   });
 
-  // Secure Server API: Update Entity PIN (Admin, Supervisor, or Garage Owner for own staff)
+  // Secure Server API: Update Entity PIN (Admin or Garage Owner for own garage/staff)
   app.post('/api/people/update-pin', requireAuth, async (req: AuthRequest, res: any) => {
     try {
       const { entityType, entityId, newPin } = req.body || {};
-      if (!entityType || !entityId || !['garages', 'supervisors', 'delegates', 'staff'].includes(entityType)) {
+      if (!entityType || !entityId || !['garages', 'delegates', 'staff'].includes(entityType)) {
         return res.status(400).json({ success: false, error: 'INVALID_ENTITY_TYPE' });
       }
 
@@ -424,10 +391,7 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
 
       // Verify Authorization
-      if (callerRole === 'supervisor' && entityType !== 'delegates') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Supervisors may manage delegate PINs only' });
-      }
-      if (callerRole !== 'admin' && callerRole !== 'supervisor') {
+      if (callerRole !== 'admin') {
         if (entityType === 'staff') {
           const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
           if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
@@ -474,43 +438,13 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
     }
   });
 
-  // Secure Server API: Garage Referral Reward Claim
-  app.post('/api/supervisors/update', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id, name, phone, permissions } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
+  app.post('/api/supervisors/update', requireAuth, (_req: AuthRequest, res: any) =>
+    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
+  );
 
-      const updates: Record<string, any> = { updatedAt: new Date() };
-      if (name) updates.name = String(name).trim();
-      if (phone !== undefined) updates.phone = String(phone).trim();
-      if (permissions) updates.permissions = permissions;
-
-      await adminDb.collection('supervisors').doc(id).update(updates);
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Supervisor] Error in update:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/supervisors/delete', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('supervisors').doc(id).delete();
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Supervisor] Error in delete:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
+  app.post('/api/supervisors/delete', requireAuth, (_req: AuthRequest, res: any) =>
+    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
+  );
 
   // Secure Server API: Delegate Operations (Update / Delete)
   app.post('/api/staff/update', requireAuth, async (req: AuthRequest, res: any) => {
@@ -518,12 +452,9 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const { id, name, phone, role, permissions } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin') {
+      if (req.user?.role !== 'admin') {
         const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        if (!targetStaffSnap.exists || !canManageStaffForGarage(req.user, targetStaffSnap.data()?.garageId)) {
           return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' });
         }
       }
@@ -547,12 +478,9 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const { id } = req.body || {};
       if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
 
-      const callerRole = req.user?.role;
-      const callerGarageId = req.user?.garageId || (callerRole === 'garage' ? req.user?.entityId : null);
-
-      if (callerRole !== 'admin') {
+      if (req.user?.role !== 'admin') {
         const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
+        if (!targetStaffSnap.exists || !canManageStaffForGarage(req.user, targetStaffSnap.data()?.garageId)) {
           return res.status(403).json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' });
         }
       }

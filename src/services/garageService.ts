@@ -197,7 +197,8 @@ export const garageService = {
     try {
       const json = await apiFetch('/api/garages/create', {
         method: 'POST',
-        body: data
+        body: data,
+        timeoutMs: 60_000
       });
 
       return { success: true, id: json.id };
@@ -322,7 +323,8 @@ export const garageService = {
 
       await apiFetch('/api/garages/delete', {
         method: 'POST',
-        body: { garageId: id }
+        body: { garageId: id },
+        timeoutMs: 30_000
       });
 
       onProgress?.({ total: 100, processed: 100, percentage: 100, phase: 'complete' });

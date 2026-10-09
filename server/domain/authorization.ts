@@ -1,6 +1,7 @@
 export type AuthorizationPrincipal = Readonly<{
   role?: unknown;
   garageId?: unknown;
+  entityId?: unknown;
 }>;
 
 export type VehicleGarageScopeDecision =
@@ -64,6 +65,11 @@ export function canSubmitGarageApplication(principal: AuthorizationPrincipal | n
   return principal?.role === 'admin' || principal?.role === 'delegate';
 }
 
+/** Delegate records are global administrative data and are managed by Admin only. */
+export function canManageDelegates(principal: AuthorizationPrincipal | null | undefined): boolean {
+  return principal?.role === 'admin';
+}
+
 /**
  * Decides whether a principal may manage garage-scoped records.
  * This pure policy intentionally preserves the current route contract:
@@ -76,6 +82,37 @@ export function canManageGarageScopedData(
   if (!principal) return false;
   if (principal.role === 'admin') return true;
   return (principal.role === 'garage' || principal.role === 'staff') && principal.garageId === targetGarageId;
+}
+
+/**
+ * Resolves the garage scope used by staff-management handlers.
+ *
+ * This intentionally mirrors the pre-H2 route behavior: an explicit garageId
+ * wins, while garage principals may fall back to their entityId. It is kept
+ * pure so both the Worker and Express adapters can share the decision without
+ * importing HTTP or Firestore code.
+ */
+export function resolveStaffManagementGarageId(
+  principal: AuthorizationPrincipal | null | undefined,
+): string | null {
+  if (typeof principal?.garageId === 'string' && principal.garageId) return principal.garageId;
+  if (principal?.role === 'garage' && typeof principal.entityId === 'string' && principal.entityId) {
+    return principal.entityId;
+  }
+  return null;
+}
+
+/**
+ * Decides whether a caller may manage staff assigned to a target garage.
+ * Admins are global; all other roles retain the existing same-garage check.
+ */
+export function canManageStaffForGarage(
+  principal: AuthorizationPrincipal | null | undefined,
+  targetGarageId: unknown,
+): boolean {
+  if (principal?.role === 'admin') return true;
+  if (typeof targetGarageId !== 'string' || !targetGarageId) return false;
+  return resolveStaffManagementGarageId(principal) === targetGarageId;
 }
 
 export {};
@@ -98,10 +135,9 @@ export function canReleaseSession(input: Readonly<{
   actorUid: unknown;
   targetUid: unknown;
   isActiveAdmin: boolean;
-  isActiveSupervisor: boolean;
 }>): boolean {
   if (input.actorUid === input.targetUid) return true;
-  return input.isActiveAdmin || input.isActiveSupervisor;
+  return input.isActiveAdmin;
 }
 
 export function canUpdateTrialDecision(

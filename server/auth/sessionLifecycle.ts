@@ -27,16 +27,18 @@ sessionLifecycleRouter.post('/api/auth/validate-or-refresh-session', requireFire
       return res.status(401).json({ valid: false, error: 'UID_MISMATCH' });
     }
 
+    if (role === 'supervisor') {
+      return res.json({ success: false, valid: false, code: 'ROLE_RETIRED', error: 'ROLE_RETIRED' });
+    }
+
     const secCollMap: Record<string, string> = {
       admin: 'admin_sessions',
-      supervisor: 'supervisor_sessions',
       delegate: 'delegate_sessions',
       garage: 'garage_sessions',
       staff: 'staff_sessions'
     };
     const entityCollMap: Record<string, string> = {
       admin: 'admin_settings',
-      supervisor: 'supervisors',
       delegate: 'delegates',
       garage: 'garages',
       staff: 'staff'
@@ -126,30 +128,29 @@ sessionLifecycleRouter.post('/api/auth/release-session', requireFirebaseUser, as
       return sendApiError(res, 401, 'UNAUTHORIZED', 'UNAUTHORIZED: Missing token', req.correlationId);
     }
 
-    // Check authorization: caller must release own session or be active admin/supervisor
-    let isActiveAdmin = false;
-    let isActiveSupervisor = false;
-    if (verifiedUid !== uid) {
-      const adminSnap = await adminDb.doc(`admin_sessions/${verifiedUid}`).get();
-      const supSnap = await adminDb.doc(`supervisor_sessions/${verifiedUid}`).get();
-      isActiveAdmin = Boolean(adminSnap.exists && adminSnap.data()?.isActive);
-      isActiveSupervisor = Boolean(supSnap.exists && supSnap.data()?.isActive);
+    if (role === 'supervisor') {
+      return sendApiError(res, 410, 'ROLE_RETIRED', 'ROLE_RETIRED', req.correlationId);
     }
 
-    if (!canReleaseSession({ actorUid: verifiedUid, targetUid: uid, isActiveAdmin, isActiveSupervisor })) {
+    // Check authorization: caller must release own session or be an active admin.
+    let isActiveAdmin = false;
+    if (verifiedUid !== uid) {
+      const adminSnap = await adminDb.doc(`admin_sessions/${verifiedUid}`).get();
+      isActiveAdmin = Boolean(adminSnap.exists && adminSnap.data()?.isActive);
+    }
+
+    if (!canReleaseSession({ actorUid: verifiedUid, targetUid: uid, isActiveAdmin })) {
       return sendApiError(res, 403, 'FORBIDDEN', 'FORBIDDEN: Unauthorized session release', req.correlationId);
     }
 
     const secCollMap: Record<string, string> = {
       admin: 'admin_sessions',
-      supervisor: 'supervisor_sessions',
       delegate: 'delegate_sessions',
       garage: 'garage_sessions',
       staff: 'staff_sessions'
     };
     const entityCollMap: Record<string, string> = {
       admin: 'admin_settings',
-      supervisor: 'supervisors',
       delegate: 'delegates',
       garage: 'garages',
       staff: 'staff'

@@ -12,6 +12,7 @@ interface LoginViewProps {
   loginPhone: string;
   setLoginPhone: (phone: string) => void;
   handleGarageLogin: () => Promise<void>;
+  onDelegateLogin: () => void;
   isLoading: boolean;
   closeKeyboard: () => void;
 }
@@ -20,6 +21,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
   loginPhone,
   setLoginPhone,
   handleGarageLogin,
+  onDelegateLogin,
   isLoading,
   closeKeyboard,
 }) => {
@@ -169,6 +171,15 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
               <ChevronRight className="w-5 h-5 rotate-180" />
             </div>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onDelegateLogin}
+          disabled={isLoading}
+          className="w-full min-h-11 mt-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b7] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          دخول المندوب
         </button>
       </div>
 

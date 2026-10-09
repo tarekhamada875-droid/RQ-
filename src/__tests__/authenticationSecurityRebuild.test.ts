@@ -29,7 +29,8 @@ const evaluateFirestoreRule = ({
   };
 
   const isSupervisor = () => {
-    return isSignedIn && !!db[`supervisor_sessions/${auth!.uid}`];
+    // Retired role: legacy session records grant no client access.
+    return false;
   };
 
   const isValidSessionDoc = (data: any, expectedRole: string) => {
@@ -154,22 +155,13 @@ const evaluateFirestoreRule = ({
     }
   }
 
-  // 7. Supervisor Sessions
+  // 7. Retired Supervisor sessions
   if (path.startsWith('supervisor_sessions/')) {
-    const sessionUid = path.split('/')[1];
-    if (!isSignedIn) return { allowed: false, code: 'PERMISSION_DENIED' };
-    if (operation === 'get' || operation === 'delete') {
-      return sessionUid === auth!.uid || isAdmin() ? { allowed: true } : { allowed: false, code: 'PERMISSION_DENIED' };
-    }
-    if (operation === 'create') {
-      const existsSup = !!db[`supervisors/${requestResource?.entityId}`];
-      const allowed = sessionUid === auth!.uid && isValidSessionDoc(requestResource, 'supervisor') && existsSup;
-      return allowed ? { allowed: true } : { allowed: false, code: 'PERMISSION_DENIED' };
-    }
-    if (operation === 'update') {
-      const allowed = sessionUid === auth!.uid && isSessionUpdateValid(requestResource, resource);
-      return allowed ? { allowed: true } : { allowed: false, code: 'PERMISSION_DENIED' };
-    }
+    return { allowed: false, code: 'PERMISSION_DENIED' };
+  }
+
+  if (path.startsWith('supervisors/')) {
+    return { allowed: false, code: 'PERMISSION_DENIED' };
   }
 
   return { allowed: false, code: 'PERMISSION_DENIED' };

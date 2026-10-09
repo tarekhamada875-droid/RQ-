@@ -14,5 +14,6 @@ export function deletionJobDocumentToState(document: LegacyGarageDeletionRecord 
   return {
     exists: true,
     ...(typeof document.status === 'string' ? { status: document.status } : {}),
+    ...(typeof document.garageName === 'string' ? { garageName: document.garageName } : {}),
   };
 }

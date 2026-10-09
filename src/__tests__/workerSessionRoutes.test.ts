@@ -13,7 +13,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 const authHeaders = (sessionId = 'session-a') => ({
   authorization: 'Bearer valid-admin-token',
@@ -22,7 +22,7 @@ const authHeaders = (sessionId = 'session-a') => ({
 });
 
 async function request(path: string, init: RequestInit = {}, env: Record<string, unknown> = {}) {
-  return workerApp.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...authHeaders(), ...(init.headers || {}) } }), env);
+  return api.fetch(new Request(`http://localhost${path}`, { ...init, headers: { ...authHeaders(), ...(init.headers || {}) } }), env);
 }
 
 describe('Worker session lifecycle routes', () => {
@@ -81,7 +81,7 @@ describe('Worker session lifecycle routes', () => {
   });
 
   it('rejects releasing another user session for a non-admin token', async () => {
-    const response = await workerApp.fetch(new Request('http://localhost/api/auth/release-session', {
+    const response = await api.fetch(new Request('http://localhost/api/auth/release-session', {
       method: 'POST',
       headers: { authorization: 'Bearer valid-garage-token-garage-a', 'content-type': 'application/json' },
       body: JSON.stringify({ uid: 'another-user', sessionId: 'session-a', role: 'garage', entityId: 'garage-a' })

@@ -12,7 +12,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-import { workerApp } from '../../server/cloudflareWorker';
+import { api } from '../../server/api';
 
 const tokens = {
   admin: 'valid-admin-token',
@@ -23,7 +23,7 @@ const tokens = {
 } as const;
 
 async function call(path: string, token: string, init: RequestInit = {}) {
-  return workerApp.fetch(new Request(`http://localhost${path}`, {
+  return api.fetch(new Request(`http://localhost${path}`, {
     ...init,
     headers: {
       authorization: `Bearer ${token}`,
@@ -44,8 +44,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     ['admin', tokens.admin, 200],
     ['garage owner in own garage', tokens.garage, 200],
     ['staff in assigned garage', tokens.staff, 200],
-    ['delegate without garage principal scope', tokens.delegate, 403],
-    ['supervisor without garage principal scope', tokens.supervisor, 403]
+    ['delegate without garage principal scope', tokens.delegate, 403]
   ])('applies direct garage-read scope for %s', async (_label, token, expectedStatus) => {
     const response = await call('/api/garages/garage-a', token);
     expect(response.status).toBe(expectedStatus);
@@ -54,12 +53,77 @@ describe('Worker role and garage-scope authorization matrix', () => {
   it.each([
     ['garage owner', tokens.garage],
     ['staff', tokens.staff],
-    ['delegate', tokens.delegate],
-    ['supervisor', tokens.supervisor]
+    ['delegate', tokens.delegate]
   ])('denies %s from reading another garage by URL manipulation', async (_label, token) => {
     const response = await call('/api/garages/garage-b', token);
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Garage scope required' });
+  });
+
+  it('blocks the retired Supervisor role from all protected reads', async () => {
+    mockDb.seed('supervisor_sessions/sup-uid', {
+      uid: 'sup-uid', role: 'supervisor', entityId: 'legacy-supervisor', sessionId: 'legacy-session', isActive: true
+    });
+    mockDb.seed('supervisors/legacy-supervisor', { id: 'legacy-supervisor', name: 'Preserved record' });
+
+    for (const path of ['/api/garages', '/api/garages/garage-a', '/api/recharge-requests', '/api/admin/summary']) {
+      const response = await call(path, tokens.supervisor);
+      expect(response.status, path).toBe(403);
+      expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
+    }
+    expect(mockDb.records.get('supervisors/legacy-supervisor')?.name).toBe('Preserved record');
+  });
+
+  it('does not resolve or refresh a legacy Supervisor session for an anonymous Worker token', async () => {
+    const legacySession = {
+      uid: 'worker-uid', role: 'supervisor', entityId: 'legacy-supervisor',
+      sessionId: 'legacy-supervisor-session', isActive: true, lastActive: 'preserve-this-value'
+    };
+    mockDb.seed('supervisor_sessions/worker-uid', legacySession);
+
+    const response = await call('/api/admin/summary', 'valid-worker-token', {
+      headers: { 'x-session-id': 'legacy-supervisor-session' }
+    });
+
+    expect(response.status).toBe(403);
+    expect(mockDb.records.get('supervisor_sessions/worker-uid')).toEqual(legacySession);
+  });
+
+  it('does not let a legacy Supervisor session revoke another user session', async () => {
+    const legacySession = {
+      uid: 'worker-uid', role: 'supervisor', entityId: 'legacy-supervisor',
+      sessionId: 'legacy-supervisor-session', isActive: true, lastActive: 'preserve-this-value'
+    };
+    const targetSession = { uid: 'target-uid', role: 'delegate', entityId: 'target-delegate', sessionId: 'target-session', isActive: true };
+    const targetDelegate = { activeSessionIds: ['target-session'], currentSessionId: 'target-session' };
+    mockDb.seed('supervisor_sessions/worker-uid', legacySession);
+    mockDb.seed('delegate_sessions/target-uid', targetSession);
+    mockDb.seed('delegate_sessions/target-uid/sessions/target-session', targetSession);
+    mockDb.seed('delegates/target-delegate', targetDelegate);
+
+    const response = await call('/api/auth/release-session', 'valid-worker-token', {
+      method: 'POST',
+      headers: { 'x-session-id': 'legacy-supervisor-session' },
+      body: JSON.stringify({ uid: 'target-uid', sessionId: 'target-session', role: 'delegate', entityId: 'target-delegate' })
+    });
+
+    expect(response.status).toBe(403);
+    expect(mockDb.records.get('supervisor_sessions/worker-uid')).toEqual(legacySession);
+    expect(mockDb.records.get('delegate_sessions/target-uid')).toEqual(targetSession);
+    expect(mockDb.records.get('delegate_sessions/target-uid/sessions/target-session')).toEqual(targetSession);
+    expect(mockDb.records.get('delegates/target-delegate')).toEqual(targetDelegate);
+  });
+
+  it('omits retired Supervisor counts from the Admin summary and preserves legacy records', async () => {
+    const legacyRecord = { id: 'legacy-supervisor', name: 'Preserved record', role: 'supervisor' };
+    mockDb.seed('supervisors/legacy-supervisor', legacyRecord);
+
+    const response = await call('/api/admin/summary', tokens.admin);
+    const body = await response.json() as { summary?: Record<string, unknown> };
+
+    expect(response.status).toBe(200);
+    expect(body.summary).not.toHaveProperty('totalSupervisors');
+    expect(mockDb.records.get('supervisors/legacy-supervisor')).toEqual(legacyRecord);
   });
 
   it.each([
@@ -77,14 +141,9 @@ describe('Worker role and garage-scope authorization matrix', () => {
     }
   });
 
-  it.each([tokens.delegate, tokens.garage, tokens.staff])('denies %s from reading recharge requests while allowing the restricted supervisor role', async (token) => {
+  it.each([tokens.delegate, tokens.garage, tokens.staff, tokens.supervisor])('denies %s from reading recharge requests', async (token) => {
     const response = await call('/api/recharge-requests', token);
     expect(response.status).toBe(403);
-  });
-
-  it('allows the restricted supervisor role to read recharge requests', async () => {
-    const response = await call('/api/recharge-requests', tokens.supervisor);
-    expect(response.status).toBe(200);
   });
 
   it('does not trust a client-supplied role to elevate a garage owner', async () => {

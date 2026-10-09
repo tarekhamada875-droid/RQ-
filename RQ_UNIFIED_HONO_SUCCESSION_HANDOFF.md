@@ -1,705 +1,114 @@
-# RQ Unified Hono Migration — Succession Handoff
+# RQ Unified Hono Migration — Current Succession Handoff
 
-## Read this first
+**Updated:** 2026-10-09
+**Active task:** Checkpoint H8 — controlled replacement decision preparation
+**Authorized branch:** `migration/unified-hono` only
+**Production:** `main` and the deployed Cloudflare Pages/Worker remain untouched.
 
-You are the continuation agent for the RQ garage-management application. Continue the work as a senior production engineer, not as a fresh greenfield developer.
+## Start here
 
-The user is not a technical person. Use plain English, make reasonable decisions autonomously, and do not ask the user to perform terminal or Cloudflare work unless the current environment genuinely blocks the action.
+1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, and `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
+2. Follow [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) as the execution authority. Use [`docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](docs/H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) for the concise Staff/Owner field checklist and [`docs/H6_NEXT_AGENT_PROMPT.md`](docs/H6_NEXT_AGENT_PROMPT.md) for the current bounded next steps.
+3. Use `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` as the role/feature coverage catalog, not as permission to perform every legacy example. Reuse existing scoped evidence in `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`; do not rebuild the app or repeat the whole matrix. Run only unresolved cases or regressions invalidated by relevant changes. Older dated notes are historical and may be superseded by later evidence.
+4. Before acting, verify actual branch, HEAD, remote state, worktree, preview deployment identity, and workflow status. No browser session, credential, local proxy, or secret transfers to the next agent.
 
-The user requires:
+## Current branch and validation context
 
-- English only.
-- No UI or UX redesign.
-- Preserve existing business behavior unless a defect is proven.
-- Production safety and tenant isolation are more important than architectural elegance.
-- Direct pushes to `main` have historically been requested, but the unified Hono experiment must use a separate migration branch first.
-- The phrase `tokens ending` means: stop implementation and prepare a new succession handoff with exact state and instructions.
+The latest workflow-verified code/test baseline for this handoff is `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1`. Its H5 Preview Worker [run 37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [run 37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) both passed. The latest application-source change remains `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6`, which sets the `/api/garages/delete` timeout to 30 seconds and tests it. Commit `40da805` changes only `wrangler.preview.toml` to allow the stable migration Pages origin for the isolated preview Worker; production `wrangler.toml` was unchanged. Commit `ae8ab80` adds an opt-in read-only Playwright smoke and its documentation; it does not change product behavior or role-acceptance outcomes. A later documentation-only synchronization may make branch HEAD newer; always verify the actual branch, current HEAD, workflow status, and deployment identity before acting.
 
----
+The stable migration Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`; the isolated Worker preview is `https://rq-hono-preview.tarekhamada875.workers.dev`. A bounded Admin login/dashboard/read-only navigation/logout **PASS** is recorded on the stable Pages URL after the preview-only CORS correction. This is evidence for that recorded preview session, not proof that the URL currently serves the latest candidate commit; verify the exact Pages build and Worker version before further browser testing. Earlier local Vite-proxy results remain diagnostic only. Production configuration remains unchanged.
 
-## Mission
+## Current H6 status — OWNER-ACCEPTED CLOSURE WITH RESIDUAL RISK
 
-Evaluate and, if safe, migrate RQ from the current dual-runtime backend to a unified Hono Web-Standards API while preserving the production application.
+| Area | Status and limitation |
+|---|---|
+| Staff operational access | **PARTIAL / OPEN/BLOCKED.** Read-only inspection of the documented `QA Garage Beta` fixture found exactly one synthetic Staff row, `Mobile QA Staff`, with its PIN masked. This reconciles the prior ambiguous request as a likely late backend completion after the client wait ended; no retry or deletion was performed. Staff login and operational workflows remain untested because no usable PIN was exposed. |
+| Supervisor role | **N/A — retired by owner decision.** Manual login/scope testing is prohibited; local denial-and-preservation regressions are required. Existing legacy records remain untouched. |
+| Garage Owner listener/cleanup | **OPEN/PARTIAL.** Bounded desktop reload persistence passed and source/lifecycle tests passed **2 files / 15 tests**. One live synthetic hourly check-in was submitted once, but no success response or listener count update appeared; it remains an ambiguous/open mutation with no retry. The fixture deletion reached 50% and the fixture later disappeared from a fresh Admin list, providing partial cleanup evidence only—not confirmed job completion. |
+| Financial acceptance | **OPEN/BLOCKED — intentionally untested.** No payment, recharge approval, wallet top-up, transfer/settlement, or package/subscription purchase/renewal without an authorized isolated financial sandbox. |
+| Admin browser acceptance | **PASS, bounded.** After the preview-only CORS allowlist fix, one fresh Admin login through `https://migration-unified-hono.rq-acg.pages.dev` reached the Admin dashboard, read-only navigation/counts rendered, and normal PIN-confirmed logout returned to the generic login. No Admin mutation or financial action was performed. |
+| Automation and Pages path | An opt-in Playwright read-only smoke is documented in `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; it checks the generic login shell and isolated Worker health/version endpoints. It is not authenticated role-acceptance E2E, is not in CI, and does not waive fresh candidate-pairing verification. |
 
-Target architecture:
+On 2026-10-09, the owner explicitly accepted the documented H6 residual risks and instructed the project to consider H6 complete for scope purposes and begin H7. This is an owner-approved scope decision, not a claim that the previously unresolved cells are PASS and not a guarantee of “100% bug-free.” H7 has now completed **GO**; production and `main` remain unchanged.
 
-```text
-Cloudflare Pages frontend
-        |
-        v
-One Hono API application
-        |
-        v
-Cloudflare Worker in production
-        |
-        v
-Firebase Authentication + Firestore
-```
+## Required boundaries
 
-Do not treat this as a quick cleanup. It is a staged migration with rollback protection.
+Use synthetic pre-production data only. Do not modify `main`, merge to it, deploy production, deploy live Firestore rules, perform financial writes, mutate Firestore directly, redesign the UI, or blindly retry an ambiguous mutation. Preserve credentials and tokens; never put them in source, screenshots, shell logs, or handoff text. Keep writes serialized and use supported UI/API paths for the behavior being accepted.
 
----
+## Next safe actions
 
-## Repository and access
+1. Treat the owner-accepted H6 residuals as explicitly out of scope for this H7 decision: Staff operational mutation, Owner listener/cleanup evidence, and financial workflows remain documented as OPEN/BLOCKED or OPEN/UNVERIFIED and must not be relabeled PASS.
+2. Preserve the partial Staff transport reconciliation. Do not change the timeout, replay Staff-create, delete `Mobile QA Staff`, or infer Staff operational PASS from row existence; continue only if a safe credential/test fixture is separately authorized and available.
+3. Do not perform Supervisor manual acceptance or modify preserved legacy records. Continue only safe Owner listener/mobile and other active-role cases, one role/context at a time.
+4. The opt-in Playwright harness covers only the read-only shell/health smoke; run it only after verifying the Pages/Worker candidate pairing. Continue manual H6 testing under the runbook. Do not infer role PASS from the smoke or expand it to authenticated/mutating journeys without separately approved scope, runtime secret handling, serialized writes, verified cleanup, and no blind retries.
+5. Keep financial cases blocked without a dedicated sandbox and explicit authorization. Update all matrix cells with evidence, verify cleanup, run local gates, and push only to `migration/unified-hono`.
+6. H7 is **GO** under the owner's explicit residual-risk approval. Prepare H8 only after a separate explicit production-replacement approval; do not merge `main` or deploy production yet.
 
-Repository:
+## Mandatory succession protocol — exact message “tokens ending”
 
-```text
-https://github.com/tarekhamada875-droid/RQ-
-```
+If the owner sends exactly **“tokens ending”**, stop feature work and browser testing immediately. Before any other implementation work:
 
-Working directory in the Manus Sandbox:
+1. Verify and record branch, HEAD, worktree, changed files, local tests, workflow/deployment status, current blockers, and safe next commands.
+2. Append a concise dated handoff section with those facts. Never include PINs, tokens, passwords, session IDs, or private payloads.
+3. Run `git diff --check`; commit and push the handoff only to `migration/unified-hono` if the push is authorized, and verify the result. Do not merge to `main` or deploy production.
+4. Provide the next agent with the runbook and explicit boundaries, then stop current feature work.
 
-```text
-/home/ubuntu/RQ
-```
+Older handoff chronology is retained in Git history and dated acceptance reports; this file is the single current succession instruction.
 
-Current production branch:
+## 2026-10-09 owner decision and H7 start
 
-```text
-main
-```
+- **Decision:** The owner instructed: “let’s consider H6 is done … so we can start H7.” This closes H6 for scope purposes with explicit acceptance of the documented residual risk.
+- **Residual risks carried forward:** Staff operational mutation remains OPEN/BLOCKED; Owner listener delivery remains OPEN/UNVERIFIED and cleanup evidence PARTIAL; financial workflows remain OPEN/BLOCKED without an isolated financial sandbox. Supervisor remains N/A because the role is retired.
+- **H7 status:** **GO.** The owner confirmed that the accepted H6 residual risks are sufficient for the preview-role condition. Current-head H5 Preview Worker run `37918619708` and Production Gate run `37918619552` passed. Local `npm ci`, `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, focused route-parity/auth/session tests (**2 files / 18 tests**), rollback rehearsal, and preview `npm run release:smoke` all passed on this checkout; generated build outputs were removed afterward. Known test-only React `act(...)`, dependency-engine, and build-tool deprecation warnings did not affect user-visible behavior.
+- **H7 boundary:** This does not authorize production access, a merge to `main`, a production deployment, financial writes, a retry of the ambiguous listener/vehicle mutation, or relabeling residual H6 cells as PASS.
+- **Next gate:** H8 requires a separate explicit production-replacement approval. Keep `main` and production unchanged until that approval; the recommended method is a reviewed merge, release tag, controlled deployment, and post-deployment health/version/role smoke.
 
-Current known-good main commit at handoff:
+## Historical snapshot — exact “tokens ending” succession on 2026-10-08 (superseded)
 
-```text
-bb12fbe docs: align handoff with cleanup commit
-```
+The following point-in-time snapshot was accurate when written for `512a994`. It is retained for succession history only; the branch and workflow state below were superseded by later commits. Use the current branch/CI state in the section above and verify it afresh.
 
-Previous important commits:
+Feature work and browser testing stop here per the exact owner marker.
 
-```text
-7518984 feat(garage): extend garage model and API update schema
-3b00d99 feat(referral): implement automated referral reward system
-45797e6 fix: wire trial expiry popup to worker API
-c6def3a fix: resolve PIN sessions for worker authorization
-```
+- **Authorized branch:** `migration/unified-hono`; local and remote HEAD: `512a994899b8fb170dc7296f280d98a35f94c5df` (`docs: reconcile live owner listener result`). Worktree was clean before this handoff append; no production or `main` changes were made.
+- **Documentation state:** The latest evidence records the live Owner listener attempt as **OPEN/UNVERIFIED**: one synthetic hourly check-in remained ambiguous, no retry was made, and no listener count update appeared. The synthetic fixture later disappeared from a fresh Admin list after deletion UI progress reached 50%; cleanup is **PARTIAL**, not confirmed job completion. Staff transport is **PARTIAL** with Staff operational access **OPEN/BLOCKED**. Supervisor scope is **OPEN** pending an explicit product boundary. Financial flows remain **OPEN/BLOCKED** and intentionally untested. H6 is not complete; H7 must not start.
+- **Validation evidence:** The latest focused listener source/lifecycle validation passed **2 files / 15 tests**. Earlier recorded full gates remain valid for their documented code heads; do not represent the current docs-only head as a fresh full-suite result until rerun.
+- **Workflow state at handoff:** Production Gate run `37750093991` for `512a994` is **pending**; H5 Preview Worker run `37750094004` is **in progress**. The preceding H5 run `37748274895` for `5226c6e` completed successfully. Do not infer current-head deployment success until the pending/in-progress runs settle and are checked.
+- **Safe next commands:** inspect the two current workflow runs; if they pass, perform credential-free preview health/version and exact Pages/Worker pairing checks; then only resume an explicitly bounded unresolved H6 cell. Do not replay the ambiguous vehicle mutation, change timeouts, modify Supervisor permissions/rules, perform financial writes, access production, merge to `main`, or start H7.
 
-Current production URLs:
 
-```text
-Frontend: https://rq-acg.pages.dev
-Worker:   https://rq.tarekhamada875.workers.dev
-```
+## 2026-10-09 continuation — Owner and Staff evidence
 
-Cloudflare account ID:
+- **Candidate:** `8e0e3478697a8665ad558df3e22aa45445254419` on `migration/unified-hono`; local branch was fast-forwarded to the remote and production/`main` remained untouched.
+- **Pages/Worker:** credential-free health/version checks passed for the isolated Worker (`1.0.0-h5-preview`, preproduction). The Pages preview bundle resolved `/api` calls to `rq-hono-preview`; no production request was used for acceptance.
+- **Owner:** `H6 Vehicle Subscriber Lab 20261007` showed an active trial and one synthetic subscriber. One supported synthetic subscriber-name change visibly persisted. Listener delivery remains **OPEN/UNVERIFIED** because safe event/correlation evidence was unavailable. The old ambiguous event and partial cleanup were not replayed.
+- **Staff:** active-trial Staff dashboard and garage scope loaded with one synthetic subscriber/record. Staff-facing navigation was visible without Admin/Supervisor management controls. No financial action was opened. No active vehicle operation fixture/control was available; operational mutation remains **OPEN/BLOCKED**. Login/dashboard/scope is **PASS, bounded**.
+- **Supervisor:** owner-approved retirement in `8e0e347`; current disposition **N/A — role retired**. Do not create or authenticate Supervisor fixtures.
+- **Financial:** remains **OPEN/BLOCKED** without a dedicated isolated financial sandbox; no financial write was performed in this continuation.
+- **H6/H7:** H6 remains **OPEN/BLOCKED** and H7 remains **HOLD/NO-GO**.
 
-```text
-1ddccc39f679d3a70fddb3ceb77e6235
-```
+## 2026-10-09 credentialed fixture continuation
 
-The Cloudflare MCP connector is available. Prefer it for Cloudflare inspection and deployment. Wrangler CLI authentication may not be available in the Sandbox even when the Cloudflare MCP connector is authorized.
+- **Owner:** supplied synthetic Owner credential authenticated in the isolated preview to `H6 Vehicle Subscriber Lab 20261007`. Plate `ب ب ب 555` was already inside and correctly visible in Owner scope. Only exit invoicing was offered; it was not selected. Listener evidence remains **OPEN/UNVERIFIED**.
+- **Staff:** supplied synthetic Staff credential authenticated in a separate isolated Sandbox browser to the same garage. Staff navigation showed Staff-facing controls without Admin/Supervisor management controls. Plate `ب ب ب 555` was already inside and visible in Staff scope. Exit invoicing was not selected. Staff operational mutation remains **OPEN/BLOCKED**.
+- **Safety/session note:** The Owner universal logout attempt was rejected by preview; no further Owner logout PIN attempts were made. The Staff logout dialog was canceled without submission after unreliable keypad automation. No financial, checkout, recharge, renewal, or deletion action was performed.
+- **Disposition:** H6 remains **OPEN/BLOCKED**; H7 remains **HOLD/NO-GO**.
 
-GitHub CLI is configured. Use `gh` for repository operations.
+### Session-state correction
 
----
+The Owner logout dialog did not transition immediately after submission, so no additional PIN was entered. A final My Browser check showed the Owner at the login screen, confirming eventual logout. The Staff Sandbox session remained on its dashboard after its unsent logout dialog was canceled. Neither session performed checkout or financial activity.
 
-## Production status at handoff
+## 2026-10-09 tokens-ending succession snapshot
 
-The application is currently deployed as:
-
-```text
-Cloudflare Pages -> Cloudflare Worker -> Firebase
-```
-
-The Worker is healthy:
-
-```json
-{
-  "status": "ok",
-  "runtime": "cloudflare-worker",
-  "environment": "production",
-  "adminSdk": true,
-  "version": "1.0.0-production"
-}
-```
-
-At the last inspection, the Worker was on version 25 and contained the feature-route migration. Do not assume this remains true; verify it through Cloudflare before changing anything.
-
-The latest full quality gate passed:
-
-- 96 test files passed.
-- 547 tests passed.
-- Full production bundling passed.
-- Cloudflare Worker build passed.
-- `npm run ci:check` passed.
-- `npm run maintainability:check` passed.
-- TypeScript lint passed.
-- Worker parity suite passed.
-- Worker authorization suite passed.
-
-Some existing React tests print `act(...)` warnings. They did not fail the gate. Do not “fix” them opportunistically unless they become a real quality-gate failure.
-
----
-
-## Critical security history
-
-### Anonymous Firebase session resolution bug
-
-PIN login uses Firebase Anonymous Auth. The anonymous Firebase UID is not the garage/admin document ID and does not itself contain the real role.
-
-The Worker previously resolved only the Firebase token role and therefore treated logged-in Admin and Garage Owner users as an unprivileged worker. This caused errors such as:
-
-- “You are not permitted.”
-- Admin cannot add or delete.
-- Garage owner cannot operate the trial popup.
-
-The fix is in `server/cloudflareWorker.ts` in `resolveWorkerSessionUser` and the session-aware logic inside `requireWorkerAuth`.
-
-The Worker must resolve the active server session from:
-
-```text
-admin_sessions
-supervisor_sessions
-delegate_sessions
-garage_sessions
-staff_sessions
-```
-
-using the authenticated Firebase UID and `X-Session-ID` header.
-
-Do not remove or weaken this logic.
-
-### Trial popup bug
-
-The frontend called:
-
-```text
-POST /api/garages/trial-decision
-```
-
-The old Express backend had the route, but the Worker did not. The popup rendered correctly but its buttons failed.
-
-The Worker route now exists and is tested for:
-
-- Garage owner submitting a decision for the owned garage.
-- Garage owner being denied for another garage.
-- Admin authorization.
-
-Do not assume that every old Express route has an equivalent Worker route without checking.
-
----
-
-## Important current files
-
-### Frontend API client
-
-```text
-src/api/apiClient.ts
-```
-
-Production default:
-
-```text
-https://rq.tarekhamada875.workers.dev
-```
-
-Do not reintroduce Railway as the production fallback.
-
-### Worker entry point
-
-```text
-server/cloudflareWorker.ts
-```
-
-This is currently the production API implementation. It uses Hono and Fetch-style requests.
-
-### Existing Express application
-
-```text
-server.ts
-server/app.ts
-server/routes/
-server/auth/
-server/middleware.ts
-server/cloudRun.ts
-```
-
-Express is transitional infrastructure. It is still used by local development, Cloud Run compatibility, and existing integration tests. Do not delete it at the beginning of the migration.
-
-### Current plan
-
-```text
-RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md
-```
-
-Read this file before starting implementation.
-
-### Current project knowledge base
-
-```text
-RQ_PROJECT_KNOWLEDGE_BASE.md
-```
-
-Read this file for domain behavior, role definitions, deployment history, and previous decisions.
-
----
-
-## First actions for the continuation agent
-
-Run these commands before editing code:
-
-```bash
-cd /home/ubuntu/RQ
-git fetch origin main
-git status --short --branch
-git log -10 --oneline --decorate
-```
-
-Read:
-
-```bash
-cat RQ_PROJECT_KNOWLEDGE_BASE.md
-cat RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md
-```
-
-`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` is the authoritative continuation file. The old Railway-era recovery plans and old succession protocol were removed from the working tree on 2026-10-05; do not search for or recreate them unless a concrete missing fact is proven.
-
-Verify the live stack:
-
-```bash
-python3 - <<'PY'
-import requests
-for url in [
-    'https://rq-acg.pages.dev',
-    'https://rq.tarekhamada875.workers.dev/api/health',
-    'https://rq.tarekhamada875.workers.dev/api/version'
-]:
-    r = requests.get(url, timeout=30)
-    print(url, r.status_code, r.headers.get('content-type'), r.text[:500])
-PY
-```
-
-Inspect Cloudflare Worker code and versions through the Cloudflare MCP before deploying anything.
-
-Run the focused baseline tests:
-
-```bash
-npm exec vitest run \
-  src/__tests__/workerAuthorizationMatrix.test.ts \
-  src/__tests__/workerParityRoutes.test.ts
-```
-
-Do not create a migration branch until confirming `main` is clean and the baseline is healthy.
-
----
-
-# Execution protocol
-
-## H0 — Protect the production baseline
-
-Create a tag from the current `main` only after verifying it is clean:
-
-```bash
-git tag rq-production-baseline-before-hono-migration
-git push origin rq-production-baseline-before-hono-migration
-```
-
-Create the migration branch:
-
-```bash
-git switch -c migration/unified-hono
-git push -u origin migration/unified-hono
-```
-
-Do not deploy this branch to the production Worker. Use a separate preview Worker if available.
-
-If branch naming or deployment restrictions require a different name, document the actual name immediately.
-
-## H1 — Inventory the route surface
-
-Build a method/path inventory from:
-
-```text
-src/
-server/cloudflareWorker.ts
-server/app.ts
-server/routes/
-server/auth/
-```
-
-For every route record:
-
-- Frontend caller.
-- Worker implementation.
-- Express implementation.
-- Authorization rule.
-- Firestore reads/writes.
-- Idempotency behavior.
-- Audit logging.
-- Tests.
-
-Feature groups:
-
-- Authentication and sessions.
-- Vehicles.
-- Subscribers.
-- Garages.
-- Staff.
-- Supervisors.
-- Delegates.
-- Recharge requests.
-- Packages and subscriptions.
-- Referral rewards.
-- Reports and summaries.
-- Admin configuration.
-- Announcements and coupons.
-
-Do not use a naive exact-string route comparison as the only audit. Dynamic paths such as `/api/garages/:id` and frontend template strings require normalization.
-
-## H2 — Extract framework-neutral domain logic
-
-Before removing Express routes, move business decisions into framework-neutral modules.
-
-Good locations:
-
-```text
-server/domain/
-server/services/
-server/adapters/
-server/validation/
-```
-
-Domain modules must not import:
-
-- Express.
-- Hono.
-- `Request` or `Response`.
-- `req` or `res`.
-
-They may accept explicit typed input and return explicit decisions/results.
-
-Preserve the existing policies for:
-
-- Garage scope.
-- Role authorization.
-- Session validity.
-- Tenant isolation.
-- Idempotency.
-- Financial transactions.
-- Activity logs.
-
-Add tests before changing route behavior.
-
-## H3 — Create the canonical Hono app
-
-Target shape:
-
-```text
-server/api.ts              # canonical Hono application
-server/cloudflareWorker.ts # thin Worker entry point
-server/nodeAdapter.ts      # local Node adapter if required
-server.ts                  # Vite + local development adapter
-```
-
-Important: do not blindly rename `server/cloudflareWorker.ts` to `server/api.ts`. First determine whether all current Worker behavior can be imported cleanly without Cloudflare-only initialization side effects.
-
-The canonical Hono app must preserve:
-
-- Existing route paths.
-- HTTP methods.
-- JSON envelopes.
-- Error codes.
-- CORS behavior.
-- Correlation IDs.
-- Operation IDs.
-- Session headers.
-- Firebase initialization.
-- Durable Object PIN rate limiting.
-
-## H4 — Convert tests incrementally
-
-Keep Express characterization tests temporarily. Add or convert Fetch/Hono tests feature family by feature family.
-
-Required tests include:
-
-- All five roles.
-- Own-garage and cross-garage access.
-- Anonymous Firebase UID plus server session resolution.
-- Session release and expiry.
-- Multiple devices.
-- Idempotent repeated requests.
-- Financial transaction invariants.
-- Server-generated activity logs.
-- Invalid request envelopes.
-- CORS and security headers.
-
-Never delete a test only because it is Express-based. Convert it or explain why it is obsolete.
-
-## H5 — Preview runtime
-
-Deploy the migration branch to a non-production Worker, for example:
-
-```text
-rq-hono-preview
-```
-
-Use only synthetic test data.
-
-The preview frontend must point to the preview Worker only if the complete preview configuration is isolated and reversible. Do not change the production Pages environment for experimentation.
-
-Compare Express and Hono outputs for:
-
-- Status codes.
-- Error codes.
-- Response envelopes.
-- Database mutations.
-- Authorization outcomes.
-- Idempotency.
-- Audit logs.
-
-## H6 — Human role testing
-
-Test the preview as:
-
-### Admin
-
-- Login/logout.
-- Dashboard.
-- Garage create/update/delete.
-- Staff, supervisor, delegate management.
-- Packages, coupons, announcements.
-- Recharge and subscription actions.
-- Reports.
-- Session management.
-
-### Delegate
-
-- Dashboard.
-- Commission values.
-- Garage application flow.
-- Tenant isolation.
-- Forbidden admin actions.
-
-### Garage owner
-
-- Login/logout.
-- Dashboard.
-- Check-in/check-out if allowed.
-- Subscribers.
-- Packages.
-- Trial popup: continue and decline.
-- Self-subscription.
-- Referral reward.
-- Forbidden cross-garage access.
-
-### Staff
-
-- Check-in.
-- Check-out.
-- History.
-- Subscriber operations allowed by policy.
-- Forbidden admin/cross-garage actions.
-
-### Supervisor
-
-- Permitted monitoring and recharge workflows.
-- Forbidden mutations and financial actions.
-
-Test on mobile because the original production bugs were found there.
-
-## H7 — Quality gate
-
-Before cutover, run:
-
-```bash
-npm test
-npm run lint
-npm run build
-npm run ci:check
-npm run maintainability:check
-npm run release:smoke
-```
-
-Also run the preview smoke tests with explicit preview URLs.
-
-Do not call the migration complete if any required command fails. Warnings may be documented only when they do not affect behavior and the command exits successfully.
-
-## H8 — Production cutover
-
-Preferred method:
-
-1. Keep `main` intact during development.
-2. Merge the migration branch into `main` only after H0–H7 pass.
-3. Push `main`.
-4. Deploy the Worker from the merged `main`.
-5. Verify Worker health/version.
-6. Verify Pages points to the production Worker.
-7. Run smoke tests.
-8. Perform human role testing.
-9. Keep the baseline tag for rollback.
-
-Do not delete `main`. There is almost never a technical benefit to deleting the production branch.
-
-If the user insists on branch replacement, first update the repository default branch and deployment settings, then preserve the old branch/tag until the new branch has been proven. Never delete the only rollback reference.
-
-## H9 — Remove Express last
-
-Only after the unified Hono path is proven:
-
-- Convert remaining Express-only tests.
-- Confirm local development works through the Hono adapter.
-- Decide whether Cloud Run is retired or intentionally supported.
-- Remove Express routes only after shared logic and Hono routes cover them.
-- Remove Express middleware/types/dependencies only when unused.
-- Update scripts and documentation.
-- Run the entire gate again.
-
-If Cloud Run remains a supported fallback, do not remove Express merely to satisfy architectural purity. Either support Cloud Run intentionally or formally retire it with a documented decision.
-
----
-
-## Deployment guidance
-
-The Cloudflare MCP is preferred over Wrangler when the Sandbox Wrangler login is unavailable.
-
-Cloudflare Worker code inspection uses the Cloudflare API:
-
-```javascript
-async () => {
-  const r = await cloudflare.request({
-    method: 'GET',
-    path: `/accounts/${accountId}/workers/scripts/rq`
-  });
-  return {
-    success: r.success,
-    status: r.status,
-    length: String(r.result || '').length
-  };
-}
-```
-
-Worker versions:
-
-```javascript
-async () => {
-  return cloudflare.request({
-    method: 'GET',
-    path: `/accounts/${accountId}/workers/scripts/rq/versions`,
-    query: { per_page: 5 }
-  });
-}
-```
-
-Do not expose Firebase service-account data, tokens, or secrets in chat, GitHub, temporary gists, or public URLs.
-
-Do not stage compiled Worker bundles in public gists. A previous deployment attempt used a temporary public bundle and it was deleted; do not repeat that pattern.
-
----
-
-## Git rules
-
-Before every mutation:
-
-```bash
-git status --short --branch
-git log -3 --oneline --decorate
-```
-
-After every mutation:
-
-```bash
-git status --short --branch
-git diff --check
-```
-
-Commit messages should describe the verified change, for example:
-
-```text
-refactor: extract garage authorization service
-feat: add fetch adapter for local hono development
- test: convert subscriber route contracts to hono
-```
-
-Do not force-push or delete `main` during the experiment.
-
----
-
-## When to stop and ask the user
-
-Ask the user only when:
-
-- An external action requires their account authorization and cannot be completed through the available connector.
-- A production cutover would be consequential and the user has not approved that exact cutover.
-- There is a material business-rule ambiguity.
-- A destructive action is being considered.
-
-Do not ask the user to run technical commands if the Sandbox or Cloudflare connector can perform the operation.
-
----
-
-## Succession protocol
-
-If the user says `tokens ending`:
-
-1. Stop implementation immediately.
-2. Do not begin a new large task.
-3. Record the current branch and commit.
-4. Record all changed files.
-5. Record tests and exact results.
-6. Record deployment and Worker version.
-7. Record blockers.
-8. Update the plan/status files.
-9. Write a new handoff file with the next exact commands.
-10. Push documentation if safe.
-
-### Mandatory handoff chaining
-
-This protocol applies to **every future agent**, not only the current agent.
-
-When a future agent receives this handoff and the user says `tokens ending`, that agent must repeat the same process for the agent after him. The succession chain must never terminate at one handoff.
-
-The future agent must:
-
-1. Preserve this file and read it before working.
-2. Create or update a new current-status handoff containing the latest branch, commit, files, tests, deployment state, blockers, and next checkpoint.
-3. Explicitly tell the next agent to read the newest handoff first.
-4. Include the exact next commands and the exact next checkpoint; never write only “continue.”
-5. Carry forward the instruction that the next agent must repeat this protocol when the user says `tokens ending`.
-6. Keep all older handoff files unless they are clearly obsolete; if an older handoff is replaced, document which file is authoritative.
-7. Commit and push the updated handoff when safe, without exposing secrets.
-
-The handoff must contain this instruction verbatim or with the same meaning:
-
-> You are part of a continuing succession chain. If the user says `tokens ending`, stop implementation, record the exact current state, create the next agent’s handoff, and instruct that next agent to repeat the same succession protocol. Do not leave the next agent dependent on conversation history.
-
-### Required succession filename
-
-The authoritative handoff should remain:
-
-```text
-RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md
-```
-
-If a separate dated handoff is needed, update the authoritative file in the same commit and identify the dated file as historical. The next agent must always know which handoff is authoritative.
-
-The new handoff must never say only “continue.” It must identify the exact next checkpoint and exact next files.
-
----
-
-## First response template for a new agent
-
-Start the next session with something like:
-
-> I will first read `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, and `RQ_PROJECT_KNOWLEDGE_BASE.md`, then verify the current `main` commit, Worker version, Pages deployment, and repository status before changing anything. I will not delete `main` or alter production during the migration experiment.
-
-Then perform the First actions listed in this document.
-
----
-
-## Final decision rule
-
-The unified Hono migration is successful only when it is demonstrably safer and behaviorally equivalent to the current production system.
-
-Do not replace a working production architecture merely because the replacement is cleaner on paper.
-
-The correct priority order is:
-
-```text
-Security and tenant isolation
-> Correct business behavior
-> Production stability
-> Testability
-> Maintainability
-> Architectural elegance
-```
+Per the exact owner marker `tokens ending`, feature work and browser testing stop here.
+
+- **Authorized branch:** `migration/unified-hono`.
+- **Current HEAD:** `6e53f0aff402e8f9da9f862bc9a3c2015ceadc7d` (`docs: clarify H6 session cleanup evidence`). Local HEAD matches `origin/migration/unified-hono`; worktree was clean before this handoff append. No `main` or production change was made.
+- **Files changed by the current documentation sequence:** `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md`, `docs/H6_ROLE_ACCEPTANCE_2026-10-05.md`, and `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`. The current continuation contains documentation only; application source was not changed.
+- **Latest local validation:** On the unchanged application code at `8e0e347` before these documentation-only commits, `npm test` passed **103 test files / 592 tests**; `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` also passed. The docs-only HEAD `6e53f0a` has not been represented as a fresh full-suite run.
+- **GitHub workflows for current HEAD:** H5 Preview Worker run `37914550577` completed **successfully**. Production Gate run `37914550562` was **in progress** at snapshot time; do not infer its result until it settles and is inspected.
+- **Preview/deployment context:** The documented isolated Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`; the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. Verify the exact Pages-to-Worker candidate pairing again after the current Production Gate settles. Do not access production.
+- **Acceptance disposition:** Admin PASS; Delegate restricted-scope PASS; Owner login/scope and visible synthetic persistence PASS, bounded; Owner real-time listener evidence **OPEN/UNVERIFIED**; Staff login/dashboard/scope PASS, bounded; Staff operational mutation **OPEN/BLOCKED** because the supplied synthetic plate was already inside and only exit invoicing was offered; Supervisor **N/A — retired**; financial workflows **OPEN/BLOCKED** without an isolated financial sandbox; H6 **OPEN/BLOCKED**; H7 **HOLD/NO-GO**.
+- **Synthetic browser boundary:** The supplied synthetic plate was used only in isolated preview contexts. No checkout, exit invoice, payment, recharge, renewal, deletion, or other financial action was submitted. The Owner session ultimately reached the login screen. The separate Staff sandbox session remained on its dashboard after its unsent logout dialog was canceled.
+- **Safe next commands:** inspect Production Gate run `37914550562`; if it passes, perform only credential-free health/version and exact Pages/Worker pairing checks; reconcile the final matrix without reopening financial or ambiguous listener cases; keep H7 on HOLD until every required H6 exit is resolved or the owner explicitly accepts residual risk. Do not retry the ambiguous listener/vehicle event, do not submit exit invoicing, do not perform financial writes, do not modify Supervisor policy, do not merge to `main`, and do not deploy production.
+
+This succession section is the stopping point for the current agent. Never include credentials, tokens, passwords, session identifiers, or private payloads in follow-up handoffs.

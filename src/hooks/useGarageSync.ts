@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Garage, Vehicle, Package, Staff, RechargeRequest, Supervisor } from '../types';
+import { Garage, Vehicle, Package, Staff, RechargeRequest } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
 
@@ -12,7 +12,6 @@ interface UseGarageSyncProps {
   setGarage: (g: Garage | null) => void;
   delegate: any | null;
   setDelegate: (d: any | null) => void;
-  currentSupervisor: Supervisor | null;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
@@ -30,7 +29,6 @@ export function useGarageSync({
   setGarage,
   delegate,
   setDelegate,
-  currentSupervisor,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
   setVehicles,
@@ -40,7 +38,6 @@ export function useGarageSync({
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
-  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
   const [delegateRequests, setDelegateRequests] = useState<RechargeRequest[]>([]);
@@ -175,13 +172,9 @@ export function useGarageSync({
     const unsubGarages = (view === 'admin_dashboard' || view === 'admin_garage_details')
       ? firestoreService.subscribeToGarages(setAllGarages)
       : () => {};
-    
+
     const unsubDelegates = (view === 'admin_dashboard' || view === 'admin_delegate_details')
       ? firestoreService.subscribeToDelegates(setDelegates)
-      : () => {};
-
-    const unsubSupervisors = (view === 'admin_dashboard' && !currentSupervisor?.id)
-      ? firestoreService.subscribeToSupervisors(setSupervisors)
       : () => {};
 
     const unsubCurrentGarage = (view === 'garage' && garage?.id)
@@ -189,15 +182,14 @@ export function useGarageSync({
       : () => {};
 
     const unsubCurrentDelegate = () => {};
-    
+
     return () => {
       unsubGarages();
       unsubDelegates();
-      unsubSupervisors();
       unsubCurrentGarage();
       unsubCurrentDelegate();
     };
-  }, [isSessionReady, isAuthReady, user, view, delegate?.id, garage?.id, currentSupervisor?.id, setGarage, setDelegate]);
+  }, [isSessionReady, isAuthReady, user, view, delegate?.id, garage?.id, setGarage, setDelegate]);
 
   // Load Admin specific garage details once
   useEffect(() => {
@@ -235,8 +227,6 @@ export function useGarageSync({
     setAllGarages,
     delegates,
     setDelegates,
-    supervisors,
-    setSupervisors,
     staffList,
     setStaffList,
     rechargeRequests,

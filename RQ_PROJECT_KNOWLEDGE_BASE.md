@@ -1,13 +1,13 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-09
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Current source of truth:** `main`  
-**Current verified commit:** `bb12fbe` (`docs: align handoff with cleanup commit`)
+**Production source of truth:** `main` (do not modify for the Unified Hono migration task).
+**Active migration branch:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1` on 2026-10-08, with H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) passing for that exact head. This commit adds opt-in read-only Playwright test infrastructure and documentation, not product behavior. The only post-30cccf runtime/config change remains preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. A later docs-only synchronization may have a newer SHA; verify the actual branch/head before acting.
 
 ## 1. What RQ is
 
-RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, supervisors, and admin operations.
+RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, and Admin operations. The Supervisor role has been retired by owner decision; existing legacy Supervisor records are preserved and do not represent active accounts.
 
 The application is in **controlled synthetic pre-production**. There are currently no real users, customer records, or live financial data. Synthetic pre-production is not permission to touch unknown data, accept real revenue, perform destructive migrations, or claim final production readiness.
 
@@ -38,11 +38,12 @@ Future agents must use this order:
 1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, decisions, status, and file map.
 2. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: operational continuation instructions and chained succession protocol.
 3. **`AGENTS.md`**: mandatory safety, engineering, UI/UX, secret, and communication rules.
-4. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: active plan for the safe Hono consolidation experiment.
-5. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: primary combined browser/user and technical acceptance task when the application is tested by role.
-6. **`MAINTAINABILITY_HANDOFF.md`** and **`BRANCHING_AND_RELEASES.md`**: active repository and release conventions.
-7. **`docs/OBSERVABILITY_RUNBOOK.md`** and `docs/CF0_*` through `docs/CF7_*`: operational and Cloudflare migration evidence.
-8. Capability-specific documents and dated audits: evidence only unless the active plan explicitly assigns work from them.
+4. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: active plan and gate decisions for the safe Hono consolidation experiment.
+5. **`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`**: controlling H6 execution process, safety boundaries, evidence, retry rules, cleanup, and H7 hold criteria.
+6. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: role/feature coverage catalog and matrix; execute it only under the controlled H6 runbook.
+7. **`MAINTAINABILITY_HANDOFF.md`** and **`BRANCHING_AND_RELEASES.md`**: active repository and release conventions.
+8. **`docs/OBSERVABILITY_RUNBOOK.md`** and `docs/CF0_*` through `docs/CF7_*`: operational and Cloudflare migration evidence; use the current Cloudflare instructions and ignore retired provider procedures.
+9. Capability-specific documents and dated audits: evidence only unless the active plan explicitly assigns work from them.
 
 Older plans must not override this hierarchy.
 
@@ -137,6 +138,10 @@ C10 evidence still concerns:
 
 C7 historical financial reconciliation remains deferred until the owner approves the accounting period and source-of-truth policy. Any reconciliation must start read-only and use synthetic/exported data.
 
+### Unified Hono H6/H7 status — 2026-10-09
+
+The owner explicitly accepted the documented H6 residual risks and instructed that H6 be considered complete for scope purposes so H7 could begin. Staff operational access remains **OPEN/BLOCKED**, Owner listener delivery remains **OPEN/UNVERIFIED** with partial cleanup evidence, and financial workflows remain intentionally untested/blocked without an isolated sandbox; these are carried into H7 as accepted residual risks, not PASS results. Supervisor is retired: legacy authentication/session/API access is denied, client Rules deny its access, and existing account/session records are preserved. The stable Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. Current-head H5 Preview Worker and Production Gate workflows passed; local full quality gates, focused parity/auth/session tests, rollback rehearsal, and preview release smoke passed. **H7 is GO** under the owner's explicit residual-risk approval. H8 production replacement remains a separate approval gate; `main` and production remain untouched.
+
 ## 8. Repository map
 
 - `src/`: React frontend, services, API client, domain helpers, and tests.
@@ -155,7 +160,7 @@ C7 historical financial reconciliation remains deferred until the owner approves
 
 ## 9. Cleanup and documentation policy
 
-The repository was cleaned on 2026-10-05. Superseded Railway-era plans, duplicate acceptance tasks, old audits, and the old succession protocol were removed from the working tree. Their history remains recoverable through Git.
+The repository was cleaned on 2026-10-05. Superseded deployment plans, duplicate acceptance tasks, old audits, and the old succession protocol were removed from the working tree. Their history remains recoverable through Git.
 
 Keep these active:
 
@@ -205,7 +210,7 @@ For a deployment-related change, also verify the Cloudflare Worker health/versio
 4. Preserve server authority and existing UI/UX.
 5. Use synthetic/in-memory data unless the owner explicitly authorizes a safe external workflow.
 6. Run focused tests, then the full validation gate.
-7. Push directly to `main` according to the owner’s established preference.
+7. Push only to the branch explicitly authorized for the active task. For Unified Hono H6, that branch is `migration/unified-hono`; do not push, merge, or deploy to production `main` before H6/H7/H8 gates and explicit owner approval.
 8. If the owner says `tokens ending`, stop feature work immediately and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`; prepare the next chained successor handoff before anything else.
 
 This file is an orientation and consolidation layer. The canonical checkpoint plan remains the authoritative source for current task status and launch decisions.
