@@ -1,10 +1,10 @@
 # RQ
 
-For a consolidated explanation of the architecture, business decisions, production-readiness status, document hierarchy, and cleanup dispositions, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The active unified Hono migration instructions are in [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md), and continuation instructions are in [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The **only active project plan** is [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md); the current H9 operational handoff is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md). Older H6 prompts/runbooks and CF/C-series reports are historical evidence, not instructions to resume those plans.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
-> **Current status — Cloudflare production path verified (2026-10-03):** Cloudflare Pages serves the frontend at `https://rq-acg.pages.dev`, and the Cloudflare Worker API is live at `https://rq.tarekhamada875.workers.dev`. The Worker uses Fetch/Web-Crypto Firebase REST access rather than Node-only Firebase Admin packages. This remains a controlled environment with no real customer or financial data until business validation is completed.
+> **Current status — Hono production / H9 cleanup (2026-10-10):** The Hono Worker is deployed at `https://rq.tarekhamada875.workers.dev` and Pages serves the frontend at `https://rq-acg.pages.dev`. The active workstream is H9: safely retiring remaining Express compatibility routes. H9 is not complete; see the checkpoint plan and current succession handoff. Preview Firebase project/database identifiers currently match production, so authenticated preview data operations are on hold until isolation is verified.
 
 ## Target production architecture
 
@@ -70,7 +70,7 @@ npm test && npm run lint && npm run build && npm run maintainability:check && gi
 
 ## Cloudflare deployment contract
 
-The active target is documented in [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md). The production Worker exposes JSON health and version endpoints, uses Worker-compatible Firebase access, and receives secrets through Cloudflare Worker secrets. The Hono consolidation is tested on a separate branch before any production cutover.
+The active target and release gates are documented in [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md). Hono is already the production Worker backend; H9 changes remain on `migration/unified-hono` until separately approved for release.
 
 ## Production smoke checks
 
@@ -106,4 +106,4 @@ src/domain/              Shared business rules and domain logic
 Dockerfile              Container build alternative
 ```
 
-For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The current architecture plan is [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md). The authoritative continuation file is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The sole active project plan is [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](./RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md); the current H9 continuation file is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).

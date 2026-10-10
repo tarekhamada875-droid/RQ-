@@ -1,5 +1,7 @@
 # RQ Integrated Role-Based Acceptance Test Task
 
+> **Historical coverage catalog only — do not resume as an active task.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; use `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` for current H9 continuation. This catalog is retained for evidence/coverage reference and does not authorize actions.
+
 ## Mission
 
 Test RQ exactly as a real user while verifying the technical behavior behind every user action at the same time.
@@ -20,7 +22,7 @@ Log in as one role
 
 Do not test the UI in isolation and then assume the backend is correct. Do not run backend tests and then assume a human can use the feature. Each important workflow must pass both dimensions together.
 
-## Current execution control — 2026-10-09
+## Historical execution control — H6 (superseded)
 
 [`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) is the controlling procedure for H6 target selection, safety boundaries, timeouts/retries, evidence, cleanup, and readiness status. This document remains the coverage catalog and feature-by-role matrix. Its detailed examples are not permission to perform financial or destructive actions; the runbook's restrictions and the owner's current directions take precedence.
 

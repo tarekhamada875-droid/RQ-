@@ -9,12 +9,13 @@
 - **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. There are no real users, customer records, or live financial data; use synthetic data only.
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
-## V3 Execution Workflow
+## Current Unified Hono Workstream
 - **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for the architecture, product decisions, current status, document hierarchy, and cleanup dispositions.
-- **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
+- **Current architecture:** Hono is already the production Worker backend (H8). Checkpoint H9 is the active workstream for controlled Express decommissioning. Do not create or restore a parallel backend generation.
+- **Single active plan:** [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) is the only active project plan. C7/C9/C10 and H6 documents are historical evidence unless that plan explicitly assigns a task.
 - **Project Scope:** Repository code, frontend, Cloudflare configuration, legacy rollback configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.
 - **Engineering Safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations. These safeguards do not limit project scope.
-- **Canonical execution plan:** After the knowledge base, read [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) for the current Hono consolidation checkpoints, gates, rollback rules, and UI/UX preservation boundary.
+- **Canonical execution plan:** After the knowledge base, read [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) for current H9 status, release gates, rollback rules, and UI/UX preservation boundary.
 - **Agent Succession:** Read [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md) at the start of every resumed session. For the exact owner message `tokens ending`, stop feature work immediately and follow that handoff’s chained succession protocol before making any other change.
 
 ## Design Conventions

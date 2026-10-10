@@ -1,5 +1,7 @@
 # RQ Succession Handoff — 2026-10-05
 
+> **ARCHIVED — DO NOT FOLLOW AS CURRENT INSTRUCTIONS.** This 2026-10-05 handoff predates H6 closure, H7 GO, H8 production deployment, and active H9 work. It is retained as historical evidence only. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; the current operational handoff is `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+
 ## Authority
 
 The authoritative continuation protocol remains [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](../RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md). This dated file is historical evidence for the `tokens ending` activation and must not replace the authoritative handoff.

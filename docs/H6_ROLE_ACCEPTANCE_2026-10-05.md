@@ -1,8 +1,10 @@
 # H6 Role-Based Acceptance Evidence — 2026-10-05
 
+> **ARCHIVED EVIDENCE — NOT A CURRENT TEST PLAN.** H6 is closed for scope, H7 received GO, H8 is deployed, and H9 is active. Do not follow the historical action notes below or repeat H6 browser testing. Current authority is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` plus `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+
 ## Evidence precedence — 2026-10-08
 
-This is a chronological evidence record, not the current execution procedure. Future H6 work must follow [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md) and use the newest consolidated status in `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` and the checkpoint plan. Results below are scoped to their recorded commit, browser, fixture, and frontend path; historical PASS snapshots do not supersede later OPEN/BLOCKED results. **Owner decision on 2026-10-09 retired Supervisor; prior Supervisor login/scope PASS results below are historical only, no new role login is authorized, and legacy records must be preserved.** Reuse valid evidence and test unresolved or invalidated cases only—do not rebuild the application or repeat the entire matrix.
+This is a chronological evidence record, not the current execution procedure. It records the H6 procedure and observed results as they existed at the time. Results below are scoped to their recorded commit, browser, fixture, and frontend path; historical PASS snapshots do not supersede later OPEN/BLOCKED results. **Owner decision on 2026-10-09 retired Supervisor; prior Supervisor login/scope PASS results below are historical only, no new role login is authorized, and legacy records must be preserved.** Do not resume H6 work from this document.
 
 ## Scope
 

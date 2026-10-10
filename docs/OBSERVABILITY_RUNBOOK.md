@@ -1,12 +1,14 @@
 # RQ Observability and Operational Readiness Runbook
 
+> **Supporting operations reference, not a project plan.** The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` (current checkpoint H9). C-series references in this document are historical readiness criteria, not instructions to resume a separate C-series workstream.
+
 **Status:** Controlled synthetic pre-production
 **Owner:** RQ project owner and authorized operators
 **Last reviewed:** 2026-10-08
 
 ## Scope and safety boundary
 
-The current production topology is Cloudflare Pages → Cloudflare Worker → Firebase. H6 acceptance must use the isolated Pages preview and `rq-hono-preview` Worker only; do not substitute the production URLs. Do not use this runbook to inspect, repair, delete, export, or reconcile unknown customer or financial data. Before real users, revenue, customer imports, or destructive migrations, establish a separate staging environment and obtain the required owner decisions.
+The current production topology is Cloudflare Pages → Hono Worker → Firebase. H6 acceptance is closed for scope; H9 is active on `migration/unified-hono`. Preview and production currently share Firebase project/database identifiers, so do not perform authenticated preview Firestore reads or writes until isolation is established and verified. Do not use this runbook to inspect, repair, delete, export, or reconcile unknown customer or financial data. Before real users, revenue, customer imports, or destructive migrations, establish a separate staging environment and obtain the required owner decisions.
 
 The backend remains authoritative. Diagnostic traces are not accounting records, authorization records, or a replacement for domain events and idempotency records.
 
@@ -113,6 +115,6 @@ After the owner enables Blaze on the intended project:
 
 Billing activation and spend-control changes are account-level owner actions. They are not automated by the application and do not belong in source code or frontend variables.
 
-## C9 exit evidence
+## Historical C9 exit criteria — not an active plan
 
-C9 is complete only when a simulated failed request can be traced from the frontend correlation ID to authorized Cloudflare Worker preview logs and the operation trace without exposing sensitive payloads, and when health, rollback, incident, backup/restore, and billing-control procedures are recorded for the release candidate.
+The following criteria are retained from an earlier readiness sequence. C9 is not currently tracked as a separate active project plan, and this section does not claim that the criteria have passed. If the owner explicitly reopens them, reconcile the work into the single active Hono checkpoint plan before execution: trace a simulated failed request from the frontend correlation ID to authorized Worker preview logs and the operation trace without exposing sensitive payloads, and record health, rollback, incident, backup/restore, and billing-control procedures for the release candidate.

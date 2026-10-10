@@ -1,8 +1,8 @@
-# H6 Manual Runbook — Remaining Role Checks
+# H6 Manual Runbook — Superseded / Do Not Resume
 
-**Prepared:** 2026-10-09 for the next manual acceptance session
-**Scope:** Staff and Garage Owner only, on the isolated pre-production preview
-**Authority:** This is a quick field checklist subordinate to [`H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`](H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md). If there is a conflict, follow the controlled runbook and the latest status in [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](../RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+> **Historical only.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is now active. Do not execute this checklist or restart Staff/Owner H6 browser testing from this file. For current work, use [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](../RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) and [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](../RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+
+The procedure below is preserved for audit context only. Its historical statuses remain OPEN/BLOCKED where stated; they are not PASS results or current task instructions.
 
 ## Goal for the session
 
