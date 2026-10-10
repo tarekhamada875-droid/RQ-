@@ -709,7 +709,10 @@ describe('garage creation dual-runtime characterization', () => {
     const createdNames = [...mockDb.records.values()]
       .filter((record) => String(record?.name || '').startsWith('Synthetic Concurrent Limit Garage'))
       .map((record) => record.name);
-    expect(createdNames.sort()).toEqual(requests.slice(0, 2).map((request) => request.name).sort());
+    const acceptedRequestNames = responses
+      .map((response, index) => response.status === 200 ? requests[index].name : undefined)
+      .filter((name): name is string => typeof name === 'string');
+    expect(createdNames.sort()).toEqual(acceptedRequestNames.sort());
     expect(bodies.filter((body) => body?.success === true)).toHaveLength(2);
     expect(bodies.filter((body) => body?.code === 'RATE_LIMIT_EXCEEDED')).toHaveLength(1);
   });

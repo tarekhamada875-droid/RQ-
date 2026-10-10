@@ -11,8 +11,8 @@ head_sampling_rate = 1
 ALLOWED_ORIGINS = "http://localhost:5173,https://migration-unified-hono.rq-acg.pages.dev"
 ENVIRONMENT = "preproduction"
 WORKER_VERSION = "1.0.0-h5-preview"
-FIREBASE_PROJECT_ID = "gen-lang-client-0091669619"
-FIREBASE_DATABASE_ID = "ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759"
+FIREBASE_PROJECT_ID = "rq-hono-preview-isolated"
+FIREBASE_DATABASE_ID = "(default)"
 
 [[durable_objects.bindings]]
 name = "PIN_RATE_LIMITER"

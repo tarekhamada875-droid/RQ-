@@ -111,7 +111,7 @@ jobs:
         run: npm run lint
 
       - name: Focused H5 contract tests
-        run: npm test -- --run server/h5DualRuntime.contract.test.ts server/api.test.ts
+        run: npm test -- --run server/h5DualRuntime.contract.test.ts server/api.test.ts src/utils/firebaseConfigSelector.test.ts
 
       - name: Build Cloudflare Worker
         run: npm run build:cloudflare
@@ -142,6 +142,15 @@ jobs:
 
       - name: Build preview Worker bundle
         run: npm run build:cloudflare
+
+      - name: Set isolated Firebase service-account secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | npx wrangler@4.147.0 secret put FIREBASE_SERVICE_ACCOUNT_JSON --config wrangler.preview.toml
 
       - name: Deploy isolated preview Worker
         env:

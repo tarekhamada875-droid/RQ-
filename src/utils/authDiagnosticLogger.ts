@@ -19,8 +19,8 @@ export const logDiagnostic = (tag: string, details?: Record<string, unknown>) =>
   }
 };
 
-export const verifyFirebaseAppletConfig = () => {
-  const config = firebaseConfig as Record<string, unknown>;
+export const verifyFirebaseAppletConfig = (configOverride: Record<string, unknown> = firebaseConfig as Record<string, unknown>) => {
+  const config = configOverride;
   const isValid = Boolean(
     config &&
     config.apiKey &&
