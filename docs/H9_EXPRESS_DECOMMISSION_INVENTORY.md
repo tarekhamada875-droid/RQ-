@@ -140,3 +140,12 @@ Focused route/domain/authorization and dual-runtime validation passed **5 files 
 ### Cars-inside recalculation characterization — 2026-10-09
 
 Before retirement, direct synthetic dual-runtime characterization for `POST /api/garages/recalculate-cars-inside` compared Admin status/body and resulting `carsInside`, non-Admin denial without writes, and missing/empty ID handling. Following explicit owner approval, only the Express route registration was removed. Hono continues as the supported owner with synthetic count, authorization, and validation tests; Express fallback coverage asserts this endpoint returns 404. No preview or live data was mutated.
+
+
+### Garage creation synthetic characterization — 2026-10-10
+
+Added six local dual-runtime characterization tests for `POST /api/garages/create` in `server/garageReconciliationParity.integration.test.ts`. They cover active-role authorization, Admin trial initialization, delegate attribution and the three-per-Cairo-day quota, duplicate PIN rejection, invalid idempotency-key validation, and repeated valid-key behavior. All Firestore interactions use the in-memory `MockFirestore`; neither route implementation changed.
+
+Hono and Express matched on the tested garage/trial fields, delegate attribution/quota, PIN collision response, and invalid-key response. Two unresolved parity gaps were recorded: the Hono activity log omits the Express `details` object, and valid creation keys do not provide idempotency—two distinct-PIN requests using the same valid key create two garages and two activity logs in both runtimes. Keep the Express fallback mounted until these differences are resolved and the route receives a separate retirement review.
+
+Focused validation passed **3 files / 39 tests**. The full local suite passed **103 files / 622 tests**; lint, web/Node/Worker builds, `npm run ci:check`, maintainability, and whitespace checks passed. No preview or live data operation, cloud access, route retirement, or production change occurred.

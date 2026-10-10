@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth } from '../src/__tests__/mockFirestore';
+import { saveEntityPin } from './utils';
 
 const mockDb = new MockFirestore();
 
@@ -22,7 +23,8 @@ vi.mock('./middleware', async (importOriginal) => {
       req.user = {
         uid: req.header('x-test-uid') || (req.header('x-test-role') === 'admin' ? 'admin-uid' : 'reconciliation-test-user'),
         role: req.header('x-test-role') || 'garage',
-        garageId: req.header('x-test-garage-id') || 'reconciliation-test-garage'
+        garageId: req.header('x-test-garage-id') || 'reconciliation-test-garage',
+        entityId: req.header('x-test-entity-id') || undefined
       };
       next();
     }
@@ -90,6 +92,16 @@ async function callHonoProjectionRebuild(token: string, body: Record<string, unk
   }));
 }
 
+async function callHonoCreate(token: string, body: Record<string, unknown>) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return api.fetch(new Request('http://localhost/api/garages/create', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  }));
+}
+
 async function callExpress(role: string, body: Record<string, unknown>) {
   return fetch(`${expressUrl}/api/garages/reconciliation`, {
     method: 'POST',
@@ -110,6 +122,23 @@ async function callExpressProjectionRebuild(role: string, body: Record<string, u
   return fetch(`${expressUrl}/api/garages/rebuild-projections`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-test-role': role },
+    body: JSON.stringify(body)
+  });
+}
+
+async function callExpressCreate(
+  role: string,
+  body: Record<string, unknown>,
+  context: { uid?: string; entityId?: string } = {}
+) {
+  return fetch(`${expressUrl}/api/garages/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-test-role': role,
+      ...(context.uid ? { 'x-test-uid': context.uid } : {}),
+      ...(context.entityId ? { 'x-test-entity-id': context.entityId } : {})
+    },
     body: JSON.stringify(body)
   });
 }
@@ -455,5 +484,243 @@ describe('daily projection rebuild dual-runtime characterization', () => {
       expect(await hono.json()).toEqual(await expressResponse.json());
       expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
     }
+  });
+});
+
+describe('garage creation dual-runtime characterization', () => {
+  const delegateContext = { uid: 'delegate-uid', entityId: 'delegate-a' };
+
+  const snapshotRecords = () => new Map(
+    [...mockDb.records.entries()]
+      .filter(([path]) => !path.startsWith('rate_limits/'))
+      .map(([path, data]) => [path, structuredClone(data)])
+  );
+
+  const seedDelegateGarages = (count: number) => {
+    const createdAt = new Date();
+    for (let index = 0; index < count; index += 1) {
+      mockDb.seed(`garages/delegate-existing-${index}`, {
+        name: `Delegate Existing ${index}`,
+        createdByDelegateId: 'delegate-a',
+        createdAt
+      });
+    }
+  };
+
+  it('denies roles outside Admin/delegate scope in both runtimes without writes', async () => {
+    const deniedRoles = [
+      { role: 'garage', token: 'valid-garage-token-create-test-garage' },
+      { role: 'staff', token: 'valid-staff-token-create-test-garage' },
+      { role: 'worker', token: 'valid-worker-token' }
+    ];
+
+    for (const { role, token } of deniedRoles) {
+      mockDb.clear();
+      const [hono, expressResponse] = await Promise.all([
+        callHonoCreate(token, {}),
+        callExpressCreate(role, {})
+      ]);
+      const expected = { success: false, error: 'FORBIDDEN: Creation not permitted for role' };
+      expect(hono.status).toBe(403);
+      expect(expressResponse.status).toBe(403);
+      expect(await hono.json()).toEqual(expected);
+      expect(await expressResponse.json()).toEqual(expected);
+      expect(snapshotRecords().size).toBe(0);
+    }
+  });
+
+  it('matches Admin trial initialization and characterizes the activity-log detail difference', async () => {
+    const body = {
+      name: '  Synthetic Trial Garage  ',
+      pin: '62841357',
+      isTrial: true,
+      trialDays: 3
+    };
+
+    mockDb.clear();
+    const honoResponse = await callHonoCreate('valid-admin-token', body);
+    const honoResult = await honoResponse.json() as any;
+    const honoGarage = structuredClone(mockDb.records.get(`garages/${honoResult.id}`));
+    const honoLog = [...mockDb.records.entries()]
+      .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === honoResult.id)?.[1];
+
+    mockDb.clear();
+    const expressResponse = await callExpressCreate('admin', body);
+    const expressResult = await expressResponse.json() as any;
+    const expressGarage = structuredClone(mockDb.records.get(`garages/${expressResult.id}`));
+    const expressLog = [...mockDb.records.entries()]
+      .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === expressResult.id)?.[1];
+
+    expect(honoResponse.status).toBe(200);
+    expect(expressResponse.status).toBe(200);
+    expect(honoResult.success).toBe(true);
+    expect(expressResult.success).toBe(true);
+    const withoutGeneratedTimes = (garage: Record<string, any>) => {
+      const { createdAt: _createdAt, balanceExpiry: _balanceExpiry, ...stableFields } = garage;
+      return stableFields;
+    };
+    expect(withoutGeneratedTimes(honoGarage)).toEqual(withoutGeneratedTimes(expressGarage));
+    expect(honoGarage).toMatchObject({
+      name: 'Synthetic Trial Garage',
+      status: 'approved',
+      isTrial: true,
+      dailyCapacity: 100,
+      activePackageName: 'الباقة التجريبية (3 يوم)',
+      packageName: 'الباقة التجريبية (3 يوم)',
+      balance: 0
+    });
+    expect(honoGarage.balanceExpiry.getTime() - honoGarage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
+    expect(expressGarage.balanceExpiry.getTime() - expressGarage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
+
+    expect(honoLog).toMatchObject({
+      garageName: 'Synthetic Trial Garage',
+      actionType: 'recharge',
+      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)',
+      amount: 0
+    });
+    expect(expressLog).toMatchObject({
+      garageName: 'Synthetic Trial Garage',
+      actionType: 'recharge',
+      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)',
+      amount: 0,
+      details: {
+        packageName: 'الباقة التجريبية (3 يوم)',
+        durationDays: 3,
+        carsCount: 100,
+        revenueAmount: 0,
+        isTrial: true
+      }
+    });
+    expect(honoLog).not.toHaveProperty('details');
+  });
+
+  it('creates delegate-owned pending garages consistently while below the daily quota', async () => {
+    const body = {
+      name: 'Synthetic Delegate Garage',
+      pin: '73916428',
+      isTrial: true,
+      trialDays: 4,
+      createdByDelegateName: 'Delegate A',
+      referrerName: 'Delegate A'
+    };
+
+    mockDb.clear();
+    seedDelegateGarages(2);
+    const honoResponse = await callHonoCreate('valid-delegate-token-delegate-a', body);
+    const honoResult = await honoResponse.json() as any;
+    const honoGarage = structuredClone(mockDb.records.get(`garages/${honoResult.id}`));
+
+    mockDb.clear();
+    seedDelegateGarages(2);
+    const expressResponse = await callExpressCreate('delegate', body, delegateContext);
+    const expressResult = await expressResponse.json() as any;
+    const expressGarage = structuredClone(mockDb.records.get(`garages/${expressResult.id}`));
+
+    expect(honoResponse.status).toBe(200);
+    expect(expressResponse.status).toBe(200);
+    expect(honoGarage).toMatchObject({
+      status: 'pending',
+      createdByDelegateId: 'delegate-a',
+      createdByDelegateName: 'Delegate A',
+      referrerId: 'delegate-a',
+      referrerName: 'Delegate A'
+    });
+    const withoutGeneratedTimes = (garage: Record<string, any>) => {
+      const { createdAt: _createdAt, balanceExpiry: _balanceExpiry, ...stableFields } = garage;
+      return stableFields;
+    };
+    expect(withoutGeneratedTimes(honoGarage)).toEqual(withoutGeneratedTimes(expressGarage));
+    expect(honoResult.success).toBe(true);
+    expect(expressResult.success).toBe(true);
+  });
+
+  it('enforces the three-garage Cairo-day delegate quota without writes in either runtime', async () => {
+    const body = { name: 'Quota Limit Garage', pin: '82517364' };
+
+    mockDb.clear();
+    seedDelegateGarages(3);
+    const honoBefore = snapshotRecords();
+    const honoResponse = await callHonoCreate('valid-delegate-token-delegate-a', body);
+    const honoBody = await honoResponse.json();
+    expect(honoResponse.status).toBe(409);
+    expect(honoBody).toEqual({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
+    expect(snapshotRecords()).toEqual(honoBefore);
+
+    mockDb.clear();
+    seedDelegateGarages(3);
+    const expressBefore = snapshotRecords();
+    const expressResponse = await callExpressCreate('delegate', body, delegateContext);
+    expect(expressResponse.status).toBe(409);
+    expect(await expressResponse.json()).toEqual(honoBody);
+    expect(snapshotRecords()).toEqual(expressBefore);
+  });
+
+  it('rejects an already-reserved PIN identically without creating a garage or activity log', async () => {
+    const pin = '91427538';
+    const seedExistingPin = async () => {
+      mockDb.clear();
+      mockDb.seed('garages/existing-pin-owner', { name: 'Existing PIN Owner' });
+      await saveEntityPin('garages', 'existing-pin-owner', pin);
+    };
+    const body = { name: 'Duplicate PIN Garage', pin };
+
+    await seedExistingPin();
+    const honoBefore = snapshotRecords();
+    const honoResponse = await callHonoCreate('valid-admin-token', body);
+    const honoBody = await honoResponse.json();
+    expect(honoResponse.status).toBe(400);
+    expect(honoBody).toMatchObject({ success: false, error: 'PIN_ALREADY_TAKEN' });
+    expect(snapshotRecords()).toEqual(honoBefore);
+
+    await seedExistingPin();
+    const expressBefore = snapshotRecords();
+    const expressResponse = await callExpressCreate('admin', body);
+    expect(expressResponse.status).toBe(400);
+    expect(await expressResponse.json()).toEqual(honoBody);
+    expect(snapshotRecords()).toEqual(expressBefore);
+  });
+
+  it('validates idempotency keys but characterizes that repeated valid keys do not replay creation', async () => {
+    const invalidBody = { name: 'Invalid Key Garage', pin: '41927536', idempotencyKey: 'bad!key-1234' };
+    mockDb.clear();
+    const honoInvalidBefore = snapshotRecords();
+    const honoInvalid = await callHonoCreate('valid-admin-token', invalidBody);
+    const honoInvalidBody = await honoInvalid.json();
+    expect(honoInvalid.status).toBe(400);
+    expect(honoInvalidBody).toMatchObject({ success: false, error: 'Idempotency key contains invalid characters' });
+    expect(snapshotRecords()).toEqual(honoInvalidBefore);
+
+    mockDb.clear();
+    const expressInvalidBefore = snapshotRecords();
+    const expressInvalid = await callExpressCreate('admin', invalidBody);
+    expect(expressInvalid.status).toBe(400);
+    expect(await expressInvalid.json()).toEqual(honoInvalidBody);
+    expect(snapshotRecords()).toEqual(expressInvalidBefore);
+
+    const runRepeatedValidKey = async (runtime: 'hono' | 'express') => {
+      mockDb.clear();
+      const statuses: number[] = [];
+      for (const [name, pin] of [
+        ['First keyed garage', '59182736'],
+        ['Second keyed garage', '59182737']
+      ]) {
+        const body = { name, pin, idempotencyKey: 'garage-create-key-20261010' };
+        const response = runtime === 'hono'
+          ? await callHonoCreate('valid-admin-token', body)
+          : await callExpressCreate('admin', body);
+        statuses.push(response.status);
+        await response.json();
+      }
+      return {
+        statuses,
+        garageCount: [...mockDb.records.keys()].filter((path) => path.startsWith('garages/')).length,
+        activityLogCount: [...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/')).length
+      };
+    };
+
+    const honoRepeatedKey = await runRepeatedValidKey('hono');
+    const expressRepeatedKey = await runRepeatedValidKey('express');
+    expect(honoRepeatedKey).toEqual({ statuses: [200, 200], garageCount: 2, activityLogCount: 2 });
+    expect(expressRepeatedKey).toEqual(honoRepeatedKey);
   });
 });
