@@ -312,20 +312,19 @@ export const AdminDashboard = memo(({
     };
   }, [showPlansModal, showOverview]);
 
-  const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>): Promise<boolean> => {
+  const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (currentSupervisor) {
       showToast?.('غير مصرح للمشرف بإضافة جراجات', 'error');
-      return false;
+      return;
     }
     const created = await createNewGarage(e);
-    if (!created) return false;
+    if (!created) return;
 
     // Garage rows are loaded through a separate paginated query. Reset that
     // query after the mutation so the new garage is visible immediately.
     await loadAdminGaragePage(true);
     setShowOverview(false);
-    return true;
   };
 
   const approvedGarages = React.useMemo(() => {

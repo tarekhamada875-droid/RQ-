@@ -32,7 +32,7 @@ interface AdminAddGarageModalProps {
   allGarages: Garage[];
   isLoading: boolean;
   trialDays?: number;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   t: (key: string) => string;
 }
 
@@ -134,8 +134,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 }
                 setGarageForm(localForm);
                 setPinInput(localPin);
-                const created = await onSubmit(e);
-                if (!created) return;
+                await onSubmit(e);
                 const emptyForm = {
                   name: '',
                   hourlyRate: '',
