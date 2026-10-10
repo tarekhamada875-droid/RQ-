@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { garageDocumentToDeletionState, deletionJobDocumentToState } from './adapters/garageDeletionAdapter';
-import { decideGarageDeletion } from './domain/garageDeletion';
+import { decideGarageDeletion, isGarageDeletionClaimActive } from './domain/garageDeletion';
 
 describe('garage deletion policy characterization', () => {
   it('converts legacy garage and deletion-job records into explicit state', () => {
     expect(garageDocumentToDeletionState({ name: 'Garage One', isDeleting: true })).toEqual({ exists: true, name: 'Garage One' });
-    expect(deletionJobDocumentToState({ status: 'running', garageName: 'Garage One', updatedAt: new Date() })).toEqual({ exists: true, status: 'running', garageName: 'Garage One' });
+    const updatedAt = new Date('2026-10-10T07:00:00.000Z');
+    const leaseExpiresAt = new Date('2026-10-10T07:05:00.000Z');
+    expect(deletionJobDocumentToState({ status: 'running', garageName: 'Garage One', updatedAt, leaseExpiresAt })).toEqual({
+      exists: true,
+      status: 'running',
+      garageName: 'Garage One',
+      updatedAt,
+      leaseExpiresAt
+    });
     expect(deletionJobDocumentToState(null)).toEqual({ exists: false });
+  });
+
+  it('identifies active leases and permits expired or failed jobs to be reclaimed', () => {
+    const now = new Date('2026-10-10T07:00:00.000Z').getTime();
+    expect(isGarageDeletionClaimActive({ exists: true, status: 'running', leaseExpiresAt: new Date(now + 1000) }, now)).toBe(true);
+    expect(isGarageDeletionClaimActive({ exists: true, status: 'running', leaseExpiresAt: new Date(now - 1000) }, now)).toBe(false);
+    expect(isGarageDeletionClaimActive({ exists: true, status: 'running', updatedAt: new Date(now - 1000) }, now)).toBe(true);
+    expect(isGarageDeletionClaimActive({ exists: true, status: 'failed', updatedAt: new Date(now) }, now)).toBe(false);
   });
 
   it('allows only admins to enter the destructive deletion plan', () => {

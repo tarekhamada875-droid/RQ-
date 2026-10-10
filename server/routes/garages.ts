@@ -1,23 +1,22 @@
 import { Router } from 'express';
 import { requireAuth, financialRateLimiter, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { saveEntityPin, checkPinAvailabilityAcrossAll } from '../utils';
+import { computeLookupHash, saveEntityPinInTransaction, checkPinAvailabilityAcrossAll } from '../utils';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from '../idempotency';
 import { sanitizePayload, validateId, validateString, validateNumber, validateIdempotencyKey, validateNewPin } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
-import { calculateDailyProjection } from '../projections';
+import { calculateDailyProjection, getCairoDayBounds } from '../projections';
 import { aggregateProjectionBuckets, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
-import { decideGarageDeletion } from '../domain/garageDeletion';
 import { reconcileGarageState } from '../domain/garageReconciliation';
 import { canRunGarageMaintenance, canSubmitGarageApplication } from '../domain/authorization';
-import { deletionJobDocumentToState, garageDocumentToDeletionState } from '../adapters/garageDeletionAdapter';
+import { claimGarageDeletion, finalizeGarageDeletion, markGarageDeletionFailed, renewGarageDeletionLease } from '../adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from '../adapters/garageDeletionCleanupAdapter';
 
 const router = Router();
 
 function cairoDayBounds(date: string): { start: Date; end: Date } {
   if (!isValidDateKey(date)) throw new Error('INVALID_DATE');
-  const start = new Date(`${date}T00:00:00+03:00`);
-  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+  return getCairoDayBounds(date);
 }
 
 // Secure Server API: Authoritative Garage Creation
@@ -32,18 +31,45 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     }
 
     const sanitized = sanitizePayload(req.body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'trialDays', 'defaultTrialDays', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
-
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(sanitized.pin);
-
-    validateIdempotencyKey(sanitized.idempotencyKey || req.headers['idempotency-key']);
+    const idempotencyKey = validateIdempotencyKey(
+      sanitized.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']
+    );
 
     if (!adminDb) {
       return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
     }
 
+    const delegateEntityId = callerRole === 'delegate' ? (req.user?.entityId || callerUid) : undefined;
+    let requestFingerprint: string | undefined;
+    if (idempotencyKey) {
+      const fingerprintPayload: Record<string, unknown> = { ...sanitized };
+      delete fingerprintPayload.idempotencyKey;
+      delete fingerprintPayload.pin;
+      fingerprintPayload.pinLookupHash = computeLookupHash(normPin);
+      requestFingerprint = createRequestFingerprint({
+        callerRole: callerRole || null,
+        delegateEntityId: delegateEntityId || null,
+        payload: fingerprintPayload
+      });
+    }
+
+    const readExistingResult = async (): Promise<{ isDuplicate: boolean; cachedResult?: any }> => {
+      if (!idempotencyKey) return { isDuplicate: false };
+      let duplicate: { isDuplicate: boolean; cachedResult?: any } = { isDuplicate: false };
+      await adminDb.runTransaction(async (t: any) => {
+        duplicate = await checkIdempotencyInTransaction(
+          t, idempotencyKey, '/api/garages/create', callerUid, requestFingerprint
+        );
+      });
+      return duplicate;
+    };
+
+    const initialDuplicate = await readExistingResult();
+    if (initialDuplicate.isDuplicate) return res.json(initialDuplicate.cachedResult);
+
     if (callerRole === 'delegate') {
-      const delegateEntityId = req.user?.entityId || callerUid;
       const cairoParts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Africa/Cairo',
         year: 'numeric', month: '2-digit', day: '2-digit'
@@ -58,12 +84,16 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
         .limit(3)
         .get();
       if (delegateGaragesToday.size >= 3) {
+        const duplicate = await readExistingResult();
+        if (duplicate.isDuplicate) return res.json(duplicate.cachedResult);
         return res.status(409).json({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
       }
     }
 
     const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
     if (pinCheck.taken) {
+      const duplicate = await readExistingResult();
+      if (duplicate.isDuplicate) return res.json(duplicate.cachedResult);
       return res.status(400).json({
         success: false,
         error: 'PIN_ALREADY_TAKEN',
@@ -78,34 +108,31 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     const trialDays = rawTrialDays !== undefined
       ? validateNumber(rawTrialDays, 'trialDays', { min: 1, max: 365, required: false })
       : 2;
+    const phone = sanitized.phone ? String(sanitized.phone).trim() : '';
+    const hourlyRate = sanitized.hourlyRate !== undefined
+      ? validateNumber(sanitized.hourlyRate, 'hourlyRate', { min: 0, max: 10000, required: false })
+      : 0;
+    const overnightRate = sanitized.overnightRate !== undefined
+      ? validateNumber(sanitized.overnightRate, 'overnightRate', { min: 0, max: 10000, required: false })
+      : 0;
+    const billingModel = ['subscription', 'trial'].includes(sanitized.billingModel) ? sanitized.billingModel : 'subscription';
+
     const now = new Date();
-
-    let balanceExpiry: Date;
-    let dailyCapacity: number;
-    let activePackageName: string;
-
-    if (isTrial) {
-      balanceExpiry = new Date(now.getTime() + (trialDays > 0 ? trialDays : 2) * 24 * 60 * 60 * 1000);
-      dailyCapacity = 100;
-      activePackageName = `الباقة التجريبية (${trialDays} يوم)`;
-    } else {
-      balanceExpiry = new Date(now.getTime() - 1000);
-      dailyCapacity = 0;
-      activePackageName = 'بدون باقة';
-    }
-
+    const dailyCapacity = isTrial ? 100 : 0;
+    const activePackageName = isTrial ? `الباقة التجريبية (${trialDays} يوم)` : 'بدون باقة';
+    const balanceExpiry = isTrial
+      ? new Date(now.getTime() + (trialDays > 0 ? trialDays : 2) * 24 * 60 * 60 * 1000)
+      : new Date(now.getTime() - 1000);
     const garageRef = adminDb.collection('garages').doc();
     const garageId = garageRef.id;
-
-    await saveEntityPin('garages', garageId, normPin);
-
+    const logRef = adminDb.collection('activity_logs').doc();
     const garageDoc: any = {
       name: name.trim(),
-      phone: sanitized.phone ? String(sanitized.phone).trim() : '',
-      hourlyRate: sanitized.hourlyRate !== undefined ? validateNumber(sanitized.hourlyRate, 'hourlyRate', { min: 0, max: 10000, required: false }) : 0,
-      overnightRate: sanitized.overnightRate !== undefined ? validateNumber(sanitized.overnightRate, 'overnightRate', { min: 0, max: 10000, required: false }) : 0,
-      billingModel: ['subscription', 'trial'].includes(sanitized.billingModel) ? sanitized.billingModel : 'subscription',
-      status: (callerRole === 'delegate' || sanitized.createdByDelegateId || sanitized.isPending) ? 'pending' : 'approved',
+      phone,
+      hourlyRate,
+      overnightRate,
+      billingModel,
+      status: (callerRole === 'delegate' || sanitized.createdByDelegateId) ? 'pending' : 'approved',
       hasMonthlySubscribers: false,
       createdAt: now,
       isTrial,
@@ -130,7 +157,6 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
     };
 
     if (callerRole === 'delegate') {
-      const delegateEntityId = req.user?.entityId || callerUid;
       garageDoc.createdByDelegateId = delegateEntityId;
       garageDoc.createdByDelegateName = sanitized.createdByDelegateName || callerName || 'المندوب';
       garageDoc.referrerId = delegateEntityId;
@@ -147,18 +173,13 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
       garageDoc.referredByGarageName = sanitized.referredByGarageName || '';
     }
 
-    await garageRef.set(garageDoc);
-
-    const logRef = adminDb.collection('activity_logs').doc();
-    await logRef.set({
+    const activityLog = {
       garageId,
       garageName: garageDoc.name,
       staffId: callerUid || null,
       staffName: callerName || (isTrial ? 'النظام (تفعيل تجريبي)' : 'الإدارة (إنشاء جراج)'),
       actionType: isTrial ? 'recharge' : 'create',
-      plateNumber: isTrial
-        ? `تفعيل الباقة التجريبية (${trialDays} يوم)`
-        : `إنشاء حساب جراج جديد (بدون باقة)`,
+      plateNumber: isTrial ? `تفعيل الباقة التجريبية (${trialDays} يوم)` : 'إنشاء حساب جراج جديد (بدون باقة)',
       timestamp: now,
       amount: 0,
       details: {
@@ -168,49 +189,38 @@ router.post('/create', requireAuth, financialRateLimiter(), async (req: AuthRequ
         revenueAmount: 0,
         isTrial: Boolean(isTrial)
       }
+    };
+    const result = { success: true, id: garageId };
+    let replayedResult: any;
+    let isReplay = false;
+
+    await adminDb.runTransaction(async (t: any) => {
+      if (idempotencyKey) {
+        const duplicate = await checkIdempotencyInTransaction(
+          t, idempotencyKey, '/api/garages/create', callerUid, requestFingerprint
+        );
+        if (duplicate.isDuplicate) {
+          isReplay = true;
+          replayedResult = duplicate.cachedResult;
+          return;
+        }
+      }
+
+      await saveEntityPinInTransaction(t, 'garages', garageId, normPin);
+      t.set(garageRef, garageDoc);
+      t.set(logRef, activityLog);
+      if (idempotencyKey) {
+        storeIdempotencyInTransaction(
+          t, idempotencyKey, result, '/api/garages/create', callerUid, requestFingerprint
+        );
+      }
     });
 
-    return res.json({ success: true, id: garageId });
+    return res.json(isReplay ? replayedResult : result);
   } catch (e: any) {
     console.error('[Server Garage] Error in create garage:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);
     return res.status(statusCode).json({ success: false, error: message });
-  }
-});
-
-// Secure Server API: Garage Update
-router.post('/update', requireAuth, async (req: AuthRequest, res: any) => {
-  try {
-    const { id, ...data } = req.body || {};
-    if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-    const callerRole = req.user?.role;
-
-    if (callerRole !== 'admin') {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
-
-    const updates: Record<string, any> = { updatedAt: new Date() };
-    const allowedKeys = [
-      'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
-      'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode', 
-      'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId',
-      'hasMonthlySubscribers', 'allowMonthlySubscribers', 'subscriberFlatFee', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
-      'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt',
-      'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
-      'balance', 'balanceExpiry', 'totalReferralRewardDays', 'carsInside'
-    ];
-    for (const key of allowedKeys) {
-      if (key in data && data[key] !== undefined) {
-        updates[key] = data[key];
-      }
-    }
-
-    await adminDb.collection('garages').doc(id).update(updates);
-    return res.json({ success: true });
-  } catch (e: any) {
-    console.error('[Server Garage] Error in update:', e);
-    return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
   }
 });
 
@@ -222,72 +232,51 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
 
-    const sanitized = sanitizePayload(req.body, ['garageId', 'idempotencyKey'], false);
+    const sanitized = sanitizePayload(req.body, ['garageId'], false);
     const garageId = validateId(sanitized.garageId, 'garageId', true);
 
     if (!adminDb) {
       return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
     }
 
-    const deletionJobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
-    const garageRef = adminDb.doc(`garages/${garageId}`);
-    const [garageSnap, deletionJobSnap] = await Promise.all([garageRef.get(), deletionJobRef.get()]);
-    const garageData = garageSnap.exists ? garageSnap.data() || {} : {};
-    const deletionDecision = decideGarageDeletion(
-      { callerRole, garageId },
-      garageDocumentToDeletionState(garageSnap.exists ? garageData : null),
-      deletionJobDocumentToState(deletionJobSnap.exists ? deletionJobSnap.data() || {} : null),
-    );
-    if (deletionDecision.ok === false) {
-      if (deletionDecision.error === 'GARAGE_NOT_FOUND') {
-        return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-      }
+    const claim = await claimGarageDeletion(adminDb, garageId, callerRole, req.user?.uid);
+    if (claim.kind === 'forbidden') {
       return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
     }
-    if (deletionDecision.value.kind === 'already_deleted') {
+    if (claim.kind === 'not_found') {
+      return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
+    }
+    if (claim.kind === 'already_deleted') {
       return res.json({ success: true, alreadyDeleted: true });
     }
+    if (claim.kind === 'in_progress') {
+      const { statusCode, message } = mapDomainErrorToStatus(new Error('GARAGE_DELETION_IN_PROGRESS'));
+      return res.status(statusCode).json({ success: false, error: message });
+    }
 
-    // Mark first so a timeout or partial failure can safely resume on retry.
-    await garageRef.set({
-      isDeleting: true,
-      deletionStartedAt: new Date(),
-      deletionStartedBy: req.user?.uid || null
-    }, { merge: true });
-    await deletionJobRef.set({
-      garageId,
-      status: 'running',
-      updatedAt: new Date(),
-      startedBy: req.user?.uid || null
-    }, { merge: true });
-
-    await deleteGarageOwnedData(adminDb, garageId);
-
-    await garageRef.delete();
-    await deletionJobRef.set({
-      garageId,
-      status: 'completed',
-      completedAt: new Date(),
-      completedBy: req.user?.uid || null
-    }, { merge: true });
-
-    const logRef = adminDb.collection('activity_logs').doc();
-    await logRef.set({
-      garageId,
-      garageName: garageData.name || '',
-      staffId: req.user?.uid || null,
-      staffName: req.user?.displayName || 'الإدارة',
-      actionType: 'garage_delete',
-      plateNumber: `حذف جراج: ${garageData.name || garageId}`,
-      timestamp: new Date(),
-      amount: 0,
-      details: {
-        deletedByRole: callerRole,
-        deletedByUid: req.user?.uid || null
-      }
-    });
-
-    return res.json({ success: true });
+    try {
+      await deleteGarageOwnedData(adminDb, garageId, () => renewGarageDeletionLease(adminDb, garageId, claim.claimToken));
+      await finalizeGarageDeletion(adminDb, garageId, claim.claimToken, claim.auditLogId, req.user?.uid, {
+        garageId,
+        garageName: claim.garageName,
+        staffId: req.user?.uid || null,
+        staffName: req.user?.displayName || 'الإدارة',
+        actionType: 'garage_delete',
+        plateNumber: `حذف جراج: ${claim.garageName}`,
+        timestamp: new Date(),
+        amount: 0,
+        details: {
+          deletedByRole: callerRole,
+          deletedByUid: req.user?.uid || null
+        }
+      });
+      return res.json({ success: true });
+    } catch (e) {
+      await markGarageDeletionFailed(adminDb, garageId, claim.claimToken).catch((markError) => {
+        console.error('[Server Garage] Failed to release deletion claim:', markError);
+      });
+      throw e;
+    }
   } catch (e: any) {
     console.error('[Server Garage] Error in delete garage:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);

@@ -105,7 +105,7 @@ Added the Fetch-native Hono mirror for `POST /api/garages/rebuild-projections` w
 
 The 2026-10-09 operational review found that the preview Worker uses the same Firebase project and Firestore database identifiers as production. The passing H5 run deployed the Worker and tested health/version plus unauthenticated protection only; it performed no authenticated route call or Firestore operation. Preview data rehearsal and Express retirement remain blocked pending a genuinely isolated synthetic Firebase target and exact rollback evidence.
 
-The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They are account creation, broad admin account mutation, destructive deletion, entitlement extension, or projection/reconciliation maintenance. H9 does not remove those surfaces automatically.
+The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They include account creation (now hardened and synthetically characterized across both runtimes), destructive deletion (now lease-protected against overlapping runs and synthetically characterized), entitlement extension, and projection/reconciliation maintenance. The Express `POST /api/garages/update` handler has been retired locally after synthetic coverage and explicit owner approval; Hono remains the supported route.
 
 ## Safe H9 sequence
 
@@ -129,7 +129,7 @@ The first slice added Fetch-native Worker coverage for valid garage-session refr
 
 ## H9 status
 
-**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express trial-decision handler, and the Express cars-inside recalculation handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express trial-decision handler, the Express cars-inside recalculation handler, and the Express garage-update handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
 
 ### Read-only garage reconciliation slice — 2026-10-09
 
@@ -146,6 +146,54 @@ Before retirement, direct synthetic dual-runtime characterization for `POST /api
 
 Added six local dual-runtime characterization tests for `POST /api/garages/create` in `server/garageReconciliationParity.integration.test.ts`. They cover active-role authorization, Admin trial initialization, delegate attribution and the three-per-Cairo-day quota, duplicate PIN rejection, invalid idempotency-key validation, and repeated valid-key behavior. All Firestore interactions use the in-memory `MockFirestore`; neither route implementation changed.
 
-Hono and Express matched on the tested garage/trial fields, delegate attribution/quota, PIN collision response, and invalid-key response. Two unresolved parity gaps were recorded: the Hono activity log omits the Express `details` object, and valid creation keys do not provide idempotency—two distinct-PIN requests using the same valid key create two garages and two activity logs in both runtimes. Keep the Express fallback mounted until these differences are resolved and the route receives a separate retirement review.
+Hono and Express matched on the tested garage/trial fields, delegate attribution/quota, PIN collision response, and invalid-key response at this initial checkpoint. The two then-open gaps—activity-log `details` parity and valid-key replay protection—were resolved in the following hardening slice; see below. The Express fallback remains mounted pending a separate route-retirement review.
 
-Focused validation passed **3 files / 39 tests**. The full local suite passed **103 files / 622 tests**; lint, web/Node/Worker builds, `npm run ci:check`, maintainability, and whitespace checks passed. No preview or live data operation, cloud access, route retirement, or production change occurred.
+Focused validation at the initial characterization checkpoint passed **3 files / 39 tests**. The full local suite at that checkpoint passed **103 files / 622 tests**; lint, web/Node/Worker builds, `npm run ci:check`, maintainability, and whitespace checks passed. No preview or live data operation, cloud access, route retirement, or production change occurred.
+
+### Garage creation hardening — 2026-10-10
+
+Closed the two `POST /api/garages/create` gaps identified in the initial characterization. Hono and Express now emit matching activity-log `details`. Both implementations use the same sanitized request fingerprint (with the raw PIN omitted), and perform idempotency checking/storage, private PIN and unique reservation writes, garage creation, and activity-log creation in one Firestore transaction. Same-key/same-request retries replay the saved result; same-key/different-request reuse is rejected. A concurrent same-key dual-runtime synthetic test verifies a single garage and activity log are created. The transaction also checks the PIN reservation before writing it. Hono additionally now matches Express's normal-operation 30-per-user/IP-per-minute create limit through a transactionally updated `rate_limits` document; Hono fails closed on limiter-storage failure, while Express retains its process-memory fallback.
+
+Focused validation at the hardening checkpoint passed **4 files / 43 tests**; the full suite then passed **103 files / 624 tests**. Later rate-limit validation and current totals are recorded below. Tests used only in-memory `MockFirestore`; no Firebase/Cloudflare access, preview rehearsal, live data operation, push, or deployment occurred. Express create remains mounted pending a distinct route-retirement review and explicit approval.
+
+### Garage creation Hono rate-limit parity — 2026-10-10
+
+Added the same normal-operation rate cap as Express to Hono garage creation: 30 requests per authenticated UID per fixed 60-second window (client IP fallback), enforced transactionally in the shared hashed `rate_limits` document. The 31st request returns a compatible 429 without creating garage data. Expired-window reset and fail-closed 503 behavior for limiter-storage failure are also covered using in-memory `MockFirestore`. The Hono outage policy is intentionally fail-closed rather than using Express's process-local memory fallback.
+
+Focused integration passed **1 file / 31 tests**. A simultaneous near-limit test verifies that, with 28 requests already counted, three concurrent requests result in exactly two accepted creations, one 429, and a counter fixed at 30. The full local suite passed **103 files / 636 tests**; `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` passed. No Firebase/Cloudflare access or deployment occurred. Express create stays mounted; retirement is not part of this approved slice.
+
+### Garage update characterization and Express retirement — 2026-10-10
+
+Three synthetic dual-runtime tests characterized `POST /api/garages/update`: the Hono allowlist for all current fields, ignored input fields, no-write denials for non-Admin roles, and Admin validation/missing-document behavior. They exposed and fixed Express's authorization-before-validation ordering. After explicit owner approval, only the Express handler was removed. Hono remains supported; tests preserve its allowlist/authorization/error contracts and verify the Express fallback now returns 404. The former Express parser's 400 body for top-level JSON `null` differed from Hono's route-level error; that legacy route behavior is no longer served.
+
+The focused integration file passed **1 file / 28 tests**; the final full local suite passed **103 files / 633 tests**, with `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` green after retirement. Tests use only in-memory `MockFirestore`; no Firebase/Cloudflare access, preview rehearsal, live operation, push, or deployment occurred. This removes only the local Express update handler; Express and all other routes remain.
+
+### Garage deletion dual-runtime characterization — 2026-10-10
+
+Added five local synthetic dual-runtime tests for `POST /api/garages/delete`. Coverage verifies scoped cleanup, preservation of unrelated records, audit/job parity, authorization and input/not-found behavior, completed-job replay, resume after the root is absent, recovery after a simulated lost batch acknowledgment, and a concurrent duplicate request receiving 409 while the first operation completes only once. A shared Firestore transaction claims the garage with a five-minute renewable lease; failures become retryable, expired legacy jobs can be reclaimed, and final audit/root/job completion is atomic. Express mirrors Hono's persisted metadata and recovery contract; Hono uses the shared error map. Hono now also applies the same 30-per-user/IP-per-minute financial limiter used by Express before entering the destructive handler; it shares the create-route fail-closed storage policy.
+
+Focused validation passed **1 file / 28 tests**; final full local validation passed **103 files / 633 tests**, including `npm run ci:check`, maintainability, and whitespace checks. All destructive operations and fault injection were confined to in-memory `MockFirestore`; no external database, preview/live data, route retirement, push, or deployment was involved.
+
+**Still open:** lease and transaction behavior has only been verified against `MockFirestore`; no isolated Firebase rehearsal occurred. The current client sends only `garageId`, so replay/serialization relies on the garage-scoped lease/job state rather than a separate request key. Keep Express mounted until operational review and any route-retirement decision is explicitly approved.
+
+### Garage deletion Hono rate-limit parity — 2026-10-10
+
+Extracted the Hono financial limiter into shared middleware and applied it to `POST /api/garages/delete`, matching Express's fixed 30-request/60-second cap for authenticated user IDs (client IP fallback). Synthetic tests seed the hashed shared `rate_limits` document at count 29; both runtimes allow the next deletion, reject the following request with the compatible 429 contract, and leave business records unchanged on the blocked request. The existing same-garage overlap synchronization was updated for the added limiter transaction and continues to pass.
+
+Focused integration passed **1 file / 32 tests**; full local validation passed **103 files / 637 tests**, CI/release checks, maintainability, and `git diff --check`. All state was synthetic in-memory Firestore. Express deletion remains mounted; no Firebase/Cloudflare access, preview/live deletion, push, or deployment occurred.
+
+### Maintenance null-body validation parity — 2026-10-10
+
+Local characterization exposed a Hono 500 for JSON `null` on `POST /api/garages/reconciliation`, `/api/garages/dashboard-summary/rebuild`, and `/api/garages/rebuild-projections`, while Express returned 400. Hono now normalizes null to an empty request and returns 400 without business-data writes. Because Express rejects top-level JSON `null` in its parser and returns an HTML error envelope, the cross-runtime assertion for this case is status/no-write parity; ordinary JSON validation cases still compare response bodies exactly.
+
+Focused H9 integration passed **1 file / 32 tests**; the full suite passed **103 files / 637 tests**. CI/release checks, maintainability, and `git diff --check` passed. This was entirely local and synthetic; all three Express maintenance handlers remain mounted, with no cloud rehearsal, push, or deployment.
+
+### DST-aware Cairo maintenance boundaries — 2026-10-10
+
+Both Express and Hono maintenance handlers previously used fixed `UTC+03:00` query windows. A winter synthetic fixture showed that this included a prior-local-day event and omitted a late target-day event. A shared helper now computes actual `Africa/Cairo` day boundaries for reconciliation, dashboard-summary rebuild, and projection rebuild; it derives the next local day's start separately rather than assuming a 24-hour UTC interval.
+
+Unit tests verify winter and summer offsets. Dual-runtime synthetic summary/projection rebuild tests verify the winter-day event count, totals, and watermark. Focused validation passed **2 files / 38 tests**; full validation passed **103 files / 639 tests**, CI/release, maintainability, and whitespace checks. All data remained in `MockFirestore`; no Firebase/Cloudflare access, live/preview operation, route retirement, push, or deployment occurred.
+
+### Multi-page garage deletion lease stress — 2026-10-10
+
+Added a synthetic 805-vehicle deletion case to force three 400-document cleanup pages in each runtime. The test observed exactly three lease renewals, no remaining owned vehicles, one audit record, a completed job, and a released lease for both Hono and Express. Focused stress coverage passed; full local validation passed **103 files / 640 tests**, including CI/release, maintainability, and whitespace checks. This remains `MockFirestore`-only evidence; Express deletion stays mounted and no cloud/live/preview action was performed.

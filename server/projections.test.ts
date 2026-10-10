@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { calculateDailyProjection } from './projections';
+import { calculateDailyProjection, getCairoDayBounds } from './projections';
+
+describe('Africa/Cairo projection-day boundaries', () => {
+  it('uses the seasonal Cairo offset for winter and summer local days', () => {
+    expect(getCairoDayBounds('2026-01-15')).toEqual({
+      start: new Date('2026-01-14T22:00:00.000Z'),
+      end: new Date('2026-01-15T22:00:00.000Z')
+    });
+    expect(getCairoDayBounds('2026-07-15')).toEqual({
+      start: new Date('2026-07-14T21:00:00.000Z'),
+      end: new Date('2026-07-15T21:00:00.000Z')
+    });
+  });
+});
 
 describe('daily projection rebuilds', () => {
   const events = [

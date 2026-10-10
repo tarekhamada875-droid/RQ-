@@ -1,6 +1,10 @@
 const GARAGE_DELETE_PAGE_SIZE = 400;
 
-async function deleteQueryInPages(adminDb: any, query: any): Promise<number> {
+async function deleteQueryInPages(
+  adminDb: any,
+  query: any,
+  onPageDeleted?: () => Promise<void>
+): Promise<number> {
   let deleted = 0;
   while (true) {
     const page = await query.limit(GARAGE_DELETE_PAGE_SIZE).get();
@@ -9,6 +13,7 @@ async function deleteQueryInPages(adminDb: any, query: any): Promise<number> {
     const batch = adminDb.batch();
     page.docs.forEach((docSnap: any) => batch.delete(docSnap.ref));
     await batch.commit();
+    if (onPageDeleted) await onPageDeleted();
     deleted += page.docs.length;
 
     if (page.docs.length < GARAGE_DELETE_PAGE_SIZE) break;
@@ -21,11 +26,19 @@ async function deleteQueryInPages(adminDb: any, query: any): Promise<number> {
  * cleanup contract. Each batch stays below Firestore's 500-write limit, and all
  * queries are scoped to the garage ID (and entity type where IDs may overlap).
  */
-export async function deleteGarageOwnedData(adminDb: any, garageId: string): Promise<number> {
+export async function deleteGarageOwnedData(
+  adminDb: any,
+  garageId: string,
+  onPageDeleted?: () => Promise<void>
+): Promise<number> {
   let deleted = 0;
 
   for (const subcollection of ['vehicles', 'subscribers', 'daily_counts', 'daily_stats', 'events', 'projection_buckets']) {
-    deleted += await deleteQueryInPages(adminDb, adminDb.collection(`garages/${garageId}/${subcollection}`));
+    deleted += await deleteQueryInPages(
+      adminDb,
+      adminDb.collection(`garages/${garageId}/${subcollection}`),
+      onPageDeleted
+    );
   }
 
   const topLevelQueries = [
@@ -38,7 +51,7 @@ export async function deleteGarageOwnedData(adminDb: any, garageId: string): Pro
   ];
 
   for (const query of topLevelQueries) {
-    deleted += await deleteQueryInPages(adminDb, query);
+    deleted += await deleteQueryInPages(adminDb, query, onPageDeleted);
   }
 
   return deleted;

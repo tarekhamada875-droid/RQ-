@@ -192,6 +192,7 @@ export class MockBatch {
 
 export class MockFirestore {
   public readonly records = new Map<string, any>();
+  private transactionQueue: Promise<void> = Promise.resolve();
 
   doc(path: string) {
     const id = path.split('/').at(-1) || '';
@@ -211,30 +212,39 @@ export class MockFirestore {
   }
 
   async runTransaction(callback: (t: any) => Promise<any>) {
-    const t = {
-      get: async (ref: MockDocumentReference) => {
-        return ref.get();
-      },
-      set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
-        if (options?.merge) {
-          const existing = this.records.get(ref.path) || {};
+    let release!: () => void;
+    const previous = this.transactionQueue;
+    this.transactionQueue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+
+    try {
+      const t = {
+        get: async (ref: MockDocumentReference) => ref.get(),
+        set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
+          if (options?.merge) {
+            const existing = this.records.get(ref.path) || {};
+            this.records.set(ref.path, { ...existing, ...data });
+          } else {
+            this.records.set(ref.path, data);
+          }
+        },
+        update: (ref: MockDocumentReference, data: any) => {
+          const existing = this.records.get(ref.path);
+          if (existing === undefined) {
+            throw new Error(`Document not found: ${ref.path}`);
+          }
           this.records.set(ref.path, { ...existing, ...data });
-        } else {
-          this.records.set(ref.path, data);
+        },
+        delete: (ref: MockDocumentReference) => {
+          this.records.delete(ref.path);
         }
-      },
-      update: (ref: MockDocumentReference, data: any) => {
-        const existing = this.records.get(ref.path);
-        if (existing === undefined) {
-          throw new Error(`Document not found: ${ref.path}`);
-        }
-        this.records.set(ref.path, { ...existing, ...data });
-      },
-      delete: (ref: MockDocumentReference) => {
-        this.records.delete(ref.path);
-      }
-    };
-    return callback(t);
+      };
+      return await callback(t);
+    } finally {
+      release();
+    }
   }
 
   seed(path: string, data: any) {

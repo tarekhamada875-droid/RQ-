@@ -57,7 +57,6 @@ export async function checkIdempotencyInTransaction(
     const data = keySnap.data() || {};
     const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt || 0);
     if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
-      t.delete(keyRef);
       return { isDuplicate: false };
     }
     if (requestFingerprint && data.requestFingerprint && data.requestFingerprint !== requestFingerprint) {
