@@ -1,9 +1,9 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-09
+**Last updated:** 2026-10-10
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Production source of truth:** `main` (do not modify for the Unified Hono migration task).
-**Active migration branch:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1` on 2026-10-08, with H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) passing for that exact head. This commit adds opt-in read-only Playwright test infrastructure and documentation, not product behavior. The only post-30cccf runtime/config change remains preview-only `wrangler.preview.toml` CORS allowlisting at `40da805`; production configuration was not changed. A later docs-only synchronization may have a newer SHA; verify the actual branch/head before acting.
+**Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
+**Active workstream:** H9 on `migration/unified-hono`, last verified at `90617b63be48d3e897988fbb2d6769efae41332b`. Exact-head Production Gate [37949821389](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821389) and H5 Preview Worker [37949821275](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821275) passed. Verify the live branch/head/workflows before acting.
 
 ## 1. What RQ is
 
@@ -27,7 +27,7 @@ Firebase Authentication + Firestore
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
-- Express remains transitional infrastructure for local development, Cloud Run compatibility, and existing integration tests; it is not the production API path.
+- Express remains transitional infrastructure for local compatibility and existing integration tests; it is not the production API path. The unused Cloud Run-specific entrypoint was retired during H9; no Cloud Run deployment workflow is active.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
 - `wrangler.toml` is the production Worker deployment configuration.
 
@@ -35,17 +35,16 @@ Firebase Authentication + Firestore
 
 Future agents must use this order:
 
-1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, decisions, status, and file map.
-2. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: operational continuation instructions and chained succession protocol.
-3. **`AGENTS.md`**: mandatory safety, engineering, UI/UX, secret, and communication rules.
-4. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: active plan and gate decisions for the safe Hono consolidation experiment.
-5. **`docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`**: controlling H6 execution process, safety boundaries, evidence, retry rules, cleanup, and H7 hold criteria.
-6. **`RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`**: role/feature coverage catalog and matrix; execute it only under the controlled H6 runbook.
-7. **`MAINTAINABILITY_HANDOFF.md`** and **`BRANCHING_AND_RELEASES.md`**: active repository and release conventions.
-8. **`docs/OBSERVABILITY_RUNBOOK.md`** and `docs/CF0_*` through `docs/CF7_*`: operational and Cloudflare migration evidence; use the current Cloudflare instructions and ignore retired provider procedures.
-9. Capability-specific documents and dated audits: evidence only unless the active plan explicitly assigns work from them.
+1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, current status, and document map.
+2. **`AGENTS.md`**: mandatory repository safety and engineering instructions.
+3. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: the **only active project plan** and authority for milestone status and gates.
+4. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: current H9 operating sequence and chained succession protocol; it is a handoff, not a second plan.
+5. **`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`** and **`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`**: route evidence/status only, not alternate plans.
+6. **`MAINTAINABILITY_HANDOFF.md`**, **`BRANCHING_AND_RELEASES.md`**, and **`docs/OBSERVABILITY_RUNBOOK.md`**: supporting repository/release/operations references.
+7. H6 prompts/runbooks, the integrated acceptance task/report, dated handoffs, and `docs/CF0_*` through `docs/CF7_*`: historical evidence only; do not resume them as active tasks.
+8. Capability-specific documents and dated audits: evidence only unless the active Hono plan explicitly assigns work from them.
 
-Older plans must not override this hierarchy.
+No C7/C9/C10 or other non-Hono workstream is currently an active project plan. Historical milestone names in archived reports do not authorize a new workstream.
 
 Superseded plans, duplicate acceptance tasks, and the old succession protocol were removed from the working tree on 2026-10-05. Their content remains recoverable from Git history if a specific fact must be audited.
 
@@ -120,27 +119,15 @@ Recent validation evidence includes:
 - `git diff --check` passed;
 - the Egypt crest cleanup Production Gate passed.
 
-## 7. Current open work and blockers
+## 7. Current work and blockers — 2026-10-10
 
-The active launch decision remains C10 in the checkpoint plan. Do not declare final production readiness merely because the app loads.
+**The one active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
-The Cloudflare backend migration is live for the production Pages-to-Worker path. The next architectural workstream is the controlled unified Hono consolidation governed by `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`. Do not delete Express until the Hono preview, role acceptance, parity, rollback, and full quality gates are proven.
+H9 is **IN PROGRESS** on `migration/unified-hono` at last verified SHA `90617b6`. The H9 migration-branch Production Gate [37949821389](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821389) and H5 Preview Worker [37949821275](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821275) passed. Express remains as a compatibility runtime and several route handlers remain under review; use the H9 inventory and sensitive-route disposition for evidence, not as separate plans.
 
-C10 evidence still concerns:
+The owner accepted H6 residual risks for scope purposes and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain OPEN/BLOCKED, OPEN/UNVERIFIED, or intentionally untested; they are not PASS results. Supervisor is retired and legacy records are preserved.
 
-- exact-commit CI and deployment evidence;
-- authenticated smoke tests against a safe staging/pre-production boundary;
-- Firebase billing/database identity decision;
-- backup/restore evidence;
-- rollback and incident contacts;
-- financial and destructive-operation validation using only synthetic data;
-- live observability without secrets or sensitive payloads.
-
-C7 historical financial reconciliation remains deferred until the owner approves the accounting period and source-of-truth policy. Any reconciliation must start read-only and use synthetic/exported data.
-
-### Unified Hono H6/H7 status — 2026-10-09
-
-The owner explicitly accepted the documented H6 residual risks and instructed that H6 be considered complete for scope purposes so H7 could begin. Staff operational access remains **OPEN/BLOCKED**, Owner listener delivery remains **OPEN/UNVERIFIED** with partial cleanup evidence, and financial workflows remain intentionally untested/blocked without an isolated sandbox; these are carried into H7 as accepted residual risks, not PASS results. Supervisor is retired: legacy authentication/session/API access is denied, client Rules deny its access, and existing account/session records are preserved. The stable Pages preview is `https://migration-unified-hono.rq-acg.pages.dev`, and the isolated Worker is `https://rq-hono-preview.tarekhamada875.workers.dev`. Current-head H5 Preview Worker and Production Gate workflows passed; local full quality gates, focused parity/auth/session tests, rollback rehearsal, and preview release smoke passed. **H7 is GO** under the owner's explicit residual-risk approval. H8 production replacement remains a separate approval gate; `main` and production remain untouched.
+**Preview data-safety HOLD:** `wrangler.preview.toml` and production `wrangler.toml` target the same Firebase project/database identifiers. Do not perform authenticated preview Firestore reads/writes or maintenance rehearsals until a genuinely isolated synthetic data/auth target and least-privilege credentials are configured and verified.
 
 ## 8. Repository map
 
@@ -149,26 +136,25 @@ The owner explicitly accepted the documented H6 residual risks and instructed th
 - `src/services/`: frontend service contracts and display-read adapters.
 - `src/domain/`: pure business decisions and policy helpers.
 - `server/cloudflareWorker.ts`: current production Hono Worker API and route authority.
-- `server/app.ts`: transitional Express composition used by local development, Cloud Run compatibility, and existing integration tests.
-- `server/routes/`: transitional Express route modules and characterization references; do not delete until the Hono consolidation is complete.
+- `server/app.ts`: transitional Express composition used by the explicit local compatibility command and existing integration tests.
+- `server/routes/`: transitional Express route modules and characterization references; the read-only delegate dashboard handler was retired in H9 after Hono replacement coverage passed; do not delete remaining modules until their route-specific disposition is complete.
 - `server/domain/`: pure backend decision modules.
-- `server/cloudRun.ts`: retained Node/Cloud Run-compatible API-only process entrypoint.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
-- `wrangler.toml`, `Dockerfile`: deployment/runtime contracts; inspect before removing legacy compatibility files.
+- `wrangler.toml`: active Worker deployment contract. `Dockerfile`: generic Node/container compatibility artifact; it is not an active Cloud Run deployment contract.
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`: Firebase configuration.
 
 ## 9. Cleanup and documentation policy
 
 The repository was cleaned on 2026-10-05. Superseded deployment plans, duplicate acceptance tasks, old audits, and the old succession protocol were removed from the working tree. Their history remains recoverable through Git.
 
-Keep these active:
+Keep these as current orientation and operating documents:
 
 - `AGENTS.md`
 - `RQ_PROJECT_KNOWLEDGE_BASE.md`
 - `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
 - `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
-- `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`
+- `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` (historical coverage catalog only; not an active task)
 - `MAINTAINABILITY_HANDOFF.md`
 - `BRANCHING_AND_RELEASES.md`
 - `README.md`
@@ -178,7 +164,9 @@ Keep these active:
 - `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
 - `docs/OBSERVABILITY_RUNBOOK.md`
 
-Keep `Dockerfile` and `server/cloudRun.ts` only as transitional local/Cloud Run compatibility until the Hono consolidation checkpoint explicitly retires them. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts.
+`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; current H9 continuation instructions are in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+
+The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. Keep the generic `Dockerfile` only while the Express compatibility runtime remains useful for local/container tests.
 
 Unreferenced metadata candidates still require external-consumer review before deletion:
 
@@ -210,7 +198,7 @@ For a deployment-related change, also verify the Cloudflare Worker health/versio
 4. Preserve server authority and existing UI/UX.
 5. Use synthetic/in-memory data unless the owner explicitly authorizes a safe external workflow.
 6. Run focused tests, then the full validation gate.
-7. Push only to the branch explicitly authorized for the active task. For Unified Hono H6, that branch is `migration/unified-hono`; do not push, merge, or deploy to production `main` before H6/H7/H8 gates and explicit owner approval.
+7. Push only to the branch explicitly authorized for the active task. For current H9 work, use `migration/unified-hono`; do not merge or deploy to production `main` as part of H9.
 8. If the owner says `tokens ending`, stop feature work immediately and follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`; prepare the next chained successor handoff before anything else.
 
-This file is an orientation and consolidation layer. The canonical checkpoint plan remains the authoritative source for current task status and launch decisions.
+This file is an orientation and consolidation layer. The canonical Hono checkpoint plan remains the authoritative project plan and source for current milestone status; the succession handoff supplies the current operational sequence.

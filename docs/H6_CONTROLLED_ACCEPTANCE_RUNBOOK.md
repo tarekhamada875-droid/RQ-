@@ -1,6 +1,8 @@
-# H6 Controlled Acceptance Runbook
+# H6 Controlled Acceptance Runbook — Historical / Superseded
 
-**Status:** H6 was closed for scope by explicit owner residual-risk acceptance on 2026-10-09; unresolved cells remain labeled OPEN/BLOCKED or OPEN/UNVERIFIED. H7 is now in progress.
+> **Do not use this as an active task plan.** H6 was closed for scope by explicit owner residual-risk acceptance, H7 received GO, H8 is deployed, and H9 is the current checkpoint. This file is retained as historical safety/evidence documentation. For current work, follow `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` and `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+
+**Historical status:** H6 residual cells remain OPEN/BLOCKED or OPEN/UNVERIFIED; acceptance for scope did not convert them to PASS.
 **Scope:** `migration/unified-hono` and the isolated `rq-hono-preview` Worker only.
 **Purpose:** Replace exploratory clicking and ambiguous evidence with a repeatable, risk-controlled acceptance run.
 
@@ -8,9 +10,9 @@
 
 No test plan, CI run, or acceptance cycle can prove an application is **100% bug-free**. This process reduces risk by requiring reproducible evidence, defined authorization boundaries, explicit blockers, and a separate cutover decision. Do not promise zero defects or describe the application as risk-free.
 
-This runbook controls **how current H6 work is executed**. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` remains the coverage catalog and feature-by-role matrix. If an older example conflicts with this runbook, current owner instructions, or the synthetic-only boundary, do not perform that action; mark it OPEN/BLOCKED and document why.
+This runbook records how H6 work was executed. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` is a historical coverage catalog and feature-by-role matrix, not authorization to resume testing. If an older example conflicts with current owner instructions or safety boundaries, do not perform that action.
 
-For a concise operator sequence for the currently unresolved role cases, see [`H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](H6_MANUAL_REMAINING_ROLES_RUNBOOK.md). It is a field checklist only and does not supersede this runbook.
+The former companion checklist [`H6_MANUAL_REMAINING_ROLES_RUNBOOK.md`](H6_MANUAL_REMAINING_ROLES_RUNBOOK.md) is also superseded. Do not use either H6 file as current H9 work instructions.
 
 Never use production, `main`, real-user data, real payments, live financial writes, or a live Firestore Rules deployment for H6. Do not redesign the UI. Do not write secrets, PINs, bearer/session tokens, or sensitive payloads into reports, screenshots, source, or test fixtures.
 
