@@ -156,7 +156,9 @@ async function enforceWorkerFinancialRateLimit(c: any, next: () => Promise<void>
   if (!adminDb) return next();
 
   const user = c.get('user');
-  const key = user?.uid || c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  const environment = String(c.env?.ENVIRONMENT || 'production').trim() || 'production';
+  const actorKey = user?.uid || c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  const key = environment === 'production' ? actorKey : `${environment}:${actorKey}`;
   try {
     const allowed = await consumeWorkerFinancialRateLimit(key);
     if (!allowed) {
