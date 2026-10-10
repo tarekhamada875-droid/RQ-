@@ -1,23 +1,20 @@
 # RQ Unified Hono Migration Checkpoint Plan
 
-## Purpose
+## Purpose and authority
 
-Evaluate and, if successful, migrate RQ from the current dual-runtime structure to a unified Hono Web-Standards backend without risking the working production deployment.
+This is the **single active project plan** for the Unified Hono workstream. Hono became the production Worker architecture at H8; the active checkpoint is now H9, the controlled retirement of remaining Express compatibility surfaces. This plan governs milestone status and release gates. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` is the operational handoff, not a competing plan. H6 documents and older Cloudflare reports are historical evidence only unless this plan explicitly points to them.
 
-## Current status — 2026-10-09
+## Current status — 2026-10-10
 
-- **Authorized branch/verified code-test baseline:** `migration/unified-hono`; the latest workflow-verified code/test baseline was `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1`. A subsequent documentation-only synchronization may produce a newer HEAD; verify actual local/remote HEAD and workflows before acting.
-- **Exact-head workflows:** H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) both passed for that SHA. The Production Gate is validation; it did not deploy production.
-- **Latest relevant source/config/test changes:** `30cccf48d71dcf2e7890c09f3f8bfd3aed7c79a6` sets and tests the 30-second garage-delete timeout. `40da805` changes only `wrangler.preview.toml` to allow the stable migration Pages origin; production `wrangler.toml` remains unchanged. `ae8ab80` adds only opt-in read-only Playwright test infrastructure and documentation, not product behavior.
-- **Production:** `main` and the current production Worker/Pages remain unchanged; no cutover is authorized.
-- **H6 execution authority:** follow `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`; use the detailed role report and integrated report as existing evidence, not as new instructions. Reuse valid evidence and work unresolved/invalidated cells only; do not rebuild the application or repeat the entire matrix.
-- **H6 is closed for scope by explicit owner residual-risk acceptance:** the Pages-to-preview-Worker pairing and preview-only CORS correction were verified for a recorded fresh non-production deployment, followed by one bounded Admin login/dashboard/read-only navigation/logout **PASS**. Staff operational access remains **OPEN/BLOCKED**, Owner listener delivery remains **OPEN/UNVERIFIED** with partial cleanup evidence, and financial workflows remain intentionally blocked without an isolated sandbox; these are accepted residual risks, not PASS results. Supervisor is retired by explicit owner decision; local denial/preservation regressions are validated. **H7 is now IN PROGRESS** and must independently evaluate its GO/HOLD conditions against the exact candidate.
-- **Automation:** an opt-in read-only Playwright smoke checks the generic login shell and isolated Worker health/version endpoints; it is not role-acceptance E2E and is not in default CI. See `docs/H6_PLAYWRIGHT_PREVIEW_HARNESS.md`; do not claim that it closes any H6 role cell.
-- **UI/UX:** preserve the freeze; no redesign is authorized. The sole role-policy exception is the explicitly owner-approved, non-destructive Supervisor retirement; no other business-rule changes are authorized by this status.
-- **Next checkpoint:** H7 is **GO** under the owner's explicit acceptance of the documented H6 residual risks. Current-head workflows, local quality gates, preview release smoke, focused route-parity/auth/session tests, and rollback rehearsal passed. H8 production replacement remains a separate explicit approval gate. No process can guarantee zero bugs; document residual risk honestly.
-- **Succession rule:** if the owner says exactly `tokens ending`, follow the protocol in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` before doing other work.
-
-Dated H6 continuation sections later in this plan preserve test history. Any point-in-time “next checkpoint” or “continue H6” notes in those addenda are historical; follow this current status and `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md` instead.
+- **Production:** H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0` is on `main` and the Hono Worker is deployed. The H8 tag `rq-unified-hono-h8-2026-10-09` points to that commit. Exact-main Production Gate [37919825186](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37919825186) and Worker deployment [37919825127](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37919825127) succeeded. No production deployment is authorized by ongoing H9 work.
+- **Active branch / candidate:** `migration/unified-hono` at `90617b63be48d3e897988fbb2d6769efae41332b`; it is ahead of `main` and the working tree was clean at the last verification. Verify actual HEAD/worktree/workflows before acting.
+- **Exact-head H9 workflows:** Production Gate [37949821389](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821389) and H5 Preview Worker [37949821275](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821275) passed for `90617b6`.
+- **H6/H7:** H6 was closed for scope by the owner's explicit residual-risk acceptance; H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain unresolved or intentionally untested and are **not** PASS results.
+- **H9:** IN PROGRESS, not complete. Selected duplicate Express routes have been retired after parity evidence. Express runtime/fallback and several sensitive routes remain. Follow `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md` and `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md` for route-level status; do not treat those inventories as alternate project plans.
+- **Preview safety hold:** `wrangler.preview.toml` points to the same Firebase project/database identifiers as production. Do not perform authenticated preview Firestore reads/writes or maintenance rehearsals until a genuinely isolated synthetic data/auth target is configured and verified.
+- **Next checkpoint:** Complete H9 route-by-route with synthetic/in-memory parity evidence and approved dispositions. Keep `main` and production unchanged. H9 completion does not erase accepted H6 residual risks or itself certify production readiness.
+- **History:** Dated H6/H7 sections below are retained for evidence. Their old “continue H6” and “H7 pending” directions are superseded by this current status and the latest section at the end of the succession handoff.
+- **Succession:** If the owner says exactly `tokens ending`, follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` before other work.
 
 ## Current production architecture
 
@@ -31,17 +28,17 @@ Cloudflare Worker API (Hono)
 Firebase Authentication + Firestore
 ```
 
-The current Cloudflare Worker is the production backend. Express remains as transitional infrastructure for local development, existing integration tests, Cloud Run compatibility, and rollback support.
+The current Cloudflare Hono Worker is the production backend. Express remains only as transitional local compatibility and characterization/test infrastructure; the Cloud Run-specific entrypoint is retired. H9 removes Express route surfaces in bounded, evidenced slices.
 
 ## Non-negotiable rules
 
-1. Do not modify or delete the current production `main` branch during the experiment.
+1. During H9, do not modify `main` or deploy production; H8 is already deployed and H9 changes stay on `migration/unified-hono` unless separately approved.
 2. Do not redesign the UI or UX.
 3. Do not change business rules unless a migration defect requires an explicitly documented correction.
 4. Do not remove Express until all gates in this plan are complete.
 5. Keep Firebase authentication, Firestore data, tenant isolation, role permissions, idempotency, audit logging, and session behavior unchanged except for explicit, documented owner-approved policy decisions; Supervisor retirement is such a decision and must preserve legacy records.
-6. Every checkpoint must pass before the next checkpoint begins.
-7. The existing Cloudflare Worker remains the rollback target throughout the migration.
+6. Follow the explicit decision recorded for each checkpoint. Owner-accepted residual risks remain risks, not PASS results.
+7. Preserve the H8 release/tag and documented recovery procedures; do not represent a successful H9 test as a production release.
 
 ---
 
@@ -636,3 +633,8 @@ Current H6 status is unchanged: **OPEN/BLOCKED** for a verified Pages-to-Worker 
 Commit `ae8ab8099e11de07da5d2d87d9a1c863eb6983d1` adds `@playwright/test` as a development dependency, a separately invoked `npm run test:e2e:preview`, an exact-origin guard, and one read-only login-shell/Worker-health smoke. The runner rejects missing, production, and arbitrary Pages targets; it is single-worker, zero-retry, emits no screenshots/traces, and is not part of default CI. It makes no login or business/financial writes.
 
 Local smoke: **1 test passed** against `https://migration-unified-hono.rq-acg.pages.dev`, verifying the generic login shell and CORS-enabled `/api/health` and `/api/version` calls to `rq-hono-preview`. Local lint, `npm run ci:check` (**102 files / 584 tests** plus production build/artifact verification), maintainability, and diff checks passed. Exact-head H5 Preview Worker [37807079547](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079547) and Production Gate [37807079550](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37807079550) both passed; H5 verified the preview bundle and deployed the isolated Worker. This narrow smoke is not role-acceptance E2E, does not prove the current Pages deployment serves the exact candidate, and closes no H6 matrix cell. H6 remains OPEN/BLOCKED; H7 remains HOLD/NO-GO.
+
+
+## 2026-10-10 current H9 status — authoritative
+
+Hono is already deployed to production through H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0` and tag `rq-unified-hono-h8-2026-10-09`. The active H9 candidate is `migration/unified-hono` at `90617b63be48d3e897988fbb2d6769efae41332b`; exact-head Production Gate `37949821389` and H5 Preview Worker `37949821275` passed. H9 is **IN PROGRESS, not complete**: Express compatibility runtime and sensitive routes remain. Preview Firestore operations and maintenance rehearsals are **BLOCKED** because preview and production Wrangler configurations use the same Firebase project/database identifiers. Do not access preview Firestore until a genuinely isolated synthetic data/auth target is established and verified. Keep `main` and production unchanged during H9. The sole active project plan is this document; older H6 prompts/runbooks and CF/C-series reports are historical evidence, not alternate execution plans.

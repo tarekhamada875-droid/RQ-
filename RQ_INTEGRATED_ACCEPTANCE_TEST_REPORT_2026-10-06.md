@@ -1,6 +1,8 @@
 # RQ Integrated Acceptance Test Report — 2026-10-06
 
-## Current disposition — 2026-10-09
+> **ARCHIVED H6 EVIDENCE — NOT AN ACTIVE PLAN.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. This report preserves acceptance evidence/statuses; do not resume H6 from its historical notes. The sole active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
+
+## Historical H6 disposition — 2026-10-09
 
 **H6 is closed for scope by explicit owner decision, with residual risk accepted and carried forward; the unresolved cells below remain OPEN/BLOCKED or OPEN/UNVERIFIED and are not relabeled PASS.** The owner retired Supervisor; no manual login or scope testing is required. Local migration-branch regressions deny legacy Supervisor PIN login without migrating or changing records, reject Worker/Express session validation/release and protected access, and deny client Firestore access. The current candidate passed the local quality gates, focused route-parity/auth/session coverage, rollback rehearsal, current-head H5/Production Gate workflows, and verified preview release smoke. Existing records remain preserved. **H7 is GO under the owner's explicit residual-risk approval.** H8 production replacement remains a separate approval gate; the older role tables below are historical snapshots and their Supervisor PASS/OPEN outcomes no longer describe an active role.
 
