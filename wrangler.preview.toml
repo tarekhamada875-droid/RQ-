@@ -3,6 +3,10 @@ main = "dist/worker.js"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://migration-unified-hono.rq-acg.pages.dev"
 ENVIRONMENT = "preproduction"
