@@ -124,12 +124,12 @@ function isAllowedWorkerOrigin(origin: string | undefined): boolean {
 const FINANCIAL_RATE_LIMIT_MAX_REQUESTS = 30;
 const FINANCIAL_RATE_LIMIT_WINDOW_MS = 60_000;
 
-async function consumeWorkerFinancialRateLimit(key: string, now = Date.now()): Promise<boolean> {
+async function consumeWorkerFinancialRateLimit(key: string, now = Date.now(), collection = 'rate_limits'): Promise<boolean> {
   if (!adminDb) throw new Error('ADMIN_SDK_NOT_INITIALIZED');
 
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`fin:${key}`));
   const docId = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-  const ref = adminDb.doc(`rate_limits/${docId}`);
+  const ref = adminDb.doc(`${collection}/${docId}`);
 
   return adminDb.runTransaction(async (t: any) => {
     const snap = await t.get(ref);
@@ -159,8 +159,9 @@ async function enforceWorkerFinancialRateLimit(c: any, next: () => Promise<void>
   const environment = String(c.env?.ENVIRONMENT || 'production').trim() || 'production';
   const actorKey = user?.uid || c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
   const key = environment === 'production' ? actorKey : `${environment}:${actorKey}`;
+  const collection = environment === 'production' ? 'rate_limits' : `rate_limits_${environment}`;
   try {
-    const allowed = await consumeWorkerFinancialRateLimit(key);
+    const allowed = await consumeWorkerFinancialRateLimit(key, Date.now(), collection);
     if (!allowed) {
       const correlationId = c.get('correlationId');
       return c.json({
