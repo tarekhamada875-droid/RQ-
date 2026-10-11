@@ -223,3 +223,12 @@ The H5 Preview Worker run [38067730937](https://github.com/tarekhamada875-droid/
 ### Isolated Firestore configuration inspection — 2026-10-10
 
 Read-only Firebase Console inspection confirmed the isolated `(default)` Firestore database exists in `europe-west3` and currently contains no collections/documents. Its deployed Rules are Firebase’s default deny-all policy (`allow read, write: if false;`), not the repository’s `firestore.rules`; the Indexes tab shows **0** composite indexes, while the repository defines eight. No rules, indexes, or data were changed during inspection. Before authenticated client/storage rehearsal, deploy and verify the repository’s reviewed Rules and indexes to `rq-hono-preview-isolated` only (never rely on `.firebaserc`’s production default); then use synthetic-only fixtures and cleanup evidence. This is still not production data validation.
+
+
+### H9 isolated Firestore deployment and synthetic rehearsal — 2026-10-11 status
+
+The migration candidate at `f20953feafd1ae4b75d238a1cb0357bdfdb8baab` has a separate preview Firebase target, `rq-hono-preview-isolated`. Exact-candidate H5 Preview Worker [38072430923](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430923) and Production Gate [38072430917](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430917) passed. The isolated OIDC Firebase Rules/index workflow [38072430952](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430952) reports successful deployment; Firebase Console verification that all eight indexes are READY remains pending.
+
+A synthetic-only `/api/garages/create` rehearsal returned HTTP 429 on two probes. A subsequent read-only check found no garage fixture, so no garage was created to our knowledge; the route rehearsal remains incomplete and supplies no operational parity or retirement evidence. One staging rate-limit document with `count: 1` was observed; its expiry was already past when the handoff was written, and its delete confirmation was canceled. A synthetic anonymous Auth identity may remain in the isolated Firebase project. Exact cleanup paths and verification caveats are in the current `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` section dated 2026-10-11.
+
+No Express handler was retired during this operational continuation. Keep all remaining sensitive Express handlers and the compatibility runtime mounted pending a diagnosed staging result, route-specific evidence, and a separate retirement review. Production and `main` were not changed.

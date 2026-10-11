@@ -1,9 +1,9 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-10
+**Last updated:** 2026-10-11
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Active workstream:** H9 on `migration/unified-hono`, last verified at `90617b63be48d3e897988fbb2d6769efae41332b`. Exact-head Production Gate [37949821389](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821389) and H5 Preview Worker [37949821275](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821275) passed. Verify the live branch/head/workflows before acting.
+**Active workstream:** H9 on `migration/unified-hono`, verified at `f20953feafd1ae4b75d238a1cb0357bdfdb8baab` before the current documentation-only update. Exact-candidate Production Gate [38072430917](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430917), H5 Preview Worker [38072430923](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430923), and isolated Firestore Rules/index workflow [38072430952](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430952) succeeded. Verify live branch/head/workflows before acting.
 
 ## 1. What RQ is
 
@@ -119,15 +119,17 @@ Recent validation evidence includes:
 - `git diff --check` passed;
 - the Egypt crest cleanup Production Gate passed.
 
-## 7. Current work and blockers — 2026-10-10
+## 7. Current work and blockers — 2026-10-11
 
 **The one active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
-H9 is **IN PROGRESS** on `migration/unified-hono` at last verified SHA `90617b6`. The H9 migration-branch Production Gate [37949821389](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821389) and H5 Preview Worker [37949821275](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37949821275) passed. Express remains as a compatibility runtime and several route handlers remain under review; use the H9 inventory and sensitive-route disposition for evidence, not as separate plans.
+H9 is **IN PROGRESS** on `migration/unified-hono` at verified SHA `f20953feafd1ae4b75d238a1cb0357bdfdb8baab`, matching the remote at the time checked. Exact-head Production Gate [38072430917](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430917), H5 Preview Worker [38072430923](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430923), and isolated Firestore configuration workflow [38072430952](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38072430952) succeeded. The OIDC job reports successful deployment of Rules/index definitions to `rq-hono-preview-isolated`; verify Rules publication and all eight indexes' READY state in Firebase Console before relying on them.
 
 The owner accepted H6 residual risks for scope purposes and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain OPEN/BLOCKED, OPEN/UNVERIFIED, or intentionally untested; they are not PASS results. Supervisor is retired and legacy records are preserved.
 
-**Preview data-safety HOLD:** `wrangler.preview.toml` and production `wrangler.toml` target the same Firebase project/database identifiers. Do not perform authenticated preview Firestore reads/writes or maintenance rehearsals until a genuinely isolated synthetic data/auth target and least-privilege credentials are configured and verified.
+**Preview boundary:** preview now targets isolated Firebase project `rq-hono-preview-isolated`; production remains `gen-lang-client-0091669619` and was not changed. The current synthetic authenticated garage-create rehearsal is **INCOMPLETE**: two preview requests returned 429, a read-only check found no garage fixture, and a single expired rate-limit record was observed. Its delete confirmation was canceled. A synthetic anonymous Firebase Auth account may remain; the temporary ID-token file was removed. Recheck staging state read-only before any further cleanup or retry.
+
+Express remains a compatibility runtime and several sensitive handlers remain mounted. Use the current succession handoff and the two H9 route records below for exact status. Keep `main` and production unchanged until H9 closure and a separate release decision.
 
 ## 8. Repository map
 
