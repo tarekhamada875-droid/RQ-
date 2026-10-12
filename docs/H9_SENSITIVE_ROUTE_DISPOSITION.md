@@ -173,3 +173,6 @@ This decision retires **only this Express route/module**. It does not authorize 
 
 
 **Post-retirement full local validation:** `npm test` passed **104 files / 646 tests**; lint, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, whitespace, and generated-artifact cleanup passed. Exact-head migration workflows remain to be checked after push; H9 is not complete.
+
+
+**Exact-head remote checks:** source commit `0ce5c0bb24e78bb844a057714dc60b7be2cfc0b8` passed Production Gate [38234266950](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234266950) and H5 Preview Worker [38234267020](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234267020); the optional projection rehearsal was skipped and production was not deployed.

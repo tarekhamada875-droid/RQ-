@@ -328,3 +328,6 @@ Removed the Express-only router module `server/routes/garages.ts` and its mount 
 
 
 **Post-retirement local validation:** `npm test` passed **104 files / 646 tests**; `npm run lint`, `npm run build` (Vite, Node server, Cloudflare Worker), `npm run ci:check` including production artifact/release checks, `npm run maintainability:check`, and `git diff --check` all passed. Generated `dist/` and `build/` outputs were removed. The final pushed head's GitHub workflows remain to be verified; H9 is still in progress.
+
+
+**Exact-head remote checks:** source commit `0ce5c0bb24e78bb844a057714dc60b7be2cfc0b8` passed Production Gate [38234266950](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234266950) and H5 Preview Worker [38234267020](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234267020). H5 deployed `rq-hono-preview`; the public health/version and unauthenticated-protection smoke tests passed. The opt-in H9 projection rehearsal was **skipped**. Production deployment was not run.
