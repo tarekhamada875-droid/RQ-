@@ -54,6 +54,8 @@ describe('Worker session lifecycle routes', () => {
     expect(body.success).toBe(true);
     expect(body.sessions).toHaveLength(2);
     expect(body.sessions.map((session: any) => session.id)).toEqual(expect.arrayContaining([hashSessionId('session-a'), hashSessionId('session-b')]));
+    expect(body.sessions.find((session: any) => session.id === hashSessionId('session-a'))?.isCurrent).toBe(true);
+    expect(body.sessions.find((session: any) => session.id === hashSessionId('session-b'))?.isCurrent).toBe(false);
     expect(JSON.stringify(body)).not.toContain('session-a');
     expect(JSON.stringify(body)).not.toContain('session-b');
   });

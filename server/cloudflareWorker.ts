@@ -930,7 +930,9 @@ workerApp.get('/api/auth/sessions', async (c) => {
     const callerData = callerSession.exists ? callerSession.data() || {} : currentRoot;
     if (!callerSession.exists && !rootSnap.exists || callerData.isActive !== true || callerData.sessionId !== sessionId) return c.json({ success: false, error: 'SESSION_INVALID' }, 401);
     const devices = await adminDb.collection(`${definition.sessions}/${user.uid}/sessions`).get();
-    const currentSessionId = currentRoot.currentSessionId || currentRoot.sessionId || sessionId;
+    // "Current" is the caller's authenticated device, not the entity's
+    // preferred/root marker; multiple active devices are allowed.
+    const currentSessionId = sessionId;
     const sessions = devices.docs.map((doc: any) => toSessionSummary(doc.id, doc.data() || {}, currentSessionId));
     if (sessions.length === 0) sessions.push(toSessionSummary(sessionId, callerData, currentSessionId));
     return c.json({ success: true, sessions });
