@@ -83,7 +83,7 @@ Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 The existing route inventory identifies these Express capabilities as requiring an explicit disposition before removal:
 
 - `POST /api/garages/reconciliation` — **Express retired in this slice** after read-only Hono contract/no-write coverage, focused retirement assertions, full local gates, and explicit owner approval; Hono remains the supported diagnostic path.
-- `POST /api/garages/dashboard-summary/rebuild` — a Fetch-native Hono mirror and synthetic Express/Hono characterization are now present on `migration/unified-hono`; the Express route remains mounted pending an isolated operational rehearsal and separate retirement review.
+- `POST /api/garages/dashboard-summary/rebuild` — **Express retired in this slice** after the isolated synthetic operational rehearsal and full local gates; Hono is the sole supported owner.
 - `POST /api/garages/rebuild-projections` — a Fetch-native Hono mirror and synthetic Express/Hono replay/retry characterization are present on `migration/unified-hono`; Express remains mounted. **Preview rehearsal is on HOLD:** preview and production Wrangler configs currently specify the same Firebase project/database identifiers, so do not perform authenticated preview Firestore operations until an isolated synthetic data/auth target and rollback process are verified.
 - `POST /api/auth/invalidate-all-sessions`
 
@@ -129,7 +129,7 @@ The first slice added Fetch-native Worker coverage for valid garage-session refr
 
 ## H9 status
 
-**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express trial-decision handler, the Express cars-inside recalculation handler, the Express garage-update handler, and the Express reconciliation handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express dashboard-summary rebuild handler, the Express trial-decision handler, the Express cars-inside recalculation handler, the Express garage-update handler, and the Express reconciliation handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
 
 ### Read-only garage reconciliation slice — 2026-10-09
 
@@ -270,3 +270,6 @@ No live or preview destructive rehearsal, Firebase mutation, production deployme
 ### Dashboard-summary isolated rehearsal — 2026-10-12 status
 
 The current migration commit `217124a` deployed successfully to the isolated preview Worker via GitHub Actions run [38208591518](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38208591518); health/version and unauthenticated protection smoke passed. The approved synthetic dashboard-summary rehearsal did not perform any Firestore operation because the local Firebase CLI/Wrangler session is unauthenticated and the configured deployment workflow does not expose a staging admin/operator credential for the protected rebuild route. No records were seeded, read, rebuilt, or rolled back. Express `POST /api/garages/dashboard-summary/rebuild` remains mounted pending a staging-only seed/read/restore mechanism and Admin-authorized route invocation. Credentials must remain in configured environment/session mechanisms and must not be pasted into chat.
+
+### Dashboard-summary rebuild Express retirement — 2026-10-12
+Following successful isolated rehearsal run [38210800814](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38210800814) against `rq-hono-preview-isolated`, only Express `POST /api/garages/dashboard-summary/rebuild` was removed. Hono remains the supported owner; the Express fallback returns 404. The isolated seed/rebuild/verify/rollback workflow passed with the expected 2 buckets, 3 events, consistent event reconciliation, persisted summary, and exact restoration. Focused validation passed **2 files / 35 tests**. Full gates passed **104 files / 631 tests**, lint, all builds, CI/release checks, maintainability, and whitespace checks. No production, `main`, destructive, or branch-deletion operation occurred.
