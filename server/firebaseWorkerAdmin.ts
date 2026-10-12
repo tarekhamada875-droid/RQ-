@@ -121,6 +121,16 @@ function decodeDocument(raw: any): JsonMap {
   return Object.fromEntries(Object.entries(raw?.fields || {}).map(([key, value]) => [key, decodeValue(value)]));
 }
 
+function firestoreFilterOperator(operator: string): string {
+  return ({
+    '==': 'EQUAL',
+    '>': 'GREATER_THAN',
+    '>=': 'GREATER_THAN_OR_EQUAL',
+    '<': 'LESS_THAN',
+    '<=': 'LESS_THAN_OR_EQUAL'
+  } as Record<string, string>)[operator] || 'EQUAL';
+}
+
 class DocumentSnapshot {
   constructor(public readonly raw: any) {}
   get exists(): boolean { return !!this.raw; }
@@ -214,9 +224,9 @@ class FirestoreRest {
     const structuredQuery: JsonMap = { from: [from] };
     if (query.filters.length === 1) {
       const filter = query.filters[0];
-      structuredQuery.where = { fieldFilter: { field: { fieldPath: filter.field }, op: filter.op === '==' ? 'EQUAL' : filter.op === '>=' ? 'GREATER_THAN_OR_EQUAL' : filter.op === '<=' ? 'LESS_THAN_OR_EQUAL' : 'EQUAL', value: encodeValue(filter.value) } };
+      structuredQuery.where = { fieldFilter: { field: { fieldPath: filter.field }, op: firestoreFilterOperator(filter.op), value: encodeValue(filter.value) } };
     } else if (query.filters.length > 1) {
-      structuredQuery.where = { compositeFilter: { op: 'AND', filters: query.filters.map((filter) => ({ fieldFilter: { field: { fieldPath: filter.field }, op: filter.op === '==' ? 'EQUAL' : 'EQUAL', value: encodeValue(filter.value) } })) } };
+      structuredQuery.where = { compositeFilter: { op: 'AND', filters: query.filters.map((filter) => ({ fieldFilter: { field: { fieldPath: filter.field }, op: firestoreFilterOperator(filter.op), value: encodeValue(filter.value) } })) } };
     }
     if (query.sort) structuredQuery.orderBy = [{ field: { fieldPath: query.sort.field }, direction: query.sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }];
     if (query.maxResults) structuredQuery.limit = query.maxResults;
