@@ -42,7 +42,7 @@ function hashReference(value: unknown): string | null {
 export function operationTraceMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
   const startedAt = Date.now();
   const correlationId = safeTraceId(req.correlationId) || crypto.randomUUID();
-  const operationId = safeTraceId(req.headers['x-operation-id']);
+  const operationId = safeTraceId(req.operationId) || safeTraceId(req.headers['x-operation-id']);
 
   res.on('finish', () => {
     if (!adminDb || !req.path.startsWith('/api/')) return;

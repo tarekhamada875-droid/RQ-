@@ -14,6 +14,7 @@ export interface AuthRequest extends Request {
     displayName?: string;
   };
   correlationId?: string;
+  operationId?: string;
   idempotencyKey?: string;
 }
 
@@ -85,8 +86,13 @@ export const correlationMiddleware = (req: AuthRequest, res: Response, next: Nex
   const headerId = req.headers['x-correlation-id'];
   const candidate = typeof headerId === 'string' ? headerId.trim() : '';
   const correlationId = /^[A-Za-z0-9._:-]{1,128}$/.test(candidate) ? candidate : crypto.randomUUID();
+  const operationHeaderId = req.headers['x-operation-id'];
+  const operationCandidate = typeof operationHeaderId === 'string' ? operationHeaderId.trim() : '';
+  const operationId = /^[A-Za-z0-9._:-]{1,128}$/.test(operationCandidate) ? operationCandidate : `op_${crypto.randomUUID()}`;
   req.correlationId = correlationId;
+  req.operationId = operationId;
   res.setHeader('X-Correlation-ID', correlationId);
+  res.setHeader('X-Operation-ID', operationId);
   next();
 };
 

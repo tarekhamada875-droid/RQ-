@@ -132,4 +132,51 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     expect(result.hono.headers['access-control-allow-origin']).toBe('https://rq-acg.pages.dev');
     expect(result.express.headers['access-control-allow-origin']).toBe('https://rq-acg.pages.dev');
   });
+
+  it('keeps correlation and operation IDs on unauthenticated errors', async () => {
+    const init: RequestInit = {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-correlation-id': 'h5_error_corr',
+        'x-operation-id': 'h5_error_operation'
+      },
+      body: JSON.stringify({})
+    };
+    const [hono, express] = await Promise.all([honoRequest('/api/subscribers/add', init), expressRequest('/api/subscribers/add', init)]);
+
+    expect(hono.status).toBe(401);
+    expect(express.status).toBe(401);
+    expect(hono.headers['x-correlation-id']).toBe('h5_error_corr');
+    expect(express.headers['x-correlation-id']).toBe('h5_error_corr');
+    expect(hono.headers['x-operation-id']).toBe('h5_error_operation');
+    expect(express.headers['x-operation-id']).toBe('h5_error_operation');
+  });
+
+  it('documents status/header parity for an unknown route without requiring envelope parity', async () => {
+    const init: RequestInit = {
+      headers: {
+        'x-correlation-id': 'h5_not_found_corr',
+        'x-operation-id': 'h5_not_found_operation'
+      }
+    };
+    const [hono, express] = await Promise.all([honoRequest('/api/h5-not-a-real-route', init), expressRequest('/api/h5-not-a-real-route', init)]);
+
+    expect(hono.status).toBe(404);
+    expect(express.status).toBe(404);
+    expect(hono.headers['x-correlation-id']).toBe('h5_not_found_corr');
+    expect(express.headers['x-correlation-id']).toBe('h5_not_found_corr');
+    expect(hono.headers['x-operation-id']).toBe('h5_not_found_operation');
+    expect(express.headers['x-operation-id']).toBe('h5_not_found_operation');
+  });
+
+  it('does not grant CORS access to a disallowed origin', async () => {
+    const [hono, express] = await Promise.all([
+      honoRequest('/api/health', { method: 'OPTIONS', headers: { origin: 'https://malicious.example' } }),
+      expressRequest('/api/health', { method: 'OPTIONS', headers: { origin: 'https://malicious.example' } })
+    ]);
+
+    expect(hono.headers['access-control-allow-origin']).not.toBe('https://malicious.example');
+    expect(express.headers['access-control-allow-origin']).not.toBe('https://malicious.example');
+  });
 });
