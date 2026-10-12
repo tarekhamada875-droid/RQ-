@@ -64,9 +64,12 @@ describe('Worker Route Parity Suite', () => {
   describe('0. Delegate dashboard replacement', () => {
     it('serves the scoped dashboard through Hono without exposing PIN fields', async () => {
       mockDb.seed('delegate_sessions/delegate-uid', {
-        uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-session', isActive: true
+        uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-session', isActive: true, lastActive: new Date()
       });
-      mockDb.seed('delegates/delegate-a', { name: 'Delegate A', phone: '01000000000', pin: 'secret-pin' });
+      mockDb.seed('delegates/delegate-a', {
+        name: 'Delegate A', phone: '01000000000', pin: 'secret-pin',
+        activeSessionIds: ['delegate-session'], currentSessionId: 'delegate-session'
+      });
       mockDb.seed('garages/created-garage', { name: 'Created Garage', createdByDelegateId: 'delegate-a', pin: 'garage-pin' });
       mockDb.seed('garages/referred-garage', { name: 'Referred Garage', referrerId: 'delegate-a' });
       mockDb.seed('recharge_requests/request-a', { delegateId: 'delegate-a', createdAt: new Date('2026-10-09T10:00:00Z') });

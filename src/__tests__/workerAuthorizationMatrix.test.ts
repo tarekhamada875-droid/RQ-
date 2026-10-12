@@ -85,7 +85,8 @@ describe('Worker role and garage-scope authorization matrix', () => {
       headers: { 'x-session-id': 'legacy-supervisor-session' }
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
     expect(mockDb.records.get('supervisor_sessions/worker-uid')).toEqual(legacySession);
   });
 
@@ -107,7 +108,8 @@ describe('Worker role and garage-scope authorization matrix', () => {
       body: JSON.stringify({ uid: 'target-uid', sessionId: 'target-session', role: 'delegate', entityId: 'target-delegate' })
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
     expect(mockDb.records.get('supervisor_sessions/worker-uid')).toEqual(legacySession);
     expect(mockDb.records.get('delegate_sessions/target-uid')).toEqual(targetSession);
     expect(mockDb.records.get('delegate_sessions/target-uid/sessions/target-session')).toEqual(targetSession);
@@ -160,7 +162,11 @@ describe('Worker role and garage-scope authorization matrix', () => {
       entityId: 'garage-a',
       garageId: 'garage-a',
       sessionId: 'garage-session-a',
-      isActive: true
+      isActive: true,
+      lastActive: new Date()
+    });
+    mockDb.seed('garages/garage-a', {
+      id: 'garage-a', name: 'Garage Alpha', activeSessionIds: ['garage-session-a'], currentSessionId: 'garage-session-a'
     });
 
     const own = await call('/api/garages/garage-a', 'valid-worker-token', {
@@ -180,11 +186,79 @@ describe('Worker role and garage-scope authorization matrix', () => {
       role: 'admin',
       entityId: 'auth_pin',
       sessionId: 'admin-session-a',
-      isActive: true
+      isActive: true,
+      lastActive: new Date()
+    });
+    mockDb.seed('admin_settings/auth_pin', {
+      activeSessionIds: ['admin-session-a'], currentSessionId: 'admin-session-a'
     });
 
     const response = await call('/api/garages/garage-a', 'valid-worker-token', {
       headers: { 'x-session-id': 'admin-session-a' }
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('rejects an anonymous Firebase token without a session identity', async () => {
+    const response = await call('/api/admin/summary', 'valid-worker-token');
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
+  });
+
+  it('does not let a verified role claim override a supplied inactive session identity', async () => {
+    const response = await call('/api/garages/garage-a', tokens.garage, {
+      headers: { 'x-session-id': 'revoked-garage-session' }
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
+  });
+
+  it('rejects a PIN session whose last active time is beyond the 24-hour limit', async () => {
+    const sessionId = 'garage-session-expired';
+    mockDb.seed('garage_sessions/worker-uid', {
+      uid: 'worker-uid', role: 'garage', entityId: 'garage-a', garageId: 'garage-a',
+      sessionId, isActive: true, lastActive: new Date(Date.now() - 25 * 60 * 60 * 1000)
+    });
+    mockDb.seed('garages/garage-a', { id: 'garage-a', activeSessionIds: [sessionId] });
+
+    const response = await call('/api/garages/garage-a', 'valid-worker-token', {
+      headers: { 'x-session-id': sessionId }
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_EXPIRED' });
+  });
+
+  it('rejects a fresh PIN session after the entity active-session marker is revoked', async () => {
+    const sessionId = 'garage-session-marker-revoked';
+    mockDb.seed('garage_sessions/worker-uid', {
+      uid: 'worker-uid', role: 'garage', entityId: 'garage-a', garageId: 'garage-a',
+      sessionId, isActive: true, lastActive: new Date()
+    });
+    mockDb.seed('garages/garage-a', { id: 'garage-a', name: 'Garage Alpha' });
+
+    const response = await call('/api/garages/garage-a', 'valid-worker-token', {
+      headers: { 'x-session-id': sessionId }
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
+  });
+
+  it('resolves a fresh active per-device PIN session', async () => {
+    const sessionId = 'garage-device-session-a';
+    mockDb.seed('garage_sessions/worker-uid', {
+      uid: 'worker-uid', role: 'garage', entityId: 'garage-a',
+      sessionId: 'another-session', isActive: true, lastActive: new Date()
+    });
+    mockDb.seed(`garage_sessions/worker-uid/sessions/${sessionId}`, {
+      uid: 'worker-uid', role: 'garage', entityId: 'garage-a', garageId: 'garage-a',
+      sessionId, isActive: true, lastActive: new Date()
+    });
+    mockDb.seed('garages/garage-a', {
+      id: 'garage-a', name: 'Garage Alpha', activeSessionIds: [sessionId]
+    });
+
+    const response = await call('/api/garages/garage-a', 'valid-worker-token', {
+      headers: { 'x-session-id': sessionId }
     });
     expect(response.status).toBe(200);
   });

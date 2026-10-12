@@ -101,10 +101,10 @@ describe('Worker session lifecycle routes', () => {
       lastActive: now
     });
     mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-a', {
-      sessionId: 'device-a', entityId: 'garage-a', isActive: true, lastActive: now
+      uid: 'garage-uid-garage-a', sessionId: 'device-a', entityId: 'garage-a', isActive: true, lastActive: now
     });
     mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-b', {
-      sessionId: 'device-b', entityId: 'garage-a', isActive: true, lastActive: now
+      uid: 'garage-uid-garage-a', sessionId: 'device-b', entityId: 'garage-a', isActive: true, lastActive: now
     });
     mockDb.seed('garages/garage-a', { currentSessionId: 'device-a', activeSessionIds: ['device-a', 'device-b'], lastActive: now });
 

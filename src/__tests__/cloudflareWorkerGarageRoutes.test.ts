@@ -91,8 +91,13 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ garageId: testGarageId })
       }), workerEnv);
-      expect(response.status).toBe(403);
-      expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+      if (token === 'valid-worker-token') {
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+      } else {
+        expect(response.status).toBe(403);
+        expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
     }
 
     const operator = await api.fetch(new Request('http://localhost/api/garages/reconciliation', {

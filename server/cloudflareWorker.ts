@@ -24,7 +24,7 @@ import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import { claimGarageDeletion, finalizeGarageDeletion, markGarageDeletionFailed, renewGarageDeletionLease } from './adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
 import { reconcileGarageState } from './domain/garageReconciliation';
-import { addActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
+import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
   decideSubscriberAdd,
   decideSubscriberDelete,
@@ -84,26 +84,56 @@ function workerSessionDefinition(role: string | undefined) {
   return role ? WORKER_SESSION_DEFINITIONS[role] : undefined;
 }
 
-async function resolveWorkerSessionUser(uid: string, sessionId: string, fallback: WorkerUser): Promise<WorkerUser> {
-  if (!adminDb || !uid || !sessionId) return fallback;
+async function resolveWorkerSessionUser(
+  uid: string,
+  sessionId: string
+): Promise<{ user: WorkerUser; error?: never } | { user?: never; error: 'SESSION_REVOKED' | 'SESSION_EXPIRED' }> {
+  if (!adminDb || !uid || !sessionId) return { error: 'SESSION_REVOKED' };
+  const sessionTimeoutMs = 24 * 60 * 60 * 1000;
 
   for (const [role, definition] of Object.entries(WORKER_SESSION_DEFINITIONS)) {
-    const sessionSnap = await adminDb.doc(`${definition.sessions}/${uid}`).get();
+    const rootRef = adminDb.doc(`${definition.sessions}/${uid}`);
+    const deviceRef = adminDb.doc(`${definition.sessions}/${uid}/sessions/${sessionId}`);
+    const [rootSnap, deviceSnap] = await Promise.all([rootRef.get(), deviceRef.get()]);
+    const sessionSnap = deviceSnap.exists ? deviceSnap : rootSnap;
     if (!sessionSnap.exists) continue;
 
     const sessionData = sessionSnap.data() || {};
     if (sessionData.uid !== uid || sessionData.isActive !== true || sessionData.sessionId !== sessionId) continue;
 
+    const rawLastActive = sessionData.lastActive;
+    const lastActive = rawLastActive?.toDate
+      ? rawLastActive.toDate().getTime()
+      : new Date(rawLastActive || 0).getTime();
+    if (!Number.isFinite(lastActive) || !lastActive || Date.now() - lastActive > sessionTimeoutMs) {
+      return { error: 'SESSION_EXPIRED' };
+    }
+
+    const entityId = role === 'admin' ? 'auth_pin' : sessionData.entityId || '';
+    if (!entityId) continue;
+    const entitySnap = await adminDb.doc(`${definition.entity}/${entityId}`).get();
+    if (!entitySnap.exists || !hasActiveSession(entitySnap.data() || {}, sessionId)) continue;
+    const entityData = entitySnap.data() || {};
+
+    let garageId = sessionData.garageId || (role === 'garage' ? entityId : null);
+    let displayName = sessionData.displayName || '';
+    if (role === 'staff') {
+      garageId = garageId || entityData.garageId || null;
+      displayName = displayName || entityData.name || '';
+    }
+
     return {
-      uid,
-      role,
-      garageId: sessionData.garageId || (role === 'garage' ? sessionData.entityId : null),
-      entityId: sessionData.entityId || undefined,
-      displayName: sessionData.displayName || undefined,
+      user: {
+        uid,
+        role,
+        garageId,
+        entityId,
+        displayName: displayName || undefined
+      }
     };
   }
 
-  return fallback;
+  return { error: 'SESSION_REVOKED' };
 }
 
 function isAllowedWorkerOrigin(origin: string | undefined): boolean {
@@ -314,23 +344,20 @@ async function requireWorkerAuth(
       }
     }
 
-    // PIN login uses Firebase Anonymous Auth. The anonymous UID is deliberately
-    // unrelated to the garage/admin document ID, so claims and direct document
-    // lookup cannot identify the caller. The verified server session created by
-    // /api/auth/verify-pin is the authoritative bridge between that UID and the
-    // actual role/entity. Resolve it before every protected business route.
+    // PIN login uses Firebase Anonymous Auth. Resolve the authoritative server
+    // session whenever the client supplies its session ID; a role claim must not
+    // override an explicitly presented (and potentially revoked) session.
     const sessionId = (c.req.header('x-session-id') || '').trim();
-    if (!options.skipRoleResolution && role === 'worker' && sessionId) {
-      const sessionUser = await resolveWorkerSessionUser(decodedUid, sessionId, {
-        uid: decodedUid,
-        role,
-        garageId,
-        entityId,
-        displayName: decoded.displayName
-      });
-      role = sessionUser.role;
-      garageId = sessionUser.garageId || null;
-      c.set('user', sessionUser);
+    if (!options.skipRoleResolution && role === 'worker' && !sessionId) {
+      return c.json({ success: false, error: 'SESSION_REVOKED' }, 401);
+    }
+    if (!options.skipRoleResolution && sessionId) {
+      if (!adminDb) return c.json({ success: false, error: 'SESSION_VALIDATION_UNAVAILABLE' }, 503);
+      const resolution = await resolveWorkerSessionUser(decodedUid, sessionId);
+      if (!resolution.user) {
+        return c.json({ success: false, error: resolution.error }, 401);
+      }
+      c.set('user', resolution.user);
       return next();
     }
 
@@ -639,7 +666,7 @@ workerApp.post('/api/auth/claim-admin-session', async (c) => {
 });
 
 workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
-  const authResult = await requireWorkerAuth(c, async () => undefined);
+  const authResult = await requireWorkerAuth(c, async () => undefined, { skipRoleResolution: true });
   if (authResult instanceof Response) return authResult;
   try {
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
@@ -2211,47 +2238,117 @@ workerApp.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
 // Handler 1: Create Recharge Request (POST /api/recharge-requests/create & POST /api/recharge-requests)
 const handleCreateRechargeRequest = async (c: any) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user') as WorkerUser | undefined;
+    if (user?.role !== 'garage' && user?.role !== 'delegate') {
+      return c.json({ success: false, error: 'FORBIDDEN: Garage owner or delegate required' }, 403);
+    }
+
     const body = await c.req.json().catch(() => ({}));
-    const { garageId, packageId, amount, requestType, externalReference, notes } = body;
-    if (!garageId || !adminDb) {
-      return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    const sanitized = sanitizePayload(body, ['garageId', 'packageId', 'requestType', 'amount', 'couponCode', 'idempotencyKey'], false);
+    const validatedGarageId = validateId(sanitized.garageId, 'garageId', true);
+    const rawRequestType = sanitized.requestType === undefined
+      ? 'subscription'
+      : validateString(sanitized.requestType, 'requestType', { required: true, allowEmptyString: false });
+    const requestType = rawRequestType === 'package_purchase' ? 'subscription' : rawRequestType;
+    if (requestType !== 'subscription' && requestType !== 'balance_topup') {
+      throw new ValidationError('Invalid requestType', 'INVALID_REQUEST_TYPE', 400);
     }
-    const validatedGarageId = validateId(garageId, 'garageId', true);
 
-    const reqRef = adminDb.collection('recharge_requests').doc();
-    const requestId = reqRef.id;
+    const packageId = sanitized.packageId === undefined || sanitized.packageId === null || sanitized.packageId === ''
+      ? null
+      : validateId(sanitized.packageId, 'packageId', true);
+    if (requestType === 'subscription' && !packageId) {
+      return c.json({ success: false, error: 'PACKAGE_REQUIRED' }, 400);
+    }
+    const couponCode = validateString(sanitized.couponCode, 'couponCode', { max: 256 }) || null;
+    const amount = requestType === 'balance_topup'
+      ? validateNumber(sanitized.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true })
+      : undefined;
+    const idempotencyKey = validateIdempotencyKey(
+      sanitized.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
+    );
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const requestData: Record<string, any> = {
-      requestId,
+    const callerUid = user.uid;
+    const delegateId = user.role === 'delegate' ? user.entityId || callerUid : null;
+    const requestFingerprint = createRequestFingerprint({
+      requestType,
       garageId: validatedGarageId,
-      packageId: packageId || null,
-      amount: amount !== undefined ? Number(amount) : null,
-      requestType: requestType || 'package_purchase',
-      externalReference: externalReference || null,
-      notes: notes || null,
-      status: 'pending',
-      requestedByUid: user?.uid || 'system',
-      requestedByRole: user?.role || 'garage',
-      createdAt: new Date()
-    };
+      packageId,
+      couponCode,
+      amount: amount ?? null
+    });
+    const requestRef = adminDb.collection('recharge_requests').doc();
+    const result = await adminDb.runTransaction(async (t: any) => {
+      const garageRef = adminDb.doc(`garages/${validatedGarageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+      const garageData = garageSnap.data() || {};
 
-    if (user?.role === 'delegate') {
-      requestData.delegateId = user.entityId || user.uid;
-      requestData.delegateName = user.displayName || 'مندوب';
-    }
+      if (user.role === 'garage' && user.garageId !== validatedGarageId) {
+        throw new Error('GARAGE_SCOPE_MISMATCH');
+      }
+      if (user.role === 'delegate') {
+        const canRequest = garageData.createdByDelegateId === delegateId || garageData.referrerId === delegateId;
+        if (!canRequest) throw new Error('GARAGE_SCOPE_MISMATCH');
+      }
 
-    await reqRef.set(requestData);
+      const duplicate = await checkIdempotencyInTransaction(
+        t,
+        idempotencyKey,
+        '/api/recharge-requests/create',
+        callerUid,
+        requestFingerprint
+      );
+      if (duplicate.isDuplicate) {
+        return duplicate.cachedResult || null;
+      }
 
-    return c.json({ success: true, id: requestId, data: requestData });
+      const requestData: Record<string, any> = {
+        requestId: requestRef.id,
+        garageId: validatedGarageId,
+        packageId,
+        requestType,
+        couponCode,
+        createdByUid: callerUid,
+        requestedByUid: callerUid,
+        requestedByRole: user.role,
+        idempotencyKey,
+        status: 'pending',
+        createdAt: new Date()
+      };
+      if (amount !== undefined) requestData.amount = amount;
+      if (user.role === 'delegate') {
+        requestData.delegateId = delegateId;
+        requestData.delegateName = user.displayName || 'مندوب';
+        requestData.garageName = garageData.name || null;
+      }
+
+      const createdResult = { id: requestRef.id, data: requestData };
+      t.set(requestRef, requestData);
+      storeIdempotencyInTransaction(
+        t,
+        idempotencyKey,
+        createdResult,
+        '/api/recharge-requests/create',
+        callerUid,
+        requestFingerprint
+      );
+      return createdResult;
+    });
+
+    if (!result) return c.json({ success: false, error: 'IDEMPOTENCY_RESULT_UNAVAILABLE' }, 500);
+    return c.json({ success: true, id: result.id, data: result.data });
   } catch (err: any) {
     console.error('[Worker] Error creating recharge request:', err);
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+    const { statusCode, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, error: message }, statusCode as any);
   }
 };
 
-workerApp.post('/api/recharge-requests/create', requireWorkerAuth, handleCreateRechargeRequest);
-workerApp.post('/api/recharge-requests', requireWorkerAuth, handleCreateRechargeRequest);
+workerApp.post('/api/recharge-requests/create', requireWorkerAuth, enforceWorkerFinancialRateLimit, handleCreateRechargeRequest);
+workerApp.post('/api/recharge-requests', requireWorkerAuth, enforceWorkerFinancialRateLimit, handleCreateRechargeRequest);
 
 // Handler 2: Process/Approve Recharge Request (POST /api/recharge-requests/process & POST /api/transactions/approve-recharge-request)
 const handleApproveRechargeRequest = async (c: any) => {

@@ -578,8 +578,13 @@ describe('garage creation Hono contract and Express retirement', () => {
       mockDb.clear();
       const before = snapshotRecords();
       const response = await callHonoCreate(token, {});
-      expect(response.status).toBe(403);
-      expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
+      if (token === 'valid-worker-token') {
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+      } else {
+        expect(response.status).toBe(403);
+        expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
+      }
       expect(snapshotRecords()).toEqual(before);
     }
   });
@@ -861,8 +866,13 @@ describe('garage update Hono contract and Express retirement', () => {
       const before = [...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]);
       const body = { id: targetId, balance: 999, isLocked: true, currentSessionId: 'attacker-session' };
       const hono = await callHonoGarageUpdate(token, body);
-      expect(hono.status).toBe(403);
-      expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+      if (token === 'valid-worker-token') {
+        expect(hono.status).toBe(401);
+        expect(await hono.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+      } else {
+        expect(hono.status).toBe(403);
+        expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+      }
       expect([...mockDb.records.entries()]).toEqual(before);
     }
   });
