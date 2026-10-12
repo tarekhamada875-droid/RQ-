@@ -310,6 +310,46 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(rejectBody.success).toBe(true);
   });
 
+  it('records a manual-credit ledger entry when approving a balance-top-up request', async () => {
+    const createRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer valid-garage-token-${testGarageId}`
+      },
+      body: JSON.stringify({
+        garageId: testGarageId,
+        packageId: 'balance_topup',
+        requestType: 'balance_topup',
+        amount: 75,
+        idempotencyKey: 'ledger_approval_request_1'
+      })
+    }), workerEnv);
+    const createBody = await createRes.json() as any;
+    const approvalKey = 'ledger_approval_key_1';
+
+    const processRes = await api.fetch(new Request('http://localhost/api/recharge-requests/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-admin-token',
+        'x-idempotency-key': approvalKey
+      },
+      body: JSON.stringify({ requestId: createBody.id, idempotencyKey: approvalKey })
+    }), workerEnv);
+
+    expect(processRes.status).toBe(200);
+    const ledgerEntries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('manual_credit_ledger/'));
+    expect(ledgerEntries).toHaveLength(1);
+    expect(ledgerEntries[0]?.[1]).toMatchObject({
+      operationId: createBody.id,
+      garageId: testGarageId,
+      amount: 75,
+      source: 'approved_recharge_request',
+      approvedBy: 'admin-uid'
+    });
+  });
+
   it('4. POST /api/transactions/admin-topup-balance adds direct wallet credit', async () => {
     const testIdempKey = `idemp_topup_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const topupRes = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
@@ -330,6 +370,15 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const topupBody = await topupRes.json() as any;
     expect(topupBody.success).toBe(true);
     expect(topupBody.data.newBalance).toBe(300);
+    const ledgerEntries = [...mockDb.records.values()].filter((record) => record.source === 'admin_direct_topup');
+    expect(ledgerEntries).toHaveLength(1);
+    expect(ledgerEntries[0]).toMatchObject({
+      garageId: testGarageId,
+      amount: 200,
+      previousBalance: 100,
+      newBalance: 300,
+      approvedBy: 'admin-uid'
+    });
   });
 
   it('5. POST /api/delegate/withdraw-commission settles delegate account', async () => {

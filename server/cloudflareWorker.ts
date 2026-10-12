@@ -2549,6 +2549,19 @@ const handleApproveRechargeRequest = async (c: any) => {
           details: { action: 'approved_balance_topup', requestId: reqId, previousBalance, newBalance }
         });
 
+        t.set(adminDb.doc(`manual_credit_ledger/${reqId}`), {
+          operationId: reqId,
+          garageId: targetGarageId,
+          amount,
+          previousBalance,
+          newBalance,
+          source: 'approved_recharge_request',
+          externalReference: requestData.externalReference || requestData.transferReference || null,
+          approvedBy: callerUid || 'admin',
+          idempotencyKey,
+          createdAt: new Date()
+        });
+
         recordDomainEventInTransaction(t, adminDb, {
           garageId: targetGarageId,
           aggregateType: 'wallet',
@@ -2929,6 +2942,18 @@ workerApp.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async
         actorRole: 'admin',
         idempotencyKey,
         payload: { amount: numAmount, previousBalance, newBalance, source: 'admin_direct_topup' }
+      });
+
+      t.set(adminDb.doc(`manual_credit_ledger/${createRequestFingerprint({ garageId, amount: numAmount, idempotencyKey })}`), {
+        operationId: idempotencyKey,
+        garageId,
+        amount: numAmount,
+        previousBalance,
+        newBalance,
+        source: 'admin_direct_topup',
+        approvedBy: callerUid || 'admin',
+        idempotencyKey,
+        createdAt: new Date()
       });
 
       resultData = { garageId, newBalance, addedAmount: numAmount };
