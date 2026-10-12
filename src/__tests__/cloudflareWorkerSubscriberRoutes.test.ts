@@ -104,6 +104,42 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(duplicateBody.success).toBe(false);
   });
 
+  it('replays an identical add idempotently and rejects key reuse with a changed payload', async () => {
+    const idempotencyKey = 'subscriber-route-replay-key';
+    const subscriberData = {
+      name: 'Idempotent Subscriber',
+      plateNumber: 'أ ب ج 7777',
+      plateNumberRaw: 'أبج7777',
+      startDate: '2026-10-01',
+      endDate: '2026-10-31'
+    };
+    const add = (data: typeof subscriberData) => api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-admin-token',
+        'x-idempotency-key': idempotencyKey
+      },
+      body: JSON.stringify({ garageId: testGarageId, subscriberData: data })
+    }), workerEnv);
+
+    const first = await add(subscriberData);
+    const replay = await add(subscriberData);
+    const firstBody = await first.json();
+    const replayBody = await replay.json();
+
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(replayBody).toEqual(firstBody);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith(`garages/${testGarageId}/events/`))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
+
+    const changed = await add({ ...subscriberData, name: 'Changed Subscriber' });
+    expect(changed.status).toBe(409);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith(`garages/${testGarageId}/events/`))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
+  });
+
   it('2. POST /api/subscribers/renew extends subscription date range', async () => {
     // Add subscriber first
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {

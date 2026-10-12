@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-12
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Active workstream:** H9 independent verification at `142953816d8839157ac6ccae9f56d77b54c64926` on `migration/unified-hono`; the source retirement and Hono-default runtime changes are complete. The local final gate passed **98 files / 624 tests**, lint, Vite/Node/Cloudflare builds, CI/release/artifact verification, maintainability, and whitespace. Exact-head remote Production Gate and H5 Preview Worker runs both passed. **Zero mounted Express API registrations remain.** Dormant unmounted handler declarations remain in three legacy Express router files and are a source-cleanup item, not reachable production routes. The Node entrypoint defaults to Hono; Express remains only as an explicit local Vite/static-serving and middleware-characterization compatibility mode. `main` remains unchanged at the H8 merge and no production operation occurred.
+**Active workstream:** H9 independent verification on `migration/unified-hono`; the source retirement and Hono-default runtime changes are complete. The latest bounded source cleanup removes the three dormant, unmounted Express vehicle, subscriber, and delegate routers plus only their Express-only characterization consumers. **Zero mounted Express API registrations remain, and those dormant handler files are now removed.** Hono route/domain coverage remains authoritative; full historical Express-vs-Hono response equivalence is not claimed. The local final gate passed **95 files / 612 tests**, lint, Vite/Node/Cloudflare builds, CI/artifact verification, maintainability, and whitespace. The Node entrypoint defaults to Hono; Express remains only as an explicit local Vite/static-serving and middleware-characterization compatibility mode. `main` remains unchanged at the H8 merge and no production operation occurred.
 
 ## 1. What RQ is
 
@@ -123,7 +123,7 @@ Recent validation evidence includes:
 
 **The one active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
-H9 source/API retirement is **VERIFIED COMPLETE; production release approval is NOT ESTABLISHED**. The remaining unresolved items are: dormant legacy Express handler files still exist unmounted; full historical Express-vs-Hono response equivalence was not exhaustively re-proven for every retired endpoint; live authenticated/browser acceptance and real financial/Firestore operations remain intentionally untested; and the explicit Express local compatibility runtime remains. These are documented residual risks, not production route registrations.
+H9 source/API retirement is **VERIFIED COMPLETE; production release approval is NOT ESTABLISHED**. The three dormant, unmounted Express vehicle, subscriber, and delegate handler files have been removed after an import/test-mount audit; their route-specific legacy Express test harnesses were removed or narrowed, while Hono and shared-domain coverage remains. Full historical Express-vs-Hono response equivalence was not exhaustively re-proven for every retired endpoint; live authenticated/browser acceptance and real financial/Firestore operations remain intentionally untested; and the explicit Express local compatibility runtime remains. These are documented residual risks, not production route registrations.
 
 The owner accepted H6 residual risks for scope purposes and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain OPEN/BLOCKED, OPEN/UNVERIFIED, or intentionally untested; they are not PASS results. Supervisor is retired and legacy records are preserved.
 
@@ -139,7 +139,7 @@ The earlier paragraphs in this section describing 50 API registrations, open aut
 - `src/domain/`: pure business decisions and policy helpers.
 - `server/cloudflareWorker.ts`: current production Hono Worker API and route authority.
 - `server/app.ts`: transitional Express composition used by the explicit local compatibility command and existing integration tests.
-- `server/routes/`: transitional Express route modules and characterization references; the read-only delegate dashboard handler was retired in H9 after Hono replacement coverage passed; do not delete remaining modules until their route-specific disposition is complete.
+- `server/routes/`: transitional Express route modules still used only by explicitly retained compatibility/test paths; vehicle, subscriber, and delegate routers were removed from the migration branch after confirming zero production imports/mounts and Hono/domain ownership.
 - `server/domain/`: pure backend decision modules.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
