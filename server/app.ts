@@ -4,8 +4,7 @@ import rechargesRouter from './routes/recharges';
 import reportsRouter from './routes/reports';
 import { registerAuthRoutes } from './routes/auth';
 import {
-  adminDb,
-  adminAuth
+  adminDb
 } from './firebaseAdmin';
 import {
   requireAuth,
@@ -26,7 +25,6 @@ import {
   storeIdempotencyInTransaction,
   createRequestFingerprint
 } from './idempotency';
-import { validatePackageCatalogRecord } from './packageCatalog';
 import { mapDomainErrorToStatus } from './routes/helpers';
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
@@ -124,125 +122,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   registerAuthRoutes(authRouter);
   app.use('/', authRouter);
 
-  // Health endpoint reporting process readiness without sensitive info
-  app.get('/api/health', (_req, res) => {
-    const isReady = !!(adminDb && adminAuth);
-    const version = process.env.GIT_COMMIT_SHA || 'unknown';
-    if (!isReady) {
-      return res.status(503).json({
-        status: 'error',
-        timestamp: new Date().toISOString(),
-        adminSdk: false,
-        version
-      });
-    }
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      adminSdk: true,
-      version
-    });
-  });
-  app.get('/api/version', (_req, res) => {
-    res.json({
-      version: process.env.GIT_COMMIT_SHA || '1.0.0',
-      environment: process.env.NODE_ENV || 'production',
-      runtime: 'express',
-      status: 'operational',
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Public / Authenticated GET System Config (for wallet number, flat fee, maintenance status, etc.)
-  app.get('/api/system-config', async (_req, res) => {
-    try {
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-      }
-      const snap = await adminDb.doc('system_config/global').get();
-      if (!snap.exists) {
-        return res.json({
-          success: true,
-          config: {
-            defaultTrialDays: 2,
-            warningDaysThreshold: 3,
-            walletNumber: '',
-            monthlySubscribersFlatFee: 250,
-            monthlySubscribersSurchargePercent: 25,
-            referralFeePerRenewal: 100,
-            delegateMonthlyCommission: 100,
-            isMaintenanceMode: false,
-            maintenanceMessage: '',
-            adminColor: '#10b981'
-          }
-        });
-      }
-      return res.json({ success: true, config: { id: snap.id, ...snap.data() } });
-    } catch (e: any) {
-      console.error('[Server] Error fetching system-config:', e);
-      return res.status(500).json({ success: false, error: 'SERVER_ERROR' });
-    }
-  });
-
-  // Secure Server API: Admin Update System Config (General Settings & Wallet Number)
-  app.post('/api/admin/update-system-config', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-
-      if (!adminDb) {
-        return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-      }
-
-      const body = req.body || {};
-      const updatePayload: Record<string, any> = {
-        updatedAt: new Date()
-      };
-
-      if (body.walletNumber !== undefined) {
-        updatePayload.walletNumber = String(body.walletNumber).trim();
-      }
-      if (body.defaultTrialDays !== undefined) {
-        updatePayload.defaultTrialDays = Number(body.defaultTrialDays) || 2;
-      }
-      if (body.warningDaysThreshold !== undefined) {
-        updatePayload.warningDaysThreshold = Number(body.warningDaysThreshold) || 3;
-      }
-      if (body.monthlySubscribersFlatFee !== undefined) {
-        updatePayload.monthlySubscribersFlatFee = Number(body.monthlySubscribersFlatFee) || 250;
-      }
-      if (body.monthlySubscribersSurchargePercent !== undefined) {
-        updatePayload.monthlySubscribersSurchargePercent = Number(body.monthlySubscribersSurchargePercent) || 25;
-      }
-      if (body.referralFeePerRenewal !== undefined) {
-        updatePayload.referralFeePerRenewal = Number(body.referralFeePerRenewal) || 100;
-      }
-      if (body.delegateMonthlyCommission !== undefined) {
-        updatePayload.delegateMonthlyCommission = Number(body.delegateMonthlyCommission) || 100;
-      }
-      if (body.isMaintenanceMode !== undefined) {
-        updatePayload.isMaintenanceMode = !!body.isMaintenanceMode;
-      }
-      if (body.maintenanceMessage !== undefined) {
-        updatePayload.maintenanceMessage = String(body.maintenanceMessage).trim();
-      }
-      if (body.adminColor !== undefined) {
-        updatePayload.adminColor = String(body.adminColor).trim();
-      }
-      if (body.subscriptionPrices !== undefined) {
-        updatePayload.subscriptionPrices = body.subscriptionPrices;
-      }
-
-      await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
-
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Admin] Error in update-system-config:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
   // Secure Server API: Authoritative Garage Creation
   app.post('/api/supervisors/create', requireAuth, (_req: AuthRequest, res: any) =>
     res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
@@ -255,160 +134,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   app.post('/api/supervisors/delete', requireAuth, (_req: AuthRequest, res: any) =>
     res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
   );
-
-  // Secure Server API: Garage Update
-  app.post('/api/admin/packages/create', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-
-      const rawPackage = req.body && typeof req.body === 'object' ? req.body : {};
-      const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
-      const pkgData = {
-        name: validatedPackage.name,
-        price: validatedPackage.basePrice,
-        durationDays: validatedPackage.durationDays,
-        dailyCapacity: validatedPackage.dailyCapacity,
-        vehiclesCount: validatedPackage.dailyCapacity,
-        discountType: rawPackage.discountType ?? null,
-        discountValue: Number(rawPackage.discountValue ?? 0),
-        isUnlimited: validatedPackage.isUnlimited,
-        isActive: true,
-        createdAt: new Date()
-      };
-
-      const docRef = await adminDb.collection('packages').add(pkgData);
-      return res.json({ success: true, id: docRef.id });
-    } catch (e: any) {
-      console.error('[Server Packages] Error in create:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/admin/packages/delete', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('packages').doc(id).update({ isActive: false });
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Packages] Error in delete:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  // Secure Server API: Announcements (Create / Delete / Toggle)
-  app.post('/api/admin/announcements/create', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-
-      const data = {
-        ...req.body,
-        createdAt: new Date()
-      };
-
-      const docRef = await adminDb.collection('announcements').add(data);
-      return res.json({ success: true, id: docRef.id });
-    } catch (e: any) {
-      console.error('[Server Announcements] Error in create:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/admin/announcements/delete', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('announcements').doc(id).delete();
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Announcements] Error in delete:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/admin/announcements/toggle', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id, isActive } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('announcements').doc(id).update({ isActive: Boolean(isActive) });
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Announcements] Error in toggle:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  // Secure Server API: Coupons (Create / Update / Delete)
-  app.post('/api/admin/coupons/create', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-
-      const couponData = {
-        ...req.body,
-        usedCount: 0,
-        createdAt: new Date()
-      };
-
-      const docRef = await adminDb.collection('coupons').add(couponData);
-      return res.json({ success: true, id: docRef.id });
-    } catch (e: any) {
-      console.error('[Server Coupons] Error in create:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/admin/coupons/update', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id, ...data } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('coupons').doc(id).update(data);
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Coupons] Error in update:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
-
-  app.post('/api/admin/coupons/delete', requireAuth, async (req: AuthRequest, res: any) => {
-    try {
-      if (req.user?.role !== 'admin') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-      }
-      const { id } = req.body || {};
-      if (!id || !adminDb) return res.status(400).json({ success: false, error: 'INVALID_REQUEST' });
-
-      await adminDb.collection('coupons').doc(id).delete();
-      return res.json({ success: true });
-    } catch (e: any) {
-      console.error('[Server Coupons] Error in delete:', e);
-      return res.status(500).json({ success: false, error: e?.message || 'SERVER_ERROR' });
-    }
-  });
 
   // Secure Server API: Subscribers (Add / Renew / Update / Delete)
   app.post('/api/recharge-requests/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
@@ -513,11 +238,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
       const { statusCode, message } = mapDomainErrorToStatus(e);
       return res.status(statusCode).json({ success: false, error: message });
     }
-  });
-
-  // Secure Server API: Activity Logs (Add)
-  app.post('/api/activity-logs/add', requireAuth, async (_req: AuthRequest, res: any) => {
-    return res.status(403).json({ success: false, error: 'SERVER_GENERATED_ONLY' });
   });
 
   if (options.apiPreviewApp) app.use('/api', options.apiPreviewApp);

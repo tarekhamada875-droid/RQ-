@@ -78,9 +78,13 @@ afterAll(async () => {
 });
 
 describe('H5 — synthetic Hono and Express runtime comparison', () => {
-  it('agrees on public health and version contracts', async () => {
-    await compareCase('health', '/api/health');
-    await compareCase('version', '/api/version');
+  it('keeps Hono public health/version while retired Express endpoints return 404', async () => {
+    for (const path of ['/api/health', '/api/version']) {
+      const [hono, express] = await Promise.all([honoRequest(path), expressRequest(path)]);
+      expect(hono.status, `${path}: Hono endpoint`).toBe(200);
+      expect(express.status, `${path}: retired Express endpoint`).toBe(404);
+    }
+    expect((await expressRequest('/api/system-config')).status).toBe(404);
   });
 
   it('keeps Hono authentication while retired Express mutation routes return 404', async () => {
