@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/h9-dashboard-summary-rehearsal.yml'
       - 'tools/h9-dashboard-summary-rehearsal.mjs'
+      - 'server/firebaseWorkerAdmin.ts'
   workflow_dispatch:
     inputs:
       rehearsal_date:

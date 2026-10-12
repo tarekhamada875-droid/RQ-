@@ -205,7 +205,12 @@ class FirestoreRest {
     return response.json();
   }
   async query(query: QueryReference, transaction?: string): Promise<any[]> {
-    const from: JsonMap = { collectionId: query.collectionPath.split('/').pop() || '', allDescendants: query.allDescendants };
+    const pathSegments = query.collectionPath.split('/').filter(Boolean);
+    const collectionId = pathSegments.pop() || '';
+    const parent = query.allDescendants || pathSegments.length === 0
+      ? this.documentsRoot
+      : `${this.documentsRoot}/${pathSegments.join('/')}`;
+    const from: JsonMap = { collectionId, allDescendants: query.allDescendants };
     const structuredQuery: JsonMap = { from: [from] };
     if (query.filters.length === 1) {
       const filter = query.filters[0];
@@ -215,7 +220,7 @@ class FirestoreRest {
     }
     if (query.sort) structuredQuery.orderBy = [{ field: { fieldPath: query.sort.field }, direction: query.sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }];
     if (query.maxResults) structuredQuery.limit = query.maxResults;
-    const response = await firestoreRequest(`${this.documentsRoot}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery, ...(transaction ? { transaction } : {}) }) });
+    const response = await firestoreRequest(`${this.documentsRoot}:runQuery`, { method: 'POST', body: JSON.stringify({ parent, structuredQuery, ...(transaction ? { transaction } : {}) }) });
     if (!response.ok) throw new Error(`FIRESTORE_QUERY_FAILED:${response.status}`);
     const rows = await response.json() as Array<{ document?: any }>;
     return rows.filter((row) => row.document).map((row) => row.document);
