@@ -1,19 +1,12 @@
 name: H9 Isolated Dashboard Summary Rehearsal
 
 on:
-  push:
-    branches: [migration/unified-hono]
-    paths:
-      - '.github/workflows/h9-dashboard-summary-rehearsal.yml'
-      - 'tools/h9-dashboard-summary-rehearsal.mjs'
-      - 'server/firebaseWorkerAdmin.ts'
-      - 'server/cloudflareWorker.ts'
   workflow_dispatch:
     inputs:
       rehearsal_date:
-        description: 'Cairo-local date for the synthetic rehearsal'
+        description: "Cairo-local date for the synthetic rehearsal"
         required: true
-        default: '2026-10-12'
+        default: "2026-10-12"
         type: string
 
 permissions:
