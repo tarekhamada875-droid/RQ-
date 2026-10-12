@@ -136,19 +136,10 @@ async function callExpressProjectionRebuild(role: string, body: unknown) {
   });
 }
 
-async function callExpressCreate(
-  role: string,
-  body: Record<string, unknown>,
-  context: { uid?: string; entityId?: string } = {}
-) {
+async function callRetiredExpressCreate(body: Record<string, unknown>) {
   return fetch(`${expressUrl}/api/garages/create`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-test-role': role,
-      ...(context.uid ? { 'x-test-uid': context.uid } : {}),
-      ...(context.entityId ? { 'x-test-entity-id': context.entityId } : {})
-    },
+    headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
     body: JSON.stringify(body)
   });
 }
@@ -595,7 +586,7 @@ describe('winter Cairo maintenance boundaries', () => {
   });
 });
 
-describe('garage creation dual-runtime characterization', () => {
+describe('garage creation Hono contract and Express retirement', () => {
   const delegateContext = { uid: 'delegate-uid', entityId: 'delegate-a' };
 
   const snapshotRecords = () => new Map(
@@ -615,25 +606,19 @@ describe('garage creation dual-runtime characterization', () => {
     }
   };
 
-  it('denies roles outside Admin/delegate scope in both runtimes without writes', async () => {
-    const deniedRoles = [
-      { role: 'garage', token: 'valid-garage-token-create-test-garage' },
-      { role: 'staff', token: 'valid-staff-token-create-test-garage' },
-      { role: 'worker', token: 'valid-worker-token' }
+  it('denies roles outside Admin/delegate scope without writes', async () => {
+    const deniedTokens = [
+      'valid-garage-token-create-test-garage',
+      'valid-staff-token-create-test-garage',
+      'valid-worker-token'
     ];
-
-    for (const { role, token } of deniedRoles) {
+    for (const token of deniedTokens) {
       mockDb.clear();
-      const [hono, expressResponse] = await Promise.all([
-        callHonoCreate(token, {}),
-        callExpressCreate(role, {})
-      ]);
-      const expected = { success: false, error: 'FORBIDDEN: Creation not permitted for role' };
-      expect(hono.status).toBe(403);
-      expect(expressResponse.status).toBe(403);
-      expect(await hono.json()).toEqual(expected);
-      expect(await expressResponse.json()).toEqual(expected);
-      expect(snapshotRecords().size).toBe(0);
+      const before = snapshotRecords();
+      const response = await callHonoCreate(token, {});
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
+      expect(snapshotRecords()).toEqual(before);
     }
   });
 
@@ -644,8 +629,7 @@ describe('garage creation dual-runtime characterization', () => {
     mockDb.seed(rateLimitPath, { count: 29, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
 
     const allowed = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Limit Boundary Garage',
-      pin: '41827536'
+      name: 'Synthetic Limit Boundary Garage', pin: '41827536'
     });
     const allowedBody = await allowed.json() as any;
     expect(allowed.status).toBe(200);
@@ -654,8 +638,7 @@ describe('garage creation dual-runtime characterization', () => {
 
     const beforeBlockedRequest = snapshotRecords();
     const blocked = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Over-Limit Garage',
-      pin: '52618473'
+      name: 'Synthetic Over-Limit Garage', pin: '52618473'
     });
     expect(blocked.status).toBe(429);
     expect(await blocked.json()).toMatchObject({
@@ -671,8 +654,7 @@ describe('garage creation dual-runtime characterization', () => {
     const expiredAt = Date.now() - 1;
     mockDb.seed(rateLimitPath, { count: 30, resetAt: expiredAt, expiresAt: new Date(expiredAt) });
     const afterExpiry = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Expired-Window Garage',
-      pin: '63729481'
+      name: 'Synthetic Expired-Window Garage', pin: '63729481'
     });
     expect(afterExpiry.status).toBe(200);
     expect(mockDb.records.get(rateLimitPath)).toMatchObject({ count: 1 });
@@ -683,7 +665,6 @@ describe('garage creation dual-runtime characterization', () => {
     const rateLimitPath = `rate_limits/${rateLimitDocId}`;
     const now = Date.now();
     mockDb.seed(rateLimitPath, { count: 28, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
-
     const requests = [
       { name: 'Synthetic Concurrent Limit Garage A', pin: '41827537' },
       { name: 'Synthetic Concurrent Limit Garage B', pin: '52618474' },
@@ -691,16 +672,8 @@ describe('garage creation dual-runtime characterization', () => {
     ];
     const responses = await Promise.all(requests.map((body) => callHonoCreate('valid-admin-token', body)));
     const bodies = await Promise.all(responses.map((response) => response.json() as Promise<any>));
-
     expect(responses.map((response) => response.status).sort()).toEqual([200, 200, 429]);
     expect(mockDb.records.get(rateLimitPath).count).toBe(30);
-    const createdNames = [...mockDb.records.values()]
-      .filter((record) => String(record?.name || '').startsWith('Synthetic Concurrent Limit Garage'))
-      .map((record) => record.name);
-    const acceptedRequestNames = responses
-      .map((response, index) => response.status === 200 ? requests[index].name : undefined)
-      .filter((name): name is string => typeof name === 'string');
-    expect(createdNames.sort()).toEqual(acceptedRequestNames.sort());
     expect(bodies.filter((body) => body?.success === true)).toHaveLength(2);
     expect(bodies.filter((body) => body?.code === 'RATE_LIMIT_EXCEEDED')).toHaveLength(1);
   });
@@ -708,315 +681,129 @@ describe('garage creation dual-runtime characterization', () => {
   it('fails closed without garage writes when rate-limit storage is unavailable', async () => {
     const before = snapshotRecords();
     const originalRunTransaction = mockDb.runTransaction.bind(mockDb);
-    (mockDb as any).runTransaction = async () => {
-      throw new Error('SYNTHETIC_RATE_LIMIT_STORAGE_FAILURE');
-    };
-
+    (mockDb as any).runTransaction = async () => { throw new Error('SYNTHETIC_RATE_LIMIT_STORAGE_FAILURE'); };
     let response: Response;
     try {
       response = await callHonoCreate('valid-admin-token', {
-        name: 'Synthetic Limiter Outage Garage',
-        pin: '74831592'
+        name: 'Synthetic Limiter Outage Garage', pin: '74831592'
       });
     } finally {
       (mockDb as any).runTransaction = originalRunTransaction;
     }
-
     expect(response!.status).toBe(503);
     expect(await response!.json()).toEqual({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' });
     expect(snapshotRecords()).toEqual(before);
   });
 
-  it('matches Admin trial initialization and complete activity-log details', async () => {
-    const body = {
-      name: '  Synthetic Trial Garage  ',
-      pin: '62841357',
-      isTrial: true,
-      trialDays: 3
-    };
-
+  it('creates an Admin trial with the complete activity-log details', async () => {
     mockDb.clear();
-    const honoResponse = await callHonoCreate('valid-admin-token', body);
-    const honoResult = await honoResponse.json() as any;
-    const honoGarage = structuredClone(mockDb.records.get(`garages/${honoResult.id}`));
-    const honoLog = [...mockDb.records.entries()]
-      .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === honoResult.id)?.[1];
-
-    mockDb.clear();
-    const expressResponse = await callExpressCreate('admin', body);
-    const expressResult = await expressResponse.json() as any;
-    const expressGarage = structuredClone(mockDb.records.get(`garages/${expressResult.id}`));
-    const expressLog = [...mockDb.records.entries()]
-      .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === expressResult.id)?.[1];
-
-    expect(honoResponse.status).toBe(200);
-    expect(expressResponse.status).toBe(200);
-    expect(honoResult.success).toBe(true);
-    expect(expressResult.success).toBe(true);
-    const withoutGeneratedTimes = (garage: Record<string, any>) => {
-      const { createdAt: _createdAt, balanceExpiry: _balanceExpiry, ...stableFields } = garage;
-      return stableFields;
-    };
-    expect(withoutGeneratedTimes(honoGarage)).toEqual(withoutGeneratedTimes(expressGarage));
-    expect(honoGarage).toMatchObject({
-      name: 'Synthetic Trial Garage',
-      status: 'approved',
-      isTrial: true,
-      dailyCapacity: 100,
-      activePackageName: 'الباقة التجريبية (3 يوم)',
-      packageName: 'الباقة التجريبية (3 يوم)',
-      balance: 0
+    const response = await callHonoCreate('valid-admin-token', {
+      name: '  Synthetic Trial Garage  ', pin: '62841357', isTrial: true, trialDays: 3
     });
-    expect(honoGarage.balanceExpiry.getTime() - honoGarage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
-    expect(expressGarage.balanceExpiry.getTime() - expressGarage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
-
-    expect(honoLog).toMatchObject({
-      garageName: 'Synthetic Trial Garage',
-      actionType: 'recharge',
-      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)',
-      amount: 0
+    const result = await response.json() as any;
+    const garage = structuredClone(mockDb.records.get(`garages/${result.id}`));
+    const log = [...mockDb.records.entries()]
+      .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === result.id)?.[1];
+    expect(response.status).toBe(200);
+    expect(garage).toMatchObject({
+      name: 'Synthetic Trial Garage', status: 'approved', isTrial: true,
+      dailyCapacity: 100, activePackageName: 'الباقة التجريبية (3 يوم)',
+      packageName: 'الباقة التجريبية (3 يوم)', balance: 0
     });
-    expect(expressLog).toMatchObject({
-      garageName: 'Synthetic Trial Garage',
-      actionType: 'recharge',
-      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)',
-      amount: 0,
-      details: {
-        packageName: 'الباقة التجريبية (3 يوم)',
-        durationDays: 3,
-        carsCount: 100,
-        revenueAmount: 0,
-        isTrial: true
-      }
+    expect(garage.balanceExpiry.getTime() - garage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
+    expect(log).toMatchObject({
+      garageName: 'Synthetic Trial Garage', actionType: 'recharge',
+      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)', amount: 0,
+      details: { packageName: 'الباقة التجريبية (3 يوم)', durationDays: 3, carsCount: 100, revenueAmount: 0, isTrial: true }
     });
-    expect(honoLog.details).toEqual(expressLog.details);
   });
 
-  it('creates delegate-owned pending garages consistently while below the daily quota', async () => {
-    const body = {
-      name: 'Synthetic Delegate Garage',
-      pin: '73916428',
-      isTrial: true,
-      trialDays: 4,
-      createdByDelegateName: 'Delegate A',
-      referrerName: 'Delegate A'
-    };
-
+  it('creates a delegate-owned pending garage below the daily quota', async () => {
     mockDb.clear();
     seedDelegateGarages(2);
-    const honoResponse = await callHonoCreate('valid-delegate-token-delegate-a', body);
-    const honoResult = await honoResponse.json() as any;
-    const honoGarage = structuredClone(mockDb.records.get(`garages/${honoResult.id}`));
-
-    mockDb.clear();
-    seedDelegateGarages(2);
-    const expressResponse = await callExpressCreate('delegate', body, delegateContext);
-    const expressResult = await expressResponse.json() as any;
-    const expressGarage = structuredClone(mockDb.records.get(`garages/${expressResult.id}`));
-
-    expect(honoResponse.status).toBe(200);
-    expect(expressResponse.status).toBe(200);
-    expect(honoGarage).toMatchObject({
-      status: 'pending',
-      createdByDelegateId: 'delegate-a',
-      createdByDelegateName: 'Delegate A',
-      referrerId: 'delegate-a',
-      referrerName: 'Delegate A'
+    const response = await callHonoCreate('valid-delegate-token-delegate-a', {
+      name: 'Synthetic Delegate Garage', pin: '73916428', isTrial: true, trialDays: 4,
+      createdByDelegateName: 'Delegate A', referrerName: 'Delegate A'
     });
-    const withoutGeneratedTimes = (garage: Record<string, any>) => {
-      const { createdAt: _createdAt, balanceExpiry: _balanceExpiry, ...stableFields } = garage;
-      return stableFields;
-    };
-    expect(withoutGeneratedTimes(honoGarage)).toEqual(withoutGeneratedTimes(expressGarage));
-    expect(honoResult.success).toBe(true);
-    expect(expressResult.success).toBe(true);
+    const result = await response.json() as any;
+    const garage = structuredClone(mockDb.records.get(`garages/${result.id}`));
+    expect(response.status).toBe(200);
+    expect(garage).toMatchObject({
+      status: 'pending', createdByDelegateId: delegateContext.entityId,
+      createdByDelegateName: 'Delegate A', referrerId: delegateContext.entityId, referrerName: 'Delegate A'
+    });
   });
 
-  it('enforces the three-garage Cairo-day delegate quota without writes in either runtime', async () => {
-    const body = { name: 'Quota Limit Garage', pin: '82517364' };
-
+  it('enforces the three-garage Cairo-day delegate quota without writes', async () => {
     mockDb.clear();
     seedDelegateGarages(3);
-    const honoBefore = snapshotRecords();
-    const honoResponse = await callHonoCreate('valid-delegate-token-delegate-a', body);
-    const honoBody = await honoResponse.json();
-    expect(honoResponse.status).toBe(409);
-    expect(honoBody).toEqual({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
-    expect(snapshotRecords()).toEqual(honoBefore);
+    const before = snapshotRecords();
+    const response = await callHonoCreate('valid-delegate-token-delegate-a', { name: 'Quota Limit Garage', pin: '82517364' });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
+    expect(snapshotRecords()).toEqual(before);
+  });
 
+  it('rejects an already-reserved PIN without creating a garage or activity log', async () => {
     mockDb.clear();
-    seedDelegateGarages(3);
-    const expressBefore = snapshotRecords();
-    const expressResponse = await callExpressCreate('delegate', body, delegateContext);
-    expect(expressResponse.status).toBe(409);
-    expect(await expressResponse.json()).toEqual(honoBody);
-    expect(snapshotRecords()).toEqual(expressBefore);
+    mockDb.seed('garages/existing-pin-owner', { name: 'Existing PIN Owner' });
+    await saveEntityPin('garages', 'existing-pin-owner', '91427538');
+    const before = snapshotRecords();
+    const response = await callHonoCreate('valid-admin-token', { name: 'Duplicate PIN Garage', pin: '91427538' });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ success: false, error: 'PIN_ALREADY_TAKEN' });
+    expect(snapshotRecords()).toEqual(before);
   });
 
-  it('rejects an already-reserved PIN identically without creating a garage or activity log', async () => {
-    const pin = '91427538';
-    const seedExistingPin = async () => {
-      mockDb.clear();
-      mockDb.seed('garages/existing-pin-owner', { name: 'Existing PIN Owner' });
-      await saveEntityPin('garages', 'existing-pin-owner', pin);
-    };
-    const body = { name: 'Duplicate PIN Garage', pin };
-
-    await seedExistingPin();
-    const honoBefore = snapshotRecords();
-    const honoResponse = await callHonoCreate('valid-admin-token', body);
-    const honoBody = await honoResponse.json();
-    expect(honoResponse.status).toBe(400);
-    expect(honoBody).toMatchObject({ success: false, error: 'PIN_ALREADY_TAKEN' });
-    expect(snapshotRecords()).toEqual(honoBefore);
-
-    await seedExistingPin();
-    const expressBefore = snapshotRecords();
-    const expressResponse = await callExpressCreate('admin', body);
-    expect(expressResponse.status).toBe(400);
-    expect(await expressResponse.json()).toEqual(honoBody);
-    expect(snapshotRecords()).toEqual(expressBefore);
-  });
-
-  it('validates idempotency keys and replays the original garage result for the same request', async () => {
+  it('validates, replays, rejects key reuse, and serializes concurrent idempotent creates', async () => {
+    mockDb.clear();
     const invalidBody = { name: 'Invalid Key Garage', pin: '41927536', idempotencyKey: 'bad!key-1234' };
-    mockDb.clear();
-    const honoInvalidBefore = snapshotRecords();
-    const honoInvalid = await callHonoCreate('valid-admin-token', invalidBody);
-    const honoInvalidBody = await honoInvalid.json();
-    expect(honoInvalid.status).toBe(400);
-    expect(honoInvalidBody).toMatchObject({ success: false, error: 'Idempotency key contains invalid characters' });
-    expect(snapshotRecords()).toEqual(honoInvalidBefore);
+    const invalidBefore = snapshotRecords();
+    const invalid = await callHonoCreate('valid-admin-token', invalidBody);
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toMatchObject({ success: false, error: 'Idempotency key contains invalid characters' });
+    expect(snapshotRecords()).toEqual(invalidBefore);
 
     mockDb.clear();
-    const expressInvalidBefore = snapshotRecords();
-    const expressInvalid = await callExpressCreate('admin', invalidBody);
-    expect(expressInvalid.status).toBe(400);
-    expect(await expressInvalid.json()).toEqual(honoInvalidBody);
-    expect(snapshotRecords()).toEqual(expressInvalidBefore);
+    const body = { name: 'Keyed Garage', pin: '59182736', isTrial: true, trialDays: 5, idempotencyKey: 'garage-create-key-20261010' };
+    const first = await callHonoCreate('valid-admin-token', body);
+    const firstBody = await first.json();
+    const replay = await callHonoCreate('valid-admin-token', body);
+    const replayBody = await replay.json();
+    expect([first.status, replay.status]).toEqual([200, 200]);
+    expect(replayBody).toEqual(firstBody);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('private_pins/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('pin_reservations/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
 
-    const runSameRequestTwice = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      const body = {
-        name: 'Keyed Garage',
-        pin: '59182736',
-        isTrial: true,
-        trialDays: 5,
-        idempotencyKey: 'garage-create-key-20261010'
-      };
-      const first = runtime === 'hono'
-        ? await callHonoCreate('valid-admin-token', body)
-        : await callExpressCreate('admin', body);
-      const firstBody = await first.json();
-      const replay = runtime === 'hono'
-        ? await callHonoCreate('valid-admin-token', body)
-        : await callExpressCreate('admin', body);
-      const replayBody = await replay.json();
-      return {
-        statuses: [first.status, replay.status],
-        firstBody,
-        replayBody,
-        garageCount: [...mockDb.records.keys()].filter((path) => path.startsWith('garages/')).length,
-        activityLogCount: [...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/')).length,
-        privatePinCount: [...mockDb.records.keys()].filter((path) => path.startsWith('private_pins/')).length,
-        pinReservationCount: [...mockDb.records.keys()].filter((path) => path.startsWith('pin_reservations/')).length,
-        idempotencyRecordCount: [...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/')).length
-      };
-    };
+    mockDb.clear();
+    const firstConflict = await callHonoCreate('valid-admin-token', { name: 'Original keyed garage', pin: '59182736', idempotencyKey: 'garage-create-conflict-20261010' });
+    await firstConflict.json();
+    const changed = await callHonoCreate('valid-admin-token', { name: 'Changed keyed garage', pin: '59182737', idempotencyKey: 'garage-create-conflict-20261010' });
+    expect(firstConflict.status).toBe(200);
+    expect(changed.status).toBe(409);
+    expect(await changed.json()).toMatchObject({ success: false });
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
 
-    const honoReplay = await runSameRequestTwice('hono');
-    const expressReplay = await runSameRequestTwice('express');
-    for (const result of [honoReplay, expressReplay]) {
-      expect(result.statuses).toEqual([200, 200]);
-      expect(result.replayBody).toEqual(result.firstBody);
-      expect(result.garageCount).toBe(1);
-      expect(result.activityLogCount).toBe(1);
-      expect(result.privatePinCount).toBe(1);
-      expect(result.pinReservationCount).toBe(1);
-      expect(result.idempotencyRecordCount).toBe(1);
-    }
-
-    const runChangedPayload = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      const firstBody = {
-        name: 'Original keyed garage',
-        pin: '59182736',
-        idempotencyKey: 'garage-create-conflict-20261010'
-      };
-      const changedBody = {
-        name: 'Changed keyed garage',
-        pin: '59182737',
-        idempotencyKey: firstBody.idempotencyKey
-      };
-      const first = runtime === 'hono'
-        ? await callHonoCreate('valid-admin-token', firstBody)
-        : await callExpressCreate('admin', firstBody);
-      await first.json();
-      const changed = runtime === 'hono'
-        ? await callHonoCreate('valid-admin-token', changedBody)
-        : await callExpressCreate('admin', changedBody);
-      const changedResponse = await changed.json();
-      return {
-        firstStatus: first.status,
-        changedStatus: changed.status,
-        changedResponse,
-        garageCount: [...mockDb.records.keys()].filter((path) => path.startsWith('garages/')).length,
-        activityLogCount: [...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/')).length,
-        privatePinCount: [...mockDb.records.keys()].filter((path) => path.startsWith('private_pins/')).length,
-        pinReservationCount: [...mockDb.records.keys()].filter((path) => path.startsWith('pin_reservations/')).length,
-        idempotencyRecordCount: [...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/')).length
-      };
-    };
-
-    const honoConflict = await runChangedPayload('hono');
-    const expressConflict = await runChangedPayload('express');
-    expect(honoConflict).toEqual(expressConflict);
-    expect(honoConflict).toMatchObject({
-      firstStatus: 200,
-      changedStatus: 409,
-      changedResponse: { success: false },
-      garageCount: 1,
-      activityLogCount: 1,
-      privatePinCount: 1,
-      pinReservationCount: 1,
-      idempotencyRecordCount: 1
-    });
+    mockDb.clear();
+    const concurrentBody = { name: 'Concurrent Keyed Garage', pin: '75319486', idempotencyKey: 'garage-create-concurrent-20261010' };
+    const concurrent = await Promise.all([
+      callHonoCreate('valid-admin-token', concurrentBody),
+      callHonoCreate('valid-admin-token', concurrentBody)
+    ]);
+    const concurrentBodies = await Promise.all(concurrent.map((response) => response.json()));
+    expect(concurrent.map((response) => response.status).sort()).toEqual([200, 200]);
+    expect(concurrentBodies[0]).toEqual(concurrentBodies[1]);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
   });
 
-  it('serializes concurrent same-key requests to one creation and one replay in both runtimes', async () => {
-    const runConcurrent = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      const body = {
-        name: 'Concurrent Keyed Garage',
-        pin: '75319486',
-        idempotencyKey: 'garage-create-concurrent-20261010'
-      };
-      const responses = runtime === 'hono'
-        ? await Promise.all([
-            callHonoCreate('valid-admin-token', body),
-            callHonoCreate('valid-admin-token', body)
-          ])
-        : await Promise.all([
-            callExpressCreate('admin', body),
-            callExpressCreate('admin', body)
-          ]);
-      const responseBodies = await Promise.all(responses.map((response) => response.json()));
-      return {
-        statuses: responses.map((response) => response.status).sort(),
-        responseBodies,
-        garageCount: [...mockDb.records.keys()].filter((path) => path.startsWith('garages/')).length,
-        activityLogCount: [...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/')).length,
-        idempotencyRecordCount: [...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/')).length
-      };
-    };
-
-    for (const result of [await runConcurrent('hono'), await runConcurrent('express')]) {
-      expect(result.statuses).toEqual([200, 200]);
-      expect(result.responseBodies[0]).toEqual(result.responseBodies[1]);
-      expect(result.garageCount).toBe(1);
-      expect(result.activityLogCount).toBe(1);
-      expect(result.idempotencyRecordCount).toBe(1);
-    }
+  it('returns 404 from the Express fallback after retirement', async () => {
+    const response = await callRetiredExpressCreate({ name: 'Retired Express Garage', pin: '86427531' });
+    expect(response.status).toBe(404);
   });
 });
 

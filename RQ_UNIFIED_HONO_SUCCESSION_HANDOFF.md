@@ -285,3 +285,12 @@ Following the read-only reconciliation audit, the owner explicitly approved reti
 Characterization updates retain Hono success, validation, missing-garage, non-Admin denial, and no-write coverage; they add explicit 404 assertions for the retired Express fallback. The focused reconciliation and maintenance authorization suites pass **2 files / 42 tests**. The final repository gates pass **104 files / 643 tests**, TypeScript lint, web/Node/Cloudflare production builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. Existing React `act(...)` stderr warnings remain non-failing test diagnostics.
 
 No production deployment, `main` merge, production data/configuration change, Firebase mutation, authenticated preview retry, or branch deletion occurred. The next sensitive-route candidates remain create/delete and projection maintenance; each still requires its own route-specific evidence and approval.
+
+
+## 2026-10-12 approved Express garage-create retirement
+
+The owner explicitly approved retiring only the Express `POST /api/garages/create` registration after a route-specific audit. The Express handler and imports used only by it were removed; Hono remains the sole supported create route. The Express fallback returns 404. Express itself, all other garage routes, Firebase/Cloudflare configuration, and production boundaries remain unchanged.
+
+The create characterization was converted from dual-runtime comparisons to Hono contract/no-write tests plus explicit Express 404 retirement coverage. It retains role denial, Admin trial initialization and complete activity-log details, delegate attribution and Cairo-day quota, duplicate-PIN rejection without writes, transactional rate-limit boundary/expiry/concurrency/fail-closed behavior, and idempotency validation/replay/conflict/concurrency. Focused validation passed **2 files / 37 tests**. Final repository gates passed **104 files / 638 tests**, TypeScript lint, web/Node/Cloudflare production builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. Existing React `act(...)` stderr warnings remain non-failing diagnostics.
+
+No authenticated preview create retry, Firebase mutation, production deployment, `main` merge, destructive operation, or branch deletion occurred. The next H9 sensitive route is `POST /api/garages/delete`; its Firestore lease/rollback and operational-owner review remain open.

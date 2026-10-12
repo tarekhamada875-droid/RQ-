@@ -247,3 +247,12 @@ The guarded OIDC workflow [38205082036](https://github.com/tarekhamada875-droid/
 ### Authenticated 429 diagnosis and reconciliation audit — 2026-10-12
 
 Read-only Cloudflare Worker telemetry confirmed the two synthetic create probes were Worker-generated 429 responses, not runtime failures; the limiter returns 429 only for an already exhausted per-actor bucket. A daily route summary found eight POST create 429s and six preflight 204s, so the two probes did not exhaust a fresh bucket. The historical counter cannot be reconciled because the isolated Firestore root is now empty, and no rate-limit mutation or retry was made. The local reconciliation audit passed **1 file / 35 tests**, including three read-only parity cases. This diagnosis did not itself authorize retirement; the Express reconciliation route was retired later under the explicit owner approval and evidence recorded below.
+
+
+### Garage-create Express retirement — 2026-10-12
+
+The owner explicitly approved retiring only the Express `POST /api/garages/create` registration. The Hono route remains the sole supported owner; the Express fallback now returns 404. The retired implementation and its now-unused imports were removed without changing the Hono Worker, Express runtime, deletion route, Firebase/Cloudflare configuration, or any production boundary.
+
+The characterization suite was converted from dual-runtime create comparisons to Hono contract/no-write coverage plus an explicit Express 404 assertion. Coverage retains role denial, 30-request limit and expiry reset, concurrent limit serialization, fail-closed limiter storage, Admin trial/activity-log details, delegate attribution/quota, duplicate-PIN no-write behavior, and idempotency validation/replay/conflict/concurrency. Focused validation passed **2 files / 37 tests**. The final repository gates passed **104 files / 638 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+
+No authenticated preview create retry, Firebase mutation, production deployment, `main` merge, destructive operation, or branch deletion occurred. The next sensitive route remains `POST /api/garages/delete`; its documented Firestore lease/rollback review is still required before retirement.

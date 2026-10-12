@@ -58,7 +58,13 @@ async function postGarageCreate(role: string, body: Record<string, unknown>) {
     request.on('error', rejectResponse);
     request.end(payload);
   });
-  return { status: response.status, json: JSON.parse(response.body) as Record<string, unknown> };
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(response.body) as Record<string, unknown>;
+  } catch {
+    // The retired Express fallback uses its default HTML 404 response.
+  }
+  return { status: response.status, json };
 }
 
 beforeAll(async () => {
@@ -79,16 +85,10 @@ afterAll(async () => {
   });
 });
 
-describe('garage application authorization route', () => {
-  it.each(['garage', 'staff', 'supervisor', 'backend-operator'])('denies %s using the existing forbidden response', async (role) => {
-    const response = await postGarageCreate(role, {});
-    expect(response.status).toBe(403);
-    expect(response.json).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
-  });
+describe('retired Express garage-create route', () => {
+  it('returns 404 for all callers after Hono ownership transfer', async () => {
+    const response = await postGarageCreate('admin', { name: 'Retired Express Garage', pin: '12345678' });
 
-  it.each(['admin', 'delegate'])('allows %s past authorization even with legacy canCreateGarage=false, without writing to a database', async (role) => {
-    const response = await postGarageCreate(role, { name: 'Integration Test Garage', pin: '12345678' });
-    expect(response.status).toBe(500);
-    expect(response.json).toEqual({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+    expect(response.status).toBe(404);
   });
 });
