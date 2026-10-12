@@ -426,3 +426,55 @@ Focused validation passed **6 files / 84 tests**. The full integration gate pass
 ### Local runtime decoupling decision — 2026-10-12
 
 After API retirement, the Node entrypoint now defaults to Hono (`RQ_API_RUNTIME !== 'express'`), and `npm start` explicitly sets `RQ_API_RUNTIME=hono`. Express remains available only through the explicit `RQ_API_RUNTIME=express` / `npm run dev:express` compatibility path because Vite middleware/static serving and existing Express middleware characterization tests still depend on its Connect-style app interface. The Express app has zero API registrations and is not a production API owner. Removing Express itself would require a separate local-dev server migration and is not necessary for H9 API completion; no unverified dependency deletion was made.
+
+
+## Final independent-verification checkpoint — 2026-10-12
+
+**Verified commit:** `142953816d8839157ac6ccae9f56d77b54c64926`. `migration/unified-hono` and `origin/migration/unified-hono` point to this SHA; the worktree is clean. `main` and `origin/main` remain at `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. No deployment, merge, production configuration change, real Firestore operation, or financial operation was performed.
+
+### Source census and classifications
+
+- **VERIFIED — reachable Express API registrations: zero.** `server/app.ts` imports no route modules and mounts only CORS, JSON parsing, correlation, timeout, operation tracing, an optional caller-supplied `apiPreviewApp` under `/api`, and the generic `/api` 404 fallback (`server/app.ts:66-112`). `server.ts` uses Express only as the local compatibility/Vite/static-serving adapter; its default path is Hono (`server.ts:8-39`).
+- **VERIFIED — dormant source handlers identified.** `server/routes/vehicles.ts` still declares 3 routers, `server/routes/subscribers.ts` 4, and `server/routes/delegates.ts` 4. A production-source import census found no imports of those modules and no `app.use()` mounts. They are unmounted legacy handler declarations, not reachable API registrations, but they remain a source-cleanup gap and prevent the stronger claim that every Express business handler has been deleted.
+- **VERIFIED — test-only mounts distinguished.** `server/vehicleGarageScopeAuthorization.integration.test.ts` and `server/subscriberRoutes.integration.test.ts` mount legacy routers into isolated test apps only. `h5DualRuntime.contract.test.ts` and `migratedRoutes.contract.test.ts` mount the empty Express composition to assert retired-path 404 behavior. These are not production mounts.
+- **VERIFIED — generic fallback distinguished.** The `/api` handler at `server/app.ts:104-106` is only `{ success:false, error:'API route not found' }` with status 404; it is not a business route. Vite middleware and `express.static` in `server.ts:24-35` are non-API frontend serving.
+
+### Retired Express endpoint ownership
+
+The following retired groups map to Hono implementations or intentional contracts:
+
+- **Health/version/system/Admin:** `/api/health`, `/api/version`, `/api/system-config`, `/api/admin/update-system-config`, package create/delete, announcement create/delete/toggle, coupon create/update/delete, and `/api/activity-logs/add` → Hono routes in `server/cloudflareWorker.ts:382-393, 977-1008, 4012-4065, 4118-4147, 4665`; activity logs intentionally return `403 SERVER_GENERATED_ONLY`. Express retirement/404 contracts: `server/h5DualRuntime.contract.test.ts`, `server/migratedRoutes.contract.test.ts`.
+- **Vehicles:** check-in, check-out, delete, plus read/history/refund Hono surfaces → `server/cloudflareWorker.ts:1457-2082`; focused evidence: `src/__tests__/cloudflareWorkerVehicleRoutes.test.ts`, `src/__tests__/workerParityRoutes.test.ts`, `server/migratedRoutes.contract.test.ts`.
+- **Subscribers:** add, renew, update, delete → `server/cloudflareWorker.ts:2108-2333`; focused evidence: `src/__tests__/cloudflareWorkerSubscriberRoutes.test.ts`, `server/migratedRoutes.contract.test.ts`.
+- **Staff/people:** staff create/update/delete and people update-pin → `server/cloudflareWorker.ts:3737-3990`; evidence: `src/__tests__/workerParityRoutes.test.ts`, `src/__tests__/workerAuthorizationMatrix.test.ts`, dual-runtime retirement contracts.
+- **Delegates:** create/update/delete, settlement, dashboard aliases → `server/cloudflareWorker.ts:3013-3100, 3839-3941`; evidence: `src/__tests__/workerParityRoutes.test.ts`, delegate tests, and migrated-route 404 contracts.
+- **Supervisors:** create/update/delete → intentional `410 ROLE_RETIRED` Hono contract at `server/cloudflareWorker.ts:3834-3836`; evidence: `src/__tests__/workerParityRoutes.test.ts`, `src/__tests__/workerAuthorizationMatrix.test.ts`.
+- **Auth/session/PIN:** verify PIN, availability, admin PIN, claim/release admin session, update PIN, list/revoke sessions, refresh, release, invalidate-all → Hono at `server/cloudflareWorker.ts:406-977`; evidence: `src/__tests__/workerSessionRoutes.test.ts`, `src/__tests__/workerPinRateLimiter.test.ts`, `src/__tests__/workerAuthorizationMatrix.test.ts`, `server/h5DualRuntime.contract.test.ts`.
+- **Financial/recharge/report:** recharge creation, garage recharge, admin top-up, referral reward, approval, rejection, garage subscription, and financial report → Hono at `server/cloudflareWorker.ts:2358-3143, 4253-4630`; evidence: `src/__tests__/cloudflareWorkerFinancialRoutes.test.ts`, `src/__tests__/workerParityRoutes.test.ts`, `server/financialReporting.test.ts`, `server/manualCredit.test.ts`, and `server/h5DualRuntime.contract.test.ts`.
+- **Garage and maintenance routes retired in earlier H9 batches** retain their Hono handlers and synthetic contracts; route-specific historical evidence is preserved in this inventory. No Express garage registration was found in the final `server/app.ts` census.
+
+**Equivalence limitation:** route-level Hono behavior and retired-Express 404/410 behavior are verified, but a complete response-by-response equivalence proof for every historical Express success/error branch was not performed after the Express handlers were unmounted. This is **NOT VERIFIED**, not a release blocker for route reachability, but it is a retained audit limitation.
+
+### Security and financial parity classification
+
+- **VERIFIED — Hono authentication/session controls:** `requireWorkerAuth`, session creation/claim/release, refresh freshness and active-session markers, list/revoke, invalidation, stale-session rejection, role scope; tests above.
+- **VERIFIED — route-level role/tenant/garage isolation:** worker authorization matrix, vehicle/subscriber route suites, delegate scope tests, and staff cross-garage tests cover synthetic callers and denial paths. Live/browser operational acceptance remains **NOT VERIFIED**.
+- **VERIFIED — vehicle check-in/out and subscriber lifecycle:** synthetic transaction tests cover authorization, garage scope, operational state, replay/idempotency where applicable, immutable subscriber constraints, and deletion/renewal behavior. No real or preview mutation was executed.
+- **VERIFIED — staff operations:** Hono create/update/delete and cross-garage authorization are covered by `workerParityRoutes.test.ts` and `workerAuthorizationMatrix.test.ts`; live staff workflow acceptance remains **NOT VERIFIED**.
+- **VERIFIED — financial ledger and atomicity:** Worker financial tests cover manual-credit ledger writes, transactional balance/recharge behavior, failed transaction protection, and direct/admin wallet paths without real financial operations.
+- **VERIFIED — rate limits and idempotency:** PIN limiter tests and financial tests cover required keys, duplicate replay, conflicting payload reuse, and rate-limit behavior in synthetic fixtures.
+- **VERIFIED — reports:** financial report authorization, filters, invalid ranges, and error behavior are covered by `cloudflareWorkerFinancialRoutes.test.ts` and `financialReporting.test.ts`.
+- **VERIFIED — CORS, correlation/operation IDs, and selected error envelopes:** `server/h5DualRuntime.contract.test.ts` covers allowed/disallowed CORS, supplied IDs, unknown-route 404, unauthorized responses, and retired-path envelopes. It does not prove every business error branch equivalent.
+- **VERIFIED with explicit boundary — compatibility spike endpoints:** `/api/test-auth-verify`, `/api/test-firestore-read`, and `/api/test-firestore-write` are Hono-only and return `403 SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION` when `ENVIRONMENT=production`; `src/__tests__/cloudflareWorkerCompatibilitySpike.test.ts` covers the guard. Preproduction write behavior is intentionally not exercised in this checkpoint.
+- **BLOCKED / NOT VERIFIED — production release readiness:** no authenticated live acceptance, real Firestore rehearsal, financial write, or production smoke/deployment was performed. H9 route retirement is complete, but these restrictions mean production release approval is not established by this checkpoint.
+
+### Exact remote CI evidence
+
+For the exact final SHA, both workflows succeeded:
+
+- [Production Gate run 38264727568](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38264727568) — tested `142953816d8839157ac6ccae9f56d77b54c64926`, success.
+- [H5 Preview Worker run 38264728105](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38264728105) — tested the same exact SHA, success.
+
+The Production Gate executed typecheck, tests, production build, legacy foundation gate, artifact verification, and maintainability checks. Its live Cloudflare deployment/smoke step was skipped (`-`), so no live smoke evidence is claimed. Local final validation passed 98 files / 624 tests. Known non-blocking warnings included React `act(...)` test warnings and GitHub action runner notices about Node.js 20 deprecation and the upcoming Ubuntu image migration.
+
+**Final status: H9 API route retirement VERIFIED COMPLETE; production release readiness BLOCKED/NOT VERIFIED; dormant unmounted Express handlers and exhaustive historical response-equivalence audit remain explicitly documented gaps. Earlier inventory paragraphs describing 50/22/19/8 remaining Express registrations or open pre-retirement blockers are historical snapshots superseded by this section.**
