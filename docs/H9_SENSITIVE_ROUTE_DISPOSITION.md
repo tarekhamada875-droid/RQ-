@@ -140,3 +140,8 @@ Read-only Firebase Console verification was performed against `rq-hono-preview-i
 ### Isolated index and preview pairing verification — 2026-10-12
 
 After guarded OIDC workflow [38205082036](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38205082036), Firebase Console shows all **8 of 8** repository Manual indexes **Enabled** in `rq-hono-preview-isolated`; Rules remain published. Credential-free preview health/version and unauthenticated garage-create protection also passed. The prior authenticated garage-create 429 remains unresolved, so `/api/garages/create` and all other sensitive Express handlers remain mounted and no authenticated retry or retirement decision is made.
+
+
+### Authenticated 429 diagnosis and reconciliation audit — 2026-10-12
+
+Cloudflare Workers Observability confirmed the historical synthetic 429s were returned by the correct preproduction Worker with `outcome: ok` and no Worker error event. Source inspection and broader telemetry indicate a pre-existing exhausted per-actor financial limiter bucket; the isolated Firestore root is now empty, so no counter was changed and no retry was sent. The read-only reconciliation parity audit passed **1 file / 35 tests**: Admin response/no-write parity, validation/missing-garage parity, and non-Admin denial. The reconciliation Express handler remains mounted pending explicit route retirement review.

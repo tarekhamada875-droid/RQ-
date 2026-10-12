@@ -671,3 +671,8 @@ Firebase Console verification was completed against the explicitly isolated proj
 ## 2026-10-12 H9 index and preview pairing verification
 
 The guarded isolated Firestore workflow [38205082036](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38205082036) succeeded with explicit OIDC deployment to `rq-hono-preview-isolated`. Firebase Console now shows all **8 of 8** repository Manual indexes present and **Enabled**, and Rules remain published. Credential-free preview Worker health/version checks returned 200 with `environment: preproduction`, `adminSdk: true`, and `1.0.0-h5-preview`; unauthenticated garage-create protection returned 401. The index blocker is closed. The earlier authenticated garage-create 429 remains unresolved and must not be retried; H9 remains in progress.
+
+
+## 2026-10-12 429 observability and reconciliation audit addendum
+
+Read-only Cloudflare Workers Observability correlation confirmed the two synthetic create probes reached the correct `rq-hono-preview` Worker and returned Worker-generated 429 responses, with no Worker error event. The limiter source returns 429 only for an already exhausted per-actor counter; failures return 503. A broader daily summary found eight POST create 429s and six 204 preflight requests, proving the two synthetic probes did not exhaust a fresh bucket. Treat the cause as a pre-existing/stale per-actor limiter state that cannot now be reconciled because the isolated Firestore root is empty. No authenticated retry or limiter mutation was made. The bounded reconciliation audit passed **1 file / 35 tests**, including three read-only reconciliation parity cases. H9 remains in progress and no Express route is retired.
