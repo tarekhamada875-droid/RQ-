@@ -413,4 +413,30 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(summaryBody.data.report).toBeDefined();
     expect(typeof summaryBody.data.report.grossRechargeTotal).toBe('number');
   });
+
+  it('7. financial reports enforce admin authorization and preserve filters', async () => {
+    const denied = await api.fetch(new Request('http://localhost/api/reports/financial', {
+      headers: { 'Authorization': 'Bearer valid-garage-token-worker-test-garage-cf7' }
+    }), workerEnv);
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toMatchObject({ success: false });
+
+    const filtered = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-01&end=2026-12-31&delegateId=worker-test-delegate-cf7', {
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(filtered.status).toBe(200);
+    expect((await filtered.json() as any).data.filters).toEqual({
+      start: '2026-01-01',
+      end: '2026-12-31',
+      delegateId: 'worker-test-delegate-cf7'
+    });
+  });
+
+  it('8. financial reports reject an invalid date range before reading projections', async () => {
+    const invalid = await api.fetch(new Request('http://localhost/api/financial-summary?start=2026-12-31&end=2026-01-01', {
+      headers: { 'Authorization': 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toMatchObject({ success: false, error: 'START_MUST_PRECEDE_END' });
+  });
 });

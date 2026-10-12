@@ -106,6 +106,13 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
       '/api/auth/claim-admin-session',
       '/api/auth/release-admin-session',
       '/api/admin/update-pin',
+      '/api/transactions/recharge-garage',
+      '/api/transactions/admin-topup-balance',
+      '/api/transactions/use-referral-reward',
+      '/api/transactions/approve-recharge-request',
+      '/api/transactions/reject-recharge-request',
+      '/api/transactions/garage-self-subscribe',
+      '/api/recharge-requests/create',
     ]) {
       const [hono, express] = await Promise.all([honoRequest(path, jsonInit), expressRequest(path, jsonInit)]);
       expect(hono.status, `${path}: Hono authentication`).toBe(401);
@@ -129,6 +136,15 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
       expect(hono.status, `${path}: Hono authentication`).toBe(401);
       expect(express.status, `${path}: retired Express route`).toBe(404);
     }
+  });
+
+  it('keeps Hono report authentication while the retired Express report route returns 404', async () => {
+    const [hono, express] = await Promise.all([
+      honoRequest('/api/reports/financial'),
+      expressRequest('/api/reports/financial')
+    ]);
+    expect(hono.status).toBe(401);
+    expect(express.status).toBe(404);
   });
 
   it('keeps Hono operator-token blocking while retired Express routes return 404', async () => {

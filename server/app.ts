@@ -1,30 +1,10 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import rechargesRouter from './routes/recharges';
-import reportsRouter from './routes/reports';
 import {
-  adminDb
-} from './firebaseAdmin';
-import {
-  requireAuth,
-  AuthRequest,
   correlationMiddleware,
-  requestTimeoutMiddleware,
-  financialRateLimiter
+  requestTimeoutMiddleware
 } from './middleware';
 import { operationTraceMiddleware } from './operationTrace';
-import {
-  validateId,
-  validateNumber,
-  validateString,
-  validateIdempotencyKey,
-} from './validation';
-import {
-  checkIdempotencyInTransaction,
-  storeIdempotencyInTransaction,
-  createRequestFingerprint
-} from './idempotency';
-import { mapDomainErrorToStatus } from './routes/helpers';
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
@@ -113,115 +93,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   app.use(correlationMiddleware);
   app.use(requestTimeoutMiddleware(15000));
   app.use(operationTraceMiddleware);
-
-  // Mount Modular Routers
-  app.use('/api/transactions', rechargesRouter);
-  app.use('/api/reports', reportsRouter);
-
-  // Secure Server API: Subscribers (Add / Renew / Update / Delete)
-  app.post('/api/recharge-requests/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-    try {
-      if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-
-      const callerRole = req.user?.role;
-      if (callerRole !== 'garage' && callerRole !== 'delegate') {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN: Garage owner or delegate required' });
-      }
-
-      const garageId = validateId(req.body?.garageId, 'garageId', true);
-      const garageSnap = await adminDb.doc(`garages/${garageId}`).get();
-      if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-      const garageData = garageSnap.data() || {};
-
-      if (callerRole === 'garage' && req.user?.garageId !== garageId) {
-        return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
-      }
-      if (callerRole === 'delegate') {
-        const delegateId = req.user?.entityId || req.user?.uid;
-        const canRequest = garageData.createdByDelegateId === delegateId || garageData.referrerId === delegateId;
-        if (!canRequest) return res.status(403).json({ success: false, error: 'GARAGE_SCOPE_MISMATCH' });
-      }
-
-      const idempotencyKey = validateIdempotencyKey(
-        req.body?.idempotencyKey || req.headers['x-idempotency-key'] || req.headers['idempotency-key']
-      );
-      if (!idempotencyKey) {
-        return res.status(400).json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' });
-      }
-
-      const requestType = req.body?.requestType === 'balance_topup' ? 'balance_topup' : 'subscription';
-      const packageId = validateString(req.body?.packageId, 'packageId', { required: false });
-      if (requestType !== 'balance_topup' && !packageId) {
-        return res.status(400).json({ success: false, error: 'PACKAGE_REQUIRED' });
-      }
-
-      // Never persist client-supplied prices, commissions, capacity, duration, or
-      // discount values for subscription requests. Approval derives these from
-      // the authoritative package/configuration documents.
-      const cleanData: Record<string, unknown> = {
-        requestType,
-        garageId,
-        packageId: packageId || null,
-        couponCode: validateString(req.body?.couponCode, 'couponCode', { required: false }) || null,
-        createdByUid: req.user?.uid || null,
-        idempotencyKey
-      };
-      if (callerRole === 'delegate') {
-        const delegateId = req.user?.entityId || req.user?.uid || null;
-        cleanData.delegateId = delegateId;
-        cleanData.delegateName = req.user?.displayName || null;
-        cleanData.garageName = garageData.name || null;
-      }
-      if (requestType === 'balance_topup') {
-        const amount = validateNumber(req.body?.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
-        cleanData.amount = amount;
-      }
-      const requestFingerprint = createRequestFingerprint({
-        requestType,
-        garageId,
-        packageId: packageId || null,
-        couponCode: cleanData.couponCode,
-        amount: cleanData.amount || null
-      });
-
-      let createdId: string | null = null;
-      await adminDb.runTransaction(async (t: any) => {
-        const duplicate = await checkIdempotencyInTransaction(
-          t,
-          idempotencyKey,
-          '/api/recharge-requests/create',
-          req.user?.uid,
-          requestFingerprint
-        );
-        if (duplicate.isDuplicate) {
-          createdId = duplicate.cachedResult?.id || null;
-          return;
-        }
-
-        const docRef = adminDb.collection('recharge_requests').doc();
-        createdId = docRef.id;
-        t.set(docRef, {
-          ...cleanData,
-          status: 'pending',
-          createdAt: new Date()
-        });
-        storeIdempotencyInTransaction(
-          t,
-          idempotencyKey,
-          { id: docRef.id },
-          '/api/recharge-requests/create',
-          req.user?.uid,
-          requestFingerprint
-        );
-      });
-
-      return res.json({ success: true, id: createdId });
-    } catch (e: any) {
-      console.error('[Server RechargeRequests] Error in create:', e);
-      const { statusCode, message } = mapDomainErrorToStatus(e);
-      return res.status(statusCode).json({ success: false, error: message });
-    }
-  });
 
   if (options.apiPreviewApp) app.use('/api', options.apiPreviewApp);
 
