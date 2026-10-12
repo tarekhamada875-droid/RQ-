@@ -107,6 +107,24 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     }
   });
 
+  it('keeps Hono session lifecycle authentication while retired Express routes return 404', async () => {
+    const cases: Array<[string, RequestInit]> = [
+      ['/api/auth/sessions', {}],
+      ['/api/auth/sessions/session-key', { method: 'DELETE' }],
+      ['/api/auth/validate-or-refresh-session', { method: 'POST', body: JSON.stringify({}) }],
+      ['/api/auth/release-session', { method: 'POST', body: JSON.stringify({}) }],
+      ['/api/auth/invalidate-all-sessions', { method: 'POST', body: JSON.stringify({}) }]
+    ];
+    for (const [path, init] of cases) {
+      const headers = new Headers(init.headers);
+      if (init.method === 'POST') headers.set('content-type', 'application/json');
+      const normalizedInit = { ...init, headers };
+      const [hono, express] = await Promise.all([honoRequest(path, normalizedInit), expressRequest(path, normalizedInit)]);
+      expect(hono.status, `${path}: Hono authentication`).toBe(401);
+      expect(express.status, `${path}: retired Express route`).toBe(404);
+    }
+  });
+
   it('keeps Hono operator-token blocking while retired Express routes return 404', async () => {
     const init: RequestInit = {
       method: 'POST',

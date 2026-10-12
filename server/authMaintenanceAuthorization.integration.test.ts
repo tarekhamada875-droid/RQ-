@@ -89,20 +89,6 @@ afterAll(async () => {
 });
 
 describe('admin maintenance authorization routes', () => {
-  it.each(['garage', 'staff', 'delegate', 'supervisor'])('denies %s from global session invalidation', async (role) => {
-    const response = await post('/api/auth/invalidate-all-sessions', role);
-
-    expect(response.status).toBe(403);
-    expect(response.json).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required' });
-  });
-
-  it('allows an admin through the session-invalidation gate to the existing SDK availability check', async () => {
-    const response = await post('/api/auth/invalidate-all-sessions', 'admin');
-
-    expect(response.status).toBe(503);
-    expect(response.json).toEqual({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-  });
-
   it.each(['garage', 'staff', 'delegate', 'supervisor'])('denies %s from changing the admin PIN', async (role) => {
     const response = await post('/api/admin/update-pin', role, { currentPin: '12345678', newPin: '23456789' });
 
