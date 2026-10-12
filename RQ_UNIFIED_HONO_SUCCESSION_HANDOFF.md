@@ -461,3 +461,13 @@ Hono and shared-domain behavior remain the source of truth. Retained suites cove
 **Validation:** post-cleanup targeted checks passed **9 files / 120 tests**. The complete local gate passed: `npm test` **95 files / 612 tests**, `npm run lint`, `npm run build` (Vite, Node, Cloudflare Worker), `npm run ci:check` (including production artifact verification), `npm run maintainability:check`, and `git diff --check`. `npm ci` completed; locked dependencies emitted Node engine-range warnings under sandbox Node 22.13.0, and npm reported existing audit findings; no dependency changes or automatic audit fixes were made. Exact-head GitHub workflow status is to be checked after the authorized push and reported separately; do not infer it from local results.
 
 **Required boundaries remain:** push only to `migration/unified-hono`; do not merge to `main`, deploy production, change production configuration, or perform real Firestore/financial operations. The code cleanup is source-only. Production release readiness and live/browser acceptance remain **NOT ESTABLISHED / NOT VERIFIED**. The prior H6 residual risks remain open by their documented disposition.
+
+
+## 2026-10-12 exact-head remote validation for dormant-handler cleanup
+
+The source cleanup commit `c2b0284b616fb3a573916cf17f56a1519a3ae374` was pushed to `migration/unified-hono`; remote branch SHA matched. Exact-head workflows succeeded:
+
+- [Production Gate 38279084113](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38279084113) — success on the exact cleanup SHA. Typecheck, tests, production build, legacy foundation gate, artifact verification, and maintainability passed. **“Wait for Cloudflare deployment and run live smoke check” was skipped.** No production deployment or live smoke is claimed.
+- [H5 Preview Worker 38279083973](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38279083973) — success on the exact cleanup SHA. It deployed only the isolated `rq-hono-preview` Worker and checked public health/version plus unauthenticated protection. The separate H9 isolated projection-rebuild rehearsal job was **skipped**. No authenticated Firestore operation or financial operation was performed.
+
+`main` remains `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; production configuration remains unchanged. These workflow results validate the code-bearing cleanup commit; the local gate also passed on the exact source and documentation contents before commit. Continue to prohibit merge to `main`, production deployment/configuration changes, and real Firestore/financial operations.
