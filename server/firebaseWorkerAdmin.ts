@@ -153,7 +153,7 @@ class QueryReference {
   where(field: string, op: string, value: unknown): QueryReference { return new QueryReference(this.collectionPath, [...this.filters, { field, op, value }], this.maxResults, this.sort, this.allDescendants); }
   limit(value: number): QueryReference { return new QueryReference(this.collectionPath, this.filters, value, this.sort, this.allDescendants); }
   orderBy(field: string, direction = 'asc'): QueryReference { return new QueryReference(this.collectionPath, this.filters, this.maxResults, { field, direction }, this.allDescendants); }
-  async get(): Promise<{ empty: boolean; docs: DocumentSnapshot[] }> { const docs = await activeDb!.query(this); return { empty: docs.length === 0, docs: docs.map((raw) => new DocumentSnapshot(raw)) }; }
+  async get(): Promise<{ empty: boolean; size: number; docs: DocumentSnapshot[] }> { const docs = await activeDb!.query(this); return { empty: docs.length === 0, size: docs.length, docs: docs.map((raw) => new DocumentSnapshot(raw)) }; }
 }
 
 class CollectionReference extends QueryReference {
@@ -170,11 +170,11 @@ class FirestoreBatch {
 
 class FirestoreTransaction extends FirestoreBatch {
   constructor(private readonly transactionId: string) { super(); }
-  async get(ref: DocumentReference | QueryReference): Promise<DocumentSnapshot | { empty: boolean; docs: DocumentSnapshot[] }> {
+  async get(ref: DocumentReference | QueryReference): Promise<DocumentSnapshot | { empty: boolean; size: number; docs: DocumentSnapshot[] }> {
     if (ref instanceof QueryReference) {
       const rawDocuments = await activeDb!.query(ref, this.transactionId);
       const docs = rawDocuments.map((raw) => new DocumentSnapshot(raw));
-      return { empty: docs.length === 0, docs };
+      return { empty: docs.length === 0, size: docs.length, docs };
     }
     return new DocumentSnapshot(await activeDb!.getDocument(ref.name, this.transactionId));
   }
