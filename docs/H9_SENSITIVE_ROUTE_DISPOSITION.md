@@ -135,3 +135,8 @@ Two synthetic authenticated `POST /api/garages/create` probes returned HTTP 429.
 ### Isolated staging verification addendum — 2026-10-12
 
 Read-only Firebase Console verification was performed against `rq-hono-preview-isolated` / Firestore `(default)`. The repository Rules are published in the isolated project, but the Manual Indexes tab shows **0 of 0**; the expected eight composite indexes are not present/READY. The Firestore root is empty, so no documented rehearsal cleanup document or garage fixture is present. The synthetic anonymous Auth identity remains and was not modified. Local synthetic validation passed **2 files / 48 tests**, including create-route rate-limit expiry and concurrency behavior. The prior two staging 429 responses remain unresolved and were not retried. No sensitive Express route is retired by this evidence; `/api/garages/create` and all remaining maintenance handlers stay mounted pending index restoration, deployed-runtime limiter reconciliation, operational review, and explicit route disposition.
+
+
+### Isolated index and preview pairing verification — 2026-10-12
+
+After guarded OIDC workflow [38205082036](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38205082036), Firebase Console shows all **8 of 8** repository Manual indexes **Enabled** in `rq-hono-preview-isolated`; Rules remain published. Credential-free preview health/version and unauthenticated garage-create protection also passed. The prior authenticated garage-create 429 remains unresolved, so `/api/garages/create` and all other sensitive Express handlers remain mounted and no authenticated retry or retirement decision is made.

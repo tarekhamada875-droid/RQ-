@@ -666,3 +666,8 @@ The exact handoff, WIF boundary, cleanup caveats, current workflow links, and sa
 ## 2026-10-12 H9 staging verification addendum
 
 Firebase Console verification was completed against the explicitly isolated project `rq-hono-preview-isolated` and Firestore database `(default)`: repository Rules are published (latest visible revision Oct 10, 2026, 5:37 PM), but the Manual Indexes tab shows **0 of 0**, not the expected eight READY composite indexes. The Firestore data root is empty, so the exact documented cleanup paths and garage fixture are absent; the synthetic anonymous Auth identity remains and was not deleted. The two prior garage-create 429 responses remain unresolved; local focused dual-runtime/rate-limit validation passed **2 files / 48 tests**, and no retry was made. H9 remains in progress and staging data-backed rehearsal is blocked until index state and deployed limiter behavior are reconciled.
+
+
+## 2026-10-12 H9 index and preview pairing verification
+
+The guarded isolated Firestore workflow [38205082036](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38205082036) succeeded with explicit OIDC deployment to `rq-hono-preview-isolated`. Firebase Console now shows all **8 of 8** repository Manual indexes present and **Enabled**, and Rules remain published. Credential-free preview Worker health/version checks returned 200 with `environment: preproduction`, `adminSdk: true`, and `1.0.0-h5-preview`; unauthenticated garage-create protection returned 401. The index blocker is closed. The earlier authenticated garage-create 429 remains unresolved and must not be retried; H9 remains in progress.
