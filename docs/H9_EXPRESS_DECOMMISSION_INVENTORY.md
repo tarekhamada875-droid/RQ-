@@ -78,7 +78,7 @@ Cloudflare Worker      -> server/cloudflareWorker.ts
 Generic Node/container -> server.ts -> explicit Express fallback or Hono adapter
 ```
 
-`server/app.ts` mounts the transitional Express routers for auth, vehicles, subscribers, delegates, transactions/recharges, garages, and reports, plus JSON, CORS, correlation, timeout, operation-trace, fallback, and error middleware.
+`server/app.ts` mounts the remaining transitional Express routers for auth, delegates, transactions/recharges, and reports, plus JSON, CORS, correlation, timeout, operation-trace, fallback, and error middleware. Vehicle, subscriber, and staff/people mutation registrations have been removed; their Hono replacements are the supported paths and the Express fallback returns 404.
 
 ## Known Express-only or maintenance capabilities
 
@@ -96,7 +96,7 @@ Retired in the current H9 slice: the Express `GET /api/delegates/dashboard` hand
 
 Retired in this slice: the Express `GET /api/garages/:id/dashboard-summary` handler. It was read-only but returned operational and revenue metrics, so removal was gated on Hono coverage for live projection data, fresh stored-summary fallback, stale-summary rejection, and cross-garage denial. The Hono route remains the active frontend path; garage mutations and admin projection/reconciliation maintenance routes remain mounted.
 
-Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, vehicle, subscriber, delegate-settlement, and maintenance mutations remain mounted.
+Also retired in this slice: the Express `POST /api/garages/trial-decision` handler. This non-financial state transition is now covered by Fetch-native tests for owner continuation, admin clearing, activity-log creation, invalid decisions, and staff denial. The Hono route remains the active path; financial, delegate-settlement, and remaining maintenance mutations remain mounted.
 
 Also retired in this slice: both duplicate Express fair-use handlers (`POST /api/garages/:id/extend-fair-use` and `POST /api/admin/garages/:id/extend-fair-use`). Hono now owns both paths. Retirement was gated on Hono boundary coverage plus dual-runtime idempotency replay and key-reuse tests; the frontend continues using the legacy path as a Hono alias.
 
@@ -112,7 +112,7 @@ At the earlier checkpoint represented by this paragraph, the remaining Express g
 
 ## Safe H9 sequence
 
-1. **One-pass H9 route/runtime/import/test census completed 2026-10-12:** see the final dated section. It records 50 active Express routes after the single projection-route retirement, 28 direct Express-import files, indirect runtime/test consumers, and explicit parity blockers.
+1. **One-pass H9 route/runtime/import/test census completed 2026-10-12:** see the final dated sections. The later operational retirement batch reduces the active Express registration count from 50 to 39 and leaves direct Express route modules only as characterization/test consumers, with the runtime and remaining route groups still active.
 2. **Characterization conversion:** add Fetch/Hono equivalents for any still-required Express-only tests; keep Express tests until their replacement coverage passes.
 3. **Runtime default decision:** switch local `dev` to Hono only after local development, static serving, and Node adapter checks pass; retain an explicit legacy compatibility command temporarily.
 4. **Route retirement:** remove Express routers only in groups whose behavior is covered by shared domain tests and Hono route tests. Do not remove financial or maintenance paths based only on frontend absence.
@@ -356,3 +356,24 @@ Commit `5af1e8e` closes a Hono/Express runtime contract gap: Express now normali
 ### Financial manual-credit ledger parity — 2026-10-12
 
 Commit `2646256` closes a concrete Hono/Express financial parity gap. Hono now writes `manual_credit_ledger` records for both approved `balance_topup` recharge requests and direct admin wallet top-ups, matching the Express transaction behavior while preserving atomic transaction/idempotency semantics. Focused validation passed **2 files / 23 tests**; the final local gate passed **104 files / 655 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace validation. No financial write, preview mutation, production change, or route retirement was performed.
+
+
+### Consolidated vehicle, subscriber, and staff retirement batch — 2026-10-12
+
+Commit `69ec576` removes the Express route registrations and app mounts for:
+
+- `POST /api/vehicles/check-in`
+- `POST /api/vehicles/check-out`
+- `POST /api/vehicles/delete`
+- `POST /api/subscribers/add`
+- `POST /api/subscribers/renew`
+- `POST /api/subscribers/update`
+- `POST /api/subscribers/delete`
+- `POST /api/staff/create`
+- `POST /api/staff/update`
+- `POST /api/staff/delete`
+- `POST /api/people/update-pin`
+
+Hono remains the supported owner for all listed paths. The Express fallback is explicitly verified to return `404 API route not found`, including unauthenticated and backend-operator requests. The batch added route-level evidence for vehicle check-in garage scoping, checkout idempotent replay, subscriber cross-garage denial and immutable-plate protection, and staff cross-garage update/delete no-write behavior. Focused validation passed **8 files / 78 tests**. The full integration gate passed **104 files / 657 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+
+The Express route modules `server/routes/vehicles.ts` and `server/routes/subscribers.ts`, plus their direct integration tests, are retained temporarily as characterization fixtures for the remaining local compatibility/runtime cleanup; they are no longer mounted by `server/app.ts` and are not supported request paths. The Express runtime, delegates, transactions/recharges, reports, auth/session, and other explicitly retained compatibility consumers remain. Active Express registrations are now **39**. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
