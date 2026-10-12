@@ -494,3 +494,10 @@ No Hono route, business logic, authorization/session policy, tenant/garage scope
 ### Exact-head remote validation — 2026-10-12
 
 For cleanup commit `c2b0284b616fb3a573916cf17f56a1519a3ae374` on `migration/unified-hono`, [Production Gate 38279084113](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38279084113) and [H5 Preview Worker 38279083973](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38279083973) both succeeded on the exact SHA. The Production Gate live Cloudflare deployment/smoke step was skipped. H5 deployed only the isolated `rq-hono-preview` Worker and performed public health/version and unauthenticated-protection checks; its H9 projection-rebuild rehearsal job was skipped. No production deployment, authenticated Firestore operation, or financial operation occurred. `main` remains at H8 `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`.
+
+
+## Owner closure — H9 / Express decommissioning stopped — 2026-10-12
+
+At the owner's request, the H9 workstream is **CLOSED / STOPPED**. This inventory is historical route evidence only and does not authorize another Express-removal pass. Hono remains the production Worker backend; `server/app.ts` has zero reachable Express API registrations. The local Express compatibility runtime and its remaining consumers are retained and frozen. No future agent, successor, task, or workflow should continue this work without a new explicit owner request.
+
+At closure start, `migration/unified-hono` was at `eb9ee6dfc008ce45f87d4f6a9ee05120738254d9`; production `main` remained at H8 `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. No merge, production deploy/configuration change, Firestore operation, or financial operation was authorized. The open H9 guidance PR was closed, and the H5 Preview Worker, Firebase Preview Firestore Config, and H9 Isolated Dashboard Summary Rehearsal workflows were disabled. The general Production Gate and production deployment workflow remain enabled.

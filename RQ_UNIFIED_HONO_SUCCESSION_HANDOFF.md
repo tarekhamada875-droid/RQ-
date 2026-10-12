@@ -1,20 +1,17 @@
-# RQ Unified Hono Migration — Current Succession Handoff
+# RQ Unified Hono Migration — Archived Succession Handoff (CLOSED)
 
 **Updated:** 2026-10-12
-**Active task:** Checkpoint H9 — Express decommissioning, sensitive-route boundary
-**Authorized branch:** `migration/unified-hono` only
-**Production:** H8 is deployed at `main` commit `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. H9 candidate changes are not deployed; do not modify `main` or deploy production as part of H9.
+**Status:** ARCHIVED / CLOSED at owner request on 2026-10-12. No H9 successor or continuation is authorized.
+**Historical branch:** `migration/unified-hono` at closure-start commit `eb9ee6dfc008ce45f87d4f6a9ee05120738254d9`; retained for audit/history only.
+**Production:** H8 remains on `main` at `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. This closure does not authorize a merge, production deployment, or configuration change.
 
-> **Current-state override:** The latest dated section at the end of this file is authoritative. Earlier H6/H7/H8 sections are retained as historical evidence and must not be treated as current next steps.
+> **Closure override:** The final dated section at the end of this file is authoritative. This handoff and all earlier “next steps,” runbooks, and succession instructions are historical evidence only; do not use them to resume H9.
 
-## Start here
+## Archive notice
 
-1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`, `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`, and `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`.
-2. Verify the actual checkout is `migration/unified-hono`, inspect HEAD/remote/worktree/CI, and treat the latest H9 section at the end of this file as the current execution authority.
-3. Do not restart H6 browser acceptance. H6/H7/H8 sections below are historical evidence; H8 is already deployed and H9 is the active checkpoint.
-4. Follow the latest dated H9 closeout at the end of this file: the one-pass Express/runtime/route census is complete; preserve Hono behavior, resolve documented parity blockers, and remove only newly proven redundant surfaces. No browser session, credential, local proxy, or secret transfers to the next agent.
+This file is historical evidence, not an operational handoff. H9 / Express decommissioning was stopped by the owner. Do not run old checklists, assign an agent, create a successor, repeat a census, or continue deleting Express compatibility code unless the owner makes a new explicit request. The existing plan file is now a closure record, not an active plan.
 
-## Current branch and validation context
+## Historical branch and validation context — superseded
 
 First closeout source checkpoint: `c1d186e35c37a600d7929923726fde88930fc9d1` (`fix: align Hono recharge and session parity`), based on `1a09c857ea86bc45628369dde0b3fea099a479b7`; its local full gate passed **104 files / 647 tests**. The completed census at `51f6f5445fd04734a2743d7f4f4d471186fb3326` identified 51 Express registrations; the projection-route cut leaves 50 Express registrations and 28 direct Express-import files. Source commit `45afc439` adds Hono parity for `POST /api/auth/invalidate-all-sessions`; its full local gate passed **104 files / 648 tests**. Workflow recovery commit `84ee5bd` resolved the isolated preview secret-update failure; exact-head Production Gate and H5 Preview Worker passed on it, and both also passed on the subsequent status sync `c37a91a`.
 
@@ -39,25 +36,13 @@ On 2026-10-09, the owner explicitly accepted the documented H6 residual risks an
 
 Use synthetic pre-production data only. Do not modify `main`, merge to it, deploy production, deploy live Firestore rules, perform financial writes, mutate Firestore directly, redesign the UI, or blindly retry an ambiguous mutation. Preserve credentials and tokens; never put them in source, screenshots, shell logs, or handoff text. Keep writes serialized and use supported UI/API paths for the behavior being accepted.
 
-## Next safe actions
+## Next safe actions — none
 
-1. Continue H9 only; **do not resume H6 manual acceptance** or treat H6 historical files as active instructions.
-2. The one-pass Express/runtime/import/route/test census is complete; use `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md` as the route and import source of truth. Do not repeat the census as an open-ended route-by-route loop.
-3. The Hono `invalidate-all-sessions` mirror is implemented in the current locally validated candidate. Next, close remaining auth/session differences (legacy phone-plus-PIN behavior, PIN-availability rate limiting, refresh-marker rejection, and complete list/revoke/freshness parity), then address financial ledger/rate-limit/audit, reporting/shared middleware, vehicle/staff semantics, and local Node/Vite/static/container behavior. Keep Express until concrete blockers are resolved. The projection-rebuild Express handler is retired; do not restore it.
-4. The current route slice has passed local and exact-head remote validation; next close the remaining auth/session gaps before taking on the financial and middleware/runtime blockers. Keep Express runtime/dependencies until those blockers and the local serving path are closed.
-5. Keep production and `main` unchanged. Do not perform Firestore rehearsal, financial writes, blind retries, or destructive operations. Preserve H6 residuals as OPEN/BLOCKED or OPEN/UNVERIFIED, not PASS.
-6. Update the active plan, inventory, and this handoff; push only to `migration/unified-hono`. H9 source completion does not authorize production promotion.
+H9 is closed/stopped. Do not continue parity work, remove more Express code, update this handoff as a succession document, dispatch a rehearsal, or push follow-up H9 work. Any distinct future work requires a new explicit owner request and its own scope.
 
-## Mandatory succession protocol — exact message “tokens ending”
+## Archived succession protocol — inactive
 
-If the owner sends exactly **“tokens ending”**, stop feature work and browser testing immediately. Before any other implementation work:
-
-1. Verify and record branch, HEAD, worktree, changed files, local tests, workflow/deployment status, current blockers, and safe next commands.
-2. Append a concise dated handoff section with those facts. Never include PINs, tokens, passwords, session IDs, or private payloads.
-3. Run `git diff --check`; commit and push the handoff only to `migration/unified-hono` if the push is authorized, and verify the result. Do not merge to `main` or deploy production.
-4. Provide the next agent with the runbook and explicit boundaries, then stop current feature work.
-
-Older handoff chronology is retained in Git history and dated acceptance reports; this file is the single current succession instruction.
+The former `tokens ending` chained succession protocol is retired and retained only as historical evidence. There is no active H9 successor; do not create or brief one. A separate future task requires a new, explicit owner request.
 
 ## 2026-10-09 owner decision and H7 start
 
@@ -471,3 +456,12 @@ The source cleanup commit `c2b0284b616fb3a573916cf17f56a1519a3ae374` was pushed 
 - [H5 Preview Worker 38279083973](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38279083973) — success on the exact cleanup SHA. It deployed only the isolated `rq-hono-preview` Worker and checked public health/version plus unauthenticated protection. The separate H9 isolated projection-rebuild rehearsal job was **skipped**. No authenticated Firestore operation or financial operation was performed.
 
 `main` remains `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; production configuration remains unchanged. These workflow results validate the code-bearing cleanup commit; the local gate also passed on the exact source and documentation contents before commit. Continue to prohibit merge to `main`, production deployment/configuration changes, and real Firestore/financial operations.
+
+
+## Owner closure checkpoint — H9 stopped — 2026-10-12
+
+**Status: CLOSED / STOPPED at the owner's request. There is no next H9 action and no successor is authorized.** Hono remains the production backend from H8; `main` stays at `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. At closure start, `migration/unified-hono` was at `eb9ee6dfc008ce45f87d4f6a9ee05120738254d9` and is retained as an audit/history branch only.
+
+No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The open documentation PR #23 was closed. The H5 Preview Worker, Firebase Preview Firestore Config, and H9 Isolated Dashboard Summary Rehearsal workflows were disabled; the generic Production Gate and production Worker deployment workflow remain enabled. The current isolated preview remains available, but no further H9 preview/rehearsal workflow should be dispatched.
+
+The Express local compatibility runtime remains **retained and frozen**; this closure does not claim total Express package/reference deletion and does not authorize another cleanup pass. Historical route, test, and handoff records below remain evidence only. Do not merge, deploy production, change production configuration, or perform Firestore/financial operations under this closure.

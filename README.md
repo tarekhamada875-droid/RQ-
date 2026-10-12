@@ -1,10 +1,10 @@
 # RQ
 
-For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. The **only active project plan** is [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md); the current H9 operational handoff is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md). Older H6 prompts/runbooks and CF/C-series reports are historical evidence, not instructions to resume those plans.
+For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is a **closed-workstream record, not an active plan**. The H9 succession handoff and route inventory are historical evidence only; do not resume their old next steps.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
 
-> **Current status — Hono production / H9 cleanup (2026-10-10):** The Hono Worker is deployed at `https://rq.tarekhamada875.workers.dev` and Pages serves the frontend at `https://rq-acg.pages.dev`. The active workstream is H9: safely retiring remaining Express compatibility routes. H9 is not complete; see the checkpoint plan and current succession handoff. Preview Firebase project/database identifiers currently match production, so authenticated preview data operations are on hold until isolation is verified.
+> **Current status — Hono production / H9 stopped (2026-10-12):** Hono is already the production Worker backend, deployed at `https://rq.tarekhamada875.workers.dev`, with the frontend on Pages at `https://rq-acg.pages.dev`. The owner stopped the H9 / Express-decommissioning workstream. Zero reachable Express API registrations remain; the local Express compatibility runtime is retained and frozen, not scheduled for more cleanup. The migration branch remains for history, and this is not approval to merge or deploy.
 
 ## Target production architecture
 
@@ -26,11 +26,13 @@ Firebase Authentication + Firestore
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
 - **Backend:** A dedicated Cloudflare Worker API using a Worker-compatible Firebase Auth/Firestore REST adapter.
 - **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the Worker uses server-side secrets that must never enter frontend assets or Git.
-- **Production wiring:** Cloudflare Pages production and preview are configured with `VITE_BACKEND_API_URL=https://rq.tarekhamada875.workers.dev`.
+- **Production wiring:** Production Pages targets `https://rq.tarekhamada875.workers.dev`. The current migration preview targets the separate `rq-hono-preview` Worker and isolated Firebase project; do not assume arbitrary branch previews are isolated unless their source code honors the preview Firebase selector.
 
 ## Repository and branch policy
 
 `main` is the production source of truth. Short-lived feature or fix branches may be created from `main`, validated by CI, and merged through a pull request. After merge, the branch should be deleted. Do not keep old deployment experiments or completed fixes as permanent branches.
+
+The existing `migration/unified-hono` branch is a frozen audit/history exception at the owner's request. Do not push to, merge, or resume it; do not delete it without a separate explicit owner decision.
 
 A pull request is a review and CI record for changes from one branch into another; it is not a second deployed application. GitHub may show **Compare & pull request** for any branch that has commits not contained in `main`. That prompt means GitHub is offering to create a PR; it does not mean an open PR already exists.
 
