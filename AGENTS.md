@@ -9,13 +9,19 @@
 - **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. There are no real users, customer records, or live financial data; use synthetic data only.
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
+## Active release flow — owner instruction (2026-10-12)
+- **One path:** Work directly on GitHub `main`. A push to `main` publishes Cloudflare Pages to production; the Cloudflare Worker deploys from `main` after its verification job succeeds.
+- **No previews:** Cloudflare Pages branch previews are disabled, the separate `rq-hono-preview` Worker endpoint is disabled, and the H5 Preview Worker workflow has been removed. Do not create or re-enable preview deployments.
+- **No alternate Worker release button:** The production Worker workflow is triggered only by pushes to `main`; it has no manual dispatch trigger.
+- Preserve the explicit boundary against real Firestore or financial operations unless separately authorized.
+
 ## Unified Hono Workstream — CLOSED BY OWNER (2026-10-12)
 - **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for architecture, product decisions, current status, and document authority.
 - **Current architecture:** Hono is the production Worker backend from H8. H9 / Express decommissioning was stopped by the owner on 2026-10-12. Do not resume it, expand it, assign an agent to it, or create another migration phase without a new, explicit owner request.
 - **Plan status:** [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is now a closure record, not an active plan. The succession handoff, H9 inventory, and older checkpoint evidence are historical only; do not follow their old “next steps” or succession instructions.
-- **Frozen state:** `migration/unified-hono` is retained for audit/history. The local Express compatibility runtime remains frozen; this closure does not claim that all Express references or dependencies were deleted.
+- **Frozen state:** The former `migration/unified-hono` branch was merged into `main` by PR #24 at `1161b467139adc1dd1dc81cc243d9315ac6c5808` and then deleted; its commits remain in main history. The local Express compatibility runtime remains frozen; this closure does not claim that all Express references or dependencies were deleted.
 - **Stop controls:** H9 Preview Worker, preview Firestore-config, and H9 rehearsal workflows were disabled; the H9-related open PR was closed. Do not re-enable them for this workstream.
-- **Production boundary:** Keep `main` and production unchanged. Do not merge, deploy production, change production configuration, or perform Firestore/financial operations under this closed workstream.
+- **Production boundary:** The original closure record's no-merge/no-deploy boundary was superseded by the owner's later explicit release authorization recorded in PR #24. The active release flow above now governs routine code changes; do not perform Firestore/financial operations without separate explicit authorization.
 - **General safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations for any separately authorized future task.
 
 ## Design Conventions
