@@ -273,3 +273,6 @@ The current migration commit `217124a` deployed successfully to the isolated pre
 
 ### Dashboard-summary rebuild Express retirement — 2026-10-12
 Following successful isolated rehearsal run [38210800814](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38210800814) against `rq-hono-preview-isolated`, only Express `POST /api/garages/dashboard-summary/rebuild` was removed. Hono remains the supported owner; the Express fallback returns 404. The isolated seed/rebuild/verify/rollback workflow passed with the expected 2 buckets, 3 events, consistent event reconciliation, persisted summary, and exact restoration. Focused validation passed **2 files / 35 tests**. Full gates passed **104 files / 635 tests**, lint, all builds, CI/release checks, maintainability, and whitespace checks. No production, `main`, destructive, or branch-deletion operation occurred.
+
+## CURRENT CONTINUATION STATE — 2026-10-12
+Historical checkpoint entries above preserve what was true at the time they were written. The current state is: Express `POST /api/garages/dashboard-summary/rebuild` is retired; the next candidate is Express `POST /api/garages/rebuild-projections`, which remains mounted pending its own isolated rehearsal, route review, and full gates. Continue only on `migration/unified-hono` and never use production Firebase for staging operations.

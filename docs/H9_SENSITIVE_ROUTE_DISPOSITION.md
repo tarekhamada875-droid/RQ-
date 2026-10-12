@@ -148,3 +148,6 @@ Cloudflare Workers Observability confirmed the historical synthetic 429s were re
 
 ### Dashboard-summary rebuild retirement — 2026-10-12
 The isolated operational rehearsal passed on `rq-hono-preview-isolated`: the Hono rebuild returned the expected synthetic Cairo-day summary, 2 projection buckets, 3 events, consistent event reconciliation, and persisted read-model state, then restored the complete pre-write snapshot. The route-specific characterization now retains Hono contract, authorization, validation, no-write, persistence, boundary, and Express-404 coverage. Only Express `POST /api/garages/dashboard-summary/rebuild` was removed. Focused validation passed **2 files / 35 tests**; full validation passed **104 files / 635 tests**, lint, all builds, CI/release checks, maintainability, and whitespace checks. This remains migration-branch-only evidence; no production deployment or data/configuration change occurred.
+
+## CURRENT CONTINUATION STATE — 2026-10-12
+The dashboard-summary rebuild row is retired as stated in the matrix above. Historical characterization sections that say “Express remains mounted” describe earlier checkpoints and are superseded for that route. The next open sensitive route is `POST /api/garages/rebuild-projections`; Express remains mounted for it and its isolated operational rehearsal/rollback gate is still required.

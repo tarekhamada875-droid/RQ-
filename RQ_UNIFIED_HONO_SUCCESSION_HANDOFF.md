@@ -321,3 +321,11 @@ The rehearsal seeded only the named synthetic Cairo-day fixture, verified the Ho
 Only the Express `POST /api/garages/dashboard-summary/rebuild` registration was removed. Hono remains supported and the Express fallback returns 404. Focused validation passed **2 files / 35 tests**. Final gates passed **104 files / 635 tests**, TypeScript lint, Vite/server/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
 
 No production deployment, production data/configuration change, destructive operation, `main` merge, or branch deletion occurred.
+
+## CURRENT STATE FOR NEXT AGENT — READ THIS LAST
+- Branch: `migration/unified-hono`; worktree must remain clean; latest pushed commit is `7dd0979`.
+- Completed in the latest slice: Express `POST /api/garages/dashboard-summary/rebuild` is retired and must not be re-audited or restored. Hono is the supported owner; Express returns 404.
+- Staging proof: isolated project `rq-hono-preview-isolated`; successful rehearsal run [38210800814](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38210800814), with exact synthetic rollback.
+- Final validation: **104 files / 635 tests**, lint, all builds, CI/release, maintainability, and whitespace checks passed.
+- Next route: audit `POST /api/garages/rebuild-projections` one route at a time. Express remains mounted for it. Use the isolated project and the same protected staging/rollback discipline; do not touch production or `main`.
+- Historical sections above intentionally preserve earlier checkpoint states such as “Express remains mounted”; the bullets in this section supersede those earlier states for continuation.
