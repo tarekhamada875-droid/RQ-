@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-12
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Active workstream:** H9 on `migration/unified-hono`; the latest source batch `3f599ba` additionally removes the Express delegate create/update/settle/delete registrations after route-specific Hono evidence. Focused validation passed **4 files / 31 tests** and the full integration gate passed **104 files / 658 tests**, lint, Vite/Node/Cloudflare builds, CI/release/artifact verification, maintainability, and whitespace; generated build outputs were cleaned. The active Express registration count is now **35**. Hono remains the supported production/API owner; `main` remains on the H8 baseline and no production operation occurred. Remaining Express runtime/route consumers are retained only where the inventory documents a concrete compatibility, characterization, financial, reporting, auth/session, or local Node/Vite/static-serving reason.
+**Active workstream:** H9 on `migration/unified-hono`; the latest source batch `5db207d` removes 13 proven Express Admin/system registrations, including health/version/system-config, Admin settings/package/announcement/coupon mutations, and activity-log submission. Focused validation passed **5 files / 38 tests** and the full integration gate passed **104 files / 658 tests**, lint, Vite/Node/Cloudflare builds, CI/release/artifact verification, maintainability, and whitespace; generated build outputs were cleaned. The active Express registration count is now **22**. Hono remains the supported production/API owner; `main` remains on the H8 baseline and no production operation occurred. Remaining Express runtime/route consumers are retained only where the inventory documents a concrete compatibility, characterization, financial, reporting, auth/session, or local Node/Vite/static-serving reason.
 
 ## 1. What RQ is
 
@@ -27,7 +27,7 @@ Firebase Authentication + Firestore
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
-- Express remains transitional infrastructure for local compatibility, 35 remaining API registrations, and existing integration/characterization tests; it is not the production API path. H9 has retired the proven vehicle, subscriber, staff/people, delegate, and multiple garage registrations, while the remaining runtime is blocked by documented auth/session, financial, reporting/middleware, and local Node/Vite/static-serving dependencies. The unused Cloud Run-specific entrypoint was retired during H9; no Cloud Run deployment workflow is active.
+- Express remains transitional infrastructure for local compatibility, 22 remaining API registrations, and existing integration/characterization tests; it is not the production API path. H9 has retired the proven vehicle, subscriber, staff/people, delegate, Admin/system, and multiple garage registrations, while the remaining runtime is blocked by documented auth/session, financial, reporting/middleware, and local Node/Vite/static-serving dependencies. The unused Cloud Run-specific entrypoint was retired during H9; no Cloud Run deployment workflow is active.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
 - `wrangler.toml` is the production Worker deployment configuration.
 
