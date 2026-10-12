@@ -356,3 +356,8 @@ The projection-rebuild Express route remains retired; the census still records *
 - **Full validation:** `npm ci` completed; `npm test` passed **104 files / 651 tests**; `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` passed. Generated `dist/` and `build/` outputs were removed afterward. Existing Vite/dependency-engine and React `act(...)` diagnostics are non-failing warnings.
 - **Boundaries:** No Express route was retired in this slice. Financial, reporting/middleware, vehicle/staff, and local Node/Vite/static-serving parity blockers remain. No Firebase/Cloudflare data operation, preview mutation, financial write, destructive operation, `main` change, or production deployment occurred.
 - **Safe next action:** continue H9 with one bounded parity area at a time, retain Express until its route-specific Hono/Fetch evidence is complete, and update the inventory/plan/handoff after each validated slice. Do not merge to `main` or deploy production until H9 is closed and a separate explicit production-release approval is given.
+
+
+### Final auth/session correction — `bbaa417`
+
+Hono `/api/auth/sessions` now marks the authenticated caller’s device as `isCurrent`, matching Express when the account has multiple active devices; the entity/root preferred-session marker no longer changes the caller-facing current flag. Focused validation passed **2 files / 24 tests**. The final full local gate passed **104 files / 651 tests**, TypeScript validation, Vite/Node/Cloudflare production builds, CI/release/artifact checks, maintainability, and whitespace validation. Generated build artifacts were removed, and no external data operation or deployment was performed.
