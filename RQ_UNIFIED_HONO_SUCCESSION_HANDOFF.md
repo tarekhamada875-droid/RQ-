@@ -361,3 +361,12 @@ The projection-rebuild Express route remains retired; the census still records *
 ### Final auth/session correction — `bbaa417`
 
 Hono `/api/auth/sessions` now marks the authenticated caller’s device as `isCurrent`, matching Express when the account has multiple active devices; the entity/root preferred-session marker no longer changes the caller-facing current flag. Focused validation passed **2 files / 24 tests**. The final full local gate passed **104 files / 651 tests**, TypeScript validation, Vite/Node/Cloudflare production builds, CI/release/artifact checks, maintainability, and whitespace validation. Generated build artifacts were removed, and no external data operation or deployment was performed.
+
+
+## 2026-10-12 shortened-plan implementation — observability parity
+
+- **Canonical plan:** `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`; the former long checkpoint plan was removed and all repository references were updated.
+- **Candidate:** `migration/unified-hono` at `5af1e8e` (`fix: align runtime observability headers`), pushed to origin; `main` and H8 production remain `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`.
+- **Implementation:** Express correlation middleware now generates/propagates a normalized operation ID through response headers and operation-trace context. H5 dual-runtime tests characterize error and 404 status/header behavior plus CORS boundaries.
+- **Validation:** Focused middleware/dual-runtime validation passed **2 files / 10 tests**. Final local validation passed **104 files / 654 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace checks. Generated build artifacts were removed; worktree is clean.
+- **Boundaries:** No Express route was retired in this slice. No Firebase/Cloudflare data operation, preview mutation, financial write, `main` change, or production deployment occurred. Continue with one bounded parity area at a time under the shortened plan.

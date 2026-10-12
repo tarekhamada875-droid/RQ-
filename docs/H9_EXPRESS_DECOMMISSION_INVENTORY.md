@@ -346,3 +346,8 @@ Express remains a compatibility runtime with its existing auth/session routes an
 
 
 The follow-up commit `bbaa417` also corrected Hono session-list `isCurrent` semantics: the authenticated caller’s session is marked current, rather than the entity’s preferred root session, when multiple devices are active. Focused validation passed **2 files / 24 tests** and the final full local gate passed **104 files / 651 tests** with build, CI/release, maintainability, and whitespace checks green.
+
+
+### Shared runtime observability parity — 2026-10-12
+
+Commit `5af1e8e` closes a Hono/Express runtime contract gap: Express now normalizes and exposes `X-Operation-ID` on successful responses, errors, and unknown-route 404s, and persists the same normalized operation ID in operation-trace context. Dual-runtime characterization covers unauthenticated error IDs, unknown-route status/header behavior, allowed/disallowed CORS, and existing mutation authorization. Focused validation passed **2 files / 10 tests**; the final full local gate passed **104 files / 654 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace validation. No route was retired, no data was mutated, and production/`main` remain unchanged.
