@@ -55,7 +55,8 @@ export class MockQuery {
     protected readonly collectionPath: string,
     protected readonly wheres: Array<{ field: string; op: string; value: any }> = [],
     protected readonly limitVal?: number,
-    protected readonly isCollectionGroup: boolean = false
+    protected readonly isCollectionGroup: boolean = false,
+    protected readonly orderings: Array<{ field: string; direction: 'asc' | 'desc' }> = []
   ) {}
 
   where(field: string, op: string, value: any) {
@@ -64,12 +65,17 @@ export class MockQuery {
       this.collectionPath,
       [...this.wheres, { field, op, value }],
       this.limitVal,
-      this.isCollectionGroup
+      this.isCollectionGroup,
+      this.orderings
     );
   }
 
   limit(limitVal: number) {
-    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup);
+    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup, this.orderings);
+  }
+
+  orderBy(field: string, direction: 'asc' | 'desc' = 'asc') {
+    return new MockQuery(this.db, this.collectionPath, this.wheres, this.limitVal, this.isCollectionGroup, [...this.orderings, { field, direction }]);
   }
 
   async get() {
@@ -100,6 +106,8 @@ export class MockQuery {
             if (actualVal !== w.value) satisfiesWheres = false;
           } else if (w.op === '>=') {
             if (!(actualVal >= w.value)) satisfiesWheres = false;
+          } else if (w.op === '<') {
+            if (!(actualVal < w.value)) satisfiesWheres = false;
           } else if (w.op === '<=') {
             if (!(actualVal <= w.value)) satisfiesWheres = false;
           } else if (w.op === 'array-contains') {
@@ -114,6 +122,16 @@ export class MockQuery {
           docs.push(new MockDocumentSnapshot(id, true, data, new MockDocumentReference(id, path, this.db)));
         }
       }
+    }
+
+    for (const ordering of this.orderings) {
+      docs.sort((left, right) => {
+        const leftValue = left.data()?.[ordering.field];
+        const rightValue = right.data()?.[ordering.field];
+        if (leftValue === rightValue) return 0;
+        const comparison = leftValue < rightValue ? -1 : 1;
+        return ordering.direction === 'desc' ? -comparison : comparison;
+      });
     }
 
     if (this.limitVal !== undefined) {
@@ -174,6 +192,7 @@ export class MockBatch {
 
 export class MockFirestore {
   public readonly records = new Map<string, any>();
+  private transactionQueue: Promise<void> = Promise.resolve();
 
   doc(path: string) {
     const id = path.split('/').at(-1) || '';
@@ -193,30 +212,39 @@ export class MockFirestore {
   }
 
   async runTransaction(callback: (t: any) => Promise<any>) {
-    const t = {
-      get: async (ref: MockDocumentReference) => {
-        return ref.get();
-      },
-      set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
-        if (options?.merge) {
-          const existing = this.records.get(ref.path) || {};
+    let release!: () => void;
+    const previous = this.transactionQueue;
+    this.transactionQueue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+
+    try {
+      const t = {
+        get: async (ref: MockDocumentReference) => ref.get(),
+        set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
+          if (options?.merge) {
+            const existing = this.records.get(ref.path) || {};
+            this.records.set(ref.path, { ...existing, ...data });
+          } else {
+            this.records.set(ref.path, data);
+          }
+        },
+        update: (ref: MockDocumentReference, data: any) => {
+          const existing = this.records.get(ref.path);
+          if (existing === undefined) {
+            throw new Error(`Document not found: ${ref.path}`);
+          }
           this.records.set(ref.path, { ...existing, ...data });
-        } else {
-          this.records.set(ref.path, data);
+        },
+        delete: (ref: MockDocumentReference) => {
+          this.records.delete(ref.path);
         }
-      },
-      update: (ref: MockDocumentReference, data: any) => {
-        const existing = this.records.get(ref.path);
-        if (existing === undefined) {
-          throw new Error(`Document not found: ${ref.path}`);
-        }
-        this.records.set(ref.path, { ...existing, ...data });
-      },
-      delete: (ref: MockDocumentReference) => {
-        this.records.delete(ref.path);
-      }
-    };
-    return callback(t);
+      };
+      return await callback(t);
+    } finally {
+      release();
+    }
   }
 
   seed(path: string, data: any) {
@@ -236,6 +264,9 @@ export const mockAdminAuth = {
     if (token.startsWith('valid-garage-token-')) {
       const gId = token.substring('valid-garage-token-'.length);
       return { uid: `garage-uid-${gId}`, email: `garage-${gId}@test.com`, role: 'garage', garageId: gId };
+    }
+    if (token === 'valid-delegate-token-delegate-a') {
+      return { uid: 'delegate-uid', email: 'delegate@test.com', role: 'delegate', entityId: 'delegate-a' };
     }
     if (token === 'valid-delegate-token' || token === 'delegate-token') {
       return { uid: 'delegate-uid', email: 'delegate@test.com', role: 'delegate' };

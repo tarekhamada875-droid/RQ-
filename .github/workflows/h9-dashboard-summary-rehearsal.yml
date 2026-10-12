@@ -1,0 +1,39 @@
+name: H9 Isolated Dashboard Summary Rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      rehearsal_date:
+        description: "Cairo-local date for the synthetic rehearsal"
+        required: true
+        default: "2026-10-12"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rehearsal:
+    name: Seed, rebuild, verify, and rollback isolated synthetic records
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: cloudflare-h5-preview
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/unified-hono
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run isolated rehearsal with protected service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          REHEARSAL_DATE: ${{ inputs.rehearsal_date }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          node tools/h9-dashboard-summary-rehearsal.mjs

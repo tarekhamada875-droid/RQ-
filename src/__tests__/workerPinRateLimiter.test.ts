@@ -319,5 +319,39 @@ describe('Worker PIN rate limiter', () => {
       expect(rotated.status).toBe(200);
       expect(await rotated.json()).toEqual({ success: true });
     });
+
+    it('rate-limits repeated PIN availability checks before lookup', async () => {
+      const responses: Response[] = [];
+      for (let index = 0; index < 10; index += 1) {
+        responses.push(await postAuth('/api/auth/check-pin-availability', { pin: String(10_000_000 + index) }));
+      }
+      const denied = await postAuth('/api/auth/check-pin-availability', { pin: '87654321' });
+
+      expect(responses.every((response) => response.status === 200)).toBe(true);
+      expect(denied.status).toBe(429);
+      expect(await denied.json()).toMatchObject({ taken: false, error: 'RATE_LIMIT_EXCEEDED' });
+    });
+
+    it('supports the legacy Delegate phone-plus-PIN login path with a sanitized account', async () => {
+      const pin = '24681357';
+      mockDb.seed('delegates/phone-delegate', { name: 'Phone Delegate', phone: '01012345678', pin });
+      // The canonical PIN field remains global; send phone explicitly to select
+      // the compatibility path used by the legacy delegate client.
+      const phoneResponse = await api.fetch(new Request('http://localhost/api/auth/verify-pin', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer valid-worker-token',
+          'content-type': 'application/json',
+          'cf-connecting-ip': '198.51.100.21'
+        },
+        body: JSON.stringify({ pin, phone: '01012345678', sessionId: 'phone-login-session-2' })
+      }), { PIN_RATE_LIMITER: limiter });
+
+      const phoneBody = await phoneResponse.json() as any;
+      expect(phoneResponse.status).toBe(200);
+      expect(phoneBody).toMatchObject({ success: true, role: 'delegate', accountId: 'phone-delegate', sessionClaimed: true });
+      expect(phoneBody.account).not.toHaveProperty('pin');
+      expect(mockDb.records.get('delegate_sessions/worker-uid/sessions/phone-login-session-2')).toMatchObject({ role: 'delegate', entityId: 'phone-delegate' });
+    });
   });
 });

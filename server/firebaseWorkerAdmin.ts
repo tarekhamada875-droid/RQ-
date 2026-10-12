@@ -121,6 +121,16 @@ function decodeDocument(raw: any): JsonMap {
   return Object.fromEntries(Object.entries(raw?.fields || {}).map(([key, value]) => [key, decodeValue(value)]));
 }
 
+function firestoreFilterOperator(operator: string): string {
+  return ({
+    '==': 'EQUAL',
+    '>': 'GREATER_THAN',
+    '>=': 'GREATER_THAN_OR_EQUAL',
+    '<': 'LESS_THAN',
+    '<=': 'LESS_THAN_OR_EQUAL'
+  } as Record<string, string>)[operator] || 'EQUAL';
+}
+
 class DocumentSnapshot {
   constructor(public readonly raw: any) {}
   get exists(): boolean { return !!this.raw; }
@@ -143,7 +153,7 @@ class QueryReference {
   where(field: string, op: string, value: unknown): QueryReference { return new QueryReference(this.collectionPath, [...this.filters, { field, op, value }], this.maxResults, this.sort, this.allDescendants); }
   limit(value: number): QueryReference { return new QueryReference(this.collectionPath, this.filters, value, this.sort, this.allDescendants); }
   orderBy(field: string, direction = 'asc'): QueryReference { return new QueryReference(this.collectionPath, this.filters, this.maxResults, { field, direction }, this.allDescendants); }
-  async get(): Promise<{ empty: boolean; docs: DocumentSnapshot[] }> { const docs = await activeDb!.query(this); return { empty: docs.length === 0, docs: docs.map((raw) => new DocumentSnapshot(raw)) }; }
+  async get(): Promise<{ empty: boolean; size: number; docs: DocumentSnapshot[] }> { const docs = await activeDb!.query(this); return { empty: docs.length === 0, size: docs.length, docs: docs.map((raw) => new DocumentSnapshot(raw)) }; }
 }
 
 class CollectionReference extends QueryReference {
@@ -160,11 +170,11 @@ class FirestoreBatch {
 
 class FirestoreTransaction extends FirestoreBatch {
   constructor(private readonly transactionId: string) { super(); }
-  async get(ref: DocumentReference | QueryReference): Promise<DocumentSnapshot | { empty: boolean; docs: DocumentSnapshot[] }> {
+  async get(ref: DocumentReference | QueryReference): Promise<DocumentSnapshot | { empty: boolean; size: number; docs: DocumentSnapshot[] }> {
     if (ref instanceof QueryReference) {
       const rawDocuments = await activeDb!.query(ref, this.transactionId);
       const docs = rawDocuments.map((raw) => new DocumentSnapshot(raw));
-      return { empty: docs.length === 0, docs };
+      return { empty: docs.length === 0, size: docs.length, docs };
     }
     return new DocumentSnapshot(await activeDb!.getDocument(ref.name, this.transactionId));
   }
@@ -205,17 +215,22 @@ class FirestoreRest {
     return response.json();
   }
   async query(query: QueryReference, transaction?: string): Promise<any[]> {
-    const from: JsonMap = { collectionId: query.collectionPath.split('/').pop() || '', allDescendants: query.allDescendants };
+    const pathSegments = query.collectionPath.split('/').filter(Boolean);
+    const collectionId = pathSegments.pop() || '';
+    const parent = query.allDescendants || pathSegments.length === 0
+      ? this.documentsRoot
+      : `${this.documentsRoot}/${pathSegments.join('/')}`;
+    const from: JsonMap = { collectionId, allDescendants: query.allDescendants };
     const structuredQuery: JsonMap = { from: [from] };
     if (query.filters.length === 1) {
       const filter = query.filters[0];
-      structuredQuery.where = { fieldFilter: { field: { fieldPath: filter.field }, op: filter.op === '==' ? 'EQUAL' : filter.op === '>=' ? 'GREATER_THAN_OR_EQUAL' : filter.op === '<=' ? 'LESS_THAN_OR_EQUAL' : 'EQUAL', value: encodeValue(filter.value) } };
+      structuredQuery.where = { fieldFilter: { field: { fieldPath: filter.field }, op: firestoreFilterOperator(filter.op), value: encodeValue(filter.value) } };
     } else if (query.filters.length > 1) {
-      structuredQuery.where = { compositeFilter: { op: 'AND', filters: query.filters.map((filter) => ({ fieldFilter: { field: { fieldPath: filter.field }, op: filter.op === '==' ? 'EQUAL' : 'EQUAL', value: encodeValue(filter.value) } })) } };
+      structuredQuery.where = { compositeFilter: { op: 'AND', filters: query.filters.map((filter) => ({ fieldFilter: { field: { fieldPath: filter.field }, op: firestoreFilterOperator(filter.op), value: encodeValue(filter.value) } })) } };
     }
     if (query.sort) structuredQuery.orderBy = [{ field: { fieldPath: query.sort.field }, direction: query.sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }];
     if (query.maxResults) structuredQuery.limit = query.maxResults;
-    const response = await firestoreRequest(`${this.documentsRoot}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery, ...(transaction ? { transaction } : {}) }) });
+    const response = await firestoreRequest(`${parent}:runQuery`, { method: 'POST', body: JSON.stringify({ parent, structuredQuery, ...(transaction ? { transaction } : {}) }) });
     if (!response.ok) throw new Error(`FIRESTORE_QUERY_FAILED:${response.status}`);
     const rows = await response.json() as Array<{ document?: any }>;
     return rows.filter((row) => row.document).map((row) => row.document);

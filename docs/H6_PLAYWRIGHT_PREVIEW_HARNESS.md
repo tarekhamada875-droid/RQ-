@@ -1,6 +1,6 @@
-# H6 Read-Only Playwright Preview Smoke
+# H6 Read-Only Playwright Preview Smoke — Historical Utility
 
-**Status:** Opt-in infrastructure smoke only; it does not close any H6 role-acceptance cell.
+> H6 is closed for scope, H8 is deployed, and H9 is the active checkpoint. This file documents an opt-in, credential-free smoke utility only; it is not an active acceptance plan. Its health/version-only requests do not authorize any authenticated preview Firestore access. Preview and production currently share Firebase project/database identifiers; see the current H9 handoff and do not run data operations against preview until isolation is verified.
 
 ## Scope and safeguards
 

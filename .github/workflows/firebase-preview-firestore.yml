@@ -1,0 +1,51 @@
+name: Firebase Preview Firestore Config
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [migration/unified-hono]
+    paths:
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-preview-firestore-config
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy isolated Firestore rules and indexes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: firebase-preview-deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Authenticate to isolated Google Cloud project with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.FIREBASE_PREVIEW_WIF_PROVIDER }}
+          service_account: ${{ vars.FIREBASE_PREVIEW_DEPLOYER_SERVICE_ACCOUNT }}
+          project_id: rq-hono-preview-isolated
+          create_credentials_file: true
+
+      - name: Deploy Firestore Rules and indexes to isolated project only
+        run: >-
+          npx --yes firebase-tools@14.22.0 deploy
+          --only firestore:rules,firestore:indexes
+          --project rq-hono-preview-isolated
+          --non-interactive

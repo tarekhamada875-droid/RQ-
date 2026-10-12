@@ -30,7 +30,7 @@ afterAll(async () => {
 });
 
 describe('migrated route HTTP contracts', () => {
-  it('rejects unauthenticated subscriber and vehicle mutations consistently', async () => {
+  it('returns the retired Express subscriber and vehicle routes as 404', async () => {
     const paths = [
       '/api/subscribers/add',
       '/api/subscribers/renew',
@@ -38,16 +38,33 @@ describe('migrated route HTTP contracts', () => {
       '/api/subscribers/delete',
       '/api/vehicles/check-in',
       '/api/vehicles/check-out',
+      '/api/delegates/create',
+      '/api/delegates/update',
+      '/api/delegates/settle-account',
+      '/api/delegates/delete',
+      '/api/admin/update-system-config',
+      '/api/admin/packages/create',
+      '/api/admin/packages/delete',
+      '/api/admin/announcements/create',
+      '/api/admin/announcements/delete',
+      '/api/admin/announcements/toggle',
+      '/api/admin/coupons/create',
+      '/api/admin/coupons/update',
+      '/api/admin/coupons/delete',
+      '/api/activity-logs/add',
+      '/api/supervisors/create',
+      '/api/supervisors/update',
+      '/api/supervisors/delete',
     ];
     for (const path of paths) {
       const response = await post(path);
       const payload = await response.json() as { success: boolean; code?: string };
-      expect(response.status, path).toBe(401);
-      expect(payload).toMatchObject({ success: false, code: 'UNAUTHORIZED' });
+      expect(response.status, path).toBe(404);
+      expect(payload).toMatchObject({ success: false, error: 'API route not found' });
     }
   });
 
-  it('blocks backend operator mutations before route validation or Firestore mutation', async () => {
+  it('keeps retired Express subscriber and vehicle routes unavailable to operators', async () => {
     process.env.BACKEND_OPERATOR_TOKEN = 'route-contract-test-secret';
     const paths = [
       '/api/subscribers/add',
@@ -56,13 +73,29 @@ describe('migrated route HTTP contracts', () => {
       '/api/subscribers/delete',
       '/api/vehicles/check-in',
       '/api/vehicles/check-out',
+      '/api/delegates/create',
+      '/api/delegates/update',
+      '/api/delegates/settle-account',
+      '/api/delegates/delete',
+      '/api/admin/update-system-config',
+      '/api/admin/packages/create',
+      '/api/admin/packages/delete',
+      '/api/admin/announcements/create',
+      '/api/admin/announcements/delete',
+      '/api/admin/announcements/toggle',
+      '/api/admin/coupons/create',
+      '/api/admin/coupons/update',
+      '/api/admin/coupons/delete',
+      '/api/activity-logs/add',
+      '/api/supervisors/create',
+      '/api/supervisors/update',
+      '/api/supervisors/delete',
     ];
     for (const path of paths) {
       const response = await post(path, {}, { 'x-backend-operator-token': 'route-contract-test-secret' });
       const payload = await response.json() as { success: boolean; error?: string };
-      expect(response.status, path).toBe(403);
-      expect(payload.success, path).toBe(false);
-      expect(payload.error, path).toBeDefined();
+      expect(response.status, path).toBe(404);
+      expect(payload, path).toMatchObject({ success: false, error: 'API route not found' });
     }
   });
 

@@ -138,53 +138,69 @@ export function verifyDocMatch(inputCleanPin: string, docData: any): { matches: 
   return { matches: false, isLegacy: false };
 }
 
-export async function saveEntityPin(collName: string, docId: string, cleanInputPin: string): Promise<void> {
+export async function saveEntityPinInTransaction(
+  transaction: any,
+  collName: string,
+  docId: string,
+  cleanInputPin: string
+): Promise<void> {
   if (!cleanInputPin || !docId) return;
+  if (!adminDb) throw new Error('ADMIN_SDK_NOT_INITIALIZED');
+
   const newScrypt = hashPinWithUniqueSalt(cleanInputPin);
   const lookupHash = computeLookupHash(cleanInputPin);
+  const pinDocId = collName === 'admin_settings' ? 'auth_pin' : docId;
+  const privateRef = adminDb.doc(`private_pins/${pinDocId}`);
+  const newReservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
+  const privateSnap = await transaction.get(privateRef);
+  const newReservationSnap = await transaction.get(newReservationRef);
+  const existingReservation = newReservationSnap.exists ? newReservationSnap.data() || {} : null;
+
+  if (existingReservation && (existingReservation.entityType !== collName || existingReservation.entityId !== pinDocId)) {
+    throw new Error('PIN_ALREADY_TAKEN');
+  }
+
+  const oldLookupHash = privateSnap.exists ? privateSnap.data()?.pinLookupHash : null;
+  let oldReservationRef: any;
+  let oldReservationSnap: any;
+  if (oldLookupHash && oldLookupHash !== lookupHash) {
+    oldReservationRef = adminDb.doc(`pin_reservations/${oldLookupHash}`);
+    oldReservationSnap = await transaction.get(oldReservationRef);
+  }
+
+  if (oldReservationSnap?.exists) {
+    const oldReservation = oldReservationSnap.data() || {};
+    if (oldReservation.entityType === collName && oldReservation.entityId === pinDocId) {
+      transaction.delete(oldReservationRef);
+    }
+  }
+
+  const now = new Date();
+  transaction.set(newReservationRef, {
+    lookupHash,
+    entityType: collName,
+    entityId: pinDocId,
+    updatedAt: now
+  });
+  transaction.set(privateRef, {
+    pin: newScrypt,
+    pinLookupHash: lookupHash,
+    entityType: collName,
+    entityId: pinDocId,
+    updatedAt: now
+  }, { merge: true });
+}
+
+export async function saveEntityPin(collName: string, docId: string, cleanInputPin: string): Promise<void> {
+  if (!cleanInputPin || !docId) return;
 
   try {
     if (!adminDb) {
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
-    const pinDocId = collName === 'admin_settings' ? 'auth_pin' : docId;
-    await adminDb.runTransaction(async (transaction: any) => {
-      const privateRef = adminDb.doc(`private_pins/${pinDocId}`);
-      const newReservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
-      const privateSnap = await transaction.get(privateRef);
-      const newReservationSnap = await transaction.get(newReservationRef);
-      const existingReservation = newReservationSnap.exists ? newReservationSnap.data() || {} : null;
-
-      if (existingReservation && (existingReservation.entityType !== collName || existingReservation.entityId !== pinDocId)) {
-        throw new Error('PIN_ALREADY_TAKEN');
-      }
-
-      const oldLookupHash = privateSnap.exists ? privateSnap.data()?.pinLookupHash : null;
-      if (oldLookupHash && oldLookupHash !== lookupHash) {
-        const oldReservationRef = adminDb.doc(`pin_reservations/${oldLookupHash}`);
-        const oldReservationSnap = await transaction.get(oldReservationRef);
-        if (oldReservationSnap.exists) {
-          const oldReservation = oldReservationSnap.data() || {};
-          if (oldReservation.entityType === collName && oldReservation.entityId === pinDocId) {
-            transaction.delete(oldReservationRef);
-          }
-        }
-      }
-
-      transaction.set(newReservationRef, {
-        lookupHash,
-        entityType: collName,
-        entityId: pinDocId,
-        updatedAt: new Date()
-      });
-      transaction.set(privateRef, {
-        pin: newScrypt,
-        pinLookupHash: lookupHash,
-        entityType: collName,
-        entityId: pinDocId,
-        updatedAt: new Date()
-      }, { merge: true });
-    });
+    await adminDb.runTransaction((transaction: any) =>
+      saveEntityPinInTransaction(transaction, collName, docId, cleanInputPin)
+    );
   } catch (e) {
     console.error(`[Server Auth] Error saving private pin for ${collName}/${docId}:`, e);
     throw e;

@@ -1,11 +1,15 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { createServer, request as httpRequest, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuthRequest } from './middleware';
+import { createApp } from './app';
 
 vi.mock('./firebaseAdmin', () => ({ adminDb: null, adminAuth: null, firebaseConfig: {} }));
 
-vi.mock('./middleware', () => ({
+vi.mock('./middleware', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./middleware')>();
+  return {
+  ...actual,
   requireAuth(req: Request, _res: Response, next: NextFunction) {
     const user = {
       uid: 'test-actor',
@@ -16,8 +20,13 @@ vi.mock('./middleware', () => ({
     (req as AuthRequest).user = user;
     next();
   },
+  correlationMiddleware(_req: Request, _res: Response, next: NextFunction) {
+    next();
+  },
+  requestTimeoutMiddleware: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   financialRateLimiter: () => (_req: Request, _res: Response, next: NextFunction) => next()
-}));
+  };
+});
 
 vi.mock('./utils', () => ({
   saveEntityPin: vi.fn(),
@@ -32,8 +41,9 @@ vi.mock('./dashboardSummary', () => ({
   reconcileDashboardSummary: vi.fn()
 }));
 vi.mock('./summaryTelemetry', () => ({ recordSummaryRead: vi.fn() }));
-
-import garagesRouter from './routes/garages';
+vi.mock('./operationTrace', () => ({
+  operationTraceMiddleware: (_req: Request, _res: Response, next: NextFunction) => next()
+}));
 
 let server: Server;
 let baseUrl: string;
@@ -58,13 +68,17 @@ async function postGarageCreate(role: string, body: Record<string, unknown>) {
     request.on('error', rejectResponse);
     request.end(payload);
   });
-  return { status: response.status, json: JSON.parse(response.body) as Record<string, unknown> };
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(response.body) as Record<string, unknown>;
+  } catch {
+    // The retired Express fallback uses its default HTML 404 response.
+  }
+  return { status: response.status, json };
 }
 
 beforeAll(async () => {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/garages', garagesRouter);
+  const app = createApp();
   server = createServer(app);
   await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const address = server.address();
@@ -79,16 +93,10 @@ afterAll(async () => {
   });
 });
 
-describe('garage application authorization route', () => {
-  it.each(['garage', 'staff', 'supervisor', 'backend-operator'])('denies %s using the existing forbidden response', async (role) => {
-    const response = await postGarageCreate(role, {});
-    expect(response.status).toBe(403);
-    expect(response.json).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
-  });
+describe('retired Express garage-create route', () => {
+  it('returns 404 for all callers after Hono ownership transfer', async () => {
+    const response = await postGarageCreate('admin', { name: 'Retired Express Garage', pin: '12345678' });
 
-  it.each(['admin', 'delegate'])('allows %s past authorization even with legacy canCreateGarage=false, without writing to a database', async (role) => {
-    const response = await postGarageCreate(role, { name: 'Integration Test Garage', pin: '12345678' });
-    expect(response.status).toBe(500);
-    expect(response.json).toEqual({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
+    expect(response.status).toBe(404);
   });
 });

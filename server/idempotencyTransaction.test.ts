@@ -58,4 +58,23 @@ describe('transaction idempotency protection', () => {
     const finalRetry = createTransaction();
     expect((await checkIdempotencyInTransaction(finalRetry, 'retry-key', '/api/vehicles/check-in', 'user-1', 'fingerprint-a')).isDuplicate).toBe(true);
   });
+
+  it('treats an expired key as new without writing during the transaction read phase', async () => {
+    const initial = createTransaction();
+    storeIdempotencyInTransaction(initial, 'expired-key', { success: true, operationId: 'old-op' }, '/api/vehicles/check-in', 'user-1', 'fingerprint-a');
+    initial.commit();
+    const recordPath = [...initial.writes.keys()][0];
+    state.records.set(recordPath, { ...state.records.get(recordPath), expiresAt: new Date(Date.now() - 1000) });
+
+    const replacement = createTransaction();
+    expect(await checkIdempotencyInTransaction(replacement, 'expired-key', '/api/vehicles/check-in', 'user-1', 'fingerprint-a'))
+      .toEqual({ isDuplicate: false });
+    expect(replacement.writes.size).toBe(0);
+
+    storeIdempotencyInTransaction(replacement, 'expired-key', { success: true, operationId: 'new-op' }, '/api/vehicles/check-in', 'user-1', 'fingerprint-a');
+    replacement.commit();
+    const retry = createTransaction();
+    expect(await checkIdempotencyInTransaction(retry, 'expired-key', '/api/vehicles/check-in', 'user-1', 'fingerprint-a'))
+      .toEqual({ isDuplicate: true, cachedResult: { success: true, operationId: 'new-op' } });
+  });
 });

@@ -61,6 +61,66 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
+  describe('0. Delegate dashboard replacement', () => {
+    it('serves the scoped dashboard through Hono without exposing PIN fields', async () => {
+      mockDb.seed('delegate_sessions/delegate-uid', {
+        uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-session', isActive: true, lastActive: new Date()
+      });
+      mockDb.seed('delegates/delegate-a', {
+        name: 'Delegate A', phone: '01000000000', pin: 'secret-pin',
+        activeSessionIds: ['delegate-session'], currentSessionId: 'delegate-session'
+      });
+      mockDb.seed('garages/created-garage', { name: 'Created Garage', createdByDelegateId: 'delegate-a', pin: 'garage-pin' });
+      mockDb.seed('garages/referred-garage', { name: 'Referred Garage', referrerId: 'delegate-a' });
+      mockDb.seed('recharge_requests/request-a', { delegateId: 'delegate-a', createdAt: new Date('2026-10-09T10:00:00Z') });
+
+      const response = await call('/api/delegates/dashboard', 'valid-delegate-token-delegate-a', {
+        headers: { 'x-session-id': 'delegate-session' }
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({ success: true, delegate: { id: 'delegate-a', name: 'Delegate A' } });
+      expect(body.delegate).not.toHaveProperty('pin');
+      expect(body.garages).toHaveLength(2);
+      expect(body.garages.every((garage: Record<string, unknown>) => !('pin' in garage))).toBe(true);
+      expect(body.requests).toHaveLength(1);
+    });
+  });
+
+  describe('0.1. Trial decision replacement', () => {
+    it('records an owner decision, logs it, and allows admin clearing', async () => {
+      const owner = await call('/api/garages/trial-decision', tokens.garage, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'continued' })
+      });
+      expect(owner.status).toBe(200);
+      expect(mockDb.records.get('garages/garage-a')).toMatchObject({ trialDecision: 'continued' });
+      const ownerLogs = [...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.actionType === 'update_trial_decision');
+      expect(ownerLogs).toHaveLength(1);
+      expect(ownerLogs[0][1]).toMatchObject({ garageId: 'garage-a', details: { trialDecision: 'continued' } });
+
+      const admin = await call('/api/garages/trial-decision', tokens.admin, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: null })
+      });
+      expect(admin.status).toBe(200);
+      expect(mockDb.records.get('garages/garage-a')).toMatchObject({ trialDecision: null });
+    });
+
+    it('rejects invalid decisions and staff callers without writing', async () => {
+      const invalid = await call('/api/garages/trial-decision', tokens.garage, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'pending' })
+      });
+      expect(invalid.status).toBe(400);
+
+      const staff = await call('/api/garages/trial-decision', tokens.staff, {
+        method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'declined' })
+      });
+      expect(staff.status).toBe(403);
+      expect(mockDb.records.get('garages/garage-a')).not.toHaveProperty('trialDecision');
+      expect([...mockDb.records.keys()].some((path) => path.startsWith('activity_logs/'))).toBe(false);
+    });
+  });
+
   describe('1. Staff Management', () => {
     it('allows admin and garage owner to create, update, and delete staff', async () => {
       // Create staff for garage-a
@@ -90,6 +150,19 @@ describe('Worker Route Parity Suite', () => {
         })
       });
       expect(crossRes.status).toBe(403);
+
+      mockDb.seed('staff/staff-other-garage', { id: 'staff-other-garage', garageId: 'garage-b', name: 'Protected' });
+      const crossUpdate = await call('/api/staff/update', tokens.garage, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'staff-other-garage', name: 'Must Not Change' })
+      });
+      expect(crossUpdate.status).toBe(403);
+      const crossDelete = await call('/api/staff/delete', tokens.garage, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'staff-other-garage' })
+      });
+      expect(crossDelete.status).toBe(403);
+      expect(mockDb.records.get('staff/staff-other-garage')?.name).toBe('Protected');
 
       // Update staff
       const updateRes = await call('/api/staff/update', tokens.garage, {
@@ -219,6 +292,24 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ id: delId })
       });
       expect(deleteSuccess.status).toBe(200);
+    });
+
+    it('settles a delegate cycle atomically and replays the same idempotency result', async () => {
+      mockDb.seed('delegates/settle-delegate', { id: 'settle-delegate', totalRechargedAmount: 125 });
+      const payload = { id: 'settle-delegate', idempotencyKey: 'delegate-settlement-key' };
+      const first = await call('/api/delegates/settle-account', tokens.admin, {
+        method: 'POST', body: JSON.stringify(payload)
+      });
+      expect(first.status).toBe(200);
+      const firstBody = await first.json();
+      expect(firstBody).toMatchObject({ success: true, previousRechargedAmount: 125 });
+      expect(mockDb.records.get('delegates/settle-delegate')).toMatchObject({ totalRechargedAmount: 0 });
+
+      const replay = await call('/api/delegates/settle-account', tokens.admin, {
+        method: 'POST', body: JSON.stringify(payload)
+      });
+      expect(replay.status).toBe(200);
+      expect(await replay.json()).toEqual(firstBody);
     });
   });
 

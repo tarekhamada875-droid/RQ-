@@ -10,12 +10,12 @@
 
 ## 1. Executive Summary
 
-This historical report establishes the verified starting baseline for the migration of the RQ backend from Railway Express to a dedicated Cloudflare Worker API. The current architecture and next migration work are governed by `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
+This historical report establishes the verified starting baseline for the migration of the RQ backend from Railway Express to a dedicated Cloudflare Worker API. The current architecture and next migration work are governed by `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`.
 
 All mandatory documents have been read:
 1. `RQ_PROJECT_KNOWLEDGE_BASE.md`
 2. `AGENTS.md`
-3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+3. `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`
 4. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
 5. `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md`
 
@@ -184,4 +184,4 @@ As a code-only agent without deployment connectors, the following items remain *
 
 ## 7. Migration Freeze
 
-No unrequested code refactoring, schema changes, or UI modifications will be introduced. The current follow-up work proceeds checkpoint-by-checkpoint following `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
+No unrequested code refactoring, schema changes, or UI modifications will be introduced. The current follow-up work proceeds checkpoint-by-checkpoint following `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`.

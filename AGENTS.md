@@ -9,13 +9,14 @@
 - **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. There are no real users, customer records, or live financial data; use synthetic data only.
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
-## V3 Execution Workflow
-- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for the architecture, product decisions, current status, document hierarchy, and cleanup dispositions.
-- **V3 Direction:** The production `server/` backend is being rebuilt incrementally with a functional core and imperative Firestore adapters. Do not create or restore a parallel backend generation.
-- **Project Scope:** Repository code, frontend, Cloudflare configuration, legacy rollback configuration, deployment scripts, Firebase integration, tests, and operational tooling are all within the project scope when the required credentials or connectors are available.
-- **Engineering Safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations. These safeguards do not limit project scope.
-- **Canonical execution plan:** After the knowledge base, read [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) for the current Hono consolidation checkpoints, gates, rollback rules, and UI/UX preservation boundary.
-- **Agent Succession:** Read [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md) at the start of every resumed session. For the exact owner message `tokens ending`, stop feature work immediately and follow that handoff’s chained succession protocol before making any other change.
+## Unified Hono Workstream — CLOSED BY OWNER (2026-10-12)
+- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for architecture, product decisions, current status, and document authority.
+- **Current architecture:** Hono is the production Worker backend from H8. H9 / Express decommissioning was stopped by the owner on 2026-10-12. Do not resume it, expand it, assign an agent to it, or create another migration phase without a new, explicit owner request.
+- **Plan status:** [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is now a closure record, not an active plan. The succession handoff, H9 inventory, and older checkpoint evidence are historical only; do not follow their old “next steps” or succession instructions.
+- **Frozen state:** `migration/unified-hono` is retained for audit/history. The local Express compatibility runtime remains frozen; this closure does not claim that all Express references or dependencies were deleted.
+- **Stop controls:** H9 Preview Worker, preview Firestore-config, and H9 rehearsal workflows were disabled; the H9-related open PR was closed. Do not re-enable them for this workstream.
+- **Production boundary:** Keep `main` and production unchanged. Do not merge, deploy production, change production configuration, or perform Firestore/financial operations under this closed workstream.
+- **General safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations for any separately authorized future task.
 
 ## Design Conventions
 - **License Plate UI:** The primary input field is designed as a realistic Egyptian license plate. Maintain this visual identity in future updates.

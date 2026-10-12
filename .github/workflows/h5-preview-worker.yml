@@ -4,13 +4,19 @@ on:
   push:
     branches: [migration/unified-hono]
   workflow_dispatch:
+    inputs:
+      run_h9_projection_rebuild_rehearsal:
+        description: Run the isolated H9 projection rebuild rehearsal after deploying the preview Worker
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: cloudflare-h5-preview
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -111,7 +117,7 @@ jobs:
         run: npm run lint
 
       - name: Focused H5 contract tests
-        run: npm test -- --run server/h5DualRuntime.contract.test.ts server/api.test.ts
+        run: npm test -- --run server/h5DualRuntime.contract.test.ts server/api.test.ts src/utils/firebaseConfigSelector.test.ts
 
       - name: Build Cloudflare Worker
         run: npm run build:cloudflare
@@ -143,6 +149,16 @@ jobs:
       - name: Build preview Worker bundle
         run: npm run build:cloudflare
 
+      - name: Set isolated Firebase service-account secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          # A prior interrupted deploy can leave an unpublished latest version; versions secret put supports updating secrets without deploying.
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | npx wrangler@4.147.0 versions secret put FIREBASE_SERVICE_ACCOUNT_JSON --config wrangler.preview.toml
+
       - name: Deploy isolated preview Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -172,3 +188,29 @@ jobs:
         run: |
           status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 20 "$PREVIEW_URL/api/garages/garage-a")
           test "$status" = "401" || test "$status" = "403" || test "$status" = "503"
+
+  h9_projection_rehearsal:
+    name: H9 isolated projection rebuild rehearsal
+    if: github.event_name == 'workflow_dispatch' && inputs.run_h9_projection_rebuild_rehearsal == true
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: cloudflare-h5-preview
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/unified-hono
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run isolated single-request rehearsal
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          node tools/h9-projection-rebuild-rehearsal.mjs

@@ -5,7 +5,9 @@ import { app } from './server/app';
 import { handleNodeApiRequest } from './server/nodeAdapter';
 
 const PORT = Number(process.env.PORT) || 3000;
-const useHonoApi = process.env.RQ_API_RUNTIME === 'hono';
+// Hono is the production and default local API runtime. Express remains an
+// explicit compatibility mode for local middleware/static-serving work only.
+const useHonoApi = process.env.RQ_API_RUNTIME !== 'express';
 const runtimeApp = useHonoApi ? express() : app;
 
 async function startServer() {

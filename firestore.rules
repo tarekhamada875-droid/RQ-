@@ -1,3 +1,5 @@
+// Preview deployment guard: firebase-preview-firestore.yml deploys this file only to
+// rq-hono-preview-isolated. Production Firestore configuration is not targeted here.
 // ===============================================================
 // Assumed Data Model
 // ===============================================================

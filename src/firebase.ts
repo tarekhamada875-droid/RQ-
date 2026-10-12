@@ -4,11 +4,19 @@ import {
   initializeFirestore, 
   memoryLocalCache
 } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import productionFirebaseConfig from '../firebase-applet-config.json';
+import previewFirebaseConfig from '../firebase-applet-preview-config.json';
 import { logDiagnostic, verifyFirebaseAppletConfig } from './utils/authDiagnosticLogger';
+import { selectFirebaseConfig } from './utils/firebaseConfigSelector';
+
+const firebaseConfig = selectFirebaseConfig(
+  import.meta.env.VITE_RQ_FIREBASE_TARGET,
+  productionFirebaseConfig,
+  previewFirebaseConfig,
+);
 
 // Verify config before initialization
-verifyFirebaseAppletConfig();
+verifyFirebaseAppletConfig(firebaseConfig);
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
