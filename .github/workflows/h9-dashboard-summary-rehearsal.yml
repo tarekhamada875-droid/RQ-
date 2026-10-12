@@ -1,6 +1,11 @@
 name: H9 Isolated Dashboard Summary Rehearsal
 
 on:
+  push:
+    branches: [migration/unified-hono]
+    paths:
+      - '.github/workflows/h9-dashboard-summary-rehearsal.yml'
+      - 'tools/h9-dashboard-summary-rehearsal.mjs'
   workflow_dispatch:
     inputs:
       rehearsal_date:
