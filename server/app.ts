@@ -122,19 +122,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   registerAuthRoutes(authRouter);
   app.use('/', authRouter);
 
-  // Secure Server API: Authoritative Garage Creation
-  app.post('/api/supervisors/create', requireAuth, (_req: AuthRequest, res: any) =>
-    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
-  );
-
-  app.post('/api/supervisors/update', requireAuth, (_req: AuthRequest, res: any) =>
-    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
-  );
-
-  app.post('/api/supervisors/delete', requireAuth, (_req: AuthRequest, res: any) =>
-    res.status(410).json({ success: false, error: 'ROLE_RETIRED' })
-  );
-
   // Secure Server API: Subscribers (Add / Renew / Update / Delete)
   app.post('/api/recharge-requests/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
     try {

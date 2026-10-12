@@ -52,6 +52,9 @@ describe('migrated route HTTP contracts', () => {
       '/api/admin/coupons/update',
       '/api/admin/coupons/delete',
       '/api/activity-logs/add',
+      '/api/supervisors/create',
+      '/api/supervisors/update',
+      '/api/supervisors/delete',
     ];
     for (const path of paths) {
       const response = await post(path);
@@ -84,6 +87,9 @@ describe('migrated route HTTP contracts', () => {
       '/api/admin/coupons/update',
       '/api/admin/coupons/delete',
       '/api/activity-logs/add',
+      '/api/supervisors/create',
+      '/api/supervisors/update',
+      '/api/supervisors/delete',
     ];
     for (const path of paths) {
       const response = await post(path, {}, { 'x-backend-operator-token': 'route-contract-test-secret' });
