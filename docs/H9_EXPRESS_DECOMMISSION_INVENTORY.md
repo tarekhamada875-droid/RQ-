@@ -1,6 +1,6 @@
 # H9 Express Decommission Inventory
 
-**Date:** 2026-10-09  
+**Date:** 2026-10-12
 **Production release:** `rq-unified-hono-h8-2026-10-09` (`8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`)  
 **Authorized work branch:** `migration/unified-hono`  
 **Rollback tag:** `rq-production-baseline-before-hono-migration` (`bb12fbe90eb97b6638546f292f5de50aab03d81a`)  
@@ -11,6 +11,8 @@
 Express is **not yet removable**. The unified Hono Worker is the production backend, but Express remains a live local compatibility runtime and is imported by transitional route modules, middleware, adapters, and integration/dual-runtime tests. The unused Cloud Run-specific entrypoint has now been retired after an exact repository/workflow audit found no active Cloud Run deployment.
 
 Immediate Express deletion would break at least the local `dev:express` fallback, `build:server`, and existing Express characterization coverage. H9 must therefore proceed in reversible slices.
+
+The one-pass 2026-10-12 census is complete. It found 51 active Express API registrations before the source cut; this slice removes only `POST /api/garages/rebuild-projections` from Express, leaving 50 registrations and the Express local compatibility runtime. The full current route/import census and parity blockers are recorded in the final dated section below.
 
 ## Dependency and script inventory
 
@@ -25,7 +27,7 @@ Immediate Express deletion would break at least the local `dev:express` fallback
 
 ## Express import census
 
-The initial search found **31 files** importing Express directly:
+The **2026-10-09 baseline search** recorded 31 files importing Express directly. That list is historical: a repeatable search at H9 census head `51f6f5445fd04734a2743d7f4f4d471186fb3326` found 30, and the current post-retirement direct-import list has 28 files (see the final dated section).
 
 ### Runtime and route surface
 
@@ -84,7 +86,7 @@ The existing route inventory identifies these Express capabilities as requiring 
 
 - `POST /api/garages/reconciliation` — **Express retired in this slice** after read-only Hono contract/no-write coverage, focused retirement assertions, full local gates, and explicit owner approval; Hono remains the supported diagnostic path.
 - `POST /api/garages/dashboard-summary/rebuild` — **Express retired in this slice** after the isolated synthetic operational rehearsal and full local gates; Hono is the sole supported owner.
-- `POST /api/garages/rebuild-projections` — a Fetch-native Hono mirror and synthetic Express/Hono replay/retry characterization are present on `migration/unified-hono`; Express remains mounted pending the finite source/route census. Isolated rehearsal tooling is prepared but not dispatched. **Per the approved finite closeout, an authenticated Firestore rehearsal is not a prerequisite for source retirement**; do not dispatch it or access Firestore for this work.
+- `POST /api/garages/rebuild-projections` — **Express retired in the 2026-10-12 source slice.** Hono remains the supported owner at the same path; the local Hono contract and Express-app 404 regression remain. The isolated rehearsal remains prepared but not dispatched. **Per the approved finite closeout, an authenticated Firestore rehearsal is not a prerequisite for source retirement**; do not dispatch it or access Firestore for this work.
 - `POST /api/auth/invalidate-all-sessions`
 - `POST /api/recharge-requests/create` — Hono now enforces garage/delegate scope, payload sanitization, request-type/amount validation, transactionally idempotent creation, and the shared financial rate limit. Dual-runtime compatibility remains until the Express route census/retirement pass; this correction does not retire the Express financial surface.
 
@@ -106,11 +108,11 @@ Added the Fetch-native Hono mirror for `POST /api/garages/rebuild-projections` w
 
 The 2026-10-09 operational review found that the preview Worker then used the same Firebase project and Firestore database identifiers as production. That configuration was subsequently replaced with the isolated `rq-hono-preview-isolated` target and verified by the H5 deployment workflow. No authenticated route call or Firestore operation was performed by the current source-closeout slice. The protected projection rehearsal remains prepared but unrun and is not required by the finite source-retirement plan.
 
-The remaining Express garage handlers are documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). They include account creation (now hardened and synthetically characterized across both runtimes), destructive deletion (now lease-protected against overlapping runs and synthetically characterized), entitlement extension, and projection/reconciliation maintenance. The Express `POST /api/garages/update` handler has been retired locally after synthetic coverage and explicit owner approval; Hono remains the supported route.
+At the earlier checkpoint represented by this paragraph, the remaining Express garage handlers were documented in [`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md). The date-specific route retirements are preserved as historical evidence; the current state is that all garage handlers represented in that matrix are retired from Express, with Hono as owner. This does not retire unrelated Express route groups or the Express runtime.
 
 ## Safe H9 sequence
 
-1. **Existing H9 route baseline recorded:** retain this document and the H1 route inventory; the repository-wide Express/runtime/import/test census remains open as finite-closeout step 2.
+1. **One-pass H9 route/runtime/import/test census completed 2026-10-12:** see the final dated section. It records 50 active Express routes after the single projection-route retirement, 28 direct Express-import files, indirect runtime/test consumers, and explicit parity blockers.
 2. **Characterization conversion:** add Fetch/Hono equivalents for any still-required Express-only tests; keep Express tests until their replacement coverage passes.
 3. **Runtime default decision:** switch local `dev` to Hono only after local development, static serving, and Node adapter checks pass; retain an explicit legacy compatibility command temporarily.
 4. **Route retirement:** remove Express routers only in groups whose behavior is covered by shared domain tests and Hono route tests. Do not remove financial or maintenance paths based only on frontend absence.
@@ -130,7 +132,7 @@ The first slice added Fetch-native Worker coverage for valid garage-session refr
 
 ## H9 status
 
-**H9 in progress.** Source checkpoint `c1d186e35c37a600d7929923726fde88930fc9d1` hardened Hono recharge creation and aligned the PIN-session authorization path with active-session, 24-hour freshness, and entity-marker checks; local validation passed **104 files / 647 tests** plus all listed gates. A pre-existing dashboard-summary rehearsal auto-triggered on push run [38228265018](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38228265018), executed only against the isolated preview, and reported `rollback: PASS`; its push trigger is now manual-only in this follow-up. Cloud Run-specific entrypoint/build support, the redundant Express delegate dashboard handler, the Express garage dashboard-summary handler, the Express dashboard-summary rebuild handler, the Express trial-decision handler, the Express cars-inside recalculation handler, the Express garage-update handler, and the Express reconciliation handler are retired. Express remains required for local/container compatibility, remaining route groups, and characterization tests. The H8 production release and rollback tag remain unchanged.
+**H9 in progress.** First closeout source checkpoint `c1d186e35c37a600d7929923726fde88930fc9d1` hardened Hono recharge creation and aligned PIN-session authorization; its recorded local gate passed **104 files / 647 tests**. The complete one-pass census at `51f6f5445fd04734a2743d7f4f4d471186fb3326` found 51 Express routes; the current slice retires only the Express projection-rebuild route, leaving 50 API registrations and 28 direct Express imports. Previously retired Cloud Run, delegate dashboard, garage dashboard-summary/rebuild, trial-decision, cars-inside recalculation, garage-update, and reconciliation Express surfaces remain retired. Hono parity gaps still block broader auth/session, financial, reporting/middleware, vehicle/staff, and whole-runtime deletion; local Node/Vite/static/container consumers remain. The earlier isolated dashboard-summary run and rollback are documented above; the prepared projection rehearsal was not dispatched. The H8 production release and rollback tag remain unchanged.
 
 ### Read-only garage reconciliation slice — 2026-10-09
 
@@ -276,4 +278,53 @@ The current migration commit `217124a` deployed successfully to the isolated pre
 Following successful isolated rehearsal run [38210800814](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38210800814) against `rq-hono-preview-isolated`, only Express `POST /api/garages/dashboard-summary/rebuild` was removed. Hono remains the supported owner; the Express fallback returns 404. The isolated seed/rebuild/verify/rollback workflow passed with the expected 2 buckets, 3 events, consistent event reconciliation, persisted summary, and exact restoration. Focused validation passed **2 files / 35 tests**. Full gates passed **104 files / 635 tests**, lint, all builds, CI/release checks, maintainability, and whitespace checks. No production, `main`, destructive, or branch-deletion operation occurred.
 
 ## CURRENT CONTINUATION STATE — 2026-10-12
-Historical checkpoint entries above preserve what was true at the time they were written. The current state is: Express `POST /api/garages/dashboard-summary/rebuild` is retired; the next candidate is Express `POST /api/garages/rebuild-projections`, which remains mounted pending its own isolated rehearsal, route review, and full gates. Continue only on `migration/unified-hono` and never use production Firebase for staging operations.
+Historical checkpoint entries above preserve what was true at the time they were written. The current state is superseded by the completed one-pass census below: Express `POST /api/garages/rebuild-projections` is also retired; Hono owns the path and the real Express app returns 404. The projection rehearsal remains unrun and is not a source-retirement gate. Continue only on `migration/unified-hono`; never use production Firebase for staging operations.
+
+
+## 2026-10-12 completed one-pass census and first source retirement
+
+**Census snapshot:** six-area read-only source review at pre-retirement commit `51f6f5445fd04734a2743d7f4f4d471186fb3326`. It identified **51** Express method/path registrations; this source slice removes the sole Express garage projection-rebuild registration, leaving **50 active Express routes**. The Hono Worker handler remains. No Firebase/Firestore operation, rehearsal dispatch, production action, or `main` change was part of the census or retirement.
+
+### Active Express route inventory after the source cut
+
+| Route group | Count | Active Express registrations |
+|---|---:|---|
+| `server/app.ts` inline | 21 | `GET /api/health`; `GET /api/version`; `GET /api/system-config`; `POST /api/admin/update-system-config`; `POST /api/supervisors/create`; `POST /api/staff/create`; `POST /api/people/update-pin`; `POST /api/supervisors/update`; `POST /api/supervisors/delete`; `POST /api/staff/update`; `POST /api/staff/delete`; `POST /api/admin/packages/create`; `POST /api/admin/packages/delete`; `POST /api/admin/announcements/create`; `POST /api/admin/announcements/delete`; `POST /api/admin/announcements/toggle`; `POST /api/admin/coupons/create`; `POST /api/admin/coupons/update`; `POST /api/admin/coupons/delete`; `POST /api/recharge-requests/create`; `POST /api/activity-logs/add` |
+| Auth and sessions | 11 | `POST /api/auth/verify-pin`; `POST /api/auth/check-pin-availability`; `GET /api/auth/sessions`; `DELETE /api/auth/sessions/:sessionKey`; `POST /api/auth/invalidate-all-sessions`; `POST /api/auth/verify-admin-pin`; `POST /api/auth/claim-admin-session`; `POST /api/auth/release-admin-session`; `POST /api/admin/update-pin`; `POST /api/auth/validate-or-refresh-session`; `POST /api/auth/release-session` |
+| Vehicles | 3 | `POST /api/vehicles/check-in`; `POST /api/vehicles/check-out`; `POST /api/vehicles/delete` |
+| Subscribers | 4 | `POST /api/subscribers/add`; `POST /api/subscribers/renew`; `POST /api/subscribers/update`; `POST /api/subscribers/delete` |
+| Delegates | 4 | `POST /api/delegates/create`; `POST /api/delegates/update`; `POST /api/delegates/settle-account`; `POST /api/delegates/delete` |
+| Transactions/recharges | 6 | `POST /api/transactions/recharge-garage`; `POST /api/transactions/approve-recharge-request`; `POST /api/transactions/reject-recharge-request`; `POST /api/transactions/admin-topup-balance`; `POST /api/transactions/garage-self-subscribe`; `POST /api/transactions/use-referral-reward` |
+| Reports | 1 | `GET /api/reports/financial` |
+| Garages | 0 | `POST /api/garages/rebuild-projections` is retired from Express in this slice; Hono remains the supported owner. |
+| **Total active Express registrations** | **50** | Count is by unique HTTP method and path; route aliases are separate registrations only where shown in the source. |
+
+Hono registrations exist for the listed Express API paths except **`POST /api/auth/invalidate-all-sessions`**, for which no Hono handler was found. For other paths, handler existence is not a parity claim; the known material gaps below keep the Express runtime and unresolved routes in place.
+
+### Direct Express-import files after retirement
+
+A fresh source search after this change finds **28 files** directly importing `express` (including type-only test imports):
+
+- Runtime and route code (18): `server/app.ts`; `server/auth/activeSessions.ts`; `server/auth/adminAuth.ts`; `server/auth/pinAuth.ts`; `server/auth/sessionLifecycle.ts`; `server/middleware.ts`; `server/operationTrace.ts`; `server/routes/auth.ts`; `server/routes/delegates.ts`; `server/routes/recharges/directRecharge.ts`; `server/routes/recharges/index.ts`; `server/routes/recharges/manualTopup.ts`; `server/routes/recharges/referralRewards.ts`; `server/routes/recharges/requestApproval.ts`; `server/routes/recharges/selfSubscription.ts`; `server/routes/reports.ts`; `server/routes/subscribers.ts`; `server/routes/vehicles.ts`.
+- Express characterization/integration tests (10): `server/auth/pinAuthRoleScope.test.ts`; `server/auth/sessionLifecycleRoleRetirement.test.ts`; `server/authMaintenanceAuthorization.integration.test.ts`; `server/authSessionRoutes.integration.test.ts`; `server/financialReportAuthorization.integration.test.ts`; `server/garageCreationAuthorization.integration.test.ts`; `server/garageMaintenanceAuthorization.integration.test.ts`; `server/manualCreditRoutes.integration.test.ts`; `server/subscriberRoutes.integration.test.ts`; `server/vehicleGarageScopeAuthorization.integration.test.ts`.
+
+The removed `server/routes/garages.ts` and direct Express import in `server/garageReconciliationParity.integration.test.ts` are no longer in that list. Additional **indirect** Express consumers remain: `server.ts` / Vite host composition, `server/h5DualRuntime.contract.test.ts`, `server/garageReconciliationParity.integration.test.ts`, `src/__tests__/corsSecurity.test.ts`, and test files that import the full app. `server/api.test.ts` covers the Hono Fetch/Node adapter and is not Express route coverage.
+
+### Runtime, dependency, and deployment consumers that remain
+
+`package.json` still declares `express` `^5.2.1`, `@types/express` `^5.0.6`, `cors` `^2.8.6`, and `@types/cors` `^2.8.19`. `dev`/`dev:hono` select the Hono API through `server/nodeAdapter.ts`, but `server.ts` still imports `server/app.ts` and uses Express as the Vite development middleware host. `dev:express` remains the explicit fallback; `build:server` emits `dist/server.cjs`, and `start` runs it. Keep Vite middleware, production `express.static(dist)` plus SPA fallback, API dispatch, `0.0.0.0` binding, and Fetch-to-Node adapter behavior until a replacement is tested. The Cloudflare Worker build/deployment is a separate Hono path and must remain intact. The generic `Dockerfile` is still a tracked Node/container consumer; source inspection suggests a Vite/dev-dependency packaging risk, but no container reproduction was run, so do not claim that consumer is safely removable.
+
+### Parity blockers for broader retirement
+
+- **Auth/session:** Hono has no `invalidate-all-sessions` handler. Legacy phone-plus-PIN behavior and PIN-availability rate limiting differ; refresh-marker rejection, per-device heartbeat freshness, and current-session list/revoke semantics lack complete cross-runtime proof.
+- **Financial/delegate:** Hono balance-top-up approval and direct top-up omit Express `manual_credit_ledger` writes; multiple Hono financial mutations lack Express-equivalent rate limiting, and activity-log details differ. Financial acceptance remains OPEN/BLOCKED; do not retire this surface based on frontend absence.
+- **Reports and shared middleware:** report filter validation/error envelopes differ; CORS allowlists and correlation-ID validation differ; Hono has no equivalent 15-second timeout or durable operation-trace write, and generic 404/error behavior is not proven equivalent. Preserve CORS, correlation/operation IDs, timeout, tracing/event linkage, and error/fallback semantics until ported and tested.
+- **Vehicles/staff:** vehicle check-in reads subscriber state on a different side of the transaction boundary; staff multi-document/PIN writes and their cross-runtime behavior are not fully characterized.
+- **Evidence boundary:** Hono being the production Worker does not prove parity for the local Express fallback. The census was source/test inspection, not a live-service validation; recorded test totals must be tied to the actual checkpoint where they ran.
+
+### Projection rebuild Express retirement
+
+Removed the Express-only router module `server/routes/garages.ts` and its mount in `server/app.ts`; Hono continues to own `POST /api/garages/rebuild-projections` at `server/cloudflareWorker.ts`. Retained Hono contract tests for replay-derived fields, event watermark, Cairo-day boundaries, merge preservation, retries, Admin authorization, invalid input, and no-write denials. Updated the Express maintenance and garage fallback tests to instantiate the real `createApp()` composition and assert 404 for retired garage routes. Focused validation after the source cut passed **3 files / 39 tests**. The previously prepared live projection rehearsal remains **NOT DISPATCHED** and is not a prerequisite for this source-only retirement. This is the only additional route retirement in this slice; H9 and full Express runtime removal remain **IN PROGRESS** pending resolution of the blockers above.
+
+
+**Post-retirement local validation:** `npm test` passed **104 files / 646 tests**; `npm run lint`, `npm run build` (Vite, Node server, Cloudflare Worker), `npm run ci:check` including production artifact/release checks, `npm run maintainability:check`, and `git diff --check` all passed. Generated `dist/` and `build/` outputs were removed. The final pushed head's GitHub workflows remain to be verified; H9 is still in progress.

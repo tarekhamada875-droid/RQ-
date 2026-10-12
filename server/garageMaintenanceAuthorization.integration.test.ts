@@ -1,11 +1,15 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { createServer, request as httpRequest, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuthRequest } from './middleware';
+import { createApp } from './app';
 
 vi.mock('./firebaseAdmin', () => ({ adminDb: null, adminAuth: null, firebaseConfig: {} }));
 
-vi.mock('./middleware', () => ({
+vi.mock('./middleware', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./middleware')>();
+  return {
+  ...actual,
   requireAuth(req: Request, _res: Response, next: NextFunction) {
     (req as AuthRequest).user = {
       uid: req.header('x-test-uid') || 'test-user',
@@ -14,8 +18,13 @@ vi.mock('./middleware', () => ({
     };
     next();
   },
+  correlationMiddleware(_req: Request, _res: Response, next: NextFunction) {
+    next();
+  },
+  requestTimeoutMiddleware: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   financialRateLimiter: () => (_req: Request, _res: Response, next: NextFunction) => next()
-}));
+  };
+});
 
 vi.mock('./utils', () => ({ saveEntityPin: vi.fn(), checkPinAvailabilityAcrossAll: vi.fn() }));
 vi.mock('./unlimitedFairUse', () => ({ manualAdminExtendFairUse: vi.fn(), initializeFairUse: vi.fn() }));
@@ -27,12 +36,9 @@ vi.mock('./dashboardSummary', () => ({
   reconcileDashboardSummary: vi.fn()
 }));
 vi.mock('./summaryTelemetry', () => ({ recordSummaryRead: vi.fn() }));
-
-import garagesRouter from './routes/garages';
-
-const maintenanceRoutes = [
-  ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }]
-] as const;
+vi.mock('./operationTrace', () => ({
+  operationTraceMiddleware: (_req: Request, _res: Response, next: NextFunction) => next()
+}));
 
 let server: Server;
 let baseUrl: string;
@@ -67,9 +73,7 @@ async function post(path: string, role: string, body: Record<string, unknown>) {
 }
 
 beforeAll(async () => {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/garages', garagesRouter);
+  const app = createApp();
   server = createServer(app);
   await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const address = server.address();
@@ -84,23 +88,13 @@ afterAll(async () => {
   });
 });
 
-describe('garage reconciliation and projection maintenance authorization routes', () => {
-  it.each(maintenanceRoutes)('denies non-admin access to %s', async (path, body) => {
-    for (const role of ['garage', 'staff', 'delegate', 'supervisor', 'backend-operator']) {
-      const response = await post(path, role, body);
+describe('retired Express projection maintenance route', () => {
+  it('returns 404 for Admin and non-Admin callers after Hono ownership transfer', async () => {
+    for (const role of ['admin', 'garage', 'staff', 'delegate', 'supervisor', 'backend-operator']) {
+      const response = await post('/api/garages/rebuild-projections', role, { garageId: 'garage_1', date: '2026-09-18' });
 
-      expect(response.status).toBe(403);
-      expect(response.json).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+      expect(response.status).toBe(404);
     }
-  });
-
-  it.each([
-    ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }, 400, 'INVALID_REQUEST']
-  ])('allows admins through the authorization gate for %s', async (path, body, expectedStatus, expectedError) => {
-    const response = await post(path, 'admin', body);
-
-    expect(response.status).toBe(expectedStatus);
-    expect(response.json).toEqual({ success: false, error: expectedError });
   });
 
   it('does not expose the retired reconciliation endpoint on the Express fallback', async () => {

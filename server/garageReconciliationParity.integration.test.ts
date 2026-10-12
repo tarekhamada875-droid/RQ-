@@ -1,9 +1,9 @@
-import express from 'express';
 import { createHash } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth } from '../src/__tests__/mockFirestore';
 import { saveEntityPin } from './utils';
+import { createApp } from './app';
 
 const mockDb = new MockFirestore();
 
@@ -33,7 +33,6 @@ vi.mock('./middleware', async (importOriginal) => {
 });
 
 import { api } from './api';
-import garagesRouter from './routes/garages';
 
 const garageId = 'reconciliation-test-garage';
 let server: Server;
@@ -120,14 +119,6 @@ async function callHonoCreate(token: string, body: Record<string, unknown>) {
   }));
 }
 
-async function callExpressProjectionRebuild(role: string, body: unknown) {
-  return fetch(`${expressUrl}/api/garages/rebuild-projections`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
-    body: JSON.stringify(body)
-  });
-}
-
 async function callRetiredExpressCreate(body: Record<string, unknown>) {
   return fetch(`${expressUrl}/api/garages/create`, {
     method: 'POST',
@@ -169,9 +160,7 @@ async function callRetiredExpressGarageDelete(body: unknown) {
 }
 
 beforeAll(async () => {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/garages', garagesRouter);
+  const app = createApp();
   server = createServer(app);
   await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const address = server.address();
@@ -382,7 +371,7 @@ describe('dashboard-summary rebuild dual-runtime characterization', () => {
   });
 });
 
-describe('daily projection rebuild dual-runtime characterization', () => {
+describe('daily projection rebuild Hono contract', () => {
   const targetDate = '2026-09-18';
 
   function seedProjectionRebuildFixture() {
@@ -408,7 +397,7 @@ describe('daily projection rebuild dual-runtime characterization', () => {
     });
   }
 
-  it('replays the synthetic ledger with matching projection, watermark, Cairo boundaries, and stable retries', async () => {
+  it('replays the synthetic ledger with the expected projection, watermark, Cairo boundaries, and stable retries', async () => {
     seedProjectionRebuildFixture();
     const body = { garageId, date: targetDate };
     const hono = await callHonoProjectionRebuild('valid-admin-token', body);
@@ -452,33 +441,18 @@ describe('daily projection rebuild dual-runtime characterization', () => {
       count: 1, exitsCount: 1, grossRevenue: 50, refundRevenue: 5, netRevenue: 45, revenue: 45
     });
 
-    mockDb.seed(`garages/${garageId}/daily_stats/${targetDate}`, { preservedField: 'keep-on-merge' });
-    const expressResponse = await callExpressProjectionRebuild('admin', body);
-    const expressBody = await expressResponse.json() as any;
-    expect(expressResponse.status).toBe(hono.status);
-    const withoutRebuiltAt = (projection: Record<string, unknown>) => Object.fromEntries(
-      Object.entries(projection).filter(([key]) => key !== 'rebuiltAt')
-    );
-    expect(expressBody.success).toBe(honoBody.success);
-    expect(expressBody.data.garageId).toBe(honoBody.data.garageId);
-    expect(expressBody.data.date).toBe(honoBody.data.date);
-    expect(withoutRebuiltAt(expressBody.data.projection)).toEqual(withoutRebuiltAt(firstProjection));
-    expect(withoutRebuiltAt(mockDb.records.get(`garages/${garageId}/daily_stats/${targetDate}`)))
-      .toEqual(withoutRebuiltAt(persistedAfterHono));
   });
 
   it('denies unauthenticated and non-Admin callers without writing', async () => {
     seedProjectionRebuildFixture();
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-    const [unauthenticated, hono, expressResponse] = await Promise.all([
+    const [unauthenticated, hono] = await Promise.all([
       callHonoProjectionRebuild('', { garageId, date: targetDate }),
-      callHonoProjectionRebuild('valid-garage-token-reconciliation-test-garage', { garageId, date: targetDate }),
-      callExpressProjectionRebuild('garage', { garageId, date: targetDate })
+      callHonoProjectionRebuild('valid-garage-token-reconciliation-test-garage', { garageId, date: targetDate })
     ]);
     expect(unauthenticated.status).toBe(401);
     expect(hono.status).toBe(403);
-    expect(hono.status).toBe(expressResponse.status);
-    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
@@ -486,16 +460,13 @@ describe('daily projection rebuild dual-runtime characterization', () => {
     seedProjectionRebuildFixture();
     for (const body of [null, {}, { garageId, date: '2026-02-30' }]) {
       const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-      const [hono, expressResponse] = await Promise.all([
-        callHonoProjectionRebuild('valid-admin-token', body),
-        callExpressProjectionRebuild('admin', body)
-      ]);
-      expect(hono.status).toBe(expressResponse.status);
+      const hono = await callHonoProjectionRebuild('valid-admin-token', body);
+      expect(hono.status).toBe(400);
       const honoBody = await hono.json();
       if (body === null) {
         expect(honoBody).toMatchObject({ success: false });
       } else {
-        expect(honoBody).toEqual(await expressResponse.json());
+        expect(honoBody).toMatchObject({ success: false });
       }
       expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
     }
@@ -503,7 +474,7 @@ describe('daily projection rebuild dual-runtime characterization', () => {
 });
 
 describe('winter Cairo maintenance boundaries', () => {
-  it('selects the correct winter-day events for summary and daily-projection rebuilds in both runtimes', async () => {
+  it('selects the correct winter-day events for Hono summary and daily-projection rebuilds', async () => {
     const winterDate = '2026-01-15';
     seedWinterBoundaryEvents();
     mockDb.seed(`garages/${garageId}`, { carsInside: 1 });
@@ -523,19 +494,6 @@ describe('winter Cairo maintenance boundaries', () => {
     const honoProjectionBody = await honoProjection.json() as any;
     expect(honoProjection.status).toBe(200);
     expect(honoProjectionBody.data.projection).toMatchObject({
-      count: 1,
-      exitsCount: 1,
-      grossRevenue: 40,
-      netRevenue: 40,
-      eventWatermark: {
-        lastProcessedOccurredAt: '2026-01-15T21:30:00.000Z',
-        lastProcessedEventId: 'winter-exit'
-      }
-    });
-    const expressProjection = await callExpressProjectionRebuild('admin', body);
-    const expressProjectionBody = await expressProjection.json() as any;
-    expect(expressProjection.status).toBe(200);
-    expect(expressProjectionBody.data.projection).toMatchObject({
       count: 1,
       exitsCount: 1,
       grossRevenue: 40,

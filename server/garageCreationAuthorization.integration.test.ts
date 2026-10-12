@@ -1,11 +1,15 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { createServer, request as httpRequest, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuthRequest } from './middleware';
+import { createApp } from './app';
 
 vi.mock('./firebaseAdmin', () => ({ adminDb: null, adminAuth: null, firebaseConfig: {} }));
 
-vi.mock('./middleware', () => ({
+vi.mock('./middleware', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./middleware')>();
+  return {
+  ...actual,
   requireAuth(req: Request, _res: Response, next: NextFunction) {
     const user = {
       uid: 'test-actor',
@@ -16,8 +20,13 @@ vi.mock('./middleware', () => ({
     (req as AuthRequest).user = user;
     next();
   },
+  correlationMiddleware(_req: Request, _res: Response, next: NextFunction) {
+    next();
+  },
+  requestTimeoutMiddleware: () => (_req: Request, _res: Response, next: NextFunction) => next(),
   financialRateLimiter: () => (_req: Request, _res: Response, next: NextFunction) => next()
-}));
+  };
+});
 
 vi.mock('./utils', () => ({
   saveEntityPin: vi.fn(),
@@ -32,8 +41,9 @@ vi.mock('./dashboardSummary', () => ({
   reconcileDashboardSummary: vi.fn()
 }));
 vi.mock('./summaryTelemetry', () => ({ recordSummaryRead: vi.fn() }));
-
-import garagesRouter from './routes/garages';
+vi.mock('./operationTrace', () => ({
+  operationTraceMiddleware: (_req: Request, _res: Response, next: NextFunction) => next()
+}));
 
 let server: Server;
 let baseUrl: string;
@@ -68,9 +78,7 @@ async function postGarageCreate(role: string, body: Record<string, unknown>) {
 }
 
 beforeAll(async () => {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/garages', garagesRouter);
+  const app = createApp();
   server = createServer(app);
   await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const address = server.address();
