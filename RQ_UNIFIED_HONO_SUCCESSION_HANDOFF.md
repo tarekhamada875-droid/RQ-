@@ -400,3 +400,10 @@ Focused validation passed **4 files / 31 tests**, including delegate authorizati
 The third consolidated H9 batch is complete at `migration/unified-hono` commit `5db207d`. Express registrations removed: health, version, system-config, Admin system-config update, package create/delete, announcement create/delete/toggle, coupon create/update/delete, and activity-log add (**13 routes**). Hono owns the replacements; the Express fallback returns `404 API route not found`.
 
 Focused validation passed **5 files / 38 tests**. The full integration gate passed **104 files / 658 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. Active Express registrations are now **22**: auth/session (11), retired Supervisor tombstones (3), financial/recharge (7), and financial reports (1). Auth/session, financial, report, and local runtime work remain separate risk-controlled areas. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+## 2026-10-12 shortened-plan implementation — Supervisor tombstone retirement
+
+Commit `93f82e1` removes Express `POST /api/supervisors/create`, `POST /api/supervisors/update`, and `POST /api/supervisors/delete`. Hono already preserves the exact `410 ROLE_RETIRED` contract, and existing Worker tests cover legacy Supervisor record preservation and rejection of all three mutations. The Express fallback now returns 404 because Hono is the supported API owner.
+
+Focused validation passed **5 files / 63 tests**. The full integration gate passed **104 files / 658 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. Active Express registrations are now 19: auth/session (11), financial/recharge (7), and financial report (1). No production, `main`, preview mutation, Firestore operation, or deployment occurred. Next work is the isolated auth/session parity matrix.

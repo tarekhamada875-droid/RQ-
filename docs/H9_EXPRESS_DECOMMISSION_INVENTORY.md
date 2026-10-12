@@ -391,3 +391,10 @@ Commit `5db207d` removes these 13 Express registrations from `server/app.ts`: `G
 Hono owns every replacement. Existing Worker foundation, parity, and dual-runtime tests cover the replacement behavior, authorization, validation, and public health/version contracts; the Express fallback is explicitly verified to return `404 API route not found`. Focused validation passed **5 files / 38 tests**. The full integration gate passed **104 files / 658 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. Active Express registrations are now **22**: 11 auth/session, 3 retired-Supervisor tombstone routes, 7 financial/recharge routes, and 1 financial-report route.
 
 The 11 auth/session routes, 7 financial/recharge routes, and financial report remain intentionally mounted for separate security/financial parity review. The local Express/Vite/static-serving runtime also remains intentionally retained. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+### Supervisor tombstone retirement batch — 2026-10-12
+
+Commit `93f82e1` removes the three redundant Express Supervisor registrations: `POST /api/supervisors/create`, `POST /api/supervisors/update`, and `POST /api/supervisors/delete`. Hono already preserved the exact `410 ROLE_RETIRED` response, with existing Worker parity and authorization tests covering legacy-record preservation and rejection of create/update/delete. The Express fallback now returns 404 because Hono is the supported API owner.
+
+Focused validation passed **5 files / 63 tests**. The full integration gate passed **104 files / 658 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. Active Express registrations are now **19**: 11 auth/session, 7 financial/recharge, and 1 financial-report route. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
