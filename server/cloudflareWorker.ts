@@ -3323,8 +3323,8 @@ workerApp.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, asyn
       success: true,
       data: {
         summary: summaryData,
-        bucketCount: bucketSnap.size,
-        eventCount: eventsSnap.size,
+        bucketCount: bucketSnap.size ?? bucketSnap.docs.length,
+        eventCount: eventsSnap.size ?? eventsSnap.docs.length,
         consistentWithEvents: reconciliation.consistent,
         legacyDifferences
       }
