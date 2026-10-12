@@ -1,13 +1,10 @@
 import { Router } from 'express';
-import { requireAuth, financialRateLimiter, AuthRequest } from '../middleware';
+import { requireAuth, AuthRequest } from '../middleware';
 import { adminDb } from '../firebaseAdmin';
-import { sanitizePayload, validateId } from '../validation';
 import { mapDomainErrorToStatus } from './helpers';
 import { calculateDailyProjection, getCairoDayBounds } from '../projections';
 import { aggregateProjectionBuckets, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
 import { canRunGarageMaintenance } from '../domain/authorization';
-import { claimGarageDeletion, finalizeGarageDeletion, markGarageDeletionFailed, renewGarageDeletionLease } from '../adapters/garageDeletionAdapter';
-import { deleteGarageOwnedData } from '../adapters/garageDeletionCleanupAdapter';
 
 const router = Router();
 
@@ -15,66 +12,6 @@ function cairoDayBounds(date: string): { start: Date; end: Date } {
   if (!isValidDateKey(date)) throw new Error('INVALID_DATE');
   return getCairoDayBounds(date);
 }
-
-// Secure Server API: Garage Deletion
-router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {
-  try {
-    const callerRole = req.user?.role;
-    if (callerRole !== 'admin') {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
-
-    const sanitized = sanitizePayload(req.body, ['garageId'], false);
-    const garageId = validateId(sanitized.garageId, 'garageId', true);
-
-    if (!adminDb) {
-      return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-    }
-
-    const claim = await claimGarageDeletion(adminDb, garageId, callerRole, req.user?.uid);
-    if (claim.kind === 'forbidden') {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
-    if (claim.kind === 'not_found') {
-      return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-    }
-    if (claim.kind === 'already_deleted') {
-      return res.json({ success: true, alreadyDeleted: true });
-    }
-    if (claim.kind === 'in_progress') {
-      const { statusCode, message } = mapDomainErrorToStatus(new Error('GARAGE_DELETION_IN_PROGRESS'));
-      return res.status(statusCode).json({ success: false, error: message });
-    }
-
-    try {
-      await deleteGarageOwnedData(adminDb, garageId, () => renewGarageDeletionLease(adminDb, garageId, claim.claimToken));
-      await finalizeGarageDeletion(adminDb, garageId, claim.claimToken, claim.auditLogId, req.user?.uid, {
-        garageId,
-        garageName: claim.garageName,
-        staffId: req.user?.uid || null,
-        staffName: req.user?.displayName || 'الإدارة',
-        actionType: 'garage_delete',
-        plateNumber: `حذف جراج: ${claim.garageName}`,
-        timestamp: new Date(),
-        amount: 0,
-        details: {
-          deletedByRole: callerRole,
-          deletedByUid: req.user?.uid || null
-        }
-      });
-      return res.json({ success: true });
-    } catch (e) {
-      await markGarageDeletionFailed(adminDb, garageId, claim.claimToken).catch((markError) => {
-        console.error('[Server Garage] Failed to release deletion claim:', markError);
-      });
-      throw e;
-    }
-  } catch (e: any) {
-    console.error('[Server Garage] Error in delete garage:', e);
-    const { statusCode, message } = mapDomainErrorToStatus(e);
-    return res.status(statusCode).json({ success: false, error: message });
-  }
-});
 
 // Admin-only Dashboard Summary Rebuild: Rebuilds the compact read model from buckets and events.
 router.post('/dashboard-summary/rebuild', requireAuth, async (req: AuthRequest, res: any) => {

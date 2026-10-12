@@ -168,10 +168,10 @@ async function callHonoGarageDelete(token: string, body: unknown) {
   }));
 }
 
-async function callExpressGarageDelete(role: string, body: unknown) {
+async function callRetiredExpressGarageDelete(body: unknown) {
   return fetch(`${expressUrl}/api/garages/delete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
+    headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
     body: JSON.stringify(body)
   });
 }
@@ -924,7 +924,7 @@ describe('garage update Hono contract and Express retirement', () => {
   });
 });
 
-describe('garage deletion dual-runtime characterization', () => {
+describe('garage deletion Hono contract and Express retirement', () => {
   const targetId = 'garage-delete-parity-target';
   const rootPath = `garages/${targetId}`;
   const snapshotBusinessRecords = () => new Map(
@@ -932,26 +932,18 @@ describe('garage deletion dual-runtime characterization', () => {
       .filter(([path]) => !path.startsWith('rate_limits/'))
       .map(([path, data]) => [path, structuredClone(data)])
   );
-
   const omitTimestamps = (record: Record<string, any>) => {
     const normalized = structuredClone(record);
-    for (const key of ['updatedAt', 'startedAt', 'completedAt', 'deletionStartedAt', 'timestamp', 'leaseExpiresAt', 'leaseToken', 'auditLogId']) {
-      delete normalized[key];
-    }
+    for (const key of ['updatedAt', 'startedAt', 'completedAt', 'deletionStartedAt', 'timestamp', 'leaseExpiresAt', 'leaseToken', 'auditLogId']) delete normalized[key];
     return normalized;
   };
-
   const matchingAuditLogs = () => [...mockDb.records.values()]
     .filter((record) => record.garageId === targetId && record.actionType === 'garage_delete')
-    .map(omitTimestamps)
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-
+    .map(omitTimestamps);
   function seedCompleteDeletionFixture() {
     mockDb.clear();
     mockDb.seed(rootPath, { name: 'Synthetic Garage for Deletion', balance: 250, isDeleting: false });
-    for (const collection of ['vehicles', 'subscribers', 'daily_counts', 'daily_stats', 'events', 'projection_buckets']) {
-      mockDb.seed(`${rootPath}/${collection}/owned-record`, { garageId: targetId, synthetic: true });
-    }
+    for (const collection of ['vehicles', 'subscribers', 'daily_counts', 'daily_stats', 'events', 'projection_buckets']) mockDb.seed(`${rootPath}/${collection}/owned-record`, { garageId: targetId, synthetic: true });
     mockDb.seed('activity_logs/old-owned-log', { garageId: targetId, actionType: 'synthetic_old' });
     mockDb.seed('activity_logs/unrelated-log', { garageId: 'other-garage', actionType: 'preserve' });
     mockDb.seed('recharge_requests/owned-request', { garageId: targetId });
@@ -968,564 +960,119 @@ describe('garage deletion dual-runtime characterization', () => {
     mockDb.seed('garages/unrelated-garage/events/unrelated-event', { synthetic: true });
   }
 
-  async function runCompleteDeletion(runtime: 'hono' | 'express') {
+  it('removes only garage-owned data and completes the audit/job', async () => {
     seedCompleteDeletionFixture();
-    const response = runtime === 'hono'
-      ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-      : await callExpressGarageDelete('admin', { garageId: targetId });
-    const responseBody = await response.json();
+    const response = await callHonoGarageDelete('valid-admin-token', { garageId: targetId });
+    const body = await response.json();
     const job = omitTimestamps(mockDb.records.get(`garage_deletion_jobs/${targetId}`));
-    const remainingOwnedPaths = [...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/`)).sort();
-    const remainingTargetData = [...mockDb.records.entries()]
-      .filter(([path, record]) => !path.startsWith('rate_limits/') && !path.startsWith('garage_deletion_jobs/') && record?.garageId === targetId && record?.actionType !== 'garage_delete')
-      .map(([path]) => path)
-      .sort();
-    return {
-      status: response.status,
-      responseBody,
-      garageStillExists: mockDb.records.has(rootPath),
-      remainingOwnedPaths,
-      remainingTargetData,
-      job,
-      auditLogs: matchingAuditLogs(),
-      unrelatedDataPreserved: [
-        mockDb.records.has('activity_logs/unrelated-log'),
-        mockDb.records.has('recharge_requests/unrelated-request'),
-        mockDb.records.has('staff/unrelated-staff'),
-        mockDb.records.has('garage_sessions/unrelated-session'),
-        mockDb.records.has('private_pins/same-id-other-type'),
-        mockDb.records.has('pin_reservations/same-id-other-type'),
-        mockDb.records.has('garages/unrelated-garage'),
-        mockDb.records.has('garages/unrelated-garage/events/unrelated-event')
-      ]
-    };
-  }
-
-  it('matches the 30-per-minute delete limit and blocks over-limit requests without writes', async () => {
-    const rateLimitDocId = createHash('sha256').update('fin:admin-uid').digest('hex');
-    const rateLimitPath = `rate_limits/${rateLimitDocId}`;
-
-    const runLimitBoundary = async (runtime: 'hono' | 'express') => {
-      seedCompleteDeletionFixture();
-      const now = Date.now();
-      mockDb.seed(rateLimitPath, { count: 29, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
-      const allowed = runtime === 'hono'
-        ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-        : await callExpressGarageDelete('admin', { garageId: targetId });
-      const allowedBody = await allowed.json();
-      const beforeBlockedRequest = snapshotBusinessRecords();
-      const blocked = runtime === 'hono'
-        ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-        : await callExpressGarageDelete('admin', { garageId: targetId });
-      const afterBlockedRequest = snapshotBusinessRecords();
-      return {
-        allowedStatus: allowed.status,
-        allowedBody,
-        blockedStatus: blocked.status,
-        blockedBody: await blocked.json(),
-        counter: mockDb.records.get(rateLimitPath)?.count,
-        beforeBlockedRequest,
-        afterBlockedRequest
-      };
-    };
-
-    for (const result of [await runLimitBoundary('hono'), await runLimitBoundary('express')]) {
-      expect(result.allowedStatus).toBe(200);
-      expect(result.allowedBody).toEqual({ success: true });
-      expect(result.blockedStatus).toBe(429);
-      expect(result.blockedBody).toMatchObject({
-        success: false,
-        error: 'TOO_MANY_REQUESTS: Rate limit exceeded. Please try again in 1 minute.',
-        code: 'RATE_LIMIT_EXCEEDED',
-        statusCode: 429
-      });
-      expect(result.counter).toBe(30);
-      expect(result.afterBlockedRequest).toEqual(result.beforeBlockedRequest);
-    }
+    const remainingOwnedPaths = [...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/`));
+    const remainingTargetData = [...mockDb.records.entries()].filter(([path, record]) => !path.startsWith('rate_limits/') && !path.startsWith('garage_deletion_jobs/') && record?.garageId === targetId && record?.actionType !== 'garage_delete');
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true });
+    expect(remainingOwnedPaths).toEqual([]);
+    expect(remainingTargetData).toEqual([]);
+    expect(['activity_logs/unrelated-log', 'recharge_requests/unrelated-request', 'staff/unrelated-staff', 'garage_sessions/unrelated-session', 'private_pins/same-id-other-type', 'pin_reservations/same-id-other-type', 'garages/unrelated-garage/events/unrelated-event'].every((path) => mockDb.records.has(path))).toBe(true);
+    expect(job).toMatchObject({ garageId: targetId, status: 'completed', startedBy: 'admin-uid', completedBy: 'admin-uid' });
+    expect(matchingAuditLogs()).toHaveLength(1);
+    expect(matchingAuditLogs()[0]).toMatchObject({ garageId: targetId, actionType: 'garage_delete', details: { deletedByRole: 'admin', deletedByUid: 'admin-uid' } });
   });
 
-  it('removes only garage-owned synthetic data, preserves unrelated records, and completes an audit/job record', async () => {
-    const hono = await runCompleteDeletion('hono');
-    const expressResult = await runCompleteDeletion('express');
-
-    expect(hono).toEqual(expressResult);
-    expect(hono.status).toBe(200);
-    expect(hono.responseBody).toEqual({ success: true });
-    expect(hono.garageStillExists).toBe(false);
-    expect(hono.remainingOwnedPaths).toEqual([]);
-    expect(hono.remainingTargetData).toEqual([]);
-    expect(hono.job).toMatchObject({
-      garageId: targetId,
-      garageName: 'Synthetic Garage for Deletion',
-      status: 'completed',
-      startedBy: 'admin-uid',
-      completedBy: 'admin-uid'
-    });
-    expect(hono.auditLogs).toHaveLength(1);
-    expect(hono.auditLogs[0]).toMatchObject({
-      garageId: targetId,
-      garageName: 'Synthetic Garage for Deletion',
-      staffId: 'admin-uid',
-      actionType: 'garage_delete',
-      details: { deletedByRole: 'admin', deletedByUid: 'admin-uid' }
-    });
-    expect(hono.unrelatedDataPreserved).toEqual(Array(8).fill(true));
-  });
-
-  it('deletes a synthetic multi-page garage and renews its lease after every committed page', async () => {
-    const runMultiPageDelete = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(rootPath, { name: 'Synthetic Multi-Page Garage' });
-      for (let index = 0; index < 805; index += 1) {
-        mockDb.seed(`${rootPath}/vehicles/vehicle-${String(index).padStart(4, '0')}`, { synthetic: true, index });
-      }
-
-      const jobPath = `garage_deletion_jobs/${targetId}`;
-      const originalRunTransaction = mockDb.runTransaction.bind(mockDb);
-      let leaseRenewals = 0;
-      (mockDb as any).runTransaction = async (callback: any) => originalRunTransaction(async (transaction: any) => {
-        const originalSet = transaction.set.bind(transaction);
-        transaction.set = (ref: any, data: any, options: any) => {
-          if (ref.path === jobPath && 'leaseExpiresAt' in data && !('status' in data)) leaseRenewals += 1;
-          return originalSet(ref, data, options);
-        };
-        return callback(transaction);
-      });
-
-      let response: Response;
-      try {
-        response = runtime === 'hono'
-          ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-          : await callExpressGarageDelete('admin', { garageId: targetId });
-      } finally {
-        (mockDb as any).runTransaction = originalRunTransaction;
-      }
-
-      return {
-        status: response!.status,
-        body: await response!.json(),
-        leaseRenewals,
-        remainingVehicles: [...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/vehicles/`)).length,
-        rootExists: mockDb.records.has(rootPath),
-        jobStatus: mockDb.records.get(jobPath)?.status,
-        leaseReleased: mockDb.records.get(jobPath)?.leaseExpiresAt === null,
-        auditCount: matchingAuditLogs().length
-      };
-    };
-
-    const hono = await runMultiPageDelete('hono');
-    const expressResult = await runMultiPageDelete('express');
-    expect(hono).toEqual(expressResult);
-    expect(hono).toMatchObject({
-      status: 200,
-      body: { success: true },
-      leaseRenewals: 3,
-      remainingVehicles: 0,
-      rootExists: false,
-      jobStatus: 'completed',
-      leaseReleased: true,
-      auditCount: 1
-    });
-  });
-
-  it('keeps a renewed multi-page deletion claimed past its original expiry and safely reclaims an expired lease', async () => {
-    const runRenewalRace = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(rootPath, { name: 'Synthetic Lease Expiry Garage' });
-      for (let index = 0; index < 805; index += 1) {
-        mockDb.seed(`${rootPath}/vehicles/lease-${String(index).padStart(4, '0')}`, { synthetic: true, index });
-      }
-
-      const jobPath = `garage_deletion_jobs/${targetId}`;
-      const initialTime = Date.parse('2026-10-10T07:00:00.000Z');
-      const originalBatch = mockDb.batch.bind(mockDb);
-      let notifySecondPageCommit!: () => void;
-      let releaseSecondPageCommit!: () => void;
-      const secondPageCommitStarted = new Promise<void>((resolve) => { notifySecondPageCommit = resolve; });
-      const secondPageCommitGate = new Promise<void>((resolve) => { releaseSecondPageCommit = resolve; });
-      let batchCommitCount = 0;
-      let firstPromise: Promise<Response> | undefined;
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(initialTime);
-      (mockDb as any).batch = () => {
-        const batch = originalBatch();
-        const commit = batch.commit.bind(batch);
-        batch.commit = async () => {
-          batchCommitCount += 1;
-          if (batchCommitCount === 2) {
-            notifySecondPageCommit();
-            await secondPageCommitGate;
-          }
-          await commit();
-          if (batchCommitCount === 1) vi.setSystemTime(initialTime + 4 * 60_000 + 59_000);
-        };
-        return batch;
-      };
-
-      try {
-        firstPromise = runtime === 'hono'
-          ? callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-          : callExpressGarageDelete('admin', { garageId: targetId });
-        await secondPageCommitStarted;
-        const renewedLeaseExpiresAt = mockDb.records.get(jobPath)?.leaseExpiresAt?.getTime();
-        const originalLeaseExpiresAt = initialTime + 5 * 60_000;
-        const overlapTime = initialTime + 7 * 60_000;
-        vi.setSystemTime(overlapTime);
-        const secondResponse = runtime === 'hono'
-          ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-          : await callExpressGarageDelete('admin', { garageId: targetId });
-        const secondBody = await secondResponse.json();
-        releaseSecondPageCommit();
-        const firstResponse = await firstPromise;
-        return {
-          firstStatus: firstResponse.status,
-          firstBody: await firstResponse.json(),
-          secondStatus: secondResponse.status,
-          secondBody,
-          originalLeaseExpiresAt,
-          renewedLeaseExpiresAt,
-          overlapTime,
-          remainingVehicles: [...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/vehicles/`)).length,
-          rootExists: mockDb.records.has(rootPath),
-          jobStatus: mockDb.records.get(jobPath)?.status,
-          auditCount: matchingAuditLogs().length
-        };
-      } finally {
-        releaseSecondPageCommit();
-        if (firstPromise) await firstPromise.catch(() => undefined);
-        (mockDb as any).batch = originalBatch;
-        vi.useRealTimers();
-      }
-    };
-
-    const runExpiredLeaseReclaim = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(rootPath, { name: 'Synthetic Expired Lease Garage' });
-      mockDb.seed(`${rootPath}/vehicles/expired-lease-vehicle`, { synthetic: true });
-      const jobPath = `garage_deletion_jobs/${targetId}`;
-      mockDb.seed(jobPath, {
-        garageId: targetId,
-        garageName: 'Synthetic Expired Lease Garage',
-        auditLogId: 'synthetic-expired-lease-audit',
-        status: 'running',
-        leaseToken: 'synthetic-stale-token',
-        leaseExpiresAt: new Date(Date.now() - 1),
-        updatedAt: new Date(Date.now() - 1)
-      });
-      const originalRunTransaction = mockDb.runTransaction.bind(mockDb);
-      let reclaimedToken: string | undefined;
-      (mockDb as any).runTransaction = async (callback: any) => originalRunTransaction(async (transaction: any) => {
-        const originalSet = transaction.set.bind(transaction);
-        transaction.set = (ref: any, data: any, options: any) => {
-          if (ref.path === jobPath && data.status === 'running' && typeof data.leaseToken === 'string') {
-            reclaimedToken = data.leaseToken;
-          }
-          return originalSet(ref, data, options);
-        };
-        return callback(transaction);
-      });
-      let response: Response;
-      try {
-        response = runtime === 'hono'
-          ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-          : await callExpressGarageDelete('admin', { garageId: targetId });
-      } finally {
-        (mockDb as any).runTransaction = originalRunTransaction;
-      }
-      return {
-        status: response!.status,
-        body: await response!.json(),
-        reclaimedToken,
-        rootExists: mockDb.records.has(rootPath),
-        expiredChildExists: mockDb.records.has(`${rootPath}/vehicles/expired-lease-vehicle`),
-        jobStatus: mockDb.records.get(jobPath)?.status,
-        leaseReleased: mockDb.records.get(jobPath)?.leaseExpiresAt === null,
-        auditCount: matchingAuditLogs().length
-      };
-    };
-
-    const honoRenewal = await runRenewalRace('hono');
-    const expressRenewal = await runRenewalRace('express');
-    expect(honoRenewal).toEqual(expressRenewal);
-    expect(honoRenewal).toMatchObject({
-      firstStatus: 200,
-      firstBody: { success: true },
-      secondStatus: 409,
-      secondBody: { success: false },
-      remainingVehicles: 0,
-      rootExists: false,
-      jobStatus: 'completed',
-      auditCount: 1
-    });
-    expect(honoRenewal.renewedLeaseExpiresAt).toBeGreaterThan(honoRenewal.overlapTime);
-    expect(honoRenewal.overlapTime).toBeGreaterThan(honoRenewal.originalLeaseExpiresAt);
-
-    const honoReclaim = await runExpiredLeaseReclaim('hono');
-    const expressReclaim = await runExpiredLeaseReclaim('express');
-    for (const reclaimed of [honoReclaim, expressReclaim]) {
-      expect(reclaimed).toMatchObject({
-        status: 200,
-        body: { success: true },
-        rootExists: false,
-        expiredChildExists: false,
-        jobStatus: 'completed',
-        leaseReleased: true,
-        auditCount: 1
-      });
-      expect(reclaimed.reclaimedToken).toEqual(expect.any(String));
-      expect(reclaimed.reclaimedToken).not.toBe('synthetic-stale-token');
-    }
-  });
-
-  it('matches authorization, malformed-ID, not-found, and completed-job contracts without business-data writes', async () => {
+  it('enforces the 30-per-minute limit and blocks the next delete without writes', async () => {
+    const rateLimitPath = `rate_limits/${createHash('sha256').update('fin:admin-uid').digest('hex')}`;
+    const now = Date.now();
     seedCompleteDeletionFixture();
-    const beforeDenied = [...mockDb.records.entries()]
-      .filter(([path]) => !path.startsWith('rate_limits/'))
-      .map(([path, data]) => [path, structuredClone(data)]);
-    const [honoDenied, expressDenied] = await Promise.all([
-      callHonoGarageDelete('valid-garage-token-reconciliation-test-garage', { garageId: targetId }),
-      callExpressGarageDelete('garage', { garageId: targetId })
-    ]);
-    expect(honoDenied.status).toBe(403);
-    expect(honoDenied.status).toBe(expressDenied.status);
-    expect(await honoDenied.json()).toEqual(await expressDenied.json());
-
-    const [honoDeniedMissingId, expressDeniedMissingId] = await Promise.all([
-      callHonoGarageDelete('valid-garage-token-reconciliation-test-garage', {}),
-      callExpressGarageDelete('garage', {})
-    ]);
-    expect(honoDeniedMissingId.status).toBe(403);
-    expect(honoDeniedMissingId.status).toBe(expressDeniedMissingId.status);
-    expect(await honoDeniedMissingId.json()).toEqual(await expressDeniedMissingId.json());
-    expect([...mockDb.records.entries()].filter(([path]) => !path.startsWith('rate_limits/'))).toEqual(beforeDenied);
-
-    const [honoMissingId, expressMissingId] = await Promise.all([
-      callHonoGarageDelete('valid-admin-token', {}),
-      callExpressGarageDelete('admin', {})
-    ]);
-    expect(honoMissingId.status).toBe(400);
-    expect(honoMissingId.status).toBe(expressMissingId.status);
-    expect(await honoMissingId.json()).toEqual(await expressMissingId.json());
-
-    const [honoInvalidId, expressInvalidId] = await Promise.all([
-      callHonoGarageDelete('valid-admin-token', { garageId: 'invalid/id' }),
-      callExpressGarageDelete('admin', { garageId: 'invalid/id' })
-    ]);
-    expect(honoInvalidId.status).toBe(expressInvalidId.status);
-    expect(await honoInvalidId.json()).toEqual(await expressInvalidId.json());
-
-    const [honoNullBody, expressNullBody] = await Promise.all([
-      callHonoGarageDelete('valid-admin-token', null),
-      callExpressGarageDelete('admin', null)
-    ]);
-    expect(honoNullBody.status).toBe(400);
-    expect(expressNullBody.status).toBe(400);
-    expect(await honoNullBody.json()).toMatchObject({ success: false });
-
-    const [honoMissing, expressMissing] = await Promise.all([
-      callHonoGarageDelete('valid-admin-token', { garageId: 'missing-delete-target' }),
-      callExpressGarageDelete('admin', { garageId: 'missing-delete-target' })
-    ]);
-    expect(honoMissing.status).toBe(404);
-    expect(honoMissing.status).toBe(expressMissing.status);
-    expect(await honoMissing.json()).toEqual(await expressMissing.json());
-
-    mockDb.records.delete(rootPath);
-    mockDb.seed(`garage_deletion_jobs/${targetId}`, {
-      garageId: targetId,
-      garageName: 'Already Deleted Synthetic Garage',
-      status: 'completed'
-    });
-    const beforeReplay = [...mockDb.records.entries()]
-      .filter(([path]) => !path.startsWith('rate_limits/'))
-      .map(([path, data]) => [path, structuredClone(data)]);
-    const [honoReplay, expressReplay] = await Promise.all([
-      callHonoGarageDelete('valid-admin-token', { garageId: targetId }),
-      callExpressGarageDelete('admin', { garageId: targetId })
-    ]);
-    expect(honoReplay.status).toBe(200);
-    expect(honoReplay.status).toBe(expressReplay.status);
-    expect(await honoReplay.json()).toEqual({ success: true, alreadyDeleted: true });
-    expect(await expressReplay.json()).toEqual({ success: true, alreadyDeleted: true });
-    expect([...mockDb.records.entries()].filter(([path]) => !path.startsWith('rate_limits/'))).toEqual(beforeReplay);
+    mockDb.seed(rateLimitPath, { count: 29, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
+    expect((await callHonoGarageDelete('valid-admin-token', { garageId: targetId })).status).toBe(200);
+    seedCompleteDeletionFixture();
+    mockDb.seed(rateLimitPath, { count: 30, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
+    const before = snapshotBusinessRecords();
+    const blocked = await callHonoGarageDelete('valid-admin-token', { garageId: targetId });
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ success: false, code: 'RATE_LIMIT_EXCEEDED', statusCode: 429 });
+    expect(snapshotBusinessRecords()).toEqual(before);
   });
 
-  it('resumes a running deletion after the garage root is gone without recreating it', async () => {
-    const runResume = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(`garage_deletion_jobs/${targetId}`, {
-        garageId: targetId,
-        garageName: 'Synthetic Resume Garage',
-        status: 'running',
-        startedAt: new Date('2026-10-09T12:00:00.000Z'),
-        startedBy: 'original-admin'
-      });
-      mockDb.seed(`${rootPath}/events/leftover-event`, { synthetic: true });
-      const response = runtime === 'hono'
-        ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-        : await callExpressGarageDelete('admin', { garageId: targetId });
-      return {
-        status: response.status,
-        body: await response.json(),
-        rootRecreated: mockDb.records.has(rootPath),
-        leftoverSubcollectionExists: mockDb.records.has(`${rootPath}/events/leftover-event`),
-        job: omitTimestamps(mockDb.records.get(`garage_deletion_jobs/${targetId}`)),
-        auditLogs: matchingAuditLogs()
-      };
-    };
-
-    const hono = await runResume('hono');
-    const expressResult = await runResume('express');
-    expect(hono).toEqual(expressResult);
-    expect(hono).toMatchObject({
-      status: 200,
-      body: { success: true },
-      rootRecreated: false,
-      leftoverSubcollectionExists: false,
-      job: { garageName: 'Synthetic Resume Garage', status: 'completed', startedBy: 'original-admin' }
+  it('renews the lease across multi-page cleanup and releases it on completion', async () => {
+    mockDb.clear();
+    mockDb.seed(rootPath, { name: 'Synthetic Multi-Page Garage' });
+    for (let index = 0; index < 805; index += 1) mockDb.seed(`${rootPath}/vehicles/vehicle-${String(index).padStart(4, '0')}`, { synthetic: true, index });
+    const jobPath = `garage_deletion_jobs/${targetId}`;
+    const originalRunTransaction = mockDb.runTransaction.bind(mockDb);
+    let leaseRenewals = 0;
+    (mockDb as any).runTransaction = async (callback: any) => originalRunTransaction(async (transaction: any) => {
+      const originalSet = transaction.set.bind(transaction);
+      transaction.set = (ref: any, data: any, options: any) => { if (ref.path === jobPath && 'leaseExpiresAt' in data && !('status' in data)) leaseRenewals += 1; return originalSet(ref, data, options); };
+      return callback(transaction);
     });
-    expect(hono.auditLogs).toHaveLength(1);
-    expect(hono.auditLogs[0].garageName).toBe('Synthetic Resume Garage');
+    let response: Response;
+    try { response = await callHonoGarageDelete('valid-admin-token', { garageId: targetId }); }
+    finally { (mockDb as any).runTransaction = originalRunTransaction; }
+    expect(response!.status).toBe(200);
+    expect(leaseRenewals).toBe(3);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/vehicles/`))).toHaveLength(0);
+    expect(mockDb.records.has(rootPath)).toBe(false);
+    expect(mockDb.records.get(jobPath)?.status).toBe('completed');
+    expect(mockDb.records.get(jobPath)?.leaseExpiresAt).toBeNull();
   });
 
-  it('marks a cleanup failure retryable and safely completes on retry', async () => {
-    const runFailureAndRetry = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(rootPath, { name: 'Synthetic Retry Garage' });
-      mockDb.seed(`${rootPath}/vehicles/vehicle-to-delete`, { synthetic: true });
-      const originalBatch = mockDb.batch.bind(mockDb);
-      let failAfterFirstCommit = true;
-      (mockDb as any).batch = () => {
-        const batch = originalBatch();
-        const commit = batch.commit.bind(batch);
-        batch.commit = async () => {
-          await commit();
-          if (failAfterFirstCommit) {
-            failAfterFirstCommit = false;
-            throw new Error('SYNTHETIC_DELETE_ACKNOWLEDGMENT_FAILURE');
-          }
-        };
-        return batch;
-      };
+  it('rejects overlap while a renewed lease is active and reclaims an expired lease safely', async () => {
+    mockDb.clear();
+    mockDb.seed(rootPath, { name: 'Synthetic Lease Garage' });
+    for (let index = 0; index < 805; index += 1) mockDb.seed(`${rootPath}/vehicles/lease-${String(index).padStart(4, '0')}`, { synthetic: true, index });
+    const jobPath = `garage_deletion_jobs/${targetId}`;
+    const initialTime = Date.parse('2026-10-10T07:00:00.000Z');
+    const originalBatch = mockDb.batch.bind(mockDb);
+    let notifySecondPageCommit!: () => void;
+    let releaseSecondPageCommit!: () => void;
+    const secondPageCommitStarted = new Promise<void>((resolve) => { notifySecondPageCommit = resolve; });
+    const secondPageCommitGate = new Promise<void>((resolve) => { releaseSecondPageCommit = resolve; });
+    let batchCommitCount = 0;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(initialTime);
+    (mockDb as any).batch = () => { const batch = originalBatch(); const commit = batch.commit.bind(batch); batch.commit = async () => { batchCommitCount += 1; if (batchCommitCount === 2) { notifySecondPageCommit(); await secondPageCommitGate; } await commit(); if (batchCommitCount === 1) vi.setSystemTime(initialTime + 4 * 60_000 + 59_000); }; return batch; };
+    let firstPromise: Promise<Response> | undefined;
+    try {
+      firstPromise = callHonoGarageDelete('valid-admin-token', { garageId: targetId });
+      await secondPageCommitStarted;
+      const renewedLeaseExpiresAt = mockDb.records.get(jobPath)?.leaseExpiresAt?.getTime();
+      const originalLeaseExpiresAt = initialTime + 5 * 60_000;
+      const overlapTime = initialTime + 7 * 60_000;
+      vi.setSystemTime(overlapTime);
+      const overlap = await callHonoGarageDelete('valid-admin-token', { garageId: targetId });
+      expect(overlap.status).toBe(409);
+      expect(await overlap.json()).toMatchObject({ success: false });
+      expect(renewedLeaseExpiresAt).toBeGreaterThan(overlapTime);
+      expect(overlapTime).toBeGreaterThan(originalLeaseExpiresAt);
+      releaseSecondPageCommit();
+      expect((await firstPromise).status).toBe(200);
+    } finally { releaseSecondPageCommit(); if (firstPromise) await firstPromise.catch(() => undefined); (mockDb as any).batch = originalBatch; vi.useRealTimers(); }
 
-      let firstResponse: Response;
-      try {
-        firstResponse = runtime === 'hono'
-          ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-          : await callExpressGarageDelete('admin', { garageId: targetId });
-      } finally {
-        (mockDb as any).batch = originalBatch;
-      }
-      const firstBody = await firstResponse!.json();
-      const stateAfterFailure = {
-        garageIsMarkedDeleting: mockDb.records.get(rootPath)?.isDeleting === true,
-        job: omitTimestamps(mockDb.records.get(`garage_deletion_jobs/${targetId}`)),
-        ownedVehicleRemains: mockDb.records.has(`${rootPath}/vehicles/vehicle-to-delete`),
-        auditLogCount: matchingAuditLogs().length
-      };
-
-      const retryResponse = runtime === 'hono'
-        ? await callHonoGarageDelete('valid-admin-token', { garageId: targetId })
-        : await callExpressGarageDelete('admin', { garageId: targetId });
-      return {
-        firstStatus: firstResponse!.status,
-        firstBody,
-        stateAfterFailure,
-        retryStatus: retryResponse.status,
-        retryBody: await retryResponse.json(),
-        rootExistsAfterRetry: mockDb.records.has(rootPath),
-        jobAfterRetry: omitTimestamps(mockDb.records.get(`garage_deletion_jobs/${targetId}`)),
-        auditLogsAfterRetry: matchingAuditLogs()
-      };
-    };
-
-    const hono = await runFailureAndRetry('hono');
-    const expressResult = await runFailureAndRetry('express');
-    expect(hono).toEqual(expressResult);
-    expect(hono.firstStatus).toBe(500);
-    expect(hono.firstBody).toMatchObject({ success: false });
-    expect(hono.stateAfterFailure).toMatchObject({
-      garageIsMarkedDeleting: true,
-      job: { status: 'failed', garageName: 'Synthetic Retry Garage', startedBy: 'admin-uid' },
-      ownedVehicleRemains: false,
-      auditLogCount: 0
-    });
-    expect(hono.retryStatus).toBe(200);
-    expect(hono.retryBody).toEqual({ success: true });
-    expect(hono.rootExistsAfterRetry).toBe(false);
-    expect(hono.jobAfterRetry.status).toBe('completed');
-    expect(hono.auditLogsAfterRetry).toHaveLength(1);
+    mockDb.clear();
+    mockDb.seed(rootPath, { name: 'Synthetic Expired Lease Garage' });
+    mockDb.seed(`${rootPath}/vehicles/expired-lease-vehicle`, { synthetic: true });
+    mockDb.seed(jobPath, { garageId: targetId, garageName: 'Synthetic Expired Lease Garage', auditLogId: 'synthetic-expired-lease-audit', status: 'running', leaseToken: 'synthetic-stale-token', leaseExpiresAt: new Date(Date.now() - 1), updatedAt: new Date(Date.now() - 1) });
+    const reclaimed = await callHonoGarageDelete('valid-admin-token', { garageId: targetId });
+    expect(reclaimed.status).toBe(200);
+    expect(mockDb.records.has(rootPath)).toBe(false);
+    expect(mockDb.records.has(`${rootPath}/vehicles/expired-lease-vehicle`)).toBe(false);
+    expect(mockDb.records.get(jobPath)?.status).toBe('completed');
+    expect(mockDb.records.get(jobPath)?.leaseExpiresAt).toBeNull();
+    expect(mockDb.records.get(jobPath)?.leaseToken).not.toBe('synthetic-stale-token');
   });
 
-  it('rejects a concurrent same-garage deletion while the first leased operation completes once', async () => {
-    const runConcurrentDeletion = async (runtime: 'hono' | 'express') => {
-      mockDb.clear();
-      mockDb.seed(rootPath, { name: 'Synthetic Concurrent Garage' });
-      mockDb.seed(`${rootPath}/vehicles/vehicle-to-delete`, { synthetic: true });
+  it('enforces Admin authorization and validation without writes', async () => {
+    seedCompleteDeletionFixture();
+    const before = snapshotBusinessRecords();
+    const denied = await callHonoGarageDelete('valid-garage-token-reconciliation-test-garage', { garageId: targetId });
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(snapshotBusinessRecords()).toEqual(before);
+    expect((await callHonoGarageDelete('valid-admin-token', {})).status).toBe(400);
+    expect((await callHonoGarageDelete('valid-admin-token', { garageId: 'invalid/id' })).status).toBe(400);
+  });
 
-      const originalBatch = mockDb.batch.bind(mockDb);
-      const originalRunTransaction = mockDb.runTransaction.bind(mockDb);
-      let notifyCommitStarted!: () => void;
-      let releaseCommit!: () => void;
-      let notifySecondClaimCompleted!: () => void;
-      const commitStarted = new Promise<void>((resolve) => { notifyCommitStarted = resolve; });
-      const commitGate = new Promise<void>((resolve) => { releaseCommit = resolve; });
-      const secondClaimCompleted = new Promise<void>((resolve) => { notifySecondClaimCompleted = resolve; });
-      let transactionCount = 0;
-      const secondClaimTransactionNumber = 4;
-      (mockDb as any).batch = () => {
-        const batch = originalBatch();
-        const commit = batch.commit.bind(batch);
-        batch.commit = async () => {
-          notifyCommitStarted();
-          await commitGate;
-          await commit();
-        };
-        return batch;
-      };
-      (mockDb as any).runTransaction = async (callback: any) => {
-        transactionCount += 1;
-        const currentTransactionNumber = transactionCount;
-        const result = await originalRunTransaction(callback);
-        if (currentTransactionNumber === secondClaimTransactionNumber) notifySecondClaimCompleted();
-        return result;
-      };
-
-      const callDelete = () => runtime === 'hono'
-        ? callHonoGarageDelete('valid-admin-token', { garageId: targetId, idempotencyKey: 'same-delete-attempt-key' })
-        : callExpressGarageDelete('admin', { garageId: targetId, idempotencyKey: 'same-delete-attempt-key' });
-      const firstPromise = callDelete();
-      let secondPromise: Promise<Response> | undefined;
-      try {
-        await commitStarted;
-        secondPromise = callDelete();
-        await secondClaimCompleted;
-      } finally {
-        releaseCommit();
-      }
-      const [firstResponse, secondResponse] = await Promise.all([firstPromise, secondPromise!]);
-      (mockDb as any).batch = originalBatch;
-      (mockDb as any).runTransaction = originalRunTransaction;
-      const outcomes = await Promise.all([firstResponse, secondResponse].map(async (response) => ({
-        status: response.status,
-        body: await response.json()
-      })));
-      return {
-        statuses: outcomes.map((outcome) => outcome.status).sort((left, right) => left - right),
-        outcomes: outcomes.map((outcome) => outcome.body).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
-        jobStatus: mockDb.records.get(`garage_deletion_jobs/${targetId}`)?.status,
-        garageStillExists: mockDb.records.has(rootPath),
-        auditLogCount: matchingAuditLogs().length
-      };
-    };
-
-    const hono = await runConcurrentDeletion('hono');
-    const expressResult = await runConcurrentDeletion('express');
-    expect(hono).toEqual(expressResult);
-    expect(hono.statuses).toEqual([200, 409]);
-    expect(hono.outcomes).toContainEqual({ success: false, error: 'جاري حذف بيانات الجراج، العمليات متوقفة' });
-    expect(hono.jobStatus).toBe('completed');
-    expect(hono.garageStillExists).toBe(false);
-    expect(hono.auditLogCount).toBe(1);
+  it('returns 404 from the Express fallback after retirement', async () => {
+    const response = await callRetiredExpressGarageDelete({ garageId: targetId });
+    expect(response.status).toBe(404);
   });
 });

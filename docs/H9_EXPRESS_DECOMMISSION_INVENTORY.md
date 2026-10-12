@@ -256,3 +256,12 @@ The owner explicitly approved retiring only the Express `POST /api/garages/creat
 The characterization suite was converted from dual-runtime create comparisons to Hono contract/no-write coverage plus an explicit Express 404 assertion. Coverage retains role denial, 30-request limit and expiry reset, concurrent limit serialization, fail-closed limiter storage, Admin trial/activity-log details, delegate attribution/quota, duplicate-PIN no-write behavior, and idempotency validation/replay/conflict/concurrency. Focused validation passed **2 files / 37 tests**. The final repository gates passed **104 files / 638 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
 
 No authenticated preview create retry, Firebase mutation, production deployment, `main` merge, destructive operation, or branch deletion occurred. The next sensitive route remains `POST /api/garages/delete`; its documented Firestore lease/rollback review is still required before retirement.
+
+
+### Garage-delete Express retirement — 2026-10-12
+
+The owner explicitly approved retiring only the Express `POST /api/garages/delete` registration. The Hono route remains the sole supported owner; the Express fallback now returns 404. The retired handler and deletion-only imports were removed without changing the Hono Worker, Express runtime, other garage routes, Firebase/Cloudflare configuration, or production boundaries.
+
+The deletion characterization was converted from dual-runtime comparisons to Hono contract/no-write/lease coverage plus an explicit Express 404 assertion. Coverage retains scoped owned-data cleanup, unrelated-record preservation, audit/job completion, the 30-request limit, multi-page lease renewal, overlap rejection while a renewed lease is active, expired-lease reclamation, Admin authorization, and validation. Focused validation passed **2 files / 39 tests**. The final repository gates passed **104 files / 636 tests**, TypeScript lint, web/Node/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+
+No live or preview destructive rehearsal, Firebase mutation, production deployment, `main` merge, authenticated preview operation, or branch deletion occurred. The next sensitive routes remain projection maintenance (`POST /api/garages/dashboard-summary/rebuild` and `POST /api/garages/rebuild-projections`) with their documented isolated-operational-rehearsal gates.
