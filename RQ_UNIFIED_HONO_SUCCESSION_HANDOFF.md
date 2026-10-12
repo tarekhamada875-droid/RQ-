@@ -370,3 +370,10 @@ Hono `/api/auth/sessions` now marks the authenticated caller’s device as `isCu
 - **Implementation:** Express correlation middleware now generates/propagates a normalized operation ID through response headers and operation-trace context. H5 dual-runtime tests characterize error and 404 status/header behavior plus CORS boundaries.
 - **Validation:** Focused middleware/dual-runtime validation passed **2 files / 10 tests**. Final local validation passed **104 files / 654 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace checks. Generated build artifacts were removed; worktree is clean.
 - **Boundaries:** No Express route was retired in this slice. No Firebase/Cloudflare data operation, preview mutation, financial write, `main` change, or production deployment occurred. Continue with one bounded parity area at a time under the shortened plan.
+
+
+## 2026-10-12 shortened-plan implementation — financial ledger parity
+
+The next bounded H9 slice is complete at candidate `migration/unified-hono` commit `2646256`, pushed to origin. Hono now writes `manual_credit_ledger` records for approved balance-top-up recharge requests and direct admin wallet top-ups, matching Express and remaining inside the same Firestore transaction as the wallet/request/event/idempotency writes. Focused financial validation passed **2 files / 23 tests**; the full local gate passed **104 files / 655 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace checks. Generated artifacts were removed and the worktree is clean.
+
+No financial write, authenticated preview mutation, production change, `main` change, route retirement, or deployment occurred. Continue with one bounded parity area at a time; the remaining priorities are vehicle/subscriber/staff semantics, reporting, and local Node/Vite/static-serving parity. Financial operations remain prohibited outside synthetic/in-memory tests until a separately approved isolated sandbox exists.

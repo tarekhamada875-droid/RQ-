@@ -351,3 +351,8 @@ The follow-up commit `bbaa417` also corrected Hono session-list `isCurrent` sema
 ### Shared runtime observability parity — 2026-10-12
 
 Commit `5af1e8e` closes a Hono/Express runtime contract gap: Express now normalizes and exposes `X-Operation-ID` on successful responses, errors, and unknown-route 404s, and persists the same normalized operation ID in operation-trace context. Dual-runtime characterization covers unauthenticated error IDs, unknown-route status/header behavior, allowed/disallowed CORS, and existing mutation authorization. Focused validation passed **2 files / 10 tests**; the final full local gate passed **104 files / 654 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace validation. No route was retired, no data was mutated, and production/`main` remain unchanged.
+
+
+### Financial manual-credit ledger parity — 2026-10-12
+
+Commit `2646256` closes a concrete Hono/Express financial parity gap. Hono now writes `manual_credit_ledger` records for both approved `balance_topup` recharge requests and direct admin wallet top-ups, matching the Express transaction behavior while preserving atomic transaction/idempotency semantics. Focused validation passed **2 files / 23 tests**; the final local gate passed **104 files / 655 tests**, TypeScript validation, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace validation. No financial write, preview mutation, production change, or route retirement was performed.
