@@ -77,9 +77,12 @@ const fixture = {
 try {
   for (const [path, data] of Object.entries(fixture)) await firestore(path, { method: 'PATCH', body: JSON.stringify(document(data)) });
   const now = Math.floor(Date.now() / 1000);
-  const customToken = signJwt({ iss: serviceAccount.client_email, sub: uid, aud: PROJECT_ID, iat: now, exp: now + 600, uid, role: 'admin' });
+  const customToken = signJwt({ iss: serviceAccount.client_email, sub: serviceAccount.client_email, aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit', iat: now, exp: now + 600, uid, claims: { role: 'admin' } });
   const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${API_KEY}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: customToken, returnSecureToken: true }) });
-  if (!authResponse.ok) throw new Error(`Isolated Auth custom-token exchange failed: ${authResponse.status}`);
+  if (!authResponse.ok) {
+    const authError = await authResponse.json().catch(() => ({}));
+    throw new Error(`Isolated Auth custom-token exchange failed: ${authResponse.status}:${authError?.error?.message || 'unknown'}`);
+  }
   const idToken = (await authResponse.json()).idToken;
   const rebuild = await fetch(`${WORKER_URL}/api/garages/dashboard-summary/rebuild`, { method: 'POST', headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json', origin: 'https://migration-unified-hono.rq-acg.pages.dev' }, body: JSON.stringify({ garageId, date: dateId }) });
   const result = await rebuild.json();
