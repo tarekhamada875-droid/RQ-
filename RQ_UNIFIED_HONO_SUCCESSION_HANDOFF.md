@@ -414,3 +414,10 @@ Focused validation passed **5 files / 63 tests**. The full integration gate pass
 Commit `1e827d4` removes Express `GET /api/auth/sessions`, `DELETE /api/auth/sessions/:sessionKey`, `POST /api/auth/invalidate-all-sessions`, `POST /api/auth/validate-or-refresh-session`, and `POST /api/auth/release-session`. Obsolete Express active-session/session-lifecycle modules and their direct integration tests were removed after equivalent Hono coverage was verified. Hono tests cover session authentication, list/revoke, refresh freshness and marker checks, release authorization, invalidation, stale-session rejection, and role scope; dual-runtime assertions verify retired Express paths return 404.
 
 Focused validation passed **6 files / 73 tests**. The full integration gate passed **102 files / 646 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. Active Express registrations are now 14: six PIN/admin-auth, seven financial/recharge, and one report. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+## 2026-10-12 shortened-plan implementation — PIN/admin-auth retirement
+
+Commit `256335e` removes the final six Express auth registrations: verify-PIN, PIN availability, verify-admin-PIN, claim-admin-session, release-admin-session, and admin update-PIN. Obsolete Express PIN/admin-auth modules and direct tests were removed. Hono retains the tested authentication, rate limiting, role scope, session claim, admin-PIN rotation, and authorization behavior; dual-runtime contracts verify retired Express paths return 404.
+
+Focused validation passed **5 files / 70 tests**. The full integration gate passed **100 files / 637 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. All 11 Express auth/session registrations are retired. Active Express registrations are now 8: seven financial/recharge and one report. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
