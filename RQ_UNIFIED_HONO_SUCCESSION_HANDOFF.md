@@ -318,6 +318,6 @@ The isolated operational gate is now closed for Hono `POST /api/garages/dashboar
 
 The rehearsal seeded only the named synthetic Cairo-day fixture, verified the Hono response (`bucketCount: 2`, `eventCount: 3`, expected summary values), confirmed event-derived reconciliation, verified the persisted read model, and restored the complete pre-write snapshot. It passed successfully. The live adapter fixes preserved nested query parents, comparison operators, and rebuild count fields; no production project, data, `main`, or branch deletion was involved.
 
-Only the Express `POST /api/garages/dashboard-summary/rebuild` registration was removed. Hono remains supported and the Express fallback returns 404. Focused validation passed **2 files / 35 tests**. Final gates passed **104 files / 631 tests**, TypeScript lint, Vite/server/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
+Only the Express `POST /api/garages/dashboard-summary/rebuild` registration was removed. Hono remains supported and the Express fallback returns 404. Focused validation passed **2 files / 35 tests**. Final gates passed **104 files / 635 tests**, TypeScript lint, Vite/server/Cloudflare builds, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
 
 No production deployment, production data/configuration change, destructive operation, `main` merge, or branch deletion occurred.
