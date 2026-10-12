@@ -120,14 +120,6 @@ async function callHonoCreate(token: string, body: Record<string, unknown>) {
   }));
 }
 
-async function callExpress(role: string, body: unknown) {
-  return fetch(`${expressUrl}/api/garages/reconciliation`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
-    body: JSON.stringify(body)
-  });
-}
-
 async function callExpressSummaryRebuild(role: string, body: unknown) {
   return fetch(`${expressUrl}/api/garages/dashboard-summary/rebuild`, {
     method: 'POST',
@@ -216,20 +208,17 @@ beforeEach(() => {
   seedReconciliationFixture();
 });
 
-describe('garage reconciliation dual-runtime characterization', () => {
-  it('matches the Express response and performs no writes for a synthetic Admin diagnostic', async () => {
+describe('garage reconciliation Hono contract and Express retirement', () => {
+  it('serves a synthetic Admin diagnostic without writes', async () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-    const [hono, expressResponse] = await Promise.all([
-      callHono('valid-admin-token', { garageId }),
-      callExpress('admin', { garageId })
-    ]);
+    const hono = await callHono('valid-admin-token', { garageId });
 
-    expect(hono.status).toBe(expressResponse.status);
-    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect(hono.status).toBe(200);
+    expect(await hono.json()).toMatchObject({ success: true, data: { garageId } });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
-  it('matches Admin validation and missing-garage errors across runtimes', async () => {
+  it('preserves Admin validation and missing-garage errors without writes', async () => {
     const cases = [
       { body: { garageId: 'invalid/id' }, status: 400 },
       { body: { garageId: 'missing-reconciliation-garage' }, status: 404 },
@@ -237,30 +226,29 @@ describe('garage reconciliation dual-runtime characterization', () => {
     ];
     for (const testCase of cases) {
       const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-      const [hono, expressResponse] = await Promise.all([
-        callHono('valid-admin-token', testCase.body),
-        callExpress('admin', testCase.body)
-      ]);
+      const hono = await callHono('valid-admin-token', testCase.body);
       expect(hono.status).toBe(testCase.status);
-      expect(hono.status).toBe(expressResponse.status);
       const honoBody = await hono.json();
       if (testCase.body === null) {
         expect(honoBody).toMatchObject({ success: false });
-      } else {
-        expect(honoBody).toEqual(await expressResponse.json());
       }
       expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
     }
   });
 
-  it('matches non-Admin denial across runtimes', async () => {
-    const [hono, expressResponse] = await Promise.all([
-      callHono('valid-garage-token-reconciliation-test-garage', { garageId }),
-      callExpress('garage', { garageId })
-    ]);
+  it('denies non-Admin access without writes', async () => {
+    const hono = await callHono('valid-garage-token-reconciliation-test-garage', { garageId });
     expect(hono.status).toBe(403);
-    expect(hono.status).toBe(expressResponse.status);
-    expect(await hono.json()).toEqual(await expressResponse.json());
+    expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required' });
+  });
+
+  it('returns 404 from the Express fallback after retirement', async () => {
+    const expressResponse = await fetch(`${expressUrl}/api/garages/reconciliation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
+      body: JSON.stringify({ garageId })
+    });
+    expect(expressResponse.status).toBe(404);
   });
 });
 

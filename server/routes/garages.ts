@@ -7,7 +7,6 @@ import { sanitizePayload, validateId, validateString, validateNumber, validateId
 import { mapDomainErrorToStatus } from './helpers';
 import { calculateDailyProjection, getCairoDayBounds } from '../projections';
 import { aggregateProjectionBuckets, isValidDateKey, reconcileDashboardSummary } from '../dashboardSummary';
-import { reconcileGarageState } from '../domain/garageReconciliation';
 import { canRunGarageMaintenance, canSubmitGarageApplication } from '../domain/authorization';
 import { claimGarageDeletion, finalizeGarageDeletion, markGarageDeletionFailed, renewGarageDeletionLease } from '../adapters/garageDeletionAdapter';
 import { deleteGarageOwnedData } from '../adapters/garageDeletionCleanupAdapter';
@@ -279,51 +278,6 @@ router.post('/delete', requireAuth, financialRateLimiter(), async (req: AuthRequ
     }
   } catch (e: any) {
     console.error('[Server Garage] Error in delete garage:', e);
-    const { statusCode, message } = mapDomainErrorToStatus(e);
-    return res.status(statusCode).json({ success: false, error: message });
-  }
-});
-
-// Read-only consistency diagnostics & Event Ledger reconciliation
-router.post('/reconciliation', requireAuth, async (req: AuthRequest, res: any) => {
-  try {
-    if (!canRunGarageMaintenance(req.user, 'reconciliation')) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN: Admin role required' });
-    }
-    if (!adminDb) return res.status(500).json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' });
-    const garageId = validateId(req.body?.garageId, 'garageId', true);
-    const garageRef = adminDb.doc(`garages/${garageId}`);
-    const garageSnap = await garageRef.get();
-    if (!garageSnap.exists) return res.status(404).json({ success: false, error: 'GARAGE_NOT_FOUND' });
-
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const { start: dayStart, end: nextDayStart } = cairoDayBounds(today);
-    const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
-      adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
-      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
-      adminDb.collection(`garages/${garageId}/events`)
-        .where('occurredAt', '>=', dayStart.toISOString())
-        .where('occurredAt', '<', nextDayStart.toISOString())
-        .orderBy('occurredAt', 'desc')
-        .get()
-    ]);
-    const reconciliation = reconcileGarageState({
-      today,
-      insideVehicleCount: insideSnap.size,
-      garage: garageSnap.data() || {},
-      dailyStats: dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {},
-      events: eventsSnap.docs.map((doc: any) => doc.data() || {})
-    });
-    return res.json({
-      success: true,
-      data: {
-        garageId,
-        date: today,
-        ...reconciliation
-      }
-    });
-  } catch (e: any) {
-    console.error('[Server Garage] Error in reconciliation:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);
     return res.status(statusCode).json({ success: false, error: message });
   }

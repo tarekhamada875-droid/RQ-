@@ -31,7 +31,6 @@ vi.mock('./summaryTelemetry', () => ({ recordSummaryRead: vi.fn() }));
 import garagesRouter from './routes/garages';
 
 const maintenanceRoutes = [
-  ['/api/garages/reconciliation', { garageId: 'garage_1' }],
   ['/api/garages/dashboard-summary/rebuild', { garageId: 'garage_1', date: '2026-09-18' }],
   ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }]
 ] as const;
@@ -97,7 +96,6 @@ describe('garage reconciliation and projection maintenance authorization routes'
   });
 
   it.each([
-    ['/api/garages/reconciliation', { garageId: 'garage_1' }, 500, 'ADMIN_SDK_NOT_INITIALIZED'],
     ['/api/garages/dashboard-summary/rebuild', { garageId: 'garage_1', date: '2026-09-18' }, 400, 'INVALID_REQUEST'],
     ['/api/garages/rebuild-projections', { garageId: 'garage_1', date: '2026-09-18' }, 400, 'INVALID_REQUEST']
   ])('allows admins through the authorization gate for %s', async (path, body, expectedStatus, expectedError) => {
@@ -105,6 +103,12 @@ describe('garage reconciliation and projection maintenance authorization routes'
 
     expect(response.status).toBe(expectedStatus);
     expect(response.json).toEqual({ success: false, error: expectedError });
+  });
+
+  it('does not expose the retired reconciliation endpoint on the Express fallback', async () => {
+    const response = await post('/api/garages/reconciliation', 'admin', { garageId: 'garage_1' });
+
+    expect(response.status).toBe(404);
   });
 
   it('does not expose the retired recalculation endpoint on the Express fallback', async () => {
