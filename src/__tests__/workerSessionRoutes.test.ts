@@ -138,4 +138,103 @@ describe('Worker session lifecycle routes', () => {
     expect(await response.json()).toMatchObject({ success: false, valid: false, error: 'SESSION_EXPIRED' });
     expect(mockDb.records.get('garage_sessions/garage-uid-garage-a')?.isActive).toBe(false);
   });
+
+  it('invalidates root and device sessions across roles and clears only session markers', async () => {
+    mockDb.seed('delegate_sessions/delegate-uid', {
+      uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-device-a',
+      currentSessionId: 'delegate-device-a', activeSessionIds: ['delegate-device-a'], isActive: true, preservedRootField: 'delegate-root'
+    });
+    mockDb.seed('delegate_sessions/delegate-uid/sessions/delegate-device-a', {
+      uid: 'delegate-uid', entityId: 'delegate-a', sessionId: 'delegate-device-a', isActive: true
+    });
+    mockDb.seed('delegate_sessions/delegate-uid/sessions/delegate-device-old', {
+      uid: 'delegate-uid', entityId: 'delegate-a', sessionId: 'delegate-device-old', isActive: false
+    });
+    mockDb.seed('delegates/delegate-a', {
+      name: 'Delegate', balance: 240, currentSessionId: 'delegate-device-a', activeSessionIds: ['delegate-device-a']
+    });
+
+    mockDb.seed('garage_sessions/garage-uid-garage-a', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'garage-device-a',
+      currentSessionId: 'garage-device-a', activeSessionIds: ['garage-device-a'], isActive: true
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/garage-device-a', {
+      uid: 'garage-uid-garage-a', entityId: 'garage-a', sessionId: 'garage-device-a', isActive: true
+    });
+    mockDb.seed('garages/garage-a', {
+      name: 'Garage A', carsInside: 4, currentSessionId: 'garage-device-a', activeSessionIds: ['garage-device-a']
+    });
+
+    mockDb.seed('staff_sessions/staff-uid-staff-a', {
+      uid: 'staff-uid-staff-a', role: 'staff', entityId: 'staff-a', sessionId: 'staff-device-a',
+      currentSessionId: 'staff-device-a', activeSessionIds: ['staff-device-a'], isActive: true
+    });
+    mockDb.seed('staff_sessions/staff-uid-staff-a/sessions/staff-device-a', {
+      uid: 'staff-uid-staff-a', entityId: 'staff-a', sessionId: 'staff-device-a', isActive: true
+    });
+    mockDb.seed('staff/staff-a', {
+      name: 'Staff A', garageId: 'garage-a', currentSessionId: 'staff-device-a', activeSessionIds: ['staff-device-a']
+    });
+    mockDb.seed('unrelated/audit_marker', { retained: true });
+
+    const response = await request('/api/auth/invalidate-all-sessions', { method: 'POST' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, invalidatedSessions: 9, clearedEntityMarkers: 4 });
+
+    for (const path of [
+      'admin_sessions/admin-uid',
+      'admin_sessions/admin-uid/sessions/session-a',
+      'admin_sessions/admin-uid/sessions/session-b',
+      'delegate_sessions/delegate-uid',
+      'delegate_sessions/delegate-uid/sessions/delegate-device-a',
+      'delegate_sessions/delegate-uid/sessions/delegate-device-old',
+      'garage_sessions/garage-uid-garage-a',
+      'garage_sessions/garage-uid-garage-a/sessions/garage-device-a',
+      'staff_sessions/staff-uid-staff-a',
+      'staff_sessions/staff-uid-staff-a/sessions/staff-device-a'
+    ]) {
+      expect(mockDb.records.get(path)?.isActive).toBe(false);
+      expect(mockDb.records.get(path)?.lastActive).toBeInstanceOf(Date);
+    }
+    for (const path of ['admin_settings/auth_pin', 'delegates/delegate-a', 'garages/garage-a', 'staff/staff-a']) {
+      expect(mockDb.records.get(path)?.currentSessionId).toBeNull();
+      expect(mockDb.records.get(path)?.activeSessionIds).toEqual([]);
+    }
+    expect(mockDb.records.get('admin_settings/auth_pin')?.currentSessionId).toBeNull();
+    expect(mockDb.records.get('delegates/delegate-a')?.balance).toBe(240);
+    expect(mockDb.records.get('garages/garage-a')?.carsInside).toBe(4);
+    expect(mockDb.records.get('staff/staff-a')?.garageId).toBe('garage-a');
+    expect(mockDb.records.get('delegate_sessions/delegate-uid')?.preservedRootField).toBe('delegate-root');
+    expect(mockDb.records.get('unrelated/audit_marker')).toEqual({ retained: true });
+
+    const staleAdmin = await request('/api/auth/sessions', { headers: authHeaders('session-a') });
+    expect(staleAdmin.status).toBe(401);
+  });
+
+  it('denies a valid non-Admin caller and invalid credentials without invalidating sessions', async () => {
+    mockDb.seed('garage_sessions/garage-uid-garage-a', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'garage-device', isActive: true,
+      activeSessionIds: ['garage-device']
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/garage-device', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'garage-device', isActive: true, lastActive: new Date()
+    });
+    mockDb.seed('garages/garage-a', { currentSessionId: 'garage-device', activeSessionIds: ['garage-device'] });
+    const before = structuredClone([...mockDb.records.entries()]);
+
+    const nonAdmin = await request('/api/auth/invalidate-all-sessions', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-garage-token-garage-a', 'x-session-id': 'garage-device' }
+    });
+    expect(nonAdmin.status).toBe(403);
+    expect(await nonAdmin.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect([...mockDb.records.entries()]).toEqual(before);
+
+    const unauthenticated = await request('/api/auth/invalidate-all-sessions', {
+      method: 'POST',
+      headers: { authorization: 'Bearer invalid-token' }
+    });
+    expect(unauthenticated.status).toBe(401);
+    expect([...mockDb.records.entries()]).toEqual(before);
+  });
 });

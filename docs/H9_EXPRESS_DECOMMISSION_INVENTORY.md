@@ -12,7 +12,7 @@ Express is **not yet removable**. The unified Hono Worker is the production back
 
 Immediate Express deletion would break at least the local `dev:express` fallback, `build:server`, and existing Express characterization coverage. H9 must therefore proceed in reversible slices.
 
-The one-pass 2026-10-12 census is complete. It found 51 active Express API registrations before the source cut; this slice removes only `POST /api/garages/rebuild-projections` from Express, leaving 50 registrations and the Express local compatibility runtime. The full current route/import census and parity blockers are recorded in the final dated section below.
+The one-pass 2026-10-12 census is complete. It found 51 active Express API registrations before the source cut; the projection slice removes only `POST /api/garages/rebuild-projections` from Express, leaving 50 registrations and the Express local compatibility runtime. The current Hono candidate additionally implements the Admin-only `POST /api/auth/invalidate-all-sessions` mirror; this is not an Express route retirement. The full route/import census and remaining parity blockers are recorded in the final dated sections below.
 
 ## Dependency and script inventory
 
@@ -299,7 +299,7 @@ Historical checkpoint entries above preserve what was true at the time they were
 | Garages | 0 | `POST /api/garages/rebuild-projections` is retired from Express in this slice; Hono remains the supported owner. |
 | **Total active Express registrations** | **50** | Count is by unique HTTP method and path; route aliases are separate registrations only where shown in the source. |
 
-Hono registrations exist for the listed Express API paths except **`POST /api/auth/invalidate-all-sessions`**, for which no Hono handler was found. For other paths, handler existence is not a parity claim; the known material gaps below keep the Express runtime and unresolved routes in place.
+The current local Hono candidate now registers **`POST /api/auth/invalidate-all-sessions`**, closing the only route-registration absence found in the census. This does not by itself prove full cross-runtime parity; the remaining material differences below keep the Express runtime and unresolved route surfaces in place.
 
 ### Direct Express-import files after retirement
 
@@ -316,7 +316,7 @@ The removed `server/routes/garages.ts` and direct Express import in `server/gara
 
 ### Parity blockers for broader retirement
 
-- **Auth/session:** Hono has no `invalidate-all-sessions` handler. Legacy phone-plus-PIN behavior and PIN-availability rate limiting differ; refresh-marker rejection, per-device heartbeat freshness, and current-session list/revoke semantics lack complete cross-runtime proof.
+- **Auth/session:** the current Hono candidate implements Admin-only `invalidate-all-sessions` with root/device session invalidation, entity-marker clearing, batch chunking, and in-memory regression coverage. Legacy phone-plus-PIN behavior and PIN-availability rate limiting still differ; refresh-marker rejection, per-device heartbeat freshness, and current-session list/revoke semantics lack complete cross-runtime proof.
 - **Financial/delegate:** Hono balance-top-up approval and direct top-up omit Express `manual_credit_ledger` writes; multiple Hono financial mutations lack Express-equivalent rate limiting, and activity-log details differ. Financial acceptance remains OPEN/BLOCKED; do not retire this surface based on frontend absence.
 - **Reports and shared middleware:** report filter validation/error envelopes differ; CORS allowlists and correlation-ID validation differ; Hono has no equivalent 15-second timeout or durable operation-trace write, and generic 404/error behavior is not proven equivalent. Preserve CORS, correlation/operation IDs, timeout, tracing/event linkage, and error/fallback semantics until ported and tested.
 - **Vehicles/staff:** vehicle check-in reads subscriber state on a different side of the transaction boundary; staff multi-document/PIN writes and their cross-runtime behavior are not fully characterized.
@@ -331,3 +331,8 @@ Removed the Express-only router module `server/routes/garages.ts` and its mount 
 
 
 **Exact-head remote checks:** source commit `0ce5c0bb24e78bb844a057714dc60b7be2cfc0b8` passed Production Gate [38234266950](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234266950) and H5 Preview Worker [38234267020](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38234267020). H5 deployed `rq-hono-preview`; the public health/version and unauthenticated-protection smoke tests passed. The opt-in H9 projection rehearsal was **skipped**. Production deployment was not run.
+
+
+## Hono `invalidate-all-sessions` mirror — local candidate, 2026-10-12
+
+The local source candidate now implements the Admin-only Hono route with the same four session collections and counters as Express. It invalidates root/device session records, clears entity markers, preserves unrelated account state, chunks Firestore batches, and causes the active Admin session to fail on the next request. Synthetic tests pass **2 files / 18 tests**; the full local gate passes **104 files / 648 tests**, lint, Vite/Node/Cloudflare builds, CI/release/artifact checks, maintainability, and whitespace. Exact-head remote validation is pending source commit/push. This is a Hono parity addition only: Express route count remains 50 and this does not authorize retiring the active Express registration. Other auth/session, financial, reporting/middleware, vehicle/staff, and local-runtime blockers remain.

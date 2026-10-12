@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
@@ -794,6 +794,70 @@ workerApp.post('/api/auth/release-admin-session', async (c) => {
     return c.json({ success: true });
   } catch (error: any) {
     console.error('[Worker Auth] Error releasing admin session:', error);
+    return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
+  }
+});
+
+workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
+  const authResult = await requireWorkerAuth(c, async () => undefined);
+  if (authResult instanceof Response) return authResult;
+  try {
+    if (!canInvalidateAllSessions(c.get('user'))) {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
+
+    const now = new Date();
+    const sessionCollList: Array<{ name: string; entityCollection: string; fixedEntityId?: string }> = [
+      { name: 'admin_sessions', entityCollection: 'admin_settings', fixedEntityId: 'auth_pin' },
+      { name: 'delegate_sessions', entityCollection: 'delegates' },
+      { name: 'garage_sessions', entityCollection: 'garages' },
+      { name: 'staff_sessions', entityCollection: 'staff' }
+    ];
+    const snapshots = await Promise.all(sessionCollList.map((entry) => adminDb.collection(entry.name).get()));
+    let invalidatedSessions = 0;
+    let clearedEntityMarkers = 0;
+    let batch = adminDb.batch();
+    let batchWrites = 0;
+
+    const commitBatchIfNeeded = async (force = false) => {
+      if (batchWrites > 0 && (force || batchWrites >= 450)) {
+        await batch.commit();
+        batch = adminDb!.batch();
+        batchWrites = 0;
+      }
+    };
+
+    for (let index = 0; index < sessionCollList.length; index += 1) {
+      const entry = sessionCollList[index];
+      for (const sessionDoc of snapshots[index].docs) {
+        const sessionData = sessionDoc.data() || {};
+        if (sessionData.isActive === true) invalidatedSessions += 1;
+        batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
+        batchWrites += 1;
+
+        const entityId = entry.fixedEntityId || sessionData.entityId;
+        if (entityId) {
+          const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
+          batch.set(entityRef, { currentSessionId: null, activeSessionIds: [], lastActive: now }, { merge: true });
+          batchWrites += 1;
+          clearedEntityMarkers += 1;
+        }
+        const deviceSessions = await adminDb.collection(`${entry.name}/${sessionDoc.id}/sessions`).get();
+        for (const deviceSession of deviceSessions.docs) {
+          if (deviceSession.data()?.isActive === true) invalidatedSessions += 1;
+          batch.update(deviceSession.ref, { isActive: false, lastActive: now });
+          batchWrites += 1;
+          await commitBatchIfNeeded();
+        }
+        await commitBatchIfNeeded();
+      }
+    }
+
+    await commitBatchIfNeeded(true);
+    return c.json({ success: true, invalidatedSessions, clearedEntityMarkers });
+  } catch (error: any) {
+    console.error('[Worker Auth] Error invalidating all sessions:', error);
     return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
   }
 });
