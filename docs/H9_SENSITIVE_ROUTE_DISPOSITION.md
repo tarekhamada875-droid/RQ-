@@ -151,3 +151,10 @@ The isolated operational rehearsal passed on `rq-hono-preview-isolated`: the Hon
 
 ## CURRENT CONTINUATION STATE — 2026-10-12
 The dashboard-summary rebuild row is retired as stated in the matrix above. Historical characterization sections that say “Express remains mounted” describe earlier checkpoints and are superseded for that route. The next open sensitive route is `POST /api/garages/rebuild-projections`; Express remains mounted for it and its isolated operational rehearsal/rollback gate is still required.
+
+
+### Manual-only projection rebuild rehearsal tooling — 2026-10-12
+
+Prepared `tools/h9-projection-rebuild-rehearsal.mjs` and an opt-in boolean input on the existing `.github/workflows/h5-preview-worker.yml` manual dispatch for `POST /api/garages/rebuild-projections`. The input defaults to false, so pushes and ordinary preview runs do not execute the rehearsal. When explicitly selected during manual dispatch, the guarded job follows the preview deployment and runs only against `rq-hono-preview-isolated` / `(default)` and the isolated H5 preview Worker. Preview workflow concurrency no longer cancels an in-flight run, preventing cancellation from interrupting fixture rollback. The script refuses a service account from another Firebase project or any pre-existing unique fixture path, performs one route request, checks the Cairo-day projection/watermark and sentinel-field merge, then deletes only paths that were confirmed absent before setup and verifies their absence. The fixed fixture date is `2026-10-12`.
+
+**Status: PREPARED — NOT DISPATCHED.** No isolated Firestore records were read or written by this tool, no authenticated route call was made, and no Express route was retired. Dispatch requires a separate explicit owner approval; a successful rehearsal would still not itself authorize route retirement.
