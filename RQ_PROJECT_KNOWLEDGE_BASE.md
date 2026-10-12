@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-12
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Active workstream:** H9 on `migration/unified-hono` at `8fcefcf97770afd63dc994fa251c607e0602e91c`. Exact-candidate Production Gate [38220049410](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220049410) and H5 Preview Worker [38220049503](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220049503) succeeded; the optional projection rehearsal was skipped on push. Verify the actual pushed head and workflows before any manual dispatch.
+**Active workstream:** H9 on `migration/unified-hono` at `56b06354ce3848a7442bc69820db8e6867b231cf`. Exact-candidate Production Gate [38220649880](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649880) and H5 Preview Worker [38220649762](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649762) succeeded; the optional projection rehearsal was skipped on push. Verify the actual pushed head and workflows before any manual dispatch.
 
 ## 1. What RQ is
 
@@ -123,7 +123,7 @@ Recent validation evidence includes:
 
 **The one active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
-H9 is **IN PROGRESS** on `migration/unified-hono` at `8fcefcf97770afd63dc994fa251c607e0602e91c`. Exact-candidate Production Gate [38220049410](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220049410) and H5 Preview Worker [38220049503](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220049503) succeeded; H5 deployed the isolated Worker, and the optional projection rehearsal was skipped on push. Local focused route characterization passed **34 tests** and the full CI gate passed **104 files / 635 tests**. Firebase Rules and all eight repository indexes were verified in the isolated project.
+H9 is **IN PROGRESS** on `migration/unified-hono` at `56b06354ce3848a7442bc69820db8e6867b231cf`. Exact-candidate Production Gate [38220649880](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649880) and H5 Preview Worker [38220649762](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649762) succeeded; H5 deployed the isolated Worker, and the optional projection rehearsal was skipped on push. Local focused route characterization passed **34 tests** and the full CI gate passed **104 files / 635 tests**. Firebase Rules and all eight repository indexes were verified in the isolated project.
 
 The owner accepted H6 residual risks for scope purposes and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain OPEN/BLOCKED, OPEN/UNVERIFIED, or intentionally untested; they are not PASS results. Supervisor is retired and legacy records are preserved.
 
