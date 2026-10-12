@@ -76,6 +76,8 @@ const fixture = {
 };
 try {
   for (const [path, data] of Object.entries(fixture)) await firestore(path, { method: 'PATCH', body: JSON.stringify(document(data)) });
+  const seededPresence = await Promise.all(Object.keys(fixture).map(async (path) => ({ pathType: path.includes('/events/') ? 'event' : path.includes('/projection_buckets/') ? 'bucket' : path.includes('/daily_stats/') ? 'daily_stats' : 'garage', exists: Boolean(await firestore(path)) })));
+  console.log(JSON.stringify({ seededPresence }));
   const now = Math.floor(Date.now() / 1000);
   const customToken = signJwt({ iss: serviceAccount.client_email, sub: serviceAccount.client_email, aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit', iat: now, exp: now + 600, uid, claims: { role: 'admin' } });
   const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${API_KEY}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: customToken, returnSecureToken: true }) });
