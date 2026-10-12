@@ -50,6 +50,15 @@ async function firestore(path, init = {}) {
   if (!response.ok) throw new Error(`Firestore ${init.method || 'GET'} ${path} failed: ${response.status}`);
   return response.status === 204 ? null : response.json();
 }
+async function rawRunQuery(parent, collectionId, bodyParent) {
+  const structuredQuery = { from: [{ collectionId }] };
+  const endpoint = bodyParent ? `${root}:runQuery` : `${parent}:runQuery`;
+  const body = bodyParent ? { parent, structuredQuery } : { structuredQuery };
+  const response = await fetch(`https://firestore.googleapis.com/v1/${endpoint}`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) return { status: response.status, count: -1 };
+  const rows = await response.json();
+  return { status: response.status, count: rows.filter((row) => row.document).length };
+}
 const value = (v) => {
   if (v === null) return { nullValue: null };
   if (typeof v === 'boolean') return { booleanValue: v };
@@ -78,6 +87,8 @@ try {
   for (const [path, data] of Object.entries(fixture)) await firestore(path, { method: 'PATCH', body: JSON.stringify(document(data)) });
   const seededPresence = await Promise.all(Object.keys(fixture).map(async (path) => ({ pathType: path.includes('/events/') ? 'event' : path.includes('/projection_buckets/') ? 'bucket' : path.includes('/daily_stats/') ? 'daily_stats' : 'garage', exists: Boolean(await firestore(path)) })));
   console.log(JSON.stringify({ seededPresence }));
+  const bucketParent = `${root}/garages/${garageId}`;
+  console.log(JSON.stringify({ queryShape: { bodyParent: await rawRunQuery(bucketParent, 'projection_buckets', true), endpointParent: await rawRunQuery(bucketParent, 'projection_buckets', false) } }));
   const now = Math.floor(Date.now() / 1000);
   const customToken = signJwt({ iss: serviceAccount.client_email, sub: serviceAccount.client_email, aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit', iat: now, exp: now + 600, uid, claims: { role: 'admin' } });
   const authResponse = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${API_KEY}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: customToken, returnSecureToken: true }) });
