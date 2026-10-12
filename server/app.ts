@@ -2,7 +2,6 @@ import express, { type Express } from 'express';
 import cors from 'cors';
 import rechargesRouter from './routes/recharges';
 import reportsRouter from './routes/reports';
-import { registerAuthRoutes } from './routes/auth';
 import {
   adminDb
 } from './firebaseAdmin';
@@ -118,9 +117,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   // Mount Modular Routers
   app.use('/api/transactions', rechargesRouter);
   app.use('/api/reports', reportsRouter);
-  const authRouter = express.Router();
-  registerAuthRoutes(authRouter);
-  app.use('/', authRouter);
 
   // Secure Server API: Subscribers (Add / Renew / Update / Delete)
   app.post('/api/recharge-requests/create', requireAuth, financialRateLimiter(), async (req: AuthRequest, res: any) => {

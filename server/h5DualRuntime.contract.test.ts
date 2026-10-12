@@ -100,6 +100,12 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
       '/api/subscribers/delete',
       '/api/vehicles/check-in',
       '/api/vehicles/check-out',
+      '/api/auth/verify-pin',
+      '/api/auth/check-pin-availability',
+      '/api/auth/verify-admin-pin',
+      '/api/auth/claim-admin-session',
+      '/api/auth/release-admin-session',
+      '/api/admin/update-pin',
     ]) {
       const [hono, express] = await Promise.all([honoRequest(path, jsonInit), expressRequest(path, jsonInit)]);
       expect(hono.status, `${path}: Hono authentication`).toBe(401);
