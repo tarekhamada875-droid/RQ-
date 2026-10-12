@@ -143,6 +143,7 @@ if (!dateIsValid(REHEARSAL_DATE)) throw new Error('Invalid fixed Cairo rehearsal
 
 let failure;
 let expectedProjection;
+let idToken;
 try {
   const [healthResponse, versionResponse] = await Promise.all([
     fetch(`${WORKER_URL}/api/health`, { signal: AbortSignal.timeout(20_000) }),
@@ -181,7 +182,7 @@ try {
     const authError = await authResponse.json().catch(() => ({}));
     throw new Error(`Isolated Auth custom-token exchange failed: ${authResponse.status}:${authError?.error?.message || 'unknown'}`);
   }
-  const idToken = (await authResponse.json()).idToken;
+  idToken = (await authResponse.json()).idToken;
   const routeBody = { garageId, date: REHEARSAL_DATE };
   const rebuildResponse = await fetch(`${WORKER_URL}/api/garages/rebuild-projections`, {
     method: 'POST',
@@ -225,14 +226,32 @@ try {
 } catch (error) {
   failure = error;
 } finally {
+  const rollbackErrors = [];
   try {
     for (const path of [...paths].reverse()) await firestore(path, { method: 'DELETE' });
     const restored = await Promise.all(paths.map(async (path) => ({ path, value: await firestore(path) })));
     if (restored.some(({ value }) => value !== null)) throw new Error('Rollback verification failed: at least one synthetic path remains');
-    console.log(JSON.stringify({ rollback: 'PASS', project: PROJECT_ID, database: DATABASE_ID, restoredOriginallyAbsentPaths: paths.length }));
   } catch (rollbackError) {
-    console.error(JSON.stringify({ rollback: 'FAIL', project: PROJECT_ID, database: DATABASE_ID, error: rollbackError.message }));
-    failure = new Error(`${failure ? `${failure.message}; ` : ''}${rollbackError.message}`);
+    rollbackErrors.push(rollbackError.message);
+  }
+  if (idToken) {
+    try {
+      const deleteAuth = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+        signal: AbortSignal.timeout(20_000)
+      });
+      if (!deleteAuth.ok) throw new Error(`Temporary Auth identity delete failed: ${deleteAuth.status}`);
+    } catch (authCleanupError) {
+      rollbackErrors.push(authCleanupError.message);
+    }
+  }
+  if (rollbackErrors.length) {
+    console.error(JSON.stringify({ rollback: 'FAIL', project: PROJECT_ID, database: DATABASE_ID, errors: rollbackErrors }));
+    failure = new Error(`${failure ? `${failure.message}; ` : ''}${rollbackErrors.join('; ')}`);
+  } else {
+    console.log(JSON.stringify({ rollback: 'PASS', project: PROJECT_ID, database: DATABASE_ID, restoredOriginallyAbsentPaths: paths.length, temporaryAuthIdentityDeleted: Boolean(idToken) }));
   }
 }
 
