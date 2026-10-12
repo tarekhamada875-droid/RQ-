@@ -156,7 +156,8 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: |
           test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | npx wrangler@4.147.0 secret put FIREBASE_SERVICE_ACCOUNT_JSON --config wrangler.preview.toml
+          # A prior interrupted deploy can leave an unpublished latest version; versions secret put supports updating secrets without deploying.
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | npx wrangler@4.147.0 versions secret put FIREBASE_SERVICE_ACCOUNT_JSON --config wrangler.preview.toml
 
       - name: Deploy isolated preview Worker
         env:
