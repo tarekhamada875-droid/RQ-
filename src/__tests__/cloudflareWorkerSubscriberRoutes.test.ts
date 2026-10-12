@@ -239,4 +239,47 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const deleteBody = await deleteRes.json() as any;
     expect(deleteBody.success).toBe(true);
   });
+
+  it('rejects cross-garage lifecycle mutations and immutable plate changes without writes', async () => {
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({
+        garageId: testGarageId,
+        subscriberData: {
+          name: 'Scoped Subscriber',
+          plateNumber: 'أ ب ج 5555',
+          plateNumberRaw: 'أبج5555',
+          startDate: '2026-10-01',
+          endDate: '2026-10-31'
+        }
+      })
+    }), workerEnv);
+    const subscriberId = (await addRes.json() as any).id;
+    const before = [...mockDb.records.entries()];
+
+    const crossGarage = await api.fetch(new Request('http://localhost/api/subscribers/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-garage-token-other-garage'
+      },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, updates: { name: 'Must Not Change' } })
+    }), workerEnv);
+    expect(crossGarage.status).toBe(403);
+
+    const immutablePlate = await api.fetch(new Request('http://localhost/api/subscribers/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, updates: { plateNumberRaw: 'XYZ9999' } })
+    }), workerEnv);
+    expect(immutablePlate.status).toBe(409);
+    expect([...mockDb.records.entries()]).toEqual(before);
+  });
 });

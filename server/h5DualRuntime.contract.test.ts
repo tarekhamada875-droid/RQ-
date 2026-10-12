@@ -83,7 +83,7 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     await compareCase('version', '/api/version');
   });
 
-  it('agrees on unauthenticated mutation authorization outcomes', async () => {
+  it('keeps Hono authentication while retired Express mutation routes return 404', async () => {
     const jsonInit: RequestInit = {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -97,11 +97,13 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
       '/api/vehicles/check-in',
       '/api/vehicles/check-out',
     ]) {
-      await compareCase(`unauthenticated ${path}`, path, jsonInit);
+      const [hono, express] = await Promise.all([honoRequest(path, jsonInit), expressRequest(path, jsonInit)]);
+      expect(hono.status, `${path}: Hono authentication`).toBe(401);
+      expect(express.status, `${path}: retired Express route`).toBe(404);
     }
   });
 
-  it('agrees on operator-token mutation blocking without allowing a synthetic write', async () => {
+  it('keeps Hono operator-token blocking while retired Express routes return 404', async () => {
     const init: RequestInit = {
       method: 'POST',
       headers: {
@@ -115,7 +117,7 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
       for (const path of ['/api/subscribers/add', '/api/vehicles/check-in']) {
         const [hono, express] = await Promise.all([honoRequest(path, init), expressRequest(path, init)]);
         expect(hono.status, `${path}: Hono operator policy`).toBe(403);
-        expect(express.status, `${path}: Express operator policy`).toBe(403);
+        expect(express.status, `${path}: retired Express route`).toBe(404);
         expect(hono.body).toMatchObject({ success: false });
         expect(express.body).toMatchObject({ success: false });
       }
@@ -133,7 +135,7 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     expect(result.express.headers['access-control-allow-origin']).toBe('https://rq-acg.pages.dev');
   });
 
-  it('keeps correlation and operation IDs on unauthenticated errors', async () => {
+  it('keeps Hono correlation and operation IDs while retired Express routes return 404', async () => {
     const init: RequestInit = {
       method: 'POST',
       headers: {
@@ -146,7 +148,7 @@ describe('H5 — synthetic Hono and Express runtime comparison', () => {
     const [hono, express] = await Promise.all([honoRequest('/api/subscribers/add', init), expressRequest('/api/subscribers/add', init)]);
 
     expect(hono.status).toBe(401);
-    expect(express.status).toBe(401);
+    expect(express.status).toBe(404);
     expect(hono.headers['x-correlation-id']).toBe('h5_error_corr');
     expect(express.headers['x-correlation-id']).toBe('h5_error_corr');
     expect(hono.headers['x-operation-id']).toBe('h5_error_operation');

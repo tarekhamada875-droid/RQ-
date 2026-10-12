@@ -118,11 +118,13 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-admin-token'
+        'Authorization': 'Bearer valid-admin-token',
+        'x-idempotency-key': 'idemp_checkout_1'
       },
       body: JSON.stringify({
         garageId: testGarageId,
-        vehicleId: 'سصع5678'
+        vehicleId: 'سصع5678',
+        idempotencyKey: 'idemp_checkout_1'
       })
     }), workerEnv);
 
@@ -130,6 +132,33 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     const body = await checkOutRes.json() as any;
     expect(body.success).toBe(true);
     expect(typeof body.data.cost).toBe('number');
+
+    const replayRes = await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token',
+        'x-idempotency-key': 'idemp_checkout_1'
+      },
+      body: JSON.stringify({ garageId: testGarageId, vehicleId: 'سصع5678', idempotencyKey: 'idemp_checkout_1' })
+    }), workerEnv);
+    expect(replayRes.status).toBe(200);
+    expect(await replayRes.json()).toMatchObject({ success: true, data: { cost: body.data.cost } });
+  });
+
+  it('rejects cross-garage vehicle mutations before writing state', async () => {
+    const before = [...mockDb.records.entries()];
+    const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-garage-token-other-garage'
+      },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'أ ب ج 9999', plateRaw: 'أبج9999' })
+    }), workerEnv);
+
+    expect(response.status).toBe(403);
+    expect([...mockDb.records.entries()]).toEqual(before);
   });
 
   it('3. POST /api/vehicles/delete with refund handles accounting rollback and event ledger', async () => {

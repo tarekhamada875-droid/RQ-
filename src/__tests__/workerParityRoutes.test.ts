@@ -151,6 +151,19 @@ describe('Worker Route Parity Suite', () => {
       });
       expect(crossRes.status).toBe(403);
 
+      mockDb.seed('staff/staff-other-garage', { id: 'staff-other-garage', garageId: 'garage-b', name: 'Protected' });
+      const crossUpdate = await call('/api/staff/update', tokens.garage, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'staff-other-garage', name: 'Must Not Change' })
+      });
+      expect(crossUpdate.status).toBe(403);
+      const crossDelete = await call('/api/staff/delete', tokens.garage, {
+        method: 'POST',
+        body: JSON.stringify({ id: 'staff-other-garage' })
+      });
+      expect(crossDelete.status).toBe(403);
+      expect(mockDb.records.get('staff/staff-other-garage')?.name).toBe('Protected');
+
       // Update staff
       const updateRes = await call('/api/staff/update', tokens.garage, {
         method: 'POST',
