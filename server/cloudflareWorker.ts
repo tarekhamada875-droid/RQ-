@@ -6,7 +6,7 @@ import { isValidBackendOperatorToken } from './middleware';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
-import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, queryAccountWherePin, getAdminPin, migratePinToHash } from './utils';
+import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
@@ -446,6 +446,42 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinLimit.resetAt }, 429);
     }
 
+    // Preserve the legacy Delegate phone-plus-PIN migration path. When a phone
+    // is supplied, scope the lookup to that delegate instead of falling back to
+    // the global PIN search, matching the transitional Express contract.
+    const normalizedPhone = cleanPin(credentials.phone);
+    if (normalizedPhone) {
+      const delegateDocs = await queryDelegatesWherePhone(normalizedPhone);
+      const delegateMatches = delegateDocs
+        .map((doc) => ({ ...doc, check: verifyDocMatch(normalizedPin, doc.data) }))
+        .filter((doc) => doc.check.matches);
+      if (delegateMatches.length !== 1) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+
+      const delegate = delegateMatches[0];
+      const account = { ...delegate.data };
+      delete account.pin;
+      delete account.ownerPin;
+      delete account.adminPin;
+      delete account.pinLookupHash;
+      if (delegate.check.isLegacy) await migratePinToHash('delegates', delegate.id, normalizedPin);
+      if (!adminDb) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
+
+      await adminDb.runTransaction(async (transaction: any) => {
+        const entityRef = adminDb.doc(`delegates/${delegate.id}`);
+        const securityRef = adminDb.doc(`delegate_sessions/${effectiveUid}`);
+        const deviceSecurityRef = adminDb.doc(`delegate_sessions/${effectiveUid}/sessions/${sessionId}`);
+        const entitySnap = await transaction.get(entityRef);
+        const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
+        const now = new Date();
+        const sessionData = { uid: effectiveUid, role: 'delegate', entityId: delegate.id, sessionId, isActive: true, lastActive: now, createdAt: now };
+        transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds: addActiveSession(entityData, sessionId), lastActive: now }, { merge: true });
+        transaction.set(securityRef, sessionData, { merge: true });
+        transaction.set(deviceSecurityRef, sessionData, { merge: true });
+      });
+      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
+      return c.json({ success: true, role: 'delegate', accountId: delegate.id, account: { id: delegate.id, ...account }, sessionClaimed: true });
+    }
+
     const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
       { name: 'garages', role: 'garage' },
       { name: 'staff', role: 'staff' },
@@ -596,6 +632,9 @@ workerApp.post('/api/auth/check-pin-availability', async (c) => {
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;
   try {
+    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
+    if (limit.allowed === false) return c.json({ taken: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: limit.resetAt }, 429);
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const normalizedPin = cleanPin(body.pin);
     if (!normalizedPin) return c.json({ taken: false });
@@ -692,6 +731,7 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     if (!sessionSnap.exists) return c.json({ success: false, valid: false, error: 'SESSION_NOT_FOUND' });
     const sessionData = sessionSnap.data() || {};
     if (!sessionData.isActive || sessionData.sessionId !== sessionId) return c.json({ success: false, valid: false, error: 'SESSION_INVALID' });
+    if (sessionData.role && sessionData.role !== role) return c.json({ success: false, valid: false, error: 'INVALID_ROLE' });
 
     const lastActiveValue = sessionData.lastActive;
     const lastActive = lastActiveValue?.toDate ? lastActiveValue.toDate().getTime() : new Date(lastActiveValue || 0).getTime();
@@ -703,8 +743,22 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     // The security session is the authoritative record for heartbeat checks.
     // Entity snapshots can lag briefly after the atomic claim; rejecting here
     // would send a valid newly signed-in user into a false session-expired loop.
-    const targetEntityId = role === 'admin' ? 'auth_pin' : entityId;
-    if (targetEntityId) await adminDb.doc(`${entityColl}/${targetEntityId}`).set({ lastActive: new Date() }, { merge: true });
+    const targetEntityId = role === 'admin' ? 'auth_pin' : sessionData.entityId || entityId;
+    if (targetEntityId) {
+      const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
+      const entitySnap = await entityRef.get();
+      if (!entitySnap.exists || !hasActiveSession(entitySnap.data() || {}, sessionId)) {
+        await deviceRef.set({ isActive: false }, { merge: true });
+        const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
+        const remaining = removeActiveSession(rootData, sessionId);
+        await rootRef.set({
+          activeSessionIds: remaining,
+          ...(rootData.sessionId === sessionId ? { sessionId: remaining.at(-1) ?? null, isActive: remaining.length > 0 } : {})
+        }, { merge: true });
+        return c.json({ success: false, valid: false, error: 'SESSION_REVOKED' });
+      }
+      await entityRef.set({ lastActive: new Date() }, { merge: true });
+    }
     await rootRef.set({ lastActive: new Date() }, { merge: true });
     return c.json({ success: true, valid: true });
   } catch (error: any) {

@@ -139,6 +139,28 @@ describe('Worker session lifecycle routes', () => {
     expect(mockDb.records.get('garage_sessions/garage-uid-garage-a')?.isActive).toBe(false);
   });
 
+  it('rejects a device removed from the entity active-session marker', async () => {
+    const now = new Date();
+    mockDb.seed('garage_sessions/garage-uid-garage-a', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'device-a', isActive: true,
+      activeSessionIds: ['device-a'], lastActive: now
+    });
+    mockDb.seed('garage_sessions/garage-uid-garage-a/sessions/device-a', {
+      uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'device-a', isActive: true, lastActive: now
+    });
+    mockDb.seed('garages/garage-a', { currentSessionId: 'device-b', activeSessionIds: ['device-b'] });
+
+    const response = await request('/api/auth/validate-or-refresh-session', {
+      method: 'POST',
+      headers: { authorization: 'Bearer valid-garage-token-garage-a', 'x-session-id': 'device-a' },
+      body: JSON.stringify({ uid: 'garage-uid-garage-a', sessionId: 'device-a', role: 'garage', entityId: 'garage-a' })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: false, valid: false, error: 'SESSION_REVOKED' });
+    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a/sessions/device-a')?.isActive).toBe(false);
+  });
+
   it('invalidates root and device sessions across roles and clears only session markers', async () => {
     mockDb.seed('delegate_sessions/delegate-uid', {
       uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessionId: 'delegate-device-a',
