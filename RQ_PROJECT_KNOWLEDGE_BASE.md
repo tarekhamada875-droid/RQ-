@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-12
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Active workstream:** H9 on `migration/unified-hono` at `56b06354ce3848a7442bc69820db8e6867b231cf`. Exact-candidate Production Gate [38220649880](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649880) and H5 Preview Worker [38220649762](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649762) succeeded; the optional projection rehearsal was skipped on push. Verify the actual pushed head and workflows before any manual dispatch.
+**Active workstream:** H9 on `migration/unified-hono`; source checkpoint `c1d186e35c37a600d7929923726fde88930fc9d1` is based on `1a09c857ea86bc45628369dde0b3fea099a479b7`. The first bounded closeout slice passed the full local CI/release gate (**104 files / 647 tests**), TypeScript validation, maintainability, production build/artifact checks, and whitespace validation. `main` remains on the H8 baseline; no production or Firestore operation was performed by this slice.
 
 ## 1. What RQ is
 
@@ -108,8 +108,8 @@ The repository has completed and published repairs covering:
 
 Recent validation evidence includes:
 
-- 96 test files passed;
-- 547 tests passed in the latest full local gate;
+- 104 test files passed;
+- 647 tests passed in the latest full local gate;
 - TypeScript validation passed;
 - production build passed;
 - Cloudflare Worker build passed;
@@ -123,13 +123,13 @@ Recent validation evidence includes:
 
 **The one active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
-H9 is **IN PROGRESS** on `migration/unified-hono` at `56b06354ce3848a7442bc69820db8e6867b231cf`. Exact-candidate Production Gate [38220649880](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649880) and H5 Preview Worker [38220649762](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649762) succeeded; H5 deployed the isolated Worker, and the optional projection rehearsal was skipped on push. Local focused route characterization passed **34 tests** and the full CI gate passed **104 files / 635 tests**. Firebase Rules and all eight repository indexes were verified in the isolated project.
+H9 is **IN PROGRESS** on `migration/unified-hono`; first bounded source checkpoint `c1d186e35c37a600d7929923726fde88930fc9d1` passed the full local gate (**104 files / 647 tests**), TypeScript lint, `npm run ci:check`, `npm run maintainability:check`, production build/artifact checks, and `git diff --check`. The checkpoint hardens Hono recharge-request creation with scope checks, sanitization, input validation, transaction idempotency, and rate limiting. It also aligns the PIN-session path with the documented session contract: protected calls require a persisted session ID, root/device session is checked for a fresh 24-hour heartbeat and entity marker, and a supplied session ID cannot be overridden by token role claims. The PIN login atomically creates the required markers and the frontend attaches the session header. No in-repository issuer of role-bearing Firebase custom claims was found; claim-only requests without a session header remain a compatibility path and are not covered by the PIN-session proof.
 
 The owner accepted H6 residual risks for scope purposes and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain OPEN/BLOCKED, OPEN/UNVERIFIED, or intentionally untested; they are not PASS results. Supervisor is retired and legacy records are preserved.
 
-**Preview boundary:** preview targets isolated Firebase project `rq-hono-preview-isolated`; production remains separate and unchanged. The prior authenticated garage-create rehearsal returned 429 twice and was not retried; read-only diagnostics attributed it to an exhausted synthetic per-actor limiter. The next route is `POST /api/garages/rebuild-projections`, whose Hono/Express in-memory parity coverage passes while the Express handler remains mounted. Manual-only rehearsal tooling is staged in the existing H5 workflow behind a default-false dispatch input; it has not been dispatched and no projection rehearsal read/write occurred.
+**Preview boundary:** preview targets isolated Firebase project `rq-hono-preview-isolated`; production remains separate and unchanged. The prior authenticated garage-create rehearsal returned 429 twice and was not retried; read-only diagnostics attributed it to an exhausted synthetic per-actor limiter. `POST /api/garages/rebuild-projections` still has Hono/Express synthetic replay/boundary coverage and its Express handler remains mounted pending the one-pass route/runtime census. Manual-only rehearsal tooling is staged behind a default-false dispatch input; it has not been dispatched. Per the finite closeout plan, this authenticated Firestore operation is not a source-retirement gate, and no projection rehearsal read/write occurred.
 
-Express remains a compatibility runtime and several sensitive handlers remain mounted. Use the current succession handoff and the two H9 route records below for exact status. Keep `main` and production unchanged. A passing projection rehearsal would still require a separate explicit route-retirement disposition.
+Express remains a compatibility runtime with route groups and tests still to census. Follow the single active migration plan and the latest succession handoff for the bounded closeout. Keep `main` and production unchanged. The remaining route/runtime census and Express source retirement are still open; no live-data rehearsal is authorized or required by the current source-only gate.
 
 ## 8. Repository map
 

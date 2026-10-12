@@ -6,14 +6,14 @@ This is the **single active project plan** for the Unified Hono workstream. Hono
 
 ## Current status — 2026-10-12
 
-- **Production:** H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0` remains on `main` and the Hono Worker is deployed. The H8 tag `rq-unified-hono-h8-2026-10-09` points to that commit. Exact-main Production Gate [37919825186](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37919825186) and Worker deployment [37919825127](https://github.com/tarekhamada875-droid/RQ-/actions/runs/37919825127) succeeded. Ongoing H9 work does not authorize a production deployment.
-- **Active branch / verified candidate:** `migration/unified-hono` at `56b06354ce3848a7442bc69820db8e6867b231cf`, matching `origin/migration/unified-hono`; `main` remains at H8 release `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`. Recheck actual HEAD, worktree, and workflows before any dispatch or push.
-- **Exact-candidate workflows:** Production Gate [38220649880](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649880) and H5 Preview Worker [38220649762](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38220649762) succeeded on `56b0635`. H5 deployed the isolated Worker; the optional H9 projection-rehearsal job was **skipped** on the push event. Local validation passed: focused garage-maintenance characterization (**1 file / 34 tests**), full CI (**104 files / 635 tests**), maintainability, whitespace, rehearsal-script syntax, workflow YAML parse, and fail-closed isolation guard.
-- **H6/H7:** H6 closed for scope through the owner's explicit residual-risk acceptance; H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain unresolved or intentionally untested; none is a PASS result.
-- **H9:** IN PROGRESS. Selected Express routes have been retired in evidenced slices; Express itself and remaining routes stay mounted. The next sensitive route is `POST /api/garages/rebuild-projections`; its Hono/Express parity tests pass, but the Express handler remains until an isolated operational rehearsal and a separate explicit retirement disposition are completed.
-- **Preview boundary:** `wrangler.preview.toml` targets isolated Firebase project `rq-hono-preview-isolated` / `(default)`; production uses a different project/database. Firebase Rules and all eight repository indexes were verified in the isolated project, and credential-free Worker health/version checks report the expected preproduction H5 preview. A prior garage-create 429 diagnosis remains historical and was not retried. The projection rehearsal tooling is prepared as a default-false opt-in on the existing H5 manual dispatch; it has **not** been dispatched, and no projection rehearsal data operation has occurred.
-- **Next checkpoint:** The manual-only tooling is published on `migration/unified-hono` and the exact candidate's normal workflows passed. The projection rehearsal remains **NOT RUN**; dispatch it only after separate explicit approval. The current preview Worker health/version reports `preproduction` / `1.0.0-h5-preview`. Keep `main` and production unchanged. Even a passing rehearsal is not route-retirement approval and does not erase accepted H6 residual risks or certify overall production readiness.
-- **History:** Dated H6/H7 sections below are retained as evidence. Superseded directions must not override this current status or the latest section of the succession handoff.
+- **Production:** H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0` remains the recorded `main`/production baseline. H9 work does not authorize a production deployment or merge.
+- **Active branch / snapshot:** `migration/unified-hono`; source checkpoint `c1d186e35c37a600d7929923726fde88930fc9d1` is based on H9 parent `1a09c857ea86bc45628369dde0b3fea099a479b7`. The first bounded closeout slice passed the local full gate. Check exact-head migration workflows for the pushed checkpoint before further code changes; `main` remains at H8.
+- **Owner-approved H9 direction:** finish H9 as one finite closeout, rather than another open-ended sequence of route-specific operational rehearsals. This is a source/test migration, not a business redesign or H8 production release.
+- **Closeout sequence:** (1) close migration-critical parity gaps — the first slice is complete in source checkpoint `c1d186e`, covering Hono recharge creation and the PIN-session authorization path; (2) finish the remaining Express import/route census, convert required characterization to Hono/Fetch coverage, and retire Express routes, middleware, adapters, tests, and dependencies while preserving local Node/static serving; (3) run one exact-final-candidate validation cycle and record the final import/route census.
+- **Operational boundary:** the prepared `POST /api/garages/rebuild-projections` rehearsal is **NOT RUN** and is not a prerequisite solely for removing its Express copy. Deterministic synthetic/in-memory coverage is the default evidence for source retirement. Do not access or mutate Firestore for this closeout. Any separately proposed remote data operation still requires its own explicit approval and verified isolated target.
+- **Out of scope:** H6 re-acceptance; UI redesign; fee/commission/reward policy changes unrelated to a directly blocking Hono route; production merge/deployment; changing the H8 rollback baseline.
+- **H9:** IN PROGRESS. The first source slice passed **104 files / 647 tests**, TypeScript lint, `npm run ci:check`, `npm run maintainability:check`, production build/artifact checks, and `git diff --check`. The route/runtime census and Express retirement remain. Dated H6/H7 and earlier H9 entries below are historical evidence, not additional gates.
+- **H6/H7:** H6 was closed for scope through the owner's explicit residual-risk acceptance and H7 received GO. Staff operational access, Owner listener/cleanup evidence, and financial flows remain unresolved or intentionally untested; none is a PASS result.
 - **Succession:** If the owner says exactly `tokens ending`, follow `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` before other work.
 
 ## Current production architecture
@@ -418,24 +418,22 @@ Fair-use boundary coverage now includes non-admin denial, finite-package rejecti
 
 The fair-use retirement is now complete: both duplicate Express handlers were removed after dual-runtime idempotency and boundary evidence passed. Hono owns both the canonical admin path and the frontend legacy alias. Remaining Express-sensitive surfaces are garage creation/update/deletion, vehicle-count and projection maintenance, reconciliation, and other financial/operational routes.
 
-## Tasks
+## Finite H9 closeout tasks — approved 2026-10-12
 
-- Confirm no production or required test imports Express.
-- Convert or remove Express-only tests.
-- Remove `server/routes/*` only after their behavior exists in shared services/Hono routes.
-- Remove Express middleware and types only when no longer referenced.
-- Cloud Run-specific support is retired; do not add a deployment or billing-dependent replacement without separate owner approval.
-- Update `package.json` scripts.
-- Update documentation and deployment configuration.
-- Run the entire production gate again.
+1. **Close migration-critical parity gaps — first slice complete (`c1d186e`).** Hono recharge-request creation now enforces garage/delegate scope, sanitizes the payload, validates request type/amount, persists idempotently in a transaction, and uses the shared financial limiter; regression tests cover denial, validation, replay, key reuse, concurrency, and rate limiting. The PIN-authenticated Worker path now requires an `X-Session-ID`, validates root or device session state, the 24-hour freshness limit, and the entity active-session marker; an explicitly supplied session ID is authoritative even when the verified token contains role claims. The client attaches that header for persisted sessions, and the PIN login code atomically writes the required markers. No in-repository issuer of role-bearing Firebase custom tokens/claims was found. Compatibility requests with verified role claims and no session header remain a legacy path; if an external claim issuer is used, review that path before declaring full session parity.
+2. **Finish the runtime/route census in one pass.** For every remaining Express import, identify whether it is runtime, middleware, adapter, route, or test-only. Preserve behavior in Hono/Fetch tests where supported; explicitly tombstone only intentionally retired endpoints. Do not delete equivalent behavior or rely on frontend absence as proof a route is unused.
+3. **Remove Express as a repository runtime.** Replace the remaining Express composition and static/dev server path with the existing Hono/Node adapter and supported Vite/static serving. Convert or remove Express-only tests after equivalent Hono assertions exist. Remove route modules, middleware, type/runtime dependencies, scripts, and compatibility references only when the census confirms they are unused.
+4. **Close with one validation cycle.** Run focused tests for changed security/session/routes, then `npm test`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, `git diff --check`, and non-mutating preview health/version checks if deployment changes require them. The local source checkpoint `c1d186e` passed **104 files / 647 tests**, TypeScript lint, CI/release checks, maintainability, build/artifact checks, and whitespace validation. Re-run the full gate after Express retirement and validate the exact final commit with migration-branch workflows. No authenticated preview mutation is part of this gate.
 
-## Exit criteria
+## Definition of done
 
-- `rg` finds no required Express runtime dependency.
-- Local development works.
-- Cloudflare Worker deployment works.
-- All tests and quality gates pass.
-- A documented rollback release exists.
+- No Express runtime dependency, import, compatibility route, middleware, or required Express-only test remains; an automated repository census documents zero required references.
+- Local Hono/Node development and frontend static serving work; the Cloudflare Worker build/deploy artifact works.
+- Required active routes have Hono/Fetch coverage for authorization, validation, state effects, errors, and idempotency where applicable; the security/session differences found during audit are either corrected or explicitly shown not to violate the documented policy.
+- The exact candidate passes the full local gate and required migration-branch workflows; the migration branch is clean and `main` plus the H8 rollback release remain unchanged.
+- H9 is then marked complete for source/runtime migration only. Production promotion remains a separate release decision.
+
+The unrun Firestore projection rehearsal is not a general source-retirement gate. This decision does not authorize a remote rehearsal; if a future change elects to exercise a real isolated data operation, it must pause for separate authorization and exact rollback review.
 
 ---
 
