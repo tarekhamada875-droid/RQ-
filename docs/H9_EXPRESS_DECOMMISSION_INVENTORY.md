@@ -421,3 +421,8 @@ Commit `8733297` removes the final eight Express API registrations: `POST /api/r
 Hono financial/report evidence covers authorization and garage/delegate scope, rate limits, transaction atomicity, ledger writes, duplicate and conflicting idempotency keys, failed validation, report authorization, filters, and invalid ranges. Dual-runtime contracts verify Hono authentication while every retired Express financial/report path returns 404.
 
 Focused validation passed **6 files / 84 tests**. The full integration gate passed **98 files / 624 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. **Zero Express API registrations remain.** Remaining Express code is local runtime infrastructure only and must not be confused with API-route retention. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+### Local runtime decoupling decision — 2026-10-12
+
+After API retirement, the Node entrypoint now defaults to Hono (`RQ_API_RUNTIME !== 'express'`), and `npm start` explicitly sets `RQ_API_RUNTIME=hono`. Express remains available only through the explicit `RQ_API_RUNTIME=express` / `npm run dev:express` compatibility path because Vite middleware/static serving and existing Express middleware characterization tests still depend on its Connect-style app interface. The Express app has zero API registrations and is not a production API owner. Removing Express itself would require a separate local-dev server migration and is not necessary for H9 API completion; no unverified dependency deletion was made.

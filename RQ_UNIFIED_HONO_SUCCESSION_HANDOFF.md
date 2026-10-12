@@ -428,3 +428,8 @@ Focused validation passed **5 files / 70 tests**. The full integration gate pass
 Commit `8733297` removes the final eight Express financial/report registrations: recharge request creation, direct garage recharge, admin top-up, referral reward use, recharge approval, recharge rejection, garage self-subscription, and financial reporting. Express recharge/report modules and direct integration tests were removed. Hono owns all replacements.
 
 Focused validation passed **6 files / 84 tests**. The full integration gate passed **98 files / 624 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. **Zero Express API registrations remain.** Express is retained only as local runtime infrastructure pending a separate development-runtime decoupling audit. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+## 2026-10-12 shortened-plan implementation — Hono-default local runtime
+
+The Node entrypoint now defaults to Hono (`RQ_API_RUNTIME !== 'express'`), and `npm start` explicitly launches `RQ_API_RUNTIME=hono`. Express remains only as an explicit local compatibility mode (`RQ_API_RUNTIME=express` / `npm run dev:express`) for Vite middleware/static serving and existing middleware characterization tests. The Express app has zero API registrations; Express dependency removal is intentionally deferred because it would require a separate local-dev server migration and is not needed for API retirement.
