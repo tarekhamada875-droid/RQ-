@@ -1,6 +1,6 @@
 # H6 Controlled Acceptance Runbook — Historical / Superseded
 
-> **Do not use this as an active task plan.** H6 was closed for scope by explicit owner residual-risk acceptance, H7 received GO, H8 is deployed, and H9 is the current checkpoint. This file is retained as historical safety/evidence documentation. For current work, follow `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` and `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+> **Do not use this as an active task plan.** H6 was closed for scope by explicit owner residual-risk acceptance, H7 received GO, H8 is deployed, and H9 is the current checkpoint. This file is retained as historical safety/evidence documentation. For current work, follow `RQ_HONO_SHORTENED_MIGRATION_PLAN.md` and `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
 **Historical status:** H6 residual cells remain OPEN/BLOCKED or OPEN/UNVERIFIED; acceptance for scope did not convert them to PASS.
 **Scope:** `migration/unified-hono` and the isolated `rq-hono-preview` Worker only.

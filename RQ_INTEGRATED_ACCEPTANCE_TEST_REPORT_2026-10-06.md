@@ -1,6 +1,6 @@
 # RQ Integrated Acceptance Test Report — 2026-10-06
 
-> **ARCHIVED H6 EVIDENCE — NOT AN ACTIVE PLAN.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. This report preserves acceptance evidence/statuses; do not resume H6 from its historical notes. The sole active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.
+> **ARCHIVED H6 EVIDENCE — NOT AN ACTIVE PLAN.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. This report preserves acceptance evidence/statuses; do not resume H6 from its historical notes. The sole active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`.
 
 ## Historical H6 disposition — 2026-10-09
 

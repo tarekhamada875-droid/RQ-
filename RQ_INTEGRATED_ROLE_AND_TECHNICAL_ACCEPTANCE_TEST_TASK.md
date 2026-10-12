@@ -1,6 +1,6 @@
 # RQ Integrated Role-Based Acceptance Test Task
 
-> **Historical coverage catalog only — do not resume as an active task.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; use `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` for current H9 continuation. This catalog is retained for evidence/coverage reference and does not authorize actions.
+> **Historical coverage catalog only — do not resume as an active task.** H6 was closed for scope by owner-accepted residual risks, H7 received GO, H8 is deployed, and H9 is current. The only active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`; use `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md` for current H9 continuation. This catalog is retained for evidence/coverage reference and does not authorize actions.
 
 ## Mission
 
@@ -38,7 +38,7 @@ Before starting:
 
 1. `AGENTS.md`
 2. `RQ_PROJECT_KNOWLEDGE_BASE.md`
-3. `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+3. `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`
 4. `docs/H6_CONTROLLED_ACCEPTANCE_RUNBOOK.md`
 5. `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
 6. `docs/OBSERVABILITY_RUNBOOK.md` for safe metadata collection only; use its current Cloudflare instructions.

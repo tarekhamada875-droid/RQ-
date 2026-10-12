@@ -1,6 +1,6 @@
 # RQ Observability and Operational Readiness Runbook
 
-> **Supporting operations reference, not a project plan.** The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` (current checkpoint H9). C-series references in this document are historical readiness criteria, not instructions to resume a separate C-series workstream.
+> **Supporting operations reference, not a project plan.** The only active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md` (current checkpoint H9). C-series references in this document are historical readiness criteria, not instructions to resume a separate C-series workstream.
 
 **Status:** Controlled synthetic pre-production
 **Owner:** RQ project owner and authorized operators

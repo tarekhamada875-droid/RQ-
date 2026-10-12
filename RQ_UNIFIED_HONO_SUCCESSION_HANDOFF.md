@@ -9,7 +9,7 @@
 
 ## Start here
 
-1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`, `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`, and `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`.
+1. Read `RQ_PROJECT_KNOWLEDGE_BASE.md`, `AGENTS.md`, `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`, `docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`, and `docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`.
 2. Verify the actual checkout is `migration/unified-hono`, inspect HEAD/remote/worktree/CI, and treat the latest H9 section at the end of this file as the current execution authority.
 3. Do not restart H6 browser acceptance. H6/H7/H8 sections below are historical evidence; H8 is already deployed and H9 is the active checkpoint.
 4. Follow the latest dated H9 closeout at the end of this file: the one-pass Express/runtime/route census is complete; preserve Hono behavior, resolve documented parity blockers, and remove only newly proven redundant surfaces. No browser session, credential, local proxy, or secret transfers to the next agent.
@@ -207,7 +207,7 @@ Before any operational rehearsal, the owner must establish and verify a genuinel
 
 ## 2026-10-10 current H9 status — authoritative
 
-This is the current operational continuation. The **only active project plan** is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; H6 prompts/runbooks and CF/C-series reports are historical evidence, not alternate plans. H8 is deployed; current migration branch is `migration/unified-hono` at `90617b63be48d3e897988fbb2d6769efae41332b`. Exact-head Production Gate `37949821389` and H5 Preview Worker `37949821275` passed. H9 remains **IN PROGRESS**: Express and sensitive routes remain, and preview maintenance rehearsal is **BLOCKED** by shared production Firebase project/database identifiers. Do not perform authenticated preview Firestore operations. Next work is one route-specific H9 slice with synthetic/in-memory parity tests, keeping `main` and production unchanged.
+This is the current operational continuation. The **only active project plan** is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`; H6 prompts/runbooks and CF/C-series reports are historical evidence, not alternate plans. H8 is deployed; current migration branch is `migration/unified-hono` at `90617b63be48d3e897988fbb2d6769efae41332b`. Exact-head Production Gate `37949821389` and H5 Preview Worker `37949821275` passed. H9 remains **IN PROGRESS**: Express and sensitive routes remain, and preview maintenance rehearsal is **BLOCKED** by shared production Firebase project/database identifiers. Do not perform authenticated preview Firestore operations. Next work is one route-specific H9 slice with synthetic/in-memory parity tests, keeping `main` and production unchanged.
 
 
 ## 2026-10-11 H9 continuation — authoritative current handoff

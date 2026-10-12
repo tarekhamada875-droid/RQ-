@@ -1,6 +1,6 @@
 # RQ Succession Handoff — 2026-10-05
 
-> **ARCHIVED — DO NOT FOLLOW AS CURRENT INSTRUCTIONS.** This 2026-10-05 handoff predates H6 closure, H7 GO, H8 production deployment, and active H9 work. It is retained as historical evidence only. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; the current operational handoff is `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+> **ARCHIVED — DO NOT FOLLOW AS CURRENT INSTRUCTIONS.** This 2026-10-05 handoff predates H6 closure, H7 GO, H8 production deployment, and active H9 work. It is retained as historical evidence only. The only active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`; the current operational handoff is `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
 ## Authority
 
@@ -140,7 +140,7 @@ Test the preview stack as Admin, Delegate, Garage Owner, Staff, and Supervisor u
 
 ```text
 RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md
-RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md
+RQ_HONO_SHORTENED_MIGRATION_PLAN.md
 RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md
 docs/H5_DUAL_RUNTIME_FINDINGS_2026-10-05.md
 server/cloudflareWorker.ts

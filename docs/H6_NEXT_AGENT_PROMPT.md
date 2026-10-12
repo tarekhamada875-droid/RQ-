@@ -6,7 +6,7 @@ For current work, read in this order:
 
 1. [`RQ_PROJECT_KNOWLEDGE_BASE.md`](../RQ_PROJECT_KNOWLEDGE_BASE.md) — current architecture and document authority.
 2. [`AGENTS.md`](../AGENTS.md) — repository instructions.
-3. [`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`](../RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md) — the **only active project plan**.
+3. [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](../RQ_HONO_SHORTENED_MIGRATION_PLAN.md) — the **only active project plan**.
 4. [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](../RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md) — current H9 operational handoff.
 5. [`H9_EXPRESS_DECOMMISSION_INVENTORY.md`](H9_EXPRESS_DECOMMISSION_INVENTORY.md) and [`H9_SENSITIVE_ROUTE_DISPOSITION.md`](H9_SENSITIVE_ROUTE_DISPOSITION.md) — route evidence/status, not separate plans.
 

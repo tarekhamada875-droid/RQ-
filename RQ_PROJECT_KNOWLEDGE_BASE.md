@@ -37,7 +37,7 @@ Future agents must use this order:
 
 1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, current status, and document map.
 2. **`AGENTS.md`**: mandatory repository safety and engineering instructions.
-3. **`RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`**: the **only active project plan** and authority for milestone status and gates.
+3. **`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`**: the **only active project plan** and authority for milestone status and gates.
 4. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: current H9 operating sequence and chained succession protocol; it is a handoff, not a second plan.
 5. **`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`** and **`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`**: route evidence/status only, not alternate plans.
 6. **`MAINTAINABILITY_HANDOFF.md`**, **`BRANCHING_AND_RELEASES.md`**, and **`docs/OBSERVABILITY_RUNBOOK.md`**: supporting repository/release/operations references.
@@ -121,7 +121,7 @@ Recent validation evidence includes:
 
 ## 7. Current work and blockers — 2026-10-12
 
-**The one active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
+**The one active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`.** The current checkpoint is H9; Hono is already in production from H8. There is no active C7/C9/C10 plan in this repository: those references below and in dated Cloudflare reports are historical milestone/evidence references, not instructions to start a separate workstream.
 
 H9 is **IN PROGRESS** on `migration/unified-hono`; auth/session parity head `bbaa417` passed the full local gate (**104 files / 651 tests**), TypeScript lint, production builds/artifact checks, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`. Hono now preserves legacy Delegate phone-plus-PIN login with sanitized output, rate-limits PIN availability through the Worker limiter, rejects refresh when the entity active-session marker no longer contains the session, and marks the caller’s device as current in multi-device session listings. The broader H9 source/runtime decommission remains blocked by financial, reporting/middleware, vehicle/staff, and local Node/Vite/static-serving parity gaps. No in-repository issuer of role-bearing Firebase custom claims was found; claim-only requests without a session header remain a compatibility path and are not covered by the PIN-session proof.
 
@@ -154,7 +154,7 @@ Keep these as current orientation and operating documents:
 
 - `AGENTS.md`
 - `RQ_PROJECT_KNOWLEDGE_BASE.md`
-- `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`
+- `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`
 - `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
 - `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` (historical coverage catalog only; not an active task)
 - `MAINTAINABILITY_HANDOFF.md`
@@ -166,7 +166,7 @@ Keep these as current orientation and operating documents:
 - `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
 - `docs/OBSERVABILITY_RUNBOOK.md`
 
-`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The only active project plan is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md`; current H9 continuation instructions are in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The only active project plan is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`; current H9 continuation instructions are in `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
 The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. Keep the generic `Dockerfile` only while the Express compatibility runtime remains useful for local/container tests.
 

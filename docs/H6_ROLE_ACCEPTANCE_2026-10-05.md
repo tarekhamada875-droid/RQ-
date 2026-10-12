@@ -1,6 +1,6 @@
 # H6 Role-Based Acceptance Evidence — 2026-10-05
 
-> **ARCHIVED EVIDENCE — NOT A CURRENT TEST PLAN.** H6 is closed for scope, H7 received GO, H8 is deployed, and H9 is active. Do not follow the historical action notes below or repeat H6 browser testing. Current authority is `RQ_UNIFIED_HONO_MIGRATION_CHECKPOINT_PLAN.md` plus `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
+> **ARCHIVED EVIDENCE — NOT A CURRENT TEST PLAN.** H6 is closed for scope, H7 received GO, H8 is deployed, and H9 is active. Do not follow the historical action notes below or repeat H6 browser testing. Current authority is `RQ_HONO_SHORTENED_MIGRATION_PLAN.md` plus `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`.
 
 ## Evidence precedence — 2026-10-08
 
