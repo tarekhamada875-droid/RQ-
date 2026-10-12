@@ -421,3 +421,10 @@ Focused validation passed **6 files / 73 tests**. The full integration gate pass
 Commit `256335e` removes the final six Express auth registrations: verify-PIN, PIN availability, verify-admin-PIN, claim-admin-session, release-admin-session, and admin update-PIN. Obsolete Express PIN/admin-auth modules and direct tests were removed. Hono retains the tested authentication, rate limiting, role scope, session claim, admin-PIN rotation, and authorization behavior; dual-runtime contracts verify retired Express paths return 404.
 
 Focused validation passed **5 files / 70 tests**. The full integration gate passed **100 files / 637 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. All 11 Express auth/session registrations are retired. Active Express registrations are now 8: seven financial/recharge and one report. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
+
+
+## 2026-10-12 shortened-plan implementation — final API retirement
+
+Commit `8733297` removes the final eight Express financial/report registrations: recharge request creation, direct garage recharge, admin top-up, referral reward use, recharge approval, recharge rejection, garage self-subscription, and financial reporting. Express recharge/report modules and direct integration tests were removed. Hono owns all replacements.
+
+Focused validation passed **6 files / 84 tests**. The full integration gate passed **98 files / 624 tests**, TypeScript validation, Vite/Node/Cloudflare builds, production artifact checks, CI/release checks, maintainability, and whitespace checks. **Zero Express API registrations remain.** Express is retained only as local runtime infrastructure pending a separate development-runtime decoupling audit. No production, `main`, preview mutation, Firestore operation, or deployment occurred.
