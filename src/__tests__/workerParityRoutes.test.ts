@@ -293,6 +293,24 @@ describe('Worker Route Parity Suite', () => {
       });
       expect(deleteSuccess.status).toBe(200);
     });
+
+    it('settles a delegate cycle atomically and replays the same idempotency result', async () => {
+      mockDb.seed('delegates/settle-delegate', { id: 'settle-delegate', totalRechargedAmount: 125 });
+      const payload = { id: 'settle-delegate', idempotencyKey: 'delegate-settlement-key' };
+      const first = await call('/api/delegates/settle-account', tokens.admin, {
+        method: 'POST', body: JSON.stringify(payload)
+      });
+      expect(first.status).toBe(200);
+      const firstBody = await first.json();
+      expect(firstBody).toMatchObject({ success: true, previousRechargedAmount: 125 });
+      expect(mockDb.records.get('delegates/settle-delegate')).toMatchObject({ totalRechargedAmount: 0 });
+
+      const replay = await call('/api/delegates/settle-account', tokens.admin, {
+        method: 'POST', body: JSON.stringify(payload)
+      });
+      expect(replay.status).toBe(200);
+      expect(await replay.json()).toEqual(firstBody);
+    });
   });
 
   describe('4. People Update PIN', () => {

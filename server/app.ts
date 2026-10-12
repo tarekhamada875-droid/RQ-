@@ -1,6 +1,5 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import delegatesRouter from './routes/delegates';
 import rechargesRouter from './routes/recharges';
 import reportsRouter from './routes/reports';
 import { registerAuthRoutes } from './routes/auth';
@@ -119,7 +118,6 @@ export function createApp(options: Readonly<{ apiPreviewApp?: Express }> = {}) {
   app.use(operationTraceMiddleware);
 
   // Mount Modular Routers
-  app.use('/api/delegates', delegatesRouter);
   app.use('/api/transactions', rechargesRouter);
   app.use('/api/reports', reportsRouter);
   const authRouter = express.Router();
