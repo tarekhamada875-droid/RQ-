@@ -6,6 +6,7 @@
 import React, { memo } from 'react';
 import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
 import { firestoreService } from '../../services';
+import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
 import { useTheme } from '../../utils/ThemeContext';
@@ -216,9 +217,16 @@ export const AdminDashboard = memo(({
         type: 'danger',
         onConfirm: async () => {
           try {
-            await firestoreService.deleteGarage(garage.id);
+            const result = await deleteGarageWithRecovery(garage.id);
+            if (result.ok === false) {
+              showToast?.(garageDeletionFailureMessage(result, adminLang), 'error');
+              reject(new Error(result.errorCode));
+              return;
+            }
             soundManager.play('error');
-            showToast?.(`تم رفض طلب إنشاء جراج "${garage.name}" وحذف البيانات`, 'error');
+            showToast?.(adminLang === 'en'
+              ? `Garage request for "${garage.name}" was rejected and its data was deleted.`
+              : `تم رفض طلب إنشاء جراج "${garage.name}" وحذف البيانات`, 'success');
             resolve();
           } catch (error) {
             console.error('Failed to reject garage:', error);

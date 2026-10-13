@@ -933,14 +933,11 @@ describe('garage deletion Hono contract and Express retirement', () => {
     expect(matchingAuditLogs()[0]).toMatchObject({ garageId: targetId, actionType: 'garage_delete', details: { deletedByRole: 'admin', deletedByUid: 'admin-uid' } });
   });
 
-  it('enforces the 30-per-minute limit and blocks the next delete without writes', async () => {
-    const rateLimitPath = `rate_limits/${createHash('sha256').update('fin:admin-uid').digest('hex')}`;
+  it('enforces the deletion-specific three-start limit and blocks the next delete without writes', async () => {
+    const rateLimitPath = `rate_limits/${createHash('sha256').update('garage-delete:admin-uid').digest('hex')}`;
     const now = Date.now();
     seedCompleteDeletionFixture();
-    mockDb.seed(rateLimitPath, { count: 29, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
-    expect((await callHonoGarageDelete('valid-admin-token', { garageId: targetId })).status).toBe(202);
-    seedCompleteDeletionFixture();
-    mockDb.seed(rateLimitPath, { count: 30, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
+    mockDb.seed(rateLimitPath, { count: 3, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
     const before = snapshotBusinessRecords();
     const blocked = await callHonoGarageDelete('valid-admin-token', { garageId: targetId });
     expect(blocked.status).toBe(429);

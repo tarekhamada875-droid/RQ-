@@ -21,8 +21,11 @@ import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } f
 import { calculateFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
-import { claimGarageDeletion, markGarageDeletionFailed } from './adapters/garageDeletionAdapter';
-import { processGarageDeletionStep } from './adapters/garageDeletionCleanupAdapter';
+import {
+  startGarageDeletionRoute,
+  advanceGarageDeletionRoute,
+  readGarageDeletionStatusRoute
+} from './garageDeletionRoutes';
 import { reconcileGarageState } from './domain/garageReconciliation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
@@ -3508,134 +3511,10 @@ workerApp.post('/api/garages/update', requireWorkerAuth, async (c) => {
   }
 });
 
-// Handler 3: Delete Garage (POST /api/garages/delete)
-workerApp.post('/api/garages/delete', requireWorkerAuth, enforceWorkerFinancialRateLimit, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-    }
-    const body = await c.req.json().catch(() => ({}));
-    const garageId = validateId(body?.garageId, 'garageId', true);
-
-    if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
-
-    const claim = await claimGarageDeletion(adminDb, garageId, user?.role, user?.uid);
-    if (claim.kind === 'forbidden') {
-      return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-    }
-    if (claim.kind === 'not_found') {
-      return c.json({ success: false, code: 'GARAGE_NOT_FOUND', error: 'GARAGE_NOT_FOUND', statusCode: 404 }, 404);
-    }
-    if (claim.kind === 'already_deleted') {
-      return c.json({ success: true, alreadyDeleted: true });
-    }
-    if (claim.kind === 'in_progress') {
-      return c.json({
-        success: false,
-        code: 'GARAGE_DELETION_STILL_RUNNING',
-        error: 'GARAGE_DELETION_STILL_RUNNING',
-        statusCode: 409
-      }, 409);
-    }
-
-    return c.json({
-      success: true,
-      garageId,
-      status: 'running',
-      phase: 'preparing',
-      processedRecords: claim.processedRecords,
-      jobToken: claim.claimToken
-    }, 202);
-  } catch (err: any) {
-    console.error('[Worker Garage] Error deleting garage:', err);
-    const { statusCode, code, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
-  }
-});
-
-workerApp.post('/api/garages/delete-step', requireWorkerAuth, async (c) => {
-  const user = c.get('user');
-  if (user?.role !== 'admin') {
-    return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-  }
-  if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
-
-  const body = await c.req.json().catch(() => ({}));
-  let garageId = '';
-  try {
-    garageId = validateId(body?.garageId, 'garageId', true);
-  } catch (err: any) {
-    const { statusCode, code, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
-  }
-  const jobToken = typeof body?.jobToken === 'string' ? body.jobToken : '';
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(jobToken)) {
-    return c.json({ success: false, code: 'INVALID_DELETION_JOB_TOKEN', error: 'INVALID_DELETION_JOB_TOKEN', statusCode: 400 }, 400);
-  }
-
-  try {
-    const step = await processGarageDeletionStep(adminDb, garageId, jobToken, {
-      uid: user?.uid,
-      role: user?.role,
-      displayName: user?.displayName
-    });
-    return c.json({ success: true, garageId, ...step });
-  } catch (err: any) {
-    if (err?.message === 'GARAGE_DELETION_IN_PROGRESS') {
-      return c.json({ success: false, code: 'GARAGE_DELETION_STILL_RUNNING', error: 'GARAGE_DELETION_STILL_RUNNING', statusCode: 409 }, 409);
-    }
-
-    const message = typeof err?.message === 'string' ? err.message : '';
-    const errorCode = message.startsWith('FIRESTORE_QUERY_FAILED:')
-      ? 'GARAGE_DELETION_QUERY_FAILED'
-      : message.startsWith('FIRESTORE_WRITE_FAILED:')
-        ? 'GARAGE_DELETION_WRITE_FAILED'
-        : message.startsWith('FIRESTORE_TRANSACTION_')
-          ? 'GARAGE_DELETION_TRANSACTION_FAILED'
-          : message === 'GARAGE_DELETION_TARGET_CHANGED'
-            ? 'GARAGE_DELETION_TARGET_CHANGED'
-            : 'GARAGE_DELETION_FAILED';
-    console.error('[Worker Garage] Deletion step failed:', errorCode, err);
-    await markGarageDeletionFailed(adminDb, garageId, jobToken, errorCode).catch((markError) => {
-      console.error('[Worker Garage] Failed to mark deletion step failure:', markError);
-    });
-    const statusCode = errorCode === 'GARAGE_DELETION_TARGET_CHANGED' ? 409 : 500;
-    return c.json({ success: false, code: errorCode, error: errorCode, statusCode }, statusCode as any);
-  }
-});
-
-workerApp.get('/api/garages/delete-status', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
-    if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
-    const garageId = validateId(c.req.query('garageId'), 'garageId', true);
-    const snapshot = await adminDb.doc(`garage_deletion_jobs/${garageId}`).get();
-    if (!snapshot.exists) return c.json({ success: false, code: 'DELETION_JOB_NOT_FOUND', error: 'DELETION_JOB_NOT_FOUND', statusCode: 404 }, 404);
-
-    const job = snapshot.data() || {};
-    const expiresValue = job.leaseExpiresAt?.toDate?.() ?? job.leaseExpiresAt;
-    const expiresAtMs = expiresValue instanceof Date
-      ? expiresValue.getTime()
-      : (expiresValue ? new Date(expiresValue).getTime() : NaN);
-    const isStale = job.status === 'running' && Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now();
-    const status = isStale ? 'stale' : (typeof job.status === 'string' ? job.status : 'unknown');
-    return c.json({
-      success: true,
-      garageId,
-      status,
-      phase: isStale ? 'failed' : (job.phase || status),
-      processedRecords: Number.isFinite(Number(job.processedRecords)) ? Math.max(0, Number(job.processedRecords)) : 0,
-      errorCode: typeof job.errorCode === 'string' ? job.errorCode : null,
-      retryable: status === 'failed' || status === 'stale'
-    });
-  } catch (err: any) {
-    console.error('[Worker Garage] Error reading deletion status:', err);
-    const { statusCode, code, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
-  }
-});
+// Garage deletion handlers live in a dedicated module; all three routes share the same server authority.
+workerApp.post('/api/garages/delete', requireWorkerAuth, startGarageDeletionRoute);
+workerApp.post('/api/garages/delete-step', requireWorkerAuth, advanceGarageDeletionRoute);
+workerApp.get('/api/garages/delete-status', requireWorkerAuth, readGarageDeletionStatusRoute);
 
 // Handler 4 & 5: Query Garages (GET /api/garages & GET /api/garages/:id)
 workerApp.get('/api/garages', requireWorkerAuth, async (c) => {

@@ -5,6 +5,7 @@ vi.mock('../api/apiClient', async (importOriginal) => {
   return { ...actual, apiFetch: apiFetchMock };
 });
 import { firestoreService } from '../services';
+import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
 
 vi.mock('../firebase', () => ({
   db: {},
@@ -86,5 +87,43 @@ describe('v167 - Garage Deletion', () => {
     expect(progressLog[progressLog.length - 1]).toEqual({ processed: 23, phase: 'complete' });
     expect(progressLog.every((progress) => !('percentage' in progress))).toBe(true);
     expect(apiFetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not spend an extra status read after an explicit rate-limit rejection', async () => {
+    const error = Object.assign(new Error('RATE_LIMIT_EXCEEDED'), {
+      code: 'RATE_LIMIT_EXCEEDED',
+      status: 429,
+      envelope: { retryAfterSeconds: 37 }
+    });
+    apiFetchMock.mockReset().mockRejectedValueOnce(error);
+
+    const result = await deleteGarageWithRecovery('test_garage');
+
+    expect(result).toMatchObject({ ok: false, errorCode: 'RATE_LIMIT_EXCEEDED', status: null });
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    if (result.ok === false) {
+      expect(garageDeletionFailureMessage(result, 'en')).toContain('37 seconds');
+    }
+  });
+
+  it('checks deletion status only when the start request outcome is ambiguous', async () => {
+    apiFetchMock.mockReset()
+      .mockRejectedValueOnce(Object.assign(new Error('API_TIMEOUT'), { code: 'API_TIMEOUT' }))
+      .mockRejectedValueOnce(Object.assign(new Error('DELETION_JOB_NOT_FOUND'), { code: 'DELETION_JOB_NOT_FOUND' }));
+
+    const result = await deleteGarageWithRecovery('test_garage');
+
+    expect(result).toMatchObject({ ok: false, errorCode: 'API_TIMEOUT', status: { status: 'not_started' } });
+    expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/garages/delete-status?garageId=test_garage');
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a completed job as success if the original response was lost', async () => {
+    apiFetchMock.mockReset()
+      .mockRejectedValueOnce(Object.assign(new Error('NETWORK_ERROR'), { code: 'NETWORK_ERROR' }))
+      .mockResolvedValueOnce({ status: 'completed', processedRecords: 12, errorCode: null, retryable: false });
+
+    await expect(deleteGarageWithRecovery('test_garage')).resolves.toEqual({ ok: true });
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
   });
 });

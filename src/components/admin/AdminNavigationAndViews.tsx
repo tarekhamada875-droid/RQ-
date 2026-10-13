@@ -20,7 +20,7 @@ import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
 import { AdminTrialLeadsView } from './AdminTrialLeadsView';
 import { AdminPackagesView } from './AdminPackagesView';
-import { garageService } from '../../services/garageService';
+import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AdminFairUseView } from './AdminFairUseView';
 import { AdminWalletView } from './AdminWalletView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
@@ -410,32 +410,23 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               message: `هل أنت متأكد من حذف الجراج (${garageName}) وكافة بياناته نهائياً؟ هذا الإجراء غير قابل للتراجع.`,
               onConfirm: async () => {
                 try {
-                  await garageService.deleteGarage(garageId);
+                  const result = await deleteGarageWithRecovery(garageId);
+                  if (result.ok === false) {
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: adminLang === 'en' ? 'Garage deletion failed' : 'تعذر حذف الجراج',
+                      message: garageDeletionFailureMessage(result, adminLang),
+                      onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
+                      confirmText: adminLang === 'en' ? 'OK' : 'حسناً',
+                      type: 'danger'
+                    });
+                    return;
+                  }
                   setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                  showToast?.('تم حذف الجراج بنجاح', 'success');
-                } catch (err: any) {
-                  const errorCode = err?.code || err?.message;
-                  const errorMessage = errorCode === 'GARAGE_DELETION_STALE'
-                    ? 'توقفت عملية الحذف قبل اكتمالها. أعد فتح نافذة الحذف لاستكمال البيانات المتبقية.'
-                    : errorCode === 'GARAGE_DELETION_STILL_RUNNING'
-                      ? 'ما زال حذف الجراج جارياً. انتظر قبل بدء عملية أخرى.'
-                      : ['GARAGE_DELETION_QUERY_FAILED', 'GARAGE_DELETION_WRITE_FAILED', 'GARAGE_DELETION_TRANSACTION_FAILED'].includes(errorCode)
-                        ? 'تعذرت خطوة من الحذف. لم يتم تأكيد اكتمال العملية؛ يمكنك إعادة فتح الحذف لاستكمالها.'
-                        : errorCode === 'GARAGE_DELETION_TARGET_CHANGED'
-                          ? 'تغيرت حالة الجراج أثناء الحذف، فأوقفنا العملية لحماية البيانات.'
-                      : errorCode === 'GARAGE_NOT_FOUND'
-                        ? 'لم يعد هذا الجراج موجوداً.'
-                        : errorCode === 'FORBIDDEN'
-                          ? 'ليس لديك صلاحية حذف هذا الجراج.'
-                          : 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد التحقق من حالة العملية.';
-                  setConfirmDialog({
-                    isOpen: true,
-                    title: 'تعذر حذف الجراج',
-                    message: errorMessage,
-                    onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-                    confirmText: 'حسناً',
-                    type: 'danger'
-                  });
+                  showToast?.(adminLang === 'en' ? 'Garage deleted successfully.' : 'تم حذف الجراج بنجاح', 'success');
+                } catch (error) {
+                  console.error('Failed to delete trial garage:', error);
+                  showToast?.(adminLang === 'en' ? 'The garage could not be deleted. Please try again.' : 'تعذر حذف الجراج. حاول مرة أخرى.', 'error');
                 }
               }
             });

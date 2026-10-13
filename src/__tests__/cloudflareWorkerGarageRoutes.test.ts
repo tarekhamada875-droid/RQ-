@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { createHash } from 'node:crypto';
 import { MockFirestore, mockAdminAuth } from './mockFirestore';
 
 const mockDb = new MockFirestore();
@@ -374,6 +375,39 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const deletionLogs = [...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.garageId === testGarageId);
     expect(deletionLogs).toHaveLength(1);
     expect(deletionLogs[0][1].actionType).toBe('garage_delete');
+  });
+
+  it('does not let unrelated financial requests consume the garage-deletion limit', async () => {
+    const now = Date.now();
+    const financialPath = `rate_limits/${createHash('sha256').update('fin:admin-uid').digest('hex')}`;
+    const deletionPath = `rate_limits/${createHash('sha256').update('garage-delete:admin-uid').digest('hex')}`;
+    mockDb.seed(financialPath, { count: 30, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
+
+    const response = await startDeletion(testGarageId);
+
+    expect(response.status).toBe(202);
+    expect(mockDb.records.get(financialPath)).toMatchObject({ count: 30 });
+    expect(mockDb.records.get(deletionPath)).toMatchObject({ count: 1 });
+  });
+
+  it('limits new deletion starts and makes a throttled response write no garage or job data', async () => {
+    const ids = ['delete-limit-a', 'delete-limit-b', 'delete-limit-c', 'delete-limit-d'];
+    ids.forEach((id) => mockDb.seed(`garages/${id}`, { name: id }));
+
+    for (const id of ids.slice(0, 3)) {
+      expect((await startDeletion(id)).status).toBe(202);
+    }
+    const blocked = await startDeletion(ids[3]);
+    const body = await blocked.json() as any;
+    const rateLimitPath = `rate_limits/${createHash('sha256').update('garage-delete:admin-uid').digest('hex')}`;
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get('Retry-After')).toMatch(/^\d+$/);
+    expect(body).toMatchObject({ success: false, code: 'RATE_LIMIT_EXCEEDED', statusCode: 429 });
+    expect(body.retryAfterSeconds).toBeGreaterThan(0);
+    expect(mockDb.records.has(`garage_deletion_jobs/${ids[3]}`)).toBe(false);
+    expect(mockDb.records.get(`garages/${ids[3]}`)).not.toHaveProperty('isDeleting');
+    expect(mockDb.records.get(rateLimitPath)).toMatchObject({ count: 3 });
   });
 
   it('returns a running job and reports actual deletion counts through the Admin-only status route', async () => {

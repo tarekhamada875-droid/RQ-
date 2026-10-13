@@ -19,11 +19,13 @@ export class MockDocumentReference {
   ) {}
 
   async get() {
+    this.db.documentReadCount += 1;
     const val = this.db.records.get(this.path);
     return new MockDocumentSnapshot(this.id, val !== undefined, val, this);
   }
 
   async set(data: any, options?: { merge?: boolean }) {
+    this.db.documentWriteCount += 1;
     if (options?.merge) {
       const existing = this.db.records.get(this.path) || {};
       this.db.records.set(this.path, { ...existing, ...data });
@@ -33,6 +35,7 @@ export class MockDocumentReference {
   }
 
   async update(data: any) {
+    this.db.documentWriteCount += 1;
     const existing = this.db.records.get(this.path);
     if (existing === undefined) {
       throw new Error(`Document not found: ${this.path}`);
@@ -41,6 +44,7 @@ export class MockDocumentReference {
   }
 
   async delete() {
+    this.db.documentWriteCount += 1;
     this.db.records.delete(this.path);
   }
 
@@ -138,6 +142,8 @@ export class MockQuery {
       docs = docs.slice(0, this.limitVal);
     }
 
+    this.db.documentReadCount += Math.max(1, docs.length);
+
     return {
       size: docs.length,
       empty: docs.length === 0,
@@ -192,6 +198,8 @@ export class MockBatch {
 
 export class MockFirestore {
   public readonly records = new Map<string, any>();
+  public documentReadCount = 0;
+  public documentWriteCount = 0;
   private transactionQueue: Promise<void> = Promise.resolve();
 
   doc(path: string) {
@@ -223,6 +231,7 @@ export class MockFirestore {
       const t = {
         get: async (ref: MockDocumentReference | MockQuery) => ref.get(),
         set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
+          this.documentWriteCount += 1;
           if (options?.merge) {
             const existing = this.records.get(ref.path) || {};
             this.records.set(ref.path, { ...existing, ...data });
@@ -231,6 +240,7 @@ export class MockFirestore {
           }
         },
         update: (ref: MockDocumentReference, data: any) => {
+          this.documentWriteCount += 1;
           const existing = this.records.get(ref.path);
           if (existing === undefined) {
             throw new Error(`Document not found: ${ref.path}`);
@@ -238,6 +248,7 @@ export class MockFirestore {
           this.records.set(ref.path, { ...existing, ...data });
         },
         delete: (ref: MockDocumentReference) => {
+          this.documentWriteCount += 1;
           this.records.delete(ref.path);
         }
       };
@@ -253,6 +264,12 @@ export class MockFirestore {
 
   clear() {
     this.records.clear();
+    this.resetDocumentCounts();
+  }
+
+  resetDocumentCounts() {
+    this.documentReadCount = 0;
+    this.documentWriteCount = 0;
   }
 }
 
