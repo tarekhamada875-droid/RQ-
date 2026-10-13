@@ -3,7 +3,8 @@
 **Last updated:** 2026-10-13
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
-**Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. This maintenance branch removes the obsolete Express host, packages, middleware, and Node/Docker production artifact path; the changes are not production until the pull request passes CI and is merged. Hono remains the production backend. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
+**Current production source of truth:** `main` at `1aa48a8442aed90ce7bf14d8e7c393bfc54204fe`; PR #32 and the Cloudflare Worker deployment completed successfully on 2026-10-13.
+**Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
 
@@ -27,7 +28,7 @@ Firebase Authentication + Firestore
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
-- No Express runtime remains in the authorized maintenance branch. Local development uses a small Node HTTP adapter to connect Vite to the existing Hono API; production builds contain the Pages frontend and Cloudflare Worker only. H9 retired the old API routes; this change removes the remaining compatibility host and its unused legacy trace-persistence logic. The Cloud Run entrypoint was previously retired, and no Cloud Run deployment workflow is active.
+- No Express runtime remains in `main`. Local development uses a small Node HTTP adapter to connect Vite to the existing Hono API; production builds contain the Pages frontend and Cloudflare Worker only. H9 retired the old API routes; PR #32 removed the remaining compatibility host and its unused legacy trace-persistence logic. The Cloud Run entrypoint was previously retired, and no Cloud Run deployment workflow is active.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
 - `wrangler.toml` is the production Worker deployment configuration.
 
@@ -121,11 +122,11 @@ Baseline validation on `895e0cb` during the 2026-10-13 review included:
 
 ## 7. Workstream closure — 2026-10-12
 
-**There is no active migration plan.** The 2026-10-12 H9 stop decision remains historical; on 2026-10-13 the owner explicitly requested removal of the final Express compatibility runtime. This bounded cleanup is being completed on the current maintenance branch, not as a revived migration program.
+**There is no active migration plan.** The 2026-10-12 H9 stop decision remains historical; on 2026-10-13 the owner explicitly requested removal of the final Express compatibility runtime. That bounded cleanup is complete in PR #32 and deployed from `main`; it did not revive the broader migration program.
 
-H9 API retirement was verified on the migration branch: zero reachable legacy API registrations remained. The local Express compatibility runtime was retained at that time and is now removed by this authorized maintenance change. The older historical cross-runtime equivalence work is not being repeated; production readiness and live authenticated/financial acceptance are **not established**. This cleanup is not a production launch approval.
+H9 API retirement was verified on the migration branch: zero reachable legacy API registrations remained. The local Express compatibility runtime was retained at that time and later removed from `main` by PR #32. The older historical cross-runtime equivalence work is not being repeated; production readiness and live authenticated/financial acceptance are **not established**. This cleanup is not a general production launch approval.
 
-No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-related open documentation PR was closed, and the dedicated H5 Preview Worker was removed. This maintenance change also removes the stale manually dispatchable Firebase preview deployment and H9 rehearsal workflow files. The general Production Gate and production deployment workflow remain enabled.
+No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-related open documentation PR was closed, and the dedicated H5 Preview Worker was removed. PR #32 also removed the stale manually dispatchable Firebase preview deployment and H9 rehearsal workflow files. The general Production Gate and production deployment workflow remain enabled.
 
 **Preview boundary:** no branch preview is an active test environment. Old isolated preview configuration and historical H6 rehearsal results are evidence only; do not assume they are deployed or reuse their old procedures.
 
@@ -164,9 +165,9 @@ Keep these as current orientation and operating documents:
 - `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
 - `docs/OBSERVABILITY_RUNBOOK.md`
 
-`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The H9 plan and handoff files remain historical records; the specific final Express-removal request is being completed on this maintenance branch.
+`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The H9 plan and handoff files remain historical records; the specific final Express-removal request was completed by PR #32.
 
-The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. The generic Dockerfile and Express compatibility runtime are removed by the current owner-authorized maintenance change.
+The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. PR #32 removed the generic Dockerfile and Express compatibility runtime.
 
 Unreferenced metadata candidates still require external-consumer review before deletion:
 

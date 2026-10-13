@@ -4,7 +4,7 @@ For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`]
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-13):** `main` at `895e0cb` remains the production source of truth. Hono is the production Worker backend at `https://rq.tarekhamada875.workers.dev`; the React app is on Pages at `https://rq-acg.pages.dev`. The project is being exercised with synthetic test data. This owner-authorized change branch removes the retired local Express/Node production path; it is not deployed until merged through the normal release gate. Branch previews are not an active release environment.
+> **Current status (2026-10-13):** `main` at `1aa48a8` is the production source of truth; PR #32 has passed CI and the Cloudflare Worker deployment gate. Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The project is being exercised with synthetic test data. Express and its old Node/Docker production path have been removed; local development uses a small Node HTTP adapter for Vite and Hono. Branch previews are not an active release environment.
 
 ## Target production architecture
 
