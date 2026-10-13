@@ -158,6 +158,11 @@ class QueryReference {
 
 class CollectionReference extends QueryReference {
   doc(id?: string): DocumentReference { return new DocumentReference(`${activeDb!.documentsRoot}/${this.collectionPath}/${id || crypto.randomUUID()}`); }
+  async add(data: JsonMap): Promise<DocumentReference> {
+    const document = this.doc();
+    await document.set(data);
+    return document;
+  }
 }
 
 class FirestoreBatch {

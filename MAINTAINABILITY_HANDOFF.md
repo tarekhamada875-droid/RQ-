@@ -54,6 +54,12 @@ Garage deletion is Admin-only and server-authoritative:
 
 **Production audit — 2026-10-13:** the approved test garage `H6 Staff Trial 20261008` (`306d58b4-796d-4a6f-90cc-c64e3a8ef4fb`) first exposed a Worker transaction-result bug: the claim committed but its value was discarded, producing HTTP 500 and leaving a stale job at 0 processed records. The failed attempts persisted only claim/rate-limit state and the garage's `isDeleting` marker; no cleanup records were deleted. [PR #28](https://github.com/tarekhamada875-droid/RQ-/pull/28) corrected the adapter and added ambiguous-500 status recovery. After deployment and the Worker health smoke test, the approved cleanup completed: job status `completed` / phase `complete`, **6 records processed**; the garage document returned 404; the targeted `vehicles` and `staff` queries both returned zero; and searching the Admin garage list by the exact name returned no match. The completed worker job also confirms all configured cleanup queries were exhausted before finalization.
 
+## Worker Firestore API compatibility
+
+`tools/build-cloudflare.mjs` aliases the production Worker imports of `firebaseAdmin` to `server/firebaseWorkerAdmin.ts`. Keep that REST adapter's method surface compatible with the Firebase Admin methods used by Worker routes. Node route tests use a mock/SDK-style Firestore that may implement methods missing from the Worker adapter, so add contract tests directly against `firebaseWorkerAdmin.ts` for production-only methods.
+
+**Production create bug — 2026-10-13:** Admin announcement, coupon, and subscription-plan creation routes call `collection.add()`, but the Worker adapter previously lacked that method. The Worker therefore returned a server error; the plan form caught every error and incorrectly blamed the internet. The adapter now implements `add(data)` using an auto-ID document plus `set()`, and the form distinguishes true network errors, ambiguous timeouts (check for an existing plan before retrying), and server failures with a correlation reference.
+
 ## Last verified local baseline
 
 The full Vitest suite, TypeScript validation, production build, maintainability check, and Cloudflare live smoke gate must pass after every source change.

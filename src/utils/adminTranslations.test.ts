@@ -14,6 +14,8 @@ describe('Admin Translations Hook Helper', () => {
     expect(t('سعر الساعة')).toBe('Hourly price');
     expect(t('تم حذف الإعلان بنجاح')).toBe('Announcement deleted successfully');
     expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');
+    expect(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBe('Could not reach the server. Check your internet connection.');
+    expect(t('حدث خطأ في الخادم أثناء حفظ الخطة.')).toBe('A server error prevented the plan from being saved.');
   });
 
   it('falls back to the provided string if English dictionary key is missing', () => {

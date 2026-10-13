@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminPackagesView } from './AdminPackagesView';
 import { firestoreService } from '../../services';
+import { ApiError } from '../../api/apiClient';
 
 vi.mock('../../services', () => ({
   firestoreService: {
@@ -51,13 +52,31 @@ describe('AdminPackagesView package creation', () => {
     expect(firestoreService.addPackage).not.toHaveBeenCalled();
   });
 
-  it('shows a visible error when the server rejects a valid package', async () => {
-    vi.mocked(firestoreService.addPackage).mockRejectedValueOnce(new Error('request failed'));
+  it('reports a server error without blaming the internet connection', async () => {
+    vi.mocked(firestoreService.addPackage).mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', {
+      status: 500,
+      correlationId: 'corr-plan-500',
+    }));
     render(<AdminPackagesView {...props} />);
     openAndFillPackageForm();
     fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '600' } });
     fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر حفظ الخطة. تحقق من الاتصال وحاول مرة أخرى.');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('حدث خطأ في الخادم أثناء حفظ الخطة.');
+    expect(alert).toHaveTextContent('corr-plan-500');
+    expect(alert).not.toHaveTextContent('اتصال');
+  });
+
+  it('shows the connection message only for an actual network error', async () => {
+    vi.mocked(firestoreService.addPackage).mockRejectedValueOnce(new ApiError('NETWORK_ERROR', {
+      code: 'NETWORK_ERROR',
+    }));
+    render(<AdminPackagesView {...props} />);
+    openAndFillPackageForm();
+    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '600' } });
+    fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
   });
 });

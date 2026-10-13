@@ -3,6 +3,7 @@ import { Plus, Zap, Tag, Trash2, Car, Clock, X } from 'lucide-react';
 import { Package } from '../../types';
 import { getCleanPackageInfo } from '../../constants/packages';
 import { firestoreService } from '../../services';
+import { ApiError } from '../../api/apiClient';
 
 interface AdminPackagesViewProps {
   packages: Package[];
@@ -130,7 +131,16 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
       setIsAddModalOpen(false);
     } catch (err) {
       console.error(err);
-      setFormError(t('تعذر حفظ الخطة. تحقق من الاتصال وحاول مرة أخرى.'));
+      if (err instanceof ApiError && err.code === 'NETWORK_ERROR') {
+        setFormError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
+      } else if (err instanceof ApiError && err.code === 'API_TIMEOUT') {
+        setFormError(t('انتهت مهلة حفظ الخطة. تحقق من ظهورها قبل إعادة المحاولة.'));
+      } else if (err instanceof ApiError && err.status >= 500) {
+        const reference = err.correlationId ? ` (${t('رقم التتبع')}: ${err.correlationId})` : '';
+        setFormError(`${t('حدث خطأ في الخادم أثناء حفظ الخطة.')}${reference}`);
+      } else {
+        setFormError(t('تعذر حفظ الخطة. حاول مرة أخرى.'));
+      }
     } finally {
       setIsSubmitting(false);
     }
