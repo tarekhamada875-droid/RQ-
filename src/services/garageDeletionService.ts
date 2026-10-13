@@ -34,6 +34,13 @@ const AMBIGUOUS_DELETION_ERRORS = new Set([
   'GARAGE_DELETION_STATUS_UNKNOWN'
 ]);
 
+function isAmbiguousDeletionError(error: unknown, errorCode: string): boolean {
+  if (AMBIGUOUS_DELETION_ERRORS.has(errorCode)) return true;
+  if (typeof error !== 'object' || error === null) return false;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' && status >= 500 && status < 600;
+}
+
 export function garageDeletionErrorCode(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
     const details = error as { code?: unknown; message?: unknown };
@@ -141,7 +148,7 @@ export async function deleteGarageWithRecovery(
     return { ok: true };
   } catch (error) {
     const errorCode = garageDeletionErrorCode(error);
-    if (!AMBIGUOUS_DELETION_ERRORS.has(errorCode)) {
+    if (!isAmbiguousDeletionError(error, errorCode)) {
       return { ok: false, errorCode, status: null, error };
     }
     const status = await garageDeletionService.getGarageDeletionStatus(garageId).catch(() => null);
