@@ -15,6 +15,7 @@ import {
 import { Delegate, Supervisor, Garage } from '../../types';
 import { firestoreService } from '../../services';
 import { generateSafePin, normalizeDigits, formatDisplayPin } from '../../utils';
+import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useTheme } from '../../utils/ThemeContext';
 
 interface AdminPeopleViewProps {
@@ -72,9 +73,22 @@ export const AdminPeopleView = memo(({
       setShowAddForm(false);
     } catch (err) {
       console.error(err);
-      setDelegatePinError(adminLang === 'en'
-        ? 'Could not add delegate. Please check your connection and try again.'
-        : 'تعذر إضافة المندوب. تحقق من الاتصال وحاول مرة أخرى.');
+      const errorMessage = err instanceof Error ? err.message : '';
+      const failure = classifyApiFailure(err);
+      const reference = getApiFailureReference(err);
+      const isEnglish = adminLang === 'en';
+      if (errorMessage === 'الرمز مستخدم بالفعل' || errorMessage === 'PIN_ALREADY_TAKEN') {
+        setDelegatePinError(isEnglish ? 'This PIN is already in use.' : 'الرمز مستخدم بالفعل');
+      } else if (failure === 'network') {
+        setDelegatePinError(isEnglish ? 'Could not reach the server. Check your internet connection.' : 'تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
+      } else if (failure === 'timeout') {
+        setDelegatePinError(isEnglish ? 'The request timed out. Check whether the delegate was added before trying again.' : 'انتهت مهلة الطلب. تحقق من إضافة المندوب قبل إعادة المحاولة.');
+      } else if (failure === 'server') {
+        const suffix = reference ? ` (${isEnglish ? 'Reference' : 'رقم التتبع'}: ${reference})` : '';
+        setDelegatePinError(isEnglish ? `The server could not add the delegate${suffix}.` : `تعذر على الخادم إضافة المندوب${suffix}.`);
+      } else {
+        setDelegatePinError(isEnglish ? 'Could not add delegate. Please try again.' : 'تعذر إضافة المندوب. يرجى المحاولة مرة أخرى.');
+      }
     } finally {
       setIsSubmittingDelegate(false);
     }
