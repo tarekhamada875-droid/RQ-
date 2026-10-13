@@ -126,4 +126,19 @@ describe('v167 - Garage Deletion', () => {
     await expect(deleteGarageWithRecovery('test_garage')).resolves.toEqual({ ok: true });
     expect(apiFetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('checks job status after a server 500 because the claim may already have committed', async () => {
+    apiFetchMock.mockReset()
+      .mockRejectedValueOnce(Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR', status: 500 }))
+      .mockResolvedValueOnce({ status: 'stale', processedRecords: 0, errorCode: null, retryable: true });
+
+    const result = await deleteGarageWithRecovery('test_garage');
+
+    expect(result).toMatchObject({ ok: false, errorCode: 'INTERNAL_ERROR', status: { status: 'stale' } });
+    expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/garages/delete-status?garageId=test_garage');
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+    if (result.ok === false) {
+      expect(garageDeletionFailureMessage(result, 'en')).toContain('stopped before it finished');
+    }
+  });
 });

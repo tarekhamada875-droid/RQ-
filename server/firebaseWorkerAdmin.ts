@@ -189,14 +189,15 @@ class FirestoreRest {
   collection(path: string): CollectionReference { return new CollectionReference(path); }
   collectionGroup(path: string): QueryReference { return new QueryReference(path, [], undefined, undefined, true); }
   batch(): FirestoreBatch { return new FirestoreBatch(); }
-  async runTransaction(callback: (transaction: FirestoreTransaction) => Promise<void>): Promise<void> {
+  async runTransaction<T>(callback: (transaction: FirestoreTransaction) => Promise<T>): Promise<T> {
     const begin = await firestoreRequest(`${this.documentsRoot}:beginTransaction`, { method: 'POST', body: JSON.stringify({ options: { readWrite: {} } }) });
     if (!begin.ok) throw new Error(`FIRESTORE_TRANSACTION_BEGIN_FAILED:${begin.status}`);
     const { transaction } = await begin.json() as { transaction: string };
     const tx = new FirestoreTransaction(transaction);
     try {
-      await callback(tx);
+      const result = await callback(tx);
       await this.write(tx.pendingWrites, transaction);
+      return result;
     } catch (error) {
       await firestoreRequest(`${this.documentsRoot}:rollback`, { method: 'POST', body: JSON.stringify({ transaction }) }).catch(() => undefined);
       throw error;
