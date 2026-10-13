@@ -19,9 +19,13 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
 }) => {
   const [packageDurationFilter, setPackageDurationFilter] = useState<number>(30);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmitNewPackage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setFormError(null);
     const form = e.currentTarget;
     const nameInput = form.elements.namedItem('pkgName') as HTMLInputElement;
     const priceInput = form.elements.namedItem('pkgPrice') as HTMLInputElement;
@@ -36,7 +40,8 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
     const dailyCapacity = isNaN(rawCapVal) ? 0 : rawCapVal;
     const discountVal = discountValueInput?.value ? Number(discountValueInput.value) : 0;
     
-    if (!name || price <= 0) {
+    if (!name || !Number.isFinite(price) || price <= 0) {
+      setFormError(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك'));
       return;
     }
 
@@ -107,6 +112,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const pkgData: Omit<Package, 'id' | 'createdAt' | 'isActive'> = {
         name,
@@ -124,6 +130,9 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
       setIsAddModalOpen(false);
     } catch (err) {
       console.error(err);
+      setFormError(t('تعذر حفظ الخطة. تحقق من الاتصال وحاول مرة أخرى.'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -315,6 +324,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
 
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => setIsAddModalOpen(false)}
                 className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
               >
@@ -408,16 +418,24 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                 </select>
               </div>
 
+              {formError && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400" role="alert">
+                  {formError}
+                </p>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button 
                   type="submit" 
+                  disabled={isSubmitting}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>{t('حفظ وإضافة خطة الاشتراك')}</span>
+                  <span>{isSubmitting ? t('جاري الحفظ...') : t('حفظ وإضافة خطة الاشتراك')}</span>
                 </button>
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer"
                 >

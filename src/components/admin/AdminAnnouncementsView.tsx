@@ -15,6 +15,7 @@ import { firestoreService } from '../../services';
 import { safeDate } from '../../utils';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
+import { AdminConfirmDialog } from './AdminConfirmDialog';
 
 interface AdminAnnouncementsViewProps {
   allGarages: Garage[];
@@ -31,6 +32,8 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [formFeedback, setFormFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -105,8 +108,10 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
     setActionLoadingId(`delete-${id}`);
     try {
       await firestoreService.deleteAnnouncement(id);
+      setActionFeedback({ type: 'success', text: t('تم حذف الإعلان بنجاح') });
     } catch (err) {
       console.error('Failed to delete announcement:', err);
+      setActionFeedback({ type: 'error', text: t('فشل حذف الإعلان') });
     } finally {
       setActionLoadingId(null);
     }
@@ -117,8 +122,10 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
     setActionLoadingId(`toggle-${ann.id}`);
     try {
       await firestoreService.toggleAnnouncementActive(ann.id, !ann.isActive);
+      setActionFeedback({ type: 'success', text: t('تم تحديث حالة الإعلان') });
     } catch (err) {
       console.error('Failed to toggle announcement active state:', err);
+      setActionFeedback({ type: 'error', text: t('فشل تحديث حالة الإعلان') });
     } finally {
       setActionLoadingId(null);
     }
@@ -260,6 +267,16 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
               </span>
             </div>
 
+            {actionFeedback && (
+              <div className={`p-3 rounded-xl border text-xs font-bold ${
+                actionFeedback.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200'
+              }`} role="status">
+                {actionFeedback.text}
+              </div>
+            )}
+
             {isLoading ? (
               <div className="py-16 text-center text-slate-400 font-bold flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
@@ -341,7 +358,7 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
                           <button
                             type="button"
                             disabled={!!actionLoadingId}
-                            onClick={() => handleDeleteAnnouncement(ann.id)}
+                            onClick={() => setAnnouncementToDelete(ann)}
                             title={t('حذف')}
                             className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 disabled:opacity-50 transition-colors"
                           >
@@ -385,6 +402,20 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
           </div>
         </section>
       </div>
+
+      <AdminConfirmDialog
+        isOpen={Boolean(announcementToDelete)}
+        title={t('حذف الإعلان')}
+        message={t('هل أنت متأكد من حذف هذا الإعلان؟')}
+        confirmText={t('حذف')}
+        cancelText={t('إلغاء')}
+        type="danger"
+        onConfirm={async () => {
+          if (announcementToDelete) await handleDeleteAnnouncement(announcementToDelete.id);
+          setAnnouncementToDelete(null);
+        }}
+        onCancel={() => setAnnouncementToDelete(null)}
+      />
     </div>
   );
 };

@@ -12,6 +12,8 @@ describe('Admin Translations Hook Helper', () => {
     const t = useAdminTranslation('en');
     expect(t('الجراجات')).toBe('Garages');
     expect(t('سعر الساعة')).toBe('Hourly price');
+    expect(t('تم حذف الإعلان بنجاح')).toBe('Announcement deleted successfully');
+    expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');
   });
 
   it('falls back to the provided string if English dictionary key is missing', () => {
