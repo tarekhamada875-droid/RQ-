@@ -2,6 +2,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { collection, query, where, onSnapshot, doc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import type { 
   Staff, 
   Package, 
@@ -30,6 +31,21 @@ export interface FinancialReportFilters {
   end: string;
 }
 
+export type SubscriberPageCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface SubscriberPageInfo {
+  lastDoc: SubscriberPageCursor | null;
+  hasMore: boolean;
+}
+
+export interface SubscriberPage {
+  subscribers: Subscriber[];
+  lastDoc: SubscriberPageCursor | null;
+  hasMore: boolean;
+}
+
+const SUBSCRIBER_PAGE_SIZE = 50;
+
 export const adminService = {
   // Staff
   addStaff: async (data: Omit<Staff, 'id'>) => {
@@ -49,19 +65,11 @@ export const adminService = {
 
   updateStaff: async (id: string, data: Partial<Staff>) => {
     try {
-      if (data.pin) {
-        await apiFetch('/api/people/update-pin', {
-          method: 'POST',
-          body: { entityType: 'staff', entityId: id, newPin: data.pin }
-        });
-      }
       const { pin: _pin, ...otherFields } = data;
-      if (Object.keys(otherFields).length > 0) {
-        await apiFetch('/api/staff/update', {
-          method: 'POST',
-          body: { id, ...otherFields }
-        });
-      }
+      await apiFetch('/api/staff/update', {
+        method: 'POST',
+        body: { id, ...otherFields, ...(data.pin ? { pin: data.pin } : {}) }
+      });
     } catch (error: any) {
       if (error.message === 'PIN_ALREADY_TAKEN') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
@@ -232,21 +240,41 @@ export const adminService = {
   },
 
   // Subscribers
-  subscribeToSubscribers: (garageId: string, callback: (subscribers: any[]) => void) => {
+  subscribeToSubscribers: (garageId: string, callback: (subscribers: Subscriber[], page: SubscriberPageInfo) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/subscribers`);
     const q = query(
       collection(db, `garages/${garageId}/subscribers`),
       orderBy('createdAt', 'desc'),
-      limit(50)
+      limit(SUBSCRIBER_PAGE_SIZE + 1)
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(list);
+      const pageDocs = snapshot.docs.slice(0, SUBSCRIBER_PAGE_SIZE);
+      const list = pageDocs.map(doc => ({ id: doc.id, ...doc.data() } as Subscriber));
+      callback(list, {
+        lastDoc: pageDocs[pageDocs.length - 1] || null,
+        hasMore: snapshot.docs.length > SUBSCRIBER_PAGE_SIZE
+      });
     }, (err) => handleFirestoreError(err, OperationType.LIST, `garages/${garageId}/subscribers`));
 
     return () => {
       unsub();
       trackerUnsub();
+    };
+  },
+
+  getMoreSubscribers: async (garageId: string, lastDoc: SubscriberPageCursor): Promise<SubscriberPage> => {
+    const q = query(
+      collection(db, `garages/${garageId}/subscribers`),
+      orderBy('createdAt', 'desc'),
+      startAfter(lastDoc),
+      limit(SUBSCRIBER_PAGE_SIZE + 1)
+    );
+    const snapshot = await getDocs(q);
+    const pageDocs = snapshot.docs.slice(0, SUBSCRIBER_PAGE_SIZE);
+    return {
+      subscribers: pageDocs.map(doc => ({ id: doc.id, ...doc.data() } as Subscriber)),
+      lastDoc: pageDocs[pageDocs.length - 1] || lastDoc,
+      hasMore: snapshot.docs.length > SUBSCRIBER_PAGE_SIZE
     };
   },
 

@@ -22,10 +22,10 @@ import { listenerTracker } from '../utils/listenerTracker';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 export type GarageDeletionProgress = {
-  phase: 'preparing' | 'deleting' | 'finalizing' | 'complete';
-  total: number;
+  phase: 'preparing' | 'deleting' | 'finalizing' | 'complete' | 'failed';
   processed: number;
-  percentage: number;
+  total?: number;
+  percentage?: number;
 };
 
 export interface GarageDashboardSummary {
@@ -318,17 +318,50 @@ export const garageService = {
     onProgress?: (progress: GarageDeletionProgress) => void
   ) => {
     try {
-      onProgress?.({ total: 100, processed: 10, percentage: 10, phase: 'preparing' });
-      onProgress?.({ total: 100, processed: 50, percentage: 50, phase: 'deleting' });
-
-      await apiFetch('/api/garages/delete', {
+      onProgress?.({ processed: 0, phase: 'preparing' });
+      const started = await apiFetch<{
+        success: boolean;
+        status?: 'running' | 'completed';
+        alreadyDeleted?: boolean;
+        processedRecords?: number;
+      }>('/api/garages/delete', {
         method: 'POST',
         body: { garageId: id },
-        timeoutMs: 30_000
+        timeoutMs: 15_000
       });
 
-      onProgress?.({ total: 100, processed: 100, percentage: 100, phase: 'complete' });
-      return true;
+      if (started.alreadyDeleted || started.status === 'completed') {
+        onProgress?.({ processed: Number(started.processedRecords) || 0, phase: 'complete' });
+        return true;
+      }
+
+      const deadline = Date.now() + 6 * 60_000;
+      let status: {
+        success: boolean;
+        status: string;
+        phase?: string;
+        processedRecords?: number;
+        errorCode?: string | null;
+      };
+      do {
+        status = await apiFetch(`/api/garages/delete-status?garageId=${encodeURIComponent(id)}`, { timeoutMs: 15_000 });
+        const processed = Number(status.processedRecords) || 0;
+        if (status.status === 'completed') {
+          onProgress?.({ processed, phase: 'complete' });
+          return true;
+        }
+        if (status.status === 'failed' || status.status === 'stale') {
+          onProgress?.({ processed, phase: 'failed' });
+          throw new Error(status.status === 'stale' ? 'GARAGE_DELETION_STALE' : (status.errorCode || 'GARAGE_DELETION_FAILED'));
+        }
+        if (status.status !== 'running') throw new Error('GARAGE_DELETION_STATUS_UNKNOWN');
+        const phase = status.phase === 'finalizing' ? 'finalizing' : 'deleting';
+        onProgress?.({ processed, phase });
+        if (Date.now() >= deadline) throw new Error('GARAGE_DELETION_STILL_RUNNING');
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      } while (Date.now() < deadline);
+
+      throw new Error('GARAGE_DELETION_STILL_RUNNING');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `garages/${id}`);
       throw error;

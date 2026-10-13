@@ -6,7 +6,7 @@ import { isValidBackendOperatorToken } from './middleware';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
-import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
+import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
@@ -14,7 +14,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
@@ -278,6 +278,50 @@ workerApp.use('*', cors({
     'x-request-id'
   ]
 }));
+
+// Normalize auth/authorization failures in one place so every route uses the
+// same machine-readable contract, including older handlers with legacy strings.
+workerApp.use('*', async (c, next) => {
+  await next();
+  const status = c.res.status;
+  if (status !== 401 && status !== 403) return;
+
+  let body: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = await c.res.clone().json();
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      body = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // A legacy plain-text error still receives a stable envelope below.
+  }
+
+  const rawError = typeof body.error === 'string'
+    ? body.error
+    : typeof body.message === 'string'
+      ? body.message
+      : typeof body.code === 'string'
+        ? body.code
+        : status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN';
+  const explicitCode = typeof body.code === 'string' ? body.code : undefined;
+  const messageCode = rawError.match(/^([A-Z][A-Z0-9_]*)(?::|\b)/)?.[1];
+  const code = explicitCode || messageCode || (status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN');
+  const correlationId = typeof body.correlationId === 'string'
+    ? body.correlationId
+    : c.get('correlationId');
+
+  const normalizedResponse = c.json({
+    ...body,
+    success: false,
+    error: rawError,
+    code,
+    statusCode: status,
+    ...(correlationId ? { correlationId } : {}),
+    timestamp: typeof body.timestamp === 'string' ? body.timestamp : new Date().toISOString()
+  }, status);
+  c.res = normalizedResponse;
+  return c.res;
+});
 
 // Helper: Worker Authentication Middleware
 async function requireWorkerAuth(
@@ -1022,44 +1066,67 @@ workerApp.post('/api/admin/update-system-config', requireWorkerAuth, async (c) =
     };
 
     if (body.walletNumber !== undefined) {
-      updatePayload.walletNumber = String(body.walletNumber).trim();
+      if (typeof body.walletNumber !== 'string' || body.walletNumber.length > 100) {
+        throw new ValidationError('Invalid walletNumber', 'INVALID_WALLET_NUMBER', 400);
+      }
+      updatePayload.walletNumber = body.walletNumber.trim();
     }
     if (body.defaultTrialDays !== undefined) {
-      updatePayload.defaultTrialDays = Number(body.defaultTrialDays) || 2;
+      updatePayload.defaultTrialDays = validateNumber(body.defaultTrialDays, 'defaultTrialDays', { min: 0, integerOnly: true });
     }
     if (body.warningDaysThreshold !== undefined) {
-      updatePayload.warningDaysThreshold = Number(body.warningDaysThreshold) || 3;
+      updatePayload.warningDaysThreshold = validateNumber(body.warningDaysThreshold, 'warningDaysThreshold', { min: 0, integerOnly: true });
     }
     if (body.monthlySubscribersFlatFee !== undefined) {
-      updatePayload.monthlySubscribersFlatFee = Number(body.monthlySubscribersFlatFee) || 250;
+      updatePayload.monthlySubscribersFlatFee = validateNumber(body.monthlySubscribersFlatFee, 'monthlySubscribersFlatFee', { min: 0 });
     }
     if (body.monthlySubscribersSurchargePercent !== undefined) {
-      updatePayload.monthlySubscribersSurchargePercent = Number(body.monthlySubscribersSurchargePercent) || 25;
+      updatePayload.monthlySubscribersSurchargePercent = validateNumber(body.monthlySubscribersSurchargePercent, 'monthlySubscribersSurchargePercent', { min: 0 });
     }
     if (body.referralFeePerRenewal !== undefined) {
-      updatePayload.referralFeePerRenewal = Number(body.referralFeePerRenewal) || 100;
+      updatePayload.referralFeePerRenewal = validateNumber(body.referralFeePerRenewal, 'referralFeePerRenewal', { min: 0 });
     }
     if (body.delegateMonthlyCommission !== undefined) {
-      updatePayload.delegateMonthlyCommission = Number(body.delegateMonthlyCommission) || 100;
+      updatePayload.delegateMonthlyCommission = validateNumber(body.delegateMonthlyCommission, 'delegateMonthlyCommission', { min: 0 });
     }
     if (body.isMaintenanceMode !== undefined) {
-      updatePayload.isMaintenanceMode = !!body.isMaintenanceMode;
+      if (typeof body.isMaintenanceMode !== 'boolean') {
+        throw new ValidationError('Invalid isMaintenanceMode', 'INVALID_IS_MAINTENANCE_MODE', 400);
+      }
+      updatePayload.isMaintenanceMode = body.isMaintenanceMode;
     }
     if (body.maintenanceMessage !== undefined) {
-      updatePayload.maintenanceMessage = String(body.maintenanceMessage).trim();
+      if (typeof body.maintenanceMessage !== 'string' || body.maintenanceMessage.length > 1000) {
+        throw new ValidationError('Invalid maintenanceMessage', 'INVALID_MAINTENANCE_MESSAGE', 400);
+      }
+      updatePayload.maintenanceMessage = body.maintenanceMessage.trim();
     }
     if (body.adminColor !== undefined) {
-      updatePayload.adminColor = String(body.adminColor).trim();
+      if (typeof body.adminColor !== 'string' || body.adminColor.length > 32) {
+        throw new ValidationError('Invalid adminColor', 'INVALID_ADMIN_COLOR', 400);
+      }
+      updatePayload.adminColor = body.adminColor.trim();
     }
     if (body.subscriptionPrices !== undefined) {
-      updatePayload.subscriptionPrices = body.subscriptionPrices;
+      if (!body.subscriptionPrices || typeof body.subscriptionPrices !== 'object' || Array.isArray(body.subscriptionPrices)) {
+        throw new ValidationError('Invalid subscriptionPrices', 'INVALID_SUBSCRIPTION_PRICES', 400);
+      }
+      const validatedPrices: Record<string, number> = {};
+      for (const [name, price] of Object.entries(body.subscriptionPrices)) {
+        if (!name.trim() || name.length > 100) {
+          throw new ValidationError('Invalid subscription price name', 'INVALID_SUBSCRIPTION_PRICE_NAME', 400);
+        }
+        validatedPrices[name] = validateNumber(price, `subscriptionPrices.${name}`, { min: 0 });
+      }
+      updatePayload.subscriptionPrices = validatedPrices;
     }
 
     await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Admin] Error in update-system-config:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+    const { statusCode, code, message } = mapDomainErrorToStatus(e);
+    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
   }
 });
 
@@ -2425,6 +2492,24 @@ const handleCreateRechargeRequest = async (c: any) => {
         return duplicate.cachedResult || null;
       }
 
+      const pendingGuardRef = adminDb.doc(`recharge_request_guards/${validatedGarageId}`);
+      const pendingGuardSnap = await t.get(pendingGuardRef);
+      const pendingGuard = pendingGuardSnap.exists ? pendingGuardSnap.data() || {} : {};
+      if (typeof pendingGuard.activeRequestId === 'string' && pendingGuard.activeRequestId) {
+        const activeRequestSnap = await t.get(adminDb.doc(`recharge_requests/${pendingGuard.activeRequestId}`));
+        if (activeRequestSnap.exists && activeRequestSnap.data()?.status === 'pending') {
+          throw new Error('PENDING_RECHARGE_REQUEST_EXISTS');
+        }
+      }
+      if (pendingGuard.initialized !== true) {
+        const existingRequests = await t.get(
+          adminDb.collection('recharge_requests').where('garageId', '==', validatedGarageId)
+        );
+        if (existingRequests.docs.some((doc: any) => doc.data()?.status === 'pending')) {
+          throw new Error('PENDING_RECHARGE_REQUEST_EXISTS');
+        }
+      }
+
       const requestData: Record<string, any> = {
         requestId: requestRef.id,
         garageId: validatedGarageId,
@@ -2446,6 +2531,12 @@ const handleCreateRechargeRequest = async (c: any) => {
       }
 
       const createdResult = { id: requestRef.id, data: requestData };
+      t.set(pendingGuardRef, {
+        garageId: validatedGarageId,
+        initialized: true,
+        activeRequestId: requestRef.id,
+        updatedAt: new Date()
+      }, { merge: true });
       t.set(requestRef, requestData);
       storeIdempotencyInTransaction(
         t,
@@ -2514,6 +2605,9 @@ const handleApproveRechargeRequest = async (c: any) => {
       }
 
       const targetGarageId = validateId(requestData.garageId, 'garageId', true);
+      const pendingGuardRef = adminDb.doc(`recharge_request_guards/${targetGarageId}`);
+      const pendingGuardSnap = await t.get(pendingGuardRef);
+      const pendingGuard = pendingGuardSnap.exists ? pendingGuardSnap.data() || {} : {};
       const garageRef = adminDb.doc(`garages/${targetGarageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) {
@@ -2535,6 +2629,9 @@ const handleApproveRechargeRequest = async (c: any) => {
           revenueAmount: amount,
           resolvedAt: new Date()
         }, { merge: true });
+        if (pendingGuard.activeRequestId === reqId) {
+          t.set(pendingGuardRef, { activeRequestId: null, updatedAt: new Date() }, { merge: true });
+        }
 
         const logRef = adminDb.collection('activity_logs').doc();
         t.set(logRef, {
@@ -2688,6 +2785,9 @@ const handleApproveRechargeRequest = async (c: any) => {
         originalRevenueAmount: effectiveOriginalRevenue,
         resolvedAt: new Date()
       }, { merge: true });
+      if (pendingGuard.activeRequestId === reqId) {
+        t.set(pendingGuardRef, { activeRequestId: null, updatedAt: new Date() }, { merge: true });
+      }
 
       if (delegateRef && delegateSnap && delegateSnap.exists) {
         const delData = delegateSnap.data() || {};
@@ -2803,7 +2903,15 @@ const handleRejectRechargeRequest = async (c: any) => {
         throw new Error('REQUEST_ALREADY_PROCESSED');
       }
 
+      const targetGarageId = validateId(requestData.garageId, 'garageId', true);
+      const pendingGuardRef = adminDb.doc(`recharge_request_guards/${targetGarageId}`);
+      const pendingGuardSnap = await t.get(pendingGuardRef);
+      const pendingGuard = pendingGuardSnap.exists ? pendingGuardSnap.data() || {} : {};
+
       t.set(requestRef, { status: 'rejected', resolvedAt: new Date() }, { merge: true });
+      if (pendingGuard.activeRequestId === requestId) {
+        t.set(pendingGuardRef, { activeRequestId: null, updatedAt: new Date() }, { merge: true });
+      }
 
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validateId(requestData.garageId, 'garageId', true),
@@ -3025,6 +3133,7 @@ const handleSettleDelegateAccount = async (c: any) => {
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
     const requestFingerprint = createRequestFingerprint({ id });
     const delRef = adminDb.collection('delegates').doc(id);
     const now = new Date();
@@ -3044,6 +3153,9 @@ const handleSettleDelegateAccount = async (c: any) => {
       if (!snap.exists) throw new Error('DELEGATE_NOT_FOUND');
       const data = snap.data() || {};
       previousTotal = Number(data.totalRechargedAmount || 0);
+      if (!Number.isFinite(previousTotal) || previousTotal <= 0) {
+        throw new Error('NO_UNSETTLED_COMMISSION');
+      }
       const settlementRef = adminDb.collection('settlements').doc();
       settlementId = settlementRef.id;
       t.set(settlementRef, {
@@ -3093,6 +3205,9 @@ const handleSettleDelegateAccount = async (c: any) => {
     return c.json({ success: true, settlementId, settledAt: now.toISOString(), previousRechargedAmount: previousTotal });
   } catch (err: any) {
     console.error('[Worker Delegate] Error settling account:', err);
+    if (err?.message === 'NO_UNSETTLED_COMMISSION') {
+      return c.json({ success: false, error: 'NO_UNSETTLED_COMMISSION' }, 409);
+    }
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
   }
 };
@@ -3113,8 +3228,18 @@ const handleFinancialSummaryReport = async (c: any) => {
     const end = c.req.query('end');
     const delegateId = c.req.query('delegateId') ? validateId(c.req.query('delegateId'), 'delegateId', true) : undefined;
 
+    const isStrictDateOnly = (value?: string) => {
+      if (value === undefined) return true;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const parsed = new Date(`${value}T00:00:00.000Z`);
+      return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    };
+    if (!isStrictDateOnly(start) || !isStrictDateOnly(end)) {
+      return c.json({ success: false, code: 'INVALID_REPORT_DATE', error: 'INVALID_REPORT_DATE', statusCode: 400 }, 400);
+    }
+
     if (start && end && new Date(start) >= new Date(end)) {
-      return c.json({ success: false, error: 'START_MUST_PRECEDE_END' }, 400);
+      return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
     }
 
     const [eventsSnap, settlementsSnap] = await Promise.all([
@@ -3388,55 +3513,121 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, enforceWorkerFinancialR
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+      return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
     }
     const body = await c.req.json().catch(() => ({}));
     const garageId = validateId(body?.garageId, 'garageId', true);
 
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
 
     const claim = await claimGarageDeletion(adminDb, garageId, user?.role, user?.uid);
     if (claim.kind === 'forbidden') {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+      return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
     }
     if (claim.kind === 'not_found') {
-      return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+      return c.json({ success: false, code: 'GARAGE_NOT_FOUND', error: 'GARAGE_NOT_FOUND', statusCode: 404 }, 404);
     }
     if (claim.kind === 'already_deleted') {
       return c.json({ success: true, alreadyDeleted: true });
     }
     if (claim.kind === 'in_progress') {
-      const { statusCode, message } = mapDomainErrorToStatus(new Error('GARAGE_DELETION_IN_PROGRESS'));
-      return c.json({ success: false, error: message }, statusCode as any);
+      const { statusCode, code, message } = mapDomainErrorToStatus(new Error('GARAGE_DELETION_IN_PROGRESS'));
+      return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
     }
 
+    const deletionWork = async () => {
+      let processedRecords = claim.processedRecords;
+      try {
+        await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
+          phase: 'deleting',
+          processedRecords
+        });
+        await deleteGarageOwnedData(adminDb, garageId, async (pageDeleted) => {
+          processedRecords += pageDeleted;
+          await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
+            phase: 'deleting',
+            processedRecords
+          });
+        });
+        await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
+          phase: 'finalizing',
+          processedRecords
+        });
+        await finalizeGarageDeletion(adminDb, garageId, claim.claimToken, claim.auditLogId, user?.uid, {
+          garageId,
+          garageName: claim.garageName,
+          staffId: user?.uid || null,
+          staffName: user?.displayName || 'الإدارة',
+          actionType: 'garage_delete',
+          plateNumber: `حذف جراج: ${claim.garageName}`,
+          timestamp: new Date(),
+          amount: 0,
+          details: {
+            deletedByRole: user?.role || 'admin',
+            deletedByUid: user?.uid || null
+          }
+        });
+      } catch (err) {
+        await markGarageDeletionFailed(adminDb, garageId, claim.claimToken).catch((markError) => {
+          console.error('[Worker Garage] Failed to release deletion claim:', markError);
+        });
+        throw err;
+      }
+      return processedRecords;
+    };
+
+    const deletionPromise = deletionWork();
+    let executionContext: any = null;
     try {
-      await deleteGarageOwnedData(adminDb, garageId, () => renewGarageDeletionLease(adminDb, garageId, claim.claimToken));
-      await finalizeGarageDeletion(adminDb, garageId, claim.claimToken, claim.auditLogId, user?.uid, {
-        garageId,
-        garageName: claim.garageName,
-        staffId: user?.uid || null,
-        staffName: user?.displayName || 'الإدارة',
-        actionType: 'garage_delete',
-        plateNumber: `حذف جراج: ${claim.garageName}`,
-        timestamp: new Date(),
-        amount: 0,
-        details: {
-          deletedByRole: user?.role || 'admin',
-          deletedByUid: user?.uid || null
-        }
-      });
-      return c.json({ success: true });
-    } catch (err) {
-      await markGarageDeletionFailed(adminDb, garageId, claim.claimToken).catch((markError) => {
-        console.error('[Worker Garage] Failed to release deletion claim:', markError);
-      });
-      throw err;
+      executionContext = (c as any).executionCtx;
+    } catch {
+      executionContext = null;
     }
+    if (executionContext && typeof executionContext.waitUntil === 'function') {
+      executionContext.waitUntil(deletionPromise.catch((err: any) => {
+        console.error('[Worker Garage] Background deletion job failed:', err);
+      }));
+      return c.json({ success: true, garageId, status: 'running', processedRecords: claim.processedRecords }, 202);
+    }
+
+    const processedRecords = await deletionPromise;
+    return c.json({ success: true, garageId, status: 'completed', processedRecords });
   } catch (err: any) {
     console.error('[Worker Garage] Error deleting garage:', err);
-    const { statusCode, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message }, statusCode as any);
+    const { statusCode, code, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
+  }
+});
+
+workerApp.get('/api/garages/delete-status', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
+    if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
+    const garageId = validateId(c.req.query('garageId'), 'garageId', true);
+    const snapshot = await adminDb.doc(`garage_deletion_jobs/${garageId}`).get();
+    if (!snapshot.exists) return c.json({ success: false, code: 'DELETION_JOB_NOT_FOUND', error: 'DELETION_JOB_NOT_FOUND', statusCode: 404 }, 404);
+
+    const job = snapshot.data() || {};
+    const expiresValue = job.leaseExpiresAt?.toDate?.() ?? job.leaseExpiresAt;
+    const expiresAtMs = expiresValue instanceof Date
+      ? expiresValue.getTime()
+      : (expiresValue ? new Date(expiresValue).getTime() : NaN);
+    const isStale = job.status === 'running' && Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now();
+    const status = isStale ? 'stale' : (typeof job.status === 'string' ? job.status : 'unknown');
+    return c.json({
+      success: true,
+      garageId,
+      status,
+      phase: isStale ? 'failed' : (job.phase || status),
+      processedRecords: Number.isFinite(Number(job.processedRecords)) ? Math.max(0, Number(job.processedRecords)) : 0,
+      errorCode: typeof job.errorCode === 'string' ? job.errorCode : null,
+      retryable: status === 'failed' || status === 'stale'
+    });
+  } catch (err: any) {
+    console.error('[Worker Garage] Error reading deletion status:', err);
+    const { statusCode, code, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
   }
 });
 
@@ -3760,19 +3951,22 @@ workerApp.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const staffRef = adminDb.collection('staff').doc();
     const staffId = staffRef.id;
 
-    await saveEntityPin('staff', staffId, normPin);
-    await staffRef.set({
-      name: normName.trim(),
-      phone: phone ? String(phone).trim() : '',
-      garageId,
-      role: role || 'worker',
-      permissions: permissions || {},
-      createdAt: new Date()
+    await adminDb.runTransaction(async (t: any) => {
+      await saveEntityPinInTransaction(t, 'staff', staffId, normPin);
+      t.set(staffRef, {
+        name: normName.trim(),
+        phone: phone ? String(phone).trim() : '',
+        garageId,
+        role: role || 'worker',
+        permissions: permissions || {},
+        createdAt: new Date()
+      });
     });
 
     return c.json({ success: true, id: staffId });
   } catch (e: any) {
     console.error('[Worker Staff] Error in create:', e);
+    if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
     if (e instanceof ValidationError) {
       return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
     }
@@ -3784,14 +3978,13 @@ workerApp.post('/api/staff/update', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, role, permissions } = body;
+    const { id, name, phone, role, permissions, pin } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    if (user?.role !== 'admin') {
-      const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
-        return c.json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' }, 403);
-      }
+    const staffId = validateId(id, 'id', true);
+    const normalizedPin = pin ? validateNewPin(pin, 'newPin') : null;
+    if (normalizedPin) {
+      const pinCheck = await checkPinAvailabilityAcrossAll(normalizedPin, staffId);
+      if (pinCheck.taken) return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
     }
 
     const updates: Record<string, any> = { updatedAt: new Date() };
@@ -3800,10 +3993,23 @@ workerApp.post('/api/staff/update', requireWorkerAuth, async (c) => {
     if (role) updates.role = role;
     if (permissions) updates.permissions = permissions;
 
-    await adminDb.collection('staff').doc(id).update(updates);
+    const staffRef = adminDb.collection('staff').doc(staffId);
+    await adminDb.runTransaction(async (t: any) => {
+      const targetStaffSnap = await t.get(staffRef);
+      if (!targetStaffSnap.exists) throw new Error('STAFF_NOT_FOUND');
+      if (!canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
+        throw new Error('FORBIDDEN: Cannot update staff outside your garage');
+      }
+      if (normalizedPin) await saveEntityPinInTransaction(t, 'staff', staffId, normalizedPin);
+      t.update(staffRef, updates);
+    });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Staff] Error in update:', e);
+    if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
+    if (e?.message === 'STAFF_NOT_FOUND') return c.json({ success: false, error: 'STAFF_NOT_FOUND' }, 404);
+    if (String(e?.message || '').includes('FORBIDDEN')) return c.json({ success: false, error: 'FORBIDDEN: Cannot update staff outside your garage' }, 403);
+    if (e instanceof ValidationError) return c.json({ success: false, error: e.code }, e.statusCode as any);
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
   }
 });
@@ -3814,18 +4020,21 @@ workerApp.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    if (user?.role !== 'admin') {
-      const targetStaffSnap = await adminDb.collection('staff').doc(id).get();
-      if (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
-        return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
+    const staffId = validateId(id, 'id', true);
+    const staffRef = adminDb.collection('staff').doc(staffId);
+    await adminDb.runTransaction(async (t: any) => {
+      const targetStaffSnap = await t.get(staffRef);
+      if (user?.role !== 'admin' && (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId))) {
+        throw new Error('FORBIDDEN: Cannot delete staff outside your garage');
       }
-    }
-
-    await adminDb.collection('staff').doc(id).delete();
+      await deleteEntityPinInTransaction(t, 'staff', staffId);
+      t.delete(staffRef);
+    });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Staff] Error in delete:', e);
+    if (String(e?.message || '').includes('FORBIDDEN')) return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
+    if (e instanceof ValidationError) return c.json({ success: false, error: e.code }, e.statusCode as any);
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
   }
 });
@@ -3862,21 +4071,24 @@ workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
     const delRef = adminDb.collection('delegates').doc();
     const delId = delRef.id;
 
-    await saveEntityPin('delegates', delId, normPin);
-    await delRef.set({
-      name: normName.trim(),
-      phone: normPhone,
-      commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
-      commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
-      defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : 15,
-      balance: 0,
-      totalEarned: 0,
-      createdAt: new Date()
+    await adminDb.runTransaction(async (t: any) => {
+      await saveEntityPinInTransaction(t, 'delegates', delId, normPin);
+      t.set(delRef, {
+        name: normName.trim(),
+        phone: normPhone,
+        commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
+        commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
+        defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : 15,
+        balance: 0,
+        totalEarned: 0,
+        createdAt: new Date()
+      });
     });
 
     return c.json({ success: true, id: delId });
   } catch (e: any) {
     console.error('[Worker Delegate] Error in create:', e);
+    if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
     if (e instanceof ValidationError) {
       return c.json({ success: false, error: `INVALID_PIN: ${e.message}` }, e.statusCode as any);
     }
@@ -3891,13 +4103,20 @@ workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, commissionRate, commissions, defaultTrialDays } = body;
+    const { id, name, phone, commissionRate, commissions, defaultTrialDays, pin } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    const delegateId = validateId(id, 'id', true);
     const unsupportedFields = Object.keys(body).filter((field) =>
-      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'defaultTrialDays'].includes(field)
+      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'defaultTrialDays', 'pin'].includes(field)
     );
     if (unsupportedFields.length > 0) {
       return c.json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(',')}` }, 400);
+    }
+
+    const normalizedPin = pin ? validateNewPin(pin, 'newPin') : null;
+    if (normalizedPin) {
+      const pinCheck = await checkPinAvailabilityAcrossAll(normalizedPin, delegateId);
+      if (pinCheck.taken) return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
     }
 
     const updates: Record<string, any> = { updatedAt: new Date() };
@@ -3907,10 +4126,19 @@ workerApp.post('/api/delegates/update', requireWorkerAuth, async (c) => {
     if (commissions) updates.commissions = commissions;
     if (defaultTrialDays !== undefined) updates.defaultTrialDays = Number(defaultTrialDays);
 
-    await adminDb.collection('delegates').doc(id).update(updates);
+    const delegateRef = adminDb.collection('delegates').doc(delegateId);
+    await adminDb.runTransaction(async (t: any) => {
+      const delegateSnap = await t.get(delegateRef);
+      if (!delegateSnap.exists) throw new Error('DELEGATE_NOT_FOUND');
+      if (normalizedPin) await saveEntityPinInTransaction(t, 'delegates', delegateId, normalizedPin);
+      t.update(delegateRef, updates);
+    });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Delegate] Error in update:', e);
+    if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
+    if (e?.message === 'DELEGATE_NOT_FOUND') return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+    if (e instanceof ValidationError) return c.json({ success: false, error: e.code }, e.statusCode as any);
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
   }
 });
@@ -3924,13 +4152,24 @@ workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;
     if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    const delegateRef = adminDb.collection('delegates').doc(id);
-    const delegateSnap = await delegateRef.get();
-    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
-    const delegateData = delegateSnap.data() || {};
-    const unsettledCycleTotal = Number(delegateData?.totalRechargedAmount || 0);
-    if (unsettledCycleTotal > 0) {
+    const delegateId = validateId(id, 'id', true);
+    const delegateRef = adminDb.collection('delegates').doc(delegateId);
+    let missingDelegate = false;
+    let unsettledCycleTotal = 0;
+    await adminDb.runTransaction(async (t: any) => {
+      const delegateSnap = await t.get(delegateRef);
+      if (!delegateSnap.exists) {
+        missingDelegate = true;
+        return;
+      }
+      const delegateData = delegateSnap.data() || {};
+      unsettledCycleTotal = Number(delegateData.totalRechargedAmount || 0);
+      if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) return;
+      await deleteEntityPinInTransaction(t, 'delegates', delegateId);
+      t.delete(delegateRef);
+    });
+    if (missingDelegate) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+    if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) {
       return c.json({
         success: false,
         error: 'DELEGATE_HAS_UNSETTLED_COMMISSION',
@@ -3938,7 +4177,6 @@ workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
       }, 409);
     }
 
-    await delegateRef.delete();
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Delegate] Error in delete:', e);
@@ -3959,20 +4197,13 @@ workerApp.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     const normNewPin = validateNewPin(newPin, 'newPin');
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    if (callerRole !== 'admin') {
-      if (entityType === 'staff') {
-        const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
-        if (!targetStaffSnap.exists || targetStaffSnap.data()?.garageId !== callerGarageId) {
-          return c.json({ success: false, error: 'FORBIDDEN: Cannot manage staff outside your garage' }, 403);
-        }
-      } else if (entityType === 'garages' && entityId !== callerGarageId) {
-        return c.json({ success: false, error: 'FORBIDDEN: Cannot update PIN of other garages' }, 403);
-      } else if (entityType !== 'staff' && entityType !== 'garages') {
-        return c.json({ success: false, error: 'FORBIDDEN: Insufficient permissions' }, 403);
-      }
+    let targetGarageId: unknown = entityType === 'garages' ? entityId : undefined;
+    if (entityType === 'staff' && user?.role !== 'admin') {
+      const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
+      targetGarageId = targetStaffSnap.exists ? targetStaffSnap.data()?.garageId : null;
+    }
+    if (!canUpdateEntityPin(user, entityType, targetGarageId)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Insufficient permissions' }, 403);
     }
 
     const pinCheck = await checkPinAvailabilityAcrossAll(normNewPin, entityId);

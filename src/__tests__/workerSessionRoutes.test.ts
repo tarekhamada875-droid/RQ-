@@ -251,7 +251,7 @@ describe('Worker session lifecycle routes', () => {
       headers: { authorization: 'Bearer valid-garage-token-garage-a', 'x-session-id': 'garage-device' }
     });
     expect(nonAdmin.status).toBe(403);
-    expect(await nonAdmin.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await nonAdmin.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
     expect([...mockDb.records.entries()]).toEqual(before);
 
     const unauthenticated = await request('/api/auth/invalidate-all-sessions', {

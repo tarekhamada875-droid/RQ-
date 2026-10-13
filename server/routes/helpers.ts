@@ -58,6 +58,9 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('REQUEST_ALREADY_PROCESSED') || errMsg.includes('IDEMPOTENCY_KEY_REUSE')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'تمت معالجة هذا الطلب بالفعل' };
   }
+  if (errMsg.includes('PENDING_RECHARGE_REQUEST_EXISTS')) {
+    return { statusCode: 409, code: 'CONFLICT', message: 'يوجد طلب شحن معلق بالفعل لهذا الجراج' };
+  }
   if (errMsg.includes('INSUFFICIENT_BALANCE')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'رصيد الجراج غير كافٍ لإتمام العملية' };
   }

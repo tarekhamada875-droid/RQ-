@@ -93,10 +93,10 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
       }), workerEnv);
       if (token === 'valid-worker-token') {
         expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+        expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED', code: 'SESSION_REVOKED', statusCode: 401 });
       } else {
         expect(response.status).toBe(403);
-        expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+        expect(await response.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
       }
     }
 
@@ -350,6 +350,101 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const deletionLogs = [...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.garageId === testGarageId);
     expect(deletionLogs).toHaveLength(1);
     expect(deletionLogs[0][1].actionType).toBe('garage_delete');
+  });
+
+  it('returns a running job and reports actual deletion counts through the Admin-only status route', async () => {
+    for (let index = 0; index < 3; index += 1) {
+      mockDb.seed(`garages/${testGarageId}/vehicles/progress-${index}`, { plateNumber: `PROGRESS${index}` });
+    }
+    const backgroundTasks: Promise<unknown>[] = [];
+    const executionContext = { waitUntil: (task: Promise<unknown>) => backgroundTasks.push(task) };
+
+    const start = await api.fetch(new Request('http://localhost/api/garages/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId })
+    }), workerEnv, executionContext as any);
+    expect(start.status).toBe(202);
+    expect(await start.json()).toMatchObject({ success: true, garageId: testGarageId, status: 'running', processedRecords: 0 });
+    expect(mockDb.records.get(`garage_deletion_jobs/${testGarageId}`)?.status).toBe('running');
+
+    await Promise.all(backgroundTasks);
+    const status = await api.fetch(new Request(`http://localhost/api/garages/delete-status?garageId=${testGarageId}`, {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({
+      success: true, garageId: testGarageId, status: 'completed', phase: 'complete', processedRecords: 3, retryable: false
+    });
+
+    const deniedStatus = await api.fetch(new Request(`http://localhost/api/garages/delete-status?garageId=${testGarageId}`, {
+      headers: { Authorization: 'Bearer valid-staff-token-garage-a' }
+    }), workerEnv);
+    expect(deniedStatus.status).toBe(403);
+  });
+
+  it('returns machine-readable codes for missing deletion targets and denied status reads', async () => {
+    const missingStart = await api.fetch(new Request('http://localhost/api/garages/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: 'missing-garage' })
+    }), workerEnv);
+    expect(missingStart.status).toBe(404);
+    expect(await missingStart.json()).toMatchObject({ success: false, code: 'GARAGE_NOT_FOUND', statusCode: 404 });
+
+    const missingStatus = await api.fetch(new Request('http://localhost/api/garages/delete-status?garageId=missing-garage', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(missingStatus.status).toBe(404);
+    expect(await missingStatus.json()).toMatchObject({ success: false, code: 'DELETION_JOB_NOT_FOUND', statusCode: 404 });
+
+    const deniedStatus = await api.fetch(new Request('http://localhost/api/garages/delete-status?garageId=any-garage', {
+      headers: { Authorization: 'Bearer valid-staff-token-garage-a' }
+    }), workerEnv);
+    expect(deniedStatus.status).toBe(403);
+    expect(await deniedStatus.json()).toMatchObject({ success: false, code: 'FORBIDDEN', statusCode: 403 });
+  });
+
+  it('records a safe failure after a partial batch and resumes without deleting unrelated records', async () => {
+    for (let index = 0; index < 401; index += 1) {
+      mockDb.seed(`garages/${testGarageId}/vehicles/retry-${index}`, { plateNumber: `RETRY${index}` });
+    }
+    mockDb.seed('garages/other-garage', { name: 'Must remain' });
+    const originalBatch = mockDb.batch.bind(mockDb);
+    let commits = 0;
+    mockDb.batch = (() => {
+      const batch = originalBatch();
+      const commit = batch.commit.bind(batch);
+      batch.commit = async () => {
+        commits += 1;
+        if (commits === 2) throw new Error('INJECTED_TEST_FAILURE');
+        await commit();
+      };
+      return batch;
+    }) as any;
+
+    const request = () => api.fetch(new Request('http://localhost/api/garages/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId })
+    }), workerEnv);
+
+    const failed = await request();
+    expect(failed.status).toBe(500);
+    expect(mockDb.records.get(`garage_deletion_jobs/${testGarageId}`)).toMatchObject({
+      status: 'failed', phase: 'failed', errorCode: 'DELETE_FAILED', processedRecords: 400
+    });
+    expect(mockDb.records.has(`garages/${testGarageId}`)).toBe(true);
+    expect(mockDb.records.has(`garages/${testGarageId}/vehicles/retry-0`)).toBe(false);
+    expect(mockDb.records.has('garages/other-garage')).toBe(true);
+
+    mockDb.batch = originalBatch as any;
+    const retried = await request();
+    expect(retried.status).toBe(200);
+    expect(await retried.json()).toMatchObject({ success: true, status: 'completed', processedRecords: 401 });
+    expect(mockDb.records.has(`garages/${testGarageId}`)).toBe(false);
+    expect(mockDb.records.has('garages/other-garage')).toBe(true);
+    expect([...mockDb.records.entries()].filter(([path, data]) => path.startsWith('activity_logs/') && data.garageId === testGarageId)).toHaveLength(1);
   });
 
   it('4. POST /api/garages/delete resumes a running job after the garage root was removed', async () => {

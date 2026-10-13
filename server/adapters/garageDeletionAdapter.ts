@@ -18,6 +18,7 @@ export type GarageDeletionClaim =
       readonly garageName: string;
       readonly claimToken: string;
       readonly auditLogId: string;
+      readonly processedRecords: number;
     };
 
 export function garageDocumentToDeletionState(document: LegacyGarageDeletionRecord | null): GarageDeletionGarageState {
@@ -73,6 +74,9 @@ export async function claimGarageDeletion(
     if (isGarageDeletionClaimActive(jobState, now.getTime())) return { kind: 'in_progress' };
 
     const jobGarageName = typeof jobData.garageName === 'string' ? jobData.garageName : '';
+    const processedRecords = Number.isFinite(Number(jobData.processedRecords))
+      ? Math.max(0, Number(jobData.processedRecords))
+      : 0;
     const garageName = typeof garageData.name === 'string'
       ? garageData.name
       : (jobGarageName || decision.value.garageName || garageId);
@@ -94,6 +98,9 @@ export async function claimGarageDeletion(
       garageName,
       auditLogId,
       status: 'running',
+      phase: 'preparing',
+      processedRecords,
+      errorCode: null,
       updatedAt: now,
       startedAt,
       startedBy,
@@ -101,11 +108,16 @@ export async function claimGarageDeletion(
       leaseExpiresAt: new Date(now.getTime() + GARAGE_DELETION_LEASE_MS)
     }, { merge: true });
 
-    return { kind: 'claimed', garageName, claimToken, auditLogId };
+    return { kind: 'claimed', garageName, claimToken, auditLogId, processedRecords };
   });
 }
 
-export async function renewGarageDeletionLease(adminDb: any, garageId: string, claimToken: string): Promise<void> {
+export async function renewGarageDeletionLease(
+  adminDb: any,
+  garageId: string,
+  claimToken: string,
+  progress: Readonly<{ phase?: string; processedRecords?: number }> = {}
+): Promise<void> {
   const jobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
   await adminDb.runTransaction(async (transaction: any) => {
     const snapshot = await transaction.get(jobRef);
@@ -116,12 +128,19 @@ export async function renewGarageDeletionLease(adminDb: any, garageId: string, c
     const now = new Date();
     transaction.set(jobRef, {
       updatedAt: now,
-      leaseExpiresAt: new Date(now.getTime() + GARAGE_DELETION_LEASE_MS)
+      leaseExpiresAt: new Date(now.getTime() + GARAGE_DELETION_LEASE_MS),
+      ...(progress.phase ? { phase: progress.phase } : {}),
+      ...(typeof progress.processedRecords === 'number' ? { processedRecords: progress.processedRecords } : {})
     }, { merge: true });
   });
 }
 
-export async function markGarageDeletionFailed(adminDb: any, garageId: string, claimToken: string): Promise<void> {
+export async function markGarageDeletionFailed(
+  adminDb: any,
+  garageId: string,
+  claimToken: string,
+  errorCode = 'DELETE_FAILED'
+): Promise<void> {
   const jobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
   await adminDb.runTransaction(async (transaction: any) => {
     const snapshot = await transaction.get(jobRef);
@@ -129,6 +148,8 @@ export async function markGarageDeletionFailed(adminDb: any, garageId: string, c
     if (!snapshot.exists || job.status !== 'running' || job.leaseToken !== claimToken) return;
     transaction.set(jobRef, {
       status: 'failed',
+      phase: 'failed',
+      errorCode,
       updatedAt: new Date(),
       leaseToken: null,
       leaseExpiresAt: null
@@ -161,6 +182,8 @@ export async function finalizeGarageDeletion(
     transaction.set(jobRef, {
       garageId,
       status: 'completed',
+      phase: 'complete',
+      errorCode: null,
       updatedAt: now,
       completedAt: now,
       completedBy: completedBy || null,

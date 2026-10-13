@@ -190,6 +190,9 @@ export const GarageReportsView = memo(({
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar stable-scrollbar pb-10 bg-slate-50/50 dark:bg-slate-950/20">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+          الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.
+        </p>
         
         {/* Row 1: Grid metrics */}
         <div className="grid grid-cols-2 gap-3.5">

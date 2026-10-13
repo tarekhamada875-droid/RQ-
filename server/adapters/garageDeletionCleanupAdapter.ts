@@ -3,7 +3,7 @@ const GARAGE_DELETE_PAGE_SIZE = 400;
 async function deleteQueryInPages(
   adminDb: any,
   query: any,
-  onPageDeleted?: () => Promise<void>
+  onPageDeleted?: (pageDeleted: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
   while (true) {
@@ -13,8 +13,8 @@ async function deleteQueryInPages(
     const batch = adminDb.batch();
     page.docs.forEach((docSnap: any) => batch.delete(docSnap.ref));
     await batch.commit();
-    if (onPageDeleted) await onPageDeleted();
     deleted += page.docs.length;
+    if (onPageDeleted) await onPageDeleted(page.docs.length);
 
     if (page.docs.length < GARAGE_DELETE_PAGE_SIZE) break;
   }
@@ -29,7 +29,7 @@ async function deleteQueryInPages(
 export async function deleteGarageOwnedData(
   adminDb: any,
   garageId: string,
-  onPageDeleted?: () => Promise<void>
+  onPageDeleted?: (pageDeleted: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
 

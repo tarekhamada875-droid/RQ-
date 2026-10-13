@@ -40,12 +40,6 @@ export function useGarageSubscription({
         const g = allGarages.find(gar => gar.id === garageId);
         if (!g || !delegate) return;
 
-        const pendingRequests = await firestoreService.getPendingRechargeRequestsForGarage(garageId, delegate?.id);
-        if (pendingRequests.length > 0) {
-          showToast('يوجد طلب شحن معلق بالفعل لهذا الجراج', 'error');
-          return;
-        }
-        
         const cleanPkg = pkg ? getCleanPackageInfo(pkg) : null;
         const durationDays = cleanPkg ? cleanPkg.durationDays : 30;
         const effCap = cleanPkg ? (cleanPkg.isUnlimited ? 0 : (cleanPkg.dailyCapacity || 40)) : 0;
@@ -122,12 +116,6 @@ export function useGarageSubscription({
       try {
         const g = allGarages.find(gar => gar.id === garageId);
         if (!g || !delegate) return;
-
-        const pendingRequests = await firestoreService.getPendingRechargeRequestsForGarage(garageId, delegate?.id);
-        if (pendingRequests.length > 0) {
-          showToast('يوجد طلب معلق بالفعل لهذا الجراج', 'error');
-          return;
-        }
 
         const referrerId = g.referrerId || g.createdByDelegateId || delegate.id || null;
 

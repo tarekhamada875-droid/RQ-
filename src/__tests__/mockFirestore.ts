@@ -281,6 +281,9 @@ export const mockAdminAuth = {
     if (token === 'valid-worker-token' || token === 'worker-token') {
       return { uid: 'worker-uid', email: 'worker@test.com', role: 'worker' };
     }
+    if (token === 'valid-viewer-token' || token === 'viewer-token') {
+      return { uid: 'viewer-uid', email: 'viewer@test.com', role: 'viewer' };
+    }
     throw new Error('INVALID_TOKEN');
   }
 };

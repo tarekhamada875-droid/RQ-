@@ -22,6 +22,22 @@ export interface DelegateDashboardData {
   requests: RechargeRequest[];
 }
 
+async function createSettlementIdempotencyKey(delegateId: string, totalRechargedAmount: number, lastSettledAt?: unknown): Promise<string> {
+  let settlementMarker = 'initial';
+  if (lastSettledAt instanceof Date && !Number.isNaN(lastSettledAt.getTime())) {
+    settlementMarker = lastSettledAt.toISOString();
+  } else if (lastSettledAt && typeof lastSettledAt === 'object' && 'toDate' in lastSettledAt && typeof lastSettledAt.toDate === 'function') {
+    const date = lastSettledAt.toDate();
+    if (date instanceof Date && !Number.isNaN(date.getTime())) settlementMarker = date.toISOString();
+  } else if (typeof lastSettledAt === 'string' && lastSettledAt.trim()) {
+    settlementMarker = lastSettledAt.trim();
+  }
+  const signature = `${delegateId}|${Number(totalRechargedAmount)}|${settlementMarker}`;
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature));
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `delegate_settle_${hex}`;
+}
+
 export const delegateService = {
   getDashboardData: async (delegateId: string): Promise<DelegateDashboardData> => {
     const response = await apiFetch<DelegateDashboardData & { success: boolean }>('/api/delegates/dashboard');
@@ -101,17 +117,11 @@ export const delegateService = {
 
   updateDelegate: async (id: string, data: Partial<Delegate>) => {
     try {
-      if (data.pin) {
-        await apiFetch('/api/people/update-pin', {
-          method: 'POST',
-          body: { entityType: 'delegates', entityId: id, newPin: data.pin }
-        });
-      }
       const { pin: _pin, ...otherFields } = data;
-      if (Object.keys(otherFields).length > 0) {
+      if (Object.keys(otherFields).length > 0 || data.pin) {
         await apiFetch('/api/delegates/update', {
           method: 'POST',
-          body: { id, ...otherFields }
+          body: { id, ...otherFields, ...(data.pin ? { pin: data.pin } : {}) }
         });
       }
     } catch (error: any) {
@@ -123,11 +133,12 @@ export const delegateService = {
     }
   },
 
-  settleDelegateAccount: async (id: string) => {
+  settleDelegateAccount: async (id: string, totalRechargedAmount: number, lastSettledAt?: unknown) => {
     try {
+      const idempotencyKey = await createSettlementIdempotencyKey(id, totalRechargedAmount, lastSettledAt);
       return await apiFetch('/api/delegates/settle-account', {
         method: 'POST',
-        body: { id }
+        body: { id, idempotencyKey }
       });
     } catch (error: any) {
       handleFirestoreError(error, OperationType.UPDATE, `delegates/${id}`);
@@ -182,32 +193,6 @@ export const delegateService = {
       return { id: res.id };
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'recharge_requests');
-      throw error;
-    }
-  },
-
-  getPendingRechargeRequestsForGarage: async (garageId: string, delegateId?: string) => {
-    try {
-      if (delegateId) {
-        const q = query(
-          collection(db, 'recharge_requests'),
-          where('delegateId', '==', delegateId),
-          limit(20)
-        );
-        const snapshot = await getDocs(q);
-        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
-        return requests.filter(r => r.status === 'pending' && r.garageId === garageId);
-      }
-      const q = query(
-        collection(db, 'recharge_requests'),
-        where('garageId', '==', garageId),
-        limit(10)
-      );
-      const snapshot = await getDocs(q);
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
-      return requests.filter(r => r.status === 'pending');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'recharge_requests');
       throw error;
     }
   },

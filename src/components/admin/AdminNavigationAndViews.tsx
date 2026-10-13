@@ -426,9 +426,27 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               onConfirm: async () => {
                 try {
                   await garageService.deleteGarage(garageId);
+                  setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                   showToast?.('تم حذف الجراج بنجاح', 'success');
                 } catch (err: any) {
-                  showToast?.(`حدث خطأ أثناء حذف الجراج: ${err.message || err}`, 'error');
+                  const errorCode = err?.code || err?.message;
+                  const errorMessage = errorCode === 'GARAGE_DELETION_STALE'
+                    ? 'توقفت عملية الحذف قبل اكتمالها. أعد فتح نافذة الحذف لاستكمال البيانات المتبقية.'
+                    : errorCode === 'GARAGE_DELETION_STILL_RUNNING'
+                      ? 'ما زال حذف الجراج جارياً. انتظر قبل بدء عملية أخرى.'
+                      : errorCode === 'GARAGE_NOT_FOUND'
+                        ? 'لم يعد هذا الجراج موجوداً.'
+                        : errorCode === 'FORBIDDEN'
+                          ? 'ليس لديك صلاحية حذف هذا الجراج.'
+                          : 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد التحقق من حالة العملية.';
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: 'تعذر حذف الجراج',
+                    message: errorMessage,
+                    onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
+                    confirmText: 'حسناً',
+                    type: 'danger'
+                  });
                 }
               }
             });

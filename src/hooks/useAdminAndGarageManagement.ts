@@ -468,9 +468,7 @@ export function useAdminAndGarageManagement({
     setIsLoading(true);
     setGarageDeletionProgress({
       phase: 'preparing',
-      total: 0,
-      processed: 0,
-      percentage: 1
+      processed: 0
     });
 
     try {
@@ -479,8 +477,18 @@ export function useAdminAndGarageManagement({
       setSelectedGarageForDetails(null);
       setView('admin_dashboard');
       showToast(APP_TEXT.ADMIN.DELETE_CONFIRM);
-    } catch {
-      showToast('فشل في حذف الجراج', 'error');
+    } catch (error: any) {
+      const errorCode = error?.code || error?.message || '';
+      const safeMessages: Record<string, string> = {
+        GARAGE_DELETION_FAILED: 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد مراجعة حالة العملية.',
+        GARAGE_DELETION_STALE: 'توقفت عملية الحذف قبل اكتمالها. أعد المحاولة لاستكمال حذف البيانات المتبقية.',
+        GARAGE_DELETION_STILL_RUNNING: 'ما زال حذف الجراج جارياً. انتظر حتى تكتمل العملية قبل إعادة المحاولة.',
+        GARAGE_DELETION_STATUS_UNKNOWN: 'تعذر التحقق من حالة الحذف. لم نعد بدء حذف آخر تلقائياً.',
+        GARAGE_NOT_FOUND: 'لم يعد هذا الجراج موجوداً.',
+        FORBIDDEN: 'ليس لديك صلاحية حذف هذا الجراج.',
+        ADMIN_SDK_NOT_INITIALIZED: 'خدمة الحذف غير جاهزة حالياً. حاول مرة أخرى لاحقاً.'
+      };
+      showToast(safeMessages[errorCode] || 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد التحقق من حالة العملية.', 'error');
     } finally {
       setIsLoading(false);
       setGarageDeletionProgress(null);

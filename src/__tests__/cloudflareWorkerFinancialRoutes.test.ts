@@ -217,12 +217,72 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('recharge_requests/'))).toHaveLength(1);
   });
 
-  it('applies the shared 30-request financial rate limit to recharge creation', async () => {
-    const create = (index: number) => api.fetch(new Request('http://localhost/api/recharge-requests/create', {
+  it('blocks a second pending request, detects legacy pending records, and releases the guard after rejection', async () => {
+    const create = (idempotencyKey: string) => api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer valid-garage-token-${testGarageId}` },
-      body: JSON.stringify({ garageId: testGarageId, packageId: 'pkg_monthly_standard', idempotencyKey: `garage_recharge_limiter_${index}` })
+      body: JSON.stringify({ garageId: testGarageId, packageId: 'pkg_monthly_standard', idempotencyKey })
     }), workerEnv);
+
+    const first = await create('pending_guard_first');
+    const firstBody = await first.json() as any;
+    expect(first.status).toBe(200);
+    expect(mockDb.records.get(`recharge_request_guards/${testGarageId}`)).toMatchObject({
+      initialized: true,
+      activeRequestId: firstBody.id
+    });
+
+    const duplicate = await create('pending_guard_second');
+    expect(duplicate.status).toBe(409);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('recharge_requests/'))).toHaveLength(1);
+
+    const rejected = await api.fetch(new Request('http://localhost/api/recharge-requests/reject', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-admin-token',
+        'x-idempotency-key': 'pending_guard_reject'
+      },
+      body: JSON.stringify({ requestId: firstBody.id, idempotencyKey: 'pending_guard_reject' })
+    }), workerEnv);
+    expect(rejected.status).toBe(200);
+    expect(mockDb.records.get(`recharge_request_guards/${testGarageId}`)).toMatchObject({
+      initialized: true,
+      activeRequestId: null
+    });
+
+    const second = await create('pending_guard_after_reject');
+    expect(second.status).toBe(200);
+  });
+
+  it('blocks creation when an old pending request exists before guard documents were introduced', async () => {
+    mockDb.seed('recharge_requests/legacy_pending_for_garage', {
+      garageId: testGarageId,
+      status: 'pending',
+      createdAt: new Date('2026-10-01T00:00:00Z')
+    });
+
+    const response = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer valid-garage-token-${testGarageId}` },
+      body: JSON.stringify({ garageId: testGarageId, packageId: 'pkg_monthly_standard', idempotencyKey: 'legacy_pending_guard' })
+    }), workerEnv);
+
+    expect(response.status).toBe(409);
+    expect(mockDb.records.get(`recharge_request_guards/${testGarageId}`)).toBeUndefined();
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('recharge_requests/'))).toHaveLength(1);
+  });
+
+  it('applies the shared 30-request financial rate limit to recharge creation', async () => {
+    const create = (index: number) => {
+      const garageId = `rate-limit-garage-${index}`;
+      mockDb.seed(`garages/${garageId}`, { name: garageId, createdByDelegateId: 'delegate-a' });
+      return api.fetch(new Request('http://localhost/api/recharge-requests/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-delegate-token-delegate-a' },
+        body: JSON.stringify({ garageId, packageId: 'pkg_monthly_standard', idempotencyKey: `delegate_recharge_limiter_${index}` })
+      }), workerEnv);
+    };
 
     const responses: Response[] = [];
     for (let index = 0; index < 31; index += 1) responses.push(await create(index));
@@ -249,6 +309,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
 
     const createBody = await createRes.json() as any;
     const requestId = createBody.id;
+    expect(mockDb.records.get(`recharge_request_guards/${testGarageId}`)?.activeRequestId).toBe(requestId);
     const testIdempKey = `idemp_appr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
     // Process/Approve (using admin token)
@@ -269,6 +330,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const processBody = await processRes.json() as any;
     expect(processBody.success).toBe(true);
     expect(processBody.data.status).toBe('approved');
+    expect(mockDb.records.get(`recharge_request_guards/${testGarageId}`)).toMatchObject({ initialized: true, activeRequestId: null });
   });
 
   it('3. POST /api/recharge-requests/reject rejects pending request', async () => {
@@ -402,6 +464,32 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(settleBody.settlementId).toBeDefined();
   });
 
+  it('requires a settlement idempotency key and rejects zero-balance no-op records', async () => {
+    const missingKey = await api.fetch(new Request('http://localhost/api/delegates/settle-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ id: testDelegateId })
+    }), workerEnv);
+    expect(missingKey.status).toBe(400);
+    expect(await missingKey.json()).toMatchObject({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' });
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('settlements/'))).toHaveLength(0);
+
+    mockDb.seed(`delegates/${testDelegateId}`, { totalRechargedAmount: 0 });
+    const zeroBalance = await api.fetch(new Request('http://localhost/api/delegates/settle-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-admin-token',
+        'x-idempotency-key': 'zero_settlement_guard'
+      },
+      body: JSON.stringify({ id: testDelegateId, idempotencyKey: 'zero_settlement_guard' })
+    }), workerEnv);
+    expect(zeroBalance.status).toBe(409);
+    expect(await zeroBalance.json()).toMatchObject({ success: false, error: 'NO_UNSETTLED_COMMISSION' });
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('settlements/'))).toHaveLength(0);
+    expect([...mockDb.records.keys()].filter((path) => path.includes('/events/'))).toHaveLength(0);
+  });
+
   it('6. GET /api/financial-summary returns aggregated financial totals', async () => {
     const summaryRes = await api.fetch(new Request('http://localhost/api/financial-summary', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
@@ -438,5 +526,51 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     }), workerEnv);
     expect(invalid.status).toBe(400);
     expect(await invalid.json()).toMatchObject({ success: false, error: 'START_MUST_PRECEDE_END' });
+  });
+
+  it('rejects malformed and impossible report dates instead of returning a plausible report', async () => {
+    for (const range of [
+      'start=not-a-date&end=2026-12-31',
+      'start=2026-02-30&end=2026-12-31',
+      'start=2026-01-01&end=2026-13-01'
+    ]) {
+      const response = await api.fetch(new Request(`http://localhost/api/reports/financial?${range}`, {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ success: false, code: 'INVALID_REPORT_DATE', statusCode: 400 });
+    }
+  });
+
+  it('preserves intentional zero-valued system settings and rejects invalid patches atomically', async () => {
+    const zeroSettings = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ defaultTrialDays: 0, warningDaysThreshold: 0, monthlySubscribersFlatFee: 0 })
+    }), workerEnv);
+    expect(zeroSettings.status).toBe(200);
+    expect(mockDb.records.get('system_config/global')).toMatchObject({
+      defaultTrialDays: 0,
+      warningDaysThreshold: 0,
+      monthlySubscribersFlatFee: 0
+    });
+
+    const negative = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ monthlySubscribersFlatFee: -1 })
+    }), workerEnv);
+    expect(negative.status).toBe(400);
+    expect(await negative.json()).toMatchObject({ success: false, code: 'MONTHLYSUBSCRIBERSFLATFEE_TOO_LOW', statusCode: 400 });
+    expect(mockDb.records.get('system_config/global')).toMatchObject({ monthlySubscribersFlatFee: 0 });
+
+    const malformedPrices = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ subscriptionPrices: [] })
+    }), workerEnv);
+    expect(malformedPrices.status).toBe(400);
+    expect(await malformedPrices.json()).toMatchObject({ success: false, code: 'INVALID_SUBSCRIPTION_PRICES', statusCode: 400 });
+    expect(mockDb.records.get('system_config/global')).toMatchObject({ monthlySubscribersFlatFee: 0 });
   });
 });

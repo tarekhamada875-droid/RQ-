@@ -139,6 +139,22 @@ describe('Worker Route Parity Suite', () => {
       expect(createBody.success).toBe(true);
       const staffId = createBody.id;
       expect(staffId).toBeDefined();
+      const originalLookupHash = mockDb.records.get(`private_pins/${staffId}`)?.pinLookupHash;
+      expect(originalLookupHash).toBeDefined();
+      expect(mockDb.records.get(`pin_reservations/${originalLookupHash}`)).toMatchObject({ entityType: 'staff', entityId: staffId });
+
+      const pinOwnerRes = await call('/api/staff/create', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'PIN Owner', pin: '12344321', garageId: 'garage-b', role: 'worker' })
+      });
+      expect(pinOwnerRes.status).toBe(200);
+      const rejectedCombinedUpdate = await call('/api/staff/update', tokens.garage, {
+        method: 'POST',
+        body: JSON.stringify({ id: staffId, name: 'Must Not Partially Change', pin: '12344321' })
+      });
+      expect(rejectedCombinedUpdate.status).toBe(409);
+      expect(mockDb.records.get(`staff/${staffId}`)?.name).toBe('علي حسن');
+      expect(mockDb.records.get(`private_pins/${staffId}`)?.pinLookupHash).toBe(originalLookupHash);
 
       // Denies garage owner adding staff to another garage
       const crossRes = await call('/api/staff/create', tokens.garage, {
@@ -170,12 +186,18 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({
           id: staffId,
           name: 'علي حسن المعدل',
-          phone: '01099999999'
+          phone: '01099999999',
+          pin: '87654322'
         })
       });
       expect(updateRes.status).toBe(200);
       expect(await updateRes.json()).toEqual({ success: true });
       expect(mockDb.records.get(`staff/${staffId}`)?.name).toBe('علي حسن المعدل');
+      const updatedLookupHash = mockDb.records.get(`private_pins/${staffId}`)?.pinLookupHash;
+      expect(updatedLookupHash).not.toBe(originalLookupHash);
+      expect(mockDb.records.has(`pin_reservations/${originalLookupHash}`)).toBe(false);
+      expect(mockDb.records.get(`pin_reservations/${updatedLookupHash}`)).toMatchObject({ entityType: 'staff', entityId: staffId });
+      mockDb.seed('pin_reservations/foreign-same-id-reservation', { entityType: 'delegates', entityId: staffId });
 
       // Delete staff
       const deleteRes = await call('/api/staff/delete', tokens.garage, {
@@ -185,6 +207,27 @@ describe('Worker Route Parity Suite', () => {
       expect(deleteRes.status).toBe(200);
       expect(await deleteRes.json()).toEqual({ success: true });
       expect(mockDb.records.get(`staff/${staffId}`)).toBeUndefined();
+      expect(mockDb.records.has(`private_pins/${staffId}`)).toBe(false);
+      expect(mockDb.records.has(`pin_reservations/${updatedLookupHash}`)).toBe(false);
+      expect(mockDb.records.has('pin_reservations/foreign-same-id-reservation')).toBe(true);
+    });
+
+    it('denies same-garage Staff from managing peer staff without any writes', async () => {
+      mockDb.seed('staff/staff-peer', { id: 'staff-peer', garageId: 'garage-a', name: 'Protected Peer' });
+      const before = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+
+      const create = await call('/api/staff/create', tokens.staff, {
+        method: 'POST', body: JSON.stringify({ name: 'Unauthorized', phone: '01000000000', pin: '88776655', garageId: 'garage-a' })
+      });
+      const update = await call('/api/staff/update', tokens.staff, {
+        method: 'POST', body: JSON.stringify({ id: 'staff-peer', name: 'Must Not Change' })
+      });
+      const remove = await call('/api/staff/delete', tokens.staff, {
+        method: 'POST', body: JSON.stringify({ id: 'staff-peer' })
+      });
+
+      for (const response of [create, update, remove]) expect(response.status).toBe(403);
+      expect(mockDb.records).toEqual(before);
     });
   });
 
@@ -257,12 +300,32 @@ describe('Worker Route Parity Suite', () => {
       });
       expect(createRes.status).toBe(200);
       const delId = (await createRes.json()).id;
+      const initialLookupHash = mockDb.records.get(`private_pins/${delId}`)?.pinLookupHash;
+      expect(mockDb.records.get(`pin_reservations/${initialLookupHash}`)).toMatchObject({ entityType: 'delegates', entityId: delId });
+
+      const pinOwnerRes = await call('/api/staff/create', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Other PIN Owner', pin: '99887768', garageId: 'garage-a', role: 'worker' })
+      });
+      expect(pinOwnerRes.status).toBe(200);
+      const rejectedCombinedUpdate = await call('/api/delegates/update', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ id: delId, commissionRate: 99, pin: '99887768' })
+      });
+      expect(rejectedCombinedUpdate.status).toBe(409);
+      expect(mockDb.records.get(`delegates/${delId}`)?.commissionRate).toBe(15);
+      expect(mockDb.records.get(`private_pins/${delId}`)?.pinLookupHash).toBe(initialLookupHash);
 
       const updateRes = await call('/api/delegates/update', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ id: delId, commissionRate: 20 })
+        body: JSON.stringify({ id: delId, commissionRate: 20, pin: '99887767' })
       });
       expect(updateRes.status).toBe(200);
+      const updatedLookupHash = mockDb.records.get(`private_pins/${delId}`)?.pinLookupHash;
+      expect(updatedLookupHash).not.toBe(initialLookupHash);
+      expect(mockDb.records.has(`pin_reservations/${initialLookupHash}`)).toBe(false);
+      expect(mockDb.records.get(`pin_reservations/${updatedLookupHash}`)).toMatchObject({ entityType: 'delegates', entityId: delId });
+      mockDb.seed('pin_reservations/foreign-same-id-reservation', { entityType: 'staff', entityId: delId });
 
       // Seed unsettled commission -> delete must be blocked with 409
       mockDb.seed(`delegates/${delId}`, {
@@ -292,6 +355,9 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ id: delId })
       });
       expect(deleteSuccess.status).toBe(200);
+      expect(mockDb.records.has(`private_pins/${delId}`)).toBe(false);
+      expect(mockDb.records.has(`pin_reservations/${updatedLookupHash}`)).toBe(false);
+      expect(mockDb.records.has('pin_reservations/foreign-same-id-reservation')).toBe(true);
     });
 
     it('settles a delegate cycle atomically and replays the same idempotency result', async () => {
@@ -332,6 +398,24 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ entityType: 'staff', entityId: 'staff-2', newPin: '43214321' })
       });
       expect(crossStaffRes.status).toBe(403);
+    });
+
+    it('denies same-garage Staff from rotating the garage or a peer PIN without writes', async () => {
+      mockDb.seed('staff/staff-peer', { id: 'staff-peer', garageId: 'garage-a', name: 'Protected Peer' });
+      const before = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+
+      const garagePin = await call('/api/people/update-pin', tokens.staff, {
+        method: 'POST',
+        body: JSON.stringify({ entityType: 'garages', entityId: 'garage-a', newPin: '12344321' })
+      });
+      const peerPin = await call('/api/people/update-pin', tokens.staff, {
+        method: 'POST',
+        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-peer', newPin: '43211234' })
+      });
+
+      expect(garagePin.status).toBe(403);
+      expect(peerPin.status).toBe(403);
+      expect(mockDb.records).toEqual(before);
     });
   });
 

@@ -43,25 +43,22 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
         {isLoading ? (
           <div className="space-y-4" aria-live="polite">
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-              جاري حذف كامل بيانات الجراج. لا تغلق الصفحة.
+              جاري حذف بيانات الجراج والتحقق من اكتمال العملية. لا تبدأ عملية حذف أخرى.
             </p>
             <div className="flex items-end justify-between text-slate-900 dark:text-white" dir="ltr">
-              <span className="text-3xl font-black tabular-nums">{progress?.percentage ?? 0}%</span>
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {progress?.processed ?? 0} / {progress?.total ?? 0}
+                {progress?.processed ?? 0} سجل تم حذفه
               </span>
             </div>
             <div
               role="progressbar"
               aria-label="Garage deletion progress"
               aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progress?.percentage ?? 0}
+              aria-valuetext={`${progress?.processed ?? 0} records processed`}
               className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
             >
               <div
-                className="h-full rounded-full bg-red-500 transition-[width] duration-300"
-                style={{ width: `${progress?.percentage ?? 0}%` }}
+                className="h-full w-1/3 rounded-full bg-red-500 animate-pulse"
               />
             </div>
           </div>
@@ -86,4 +83,3 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
     </div>
   );
 });
-

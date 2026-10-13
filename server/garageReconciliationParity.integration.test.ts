@@ -249,7 +249,7 @@ describe('garage active-vehicle recalculation Hono contract', () => {
     const hono = await callHonoRecalculate('valid-garage-token-reconciliation-test-garage', { garageId });
 
     expect(hono.status).toBe(403);
-    expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
@@ -348,7 +348,7 @@ describe('dashboard-summary rebuild dual-runtime characterization', () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
     const hono = await callHonoSummaryRebuild('valid-garage-token-reconciliation-test-garage', { garageId, date: targetDate });
     expect(hono.status).toBe(403);
-    expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
@@ -452,7 +452,7 @@ describe('daily projection rebuild Hono contract', () => {
     ]);
     expect(unauthenticated.status).toBe(401);
     expect(hono.status).toBe(403);
-    expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
@@ -538,10 +538,10 @@ describe('garage creation Hono contract and Express retirement', () => {
       const response = await callHonoCreate(token, {});
       if (token === 'valid-worker-token') {
         expect(response.status).toBe(401);
-        expect(await response.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+        expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED', code: 'SESSION_REVOKED', statusCode: 401 });
       } else {
         expect(response.status).toBe(403);
-        expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Creation not permitted for role' });
+        expect(await response.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Creation not permitted for role', code: 'FORBIDDEN', statusCode: 403 });
       }
       expect(snapshotRecords()).toEqual(before);
     }
@@ -826,10 +826,10 @@ describe('garage update Hono contract and Express retirement', () => {
       const hono = await callHonoGarageUpdate(token, body);
       if (token === 'valid-worker-token') {
         expect(hono.status).toBe(401);
-        expect(await hono.json()).toEqual({ success: false, error: 'SESSION_REVOKED' });
+        expect(await hono.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED', code: 'SESSION_REVOKED', statusCode: 401 });
       } else {
         expect(hono.status).toBe(403);
-        expect(await hono.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+        expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
       }
       expect([...mockDb.records.entries()]).toEqual(before);
     }
@@ -850,7 +850,7 @@ describe('garage update Hono contract and Express retirement', () => {
 
     const honoDeniedMissingId = await callHonoGarageUpdate('valid-garage-token-reconciliation-test-garage', {});
     expect(honoDeniedMissingId.status).toBe(403);
-    expect(await honoDeniedMissingId.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await honoDeniedMissingId.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
   });
 });
 
@@ -898,7 +898,12 @@ describe('garage deletion Hono contract and Express retirement', () => {
     const remainingOwnedPaths = [...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/`));
     const remainingTargetData = [...mockDb.records.entries()].filter(([path, record]) => !path.startsWith('rate_limits/') && !path.startsWith('garage_deletion_jobs/') && record?.garageId === targetId && record?.actionType !== 'garage_delete');
     expect(response.status).toBe(200);
-    expect(body).toEqual({ success: true });
+    expect(body).toMatchObject({
+      success: true,
+      garageId: targetId,
+      status: 'completed',
+      processedRecords: 12
+    });
     expect(remainingOwnedPaths).toEqual([]);
     expect(remainingTargetData).toEqual([]);
     expect(['activity_logs/unrelated-log', 'recharge_requests/unrelated-request', 'staff/unrelated-staff', 'garage_sessions/unrelated-session', 'private_pins/same-id-other-type', 'pin_reservations/same-id-other-type', 'garages/unrelated-garage/events/unrelated-event'].every((path) => mockDb.records.has(path))).toBe(true);
@@ -938,7 +943,7 @@ describe('garage deletion Hono contract and Express retirement', () => {
     try { response = await callHonoGarageDelete('valid-admin-token', { garageId: targetId }); }
     finally { (mockDb as any).runTransaction = originalRunTransaction; }
     expect(response!.status).toBe(200);
-    expect(leaseRenewals).toBe(3);
+    expect(leaseRenewals).toBe(5);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith(`${rootPath}/vehicles/`))).toHaveLength(0);
     expect(mockDb.records.has(rootPath)).toBe(false);
     expect(mockDb.records.get(jobPath)?.status).toBe('completed');
@@ -995,7 +1000,7 @@ describe('garage deletion Hono contract and Express retirement', () => {
     const before = snapshotBusinessRecords();
     const denied = await callHonoGarageDelete('valid-garage-token-reconciliation-test-garage', { garageId: targetId });
     expect(denied.status).toBe(403);
-    expect(await denied.json()).toEqual({ success: false, error: 'FORBIDDEN: Admin role required' });
+    expect(await denied.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required', code: 'FORBIDDEN', statusCode: 403 });
     expect(snapshotBusinessRecords()).toEqual(before);
     expect((await callHonoGarageDelete('valid-admin-token', {})).status).toBe(400);
     expect((await callHonoGarageDelete('valid-admin-token', { garageId: 'invalid/id' })).status).toBe(400);

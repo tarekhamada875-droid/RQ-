@@ -191,6 +191,36 @@ export async function saveEntityPinInTransaction(
   }, { merge: true });
 }
 
+export async function deleteEntityPinInTransaction(
+  transaction: any,
+  collName: string,
+  docId: string
+): Promise<void> {
+  if (!adminDb || !docId) return;
+  const privateRef = adminDb.doc(`private_pins/${docId}`);
+  const privateSnap = await transaction.get(privateRef);
+  if (!privateSnap.exists) return;
+
+  const privateData = privateSnap.data() || {};
+  if (privateData.entityType !== collName || privateData.entityId !== docId) return;
+
+  const lookupHash = typeof privateData.pinLookupHash === 'string' ? privateData.pinLookupHash : '';
+  let reservationRef: any = null;
+  let reservationSnap: any = null;
+  if (lookupHash) {
+    reservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
+    reservationSnap = await transaction.get(reservationRef);
+  }
+
+  if (reservationSnap?.exists) {
+    const reservationData = reservationSnap.data() || {};
+    if (reservationData.entityType === collName && reservationData.entityId === docId) {
+      transaction.delete(reservationRef);
+    }
+  }
+  transaction.delete(privateRef);
+}
+
 export async function saveEntityPin(collName: string, docId: string, cleanInputPin: string): Promise<void> {
   if (!cleanInputPin || !docId) return;
 

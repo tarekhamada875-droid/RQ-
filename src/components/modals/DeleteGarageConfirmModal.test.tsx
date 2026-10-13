@@ -19,7 +19,7 @@ const mockGarage: Garage = {
 } as Garage;
 
 describe('DeleteGarageConfirmModal', () => {
-  it('renders progress percentage, counter, aria attributes, and hides action buttons when isLoading is true', () => {
+  it('renders server-reported progress accessibly without inventing a percentage while loading', () => {
     render(
       <DeleteGarageConfirmModal
         garage={mockGarage}
@@ -30,12 +30,14 @@ describe('DeleteGarageConfirmModal', () => {
       />
     );
 
-    expect(screen.getByText('63%')).toBeInTheDocument();
-    expect(screen.getByText('214 / 340')).toBeInTheDocument();
+    expect(screen.getByText('214 سجل تم حذفه')).toBeInTheDocument();
+    expect(screen.queryByText('63%')).not.toBeInTheDocument();
+    expect(screen.queryByText('214 / 340')).not.toBeInTheDocument();
 
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveAttribute('aria-valuenow', '63');
+    expect(progressBar).toHaveAttribute('aria-valuetext', '214 records processed');
+    expect(progressBar).not.toHaveAttribute('aria-valuenow');
 
     expect(screen.queryByText('نعم، حذف الجراج')).not.toBeInTheDocument();
     expect(screen.queryByText('إلغاء')).not.toBeInTheDocument();

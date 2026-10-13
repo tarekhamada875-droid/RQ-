@@ -205,7 +205,11 @@ export const AdminDelegateDetailsView = memo(({
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         setIsLoading(true);
         try {
-          await firestoreService.settleDelegateAccount(delegate.id);
+          await firestoreService.settleDelegateAccount(
+            delegate.id,
+            Number(delegate.totalRechargedAmount || 0),
+            delegate.lastSettledAt
+          );
           setSettledAtOverride(new Date());
           delegate.totalRechargedAmount = 0;
         } catch {

@@ -19,7 +19,9 @@ const tokens = {
   supervisor: 'valid-supervisor-token',
   delegate: 'valid-delegate-token',
   garage: 'valid-garage-token-garage-a',
-  staff: 'valid-staff-token-garage-a'
+  staff: 'valid-staff-token-garage-a',
+  viewer: 'valid-viewer-token',
+  worker: 'valid-worker-token'
 } as const;
 
 async function call(path: string, token: string, init: RequestInit = {}) {
@@ -72,6 +74,27 @@ describe('Worker role and garage-scope authorization matrix', () => {
       expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
     }
     expect(mockDb.records.get('supervisors/legacy-supervisor')?.name).toBe('Preserved record');
+  });
+
+  it.each([
+    ['diagnostic viewer', tokens.viewer, 403, 'FORBIDDEN'],
+    ['unresolved worker fallback', tokens.worker, 401, 'SESSION_REVOKED']
+  ] as const)('returns a standard error envelope for %s principals', async (_label, token, status, code) => {
+    const correlationId = `role-matrix-${_label.replace(/\s+/g, '-')}`;
+    const response = await call('/api/admin/summary', token, {
+      headers: { 'x-correlation-id': correlationId }
+    });
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(status);
+    expect(body).toMatchObject({
+      success: false,
+      code,
+      statusCode: status,
+      correlationId,
+      timestamp: expect.any(String)
+    });
+    expect(typeof body.error).toBe('string');
   });
 
   it('does not resolve or refresh a legacy Supervisor session for an anonymous Worker token', async () => {

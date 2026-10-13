@@ -12,6 +12,8 @@ import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
+const TODAY_ACTIVITY_LOG_LIMIT = 200;
+
 function getCairoDateKey(date: Date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
@@ -124,24 +126,24 @@ export const vehicleService = {
       callback(todayLogs);
     };
 
-    // Bounded query filtered by startTime AND limited to 200 items max
+    // The UI labels the daily report as a maximum of 200 activity records.
     const q = query(
       collection(db, 'activity_logs'),
       where('garageId', '==', garageId),
       where('timestamp', '>=', firestoreTimestamp),
       orderBy('timestamp', 'desc'),
-      limit(200)
+      limit(TODAY_ACTIVITY_LOG_LIMIT)
     );
 
     let activeSubUnsub: (() => void) | null = null;
     activeSubUnsub = onSnapshot(q, handleSnapshot, (err) => {
       console.warn('[vehicleService] subscribeToTodayTransactions index fallback:', err);
-      // Fallback query if composite index is building/missing: limit to 200
+      // Fallback query if the composite index is missing; the same visible cap applies.
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
         where('timestamp', '>=', firestoreTimestamp),
-        limit(200)
+        limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       activeSubUnsub = onSnapshot(fallbackQ, handleSnapshot, (fallbackErr) => {
         console.error('[vehicleService] subscribeToTodayTransactions error:', fallbackErr);
@@ -176,7 +178,7 @@ export const vehicleService = {
         where('garageId', '==', garageId),
         where('timestamp', '>=', firestoreTimestamp),
         orderBy('timestamp', 'desc'),
-        limit(200)
+        limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       return mapTodayTransactions(await getDocs(q), today);
     } catch (err) {
@@ -185,7 +187,7 @@ export const vehicleService = {
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
         where('timestamp', '>=', firestoreTimestamp),
-        limit(200)
+        limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       return mapTodayTransactions(await getDocs(fallbackQ), today);
     }

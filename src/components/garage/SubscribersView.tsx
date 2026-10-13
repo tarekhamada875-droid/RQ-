@@ -1,6 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Users, Plus, Search, Clock, Edit, Trash2, CalendarDays, Phone, User, RefreshCw, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Users, Plus, Search, Clock, Edit, Trash2, CalendarDays, Phone, User, RefreshCw, ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import { firestoreService } from '../../services';
+import type { SubscriberPageCursor } from '../../services/adminService';
 import { auth } from '../../firebase';
 import { Subscriber, Garage } from '../../types';
 import { getCleanPlate, getRawPlate, normalizeArabicSearch, isSubscriptionExpired as checkSubscriptionExpired, safeDate } from '../../utils';
@@ -35,8 +36,20 @@ interface SubscribersViewProps {
   onToggleMenu?: () => void;
 }
 
+const mergeSubscriberPages = (current: Subscriber[], incoming: Subscriber[]): Subscriber[] => {
+  const byId = new Map(current.map((subscriber) => [subscriber.id, subscriber]));
+  for (const subscriber of incoming) byId.set(subscriber.id, subscriber);
+  return [...byId.values()].sort((a, b) => {
+    const createdAtDifference = safeDate(b.createdAt).getTime() - safeDate(a.createdAt).getTime();
+    return createdAtDifference || b.id.localeCompare(a.id);
+  });
+};
+
 export const SubscribersView = memo(({ garage, onClose, showToast }: SubscribersViewProps) => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [subscriberCursor, setSubscriberCursor] = useState<SubscriberPageCursor | null>(null);
+  const [hasMoreSubscribers, setHasMoreSubscribers] = useState(false);
+  const [isLoadingMoreSubscribers, setIsLoadingMoreSubscribers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSubscriber, setEditingSubscriber] = useState<Subscriber | null>(null);
@@ -45,6 +58,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
   const [activeSubscriberForRenew, setActiveSubscriberForRenew] = useState<Subscriber | null>(null);
 
   const [isAuthResolved, setIsAuthResolved] = useState(!!auth.currentUser);
+  const hasReceivedSubscriberSnapshotRef = React.useRef(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -149,8 +163,17 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
 
   useEffect(() => {
     if (!isAuthResolved) return;
-    const unsub = firestoreService.subscribeToSubscribers(garage.id, (data) => {
-      setSubscribers(data as Subscriber[]);
+    hasReceivedSubscriberSnapshotRef.current = false;
+    setSubscribers([]);
+    setSubscriberCursor(null);
+    setHasMoreSubscribers(false);
+    const unsub = firestoreService.subscribeToSubscribers(garage.id, (data, page) => {
+      setSubscribers((current) => hasReceivedSubscriberSnapshotRef.current
+        ? mergeSubscriberPages(current, data)
+        : data);
+      hasReceivedSubscriberSnapshotRef.current = true;
+      setSubscriberCursor((current) => current || page.lastDoc);
+      setHasMoreSubscribers(page.hasMore);
     });
 
     // Lock body scroll
@@ -162,6 +185,22 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
       document.body.style.overflow = 'unset';
     };
   }, [garage.id, isAuthResolved]);
+
+  const handleLoadMoreSubscribers = async () => {
+    if (!subscriberCursor || !hasMoreSubscribers || isLoadingMoreSubscribers) return;
+    setIsLoadingMoreSubscribers(true);
+    try {
+      const page = await firestoreService.getMoreSubscribers(garage.id, subscriberCursor);
+      setSubscribers((current) => mergeSubscriberPages(current, page.subscribers));
+      setSubscriberCursor(page.lastDoc);
+      setHasMoreSubscribers(page.hasMore);
+    } catch (error) {
+      console.error('Failed to load another subscriber page:', error);
+      showToast('تعذر تحميل المزيد من المشتركين. يرجى المحاولة مرة أخرى.', 'error');
+    } finally {
+      setIsLoadingMoreSubscribers(false);
+    }
+  };
 
   const filteredSubscribers = React.useMemo(() => {
     const q = normalizeArabicSearch(searchQuery);
@@ -455,8 +494,8 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
               <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-slate-400 dark:text-slate-500" />
               </div>
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">لا يوجد مشتركون</p>
-              <p className="text-xs text-slate-500 mt-1">اضغط على زر "مشترك جديد" لإضافة مشتركين</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{searchQuery ? 'لا توجد نتائج في القائمة المحمّلة' : 'لا يوجد مشتركون'}</p>
+              <p className="text-xs text-slate-500 mt-1">{searchQuery && hasMoreSubscribers ? 'حمّل المزيد للبحث في السجلات الأقدم' : 'اضغط على زر "مشترك جديد" لإضافة مشتركين'}</p>
             </div>
           ) : (
             filteredSubscribers.map((subscriber) => {
@@ -556,6 +595,22 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
             })
           )}
         </div>
+        {subscribers.length > 0 && (
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-5" aria-live="polite">
+            يتم البحث في {subscribers.length} مشترك محمّل{hasMoreSubscribers ? 'ين؛ حمّل المزيد للبحث في السجلات الأقدم.' : '.'}
+          </p>
+        )}
+        {hasMoreSubscribers && (
+          <button
+            type="button"
+            onClick={handleLoadMoreSubscribers}
+            disabled={isLoadingMoreSubscribers}
+            className="w-full min-h-11 mt-3 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition-colors"
+          >
+            <ChevronDown className="w-4 h-4" />
+            <span>{isLoadingMoreSubscribers ? 'جارٍ تحميل المزيد...' : 'تحميل 50 مشتركاً أقدم'}</span>
+          </button>
+        )}
       </main>
 
       {/* Add/Edit Modal */}

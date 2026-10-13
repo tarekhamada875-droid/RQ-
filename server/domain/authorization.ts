@@ -104,13 +104,27 @@ export function resolveStaffManagementGarageId(
 
 /**
  * Decides whether a caller may manage staff assigned to a target garage.
- * Admins are global; all other roles retain the existing same-garage check.
+ * Admins are global; only the garage owner may manage that garage's staff.
  */
 export function canManageStaffForGarage(
   principal: AuthorizationPrincipal | null | undefined,
   targetGarageId: unknown,
 ): boolean {
   if (principal?.role === 'admin') return true;
+  if (principal?.role !== 'garage') return false;
+  if (typeof targetGarageId !== 'string' || !targetGarageId) return false;
+  return resolveStaffManagementGarageId(principal) === targetGarageId;
+}
+
+/** Admins manage all PINs; garage owners manage only their own garage and its staff. */
+export function canUpdateEntityPin(
+  principal: AuthorizationPrincipal | null | undefined,
+  entityType: unknown,
+  targetGarageId: unknown,
+): boolean {
+  if (principal?.role === 'admin') return true;
+  if (principal?.role !== 'garage') return false;
+  if (entityType !== 'garages' && entityType !== 'staff') return false;
   if (typeof targetGarageId !== 'string' || !targetGarageId) return false;
   return resolveStaffManagementGarageId(principal) === targetGarageId;
 }
