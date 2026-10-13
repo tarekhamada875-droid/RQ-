@@ -69,6 +69,15 @@ Garage deletion is Admin-only and server-authoritative:
 
 **Local validation:** 663 tests passed across 109 files; TypeScript, maintainability checks, the frontend production build, and the Cloudflare Worker build all passed. No production data was changed for this follow-up.
 
+## Financial report read bounding — 2026-10-13
+
+- The Worker financial report now applies the same inclusive-start / exclusive-end date range in Firestore queries for both immutable events and settlements. This avoids reading records outside the requested report period; requests without dates retain the existing all-history behavior.
+- A regression test verifies both the report total and lower mock Firestore reads for a bounded period.
+- The two obsolete, manually dispatchable preview/rehearsal workflows were removed; the Firestore rules header and release guidance now reflect that there is no active preview deployment path.
+- The Production Gate now runs the existing Firestore rules test against the demo-project emulator and labels the subscriber lifecycle check accurately.
+
+**Local validation for this change:** 664 tests passed across 109 files; TypeScript, production build, `ci:check`, and maintainability checks passed. The Firestore rules emulator test passed using `demo-rq-unified-hono`; no production Firebase project was contacted by that test.
+
 ## Last verified local baseline
 
 The full Vitest suite, TypeScript validation, production build, maintainability check, and Cloudflare live smoke gate must pass after every source change.

@@ -3245,9 +3245,24 @@ const handleFinancialSummaryReport = async (c: any) => {
       return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
     }
 
+    // Apply the same inclusive-start / exclusive-end boundaries in Firestore,
+    // not just after downloading every historical record into the Worker.
+    const startAt = start ? new Date(`${start}T00:00:00.000Z`) : undefined;
+    const endAt = end ? new Date(`${end}T00:00:00.000Z`) : undefined;
+    let eventsQuery: any = adminDb.collectionGroup('events');
+    let settlementsQuery: any = adminDb.collection('settlements');
+    if (startAt) {
+      eventsQuery = eventsQuery.where('occurredAt', '>=', startAt);
+      settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt);
+    }
+    if (endAt) {
+      eventsQuery = eventsQuery.where('occurredAt', '<', endAt);
+      settlementsQuery = settlementsQuery.where('settledAt', '<', endAt);
+    }
+
     const [eventsSnap, settlementsSnap] = await Promise.all([
-      adminDb.collectionGroup('events').get(),
-      adminDb.collection('settlements').get()
+      eventsQuery.get(),
+      settlementsQuery.get()
     ]);
     const events = eventsSnap.docs.map((doc: any) => doc.data() || {});
     const settlements = settlementsSnap.docs.map((doc: any) => doc.data() || {});

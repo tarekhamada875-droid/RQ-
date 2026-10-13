@@ -1,9 +1,9 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-13
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Production source of truth:** `main` at H8 merge `8be859d9ed99bd4009b0dd9d7ec0b7f2c2f2c9f0`; the Hono Worker is deployed.
-**Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12. Hono remains production; `server/app.ts` has zero reachable Express API registrations. The dormant vehicle, subscriber, and delegate routers were removed from `migration/unified-hono`; the local Express compatibility runtime and its remaining consumers are retained and frozen. No future H9 cleanup is authorized by this record. The migration branch remains an audit/history branch; `main` and production remain at H8.
+**Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
+**Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12. Hono is production; `server/app.ts` has zero reachable Express API registrations. The local Express compatibility runtime and its remaining consumers are retained and frozen. H9 cleanup is closed, and the former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
 
@@ -17,13 +17,13 @@ The application is in **controlled synthetic pre-production**. There are current
 Cloudflare Pages frontend
         ↓ HTTPS API requests
 Cloudflare Worker API (Hono)
-        ↓ Firebase Admin SDK
+        ↓ Worker-compatible Firebase Auth / Firestore REST adapter
 Firebase Authentication + Firestore
 ```
 
 - Frontend: React/Vite/Tailwind static PWA on Cloudflare Pages.
 - Production backend: Hono/Fetch-native Cloudflare Worker named `rq`.
-- Data/authentication: Firebase Auth and Firestore.
+- Data/authentication: Firebase Auth and Firestore. The browser uses the Firebase client SDK for permitted display synchronization; the Worker uses a Worker-compatible REST adapter with protected credentials.
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
@@ -106,10 +106,10 @@ The repository has completed and published repairs covering:
 - restoration of Firestore-backed cross-instance PIN rate limiting after a review caught a memory-only regression;
 - documentation cleanup and this consolidated knowledge base.
 
-Recent validation evidence includes:
+Baseline validation on `895e0cb` during the 2026-10-13 review included:
 
-- 104 test files passed;
-- 647 tests passed in the latest full local gate;
+- 109 test files passed;
+- 663 tests passed in the full local gate;
 - TypeScript validation passed;
 - production build passed;
 - Cloudflare Worker build passed;
@@ -117,7 +117,7 @@ Recent validation evidence includes:
 - `npm run ci:check` passed;
 - maintainability check passed;
 - `git diff --check` passed;
-- the Egypt crest cleanup Production Gate passed.
+- the Production Gate and Worker deployment workflows reported success for `895e0cb`.
 
 ## 7. Workstream closure — 2026-10-12
 
@@ -125,9 +125,9 @@ Recent validation evidence includes:
 
 H9 API retirement was verified on the migration branch: zero reachable Express API registrations remain, and the dormant vehicle, subscriber, and delegate route files were removed. The local Express compatibility runtime remains **retained and frozen**. Full historical Express-vs-Hono response equivalence was not exhaustively re-proven; production readiness and live authenticated/financial acceptance are **not established**. This closure is not a production launch approval.
 
-No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-related open documentation PR was closed, and the dedicated H5 Preview Worker, Firebase Preview Firestore Config, and H9 rehearsal workflows were disabled. The general Production Gate and production deployment workflow remain enabled. `main` and production are unchanged.
+No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-related open documentation PR was closed, and the dedicated H5 Preview Worker was removed. This maintenance change also removes the stale manually dispatchable Firebase preview deployment and H9 rehearsal workflow files. The general Production Gate and production deployment workflow remain enabled.
 
-**Preview boundary:** the currently deployed migration preview uses isolated Firebase project `rq-hono-preview-isolated`. Arbitrary branch previews must not be assumed isolated unless their source code selects the preview Firebase configuration. Historical rehearsal results and blocked or unverified H6 acceptance cells remain evidence only; do not resume their old procedures.
+**Preview boundary:** no branch preview is an active test environment. Old isolated preview configuration and historical H6 rehearsal results are evidence only; do not assume they are deployed or reuse their old procedures.
 
 ## 8. Repository map
 
