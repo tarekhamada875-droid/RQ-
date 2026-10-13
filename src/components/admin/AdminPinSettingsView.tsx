@@ -3,6 +3,7 @@ import { Shield, Key, Check, Loader2 } from 'lucide-react';
 import { normalizeDigits } from '../../utils';
 import { firestoreService } from '../../services';
 import { apiFetch } from '../../api/apiClient';
+import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
 interface AdminPinSettingsViewProps {
   currentAdminPin?: string;
@@ -47,8 +48,15 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       } else {
         setAdminPinError('رمز الدخول الحالي غير صحيح.');
       }
-    } catch {
-      setAdminPinError('تعذر التحقق من رمز الدخول. تحقق من الاتصال وحاول مرة أخرى.');
+    } catch (error) {
+      const failure = classifyApiFailure(error);
+      const reference = getApiFailureReference(error);
+      if (failure === 'network') setAdminPinError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
+      else if (failure === 'timeout') setAdminPinError(t('انتهت مهلة التحقق من رمز الدخول. حاول مرة أخرى.'));
+      else if (failure === 'server') {
+        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
+        setAdminPinError(`${t('حدث خطأ في الخادم أثناء التحقق من رمز الدخول.')}${suffix}`);
+      } else setAdminPinError(t('تعذر التحقق من رمز الدخول. حاول مرة أخرى.'));
     } finally {
       setIsVerifyingCurrent(false);
     }
@@ -93,7 +101,16 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       }, 1200);
     } catch (error: any) {
       console.error('Failed to update admin PIN:', error);
-      setAdminPinError(error?.message || 'تعذر حفظ رمز الدخول. تحقق من الاتصال وحاول مرة أخرى.');
+      const knownPinError = ['الرمز مستخدم بالفعل', 'رمز الدخول الحالي مطلوب', 'رمز الدخول الحالي غير صحيح'].includes(error?.message);
+      const failure = classifyApiFailure(error);
+      const reference = getApiFailureReference(error);
+      if (knownPinError) setAdminPinError(t(error.message));
+      else if (failure === 'network') setAdminPinError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
+      else if (failure === 'timeout') setAdminPinError(t('انتهت مهلة تغيير رمز الدخول. تحقق من التغيير قبل إعادة المحاولة.'));
+      else if (failure === 'server') {
+        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
+        setAdminPinError(`${t('حدث خطأ في الخادم أثناء تغيير رمز الدخول.')}${suffix}`);
+      } else setAdminPinError(t('تعذر تغيير رمز الدخول. حاول مرة أخرى.'));
     } finally {
       setIsSavingAdminPin(false);
     }

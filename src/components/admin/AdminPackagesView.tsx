@@ -3,7 +3,7 @@ import { Plus, Zap, Tag, Trash2, Car, Clock, X } from 'lucide-react';
 import { Package } from '../../types';
 import { getCleanPackageInfo } from '../../constants/packages';
 import { firestoreService } from '../../services';
-import { ApiError } from '../../api/apiClient';
+import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
 interface AdminPackagesViewProps {
   packages: Package[];
@@ -131,12 +131,14 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
       setIsAddModalOpen(false);
     } catch (err) {
       console.error(err);
-      if (err instanceof ApiError && err.code === 'NETWORK_ERROR') {
+      const failure = classifyApiFailure(err);
+      if (failure === 'network') {
         setFormError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
-      } else if (err instanceof ApiError && err.code === 'API_TIMEOUT') {
+      } else if (failure === 'timeout') {
         setFormError(t('انتهت مهلة حفظ الخطة. تحقق من ظهورها قبل إعادة المحاولة.'));
-      } else if (err instanceof ApiError && err.status >= 500) {
-        const reference = err.correlationId ? ` (${t('رقم التتبع')}: ${err.correlationId})` : '';
+      } else if (failure === 'server') {
+        const referenceId = getApiFailureReference(err);
+        const reference = referenceId ? ` (${t('رقم التتبع')}: ${referenceId})` : '';
         setFormError(`${t('حدث خطأ في الخادم أثناء حفظ الخطة.')}${reference}`);
       } else {
         setFormError(t('تعذر حفظ الخطة. حاول مرة أخرى.'));

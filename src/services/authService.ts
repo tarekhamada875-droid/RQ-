@@ -10,19 +10,12 @@ import { apiFetch } from '../api/apiClient';
 
 export const authService = {
   checkPinAvailability: async (normalizedPinVal: string, excludeId?: string): Promise<{ taken: boolean; role?: string; name?: string }> => {
-    try {
-      const data = await apiFetch<{ taken: boolean; role?: string; name?: string }>('/api/auth/check-pin-availability', {
-        method: 'POST',
-        body: { pin: normalizedPinVal, excludeId }
-      });
-      if (typeof data.taken === 'boolean') {
-        return data;
-      }
-    } catch (e) {
-      console.error('[AuthService] Error checking PIN availability:', e);
-    }
-
-    return { taken: false };
+    const data = await apiFetch<{ taken: boolean; role?: string; name?: string }>('/api/auth/check-pin-availability', {
+      method: 'POST',
+      body: { pin: normalizedPinVal, excludeId }
+    });
+    if (typeof data.taken !== 'boolean') throw new Error('PIN_AVAILABILITY_CHECK_FAILED');
+    return data;
   },
 
   isPinTaken: async (pin: string, excludeId?: string): Promise<{ taken: boolean; role?: string; name?: string }> => {

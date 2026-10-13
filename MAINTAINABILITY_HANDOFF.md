@@ -60,6 +60,15 @@ Garage deletion is Admin-only and server-authoritative:
 
 **Production create bug — 2026-10-13:** Admin announcement, coupon, and subscription-plan creation routes call `collection.add()`, but the Worker adapter previously lacked that method. The Worker therefore returned a server error; the plan form caught every error and incorrectly blamed the internet. The adapter now implements `add(data)` using an auto-ID document plus `set()`, and the form distinguishes true network errors, ambiguous timeouts (check for an existing plan before retrying), and server failures with a correlation reference.
 
+## Cross-role failure feedback follow-up — 2026-10-13
+
+- `src/utils/apiFailure.ts` centralizes API failure classification for real network errors, timeouts, HTTP server failures, rejected requests, and unknown failures. Admin package, delegate, Admin PIN, and staff-PIN actions use it to avoid presenting every failure as an internet problem.
+- `authService.checkPinAvailability()` previously swallowed request failures and returned `{ taken: false }`. It now propagates API errors and rejects malformed success responses. The server remains authoritative for uniqueness, and account forms stop when the availability check cannot be confirmed. All current callers were checked for visible error handling.
+- Generic login/session catches no longer say the connection is refreshing unless an explicit offline guard detected that state. Vehicle check-in’s blank-error fallback is also neutral. Remaining explicit offline messages are on `isOnline` preflight guards.
+- Regression coverage verifies API classification, PIN-check failure propagation, delegate creation stopping after an availability failure, and server-vs-network messages. This source-level sweep reduces recurrence risk; it is not a guarantee that every button across every role has received a manual end-to-end test.
+
+**Local validation:** 663 tests passed across 109 files; TypeScript, maintainability checks, the frontend production build, and the Cloudflare Worker build all passed. No production data was changed for this follow-up.
+
 ## Last verified local baseline
 
 The full Vitest suite, TypeScript validation, production build, maintainability check, and Cloudflare live smoke gate must pass after every source change.

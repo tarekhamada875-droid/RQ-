@@ -214,7 +214,7 @@ export function useGarageSession({
             handleLogout(true);
             return;
           } else {
-            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+            showToast('تعذر تهيئة الجلسة. يرجى المحاولة مرة أخرى', 'error');
           }
           if (isMounted) setIsSessionReady(false);
           return;
@@ -303,7 +303,7 @@ export function useGarageSession({
           handleLogout(true);
           return;
         } else {
-          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+          showToast('تعذر تهيئة الجلسة. يرجى المحاولة مرة أخرى', 'error');
           if (isMounted) setIsSessionReady(true);
           return;
         }

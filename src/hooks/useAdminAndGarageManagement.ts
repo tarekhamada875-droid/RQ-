@@ -104,9 +104,9 @@ export function useAdminAndGarageManagement({
           console.error("Anonymous authentication failed during login:", authErr);
           const errMsg = authErr?.message || String(authErr);
           if (errMsg.includes('permission') || errMsg.includes('Permission')) {
-            showToast('تعذر الاتصال بالخادم، يرجى إعادة المحاولة', 'error');
+            showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           } else {
-            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+            showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           }
           return;
         }
@@ -194,7 +194,7 @@ export function useAdminAndGarageManagement({
           } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
             showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
           } else {
-            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+            showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           }
           return;
         }
@@ -256,7 +256,7 @@ export function useAdminAndGarageManagement({
       if (errMsg.includes('permission') || errMsg.includes('Permission')) {
         showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
       } else {
-        showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+        showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
       }
     } finally {
       setIsLoading(false);
@@ -285,7 +285,7 @@ export function useAdminAndGarageManagement({
           setUser(currentUser);
         } catch (authErr: any) {
           console.error("Anonymous authentication failed during delegate login:", authErr);
-          showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+          showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           return;
         }
       }
@@ -349,7 +349,7 @@ export function useAdminAndGarageManagement({
           } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
             showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
           } else {
-            showToast('جاري تحديث الاتصال، يرجى المحاولة مرة أخرى', 'error');
+            showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           }
           return;
         }

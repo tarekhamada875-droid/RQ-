@@ -1,6 +1,8 @@
 import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { formatDisplayPin, normalizeDigits } from '../../utils';
+import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
+import { useAppStore } from '../../store/appStore';
 
 export const AdminGarageSettingsSection = (props: any) => {
   const {
@@ -186,6 +188,7 @@ export const AdminGarageSettingsSection = (props: any) => {
                                     try {
                                       const pinCheck = await firestoreService.isPinTaken(editingStaffPinValue, s.id);
                                       if (pinCheck.taken) {
+                                        useAppStore.getState().showToast(t('الرمز مستخدم بالفعل'), 'error');
                                         setIsUpdatingStaffPin(false);
                                         return;
                                       }
@@ -194,6 +197,16 @@ export const AdminGarageSettingsSection = (props: any) => {
                                       setEditingStaffPinId(null);
                                     } catch (err) {
                                       console.error(err);
+                                      const failure = classifyApiFailure(err);
+                                      const reference = getApiFailureReference(err);
+                                      let message = t('تعذر تحديث رمز الموظف. حاول مرة أخرى.');
+                                      if (failure === 'network') message = t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
+                                      else if (failure === 'timeout') message = t('انتهت مهلة تحديث رمز الموظف. تحقق من التغيير قبل إعادة المحاولة.');
+                                      else if (failure === 'server') {
+                                        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
+                                        message = `${t('حدث خطأ في الخادم أثناء تحديث رمز الموظف.')}${suffix}`;
+                                      }
+                                      useAppStore.getState().showToast(message, 'error');
                                     } finally {
                                       setIsUpdatingStaffPin(false);
                                     }
