@@ -27,6 +27,40 @@ describe('v167 - Garage Deletion', () => {
     vi.restoreAllMocks();
   });
 
+  it('reads the server deletion status without starting another delete', async () => {
+    apiFetchMock.mockReset().mockResolvedValueOnce({
+      success: true,
+      status: 'running',
+      phase: 'deleting',
+      processedRecords: 17,
+      errorCode: null,
+      retryable: false
+    });
+
+    await expect(firestoreService.getGarageDeletionStatus('garage 1')).resolves.toEqual({
+      status: 'running',
+      phase: 'deleting',
+      processedRecords: 17,
+      errorCode: null,
+      retryable: false
+    });
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/garages/delete-status?garageId=garage%201');
+  });
+
+  it('reports a missing deletion job as not started', async () => {
+    apiFetchMock.mockReset().mockRejectedValueOnce(
+      Object.assign(new Error('DELETION_JOB_NOT_FOUND'), { code: 'DELETION_JOB_NOT_FOUND' })
+    );
+
+    await expect(firestoreService.getGarageDeletionStatus('test_garage')).resolves.toEqual({
+      status: 'not_started',
+      processedRecords: 0,
+      errorCode: null,
+      retryable: false
+    });
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/garages/delete-status?garageId=test_garage');
+  });
+
   it('starts a deletion job, advances bounded server steps, and reports only server progress', async () => {
     const progressLog: any[] = [];
 

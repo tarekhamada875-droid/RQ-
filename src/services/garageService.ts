@@ -28,6 +28,14 @@ export type GarageDeletionProgress = {
   percentage?: number;
 };
 
+export type GarageDeletionStatus = {
+  status: 'not_started' | 'running' | 'completed' | 'failed' | 'stale' | 'unknown';
+  phase?: string;
+  processedRecords: number;
+  errorCode: string | null;
+  retryable: boolean;
+};
+
 export interface GarageDashboardSummary {
   activeVehicleCount: number;
   entriesToday: number;
@@ -309,6 +317,34 @@ export const garageService = {
       return res.count || 0;
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/recalculateCarsInside`);
+      throw error;
+    }
+  },
+
+  getGarageDeletionStatus: async (id: string): Promise<GarageDeletionStatus> => {
+    try {
+      const status = await apiFetch<{
+        status?: string;
+        phase?: string;
+        processedRecords?: number;
+        errorCode?: string | null;
+        retryable?: boolean;
+      }>(`/api/garages/delete-status?garageId=${encodeURIComponent(id)}`);
+      const knownStatuses = ['running', 'completed', 'failed', 'stale'] as const;
+      const resolvedStatus = knownStatuses.includes(status.status as typeof knownStatuses[number])
+        ? status.status as typeof knownStatuses[number]
+        : 'unknown';
+      return {
+        status: resolvedStatus,
+        phase: status.phase,
+        processedRecords: Math.max(0, Number(status.processedRecords) || 0),
+        errorCode: typeof status.errorCode === 'string' ? status.errorCode : null,
+        retryable: status.retryable === true
+      };
+    } catch (error: any) {
+      if (error?.code === 'DELETION_JOB_NOT_FOUND' || error?.message === 'DELETION_JOB_NOT_FOUND') {
+        return { status: 'not_started', processedRecords: 0, errorCode: null, retryable: false };
+      }
       throw error;
     }
   },

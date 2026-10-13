@@ -478,7 +478,43 @@ export function useAdminAndGarageManagement({
       setView('admin_dashboard');
       showToast(APP_TEXT.ADMIN.DELETE_CONFIRM);
     } catch (error: any) {
-      const errorCode = error?.code || error?.message || '';
+      const errorCode = String(error?.code || error?.message || '');
+      if (errorCode === 'FORBIDDEN' || errorCode === 'GARAGE_NOT_FOUND') {
+        showToast(errorCode === 'FORBIDDEN' ? 'ليس لديك صلاحية حذف هذا الجراج.' : 'لم يعد هذا الجراج موجوداً.', 'error');
+        return;
+      }
+
+      const deletionStatus = await firestoreService.getGarageDeletionStatus(garageId).catch(() => null);
+      console.warn('[GarageDeletion] Delete request failed', {
+        code: errorCode || 'UNKNOWN_ERROR',
+        statusCode: error?.status || null,
+        correlationId: error?.correlationId || null,
+        jobStatus: deletionStatus?.status || 'unavailable'
+      });
+
+      if (deletionStatus?.status === 'completed') {
+        setShowDeleteConfirm(false);
+        setSelectedGarageForDetails(null);
+        setView('admin_dashboard');
+        showToast(APP_TEXT.ADMIN.DELETE_CONFIRM);
+        return;
+      }
+      if (deletionStatus?.status === 'not_started') {
+        const sessionError = ['SESSION_REVOKED', 'SESSION_EXPIRED', 'UNAUTHORIZED'].includes(errorCode);
+        showToast(sessionError
+          ? 'لم يبدأ الحذف، والجراج ما زال موجوداً. انتهت جلسة الإدارة؛ سجّل الدخول مجدداً قبل المحاولة.'
+          : 'لم يبدأ الحذف، والجراج ما زال موجوداً. تحقق من الاتصال قبل المحاولة مرة أخرى.', 'error');
+        return;
+      }
+      if (deletionStatus?.status === 'running') {
+        showToast('ما زال حذف الجراج جارياً. انتظر ثم تحقق من الحالة قبل أي محاولة أخرى.', 'error');
+        return;
+      }
+      if (deletionStatus?.status === 'failed' || deletionStatus?.status === 'stale') {
+        showToast('توقفت عملية الحذف قبل اكتمالها. يمكنك إعادة المحاولة لاستكمال البيانات المتبقية.', 'error');
+        return;
+      }
+
       const safeMessages: Record<string, string> = {
         GARAGE_DELETION_FAILED: 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد مراجعة حالة العملية.',
         GARAGE_DELETION_QUERY_FAILED: 'تعذرت قراءة جزء من بيانات الجراج. لم يتم تأكيد اكتمال الحذف؛ يمكنك إعادة المحاولة لاستكماله.',
@@ -491,9 +527,17 @@ export function useAdminAndGarageManagement({
         GARAGE_DELETION_STATUS_UNKNOWN: 'تعذر التحقق من حالة الحذف. لم نعد بدء حذف آخر تلقائياً.',
         GARAGE_NOT_FOUND: 'لم يعد هذا الجراج موجوداً.',
         FORBIDDEN: 'ليس لديك صلاحية حذف هذا الجراج.',
-        ADMIN_SDK_NOT_INITIALIZED: 'خدمة الحذف غير جاهزة حالياً. حاول مرة أخرى لاحقاً.'
+        ADMIN_SDK_NOT_INITIALIZED: 'خدمة الحذف غير جاهزة حالياً. حاول مرة أخرى لاحقاً.',
+        SESSION_REVOKED: 'انتهت جلسة الإدارة. سجّل الدخول مجدداً ثم تحقق من حالة الحذف.',
+        SESSION_EXPIRED: 'انتهت جلسة الإدارة. سجّل الدخول مجدداً ثم تحقق من حالة الحذف.',
+        UNAUTHORIZED: 'انتهت جلسة الإدارة. سجّل الدخول مجدداً ثم تحقق من حالة الحذف.',
+        NETWORK_ERROR: 'تعذر الاتصال بالخادم. لم نتمكن من تأكيد حالة الحذف؛ تحقق من الاتصال قبل المحاولة مجدداً.',
+        API_TIMEOUT: 'استغرق الاتصال وقتاً طويلاً. تحقق من حالة الحذف قبل المحاولة مجدداً.',
+        REQUEST_TIMEOUT: 'استغرق الاتصال وقتاً طويلاً. تحقق من حالة الحذف قبل المحاولة مجدداً.',
+        INVALID_RESPONSE: 'تعذر قراءة رد الخادم. تحقق من حالة الحذف قبل المحاولة مجدداً.',
+        RATE_LIMIT_EXCEEDED: 'تم إرسال طلبات كثيرة خلال وقت قصير. انتظر قليلاً ثم تحقق من حالة الحذف.'
       };
-      showToast(safeMessages[errorCode] || 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد التحقق من حالة العملية.', 'error');
+      showToast(safeMessages[errorCode] || 'تعذر تأكيد حالة الحذف. أعد تحميل الصفحة أو سجّل الدخول مجدداً قبل المحاولة مرة أخرى.', 'error');
     } finally {
       setIsLoading(false);
       setGarageDeletionProgress(null);
