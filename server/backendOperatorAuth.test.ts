@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { isValidBackendOperatorToken } from './middleware';
+import { isValidBackendOperatorToken } from './backendOperatorToken';
 
 describe('backend operator token authentication', () => {
   const originalToken = process.env.BACKEND_OPERATOR_TOKEN;

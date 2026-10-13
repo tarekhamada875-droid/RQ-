@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { FieldValue } from './firebaseWorkerAdmin';
 import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
-import { isValidBackendOperatorToken } from './middleware';
+import { isValidBackendOperatorToken } from './backendOperatorToken';
+import { withTraceContext } from './operationTrace';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
@@ -232,7 +233,7 @@ workerApp.use('*', async (c, next) => {
   c.set('correlationId', correlationId);
   c.set('operationId', operationId);
 
-  await next();
+  await withTraceContext({ correlationId, operationId }, next);
 
   c.res.headers.set('X-Correlation-ID', correlationId);
   c.res.headers.set('X-Operation-ID', operationId);
@@ -447,9 +448,8 @@ workerApp.get('/api/version', (c) => {
   });
 });
 
-// Authentication routes must be Fetch-native in the Worker. The old Express
-// router is not bundled into Cloudflare, so keep the server-owned PIN lookup,
-// validation, and atomic session claim here.
+// Authentication routes are Fetch-native and owned by the Cloudflare Worker.
+// Keep the server-owned PIN lookup, validation, and atomic session claim here.
 workerApp.post('/api/auth/verify-pin', async (c) => {
   const routeStartedAt = Date.now();
   const authStartedAt = Date.now();
@@ -495,7 +495,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
 
     // Preserve the legacy Delegate phone-plus-PIN migration path. When a phone
     // is supplied, scope the lookup to that delegate instead of falling back to
-    // the global PIN search, matching the transitional Express contract.
+    // a global PIN search.
     const normalizedPhone = cleanPin(credentials.phone);
     if (normalizedPhone) {
       const delegateDocs = await queryDelegatesWherePhone(normalizedPhone);
@@ -3245,9 +3245,24 @@ const handleFinancialSummaryReport = async (c: any) => {
       return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
     }
 
+    // Apply the same inclusive-start / exclusive-end boundaries in Firestore,
+    // not just after downloading every historical record into the Worker.
+    const startAt = start ? new Date(`${start}T00:00:00.000Z`) : undefined;
+    const endAt = end ? new Date(`${end}T00:00:00.000Z`) : undefined;
+    let eventsQuery: any = adminDb.collectionGroup('events');
+    let settlementsQuery: any = adminDb.collection('settlements');
+    if (startAt) {
+      eventsQuery = eventsQuery.where('occurredAt', '>=', startAt);
+      settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt);
+    }
+    if (endAt) {
+      eventsQuery = eventsQuery.where('occurredAt', '<', endAt);
+      settlementsQuery = settlementsQuery.where('settledAt', '<', endAt);
+    }
+
     const [eventsSnap, settlementsSnap] = await Promise.all([
-      adminDb.collectionGroup('events').get(),
-      adminDb.collection('settlements').get()
+      eventsQuery.get(),
+      settlementsQuery.get()
     ]);
     const events = eventsSnap.docs.map((doc: any) => doc.data() || {});
     const settlements = settlementsSnap.docs.map((doc: any) => doc.data() || {});
@@ -4278,8 +4293,7 @@ workerApp.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Admin Extend Fair Use. Keep the legacy frontend path as an alias until the
-// Express compatibility route is retired after sensitive-route approval.
+// Keep the legacy Admin Extend Fair Use frontend path as a supported alias.
 const handleExtendFairUse = async (c: any) => {
   try {
     const user = c.get('user');

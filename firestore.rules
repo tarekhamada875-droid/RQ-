@@ -1,5 +1,6 @@
-// Preview deployment guard: firebase-preview-firestore.yml deploys this file only to
-// rq-hono-preview-isolated. Production Firestore configuration is not targeted here.
+// Firestore rules are not deployed by the Cloudflare release workflow. Test rule
+// changes in the Firestore Emulator and explicitly verify any Firebase project
+// before deployment; do not infer a production target from this source file.
 // ===============================================================
 // Assumed Data Model
 // ===============================================================

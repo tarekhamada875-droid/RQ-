@@ -2,9 +2,9 @@
 
 For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md) first. [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is a **closed-workstream record, not an active plan**. The H9 succession handoff and route inventory are historical evidence only; do not resume their old next steps.
 
-RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, supervisors, and administrative operations.
+RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status — Hono production / H9 stopped (2026-10-12):** Hono is already the production Worker backend, deployed at `https://rq.tarekhamada875.workers.dev`, with the frontend on Pages at `https://rq-acg.pages.dev`. The owner stopped the H9 / Express-decommissioning workstream. Zero reachable Express API registrations remain; the local Express compatibility runtime is retained and frozen, not scheduled for more cleanup. The migration branch remains for history, and this is not approval to merge or deploy.
+> **Current status (2026-10-13):** `main` at `895e0cb` remains the production source of truth. Hono is the production Worker backend at `https://rq.tarekhamada875.workers.dev`; the React app is on Pages at `https://rq-acg.pages.dev`. The project is being exercised with synthetic test data. This owner-authorized change branch removes the retired local Express/Node production path; it is not deployed until merged through the normal release gate. Branch previews are not an active release environment.
 
 ## Target production architecture
 
@@ -26,13 +26,13 @@ Firebase Authentication + Firestore
 - **Frontend:** React/Vite static PWA deployed on Cloudflare Pages.
 - **Backend:** A dedicated Cloudflare Worker API using a Worker-compatible Firebase Auth/Firestore REST adapter.
 - **Data and authentication:** Firebase Authentication and Firestore. The browser uses the Firebase client SDK; the Worker uses server-side secrets that must never enter frontend assets or Git.
-- **Production wiring:** Production Pages targets `https://rq.tarekhamada875.workers.dev`. The current migration preview targets the separate `rq-hono-preview` Worker and isolated Firebase project; do not assume arbitrary branch previews are isolated unless their source code honors the preview Firebase selector.
+- **Production wiring:** Production Pages targets `https://rq.tarekhamada875.workers.dev`. Only the verified `main` release is deployed; do not use old preview configurations as active environments.
 
 ## Repository and branch policy
 
 `main` is the production source of truth. Short-lived feature or fix branches may be created from `main`, validated by CI, and merged through a pull request. After merge, the branch should be deleted. Do not keep old deployment experiments or completed fixes as permanent branches.
 
-The existing `migration/unified-hono` branch is a frozen audit/history exception at the owner's request. Do not push to, merge, or resume it; do not delete it without a separate explicit owner decision.
+The former `migration/unified-hono` workstream is closed and its branch was deleted after merge. Do not recreate or resume it as an active workstream.
 
 A pull request is a review and CI record for changes from one branch into another; it is not a second deployed application. GitHub may show **Compare & pull request** for any branch that has commits not contained in `main`. That prompt means GitHub is offering to create a PR; it does not mean an open PR already exists.
 
@@ -57,6 +57,7 @@ Copy `.env.example` to a local environment file when needed. Set `VITE_BACKEND_A
 ```bash
 npm run dev
 npm test
+npm run test:rules
 npm run lint
 npm run build
 npm run ci:check
@@ -67,12 +68,14 @@ npm run release:smoke
 The normal validation gate is:
 
 ```bash
-npm test && npm run lint && npm run build && npm run maintainability:check && git diff --check
+npm test && npm run test:rules && npm run lint && npm run build && npm run maintainability:check && git diff --check
 ```
+
+`npm run test:rules` starts the Firestore Emulator with the demo project ID; it does not connect to production Firebase. It requires Java 21 or later.
 
 ## Cloudflare deployment contract
 
-The active target and release gates are documented in [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md). Hono is already the production Worker backend; H9 changes remain on `migration/unified-hono` until separately approved for release.
+Hono is the production Worker backend. The H9 plan and succession handoff are closure/history records only. Use the normal branch-and-pull-request flow above; merging to `main` is what starts the guarded Worker release and Pages production publish.
 
 ## Production smoke checks
 
@@ -89,23 +92,23 @@ Expected behavior is HTTP 200 JSON for health and system configuration, and an a
 
 ## Security and feature-work rules
 
-Authentication and authorization are server-owned. Do not trust role, user ID, or Firebase token fields supplied in request bodies. Preserve Firebase token verification, role scoping, session checks, CORS restrictions, idempotency, operation traces, and financial correctness when changing routes.
+Authentication and authorization are server-owned. Do not trust role, user ID, or Firebase token fields supplied in request bodies. Preserve Firebase token verification, role scoping, session checks, CORS restrictions, idempotency, correlation IDs, and financial correctness when changing routes.
 
-Do not delete or mutate Firestore production data without explicit scope and confirmation. Prefer focused route modules, services, domain helpers, and tests over adding more logic to `server/app.ts` or large dashboard components.
+Do not delete or mutate Firestore production data without explicit scope and confirmation. Prefer focused route modules, services, domain helpers, and tests over adding more logic to large dashboard components.
 
 ## Repository structure
 
 ```text
-server/                 Backend/domain source and transitional local adapter
+server/                 Hono backend/domain source and local Node adapter
 server/routes/          Backend route modules and business contracts
 server/cloudflareWorker.ts  Current production Hono Worker API
+server.ts               Local-only Node HTTP + Vite development host for Hono
 wrangler.toml           Cloudflare Worker deployment configuration
 src/components/         React UI components
 src/api/                Frontend API client
 src/services/           Firebase-backed frontend services
 src/domain/              Shared business rules and domain logic
 .github/workflows/      GitHub Actions production gate
-Dockerfile              Container build alternative
 ```
 
-For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The sole active project plan is [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md); the current H9 continuation file is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The Hono migration plan and succession handoff are closed/history records, not active plans.

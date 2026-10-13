@@ -1,18 +1,6 @@
-import { vi, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { MockFirestore, mockAdminAuth } from './mockFirestore';
-
-const mockDb = new MockFirestore();
-
-vi.mock('../../server/firebaseAdmin', () => ({
-  get adminDb() {
-    return mockDb;
-  },
-  adminAuth: mockAdminAuth,
-  firebaseConfig: {},
-  initializeFirebaseAdmin: () => {}
-}));
 
 import {
   IDEMPOTENCY_HEADER_NAME,
@@ -21,7 +9,6 @@ import {
   generateIdempotencyKey
 } from '../types/apiContracts';
 import { validateIdempotencyKey } from '../../server/validation';
-import { idempotencyMiddleware } from '../../server/middleware';
 
 describe('Phase 1 — Foundation & Routing Test Suite', () => {
   it('1. Verifies deployment configuration', () => {
@@ -71,52 +58,4 @@ describe('Phase 1 — Foundation & Routing Test Suite', () => {
     expect(() => validateIdempotencyKey('invalid$key!symbols')).toThrowError(/invalid characters/);
   });
 
-  it('5. Verifies idempotencyMiddleware behavior', () => {
-    const middlewareRequired = idempotencyMiddleware(true);
-    const middlewareOptional = idempotencyMiddleware(false);
-
-    // Missing key when required -> 400
-    let statusCode = 200;
-    let jsonBody: any = null;
-    let nextCalled = false;
-
-    const mockRes = {
-      status(code: number) {
-        statusCode = code;
-        return this;
-      },
-      json(body: any) {
-        jsonBody = body;
-        return this;
-      }
-    } as any;
-
-    const mockReqEmpty = {
-      headers: {},
-      body: {}
-    } as any;
-
-    middlewareRequired(mockReqEmpty, mockRes, () => { nextCalled = true; });
-    expect(statusCode).toBe(400);
-    expect(jsonBody?.code).toBe('INVALID_IDEMPOTENCY_KEY');
-    expect(nextCalled).toBe(false);
-
-    // Missing key when optional -> next()
-    nextCalled = false;
-    statusCode = 200;
-    middlewareOptional(mockReqEmpty, mockRes, () => { nextCalled = true; });
-    expect(nextCalled).toBe(true);
-    expect(statusCode).toBe(200);
-
-    // Valid key in header -> attaches req.idempotencyKey
-    const mockReqValid = {
-      headers: { 'x-idempotency-key': 'valid_key_123456' },
-      body: {}
-    } as any;
-
-    nextCalled = false;
-    middlewareOptional(mockReqValid, mockRes, () => { nextCalled = true; });
-    expect(nextCalled).toBe(true);
-    expect(mockReqValid.idempotencyKey).toBe('valid_key_123456');
-  });
 });

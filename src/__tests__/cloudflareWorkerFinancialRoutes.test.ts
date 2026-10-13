@@ -519,6 +519,35 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       delegateId: 'worker-test-delegate-cf7'
     });
   });
+  it('pushes the selected date range into Firestore reads and preserves matching totals', async () => {
+    mockDb.seed('garages/financial-read-test/events/before', {
+      eventType: 'recharge_approved', aggregateId: 'before',
+      occurredAt: new Date('2025-12-31T23:59:59.000Z'), payload: { amount: 11 }
+    });
+    mockDb.seed('garages/financial-read-test/events/in-range', {
+      eventType: 'recharge_approved', aggregateId: 'in-range',
+      occurredAt: new Date('2026-01-15T12:00:00.000Z'), payload: { amount: 100 }
+    });
+    mockDb.seed('garages/financial-read-test/events/after', {
+      eventType: 'recharge_approved', aggregateId: 'after',
+      occurredAt: new Date('2026-02-01T00:00:00.000Z'), payload: { amount: 13 }
+    });
+
+    mockDb.resetDocumentCounts();
+    const unbounded = await api.fetch(new Request('http://localhost/api/reports/financial', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(unbounded.status).toBe(200);
+    const unboundedReads = mockDb.documentReadCount;
+
+    mockDb.resetDocumentCounts();
+    const bounded = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-01&end=2026-02-01', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(bounded.status).toBe(200);
+    expect((await bounded.json() as any).data.report.grossRechargeTotal).toBe(100);
+    expect(mockDb.documentReadCount).toBeLessThan(unboundedReads);
+  });
 
   it('8. financial reports reject an invalid date range before reading projections', async () => {
     const invalid = await api.fetch(new Request('http://localhost/api/financial-summary?start=2026-12-31&end=2026-01-01', {

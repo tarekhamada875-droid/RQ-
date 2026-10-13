@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
-import { createServer, type Server } from 'node:http';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth } from '../src/__tests__/mockFirestore';
 import { saveEntityPin } from './utils';
-import { createApp } from './app';
 
 const mockDb = new MockFirestore();
 
@@ -16,27 +14,9 @@ vi.mock('./firebaseAdmin', () => ({
   initializeFirebaseAdmin: () => {}
 }));
 
-vi.mock('./middleware', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./middleware')>();
-  return {
-    ...actual,
-    requireAuth(req: any, _res: any, next: () => void) {
-      req.user = {
-        uid: req.header('x-test-uid') || (req.header('x-test-role') === 'admin' ? 'admin-uid' : 'reconciliation-test-user'),
-        role: req.header('x-test-role') || 'garage',
-        garageId: req.header('x-test-garage-id') || 'reconciliation-test-garage',
-        entityId: req.header('x-test-entity-id') || undefined
-      };
-      next();
-    }
-  };
-});
-
 import { api } from './api';
 
 const garageId = 'reconciliation-test-garage';
-let server: Server;
-let expressUrl: string;
 
 function seedWinterBoundaryEvents() {
   const eventsPath = `garages/${garageId}/events`;
@@ -119,28 +99,12 @@ async function callHonoCreate(token: string, body: Record<string, unknown>) {
   }));
 }
 
-async function callRetiredExpressCreate(body: Record<string, unknown>) {
-  return fetch(`${expressUrl}/api/garages/create`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
-    body: JSON.stringify(body)
-  });
-}
-
 async function callHonoGarageUpdate(token: string, body: unknown) {
   return api.fetch(new Request('http://localhost/api/garages/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body)
   }));
-}
-
-async function callExpressGarageUpdate(role: string, body: unknown) {
-  return fetch(`${expressUrl}/api/garages/update`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': role },
-    body: JSON.stringify(body)
-  });
 }
 
 async function callHonoGarageDelete(token: string, body: unknown) {
@@ -170,36 +134,12 @@ async function completeHonoGarageDeletion(token: string, garageId: string, jobTo
   throw new Error('Synthetic garage deletion did not complete within 100 bounded steps');
 }
 
-async function callRetiredExpressGarageDelete(body: unknown) {
-  return fetch(`${expressUrl}/api/garages/delete`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
-    body: JSON.stringify(body)
-  });
-}
-
-beforeAll(async () => {
-  const app = createApp();
-  server = createServer(app);
-  await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Test server did not bind to a TCP port');
-  expressUrl = `http://127.0.0.1:${address.port}`;
-});
-
-afterAll(async () => {
-  if (!server) return;
-  await new Promise<void>((resolveClose, rejectClose) => {
-    server.close((error) => error ? rejectClose(error) : resolveClose());
-  });
-});
-
 beforeEach(() => {
   mockDb.clear();
   seedReconciliationFixture();
 });
 
-describe('garage reconciliation Hono contract and Express retirement', () => {
+describe('garage reconciliation Hono contract', () => {
   it('serves a synthetic Admin diagnostic without writes', async () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
     const hono = await callHono('valid-admin-token', { garageId });
@@ -233,14 +173,6 @@ describe('garage reconciliation Hono contract and Express retirement', () => {
     expect(await hono.json()).toMatchObject({ success: false, error: 'FORBIDDEN: Admin role required' });
   });
 
-  it('returns 404 from the Express fallback after retirement', async () => {
-    const expressResponse = await fetch(`${expressUrl}/api/garages/reconciliation`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
-      body: JSON.stringify({ garageId })
-    });
-    expect(expressResponse.status).toBe(404);
-  });
 });
 
 describe('garage active-vehicle recalculation Hono contract', () => {
@@ -354,12 +286,6 @@ describe('dashboard-summary rebuild dual-runtime characterization', () => {
     expect(persistedAfterHono).toMatchObject(honoBody.data.summary);
     expect(persistedAfterHono.preservedField).toBe('keep-on-merge');
 
-    const retiredExpressResponse = await fetch(`${expressUrl}/api/garages/dashboard-summary/rebuild`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-test-role': 'admin' },
-      body: JSON.stringify(body)
-    });
-    expect(retiredExpressResponse.status).toBe(404);
   });
 
   it('denies non-Admins without writes', async () => {
@@ -525,7 +451,7 @@ describe('winter Cairo maintenance boundaries', () => {
   });
 });
 
-describe('garage creation Hono contract and Express retirement', () => {
+describe('garage creation Hono contract', () => {
   const delegateContext = { uid: 'delegate-uid', entityId: 'delegate-a' };
 
   const snapshotRecords = () => new Map(
@@ -745,16 +671,12 @@ describe('garage creation Hono contract and Express retirement', () => {
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
   });
 
-  it('returns 404 from the Express fallback after retirement', async () => {
-    const response = await callRetiredExpressCreate({ name: 'Retired Express Garage', pin: '86427531' });
-    expect(response.status).toBe(404);
-  });
 });
 
-describe('garage update Hono contract and Express retirement', () => {
+describe('garage update Hono contract', () => {
   const targetId = 'garage-update-parity-target';
 
-  it('applies the Hono allowlist and confirms the Express fallback is retired', async () => {
+  it('applies the Hono allowlist and preserves unrelated fields', async () => {
     const initial = {
       name: 'Before update',
       balance: 12,
@@ -817,10 +739,6 @@ describe('garage update Hono contract and Express retirement', () => {
     expect(persisted).not.toHaveProperty('id');
     expect(updatedAt instanceof Date).toBe(true);
 
-    const afterHono = structuredClone([...mockDb.records.entries()]);
-    const expressResponse = await callExpressGarageUpdate('admin', requestBody);
-    expect(expressResponse.status).toBe(404);
-    expect([...mockDb.records.entries()]).toEqual(afterHono);
   });
 
   it('denies every non-Admin role without changing financial, access, or session fields', async () => {
@@ -873,7 +791,7 @@ describe('garage update Hono contract and Express retirement', () => {
   });
 });
 
-describe('garage deletion Hono contract and Express retirement', () => {
+describe('garage deletion Hono contract', () => {
   const targetId = 'garage-delete-parity-target';
   const rootPath = `garages/${targetId}`;
   const snapshotBusinessRecords = () => new Map(
@@ -1021,8 +939,4 @@ describe('garage deletion Hono contract and Express retirement', () => {
     expect((await callHonoGarageDelete('valid-admin-token', { garageId: 'invalid/id' })).status).toBe(400);
   });
 
-  it('returns 404 from the Express fallback after retirement', async () => {
-    const response = await callRetiredExpressGarageDelete({ garageId: targetId });
-    expect(response.status).toBe(404);
-  });
 });

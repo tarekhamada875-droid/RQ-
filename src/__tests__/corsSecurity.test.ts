@@ -1,113 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { app, isAllowedOrigin } from '../../server/app';
+import { describe, expect, it } from 'vitest';
+import api from '../../server/api';
 
-describe('CORS Origin Validation', () => {
-  const originalEnv = process.env.ALLOWED_ORIGINS;
-
-  beforeEach(() => {
-    delete process.env.ALLOWED_ORIGINS;
-  });
-
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env.ALLOWED_ORIGINS = originalEnv;
-    } else {
-      delete process.env.ALLOWED_ORIGINS;
+async function preflight(origin: string, requestedHeaders = 'authorization,x-session-id') {
+  return api.fetch(new Request('https://rq.synthetic/api/health', {
+    method: 'OPTIONS',
+    headers: {
+      Origin: origin,
+      'Access-Control-Request-Method': 'GET',
+      'Access-Control-Request-Headers': requestedHeaders
     }
+  }));
+}
+
+describe('Hono Worker CORS security', () => {
+  it('allows the production frontend and required authenticated request headers', async () => {
+    const response = await preflight('https://rq-acg.pages.dev');
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://rq-acg.pages.dev');
+    expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('x-session-id');
   });
 
-  it('allows requests with no origin (same-origin, mobile apps, curl)', () => {
-    expect(isAllowedOrigin(undefined)).toBe(true);
-    expect(isAllowedOrigin('')).toBe(true);
+  it('supports the local Vite development origin', async () => {
+    const response = await preflight('http://localhost:5173');
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
   });
 
-  it('allows production Cloudflare frontend and rejects unlisted preview/spoofed subdomains', () => {
-    // Exact production frontends
-    expect(isAllowedOrigin('https://rq-acg.pages.dev')).toBe(true);
-    expect(isAllowedOrigin('https://rq-acg.pages.dev/')).toBe(true);
-
-    // Unlisted preview domains are rejected until explicitly added to ALLOWED_ORIGINS
-    expect(isAllowedOrigin('https://parqv2-preview-123.vercel.app')).toBe(false);
-    expect(isAllowedOrigin('https://parqv2-git-main-yourteam.vercel.app')).toBe(false);
-
-    // Spoofed/malicious naming patterns on vercel.app must be rejected
-    expect(isAllowedOrigin('https://parq-fake.vercel.app')).toBe(false);
-    expect(isAllowedOrigin('https://parq1-evil.vercel.app')).toBe(false);
-    expect(isAllowedOrigin('https://parqv2-anything.vercel.app')).toBe(false);
-    expect(isAllowedOrigin('https://some-random-app.vercel.app')).toBe(false);
-    expect(isAllowedOrigin('https://evil-attacker.vercel.app')).toBe(false);
-  });
-
-  it('allows the authenticated session header in the CORS preflight', async () => {
-    const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
-      const listener = app.listen(0, '127.0.0.1', () => resolve(listener));
-    });
-    try {
-      const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : 0;
-      const response = await fetch(`http://127.0.0.1:${port}/api/health`, {
-        method: 'OPTIONS',
-        headers: {
-          Origin: 'https://rq-acg.pages.dev',
-          'Access-Control-Request-Method': 'GET',
-          'Access-Control-Request-Headers': 'authorization,x-session-id'
-        }
-      });
-      expect(response.status).toBe(204);
-      expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('x-session-id');
-    } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-    }
-  });
-
-  it('allows canonical backend APP_URL and paired preview domain but rejects arbitrary Cloud Run origins', () => {
-    const originalAppUrl = process.env.APP_URL;
-    process.env.APP_URL = 'https://ais-dev-tvpplsstum3g4ltmsfbc4w-580506195065.europe-west2.run.app';
-    
-    // Canonical hosting URL is allowed
-    expect(isAllowedOrigin('https://ais-dev-tvpplsstum3g4ltmsfbc4w-580506195065.europe-west2.run.app')).toBe(true);
-    // Paired AI Studio preview domain is allowed
-    expect(isAllowedOrigin('https://ais-pre-tvpplsstum3g4ltmsfbc4w-580506195065.europe-west2.run.app')).toBe(true);
-    
-    // Arbitrary unrelated Cloud Run origins must be rejected
-    expect(isAllowedOrigin('https://some-other-service-xyz.a.run.app')).toBe(false);
-    expect(isAllowedOrigin('https://my-app.run.app')).toBe(false);
-
-    if (originalAppUrl !== undefined) {
-      process.env.APP_URL = originalAppUrl;
-    } else {
-      delete process.env.APP_URL;
-    }
-  });
-
-  it('allows Google AI Studio and rejects arbitrary Google-hosted subdomains', () => {
-    expect(isAllowedOrigin('https://aistudio.google.com')).toBe(true);
-    expect(isAllowedOrigin('https://attacker.googleusercontent.com')).toBe(false);
-    expect(isAllowedOrigin('https://preview.usercontent.goog')).toBe(false);
-  });
-
-  it('allows localhost and loopback interfaces on any port in development', () => {
-    expect(isAllowedOrigin('http://localhost:3000')).toBe(true);
-    expect(isAllowedOrigin('http://localhost:5173')).toBe(true);
-    expect(isAllowedOrigin('http://localhost:8080')).toBe(true);
-    expect(isAllowedOrigin('http://127.0.0.1:3000')).toBe(true);
-  });
-
-  it('allows custom origins specified in ALLOWED_ORIGINS env variable', () => {
-    process.env.ALLOWED_ORIGINS = 'https://custom-garage.com, https://admin.custom.org';
-    expect(isAllowedOrigin('https://custom-garage.com')).toBe(true);
-    expect(isAllowedOrigin('https://admin.custom.org')).toBe(true);
-    expect(isAllowedOrigin('https://other-unauthorized.com')).toBe(false);
-  });
-
-  it('denies unknown/unauthorized third-party origins', () => {
-    expect(isAllowedOrigin('https://malicious-site.com')).toBe(false);
-    expect(isAllowedOrigin('https://attacker.org')).toBe(false);
-    expect(isAllowedOrigin('https://notrun.app.evil.com')).toBe(false);
-  });
-
-  it('handles malformed origin strings safely without throwing', () => {
-    expect(isAllowedOrigin('not-a-valid-url')).toBe(false);
-    expect(isAllowedOrigin('://invalid')).toBe(false);
+  it('does not reflect an unapproved third-party origin', async () => {
+    const response = await preflight('https://malicious-site.example');
+    expect(response.headers.get('access-control-allow-origin')).not.toBe('https://malicious-site.example');
   });
 });

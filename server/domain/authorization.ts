@@ -89,7 +89,7 @@ export function canManageGarageScopedData(
  *
  * This intentionally mirrors the pre-H2 route behavior: an explicit garageId
  * wins, while garage principals may fall back to their entityId. It is kept
- * pure so both the Worker and Express adapters can share the decision without
+ * pure so Hono handlers and tests can share the decision without
  * importing HTTP or Firestore code.
  */
 export function resolveStaffManagementGarageId(

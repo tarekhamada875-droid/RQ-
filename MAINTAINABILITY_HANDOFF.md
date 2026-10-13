@@ -69,6 +69,26 @@ Garage deletion is Admin-only and server-authoritative:
 
 **Local validation:** 663 tests passed across 109 files; TypeScript, maintainability checks, the frontend production build, and the Cloudflare Worker build all passed. No production data was changed for this follow-up.
 
+## Financial report read bounding — 2026-10-13
+
+- The Worker financial report now applies the same inclusive-start / exclusive-end date range in Firestore queries for both immutable events and settlements. This avoids reading records outside the requested report period; requests without dates retain the existing all-history behavior.
+- A regression test verifies both the report total and lower mock Firestore reads for a bounded period.
+- The two obsolete, manually dispatchable preview/rehearsal workflows were removed; the Firestore rules header and release guidance now reflect that there is no active preview deployment path.
+- The Production Gate now runs the existing Firestore rules test against the demo-project emulator and labels the subscriber lifecycle check accurately.
+
+**Local validation for this change:** 664 tests passed across 109 files; TypeScript, production build, `ci:check`, and maintainability checks passed. The Firestore rules emulator test passed using `demo-rq-unified-hono`; no production Firebase project was contacted by that test.
+
 ## Last verified local baseline
 
 The full Vitest suite, TypeScript validation, production build, maintainability check, and Cloudflare live smoke gate must pass after every source change.
+
+
+## Owner-authorized Express runtime retirement — 2026-10-13
+
+- The owner reauthorized final Express removal after the broader Hono migration had been closed. This focused branch removes the Express and `cors` packages/types, the old app/middleware and Node bundle, the Dockerfile, and Express-only characterization tests.
+- Hono remains the production API. Local development keeps a small Node HTTP adapter only to connect Vite to the same Hono Fetch application; the production build now emits the Cloudflare Pages frontend and Worker artifacts only.
+- CORS, route availability, authentication, and correlation tests now call Hono directly. Event correlation context remains available to Hono domain events; the retired Express middleware's unused trace writer is removed.
+- Archived migration notes remain as history; they do not imply Express remains in the runtime.
+- The final gate passed: 105 test files / 636 tests, TypeScript, Cloudflare Pages + Worker production build, and artifact checks. Maintainability checks passed, and the Firestore rules suite passed against the local `demo-rq-unified-hono` emulator. A local smoke test returned HTTP 200 for both the Vite frontend and Hono `/api/health`.
+- The post-removal production dependency audit reports 11 advisories (0 critical, 5 high, 6 moderate), primarily involving Firebase-related packages; dependency remediation remains a separate tested task.
+- No production Firebase records were changed and no deployment was performed.
