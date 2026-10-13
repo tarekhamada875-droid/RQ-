@@ -40,7 +40,6 @@ interface AdminNavigationAndViewsProps {
   approvedGarages: Garage[];
   allGarages: Garage[];
   displayedGarages: Garage[];
-  effectiveGarages: Garage[];
   adminSearch: string;
   setAdminSearch: (s: string) => void;
   onSelectGarage: (garage: Garage) => void;
@@ -55,10 +54,6 @@ interface AdminNavigationAndViewsProps {
   currentWalletNumber: string;
   onUpdateWalletNumber: (num: string) => Promise<void>;
   currentAdminPin: string;
-  adminGaragePageError: any;
-  adminGarageHasMore: boolean;
-  isAdminGaragePageLoading: boolean;
-  loadAdminGaragePage: (reset?: boolean) => void;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -76,7 +71,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   approvedGarages,
   allGarages,
   displayedGarages,
-  effectiveGarages,
   adminSearch,
   setAdminSearch,
   onSelectGarage,
@@ -91,10 +85,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   currentWalletNumber,
   onUpdateWalletNumber,
   currentAdminPin,
-  adminGaragePageError,
-  adminGarageHasMore,
-  isAdminGaragePageLoading,
-  loadAdminGaragePage,
   adminLang,
   t,
   showToast,
@@ -390,16 +380,11 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'garages' ? (
         <AdminGaragesTabView
           displayedGarages={displayedGarages}
-          effectiveGarages={effectiveGarages}
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
           currentSupervisor={currentSupervisor}
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage || (() => {})}
-          adminGaragePageError={adminGaragePageError}
-          adminGarageHasMore={adminGarageHasMore}
-          isAdminGaragePageLoading={isAdminGaragePageLoading}
-          loadAdminGaragePage={loadAdminGaragePage}
           adminLang={adminLang}
           t={t}
         />

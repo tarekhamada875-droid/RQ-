@@ -82,61 +82,6 @@ export const AdminDashboard = memo(({
     }
   }, [currentSupervisor, activeTab, setActiveTab]);
 
-  const ADMIN_GARAGES_PER_PAGE = 50;
-  const [adminGarageRows, setAdminGarageRows] = React.useState<Garage[]>([]);
-  const [adminGarageHasMore, setAdminGarageHasMore] = React.useState(true);
-  const [isAdminGaragePageLoading, setIsAdminGaragePageLoading] = React.useState(false);
-  const [adminGaragePageError, setAdminGaragePageError] = React.useState(false);
-  const adminGarageLastDocRef = React.useRef<any>(null);
-  const adminGarageHasMoreRef = React.useRef(true);
-  const isAdminGaragePageLoadingRef = React.useRef(false);
-  const adminGarageTabOpenedRef = React.useRef(false);
-
-  const loadAdminGaragePage = React.useCallback(async (reset = false) => {
-    if (isAdminGaragePageLoadingRef.current || (!reset && !adminGarageHasMoreRef.current)) return;
-
-    isAdminGaragePageLoadingRef.current = true;
-    setIsAdminGaragePageLoading(true);
-    setAdminGaragePageError(false);
-
-    try {
-      const page = await firestoreService.getAdminGaragesPage(
-        ADMIN_GARAGES_PER_PAGE,
-        reset ? null : adminGarageLastDocRef.current
-      );
-
-      setAdminGarageRows(previousRows => {
-        const rows: Garage[] = reset ? page.garages : [...previousRows, ...page.garages];
-        const map = new Map<string, Garage>();
-        for (const g of rows) {
-          map.set(g.id, g);
-        }
-        return Array.from(map.values());
-      });
-      adminGarageLastDocRef.current = page.lastDoc;
-      adminGarageHasMoreRef.current = page.hasMore;
-      setAdminGarageHasMore(page.hasMore);
-    } catch (error) {
-      console.error('Failed to load admin garage page:', error);
-      setAdminGaragePageError(true);
-    } finally {
-      isAdminGaragePageLoadingRef.current = false;
-      setIsAdminGaragePageLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (activeTab !== 'garages') {
-      adminGarageTabOpenedRef.current = false;
-      return;
-    }
-
-    if (!adminGarageTabOpenedRef.current) {
-      adminGarageTabOpenedRef.current = true;
-      void loadAdminGaragePage(true);
-    }
-  }, [activeTab, loadAdminGaragePage]);
-
   const [showPlansModal, setShowPlansModal] = React.useState<boolean>(false);
   const [showOverview, setShowOverview] = React.useState<boolean>(false);
   const [pinInput, setPinInput] = React.useState<string>('');
@@ -320,10 +265,6 @@ export const AdminDashboard = memo(({
     }
     const created = await createNewGarage(e);
     if (!created) return;
-
-    // Garage rows are loaded through a separate paginated query. Reset that
-    // query after the mutation so the new garage is visible immediately.
-    await loadAdminGaragePage(true);
     setShowOverview(false);
   };
 
@@ -336,9 +277,8 @@ export const AdminDashboard = memo(({
   }, [allGarages]);
 
   const effectiveGarages = React.useMemo(() => {
-    const list = activeTab === 'garages' && adminGarageRows.length > 0 ? adminGarageRows : allGarages;
-    return sortGaragesNewestFirst(list);
-  }, [activeTab, adminGarageRows, allGarages]);
+    return sortGaragesNewestFirst(allGarages);
+  }, [allGarages]);
 
   const displayedGarages = React.useMemo(() => {
     const rawSearch = adminSearch.trim();
@@ -480,7 +420,6 @@ export const AdminDashboard = memo(({
           approvedGarages={approvedGarages}
           allGarages={allGarages}
           displayedGarages={displayedGarages}
-          effectiveGarages={effectiveGarages}
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
           onSelectGarage={(g) => {
@@ -506,10 +445,6 @@ export const AdminDashboard = memo(({
           currentWalletNumber={currentWalletNumber}
           onUpdateWalletNumber={onUpdateWalletNumber}
           currentAdminPin={currentAdminPin}
-          adminGaragePageError={adminGaragePageError}
-          adminGarageHasMore={adminGarageHasMore}
-          isAdminGaragePageLoading={isAdminGaragePageLoading}
-          loadAdminGaragePage={loadAdminGaragePage}
           adminLang={adminLang}
           t={t}
           showToast={showToast}

@@ -4,32 +4,22 @@ import { Garage } from '../../types';
 
 interface AdminGaragesTabViewProps {
   displayedGarages: Garage[];
-  effectiveGarages: Garage[];
   adminSearch: string;
   setAdminSearch: (s: string) => void;
   currentSupervisor: any;
   onSelectGarage: (garage: Garage) => void;
   onOpenAddGarage: () => void;
-  adminGaragePageError: any;
-  adminGarageHasMore: boolean;
-  isAdminGaragePageLoading: boolean;
-  loadAdminGaragePage: (reset?: boolean) => void;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
 }
 
 export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
   displayedGarages,
-  effectiveGarages,
   adminSearch,
   setAdminSearch,
   currentSupervisor,
   onSelectGarage,
   onOpenAddGarage,
-  adminGaragePageError,
-  adminGarageHasMore,
-  isAdminGaragePageLoading,
-  loadAdminGaragePage,
   adminLang,
   t,
 }) => {
@@ -114,34 +104,6 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
               })
             )}
           </div>
-          {adminGaragePageError && effectiveGarages.length === 0 && (
-            <div className="p-4 flex flex-col items-center gap-2 border-t border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-xs font-bold text-red-500 dark:text-red-400">
-                {t('تعذر تحميل قائمة الجراجات.')}
-              </span>
-              <button
-                type="button"
-                onClick={() => void loadAdminGaragePage(true)}
-                disabled={isAdminGaragePageLoading}
-                className="px-5 py-2 text-xs font-black text-white bg-slate-900 dark:bg-emerald-600 rounded-xl disabled:opacity-60"
-              >
-                {t('إعادة المحاولة')}
-              </button>
-            </div>
-          )}
-
-          {!adminGaragePageError && adminGarageHasMore && (
-            <div className="p-4 flex justify-center border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <button
-                type="button"
-                onClick={() => void loadAdminGaragePage()}
-                disabled={isAdminGaragePageLoading}
-                className="px-6 py-2.5 bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-black text-xs transition-colors shadow-sm active:scale-95"
-              >
-                {isAdminGaragePageLoading ? t('جارٍ التحميل...') : t('تحميل المزيد')}
-              </button>
-            </div>
-          )}
         </div>
       </section>
     </div>

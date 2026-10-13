@@ -72,6 +72,9 @@ export const AdminPeopleView = memo(({
       setShowAddForm(false);
     } catch (err) {
       console.error(err);
+      setDelegatePinError(adminLang === 'en'
+        ? 'Could not add delegate. Please check your connection and try again.'
+        : 'تعذر إضافة المندوب. تحقق من الاتصال وحاول مرة أخرى.');
     } finally {
       setIsSubmittingDelegate(false);
     }

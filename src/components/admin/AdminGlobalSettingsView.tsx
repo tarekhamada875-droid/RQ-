@@ -43,8 +43,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
           setConfig(prev => ({ 
             ...prev, 
             ...fetchedConfig,
-            referralFeePerRenewal: 100,
-            delegateMonthlyCommission: 100,
           }));
         }
       } catch (e) {
@@ -73,11 +71,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
         defaultTrialDays: Number(config.defaultTrialDays),
         warningDaysThreshold: Number(config.warningDaysThreshold),
         monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee),
-        monthlySubscribersSurchargePercent: 25,
-        referralFeePerRenewal: 100,
-        delegateMonthlyCommission: 100,
-        isMaintenanceMode: !!config.isMaintenanceMode,
-        maintenanceMessage: (config.maintenanceMessage || '').trim()
       });
       setStatusMessage({ type: 'success', text: t('تم حفظ وتحديث الإعدادات العامة للنظام بنجاح') });
       setTimeout(() => setStatusMessage(null), 4000);
