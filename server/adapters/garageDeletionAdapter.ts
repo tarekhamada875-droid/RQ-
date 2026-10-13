@@ -17,7 +17,6 @@ export type GarageDeletionClaim =
       readonly kind: 'claimed';
       readonly garageName: string;
       readonly claimToken: string;
-      readonly auditLogId: string;
       readonly processedRecords: number;
     };
 
@@ -71,20 +70,33 @@ export async function claimGarageDeletion(
         : { kind: 'not_found' };
     }
     if (decision.value.kind === 'already_deleted') return { kind: 'already_deleted' };
-    if (isGarageDeletionClaimActive(jobState, now.getTime())) return { kind: 'in_progress' };
 
-    const jobGarageName = typeof jobData.garageName === 'string' ? jobData.garageName : '';
     const processedRecords = Number.isFinite(Number(jobData.processedRecords))
       ? Math.max(0, Number(jobData.processedRecords))
       : 0;
+    const jobGarageName = typeof jobData.garageName === 'string' ? jobData.garageName : '';
     const garageName = typeof garageData.name === 'string'
       ? garageData.name
       : (jobGarageName || decision.value.garageName || garageId);
-    const reuseJobAudit = (jobState.status === 'running' || jobState.status === 'failed')
+
+    if (isGarageDeletionClaimActive(jobState, now.getTime())) {
+      if (jobData.executionMode === 'client_steps' && typeof jobData.leaseToken === 'string' && jobData.leaseToken) {
+        return { kind: 'claimed', garageName, claimToken: jobData.leaseToken, processedRecords };
+      }
+      // Do not overlap an older release's waitUntil-based job. It can be reclaimed
+      // safely once its existing lease expires.
+      return { kind: 'in_progress' };
+    }
+
+    const resumeAudit = (jobState.status === 'running' || jobState.status === 'failed')
       && typeof jobData.auditLogId === 'string';
-    const auditLogId = reuseJobAudit ? String(jobData.auditLogId) : proposedAuditLogId;
+    const auditLogId = resumeAudit ? String(jobData.auditLogId) : proposedAuditLogId;
     const startedAt = jobData.startedAt || now;
     const startedBy = jobData.startedBy || callerUid || null;
+    const storedCollectionIndex = Number(jobData.cleanupCollectionIndex);
+    const cleanupCollectionIndex = Number.isFinite(storedCollectionIndex)
+      ? Math.max(0, Math.floor(storedCollectionIndex))
+      : 0;
 
     if (garageSnapshot.exists) {
       transaction.set(garageRef, {
@@ -99,6 +111,8 @@ export async function claimGarageDeletion(
       auditLogId,
       status: 'running',
       phase: 'preparing',
+      executionMode: 'client_steps',
+      cleanupCollectionIndex,
       processedRecords,
       errorCode: null,
       updatedAt: now,
@@ -108,30 +122,7 @@ export async function claimGarageDeletion(
       leaseExpiresAt: new Date(now.getTime() + GARAGE_DELETION_LEASE_MS)
     }, { merge: true });
 
-    return { kind: 'claimed', garageName, claimToken, auditLogId, processedRecords };
-  });
-}
-
-export async function renewGarageDeletionLease(
-  adminDb: any,
-  garageId: string,
-  claimToken: string,
-  progress: Readonly<{ phase?: string; processedRecords?: number }> = {}
-): Promise<void> {
-  const jobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
-  await adminDb.runTransaction(async (transaction: any) => {
-    const snapshot = await transaction.get(jobRef);
-    const job = snapshot.exists ? snapshot.data() || {} : {};
-    if (!snapshot.exists || job.status !== 'running' || job.leaseToken !== claimToken) {
-      throw new Error('GARAGE_DELETION_IN_PROGRESS');
-    }
-    const now = new Date();
-    transaction.set(jobRef, {
-      updatedAt: now,
-      leaseExpiresAt: new Date(now.getTime() + GARAGE_DELETION_LEASE_MS),
-      ...(progress.phase ? { phase: progress.phase } : {}),
-      ...(typeof progress.processedRecords === 'number' ? { processedRecords: progress.processedRecords } : {})
-    }, { merge: true });
+    return { kind: 'claimed', garageName, claimToken, processedRecords };
   });
 }
 
@@ -139,7 +130,7 @@ export async function markGarageDeletionFailed(
   adminDb: any,
   garageId: string,
   claimToken: string,
-  errorCode = 'DELETE_FAILED'
+  errorCode = 'GARAGE_DELETION_FAILED'
 ): Promise<void> {
   const jobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
   await adminDb.runTransaction(async (transaction: any) => {
@@ -151,42 +142,6 @@ export async function markGarageDeletionFailed(
       phase: 'failed',
       errorCode,
       updatedAt: new Date(),
-      leaseToken: null,
-      leaseExpiresAt: null
-    }, { merge: true });
-  });
-}
-
-export async function finalizeGarageDeletion(
-  adminDb: any,
-  garageId: string,
-  claimToken: string,
-  auditLogId: string,
-  completedBy: string | undefined,
-  activityLog: Record<string, any>
-): Promise<void> {
-  const garageRef = adminDb.doc(`garages/${garageId}`);
-  const jobRef = adminDb.doc(`garage_deletion_jobs/${garageId}`);
-  const auditLogRef = adminDb.doc(`activity_logs/${auditLogId}`);
-
-  await adminDb.runTransaction(async (transaction: any) => {
-    const snapshot = await transaction.get(jobRef);
-    const job = snapshot.exists ? snapshot.data() || {} : {};
-    if (!snapshot.exists || job.status !== 'running' || job.leaseToken !== claimToken) {
-      throw new Error('GARAGE_DELETION_IN_PROGRESS');
-    }
-
-    const now = new Date();
-    transaction.set(auditLogRef, activityLog);
-    transaction.delete(garageRef);
-    transaction.set(jobRef, {
-      garageId,
-      status: 'completed',
-      phase: 'complete',
-      errorCode: null,
-      updatedAt: now,
-      completedAt: now,
-      completedBy: completedBy || null,
       leaseToken: null,
       leaseExpiresAt: null
     }, { merge: true });

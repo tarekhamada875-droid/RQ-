@@ -324,6 +324,7 @@ export const garageService = {
         status?: 'running' | 'completed';
         alreadyDeleted?: boolean;
         processedRecords?: number;
+        jobToken?: string;
       }>('/api/garages/delete', {
         method: 'POST',
         body: { garageId: id },
@@ -334,9 +335,10 @@ export const garageService = {
         onProgress?.({ processed: Number(started.processedRecords) || 0, phase: 'complete' });
         return true;
       }
+      if (!started.jobToken) throw new Error('GARAGE_DELETION_JOB_TOKEN_MISSING');
 
       const deadline = Date.now() + 6 * 60_000;
-      let status: {
+      let step: {
         success: boolean;
         status: string;
         phase?: string;
@@ -344,21 +346,25 @@ export const garageService = {
         errorCode?: string | null;
       };
       do {
-        status = await apiFetch(`/api/garages/delete-status?garageId=${encodeURIComponent(id)}`, { timeoutMs: 15_000 });
-        const processed = Number(status.processedRecords) || 0;
-        if (status.status === 'completed') {
+        step = await apiFetch('/api/garages/delete-step', {
+          method: 'POST',
+          body: { garageId: id, jobToken: started.jobToken },
+          timeoutMs: 15_000
+        });
+        const processed = Number(step.processedRecords) || 0;
+        if (step.status === 'completed') {
           onProgress?.({ processed, phase: 'complete' });
           return true;
         }
-        if (status.status === 'failed' || status.status === 'stale') {
+        if (step.status === 'failed' || step.status === 'stale') {
           onProgress?.({ processed, phase: 'failed' });
-          throw new Error(status.status === 'stale' ? 'GARAGE_DELETION_STALE' : (status.errorCode || 'GARAGE_DELETION_FAILED'));
+          throw new Error(step.status === 'stale' ? 'GARAGE_DELETION_STALE' : (step.errorCode || 'GARAGE_DELETION_FAILED'));
         }
-        if (status.status !== 'running') throw new Error('GARAGE_DELETION_STATUS_UNKNOWN');
-        const phase = status.phase === 'finalizing' ? 'finalizing' : 'deleting';
+        if (step.status !== 'running') throw new Error('GARAGE_DELETION_STATUS_UNKNOWN');
+        const phase = step.phase === 'finalizing' ? 'finalizing' : 'deleting';
         onProgress?.({ processed, phase });
         if (Date.now() >= deadline) throw new Error('GARAGE_DELETION_STILL_RUNNING');
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        await new Promise((resolve) => setTimeout(resolve, 150));
       } while (Date.now() < deadline);
 
       throw new Error('GARAGE_DELETION_STILL_RUNNING');

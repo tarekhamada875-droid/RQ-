@@ -17,8 +17,9 @@ describe('v167 - Garage Deletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiFetchMock
-      .mockResolvedValueOnce({ success: true, status: 'running', processedRecords: 0 })
+      .mockResolvedValueOnce({ success: true, status: 'running', processedRecords: 0, jobToken: 'synthetic-job-token' })
       .mockResolvedValueOnce({ success: true, status: 'running', phase: 'deleting', processedRecords: 17 })
+      .mockResolvedValueOnce({ success: true, status: 'running', phase: 'finalizing', processedRecords: 23 })
       .mockResolvedValueOnce({ success: true, status: 'completed', phase: 'complete', processedRecords: 23 });
   });
 
@@ -26,7 +27,7 @@ describe('v167 - Garage Deletion', () => {
     vi.restoreAllMocks();
   });
 
-  it('starts a deletion job, polls status, and reports only server progress', async () => {
+  it('starts a deletion job, advances bounded server steps, and reports only server progress', async () => {
     const progressLog: any[] = [];
 
     await firestoreService.deleteGarage('test_garage', (progress) => {
@@ -38,16 +39,18 @@ describe('v167 - Garage Deletion', () => {
       body: { garageId: 'test_garage' },
       timeoutMs: 15_000
     }));
-    expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/garages/delete-status?garageId=test_garage', expect.objectContaining({
-      timeoutMs: 15_000
-    }));
-    expect(apiFetchMock).toHaveBeenNthCalledWith(3, '/api/garages/delete-status?garageId=test_garage', expect.objectContaining({
-      timeoutMs: 15_000
-    }));
+    for (const callIndex of [2, 3, 4]) {
+      expect(apiFetchMock).toHaveBeenNthCalledWith(callIndex, '/api/garages/delete-step', expect.objectContaining({
+        method: 'POST',
+        body: { garageId: 'test_garage', jobToken: 'synthetic-job-token' },
+        timeoutMs: 15_000
+      }));
+    }
 
     expect(progressLog).toContainEqual({ processed: 17, phase: 'deleting' });
+    expect(progressLog).toContainEqual({ processed: 23, phase: 'finalizing' });
     expect(progressLog[progressLog.length - 1]).toEqual({ processed: 23, phase: 'complete' });
     expect(progressLog.every((progress) => !('percentage' in progress))).toBe(true);
-    expect(apiFetchMock).toHaveBeenCalledTimes(3);
+    expect(apiFetchMock).toHaveBeenCalledTimes(4);
   });
 });

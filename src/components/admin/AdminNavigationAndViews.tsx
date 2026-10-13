@@ -434,6 +434,10 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                     ? 'توقفت عملية الحذف قبل اكتمالها. أعد فتح نافذة الحذف لاستكمال البيانات المتبقية.'
                     : errorCode === 'GARAGE_DELETION_STILL_RUNNING'
                       ? 'ما زال حذف الجراج جارياً. انتظر قبل بدء عملية أخرى.'
+                      : ['GARAGE_DELETION_QUERY_FAILED', 'GARAGE_DELETION_WRITE_FAILED', 'GARAGE_DELETION_TRANSACTION_FAILED'].includes(errorCode)
+                        ? 'تعذرت خطوة من الحذف. لم يتم تأكيد اكتمال العملية؛ يمكنك إعادة فتح الحذف لاستكمالها.'
+                        : errorCode === 'GARAGE_DELETION_TARGET_CHANGED'
+                          ? 'تغيرت حالة الجراج أثناء الحذف، فأوقفنا العملية لحماية البيانات.'
                       : errorCode === 'GARAGE_NOT_FOUND'
                         ? 'لم يعد هذا الجراج موجوداً.'
                         : errorCode === 'FORBIDDEN'

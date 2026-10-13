@@ -21,8 +21,8 @@ import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } f
 import { calculateFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
-import { claimGarageDeletion, finalizeGarageDeletion, markGarageDeletionFailed, renewGarageDeletionLease } from './adapters/garageDeletionAdapter';
-import { deleteGarageOwnedData } from './adapters/garageDeletionCleanupAdapter';
+import { claimGarageDeletion, markGarageDeletionFailed } from './adapters/garageDeletionAdapter';
+import { processGarageDeletionStep } from './adapters/garageDeletionCleanupAdapter';
 import { reconcileGarageState } from './domain/garageReconciliation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import {
@@ -3531,71 +3531,77 @@ workerApp.post('/api/garages/delete', requireWorkerAuth, enforceWorkerFinancialR
       return c.json({ success: true, alreadyDeleted: true });
     }
     if (claim.kind === 'in_progress') {
-      const { statusCode, code, message } = mapDomainErrorToStatus(new Error('GARAGE_DELETION_IN_PROGRESS'));
-      return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
+      return c.json({
+        success: false,
+        code: 'GARAGE_DELETION_STILL_RUNNING',
+        error: 'GARAGE_DELETION_STILL_RUNNING',
+        statusCode: 409
+      }, 409);
     }
 
-    const deletionWork = async () => {
-      let processedRecords = claim.processedRecords;
-      try {
-        await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
-          phase: 'deleting',
-          processedRecords
-        });
-        await deleteGarageOwnedData(adminDb, garageId, async (pageDeleted) => {
-          processedRecords += pageDeleted;
-          await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
-            phase: 'deleting',
-            processedRecords
-          });
-        });
-        await renewGarageDeletionLease(adminDb, garageId, claim.claimToken, {
-          phase: 'finalizing',
-          processedRecords
-        });
-        await finalizeGarageDeletion(adminDb, garageId, claim.claimToken, claim.auditLogId, user?.uid, {
-          garageId,
-          garageName: claim.garageName,
-          staffId: user?.uid || null,
-          staffName: user?.displayName || 'الإدارة',
-          actionType: 'garage_delete',
-          plateNumber: `حذف جراج: ${claim.garageName}`,
-          timestamp: new Date(),
-          amount: 0,
-          details: {
-            deletedByRole: user?.role || 'admin',
-            deletedByUid: user?.uid || null
-          }
-        });
-      } catch (err) {
-        await markGarageDeletionFailed(adminDb, garageId, claim.claimToken).catch((markError) => {
-          console.error('[Worker Garage] Failed to release deletion claim:', markError);
-        });
-        throw err;
-      }
-      return processedRecords;
-    };
-
-    const deletionPromise = deletionWork();
-    let executionContext: any = null;
-    try {
-      executionContext = (c as any).executionCtx;
-    } catch {
-      executionContext = null;
-    }
-    if (executionContext && typeof executionContext.waitUntil === 'function') {
-      executionContext.waitUntil(deletionPromise.catch((err: any) => {
-        console.error('[Worker Garage] Background deletion job failed:', err);
-      }));
-      return c.json({ success: true, garageId, status: 'running', processedRecords: claim.processedRecords }, 202);
-    }
-
-    const processedRecords = await deletionPromise;
-    return c.json({ success: true, garageId, status: 'completed', processedRecords });
+    return c.json({
+      success: true,
+      garageId,
+      status: 'running',
+      phase: 'preparing',
+      processedRecords: claim.processedRecords,
+      jobToken: claim.claimToken
+    }, 202);
   } catch (err: any) {
     console.error('[Worker Garage] Error deleting garage:', err);
     const { statusCode, code, message } = mapDomainErrorToStatus(err);
     return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
+  }
+});
+
+workerApp.post('/api/garages/delete-step', requireWorkerAuth, async (c) => {
+  const user = c.get('user');
+  if (user?.role !== 'admin') {
+    return c.json({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Admin role required', statusCode: 403 }, 403);
+  }
+  if (!adminDb) return c.json({ success: false, code: 'ADMIN_SDK_NOT_INITIALIZED', error: 'ADMIN_SDK_NOT_INITIALIZED', statusCode: 500 }, 500);
+
+  const body = await c.req.json().catch(() => ({}));
+  let garageId = '';
+  try {
+    garageId = validateId(body?.garageId, 'garageId', true);
+  } catch (err: any) {
+    const { statusCode, code, message } = mapDomainErrorToStatus(err);
+    return c.json({ success: false, code, error: message, statusCode }, statusCode as any);
+  }
+  const jobToken = typeof body?.jobToken === 'string' ? body.jobToken : '';
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(jobToken)) {
+    return c.json({ success: false, code: 'INVALID_DELETION_JOB_TOKEN', error: 'INVALID_DELETION_JOB_TOKEN', statusCode: 400 }, 400);
+  }
+
+  try {
+    const step = await processGarageDeletionStep(adminDb, garageId, jobToken, {
+      uid: user?.uid,
+      role: user?.role,
+      displayName: user?.displayName
+    });
+    return c.json({ success: true, garageId, ...step });
+  } catch (err: any) {
+    if (err?.message === 'GARAGE_DELETION_IN_PROGRESS') {
+      return c.json({ success: false, code: 'GARAGE_DELETION_STILL_RUNNING', error: 'GARAGE_DELETION_STILL_RUNNING', statusCode: 409 }, 409);
+    }
+
+    const message = typeof err?.message === 'string' ? err.message : '';
+    const errorCode = message.startsWith('FIRESTORE_QUERY_FAILED:')
+      ? 'GARAGE_DELETION_QUERY_FAILED'
+      : message.startsWith('FIRESTORE_WRITE_FAILED:')
+        ? 'GARAGE_DELETION_WRITE_FAILED'
+        : message.startsWith('FIRESTORE_TRANSACTION_')
+          ? 'GARAGE_DELETION_TRANSACTION_FAILED'
+          : message === 'GARAGE_DELETION_TARGET_CHANGED'
+            ? 'GARAGE_DELETION_TARGET_CHANGED'
+            : 'GARAGE_DELETION_FAILED';
+    console.error('[Worker Garage] Deletion step failed:', errorCode, err);
+    await markGarageDeletionFailed(adminDb, garageId, jobToken, errorCode).catch((markError) => {
+      console.error('[Worker Garage] Failed to mark deletion step failure:', markError);
+    });
+    const statusCode = errorCode === 'GARAGE_DELETION_TARGET_CHANGED' ? 409 : 500;
+    return c.json({ success: false, code: errorCode, error: errorCode, statusCode }, statusCode as any);
   }
 });
 

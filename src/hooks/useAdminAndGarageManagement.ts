@@ -481,6 +481,11 @@ export function useAdminAndGarageManagement({
       const errorCode = error?.code || error?.message || '';
       const safeMessages: Record<string, string> = {
         GARAGE_DELETION_FAILED: 'تعذر إكمال حذف الجراج. يمكنك إعادة المحاولة بعد مراجعة حالة العملية.',
+        GARAGE_DELETION_QUERY_FAILED: 'تعذرت قراءة جزء من بيانات الجراج. لم يتم تأكيد اكتمال الحذف؛ يمكنك إعادة المحاولة لاستكماله.',
+        GARAGE_DELETION_WRITE_FAILED: 'تعذر حفظ خطوة من الحذف. لم يتم تأكيد اكتمال العملية؛ يمكنك إعادة المحاولة لاستكمالها.',
+        GARAGE_DELETION_TRANSACTION_FAILED: 'تعذرت معالجة خطوة من الحذف. يمكنك إعادة المحاولة لاستكمال العملية.',
+        GARAGE_DELETION_TARGET_CHANGED: 'تغيرت حالة الجراج أثناء الحذف، فأوقفنا العملية لحماية البيانات.',
+        GARAGE_DELETION_JOB_TOKEN_MISSING: 'تعذر استكمال طلب الحذف بأمان. أعد فتح نافذة الحذف للتحقق من الحالة.',
         GARAGE_DELETION_STALE: 'توقفت عملية الحذف قبل اكتمالها. أعد المحاولة لاستكمال حذف البيانات المتبقية.',
         GARAGE_DELETION_STILL_RUNNING: 'ما زال حذف الجراج جارياً. انتظر حتى تكتمل العملية قبل إعادة المحاولة.',
         GARAGE_DELETION_STATUS_UNKNOWN: 'تعذر التحقق من حالة الحذف. لم نعد بدء حذف آخر تلقائياً.',

@@ -221,7 +221,7 @@ export class MockFirestore {
 
     try {
       const t = {
-        get: async (ref: MockDocumentReference) => ref.get(),
+        get: async (ref: MockDocumentReference | MockQuery) => ref.get(),
         set: (ref: MockDocumentReference, data: any, options?: { merge?: boolean }) => {
           if (options?.merge) {
             const existing = this.records.get(ref.path) || {};
