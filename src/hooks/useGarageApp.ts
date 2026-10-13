@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Garage, Vehicle, Staff, Supervisor } from '../types';
 import { firestoreService } from '../services';
-import type { GarageDeletionProgress } from '../services/garageService';
+import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useServerTime } from './useServerTime';

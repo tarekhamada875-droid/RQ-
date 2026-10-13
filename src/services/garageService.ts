@@ -21,20 +21,7 @@ import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
-export type GarageDeletionProgress = {
-  phase: 'preparing' | 'deleting' | 'finalizing' | 'complete' | 'failed';
-  processed: number;
-  total?: number;
-  percentage?: number;
-};
-
-export type GarageDeletionStatus = {
-  status: 'not_started' | 'running' | 'completed' | 'failed' | 'stale' | 'unknown';
-  phase?: string;
-  processedRecords: number;
-  errorCode: string | null;
-  retryable: boolean;
-};
+export type { GarageDeletionProgress, GarageDeletionStatus } from './garageDeletionService';
 
 export interface GarageDashboardSummary {
   activeVehicleCount: number;
@@ -317,95 +304,6 @@ export const garageService = {
       return res.count || 0;
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}/recalculateCarsInside`);
-      throw error;
-    }
-  },
-
-  getGarageDeletionStatus: async (id: string): Promise<GarageDeletionStatus> => {
-    try {
-      const status = await apiFetch<{
-        status?: string;
-        phase?: string;
-        processedRecords?: number;
-        errorCode?: string | null;
-        retryable?: boolean;
-      }>(`/api/garages/delete-status?garageId=${encodeURIComponent(id)}`);
-      const knownStatuses = ['running', 'completed', 'failed', 'stale'] as const;
-      const resolvedStatus = knownStatuses.includes(status.status as typeof knownStatuses[number])
-        ? status.status as typeof knownStatuses[number]
-        : 'unknown';
-      return {
-        status: resolvedStatus,
-        phase: status.phase,
-        processedRecords: Math.max(0, Number(status.processedRecords) || 0),
-        errorCode: typeof status.errorCode === 'string' ? status.errorCode : null,
-        retryable: status.retryable === true
-      };
-    } catch (error: any) {
-      if (error?.code === 'DELETION_JOB_NOT_FOUND' || error?.message === 'DELETION_JOB_NOT_FOUND') {
-        return { status: 'not_started', processedRecords: 0, errorCode: null, retryable: false };
-      }
-      throw error;
-    }
-  },
-
-  deleteGarage: async (
-    id: string,
-    onProgress?: (progress: GarageDeletionProgress) => void
-  ) => {
-    try {
-      onProgress?.({ processed: 0, phase: 'preparing' });
-      const started = await apiFetch<{
-        success: boolean;
-        status?: 'running' | 'completed';
-        alreadyDeleted?: boolean;
-        processedRecords?: number;
-        jobToken?: string;
-      }>('/api/garages/delete', {
-        method: 'POST',
-        body: { garageId: id },
-        timeoutMs: 15_000
-      });
-
-      if (started.alreadyDeleted || started.status === 'completed') {
-        onProgress?.({ processed: Number(started.processedRecords) || 0, phase: 'complete' });
-        return true;
-      }
-      if (!started.jobToken) throw new Error('GARAGE_DELETION_JOB_TOKEN_MISSING');
-
-      const deadline = Date.now() + 6 * 60_000;
-      let step: {
-        success: boolean;
-        status: string;
-        phase?: string;
-        processedRecords?: number;
-        errorCode?: string | null;
-      };
-      do {
-        step = await apiFetch('/api/garages/delete-step', {
-          method: 'POST',
-          body: { garageId: id, jobToken: started.jobToken },
-          timeoutMs: 15_000
-        });
-        const processed = Number(step.processedRecords) || 0;
-        if (step.status === 'completed') {
-          onProgress?.({ processed, phase: 'complete' });
-          return true;
-        }
-        if (step.status === 'failed' || step.status === 'stale') {
-          onProgress?.({ processed, phase: 'failed' });
-          throw new Error(step.status === 'stale' ? 'GARAGE_DELETION_STALE' : (step.errorCode || 'GARAGE_DELETION_FAILED'));
-        }
-        if (step.status !== 'running') throw new Error('GARAGE_DELETION_STATUS_UNKNOWN');
-        const phase = step.phase === 'finalizing' ? 'finalizing' : 'deleting';
-        onProgress?.({ processed, phase });
-        if (Date.now() >= deadline) throw new Error('GARAGE_DELETION_STILL_RUNNING');
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      } while (Date.now() < deadline);
-
-      throw new Error('GARAGE_DELETION_STILL_RUNNING');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `garages/${id}`);
       throw error;
     }
   },

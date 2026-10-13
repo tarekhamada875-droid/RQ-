@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Garage } from '../../types';
-import type { GarageDeletionProgress } from '../../services/garageService';
+import type { GarageDeletionProgress } from '../../services/garageDeletionService';
 
 interface DeleteGarageConfirmModalProps {
   garage: Garage;
