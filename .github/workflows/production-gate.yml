@@ -54,7 +54,7 @@ jobs:
       - name: Verify production artifacts
         run: |
           test -f dist/index.html
-          test -f dist/server.cjs
+          test -f dist/worker.js
 
       - name: Maintainability checks
         run: npm run maintainability:check

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 console.log('====================================================');
-console.log('    PRODUCTION GATE AUTOMATED CHECK (FIX 05)');
+console.log('    PRODUCTION GATE AUTOMATED CHECK (HONO)');
 console.log('====================================================\n');
 
 let failed = false;
@@ -19,7 +19,6 @@ function runStep(name: string, command: string) {
   }
 }
 
-// 1. Reproducible clean install. Presence of a lockfile is not sufficient.
 console.log('[CHECK] Reproducible Clean Install...');
 if (fs.existsSync(path.join(process.cwd(), 'package-lock.json'))) {
   runStep('npm ci lockfile verification', 'npm ci --ignore-scripts --no-audit --no-fund');
@@ -28,40 +27,38 @@ if (fs.existsSync(path.join(process.cwd(), 'package-lock.json'))) {
   failed = true;
 }
 
-// 2. Secret Scanning Audit (No hardcoded secrets)
-console.log('[CHECK] Secret Scanning in codebase...');
+console.log('[CHECK] Secret Scanning in active Worker sources...');
 try {
-  const serverCode = fs.readFileSync(path.join(process.cwd(), 'server/app.ts'), 'utf-8');
-  if (serverCode.includes('PRIVATE_KEY_HERE') || serverCode.includes('eyJhbGciOi')) {
-    console.error('[FAIL] Hardcoded JWT or private key detected!\n');
+  const activeSourceFiles = [
+    'server/cloudflareWorker.ts',
+    'server/backendOperatorToken.ts',
+    'server/firebaseWorkerAdmin.ts'
+  ];
+  const workerSource = activeSourceFiles
+    .map((file) => fs.readFileSync(path.join(process.cwd(), file), 'utf-8'))
+    .join('\n');
+  if (workerSource.includes('PRIVATE_KEY_HERE') || workerSource.includes('eyJhbGciOi')) {
+    console.error('[FAIL] Hardcoded JWT or private key detected in active Worker source!\n');
     failed = true;
   } else {
-    console.log('[PASS] No hardcoded JWT or private key detected in server/app.ts.\n');
+    console.log('[PASS] No hardcoded JWT or private key detected in active Worker source.\n');
   }
 } catch {
-  console.error('[FAIL] Could not scan server code!\n');
+  console.error('[FAIL] Could not scan active Worker source!\n');
   failed = true;
 }
 
-// 3. TypeScript Typecheck & Lint
 runStep('TypeScript Linting (tsc --noEmit)', 'npm run lint');
-
-// 4. Vitest Unit & Integration Test Suite
 runStep('Vitest Automated Test Suite', 'npm run test');
+runStep('Cloudflare Pages and Worker production build', 'npm run build');
 
-// 5. Production Build
-runStep('Production Bundling (Vite + Esbuild)', 'npm run build');
-
-// 6. Verify Production Artifacts
 console.log('[CHECK] Production Artifact Verification...');
 const indexHtmlExists = fs.existsSync(path.join(process.cwd(), 'dist/index.html'));
-const serverCjsExists = fs.existsSync(path.join(process.cwd(), 'dist/server.cjs'));
 const workerJsExists = fs.existsSync(path.join(process.cwd(), 'dist/worker.js'));
-
-if (indexHtmlExists && serverCjsExists && workerJsExists) {
-  console.log('[PASS] dist/index.html, dist/server.cjs, and dist/worker.js exist.\n');
+if (indexHtmlExists && workerJsExists) {
+  console.log('[PASS] dist/index.html and dist/worker.js exist.\n');
 } else {
-  console.error('[FAIL] Production build artifacts missing in dist/!\n');
+  console.error('[FAIL] Cloudflare production artifacts are missing from dist/!\n');
   failed = true;
 }
 

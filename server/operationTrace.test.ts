@@ -1,87 +1,28 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { getTraceContext, withTraceContext } from './operationTrace';
 
-const state = vi.hoisted(() => ({ writes: [] as Array<{ path: string; value: any }> }));
-
-vi.mock('./firebaseAdmin', () => ({
-  adminDb: {
-    doc: (path: string) => ({
-      path,
-      set: async (value: any) => { state.writes.push({ path, value }); },
-    }),
-  },
-}));
-
-import { operationTraceDocumentId, operationTraceMiddleware } from './operationTrace';
-
-function response(statusCode: number) {
-  const listeners = new Map<string, () => void>();
-  return {
-    statusCode,
-    locals: {},
-    on(event: string, listener: () => void) { listeners.set(event, listener); },
-    finish() { listeners.get('finish')?.(); },
-  } as any;
-}
-
-describe('operation trace middleware', () => {
-  it('writes one privacy-safe trace with correlation and operation identifiers', async () => {
-    state.writes.length = 0;
-    const res = response(201);
-    const req: any = {
-      method: 'POST',
-      path: '/api/vehicles/check-in?token=do-not-store',
-      correlationId: 'corr-success',
-      headers: { 'x-operation-id': 'ui-operation-1' },
-      user: { uid: 'user-1', role: 'garage', garageId: 'garage-1' },
-    };
-    let nextCalled = false;
-    operationTraceMiddleware(req, res, () => { nextCalled = true; });
-    expect(nextCalled).toBe(true);
-    res.finish();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(state.writes).toHaveLength(1);
-    expect(state.writes[0].path).toBe(`operation_traces/${operationTraceDocumentId('corr-success')}`);
-    expect(state.writes[0].value).toMatchObject({
-      correlationId: 'corr-success',
-      operationId: 'ui-operation-1',
-      path: '/api/vehicles/check-in',
-      statusCode: 201,
-      outcome: 'success',
-      actorUidHash: expect.any(String),
-      actorRole: 'garage',
-      garageIdHash: expect.any(String),
-      schemaVersion: 2,
-    });
-    expect(JSON.stringify(state.writes[0].value)).not.toContain('do-not-store');
-    expect(JSON.stringify(state.writes[0].value)).not.toContain('user-1');
-    expect(JSON.stringify(state.writes[0].value)).not.toContain('garage-1');
-    expect(state.writes[0].value.expiresAt).toBeInstanceOf(Date);
+describe('request trace context', () => {
+  it('preserves correlation and operation identifiers across asynchronous work', async () => {
+    expect(getTraceContext()).toBeUndefined();
+    const result = await withTraceContext(
+      { correlationId: 'corr-hono-1', operationId: 'operation-hono-1' },
+      async () => {
+        await Promise.resolve();
+        return getTraceContext();
+      }
+    );
+    expect(result).toEqual({ correlationId: 'corr-hono-1', operationId: 'operation-hono-1' });
+    expect(getTraceContext()).toBeUndefined();
   });
 
-  it('records failed API outcomes without storing request bodies or credentials', async () => {
-    state.writes.length = 0;
-    const res = response(500);
-    res.locals.apiErrorCode = 'INTERNAL_ERROR';
-    const req: any = {
-      method: 'POST',
-      path: '/api/transactions/approve',
-      correlationId: 'corr-failure',
-      headers: { 'x-operation-id': 'ui-operation-2', authorization: 'Bearer secret' },
-      body: { password: 'secret', amount: 100 },
-    };
-    operationTraceMiddleware(req, res, () => {});
-    res.finish();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(state.writes[0].value).toMatchObject({
-      correlationId: 'corr-failure',
-      outcome: 'server_error',
-      statusCode: 500,
-      errorCode: 'INTERNAL_ERROR',
+  it('restores the enclosing request context after a nested operation', () => {
+    withTraceContext({ correlationId: 'outer' }, () => {
+      expect(getTraceContext()?.correlationId).toBe('outer');
+      withTraceContext({ correlationId: 'inner', operationId: 'op-inner' }, () => {
+        expect(getTraceContext()).toEqual({ correlationId: 'inner', operationId: 'op-inner' });
+      });
+      expect(getTraceContext()).toEqual({ correlationId: 'outer' });
     });
-    expect(state.writes[0].value).not.toHaveProperty('body');
-    expect(state.writes[0].value).not.toHaveProperty('headers');
-    expect(JSON.stringify(state.writes[0].value)).not.toContain('secret');
+    expect(getTraceContext()).toBeUndefined();
   });
 });

@@ -4,7 +4,7 @@ For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`]
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-13):** `main` at `895e0cb` is the production source of truth. Hono is the production Worker backend at `https://rq.tarekhamada875.workers.dev`; the React app is on Pages at `https://rq-acg.pages.dev`. The project is being exercised with synthetic test data. The H9 / Express-decommissioning workstream is closed; the local Express compatibility runtime remains frozen and is not a cleanup target. Branch previews are not an active release environment.
+> **Current status (2026-10-13):** `main` at `895e0cb` remains the production source of truth. Hono is the production Worker backend at `https://rq.tarekhamada875.workers.dev`; the React app is on Pages at `https://rq-acg.pages.dev`. The project is being exercised with synthetic test data. This owner-authorized change branch removes the retired local Express/Node production path; it is not deployed until merged through the normal release gate. Branch previews are not an active release environment.
 
 ## Target production architecture
 
@@ -92,23 +92,23 @@ Expected behavior is HTTP 200 JSON for health and system configuration, and an a
 
 ## Security and feature-work rules
 
-Authentication and authorization are server-owned. Do not trust role, user ID, or Firebase token fields supplied in request bodies. Preserve Firebase token verification, role scoping, session checks, CORS restrictions, idempotency, operation traces, and financial correctness when changing routes.
+Authentication and authorization are server-owned. Do not trust role, user ID, or Firebase token fields supplied in request bodies. Preserve Firebase token verification, role scoping, session checks, CORS restrictions, idempotency, correlation IDs, and financial correctness when changing routes.
 
-Do not delete or mutate Firestore production data without explicit scope and confirmation. Prefer focused route modules, services, domain helpers, and tests over adding more logic to `server/app.ts` or large dashboard components.
+Do not delete or mutate Firestore production data without explicit scope and confirmation. Prefer focused route modules, services, domain helpers, and tests over adding more logic to large dashboard components.
 
 ## Repository structure
 
 ```text
-server/                 Backend/domain source and transitional local adapter
+server/                 Hono backend/domain source and local Node adapter
 server/routes/          Backend route modules and business contracts
 server/cloudflareWorker.ts  Current production Hono Worker API
+server.ts               Local-only Node HTTP + Vite development host for Hono
 wrangler.toml           Cloudflare Worker deployment configuration
 src/components/         React UI components
 src/api/                Frontend API client
 src/services/           Firebase-backed frontend services
 src/domain/              Shared business rules and domain logic
 .github/workflows/      GitHub Actions production gate
-Dockerfile              Container build alternative
 ```
 
-For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The sole active project plan is [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md); the current H9 continuation file is [`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`](./RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md).
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The Hono migration plan and succession handoff are closed/history records, not active plans.
