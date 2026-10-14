@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { MockFirestore, mockAdminAuth } from './mockFirestore';
+import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
 
@@ -13,6 +13,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';

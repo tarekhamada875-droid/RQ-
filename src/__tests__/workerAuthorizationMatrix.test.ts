@@ -25,11 +25,44 @@ const tokens = {
 } as const;
 
 async function call(path: string, token: string, init: RequestInit = {}) {
+  const providedHeaders = (init.headers || {}) as Record<string, string>;
+  let defaultSessionHeader: Record<string, string> = {};
+  if (
+    !Object.keys(providedHeaders).some((key) => key.toLowerCase() === 'x-session-id') &&
+    ['valid-admin-token', 'valid-delegate-token', 'valid-garage-token-garage-a', 'valid-staff-token-garage-a'].includes(token)
+  ) {
+    const sessionId = `matrix-session-${token}`;
+    const roleDetails = token === 'valid-admin-token'
+      ? { uid: 'admin-uid', role: 'admin', entityId: 'auth_pin', sessions: 'admin_sessions', collection: 'admin_settings', documentId: 'auth_pin' }
+      : token === 'valid-delegate-token'
+        ? { uid: 'delegate-uid', role: 'delegate', entityId: 'delegate-a', sessions: 'delegate_sessions', collection: 'delegates', documentId: 'delegate-a' }
+        : token === 'valid-garage-token-garage-a'
+          ? { uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessions: 'garage_sessions', collection: 'garages', documentId: 'garage-a' }
+          : { uid: 'staff-uid-garage-a', role: 'staff', entityId: 'staff-a', garageId: 'garage-a', sessions: 'staff_sessions', collection: 'staff', documentId: 'staff-a' };
+    mockDb.seed(`${roleDetails.sessions}/${roleDetails.uid}`, {
+      uid: roleDetails.uid,
+      role: roleDetails.role,
+      entityId: roleDetails.entityId,
+      ...(roleDetails.garageId ? { garageId: roleDetails.garageId } : {}),
+      sessionId,
+      isActive: true,
+      lastActive: new Date()
+    });
+    const entityPath = `${roleDetails.collection}/${roleDetails.documentId}`;
+    const currentEntity = mockDb.records.get(entityPath) || {};
+    mockDb.seed(entityPath, {
+      ...currentEntity,
+      activeSessionIds: [...new Set([...(currentEntity.activeSessionIds || []), sessionId])],
+      currentSessionId: sessionId
+    });
+    defaultSessionHeader = { 'x-session-id': sessionId };
+  }
   return api.fetch(new Request(`http://localhost${path}`, {
     ...init,
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
+      ...defaultSessionHeader,
       ...(init.headers || {})
     }
   }));
@@ -50,6 +83,32 @@ describe('Worker role and garage-scope authorization matrix', () => {
   ])('applies direct garage-read scope for %s', async (_label, token, expectedStatus) => {
     const response = await call('/api/garages/garage-a', token);
     expect(response.status).toBe(expectedStatus);
+  });
+
+  it.each([
+    ['admin', tokens.admin],
+    ['delegate', tokens.delegate],
+    ['garage', tokens.garage],
+    ['staff', tokens.staff]
+  ])('rejects a %s role claim without an active server session', async (_label, token) => {
+    const response = await call('/api/garages/garage-a', token, { headers: { 'x-session-id': '' } });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
+  });
+
+  it('checks only the verified role session paths for an active garage session', async () => {
+    const documentPathSpy = vi.spyOn(mockDb, 'doc');
+    try {
+      const response = await call('/api/garages/garage-a', tokens.garage);
+      expect(response.status).toBe(200);
+      const requestedPaths = documentPathSpy.mock.calls.map(([path]) => path);
+      expect(requestedPaths).toContain('garage_sessions/garage-uid-garage-a');
+      expect(requestedPaths).not.toContain('admin_sessions/garage-uid-garage-a');
+      expect(requestedPaths).not.toContain('delegate_sessions/garage-uid-garage-a');
+      expect(requestedPaths).not.toContain('staff_sessions/garage-uid-garage-a');
+    } finally {
+      documentPathSpy.mockRestore();
+    }
   });
 
   it.each([

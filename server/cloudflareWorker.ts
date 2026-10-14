@@ -90,12 +90,17 @@ function workerSessionDefinition(role: string | undefined) {
 
 async function resolveWorkerSessionUser(
   uid: string,
-  sessionId: string
+  sessionId: string,
+  expectedRole?: string
 ): Promise<{ user: WorkerUser; error?: never } | { user?: never; error: 'SESSION_REVOKED' | 'SESSION_EXPIRED' }> {
   if (!adminDb || !uid || !sessionId) return { error: 'SESSION_REVOKED' };
   const sessionTimeoutMs = 24 * 60 * 60 * 1000;
 
-  for (const [role, definition] of Object.entries(WORKER_SESSION_DEFINITIONS)) {
+  const roleEntries: Array<[string, { sessions: string; entity: string }]> = expectedRole && workerSessionDefinition(expectedRole)
+    ? [[expectedRole, WORKER_SESSION_DEFINITIONS[expectedRole]]]
+    : Object.entries(WORKER_SESSION_DEFINITIONS);
+
+  for (const [role, definition] of roleEntries) {
     const rootRef = adminDb.doc(`${definition.sessions}/${uid}`);
     const deviceRef = adminDb.doc(`${definition.sessions}/${uid}/sessions/${sessionId}`);
     const [rootSnap, deviceSnap] = await Promise.all([rootRef.get(), deviceRef.get()]);
@@ -103,7 +108,7 @@ async function resolveWorkerSessionUser(
     if (!sessionSnap.exists) continue;
 
     const sessionData = sessionSnap.data() || {};
-    if (sessionData.uid !== uid || sessionData.isActive !== true || sessionData.sessionId !== sessionId) continue;
+    if (sessionData.uid !== uid || sessionData.isActive !== true || sessionData.sessionId !== sessionId || (sessionData.role && sessionData.role !== role)) continue;
 
     const rawLastActive = sessionData.lastActive;
     const lastActive = rawLastActive?.toDate
@@ -392,16 +397,17 @@ async function requireWorkerAuth(
       }
     }
 
-    // PIN login uses Firebase Anonymous Auth. Resolve the authoritative server
-    // session whenever the client supplies its session ID; a role claim must not
-    // override an explicitly presented (and potentially revoked) session.
+    // Application roles are never authorized from Firebase claims alone.
+    // PIN login creates a server-owned session; require it on every protected
+    // request so revocation, expiry, and entity scope remain enforceable.
     const sessionId = (c.req.header('x-session-id') || '').trim();
-    if (!options.skipRoleResolution && role === 'worker' && !sessionId) {
+    const requiresActiveSession = Boolean(workerSessionDefinition(role));
+    if (!options.skipRoleResolution && (requiresActiveSession || role === 'worker') && !sessionId) {
       return c.json({ success: false, error: 'SESSION_REVOKED' }, 401);
     }
     if (!options.skipRoleResolution && sessionId) {
       if (!adminDb) return c.json({ success: false, error: 'SESSION_VALIDATION_UNAVAILABLE' }, 503);
-      const resolution = await resolveWorkerSessionUser(decodedUid, sessionId);
+      const resolution = await resolveWorkerSessionUser(decodedUid, sessionId, workerSessionDefinition(role) ? role : undefined);
       if (!resolution.user) {
         return c.json({ success: false, error: resolution.error }, 401);
       }

@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
-import { MockFirestore, mockAdminAuth } from './mockFirestore';
+import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
 
@@ -14,6 +14,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes', () => {
   const operatorToken = 'test-operator-token-32-chars-long!!';
