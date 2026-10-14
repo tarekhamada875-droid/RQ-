@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-14
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
-**Current production source of truth:** `main` at `c7d452c2bc5f354052d986dd58a9db804cc28749`; PR #40's post-merge Production Gate (including live smoke) and Cloudflare Worker deployment both succeeded. PR #40 is the latest application change; the exact Firebase rules publication is recorded below.
+**Current deployed application code:** `c7d452c2bc5f354052d986dd58a9db804cc28749` (PR #40); its post-merge Production Gate, live smoke, and Cloudflare Worker deployment all succeeded. PR #40 is the latest application change; the exact Firebase rules publication is recorded below.
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
