@@ -7,7 +7,7 @@
 
 **Current delivery status (2026-10-14):** The plan began as a read-only review. After the owner approved autonomous implementation of the roadmap, **AUTH-01** was delivered in PR #35 and deployed to `main` at `e53b2cba40218fc694de2528db71f45791cf629c`. Protected Admin, Delegate, Garage, and Staff Worker requests now require an active server session; session validation checks only the caller's role collection. The local gate passed 105 test files / 645 tests plus production build and maintainability checks; GitHub's production gate, Firestore rules emulator suite, Worker deployment, and live health smoke all passed. Other roadmap items remain open unless a later dated status says otherwise.
 
-**Latest implementation status (2026-10-14):** **RULES-01** and the scoped **TEST-01** emulator matrix are implemented on `fix/rules-owner-scope`; all local checks pass. Staff cannot directly create/delete records or change sensitive fields; owners/Admins retain only validated name/phone edits in direct rules, while role/PIN/garage assignment changes remain on the Worker. Protected garage settings require an active owner or Admin session; staff retain only the narrow heartbeat update. The emulator covers Admin, owner, staff, delegate, sessions, `system_config`, cross-garage denial, and retired Supervisor behavior. This is repository/test status only: **Firebase rules have not been deployed**. Verify the target Firebase project explicitly before any separate rules deployment.
+**Latest implementation status (2026-10-14):** **RULES-01** and the scoped **TEST-01** emulator matrix were merged to `main` by PR #37 at `2f3a61c67a8f93395cae9069d2fd2d1e71071808`. Local checks, the main-branch Production Gate, and the post-merge Cloudflare Worker workflow all passed. Staff cannot directly create/delete records or change sensitive fields; owners/Admins retain only validated name/phone edits in direct rules, while role/PIN/garage assignment changes remain on the Worker. Protected garage settings require an active owner or Admin session; staff retain only the narrow heartbeat update. The emulator covers Admin, owner, staff, delegate, sessions, `system_config`, cross-garage denial, and retired Supervisor behavior. This is repository/test status only: **Firebase rules have not been deployed**. Verify the target Firebase project explicitly before any separate rules deployment.
 
 ## 1. Executive explanation
 
@@ -398,7 +398,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Actual emulator matrix plus Worker parity matrix.
 - **Risk / rollback:** High—legacy UI direct writes may surface. Run emulator/client integration before release; migrate caller rather than broaden rules.
 - **Effort:** M.
-- **Delivery status (2026-10-14):** Implemented on `fix/rules-owner-scope`; the active-owner helper is separate from a garage-scoped staff session. Sensitive staff create/delete/role/PIN/garage-assignment changes remain Worker-only, with validated owner/Admin name/phone edits and staff self-heartbeat preserved. Staff cannot change rates or trial settings; owner/Admin controls pass the actual emulator. See TEST-01 delivery note. Firebase deployment is a separate, not-yet-performed step requiring an explicitly verified project target.
+- **Delivery status (2026-10-14):** Merged in PR #37 at `2f3a61c`; the active-owner helper is separate from a garage-scoped staff session. Sensitive staff create/delete/role/PIN/garage-assignment changes remain Worker-only, with validated owner/Admin name/phone edits and staff self-heartbeat preserved. Staff cannot change rates or trial settings; owner/Admin controls pass the actual emulator. The PR and main-branch gates passed. Firebase deployment is a separate, not-yet-performed step requiring an explicitly verified project target.
 
 #### RULES-02 — Make system-config public projection explicit
 
@@ -432,7 +432,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Emulator tests listed above; retain Supervisor characterization separately.
 - **Risk / rollback:** Medium—exposes undocumented legacy writes. Fix/migrate callers; do not weaken rules.
 - **Effort:** M.
-- **Delivery status (2026-10-14):** The actual-rules emulator harness now exercises active Admin, garage-owner, Staff, and Delegate permissions; session immutability/heartbeat, `system_config`, cross-garage access, and retired-role denies. It passes locally and is wired into the existing Production Gate through `npm run test:rules`. This is the scoped matrix for RULES-01; it does not claim every rule path in the file has been exhaustively audited.
+- **Delivery status (2026-10-14):** The actual-rules emulator harness now exercises active Admin, garage-owner, Staff, and Delegate permissions; session immutability/heartbeat, `system_config`, cross-garage access, and retired-role denies. It passed locally and in the merged PR #37 Production Gate through `npm run test:rules`. This is the scoped matrix for RULES-01; it does not claim every rule path in the file has been exhaustively audited.
 
 #### SPIKE-01 — Gate preproduction diagnostic endpoints
 
