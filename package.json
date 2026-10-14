@@ -17,7 +17,7 @@
     "benchmark": "tsx tools/performance-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
     "maintainability:check": "tsx tools/maintainability-check.ts",
-    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-supervisor.test.mjs\""
+    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
   },
   "dependencies": {
     "firebase": "^12.12.0",

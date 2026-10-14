@@ -120,11 +120,16 @@ service cloud.firestore {
              get(/databases/$(database)/documents/garages/$(garageId)).data.isDeleting == true;
     }
 
+    function isGarageOwner(garageId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
+             get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true;
+    }
+
     function isGarageSession(garageId) {
       return isSignedIn() && (
-        (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true) ||
+        isGarageOwner(garageId) ||
         (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
          exists(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)) &&
@@ -362,13 +367,10 @@ service cloud.firestore {
              isValidSubscriber(incoming());
     }
 
-    function isValidStaff(data) {
-      return data.keys().hasAll(['name', 'garageId', 'role', 'pin']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.pin is string && data.pin.size() >= 4 && data.pin.size() <= 10 &&
-             data.garageId is string && isValidId(data.garageId) &&
-             data.role == 'staff' &&
-             (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128));
+    function isAllowedStaffProfileUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone']) &&
+             (!('name' in incoming()) || (incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100)) &&
+             (!('phone' in incoming()) || (incoming().phone is string && (incoming().phone.size() == 0 || (incoming().phone.size() >= 3 && incoming().phone.size() <= 20))));
     }
 
     function isValidActivityLog(data) {
@@ -448,13 +450,18 @@ service cloud.firestore {
              incoming().lastActive is timestamp;
     }
 
-    function isAllowedGarageSessionUpdate() {
+    function isAllowedGarageOwnerUpdate() {
       return incoming().diff(existing()).affectedKeys().hasOnly([
                'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive', 'trialDecision', 'trialDecisionAt'
              ]) &&
              (!('hourlyRate' in incoming()) || (incoming().hourlyRate is number && incoming().hourlyRate >= 0 && incoming().hourlyRate <= 10000)) &&
              (!('overnightRate' in incoming()) || (incoming().overnightRate is number && incoming().overnightRate >= 0 && incoming().overnightRate <= 10000)) &&
              isGarageUpdateValid(incoming());
+    }
+
+    function isAllowedHeartbeatUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
+             incoming().lastActive is timestamp;
     }
 
     // Session validation helpers
@@ -633,14 +640,13 @@ service cloud.firestore {
 
     match /staff/{staffId} {
       allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isGarageSession(resource.data.garageId) || isStaffSession(staffId));
-      allow create: if (isAdmin() || isGarageSession(incoming().garageId)) && isValidStaff(incoming()) && isValidId(staffId) &&
-                    !isGarageDeleting(incoming().garageId);
+      // Staff creation/deletion and sensitive field changes go through the Worker.
+      allow create: if false;
       allow update: if isValidId(staffId) && (
-        isAdmin() || 
-        isGarageSession(existing().garageId) || 
-        (isStaffSession(staffId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
+        ((isAdmin() || isGarageOwner(existing().garageId)) && isAllowedStaffProfileUpdate()) ||
+        (isStaffSession(staffId) && isAllowedHeartbeatUpdate())
       );
-      allow delete: if (isAdmin() || isGarageSession(existing().garageId)) && isValidId(staffId);
+      allow delete: if false; // Worker also cleans up the associated private PIN records.
     }
 
     match /garages/{garageId} {
@@ -661,7 +667,8 @@ service cloud.firestore {
           'totalCommissionEarned', 'totalRechargedAmount', 'commission',
           'todayRevenue', 'totalVehiclesOut'
         ])) ||
-        (isGarageSession(garageId) && isAllowedGarageSessionUpdate()) ||
+        (isGarageOwner(garageId) && isAllowedGarageOwnerUpdate()) ||
+        (isGarageSession(garageId) && isAllowedHeartbeatUpdate()) ||
         (isDelegateForGarage(garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
       );
       
