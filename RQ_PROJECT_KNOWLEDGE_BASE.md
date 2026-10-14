@@ -1,16 +1,16 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-13
+**Last updated:** 2026-10-14
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
-**Current production source of truth:** `main` at `1aa48a8442aed90ce7bf14d8e7c393bfc54204fe`; PR #32 and the Cloudflare Worker deployment completed successfully on 2026-10-13.
+**Current production source of truth:** `main` at `e53b2cba40218fc694de2528db71f45791cf629c`; PR #35 and the Cloudflare Worker deployment completed successfully on 2026-10-14. The live Worker health/version endpoints and Pages frontend returned HTTP 200 after deployment.
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
 
 RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, and Admin operations. The Supervisor role has been retired by owner decision; existing legacy Supervisor records are preserved and do not represent active accounts.
 
-The application is in **controlled synthetic pre-production**. There are currently no real users, customer records, or live financial data. Synthetic pre-production is not permission to touch unknown data, accept real revenue, perform destructive migrations, or claim final production readiness.
+The application was last confirmed by the owner on **2026-10-14** to be in controlled synthetic pre-production, with no real users, customer records, or live financial data. Reconfirm this before future work depends on it. Synthetic pre-production is not permission to touch unknown data, accept real revenue, perform destructive migrations, or claim final production readiness.
 
 ## 2. Production topology
 
@@ -34,16 +34,18 @@ Firebase Authentication + Firestore
 
 ## 3. Document hierarchy
 
-For any separately owner-authorized future work, use this order:
+For any future work, use this order:
 
-1. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, current status, and document map.
-2. **`AGENTS.md`**: mandatory repository safety and engineering instructions.
-3. **`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`**: closed-workstream record only; it is not an active plan and does not authorize H9 continuation.
-4. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: historical evidence only; its old operating sequence and succession protocol are inactive.
-5. **`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`** and **`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`**: historical route evidence only.
-6. **`MAINTAINABILITY_HANDOFF.md`**, **`BRANCHING_AND_RELEASES.md`**, and **`docs/OBSERVABILITY_RUNBOOK.md`**: supporting repository/release/operations references.
-7. H6 prompts/runbooks, the integrated acceptance task/report, dated handoffs, and `docs/CF0_*` through `docs/CF7_*`: historical evidence only; do not resume them as active tasks.
-8. Capability-specific documents and dated audits: evidence only unless a new owner request explicitly assigns work from them.
+1. **`PROJECT_WORKING_AGREEMENT.md`**: owner preferences for plain-language updates, autonomy, and explanations of each finished item.
+2. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, current status, and document authority.
+3. **`AGENTS.md`**: mandatory repository safety, engineering, and release instructions.
+4. **`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`**: active modernization roadmap; check each task's status before starting it.
+5. **`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`**: closed-workstream record only; it is not an active plan and does not authorize H9 continuation.
+6. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: historical evidence only; its old operating sequence and succession protocol are inactive.
+7. **`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`** and **`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`**: historical route evidence only.
+8. **`MAINTAINABILITY_HANDOFF.md`**, **`BRANCHING_AND_RELEASES.md`**, and **`docs/OBSERVABILITY_RUNBOOK.md`**: supporting repository/release/operations references.
+9. H6 prompts/runbooks, the integrated acceptance task/report, dated handoffs, and `docs/CF0_*` through `docs/CF7_*`: historical evidence only; do not resume them as active tasks.
+10. Capability-specific documents and dated audits: evidence only unless a new owner request explicitly assigns work from them.
 
 No C7/C9/C10 or other non-Hono workstream is currently an active project plan. Historical milestone names in archived reports do not authorize a new workstream.
 
@@ -105,6 +107,7 @@ The repository has completed and published repairs covering:
 - removal of the obsolete `public/egypt_crest.svg` asset;
 - alignment of the configurable monthly-subscriber fee fallback;
 - restoration of Firestore-backed cross-instance PIN rate limiting after a review caught a memory-only regression;
+- mandatory active server-session validation for Admin, Delegate, Garage, and Staff Worker routes, plus role-scoped session lookups (PR #35, deployed at `e53b2cb`);
 - documentation cleanup and this consolidated knowledge base.
 
 Baseline validation on `895e0cb` during the 2026-10-13 review included:

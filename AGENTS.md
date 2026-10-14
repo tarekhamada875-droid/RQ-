@@ -5,8 +5,14 @@
 - **Collaboration Tone:** Direct, collaborative, and professional without excessive formalities. Focus on functional and shared development.
 - **Prohibited Terms:** Never use "Your Garage" (الجراج بتاعك), "Professor" (أستاذ), or "Your Excellence" (حضرتك).
 
+## Owner-centered collaboration
+- Read [`PROJECT_WORKING_AGREEMENT.md`](PROJECT_WORKING_AGREEMENT.md) before substantial work. Tarek is the product visionary, not a technical specialist; explain results and risks in everyday language and do not make him choose routine engineering details.
+- For every completed roadmap item, state the problem, what changed, a concrete user-facing example, why it helps, what was actually measured/tested, and whether it is local, in a PR, merged, or live. Use the owner's practical analogy style; never claim unmeasured 10x/50x gains.
+- The owner authorized autonomous implementation of the approved [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md) roadmap. Make routine reversible engineering decisions, test them, and use the repository release flow. Ask only for a material product/business choice or before an important irreversible action outside the approved scope. Protect data and credentials regardless of broad engineering authority.
+- Persist new decisions, verified status, and remaining work in the tracked project documents; do not rely on private chat memory being available to the next contributor.
+
 ## Current environment status
-- **Controlled production path:** As of 2026-10-03, the active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. There are no real users, customer records, or live financial data; use synthetic data only.
+- **Controlled production path:** The active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. The owner last confirmed on 2026-10-14 that the project has no real users, customer records, or live financial data; use synthetic data only and re-confirm before relying on that status for future tasks.
 - **Required boundary:** Do not treat synthetic pre-production as permission to touch unknown data, perform destructive cleanup, import customer data, accept real revenue, or claim final production readiness. Revisit separate staging before any of those conditions change.
 
 ## Active release flow — reconciled 2026-10-13
@@ -16,7 +22,7 @@
 - Do not deploy a Worker manually or change Firebase data/rules as a shortcut around the release gates. Keep synthetic fixtures separate from any future real-user data.
 
 ## Unified Hono Workstream — CLOSED BY OWNER (2026-10-12)
-- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) first for architecture, product decisions, current status, and document authority.
+- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) for architecture, product decisions, current status, and document authority.
 - **Current architecture:** Hono is the production Worker backend. The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final removal of the remaining Express runtime on 2026-10-13. That bounded cleanup was completed in PR #32 and deployed; do not revive the broader migration program or reintroduce Express.
 - **Plan status:** [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is now a closure record, not an active plan. The succession handoff, H9 inventory, and older checkpoint evidence are historical only; do not follow their old “next steps” or succession instructions.
 - **Branch boundary:** The former `migration/unified-hono` branch was merged into `main` by PR #24 at `1161b467139adc1dd1dc81cc243d9315ac6c5808` and then deleted; its commits remain in main history. PR #32 later removed the local Express compatibility runtime and its build/dependency path; the changes are on production `main` at `1aa48a8`.
@@ -63,13 +69,13 @@
 - **Graceful Degraded States:** Every view and component must render clean loading, empty, and fallback UI states without breaking the page layout when data is missing or fetching fails.
 - **Non-Blocking Error Handling:** Wrap async handlers in `try/catch` blocks and log errors gracefully or display localized toast notifications instead of crashing the React component tree.
 
-### 9. Law of Zero-Warning Compiler Verification
-- **Automated Verification:** Run both `compile_applet` and `lint_applet` before completing any request.
-- **Zero Tolerance for Warnings/Errors:** Verify 100% clean builds with 0 TypeScript errors (`tsc --noEmit`), 0 syntax flaws, and 0 missing imports or broken type definitions.
+### 9. Law of Repository-Native Verification
+- **Use real project commands:** Run the repository's current verification gate, `npm run ci:check`, and `npm run maintainability:check` for source changes; consult `package.json` and the release workflow if scripts change. Do not invent commands from another platform.
+- **Report accurately:** Fix failed checks within scope. Distinguish blocking errors from non-blocking tool warnings and state exactly what passed; do not promise a warning-free external toolchain when the repository does not control it.
 
-### 10. Law of Strict Double-Confirmation & Intent Fidelity
-- **Two-Step Approval Protocol:** Strictly follow the 2-step confirmation workflow with Tarek (Plan Presentation -> Final Green Light Approval -> Code Execution).
-- **Absolute Scope Precision:** Implement exactly what was agreed upon—no unrequested code changes, no breaking existing workflows, and complete test-proven reliability.
+### 10. Law of Owner Intent & Sensible Autonomy
+- **No routine approval loop:** When the request and existing owner authorization make the goal clear, carry the work through implementation, tests, review, and the established PR/release process. Do not ask the owner to approve routine implementation details or repeat an authorization already given.
+- **Pause for consequential choices:** Ask only when uncertainty could materially change product/business behavior or before important irreversible actions such as destructive data operations. Keep changes focused, preserve existing behavior unless a change is requested, and describe residual risk honestly.
 
 ---
 

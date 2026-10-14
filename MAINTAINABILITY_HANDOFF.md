@@ -92,3 +92,11 @@ The full Vitest suite, TypeScript validation, production build, maintainability 
 - The final gate passed: 105 test files / 636 tests, TypeScript, Cloudflare Pages + Worker production build, and artifact checks. Maintainability checks passed, and the Firestore rules suite passed against the local `demo-rq-unified-hono` emulator. A local smoke test returned HTTP 200 for both the Vite frontend and Hono `/api/health`.
 - The post-removal production dependency audit reports 11 advisories (0 critical, 5 high, 6 moderate), primarily involving Firebase-related packages; dependency remediation remains a separate tested task.
 - GitHub's main-branch Production Gate and Cloudflare Worker deployment both succeeded. Live Worker health/version and Pages smoke checks returned HTTP 200. No production Firebase records were changed.
+
+
+## Owner working agreement and active-session security — 2026-10-14
+
+- `PROJECT_WORKING_AGREEMENT.md` records how future agents and contributors should work with Tarek: communicate plainly, decide routine engineering details autonomously within authorized scope, and explain each completed item with a practical example, benefit, test evidence, and release status. This tracked document carries project preferences forward; it does not imply future accounts retain private chat memory.
+- The approved JARVIS roadmap is active. **AUTH-01** was completed in PR #35 (`e53b2cba40218fc694de2528db71f45791cf629c`): protected Admin, Delegate, Garage, and Staff Worker requests require an active server-issued session. The Worker only reads the session collection for the verified role. The normal API client sends its canonical session ID in `X-Session-ID`.
+- Local verification passed: 105 test files / 645 tests, `npm run ci:check`, `npm run maintainability:check`, production Pages/Worker build, and `git diff --check`. GitHub's main Production Gate passed, including Firestore security rules emulator tests and live smoke checks; the Cloudflare Worker deployment succeeded. The live Pages, Worker health, and Worker version endpoints returned HTTP 200.
+- No Firestore production records were migrated or deleted by this change. The owner last confirmed synthetic pre-production on 2026-10-14; reconfirm before future tasks rely on that status.
