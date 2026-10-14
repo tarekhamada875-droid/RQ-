@@ -6,6 +6,7 @@ import { getPackageRechargeRestrictions } from '../utils';
 describe('Monthly Subscribers Package Restrictions', () => {
   const samplePackages: Package[] = [
     { id: 'daily_50', name: 'باقة 50 سيارة - 1 يوم', price: 10, durationDays: 1, dailyCapacity: 50, vehiclesCount: 1, isActive: true },
+    { id: 'weekly_50', name: 'باقة 50 سيارة - أسبوع', price: 80, durationDays: 7, dailyCapacity: 50, vehiclesCount: 7, isActive: true },
     { id: 'biweekly_50', name: 'باقة 50 سيارة - 15 يوم', price: 150, durationDays: 15, dailyCapacity: 50, vehiclesCount: 15, isActive: true },
     { id: 'monthly_50', name: 'باقة 50 سيارة - 30 يوم', price: 300, durationDays: 30, dailyCapacity: 50, vehiclesCount: 30, isActive: true },
     { id: 'monthly_unlimited', name: 'باقة سعة مفتوحة - 30 يوم', price: 450, durationDays: 30, dailyCapacity: 0, vehiclesCount: 30, isActive: true }
@@ -33,16 +34,21 @@ describe('Monthly Subscribers Package Restrictions', () => {
     expect(defaultDuration).toBe(30);
   });
 
-  it('getPackageRechargeRestrictions forbids 1-day and 15-day packages for subscriber garages', () => {
+  it('getPackageRechargeRestrictions forbids short packages, including weekly, for subscriber garages', () => {
     const subscriberGarage = { id: 'g1', name: 'Subscriber Garage', hasMonthlySubscribers: true };
     
     const dailyPkg = samplePackages[0];
-    const biweeklyPkg = samplePackages[1];
-    const monthlyPkg = samplePackages[2];
+    const weeklyPkg = samplePackages[1];
+    const biweeklyPkg = samplePackages[2];
+    const monthlyPkg = samplePackages[3];
 
     const dailyResult = getPackageRechargeRestrictions(subscriberGarage, dailyPkg);
     expect(dailyResult.isAllowed).toBe(false);
     expect(dailyResult.reason).toContain('30 يوم');
+
+    const weeklyResult = getPackageRechargeRestrictions(subscriberGarage, weeklyPkg);
+    expect(weeklyResult.isAllowed).toBe(false);
+    expect(weeklyResult.reason).toContain('30 يوم');
 
     const biweeklyResult = getPackageRechargeRestrictions(subscriberGarage, biweeklyPkg);
     expect(biweeklyResult.isAllowed).toBe(false);

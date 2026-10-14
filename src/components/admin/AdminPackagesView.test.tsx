@@ -42,6 +42,41 @@ describe('AdminPackagesView package creation', () => {
     }));
   });
 
+  it('creates a seven-day package when the weekly duration is selected', async () => {
+    render(<AdminPackagesView {...props} />);
+    openAndFillPackageForm();
+    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '120' } });
+    const durationSelect = document.querySelector('select[name="pkgDurationDays"]');
+    expect(durationSelect).not.toBeNull();
+    fireEvent.change(durationSelect!, { target: { value: '7' } });
+    fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
+
+    await waitFor(() => expect(firestoreService.addPackage).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Test plan',
+      price: 120,
+      durationDays: 7,
+    })));
+  });
+
+  it('shows seven-day plans when the weekly admin filter is selected', () => {
+    render(<AdminPackagesView
+      {...props}
+      packages={[{
+        id: 'weekly-test-plan',
+        name: 'Weekly test plan',
+        price: 120,
+        durationDays: 7,
+        dailyCapacity: 50,
+        vehiclesCount: 7,
+        isActive: true,
+      }]}
+    />);
+
+    expect(screen.queryByText('Weekly test plan')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '7 يوم' }));
+    expect(screen.getByText('Weekly test plan')).toBeInTheDocument();
+  });
+
   it('shows a visible error instead of silently ignoring a zero price', async () => {
     render(<AdminPackagesView {...props} />);
     openAndFillPackageForm();

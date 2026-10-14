@@ -10,6 +10,11 @@ const basePackage = {
 };
 
 describe('server package catalog validation', () => {
+  it('accepts a seven-day weekly package', () => {
+    expect(validatePackageCatalogRecord({ ...basePackage, name: 'Weekly 7', durationDays: 7 }, 'weekly-7'))
+      .toMatchObject({ id: 'weekly-7', name: 'Weekly 7', durationDays: 7 });
+  });
+
   it('normalizes a valid discounted package', () => {
     expect(validatePackageCatalogRecord({ ...basePackage, discountType: 'percentage', discountValue: 10 }, 'pkg-1'))
       .toMatchObject({ id: 'pkg-1', durationDays: 30, basePrice: 300, discountAmount: 30, finalPrice: 270, dailyCapacity: 30, isUnlimited: false });

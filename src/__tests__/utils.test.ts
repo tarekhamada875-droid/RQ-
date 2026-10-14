@@ -278,6 +278,14 @@ describe('getCleanPackageInfo', () => {
     expect(getCleanPackageInfo(pkg30).durationDays).toBe(30);
   });
 
+  test('labels a seven-day package as one week', () => {
+    const weekly: any = { id: 'weekly_sub', name: 'باقة أسبوعية', price: 120, durationDays: 7 };
+    const info = getCleanPackageInfo(weekly);
+
+    expect(info.durationDays).toBe(7);
+    expect(info.durationText).toBe('أسبوع (7 أيام)');
+  });
+
   test('uses explicit dailyCapacity instead of inferring capacity from the name', () => {
     const unlimited: any = { id: 'custom-unlimited', name: 'باقة مخصصة 40 سيارة', dailyCapacity: 0 };
     const limited: any = { id: 'custom-limited', name: 'باقة مخصصة سعة مفتوحة', dailyCapacity: 70 };

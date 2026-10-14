@@ -194,6 +194,17 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
         </button>
         <button
           type="button"
+          onClick={() => setPackageDurationFilter(7)}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center cursor-pointer whitespace-nowrap ${
+            packageDurationFilter === 7
+              ? 'bg-amber-400 text-slate-950 shadow-sm font-black'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <span>7 {t('يوم')}</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setPackageDurationFilter(15)}
           className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center cursor-pointer whitespace-nowrap ${
             packageDurationFilter === 15 
@@ -387,6 +398,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                     className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold font-mono text-xs outline-none focus:border-emerald-500 cursor-pointer"
                   >
                     <option value="1">1 {t('يوم')}</option>
+                    <option value="7">7 {t('يوم')}</option>
                     <option value="15">15 {t('يوم')}</option>
                     <option value="30">30 {t('يوم')}</option>
                   </select>
