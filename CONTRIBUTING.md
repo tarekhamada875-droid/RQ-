@@ -2,7 +2,9 @@
 
 ## Before changing code
 
-Read `README.md`, `BRANCHING_AND_RELEASES.md`, and `MAINTAINABILITY_HANDOFF.md`. Start from the latest `main` and confirm the working tree is clean:
+Read `PROJECT_WORKING_AGREEMENT.md`, `AGENTS.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`, `README.md`, `BRANCHING_AND_RELEASES.md`, and the relevant section of `MAINTAINABILITY_HANDOFF.md`. Then start from the latest `main` and confirm the working tree is clean:
+
+For each finished improvement, report the problem, the change in user-visible terms, a practical example, the benefit, the checks that actually passed, and whether it is awaiting review, merged, or live. Keep the main explanation simple; retain implementation details in the PR and handoff.
 
 ```bash
 git status --short
