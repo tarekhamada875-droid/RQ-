@@ -3,7 +3,7 @@
 **Last updated:** 2026-10-14
 **Repository:** `tarekhamada875-droid/RQ-`  
 **Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
-**Current production source of truth:** `main` at `e53b2cba40218fc694de2528db71f45791cf629c`; PR #35 and the Cloudflare Worker deployment completed successfully on 2026-10-14. The live Worker health/version endpoints and Pages frontend returned HTTP 200 after deployment.
+**Current production source of truth:** `main` at `a80b5fa7c6ee20ae295e8e7b64af447e19fac52b`; PR #38's post-merge Production Gate and Cloudflare Worker deployment workflows both succeeded. PR #38 was documentation-only; the latest application/security-code change remains PR #37. The separate Firebase rules publication is recorded below.
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
@@ -108,6 +108,7 @@ The repository has completed and published repairs covering:
 - alignment of the configurable monthly-subscriber fee fallback;
 - restoration of Firestore-backed cross-instance PIN rate limiting after a review caught a memory-only regression;
 - mandatory active server-session validation for Admin, Delegate, Garage, and Staff Worker routes, plus role-scoped session lookups (PR #35, deployed at `e53b2cb`);
+- owner-scoped Firestore staff/garage rules and the actual-rules emulator matrix (PR #37, `2f3a61c`); after explicit owner approval, the exact `main:firestore.rules` source was published on 2026-10-14 to Firebase project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`. A fresh Console reload matched SHA-256 `8404b6a6cd833deaa4192e164a43cf2f2916e38840ce52fbce650feac4634d24` and showed no unpublished draft. No Firestore documents were changed; this applies only to that exact Firebase target;
 - documentation cleanup and this consolidated knowledge base.
 
 Baseline validation on `895e0cb` during the 2026-10-13 review included:
