@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import { MockFirestore, mockAdminAuth } from './mockFirestore';
+import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
 
@@ -13,6 +13,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
   it('1. Verifies correlation ID and operation ID injection in all responses', async () => {

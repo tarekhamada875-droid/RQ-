@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MockFirestore, mockAdminAuth } from '../src/__tests__/mockFirestore';
+import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from '../src/__tests__/mockFirestore';
 import { saveEntityPin } from './utils';
 
 const mockDb = new MockFirestore();
@@ -15,6 +15,7 @@ vi.mock('./firebaseAdmin', () => ({
 }));
 
 import { api } from './api';
+installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 const garageId = 'reconciliation-test-garage';
 

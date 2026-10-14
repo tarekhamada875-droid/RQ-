@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashSessionId } from '../../server/auth/sessionMarkers';
-import { MockFirestore, mockAdminAuth } from './mockFirestore';
+import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
 
@@ -14,6 +14,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 const authHeaders = (sessionId = 'session-a') => ({
   authorization: 'Bearer valid-admin-token',

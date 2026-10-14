@@ -20,7 +20,7 @@ export class MockDocumentReference {
 
   async get() {
     this.db.documentReadCount += 1;
-    const val = this.db.records.get(this.path);
+    const val = this.db.getDocument(this.path);
     return new MockDocumentSnapshot(this.id, val !== undefined, val, this);
   }
 
@@ -200,6 +200,7 @@ export class MockFirestore {
   public readonly records = new Map<string, any>();
   public documentReadCount = 0;
   public documentWriteCount = 0;
+  private readonly virtualDocuments = new Map<string, any>();
   private transactionQueue: Promise<void> = Promise.resolve();
 
   doc(path: string) {
@@ -261,12 +262,19 @@ export class MockFirestore {
   seed(path: string, data: any) {
     this.records.set(path, structuredClone(data));
   }
-
   clear() {
     this.records.clear();
+    this.virtualDocuments.clear();
     this.resetDocumentCounts();
   }
-
+  getDocument(path: string) {
+    const virtual = this.virtualDocuments.get(path);
+    if (virtual) return structuredClone(virtual);
+    return this.records.get(path);
+  }
+  setVirtualDocument(path: string, data: any) {
+    this.virtualDocuments.set(path, structuredClone(data));
+  }
   resetDocumentCounts() {
     this.documentReadCount = 0;
     this.documentWriteCount = 0;
@@ -304,3 +312,50 @@ export const mockAdminAuth = {
     throw new Error('INVALID_TOKEN');
   }
 };
+
+/**
+ * Adapt integration requests with role-claim test tokens to realistic active
+ * sessions. The session documents are virtual, read-only test fixtures; they do
+ * not appear in the mock's persistent records or affect write assertions.
+ * Supplying x-session-id explicitly (including an empty value) always takes
+ * precedence, so revoked/missing-session cases remain testable.
+ */
+export function installDefaultWorkerTestSessionHeaders(api: { fetch: (...args: any[]) => any }, db: MockFirestore) {
+  const originalFetch = api.fetch.bind(api);
+  api.fetch = (input: any, ...rest: any[]) => {
+    if (!(input instanceof Request)) return originalFetch(input, ...rest);
+    const token = (input.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    let principal: { uid: string; role: string; entityId: string; garageId?: string; sessions: string; entityCollection: string; sessionId: string } | undefined;
+    if (token === 'valid-admin-token') principal = { uid: 'admin-uid', role: 'admin', entityId: 'auth_pin', sessions: 'admin_sessions', entityCollection: 'admin_settings', sessionId: 'test-active-admin' };
+    else if (token === 'valid-delegate-token' || token === 'valid-delegate-token-delegate-a') principal = { uid: 'delegate-uid', role: 'delegate', entityId: token.endsWith('-delegate-a') ? 'delegate-a' : 'delegate-uid', sessions: 'delegate_sessions', entityCollection: 'delegates', sessionId: 'test-active-delegate' };
+    else {
+      const garage = token.match(/^valid-garage-token-(.+)$/);
+      const staff = token.match(/^valid-staff-token-(.+)$/);
+      if (garage) principal = { uid: `garage-uid-${garage[1]}`, role: 'garage', entityId: garage[1], garageId: garage[1], sessions: 'garage_sessions', entityCollection: 'garages', sessionId: `test-active-garage-${garage[1]}` };
+      else if (staff) principal = { uid: `staff-uid-${staff[1]}`, role: 'staff', entityId: `staff-uid-${staff[1]}`, garageId: staff[1], sessions: 'staff_sessions', entityCollection: 'staff', sessionId: `test-active-staff-${staff[1]}` };
+    }
+    if (!principal || input.headers.has('x-session-id')) return originalFetch(input, ...rest);
+
+    const sessionPath = `${principal.sessions}/${principal.uid}`;
+    const entityPath = `${principal.entityCollection}/${principal.entityId}`;
+    const existingEntity = db.records.get(entityPath) || {};
+    db.setVirtualDocument(sessionPath, {
+      uid: principal.uid,
+      role: principal.role,
+      entityId: principal.entityId,
+      ...(principal.garageId ? { garageId: principal.garageId } : {}),
+      sessionId: principal.sessionId,
+      isActive: true,
+      lastActive: new Date()
+    });
+    db.setVirtualDocument(entityPath, {
+      ...existingEntity,
+      activeSessionIds: [...new Set([...(existingEntity.activeSessionIds || []), principal.sessionId])],
+      currentSessionId: existingEntity.currentSessionId || principal.sessionId
+    });
+
+    const headers = new Headers(input.headers);
+    headers.set('x-session-id', principal.sessionId);
+    return originalFetch(new Request(input, { headers }), ...rest);
+  };
+}
