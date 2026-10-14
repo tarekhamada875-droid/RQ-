@@ -1911,6 +1911,9 @@ workerApp.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
   }
 });
 
+// Both aliases share one retry namespace; the fingerprint distinguishes the requested delete/refund operation.
+const VEHICLE_DELETE_REFUND_IDEMPOTENCY_SCOPE = '/api/vehicles/delete-refund';
+
 // Route 3 & 4: POST /api/vehicles/delete & POST /api/vehicles/refund
 const handleVehicleDeleteOrRefund = async (c: any) => {
   try {
@@ -1942,16 +1945,30 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
+    const requestedRefund = Math.max(0, Number(refundAmount || 0));
+    const operation = requestedRefund > 0 ? 'refund' : 'delete';
+    const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
+    const requestFingerprint = createRequestFingerprint({
+      garageId,
+      vehicleId: canonicalVehicleId,
+      operation,
+      refundAmount: requestedRefund
+    });
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/delete', user?.uid);
+        const duplicate = await checkIdempotencyInTransaction(
+          t,
+          idempotencyKey,
+          VEHICLE_DELETE_REFUND_IDEMPOTENCY_SCOPE,
+          user?.uid,
+          requestFingerprint
+        );
         if (duplicate.isDuplicate) return;
       }
       const todayYMD = getCairoDateKey();
       const operationId = createOperationId(garageId, idempotencyKey || undefined);
-      const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
       const garageRef = adminDb.doc(`garages/${garageId}`);
       let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
@@ -1995,7 +2012,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       }
 
       const isSameRefundDay = garageData.lastRefundDate === todayYMD;
-      const requestedRefund = Math.max(0, Number(refundAmount || 0));
       const maxEligibleRefund = (vehicleData.status === 'outside' && typeof vehicleData.totalCost === 'number')
         ? Math.max(0, vehicleData.totalCost)
         : 0;
@@ -2082,14 +2098,27 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       });
       writeProjectionBucket(t, garageId, todayYMD, operationId, refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted'));
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/vehicles/delete', user?.uid);
+        storeIdempotencyInTransaction(
+          t,
+          idempotencyKey,
+          { success: true },
+          VEHICLE_DELETE_REFUND_IDEMPOTENCY_SCOPE,
+          user?.uid,
+          requestFingerprint
+        );
       }
     });
     return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker] Delete/refund error:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message }, statusCode as any);
+    const errorResponse = { success: false, error: message };
+    return c.json(
+      err?.message === 'IDEMPOTENCY_KEY_REUSE'
+        ? { ...errorResponse, code: 'IDEMPOTENCY_KEY_REUSE' }
+        : errorResponse,
+      statusCode as any
+    );
   }
 };
 
