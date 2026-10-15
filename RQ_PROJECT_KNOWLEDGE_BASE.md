@@ -1,8 +1,7 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-14
+**Last updated:** 2026-10-15
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Production source of truth at review start:** `main` at `895e0cbaff25eeec8216d5b3f5fe5f436b1c3416`; the Hono Worker deploy and Production Gate both reported success for this revision.
 **Current deployed application code:** `c7d452c2bc5f354052d986dd58a9db804cc28749` (PR #40); its post-merge Production Gate, live smoke, and Cloudflare Worker deployment all succeeded. PR #40 is the latest application change; the exact Firebase rules publication is recorded below.
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
@@ -28,28 +27,23 @@ Firebase Authentication + Firestore
 - Cloudflare Pages serves the SPA; the Worker owns the production `/api/*` routes.
 - Production Worker URL: `https://rq.tarekhamada875.workers.dev`.
 - Production Pages URL: `https://rq-acg.pages.dev`.
-- No Express runtime remains in `main`. Local development uses a small Node HTTP adapter to connect Vite to the existing Hono API; production builds contain the Pages frontend and Cloudflare Worker only. H9 retired the old API routes; PR #32 removed the remaining compatibility host and its unused legacy trace-persistence logic. The Cloud Run entrypoint was previously retired, and no Cloud Run deployment workflow is active.
+- No Express runtime remains in `main`. Local development uses a small Node HTTP adapter to connect Vite to the existing Hono API; production builds contain the Pages frontend and Cloudflare Worker only. PR #32 removed the former compatibility host and unused legacy trace-persistence logic. The Cloud Run entrypoint was retired, and no Cloud Run deployment workflow is active.
 - `public/icon.svg`, `public/manifest.json`, and `public/_headers` are active deployment assets.
 - `wrangler.toml` is the production Worker deployment configuration.
 
 ## 3. Document hierarchy
 
-For any future work, use this order:
+For future work, use this order:
 
-1. **`PROJECT_WORKING_AGREEMENT.md`**: owner preferences for plain-language updates, autonomy, and explanations of each finished item.
-2. **This file — `RQ_PROJECT_KNOWLEDGE_BASE.md`**: consolidated orientation, architecture, current status, and document authority.
-3. **`AGENTS.md`**: mandatory repository safety, engineering, and release instructions.
-4. **`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`**: active modernization roadmap; check each task's status before starting it.
-5. **`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`**: closed-workstream record only; it is not an active plan and does not authorize H9 continuation.
-6. **`RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`**: historical evidence only; its old operating sequence and succession protocol are inactive.
-7. **`docs/H9_EXPRESS_DECOMMISSION_INVENTORY.md`** and **`docs/H9_SENSITIVE_ROUTE_DISPOSITION.md`**: historical route evidence only.
-8. **`MAINTAINABILITY_HANDOFF.md`**, **`BRANCHING_AND_RELEASES.md`**, and **`docs/OBSERVABILITY_RUNBOOK.md`**: supporting repository/release/operations references.
-9. H6 prompts/runbooks, the integrated acceptance task/report, dated handoffs, and `docs/CF0_*` through `docs/CF7_*`: historical evidence only; do not resume them as active tasks.
-10. Capability-specific documents and dated audits: evidence only unless a new owner request explicitly assigns work from them.
+1. **`AGENTS.md`** for mandatory safety, engineering, and release rules.
+2. **`PROJECT_WORKING_AGREEMENT.md`** for owner communication and the “RQ handoff” continuity trigger.
+3. **This file** for current architecture and project status.
+4. **`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`** as the only active modernization roadmap; verify each task's status before starting.
+5. **`MAINTAINABILITY_HANDOFF.md`** for verified implementation details and recent engineering milestones.
+6. **`BRANCHING_AND_RELEASES.md`**, `README.md`, and `CONTRIBUTING.md` for the current development and release workflow.
+7. `security_spec.md`, `OPERATION_TRAIL_GUIDE.md`, and `docs/duplication-contract-tests.md` for their specific current topics.
 
-No C7/C9/C10 or other non-Hono workstream is currently an active project plan. Historical milestone names in archived reports do not authorize a new workstream.
-
-Superseded plans, duplicate acceptance tasks, and the old succession protocol were removed from the working tree on 2026-10-05. Their content remains recoverable from Git history if a specific fact must be audited.
+Retired migration, preview, and role-acceptance documents have been removed from the active tree. Their Git history remains available if a specific historical fact needs to be audited. Do not recreate closed workstreams from old commit history.
 
 ## 4. Core architecture decisions
 
@@ -110,30 +104,11 @@ The repository has completed and published repairs covering:
 - mandatory active server-session validation for Admin, Delegate, Garage, and Staff Worker routes, plus role-scoped session lookups (PR #35, deployed at `e53b2cb`);
 - owner-scoped Firestore staff/garage rules and the actual-rules emulator matrix (PR #37, `2f3a61c`); after explicit owner approval, the exact `main:firestore.rules` source was published on 2026-10-14 to Firebase project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`. A fresh Console reload matched SHA-256 `8404b6a6cd833deaa4192e164a43cf2f2916e38840ce52fbce650feac4634d24` and showed no unpublished draft. No Firestore documents were changed; this applies only to that exact Firebase target;
 - delete/refund idempotency protection (F1, PR #40, merged at `c7d452c`): retries are fingerprinted by garage, vehicle, semantic operation, and normalized amount; a mismatched key reuse now returns a clear conflict instead of being mistaken for success;
-- documentation cleanup and this consolidated knowledge base.
+- the active JARVIS modernization roadmap, owner working agreement, and release documentation.
 
-Baseline validation on `895e0cb` during the 2026-10-13 review included:
+## 7. Workstream and environment boundaries
 
-- 109 test files passed;
-- 663 tests passed in the full local gate;
-- TypeScript validation passed;
-- production build passed;
-- Cloudflare Worker build passed;
-- Worker parity and authorization suites passed;
-- `npm run ci:check` passed;
-- maintainability check passed;
-- `git diff --check` passed;
-- the Production Gate and Worker deployment workflows reported success for `895e0cb`.
-
-## 7. Workstream closure — 2026-10-12
-
-**There is no active migration plan.** The 2026-10-12 H9 stop decision remains historical; on 2026-10-13 the owner explicitly requested removal of the final Express compatibility runtime. That bounded cleanup is complete in PR #32 and deployed from `main`; it did not revive the broader migration program.
-
-H9 API retirement was verified on the migration branch: zero reachable legacy API registrations remained. The local Express compatibility runtime was retained at that time and later removed from `main` by PR #32. The older historical cross-runtime equivalence work is not being repeated; production readiness and live authenticated/financial acceptance are **not established**. This cleanup is not a general production launch approval.
-
-No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-related open documentation PR was closed, and the dedicated H5 Preview Worker was removed. PR #32 also removed the stale manually dispatchable Firebase preview deployment and H9 rehearsal workflow files. The general Production Gate and production deployment workflow remain enabled.
-
-**Preview boundary:** no branch preview is an active test environment. Old isolated preview configuration and historical H6 rehearsal results are evidence only; do not assume they are deployed or reuse their old procedures.
+The Hono backend transition and owner-authorized Express-runtime removal are complete; no backend migration workstream is active. The JARVIS file named above is the sole active modernization roadmap. Branch previews are not a supported test environment; use local, unit, and emulator tests unless the owner explicitly authorizes a verified alternative. A successful code deployment is not, by itself, approval to launch to real users or operate on real financial/customer data.
 
 ## 8. Repository map
 
@@ -150,29 +125,11 @@ No other Manus task/agent, ScheduleTask, or Trigger for H9 was found. The H9-rel
 - `wrangler.toml`: active Worker deployment contract. The former generic Docker/Node production path is removed in this maintenance change.
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`: Firebase configuration.
 
-## 9. Cleanup and documentation policy
+## 9. Documentation and cleanup policy
 
-The repository was cleaned on 2026-10-05. Superseded deployment plans, duplicate acceptance tasks, old audits, and the old succession protocol were removed from the working tree. Their history remains recoverable through Git.
+Keep the operating guidance concise and current: the README, contributor/owner guides, this knowledge base, the single active JARVIS roadmap, the maintainer handoff, and the focused release/security/domain references listed above. Remove retired plans and temporary handoffs from the active tree when their work is closed; Git history is the archive. Do not keep a file merely because it once belonged to a completed migration.
 
-Keep these as current orientation and operating documents:
-
-- `AGENTS.md`
-- `RQ_PROJECT_KNOWLEDGE_BASE.md`
-- `RQ_HONO_SHORTENED_MIGRATION_PLAN.md`
-- `RQ_UNIFIED_HONO_SUCCESSION_HANDOFF.md`
-- `RQ_INTEGRATED_ROLE_AND_TECHNICAL_ACCEPTANCE_TEST_TASK.md` (historical coverage catalog only; not an active task)
-- `MAINTAINABILITY_HANDOFF.md`
-- `BRANCHING_AND_RELEASES.md`
-- `README.md`
-- `CONTRIBUTING.md`
-- `security_spec.md`
-- `OPERATION_TRAIL_GUIDE.md`
-- `docs/CF0_BASELINE_REPORT.md` through `docs/CF7_FINANCIAL_TRANSACTIONS_AND_REPORTING.md` as migration evidence
-- `docs/OBSERVABILITY_RUNBOOK.md`
-
-`docs/H6_*` and `RQ_INTEGRATED_ACCEPTANCE_TEST_REPORT_2026-10-06.md` preserve H6 procedures/evidence. H6 is closed for scope; do not restart its old manual acceptance instructions. `docs/CF0_*` through `docs/CF7_*` and C7/C9/C10 references are migration/readiness history, not active plans. The H9 plan and handoff files remain historical records; the specific final Express-removal request was completed by PR #32.
-
-The Cloud Run-specific `server/cloudRun.ts` entrypoint and `build:cloudrun` artifact were retired in H9 after an exact repository/workflow audit found no active Cloud Run deployment. Keep `wrangler.toml` and `wrangler.deploy.toml` because they are active Worker deployment contracts. PR #32 removed the generic Dockerfile and Express compatibility runtime.
+Never delete a file solely because a static import graph does not find it. External deployment tools, Vitest, Cloudflare, Firebase, and maintainability checks may consume non-document files indirectly; audit those consumers before deleting application/configuration assets. Keep `wrangler.toml` and `wrangler.deploy.toml` as active Worker deployment contracts.
 
 Unreferenced metadata candidates still require external-consumer review before deletion:
 
@@ -199,12 +156,12 @@ For a deployment-related change, also verify the Cloudflare Worker health/versio
 ## 11. Direct operating rules for a future owner-authorized task
 
 1. Start by checking `git status --short --branch`, `git rev-parse HEAD`, and `git rev-parse origin/main`.
-2. Read this file, `AGENTS.md`, and the closed-workstream record before any separately authorized editing; do not treat it as an active plan.
+2. Read this file, `AGENTS.md`, and `PROJECT_WORKING_AGREEMENT.md` before substantial work; for a roadmap task, check the relevant status and acceptance criteria.
 3. Choose one bounded task; do not mix cleanup with business-logic changes.
 4. Preserve server authority and existing UI/UX.
 5. Use synthetic/in-memory data unless the owner explicitly authorizes a safe external workflow.
 6. Run focused tests, then the full validation gate.
-7. Do not push to `migration/unified-hono`, merge to `main`, or deploy for the closed H9 workstream. A future task must name its own authorized branch and scope.
-8. The former `tokens ending` chained succession protocol is archived and inactive; do not create a successor for H9.
+7. Use a short-lived branch and reviewed PR for code changes; never bypass the current release gate.
+8. Use the “RQ handoff” trigger in `PROJECT_WORKING_AGREEMENT.md` for factual continuity handoffs. It does not authorize deployment or data operations.
 
-This file is an orientation and consolidation layer. The H9 plan and succession handoff are closed/history records; no migration workstream is active.
+This file is the project orientation layer. The JARVIS roadmap is the only active modernization plan.

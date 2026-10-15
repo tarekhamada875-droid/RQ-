@@ -21,14 +21,10 @@
 - Branch previews and the old `rq-hono-preview` Worker are not active test environments. Do not create or re-enable preview deployments; use local/unit/emulator tests unless a separately authorized test environment is established.
 - Do not deploy a Worker manually or change Firebase data/rules as a shortcut around the release gates. Keep synthetic fixtures separate from any future real-user data.
 
-## Unified Hono Workstream — CLOSED BY OWNER (2026-10-12)
-- **Consolidated knowledge base:** Read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](RQ_PROJECT_KNOWLEDGE_BASE.md) for architecture, product decisions, current status, and document authority.
-- **Current architecture:** Hono is the production Worker backend. The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final removal of the remaining Express runtime on 2026-10-13. That bounded cleanup was completed in PR #32 and deployed; do not revive the broader migration program or reintroduce Express.
-- **Plan status:** [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is now a closure record, not an active plan. The succession handoff, H9 inventory, and older checkpoint evidence are historical only; do not follow their old “next steps” or succession instructions.
-- **Branch boundary:** The former `migration/unified-hono` branch was merged into `main` by PR #24 at `1161b467139adc1dd1dc81cc243d9315ac6c5808` and then deleted; its commits remain in main history. PR #32 later removed the local Express compatibility runtime and its build/dependency path; the changes are on production `main` at `1aa48a8`.
-- **Stop controls:** The H9-related PR was closed; stale Firebase preview and H9 rehearsal workflows are removed from `.github/workflows/`. Do not recreate or dispatch them as an active workstream.
-- **Production boundary:** The original closure record's no-merge/no-deploy boundary was superseded by the owner's later explicit release authorization recorded in PR #24. The active release flow above now governs routine code changes; do not perform Firestore/financial operations without separate explicit authorization.
-- **General safeguards:** Preserve secret protection, focused validation, rollback capability, and explicit approval before irreversible production data operations for any separately authorized future task.
+## Former Hono migration — closed
+- Hono is the production Worker backend; the owner-authorized cleanup that removed the remaining Express runtime was completed in PR #32 and deployed. Do not reintroduce Express or restart the retired migration workstream.
+- The former `migration/unified-hono` branch and its preview/rehearsal workflow are retired. Do not recreate them as current development or test environments.
+- Follow the normal branch-and-PR release flow above for current work. Keep credentials protected, validate focused changes, preserve rollback options, and obtain explicit authorization for destructive production-data operations.
 
 ## Design Conventions
 - **License Plate UI:** The primary input field is designed as a realistic Egyptian license plate. Maintain this visual identity in future updates.
