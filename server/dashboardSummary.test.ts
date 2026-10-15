@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 
 describe('dashboard summary projections', () => {
   it('aggregates sharded additive bucket records without reading history', () => {
@@ -24,6 +24,21 @@ describe('dashboard summary projections', () => {
     });
     expect(reconciliation.consistent).toBe(true);
     expect(reconciliation.differences).toEqual({ entriesToday: 0, exitsToday: 0, grossRevenue: 0, refundTotal: 0, netRevenue: 0 });
+  });
+
+  it('skips malformed bucket money while retaining valid signed net revenue', () => {
+    expect(aggregateProjectionBuckets([
+      { grossRevenue: 50, refundTotal: 10, netRevenue: 40 },
+      { grossRevenue: -3, refundTotal: Number.POSITIVE_INFINITY, netRevenue: Number.NaN },
+      { grossRevenue: 1.234, refundTotal: -2, netRevenue: -1.5 }
+    ])).toMatchObject({ grossRevenue: 50, refundTotal: 10, netRevenue: 38.5 });
+  });
+
+  it('normalizes valid cached money and rejects corrupt stored dashboard money', () => {
+    expect(normalizeStoredDashboardMoney({ grossRevenue: '20.50', refundTotal: 2, netRevenue: -1.25 }))
+      .toEqual({ grossRevenue: 20.5, refundTotal: 2, netRevenue: -1.25 });
+    expect(normalizeStoredDashboardMoney({ grossRevenue: Number.POSITIVE_INFINITY, refundTotal: 0, netRevenue: 0 })).toBeNull();
+    expect(normalizeStoredDashboardMoney({ grossRevenue: 10, refundTotal: -1, netRevenue: 11 })).toBeNull();
   });
 
   it('accepts only real calendar date keys', () => {

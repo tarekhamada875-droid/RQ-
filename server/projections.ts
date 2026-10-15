@@ -1,3 +1,5 @@
+import { addMoney } from './money';
+
 export interface ProjectionEvent {
   eventId?: string;
   occurredAt?: string | Date;
@@ -73,10 +75,10 @@ export function calculateDailyProjection(events: ProjectionEvent[], targetDate: 
     if (event.eventType === 'vehicle_entered') count += 1;
     if (event.eventType === 'vehicle_exited') {
       exitsCount += 1;
-      grossRevenue += Number(event.payload?.cost || 0);
+      grossRevenue = addMoney(grossRevenue, event.payload?.cost);
     }
     if (event.eventType === 'vehicle_refunded') {
-      refundRevenue += Number(event.payload?.refundAmount || 0);
+      refundRevenue = addMoney(refundRevenue, event.payload?.refundAmount);
     }
   }
 

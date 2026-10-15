@@ -75,4 +75,41 @@ describe('garage state reconciliation reducer', () => {
     expect(result.overallConsistent).toBe(false);
     expect(result.isConsistent).toBe(false);
   });
+
+  it('excludes malformed event money while retaining event counts and finite ledger totals', () => {
+    const result = reconcileGarageState({
+      today: '2026-09-24',
+      insideVehicleCount: 0,
+      garage: { carsInside: 0, lastTransactionDate: '2026-09-24', todayCount: 0, todayRevenue: Number.POSITIVE_INFINITY },
+      dailyStats: { count: 0, revenue: Number.NaN, exitsCount: 3 },
+      events: [
+        { occurredAt: '2026-09-24T08:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: 10 } },
+        { occurredAt: '2026-09-24T08:01:00.000Z', eventType: 'vehicle_exited', payload: { cost: -2 } },
+        { occurredAt: '2026-09-24T08:02:00.000Z', eventType: 'vehicle_exited', payload: { cost: Number.POSITIVE_INFINITY } },
+        { occurredAt: '2026-09-24T08:03:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: 3 } },
+        { occurredAt: '2026-09-24T08:04:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: Number.NaN } }
+      ]
+    });
+
+    expect(result.eventLedgerSummary).toEqual({
+      totalRecordedEvents: 5,
+      todayEnters: 0,
+      todayExits: 3,
+      todayRefunds: 2,
+      eventGrossRevenue: 10,
+      eventRefundRevenue: 3,
+      eventDerivedRevenue: 7
+    });
+    expect([
+      result.expected.todayRevenue,
+      result.actual.todayRevenue,
+      result.differences.todayRevenue,
+      result.eventLedgerDifferences.todayRevenue,
+      result.eventLedgerSummary.eventGrossRevenue,
+      result.eventLedgerSummary.eventRefundRevenue,
+      result.eventLedgerSummary.eventDerivedRevenue
+    ].every(Number.isFinite)).toBe(true);
+    expect(result.expected.todayRevenue).toBe(0);
+    expect(result.actual.todayRevenue).toBe(0);
+  });
 });

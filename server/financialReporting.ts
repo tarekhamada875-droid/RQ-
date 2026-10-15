@@ -1,3 +1,5 @@
+import { addMoney } from './money';
+
 export interface FinancialReportEvent {
   eventType?: string;
   occurredAt?: string | Date;
@@ -66,7 +68,7 @@ export function calculateFinancialReport(
     if (!inRange(settlement.settledAt, options)) continue;
     const delegateId = settlement.delegateId || '';
     if (options.delegateId && delegateId !== options.delegateId) continue;
-    historicalSettledTotal += Number(settlement.previousCycleTotal || 0);
+    historicalSettledTotal = addMoney(historicalSettledTotal, settlement.previousCycleTotal);
     if (delegateId && currentUnsettledByDelegate[delegateId] === undefined) currentUnsettledByDelegate[delegateId] = 0;
     const settledAt = asDate(settlement.settledAt);
     if (delegateId && settledAt && (!latestSettlementByDelegate[delegateId] || settledAt > latestSettlementByDelegate[delegateId])) {
@@ -79,16 +81,16 @@ export function calculateFinancialReport(
     const payload = event.payload || {};
     if (options.delegateId && String(payload.delegateId || '') !== options.delegateId) continue;
     if (event.eventType === 'recharge_approved') {
-      grossRechargeTotal += Number(payload.amount || 0);
+      grossRechargeTotal = addMoney(grossRechargeTotal, payload.amount);
     }
     if (event.eventType === 'wallet_topup_approved') {
-      walletTopupTotal += Number(payload.amount || 0);
+      walletTopupTotal = addMoney(walletTopupTotal, payload.amount);
     }
     if (event.eventType === 'commission_earned') {
-      commissionTotal += Number(payload.commissionAmount || 0);
+      commissionTotal = addMoney(commissionTotal, payload.commissionAmount);
     }
     if (event.eventType === 'vehicle_refunded') {
-      refundTotal += Number(payload.refundAmount || 0);
+      refundTotal = addMoney(refundTotal, payload.refundAmount);
     }
     if (event.eventType === 'recharge_approved' && event.aggregateId) {
       const delegateId = String(payload.delegateId || '');
@@ -96,7 +98,7 @@ export function calculateFinancialReport(
         const occurredAt = asDate(event.occurredAt);
         const cutoff = latestSettlementByDelegate[delegateId];
         if (!cutoff || (occurredAt && occurredAt > cutoff)) {
-          currentUnsettledByDelegate[delegateId] = (currentUnsettledByDelegate[delegateId] || 0) + Number(payload.amount || 0);
+          currentUnsettledByDelegate[delegateId] = addMoney(currentUnsettledByDelegate[delegateId] || 0, payload.amount);
         }
       }
     }
@@ -105,7 +107,7 @@ export function calculateFinancialReport(
   return {
     grossRechargeTotal: round(grossRechargeTotal),
     walletTopupTotal: round(walletTopupTotal),
-    cashCollectedTotal: round(grossRechargeTotal + walletTopupTotal),
+    cashCollectedTotal: addMoney(grossRechargeTotal, walletTopupTotal),
     commissionTotal: round(commissionTotal),
     refundTotal: round(refundTotal),
     companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),

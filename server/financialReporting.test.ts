@@ -64,4 +64,46 @@ describe('financial reporting projections', () => {
     expect(report.historicalSettledTotal).toBe(1000);
     expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 0 });
   });
+
+  it('skips malformed legacy money values and keeps every report total finite', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'recharge_approved', aggregateId: 'r1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 100.25, delegateId: 'del-1' } },
+      { eventType: 'recharge_approved', aggregateId: 'r2', occurredAt: '2026-09-18T08:01:00.000Z', payload: { amount: '0.75', delegateId: 'del-1' } },
+      { eventType: 'recharge_approved', aggregateId: 'r3', occurredAt: '2026-09-18T08:02:00.000Z', payload: { amount: -1, delegateId: 'del-1' } },
+      { eventType: 'recharge_approved', aggregateId: 'r4', occurredAt: '2026-09-18T08:03:00.000Z', payload: { amount: Number.NaN, delegateId: 'del-1' } },
+      { eventType: 'recharge_approved', aggregateId: 'r5', occurredAt: '2026-09-18T08:04:00.000Z', payload: { amount: Number.POSITIVE_INFINITY, delegateId: 'del-1' } },
+      { eventType: 'recharge_approved', aggregateId: 'r6', occurredAt: '2026-09-18T08:05:00.000Z', payload: { amount: 1.234, delegateId: 'del-1' } },
+      { eventType: 'wallet_topup_approved', occurredAt: '2026-09-18T08:06:00.000Z', payload: { amount: 25.5 } },
+      { eventType: 'wallet_topup_approved', occurredAt: '2026-09-18T08:07:00.000Z', payload: { amount: -2 } },
+      { eventType: 'commission_earned', occurredAt: '2026-09-18T08:08:00.000Z', payload: { commissionAmount: 5 } },
+      { eventType: 'commission_earned', occurredAt: '2026-09-18T08:09:00.000Z', payload: { commissionAmount: Number.NaN } },
+      { eventType: 'vehicle_refunded', occurredAt: '2026-09-18T08:10:00.000Z', payload: { refundAmount: 7 } },
+      { eventType: 'vehicle_refunded', occurredAt: '2026-09-18T08:11:00.000Z', payload: { refundAmount: Number.POSITIVE_INFINITY } }
+    ], [
+      { settlementId: 's1', settledAt: '2026-09-18T08:12:00.000Z', previousCycleTotal: 10 },
+      { settlementId: 's2', settledAt: '2026-09-18T08:13:00.000Z', previousCycleTotal: Number.NaN },
+      { settlementId: 's3', settledAt: '2026-09-18T08:14:00.000Z', previousCycleTotal: -3 }
+    ]);
+
+    expect(report).toEqual({
+      grossRechargeTotal: 101,
+      walletTopupTotal: 25.5,
+      cashCollectedTotal: 126.5,
+      commissionTotal: 5,
+      refundTotal: 7,
+      companyNetRevenue: 89,
+      historicalSettledTotal: 10,
+      currentUnsettledByDelegate: { 'del-1': 101 }
+    });
+    expect([
+      report.grossRechargeTotal,
+      report.walletTopupTotal,
+      report.cashCollectedTotal,
+      report.commissionTotal,
+      report.refundTotal,
+      report.companyNetRevenue,
+      report.historicalSettledTotal,
+      ...Object.values(report.currentUnsettledByDelegate)
+    ].every(Number.isFinite)).toBe(true);
+  });
 });
