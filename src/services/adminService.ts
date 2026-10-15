@@ -460,6 +460,30 @@ export const adminService = {
 
   subscribeToGarageRechargeLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/recharge_logs`);
+    let primaryUnsub: (() => void) | undefined;
+    let fallbackUnsub: (() => void) | undefined;
+    let isClosed = false;
+
+    const unsubscribe = () => {
+      if (isClosed) return;
+      isClosed = true;
+
+      const primary = primaryUnsub;
+      const fallback = fallbackUnsub;
+      primaryUnsub = undefined;
+      fallbackUnsub = undefined;
+
+      try {
+        primary?.();
+      } finally {
+        try {
+          fallback?.();
+        } finally {
+          trackerUnsub();
+        }
+      }
+    };
+
     try {
       const fetchLimit = Math.max(limitCount, 25);
       const q = query(
@@ -468,44 +492,53 @@ export const adminService = {
         where('actionType', '==', 'recharge'),
         limit(fetchLimit)
       );
-      const unsub = onSnapshot(q, (snapshot) => {
+      primaryUnsub = onSnapshot(q, (snapshot) => {
+        if (isClosed) return;
         const data = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
         data.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
         callback(data.slice(0, limitCount));
       }, (err) => {
+        if (isClosed || fallbackUnsub) return;
         console.warn('Targeted recharge query fallback needed:', err);
         const fallbackQ = query(
           collection(db, 'activity_logs'),
           where('garageId', '==', garageId),
           limit(100)
         );
-        const fallbackUnsub = onSnapshot(fallbackQ, (snapshot) => {
+        fallbackUnsub = onSnapshot(fallbackQ, (snapshot) => {
+          if (isClosed) return;
           const data = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog))
             .filter(log => log.actionType === 'recharge' || (log.plateNumber && (log.plateNumber.includes('شحن') || log.plateNumber.includes('تفعيل'))));
           data.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
           callback(data.slice(0, limitCount));
         }, (fallbackErr) => {
+          if (isClosed) return;
           handleFirestoreError(fallbackErr, OperationType.LIST, 'activity_logs');
           if (onError) onError(fallbackErr);
           else callback([]);
         });
-        return () => {
-          fallbackUnsub();
-        };
+        if (isClosed) {
+          const lateFallbackUnsub = fallbackUnsub;
+          fallbackUnsub = undefined;
+          lateFallbackUnsub?.();
+        }
       });
 
-      return () => {
-        unsub();
-        trackerUnsub();
-      };
+      if (isClosed) {
+        const latePrimaryUnsub = primaryUnsub;
+        primaryUnsub = undefined;
+        latePrimaryUnsub?.();
+      }
+
+      return unsubscribe;
     } catch (err: any) {
+      unsubscribe();
       handleFirestoreError(err, OperationType.LIST, 'activity_logs');
       if (onError) onError(err);
       else callback([]);
-      trackerUnsub();
-      return () => {};
+      return unsubscribe;
     }
   },
 
