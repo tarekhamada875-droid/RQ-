@@ -18,6 +18,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Garage, Staff, Announcement } from '../../../types';
+import { IconButton } from '../../ui/IconButton';
 
 interface GarageDashboardHeaderAndDrawerProps {
   garage: Garage;
@@ -87,9 +88,10 @@ export const GarageDashboardHeaderAndDrawer = memo(({
             )}
 
             <div className="flex items-center gap-3">
-              <button
+              <IconButton
                 type="button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label={isMenuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
                 className={`relative w-11 h-11 border rounded-2xl flex items-center justify-center transition-all outline-none ${
                   isMenuOpen
                     ? 'bg-red-600 text-white border-red-700'
@@ -108,7 +110,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                 ) : (
                   <Users className="w-6 h-6 stroke-[3]" />
                 )}
-              </button>
+              </IconButton>
             </div>
           </div>
         </header>
@@ -159,13 +161,14 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                       </span>
                     </div>
                   </div>
-                  <button
+                  <IconButton
                     type="button"
                     onClick={() => setIsMenuOpen(false)}
+                    aria-label="إغلاق القائمة"
                     className="w-8 h-8 bg-red-500 dark:bg-red-600 text-white rounded-lg flex items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none shrink-0"
                   >
                     <XIcon className="w-5 h-5" />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
 
