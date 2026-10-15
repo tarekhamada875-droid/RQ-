@@ -1,7 +1,16 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
+
+const firestoreIndexes = JSON.parse(fs.readFileSync(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
+const staffCompositeIndex = firestoreIndexes.indexes.find((index) =>
+  index.collectionGroup === 'staff' && index.queryScope === 'COLLECTION'
+);
+assert.deepEqual(staffCompositeIndex?.fields, [
+  { fieldPath: 'garageId', order: 'ASCENDING' },
+  { fieldPath: 'createdAt', order: 'DESCENDING' }
+], 'firestore.indexes.json must retain the staff garageId/createdAt composite index');
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',
@@ -70,6 +79,15 @@ try {
     await setDoc(doc(db, 'staff/staff-1'), staff('Synthetic Staff', 'g-1'));
     await setDoc(doc(db, 'staff/staff-peer'), staff('Synthetic Peer', 'g-1'));
     await setDoc(doc(db, 'staff/staff-g-2'), staff('Other Garage Staff', 'g-2'));
+    await setDoc(doc(db, 'staff/staff-index-newest'), {
+      ...staff('Newest Indexed Staff', 'g-1'), createdAt: new Date('2026-10-15T12:00:00.000Z')
+    });
+    await setDoc(doc(db, 'staff/staff-index-older'), {
+      ...staff('Older Indexed Staff', 'g-1'), createdAt: new Date('2026-10-14T12:00:00.000Z')
+    });
+    await setDoc(doc(db, 'staff/staff-index-other-garage'), {
+      ...staff('Other Garage Indexed Staff', 'g-2'), createdAt: new Date('2026-10-16T12:00:00.000Z')
+    });
     await setDoc(doc(db, 'system_config/safe-config'), { startupNotice: 'synthetic' });
 
     await setDoc(doc(db, 'garages/g-1/subscribers/sub-1'), {
@@ -80,6 +98,16 @@ try {
     await setDoc(doc(db, 'garages/g-1/daily_counts/2026-10-07'), {
       dateId: '2026-10-07', count: 1, limit: 10
     });
+
+    const orderedStaff = await getDocs(query(
+      collection(db, 'staff'),
+      where('garageId', '==', 'g-1'),
+      orderBy('createdAt', 'desc')
+    ));
+    assert.deepEqual(orderedStaff.docs.map((staffDoc) => staffDoc.id), [
+      'staff-index-newest',
+      'staff-index-older'
+    ], 'staff query must be garage-scoped and descending; legacy staff without createdAt remain excluded');
   });
 
   // A positive assertion plus a negative assertion proves the checked-in rules
@@ -207,7 +235,7 @@ try {
     assert.deepEqual((await getDoc(doc(storedDb, 'supervisors/sup-1'))).data(), legacySupervisor);
   });
 
-  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, protected staff and garage writes, sessions, config, cross-garage denials, and retired Supervisor access.');
+  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff composite index ordering, protected staff and garage writes, sessions, config, cross-garage denials, and retired Supervisor access.');
 } finally {
   await env.cleanup();
 }
