@@ -1,7 +1,10 @@
+import { parseMoneyAmount } from '../money';
+
 export type VehicleCheckOutError =
   | 'GARAGE_NOT_FOUND'
   | 'VEHICLE_NOT_FOUND'
-  | 'VEHICLE_ALREADY_OUTSIDE';
+  | 'VEHICLE_ALREADY_OUTSIDE'
+  | 'INVALID_MONEY_AMOUNT';
 
 export type VehicleCheckOutResult<T> =
   | { readonly ok: true; readonly value: T }
@@ -35,10 +38,12 @@ export function decideVehicleCheckOut(
   if (!garage.exists) return { ok: false, error: 'GARAGE_NOT_FOUND' };
   if (!vehicle.exists) return { ok: false, error: 'VEHICLE_NOT_FOUND' };
   if (vehicle.status === 'outside') return { ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' };
+  const cost = parseMoneyAmount(command.cost);
+  if (cost === null) return { ok: false, error: 'INVALID_MONEY_AMOUNT' };
   return {
     ok: true,
     value: {
-      cost: Math.max(0, command.cost),
+      cost,
       isNewDay: garage.lastTransactionDate !== command.today,
     },
   };

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { getTraceContext } from './operationTrace';
+import { parseMoneyAmount } from './money';
 
 export type DomainEventType =
   | 'vehicle_entered'
@@ -77,6 +78,31 @@ const EVENT_AGGREGATE_TYPES: Record<DomainEventType, AggregateType> = {
 };
 const SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 
+type MoneyEventRule = {
+  required: readonly string[];
+  optional?: readonly string[];
+  errorCode: string;
+};
+
+const MONEY_EVENT_RULES: Partial<Record<DomainEventType, MoneyEventRule>> = {
+  vehicle_exited: { required: ['cost'], errorCode: 'INVALID_VEHICLE_EXIT_PAYLOAD' },
+  vehicle_refunded: { required: ['refundAmount'], errorCode: 'INVALID_REFUND_PAYLOAD' },
+  recharge_approved: {
+    required: ['amount'],
+    optional: ['originalAmount', 'discountAmount', 'commission'],
+    errorCode: 'INVALID_RECHARGE_PAYLOAD'
+  },
+  wallet_topup_approved: { required: ['amount'], errorCode: 'INVALID_WALLET_TOPUP_PAYLOAD' },
+  wallet_debited: { required: ['amount'], errorCode: 'INVALID_WALLET_DEBIT_PAYLOAD' },
+  package_purchased: { required: ['amount'], errorCode: 'INVALID_PACKAGE_PURCHASE_PAYLOAD' },
+  delegate_settled: { required: ['previousRechargedAmount'], errorCode: 'INVALID_DELEGATE_SETTLEMENT_PAYLOAD' },
+  commission_earned: { required: ['commissionAmount'], errorCode: 'INVALID_COMMISSION_PAYLOAD' }
+};
+
+function isValidEventMoneyAmount(value: unknown): value is number {
+  return typeof value === 'number' && parseMoneyAmount(value) !== null;
+}
+
 function redactSensitive(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactSensitive);
   if (!value || typeof value !== 'object') return value;
@@ -87,6 +113,16 @@ function validateEventParams(params: CreateEventParams): void {
   if (EVENT_AGGREGATE_TYPES[params.eventType] !== params.aggregateType) throw new Error('INVALID_EVENT_AGGREGATE');
   if (!params.aggregateId || !params.eventType || !params.actorUid || !params.actorRole) throw new Error('INVALID_EVENT_ENVELOPE');
   if (JSON.stringify(params.payload).length > 32_000) throw new Error('EVENT_PAYLOAD_TOO_LARGE');
+  const moneyRule = MONEY_EVENT_RULES[params.eventType];
+  if (moneyRule) {
+    for (const field of moneyRule.required) {
+      if (!isValidEventMoneyAmount(params.payload[field])) throw new Error(moneyRule.errorCode);
+    }
+    for (const field of moneyRule.optional || []) {
+      const value = params.payload[field];
+      if (value !== undefined && !isValidEventMoneyAmount(value)) throw new Error(moneyRule.errorCode);
+    }
+  }
   if (params.eventType === 'delegate_settled') {
     const p = params.payload as Partial<DelegateSettledPayload>;
     if (!p.delegateId || !p.settlementId || typeof p.previousRechargedAmount !== 'number' || !p.settledAt) throw new Error('INVALID_DELEGATE_SETTLEMENT_PAYLOAD');

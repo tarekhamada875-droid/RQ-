@@ -26,6 +26,12 @@ describe('delta projection primitives', () => {
     expect(createVehicleDelta('vehicle_refunded', 25)).toEqual({ refundTotal: 25, netRevenue: -25 });
   });
 
+  it.each(['vehicle_exited', 'vehicle_refunded'] as const)('rejects invalid money when creating %s deltas', (eventType) => {
+    for (const amount of [-0.01, Number.NaN, Number.POSITIVE_INFINITY, 1.234]) {
+      expect(() => createVehicleDelta(eventType, amount)).toThrow('INVALID_MONEY_AMOUNT');
+    }
+  });
+
   it('selects bounded shard counts from estimated operation rate', () => {
     expect(projectionShardCount(1)).toBe(2);
     expect(projectionShardCount(8)).toBe(8);

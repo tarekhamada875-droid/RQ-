@@ -1,3 +1,5 @@
+import { parseMoneyAmount } from './money';
+
 export interface ValidatedPackage {
   id: string;
   name: string;
@@ -14,11 +16,11 @@ export function validatePackageCatalogRecord(raw: Record<string, any>, id: strin
 
   const name = String(raw.name || raw.packageName || '').trim();
   const durationDays = Number(raw.durationDays ?? raw.vehiclesCount);
-  const basePrice = Number(raw.price ?? raw.priceAmount);
+  const basePrice = parseMoneyAmount(raw.price ?? raw.priceAmount);
   if (!name || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) {
     throw new Error('INVALID_PACKAGE_CONFIGURATION');
   }
-  if (!Number.isFinite(basePrice) || basePrice < 0) throw new Error('INVALID_PACKAGE_CONFIGURATION');
+  if (basePrice === null) throw new Error('INVALID_PACKAGE_CONFIGURATION');
 
   const discountType = raw.discountType === undefined || raw.discountType === null || raw.discountType === ''
     ? null
@@ -31,8 +33,9 @@ export function validatePackageCatalogRecord(raw: Record<string, any>, id: strin
     if (discountValue > 100) throw new Error('INVALID_PACKAGE_CONFIGURATION');
     discountAmount = Math.round((basePrice * discountValue) / 100);
   } else if (discountType === 'fixed') {
-    if (discountValue > basePrice) throw new Error('INVALID_PACKAGE_CONFIGURATION');
-    discountAmount = discountValue;
+    const fixedDiscount = raw.discountValue === '' ? 0 : parseMoneyAmount(raw.discountValue ?? 0);
+    if (fixedDiscount === null || fixedDiscount > basePrice) throw new Error('INVALID_PACKAGE_CONFIGURATION');
+    discountAmount = fixedDiscount;
   } else if (discountType !== null) {
     throw new Error('INVALID_PACKAGE_CONFIGURATION');
   }

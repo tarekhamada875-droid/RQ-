@@ -57,3 +57,26 @@ it('does not count malformed event timestamps', () => {
     revenue: 0
   });
 });
+
+it('ignores malformed historical money while retaining exit and refund event counts', () => {
+  const projection = calculateDailyProjection([
+    { occurredAt: '2026-09-18T06:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: 10.25 } },
+    { occurredAt: '2026-09-18T07:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: -2 } },
+    { occurredAt: '2026-09-18T08:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: Number.NaN } },
+    { occurredAt: '2026-09-18T09:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: Number.POSITIVE_INFINITY } },
+    { occurredAt: '2026-09-18T10:00:00.000Z', eventType: 'vehicle_exited', payload: { cost: 1.234 } },
+    { occurredAt: '2026-09-18T11:00:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: 2.15 } },
+    { occurredAt: '2026-09-18T12:00:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: -1 } },
+    { occurredAt: '2026-09-18T13:00:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: '0.05' } }
+  ], '2026-09-18');
+
+  expect(projection).toEqual({
+    count: 0,
+    exitsCount: 5,
+    grossRevenue: 10.25,
+    refundRevenue: 2.2,
+    netRevenue: 8.05,
+    revenue: 8.05
+  });
+  expect(Object.values(projection).every(Number.isFinite)).toBe(true);
+});

@@ -171,4 +171,21 @@ describe('vehicle delete/refund idempotency (Worker route transactions)', () => 
       expect(recordSnapshot(), scenario.name).toEqual(afterFirst);
     }
   });
+
+  it('rejects malformed refund amounts before any transactional write', async () => {
+    const invalidAmounts: Array<number | string> = [-0.01, 12.345, '12.345', 'Infinity', 'not-money'];
+
+    for (const refundAmount of invalidAmounts) {
+      mockDb.clear();
+      seedVehicleFixture(['vehicle-1']);
+      const before = recordSnapshot();
+      const writesBefore = mockDb.documentWriteCount;
+
+      const response = await callVehicleOperation({ path: '/api/vehicles/refund', vehicleId: 'vehicle-1', refundAmount });
+      expect(response.status, String(refundAmount)).toBe(400);
+      expect(await response.json(), String(refundAmount)).toMatchObject({ success: false, error: 'INVALID_REFUND_AMOUNT' });
+      expect(mockDb.documentWriteCount, String(refundAmount)).toBe(writesBefore);
+      expect(recordSnapshot(), String(refundAmount)).toEqual(before);
+    }
+  });
 });

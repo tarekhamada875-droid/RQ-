@@ -78,6 +78,12 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('NOT_AN_UNLIMITED_PACKAGE')) {
     return { statusCode: 400, code: 'INVALID_REQUEST', message: 'تمديد الاستخدام العادل متاح للباقات المفتوحة فقط' };
   }
+  if (errMsg.includes('INVALID_PACKAGE_CONFIGURATION')) {
+    return { statusCode: 400, code: 'INVALID_PACKAGE_CONFIGURATION', message: 'إعدادات الباقة غير صالحة' };
+  }
+  if (errMsg.includes('INVALID_MONEY_AMOUNT')) {
+    return { statusCode: 422, code: 'INVALID_MONEY_AMOUNT', message: 'قيمة مالية غير صالحة' };
+  }
 
   if (
     errMsg.includes('FORBIDDEN') ||

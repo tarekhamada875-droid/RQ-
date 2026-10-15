@@ -1,4 +1,5 @@
 import { DailyProjection } from './projections';
+import { addMoney, addSignedMoney, parseMoneyAmount, parseSignedMoneyAmount } from './money';
 
 export interface ProjectionBucketRecord {
   activeVehicleCount?: number;
@@ -33,6 +34,19 @@ export interface StoredDashboardSummary {
   rebuiltAt?: string;
 }
 
+export type DashboardSummaryMoney = Pick<DashboardSummary, 'grossRevenue' | 'refundTotal' | 'netRevenue'>;
+
+/** Normalizes stored money fields, returning null rather than serving corrupt totals. */
+export function normalizeStoredDashboardMoney(value: unknown): DashboardSummaryMoney | null {
+  if (!value || typeof value !== 'object') return null;
+  const summary = value as Record<string, unknown>;
+  const grossRevenue = parseMoneyAmount(summary.grossRevenue);
+  const refundTotal = parseMoneyAmount(summary.refundTotal);
+  const netRevenue = parseSignedMoneyAmount(summary.netRevenue);
+  if (grossRevenue === null || refundTotal === null || netRevenue === null) return null;
+  return { grossRevenue, refundTotal, netRevenue };
+}
+
 export function isValidDateKey(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -55,9 +69,9 @@ export function aggregateProjectionBuckets(buckets: ProjectionBucketRecord[]): D
     activeVehicleCount: result.activeVehicleCount + Number(bucket.activeVehicleCount || 0),
     entriesToday: result.entriesToday + Number(bucket.entriesToday || 0),
     exitsToday: result.exitsToday + Number(bucket.exitsToday || 0),
-    grossRevenue: result.grossRevenue + Number(bucket.grossRevenue || 0),
-    refundTotal: result.refundTotal + Number(bucket.refundTotal || 0),
-    netRevenue: result.netRevenue + Number(bucket.netRevenue || 0)
+    grossRevenue: addMoney(result.grossRevenue, bucket.grossRevenue),
+    refundTotal: addMoney(result.refundTotal, bucket.refundTotal),
+    netRevenue: addSignedMoney(result.netRevenue, bucket.netRevenue)
   }), { activeVehicleCount: 0, entriesToday: 0, exitsToday: 0, grossRevenue: 0, refundTotal: 0, netRevenue: 0 });
   return {
     activeVehicleCount: totals.activeVehicleCount,

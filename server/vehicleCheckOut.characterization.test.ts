@@ -26,6 +26,14 @@ describe('vehicle check-out characterization', () => {
     expect(decideVehicleCheckOut(command, garageDocumentToCheckOutState({}), vehicleDocumentToCheckOutState({ status: 'outside' }))).toEqual({ ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' });
   });
 
+  it('rejects malformed checkout money before returning a write decision', () => {
+    const garage = garageDocumentToCheckOutState({ lastTransactionDate: '2026-09-24' });
+    const vehicle = vehicleDocumentToCheckOutState({ status: 'inside' });
+    for (const cost of [-1, Number.NaN, Number.POSITIVE_INFINITY, 1.234]) {
+      expect(decideVehicleCheckOut({ today: '2026-09-24', cost }, garage, vehicle)).toEqual({ ok: false, error: 'INVALID_MONEY_AMOUNT' });
+    }
+  });
+
   it('keeps the server-authoritative cost rules intact', () => {
     const now = Date.parse('2026-09-24T12:00:00.000Z');
     expect(calculateVehicleCost({ isSubscriber: true, entryTime: '2026-09-23T12:00:00.000Z' }, { hourlyRate: 10, overnightRate: 100 }, now)).toBe(0);

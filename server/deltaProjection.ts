@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { parseMoneyAmount } from './money';
 
 export interface OperationMetadata {
   operationId: string;
@@ -59,8 +60,16 @@ export function projectionBucketUpdate(operationId: string, dateId: string, delt
 
 export function createVehicleDelta(eventType: string, amount = 0): ProjectionDelta {
   if (eventType === 'vehicle_entered') return { activeVehicleCount: 1, entriesToday: 1 };
-  if (eventType === 'vehicle_exited') return { activeVehicleCount: -1, exitsToday: 1, grossRevenue: Number(amount.toFixed(2)), netRevenue: Number(amount.toFixed(2)) };
-  if (eventType === 'vehicle_refunded') return { refundTotal: Number(amount.toFixed(2)), netRevenue: Number((-amount).toFixed(2)) };
+  if (eventType === 'vehicle_exited') {
+    const moneyAmount = parseMoneyAmount(amount);
+    if (moneyAmount === null) throw new Error('INVALID_MONEY_AMOUNT');
+    return { activeVehicleCount: -1, exitsToday: 1, grossRevenue: moneyAmount, netRevenue: moneyAmount };
+  }
+  if (eventType === 'vehicle_refunded') {
+    const moneyAmount = parseMoneyAmount(amount);
+    if (moneyAmount === null) throw new Error('INVALID_MONEY_AMOUNT');
+    return { refundTotal: moneyAmount, netRevenue: -moneyAmount };
+  }
   if (eventType === 'vehicle_deleted') return {};
   throw new Error('UNSUPPORTED_PROJECTION_EVENT');
 }

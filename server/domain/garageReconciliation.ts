@@ -1,3 +1,5 @@
+import { addMoney, parseMoneyAmount } from '../money';
+
 export type ReconciliationEvent = Readonly<{
   occurredAt?: unknown;
   eventType?: unknown;
@@ -54,7 +56,6 @@ export function reconcileGarageState(input: Readonly<{
   dailyStats: ReconciliationDailyStats;
   events: readonly ReconciliationEvent[];
 }>): GarageReconciliationResult {
-  let eventDerivedRevenue = 0;
   let eventGrossRevenue = 0;
   let eventRefundRevenue = 0;
   let todayEnters = 0;
@@ -66,28 +67,26 @@ export function reconcileGarageState(input: Readonly<{
     if (event.eventType === 'vehicle_entered') todayEnters += 1;
     if (event.eventType === 'vehicle_exited') {
       todayExits += 1;
-      const cost = asNumber(event.payload?.cost);
-      eventGrossRevenue += cost;
-      eventDerivedRevenue += cost;
+      eventGrossRevenue = addMoney(eventGrossRevenue, event.payload?.cost);
     }
     if (event.eventType === 'vehicle_refunded') {
       todayRefunds += 1;
-      const refund = asNumber(event.payload?.refundAmount);
-      eventRefundRevenue += refund;
-      eventDerivedRevenue -= refund;
+      eventRefundRevenue = addMoney(eventRefundRevenue, event.payload?.refundAmount);
     }
   }
+
+  const eventDerivedRevenue = roundCurrency(eventGrossRevenue - eventRefundRevenue);
 
   const expected = {
     carsInside: input.insideVehicleCount,
     todayCount: asNumber(input.dailyStats.count),
-    todayRevenue: asNumber(input.dailyStats.revenue)
+    todayRevenue: parseMoneyAmount(input.dailyStats.revenue) ?? 0
   };
   const isTodayGarageState = input.garage.lastTransactionDate === input.today;
   const actual = {
     carsInside: asNumber(input.garage.carsInside),
     todayCount: isTodayGarageState ? asNumber(input.garage.todayCount) : 0,
-    todayRevenue: isTodayGarageState ? asNumber(input.garage.todayRevenue) : 0
+    todayRevenue: isTodayGarageState ? parseMoneyAmount(input.garage.todayRevenue) ?? 0 : 0
   };
   const eventLedgerSummary = {
     totalRecordedEvents: input.events.length,
@@ -96,7 +95,7 @@ export function reconcileGarageState(input: Readonly<{
     todayRefunds,
     eventGrossRevenue: roundCurrency(eventGrossRevenue),
     eventRefundRevenue: roundCurrency(eventRefundRevenue),
-    eventDerivedRevenue: roundCurrency(eventDerivedRevenue)
+    eventDerivedRevenue
   };
   const differences = {
     carsInside: expected.carsInside - actual.carsInside,
@@ -106,7 +105,7 @@ export function reconcileGarageState(input: Readonly<{
   const eventLedgerDifferences = {
     todayCount: expected.todayCount - todayEnters,
     todayExits: asNumber(input.dailyStats.exitsCount) - todayExits,
-    todayRevenue: expected.todayRevenue - roundCurrency(eventDerivedRevenue)
+    todayRevenue: expected.todayRevenue - eventDerivedRevenue
   };
   const operationalStateConsistent = differences.carsInside === 0;
   const dailyStatsConsistent = differences.todayCount === 0 && differences.todayRevenue === 0;

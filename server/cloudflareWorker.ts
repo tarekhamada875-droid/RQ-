@@ -6,6 +6,7 @@ import { isValidBackendOperatorToken } from './backendOperatorToken';
 import { withTraceContext } from './operationTrace';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
+import { parseMoneyAmount } from './money';
 import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
 import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
@@ -20,7 +21,7 @@ import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { calculateFinancialReport } from './financialReporting';
-import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, reconcileDashboardSummary } from './dashboardSummary';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import {
   startGarageDeletionRoute,
@@ -1945,7 +1946,12 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const requestedRefund = Math.max(0, Number(refundAmount || 0));
+    const requestedRefund = refundAmount === undefined || refundAmount === null || refundAmount === ''
+      ? 0
+      : parseMoneyAmount(refundAmount);
+    if (requestedRefund === null) {
+      return c.json({ success: false, error: 'INVALID_REFUND_AMOUNT' }, 400);
+    }
     const operation = requestedRefund > 0 ? 'refund' : 'delete';
     const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
     const requestFingerprint = createRequestFingerprint({
@@ -2012,8 +2018,8 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       }
 
       const isSameRefundDay = garageData.lastRefundDate === todayYMD;
-      const maxEligibleRefund = (vehicleData.status === 'outside' && typeof vehicleData.totalCost === 'number')
-        ? Math.max(0, vehicleData.totalCost)
+      const maxEligibleRefund = vehicleData.status === 'outside'
+        ? parseMoneyAmount(vehicleData.totalCost) ?? 0
         : 0;
       const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
 
@@ -3671,10 +3677,11 @@ workerApp.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, asyn
     const reconciliation = reconcileDashboardSummary(summary, eventProjection);
     const legacy = garageSnap.data() || {};
     const dailyStats = dailyStatsSnap.data() || {};
+    const dailyRevenue = parseMoneyAmount(dailyStats.revenue) ?? 0;
     const legacyDifferences = {
       activeVehicleCount: summary.activeVehicleCount - Number(legacy.carsInside || 0),
       entriesToday: summary.entriesToday - Number(dailyStats.count || 0),
-      grossRevenue: Number((summary.grossRevenue - Number(dailyStats.revenue || 0)).toFixed(2))
+      grossRevenue: Number((summary.grossRevenue - dailyRevenue).toFixed(2))
     };
     const summaryData = {
       ...summary,
@@ -3774,8 +3781,10 @@ workerApp.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c)
       if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
       const storedSummary = summarySnap.data() || {};
       if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
+      const normalizedMoney = normalizeStoredDashboardMoney(storedSummary);
+      if (!normalizedMoney) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
       c.header('X-Summary-Source', 'stored_rebuild');
-      return c.json({ success: true, data: { garageId, summary: storedSummary } });
+      return c.json({ success: true, data: { garageId, summary: { ...storedSummary, ...normalizedMoney } } });
     }
     const summary = {
       ...aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {})),
