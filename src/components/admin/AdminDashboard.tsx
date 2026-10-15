@@ -269,11 +269,18 @@ export const AdminDashboard = memo(({
     e.preventDefault();
     if (currentSupervisor) {
       showToast?.('غير مصرح للمشرف بإضافة جراجات', 'error');
-      return;
+      return false;
     }
-    const created = await createNewGarage(e);
-    if (!created) return;
-    setShowOverview(false);
+    try {
+      const created = await createNewGarage(e);
+      if (!created) return false;
+      setShowOverview(false);
+      return true;
+    } catch (err) {
+      console.error('Admin garage creation failed:', err);
+      showToast?.(err instanceof Error ? err.message : 'حدث خطأ أثناء إنشاء الجراج', 'error');
+      return false;
+    }
   };
 
   const approvedGarages = React.useMemo(() => {

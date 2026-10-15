@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { FormEvent } from 'react';
 import { AdminDashboard } from './AdminDashboard';
 import { firestoreService } from '../../services';
 
@@ -32,9 +33,10 @@ vi.mock('../../utils/adminTranslations', () => ({
 
 vi.mock('./AdminHeader', () => ({ AdminHeader: () => null }));
 vi.mock('./AdminNavigationAndViews', () => ({
-  AdminNavigationAndViews: ({ setActiveTab, displayedGarages, handleRejectGarage }: any) => (
+  AdminNavigationAndViews: ({ setActiveTab, displayedGarages, handleRejectGarage, onOpenAddGarage }: any) => (
     <>
       <button onClick={() => setActiveTab('garages')}>Open garages</button>
+      <button onClick={() => onOpenAddGarage?.()}>Open add garage</button>
       <button onClick={() => void handleRejectGarage({ id: 'pending-1', name: 'Pending Garage' }).catch(() => {})}>
         Reject pending garage
       </button>
@@ -43,7 +45,6 @@ vi.mock('./AdminNavigationAndViews', () => ({
   ),
 }));
 vi.mock('./AdminPlansModal', () => ({ AdminPlansModal: () => null }));
-vi.mock('./AdminAddGarageModal', () => ({ AdminAddGarageModal: () => null }));
 vi.mock('./PackageValidationErrorModal', () => ({ PackageValidationErrorModal: () => null }));
 vi.mock('./AdminConfirmDialog', () => ({
   AdminConfirmDialog: ({ isOpen, onConfirm }: any) => isOpen
@@ -64,6 +65,50 @@ beforeEach(() => {
   deleteGarageWithRecoveryMock.mockReset();
   garageDeletionFailureMessageMock.mockReset().mockReturnValue('Too many delete requests; wait before retrying.');
 });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+const renderDashboardForGarageCreation = (
+  createNewGarage: (event: FormEvent<HTMLFormElement>) => Promise<boolean>,
+  showToast = vi.fn(),
+) => {
+  render(
+    <AdminDashboard
+      allGarages={[]}
+      isLoading={false}
+      createNewGarage={createNewGarage}
+      setView={vi.fn()}
+      setSelectedGarageForDetails={vi.fn()}
+      setSelectedDelegateForDetails={vi.fn()}
+      delegates={[]}
+      packages={[]}
+      onLogout={vi.fn()}
+      rechargeRequests={[]}
+      currentAdminPin=""
+      currentWalletNumber=""
+      onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
+      showToast={showToast}
+    />,
+  );
+  return showToast;
+};
+
+const fillAddGarageDraft = () => {
+  fireEvent.change(screen.getByPlaceholderText('اسم الجراج...'), { target: { value: 'Draft Garage' } });
+  fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '25' } });
+  fireEvent.change(screen.getByPlaceholderText('50'), { target: { value: '60' } });
+  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
+  fireEvent.change(screen.getByPlaceholderText('12345678'), { target: { value: '12345678' } });
+  fireEvent.click(screen.getByRole('switch'));
+};
+
+const submitAddGarageDraft = () => {
+  const form = screen.getByPlaceholderText('اسم الجراج...').closest('form');
+  if (!form) throw new Error('Add garage form was not rendered');
+  fireEvent.submit(form);
+};
 
 describe('AdminDashboard garage actions', () => {
   it('does not fetch a second garage page when opening the garage tab', async () => {
@@ -89,6 +134,62 @@ describe('AdminDashboard garage actions', () => {
 
     expect(await screen.findByText('Already loaded garage')).toBeInTheDocument();
     expect(firestoreService.getAdminGaragesPage).not.toHaveBeenCalled();
+  });
+
+  it('preserves every add-garage draft value when creation returns false', async () => {
+    const createNewGarage = vi.fn().mockResolvedValue(false);
+    renderDashboardForGarageCreation(createNewGarage);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
+    fillAddGarageDraft();
+    submitAddGarageDraft();
+
+    await waitFor(() => expect(createNewGarage).toHaveBeenCalledTimes(1));
+    expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('Draft Garage');
+    expect(screen.getByPlaceholderText('10')).toHaveValue('25');
+    expect(screen.getByPlaceholderText('50')).toHaveValue('60');
+    expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
+    expect(screen.getByPlaceholderText('12345678')).toHaveValue('12345678');
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('closes and clears the add-garage draft only after successful creation', async () => {
+    const createNewGarage = vi.fn().mockResolvedValue(true);
+    renderDashboardForGarageCreation(createNewGarage);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
+    fillAddGarageDraft();
+    submitAddGarageDraft();
+
+    await waitFor(() => expect(screen.queryByPlaceholderText('اسم الجراج...')).not.toBeInTheDocument());
+    expect(createNewGarage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
+    expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('');
+    expect(screen.getByPlaceholderText('10')).toHaveValue('');
+    expect(screen.getByPlaceholderText('50')).toHaveValue('');
+    expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('');
+    expect(screen.getByPlaceholderText('12345678')).toHaveValue('');
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('keeps the add-garage draft open and reports an unexpected rejected create request', async () => {
+    const createNewGarage = vi.fn().mockRejectedValue(new Error('temporary failure'));
+    const showToast = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderDashboardForGarageCreation(createNewGarage, showToast);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
+    fillAddGarageDraft();
+    submitAddGarageDraft();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('temporary failure', 'error'));
+    expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('Draft Garage');
+    expect(screen.getByPlaceholderText('10')).toHaveValue('25');
+    expect(screen.getByPlaceholderText('50')).toHaveValue('60');
+    expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
+    expect(screen.getByPlaceholderText('12345678')).toHaveValue('12345678');
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('routes pending-garage rejection through shared deletion handling and reports a real failure', async () => {
