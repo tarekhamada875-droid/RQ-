@@ -17,7 +17,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 import { api } from '../../server/api';
 
 describe('CF1 — Cloudflare Worker Deployment Contract', () => {
-  it('verifies wrangler.toml exists and declares production and preproduction environments', () => {
+  it('verifies wrangler.toml declares the active production Worker only', () => {
     const wranglerPath = resolve(process.cwd(), 'wrangler.toml');
     expect(existsSync(wranglerPath)).toBe(true);
 
@@ -25,10 +25,10 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
     expect(content).toContain('name = "rq"');
     expect(content).toContain('main = "server/cloudflareWorker.ts"');
     expect(content).toContain('compatibility_flags = ["nodejs_compat", "allow_eval_during_startup"]');
-    expect(content).toContain('[env.preproduction]');
-    expect(content).toContain('name = "rq-backend-pre"');
     expect(content).toContain('FIREBASE_PROJECT_ID');
     expect(content).toContain('FIREBASE_DATABASE_ID');
+    expect(content).not.toContain('[env.preproduction]');
+    expect(content).not.toContain('rq-backend-pre');
   });
 
   it('serves GET /api/health with operational JSON response from worker', async () => {

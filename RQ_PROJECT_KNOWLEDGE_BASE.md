@@ -100,7 +100,7 @@ The repository has completed and published repairs covering:
 - repository dependency/dead-code cleanup;
 - removal of the obsolete `public/egypt_crest.svg` asset;
 - alignment of the configurable monthly-subscriber fee fallback;
-- restoration of Firestore-backed cross-instance PIN rate limiting after a review caught a memory-only regression;
+- production PIN-attempt throttling through the Cloudflare Durable Object; a separate unreferenced Firestore/IP limiter was removed during the 2026-10-15 repository noise audit;
 - mandatory active server-session validation for Admin, Delegate, Garage, and Staff Worker routes, plus role-scoped session lookups (PR #35, deployed at `e53b2cb`);
 - owner-scoped Firestore staff/garage rules and the actual-rules emulator matrix (PR #37, `2f3a61c`); after explicit owner approval, the exact `main:firestore.rules` source was published on 2026-10-14 to Firebase project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`. A fresh Console reload matched SHA-256 `8404b6a6cd833deaa4192e164a43cf2f2916e38840ce52fbce650feac4634d24` and showed no unpublished draft. No Firestore documents were changed; this applies only to that exact Firebase target;
 - delete/refund idempotency protection (F1, PR #40, merged at `c7d452c`): retries are fingerprinted by garage, vehicle, semantic operation, and normalized amount; a mismatched key reuse now returns a clear conflict instead of being mistaken for success;
@@ -108,7 +108,7 @@ The repository has completed and published repairs covering:
 
 ## 7. Workstream and environment boundaries
 
-The Hono backend transition and owner-authorized Express-runtime removal are complete; no backend migration workstream is active. The JARVIS file named above is the sole active modernization roadmap. Branch previews are not a supported test environment; use local, unit, and emulator tests unless the owner explicitly authorizes a verified alternative. A successful code deployment is not, by itself, approval to launch to real users or operate on real financial/customer data.
+The Hono backend transition and owner-authorized Express-runtime removal are complete; no backend migration workstream is active. The JARVIS file named above is the sole active modernization roadmap. Branch previews are not a supported test environment; use local, unit, and emulator tests unless the owner explicitly authorizes a verified alternative. The frontend still imports `firebase-applet-preview-config.json` for an explicit, isolated build-time target; that does not make preview deployments supported, and the preview target must not be enabled on deployed Pages without an owner decision. A successful code deployment is not, by itself, approval to launch to real users or operate on real financial/customer data.
 
 ## 8. Repository map
 
@@ -122,7 +122,7 @@ The Hono backend transition and owner-authorized Express-runtime removal are com
 - `server/domain/`: pure backend decision modules.
 - `tools/`: CI, maintainability, benchmark, and release-smoke tools.
 - `.github/workflows/`: GitHub Production Gate.
-- `wrangler.toml`: active Worker deployment contract. The former generic Docker/Node production path is removed in this maintenance change.
+- `wrangler.toml`: active production Worker deployment contract. The `.dockerignore` file was retired as residue; no Docker deployment path is supported.
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`: Firebase configuration.
 
 ## 9. Documentation and cleanup policy

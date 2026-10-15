@@ -270,66 +270,6 @@ export async function migratePinToHash(collName: string, docId: string, cleanInp
   }
 }
 
-// Firestore-Backed Rate Limiter (safe across multiple Cloud Run instances)
-const RATE_LIMIT_WINDOW_MS = 60000;
-const RATE_LIMIT_MAX_ATTEMPTS = 20;
-
-// In-memory LRU fallback when adminDb is unavailable
-const memoryFallback = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimitInMemory(ip: string): boolean {
-  const now = Date.now();
-  const entry = memoryFallback.get(ip);
-  if (!entry || now > entry.resetAt) {
-    memoryFallback.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
-  entry.count += 1;
-  return true;
-}
-
-export async function checkRateLimit(ip: string): Promise<boolean> {
-  if (!adminDb) return checkRateLimitInMemory(ip);
-
-  const docId = crypto.createHash('sha256').update(ip).digest('hex');
-  const ref = adminDb.doc(`rate_limits/${docId}`);
-
-  try {
-    return await adminDb.runTransaction(async (t: any) => {
-      const snap = await t.get(ref);
-      const now = Date.now();
-      const data = snap.exists ? snap.data() || {} : null;
-
-      if (!data || now > data.resetAt) {
-        t.set(ref, {
-          count: 1,
-          resetAt: now + RATE_LIMIT_WINDOW_MS,
-          expiresAt: new Date(now + RATE_LIMIT_WINDOW_MS)
-        });
-        return true;
-      }
-      if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) return false;
-      t.update(ref, { count: data.count + 1 });
-      return true;
-    });
-  } catch (e) {
-    console.error('[Server Auth] Rate limit transaction failed, failing closed to in-memory:', e);
-    return checkRateLimitInMemory(ip);
-  }
-}
-
-export async function resetRateLimit(ip: string): Promise<void> {
-  memoryFallback.delete(ip);
-  if (!adminDb) return;
-  const docId = crypto.createHash('sha256').update(ip).digest('hex');
-  try {
-    await adminDb.doc(`rate_limits/${docId}`).delete();
-  } catch (e) {
-    console.error('[Server Auth] Failed to reset Firestore rate limit doc:', e);
-  }
-}
-
 // Server Database Access Abstractions
 export async function getAdminPin(): Promise<string> {
   try {

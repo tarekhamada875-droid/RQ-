@@ -15,16 +15,6 @@ describe('apiClient getApiUrl resolution', () => {
     expect(getApiUrl('/static/image.png')).toBe('/static/image.png');
   });
 
-  it('returns relative path when running on Cloud Run (.run.app)', () => {
-    Object.defineProperty(window, 'location', {
-      value: {
-        hostname: 'ais-pre-tvpplsstum3g4ltmsfbc4w-580506195065.europe-west2.run.app',
-      },
-      writable: true,
-    });
-    expect(getApiUrl('/api/auth/verify-pin')).toBe('/api/auth/verify-pin');
-  });
-
   it('returns relative path when running on localhost', () => {
     Object.defineProperty(window, 'location', {
       value: {
