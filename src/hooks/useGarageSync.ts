@@ -16,6 +16,7 @@ interface UseGarageSyncProps {
   setSelectedGarageForDetails: (g: Garage | null) => void;
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   setTodayTransactions: React.Dispatch<React.SetStateAction<Vehicle[]>>;
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   garageRef: React.MutableRefObject<Garage | null>;
   lastHealTimeRef: React.MutableRefObject<{ cars?: number; revenue?: number }>;
 }
@@ -33,6 +34,7 @@ export function useGarageSync({
   setSelectedGarageForDetails,
   setVehicles,
   setTodayTransactions,
+  showToast,
   garageRef,
   lastHealTimeRef,
 }: UseGarageSyncProps) {
@@ -99,11 +101,15 @@ export function useGarageSync({
     if (!isSessionReady || !garage?.id) {
       return;
     }
-    const unsub = firestoreService.subscribeToTodayTransactions(garage.id, (completedTransactions) => {
+    const unsub = firestoreService.subscribeToTodayTransactions(garage.id, (completedTransactions, error) => {
+      if (error) {
+        showToast?.('تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.', 'error');
+        return;
+      }
       setTodayTransactions(completedTransactions);
     });
     return () => unsub();
-  }, [isSessionReady, garage?.id, setTodayTransactions]);
+  }, [isSessionReady, garage?.id, setTodayTransactions, showToast]);
 
   const loadGarageData = useCallback(async (garageId: string) => {
     try {

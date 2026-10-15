@@ -222,6 +222,7 @@ export function useGarageApp() {
     setSelectedGarageForDetails,
     setVehicles,
     setTodayTransactions,
+    showToast,
     garageRef,
     lastHealTimeRef,
   });
