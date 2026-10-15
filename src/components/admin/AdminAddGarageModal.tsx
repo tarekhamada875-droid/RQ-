@@ -152,9 +152,10 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               className="space-y-6"
             >
               <div className="space-y-2 text-center">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('اسم الجراج')}</label>
+                <label htmlFor="admin-add-garage-name" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('اسم الجراج')}</label>
                 <input
                   name="name"
+                  id="admin-add-garage-name"
                   placeholder={t('اسم الجراج...')}
                   value={localForm.name}
                   onChange={(e) => setLocalForm(prev => ({ ...prev, name: e.target.value }))}
@@ -165,10 +166,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 text-center">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر الساعة')}</label>
+                  <label htmlFor="admin-add-garage-hourly-rate" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر الساعة')}</label>
                   <div className="relative">
                     <input
                       name="hourlyRate"
+                      id="admin-add-garage-hourly-rate"
                       type="text"
                       inputMode="numeric"
                       placeholder="10"
@@ -183,10 +185,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   </div>
                 </div>
                 <div className="space-y-2 text-center">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر المبيت')}</label>
+                  <label htmlFor="admin-add-garage-overnight-rate" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-black">{t('سعر المبيت')}</label>
                   <div className="relative">
                     <input
                       name="overnightRate"
+                      id="admin-add-garage-overnight-rate"
                       type="text"
                       inputMode="numeric"
                       placeholder="50"
@@ -215,7 +218,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 }`}
               >
                 <div className="text-right space-y-0.5 flex-1 min-w-0 pr-2">
-                  <span className={`text-xs sm:text-sm font-bold block truncate transition-colors ${
+                  <span id="admin-trial-label" className={`text-xs sm:text-sm font-bold block truncate transition-colors ${
                     localForm.isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
                   }`}>
                     {t('تفعيل فترة تجريبية مجانية')} ({trialDays} {t('يوم')})
@@ -247,6 +250,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     type="button"
                     role="switch"
                     aria-checked={localForm.isTrial}
+                    aria-labelledby="admin-trial-label"
                     onClick={() => setLocalForm(prev => ({ ...prev, isTrial: !prev.isTrial }))}
                     className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out relative focus:outline-none flex items-center p-0.5 ${
                       localForm.isTrial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
@@ -263,9 +267,10 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رقم الموبايل (اختياري)')}</label>
+                   <label htmlFor="admin-add-garage-phone" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رقم الموبايل (اختياري)')}</label>
                   <input
                     name="phone"
+                    id="admin-add-garage-phone"
                     placeholder="01xxxxxxxxx"
                     value={localForm.phone}
                     onChange={(e) => {
@@ -277,10 +282,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رمز الدخول')}</label>
+                  <label htmlFor="admin-add-garage-pin" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">{t('رمز الدخول')}</label>
                   <div className="relative">
                     <input
                       name="pin"
+                      id="admin-add-garage-pin"
                       type="tel"
                       inputMode="numeric"
                       value={localPin}
@@ -315,11 +321,12 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
               {/* الجراج المُرشِّح (اختياري) */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">
+                <label htmlFor="admin-add-garage-referrer" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mr-2 uppercase tracking-widest text-center block font-black">
                   {t('الجراج المُرشِّح / تمت الإحالة بواسطة (اختياري)')}
                 </label>
                 <select
                   name="referredByGarageId"
+                  id="admin-add-garage-referrer"
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-slate-900 dark:focus:border-emerald-500 text-center transition-all"
                   dir="rtl"
                 >

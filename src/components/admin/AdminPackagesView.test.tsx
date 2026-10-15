@@ -114,4 +114,21 @@ describe('AdminPackagesView package creation', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
   });
+
+  it('associates every package creation control with its visible label', () => {
+    const { container } = render(<AdminPackagesView {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة باقة جديدة' }));
+
+    const controls = [
+      screen.getByRole('textbox', { name: /اسم خطة الاشتراك/ }),
+      screen.getByRole('textbox', { name: /سعر الاشتراك الدوري/ }),
+      screen.getByRole('combobox', { name: /مدة الاشتراك/ }),
+      screen.getByRole('combobox', { name: /السعة اليومية/ }),
+      screen.getByRole('combobox', { name: /نسبة الخصم التشجيعي/ }),
+    ];
+
+    expect(container.querySelectorAll('label[for^="admin-package-"]')).toHaveLength(5);
+    expect(controls).toHaveLength(5);
+    controls.forEach((control) => expect(control).toHaveAccessibleName());
+  });
 });

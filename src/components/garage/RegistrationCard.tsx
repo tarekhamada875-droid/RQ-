@@ -124,9 +124,14 @@ export const RegistrationCard = memo(({
             )}
             
             <div className="relative h-28 sm:h-36 md:h-52 lg:h-60 overflow-hidden" onClick={() => { setIsInputFocused(true); plateInputRef.current?.focus(); }}>
+              <span id="registration-plate-input-description" className="sr-only">
+                استخدم لوحة المفاتيح الظاهرة لإدخال أحرف وأرقام اللوحة المصرية.
+              </span>
               <input 
                 ref={plateInputRef}
                 type="text" 
+                aria-label="رقم لوحة السيارة"
+                aria-describedby="registration-plate-input-description"
                 inputMode="none"
                 autoComplete="off"
                 autoCorrect="off"

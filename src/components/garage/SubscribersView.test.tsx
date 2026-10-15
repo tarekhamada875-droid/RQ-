@@ -84,4 +84,18 @@ describe('SubscribersView pagination', () => {
     await waitFor(() => expect(screen.getByText('Older Subscriber Search Target')).toBeTruthy());
     expect(screen.queryByRole('button', { name: 'تحميل 50 مشتركاً أقدم' })).toBeNull();
   });
+
+  it('gives subscriber search an accessible label', () => {
+    const garage = {
+      id: 'garage-subscriber-search-label-test',
+      name: 'Test Garage',
+      status: 'approved',
+      balanceExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    } as any;
+
+    render(<SubscribersView garage={garage} onClose={vi.fn()} showToast={vi.fn()} />);
+
+    const search = screen.getByRole('textbox', { name: 'البحث عن مشترك باللوحة أو الاسم أو رقم الهاتف' });
+    expect(search).toHaveAccessibleName('البحث عن مشترك باللوحة أو الاسم أو رقم الهاتف');
+  });
 });
