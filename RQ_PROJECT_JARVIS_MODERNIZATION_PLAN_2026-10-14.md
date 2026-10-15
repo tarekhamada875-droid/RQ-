@@ -206,6 +206,10 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Low—stale labels; colocate label with callback and revert wrapper application without changing callbacks.
 - **Effort:** S.
 
+- **Implementation status (2026-10-15):** Implemented in [PR #59](https://github.com/tarekhamada875-droid/RQ-/pull/59) at `9c0010e`; PR is open with checks pending and is not merged or deployed. The shared typed `IconButton` requires an accessible name and supports optional visually-hidden text. Checkout left/right actions now have distinct names; menu/close, active-list close, subscriber edit/delete, and garage/PIN controls are named without changing callbacks or visual behavior.
+- **Verification:** Focused UI tests passed (6 files / 11 tests). `npm run ci:check` passed (118 test files / 777 tests, TypeScript, and Pages/Worker production builds); `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed. Tests assert non-empty button names in the cited flows and that subscriber deletion is not executed by the accessibility selection test.
+- **Release boundary:** No Firestore data, rules, or production configuration changed. Wait for PR checks, then follow the normal merge/deployment verification before marking UI-004 live.
+
 #### UI-005 — Consolidate duplicate garage listeners
 
 - **Source:** `src/components/garage/GarageDashboardView.tsx:147-231,240-256`; `src/components/garage/RechargeHistoryView.tsx:21-52`; `src/components/garage/SubscribersView.tsx:164-187`; `src/components/garage/GarageDashboardOverlays.tsx:72-77`.

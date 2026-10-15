@@ -6,6 +6,7 @@
 import React, { memo } from 'react';
 import { Car, X as XIcon } from 'lucide-react';
 import { VehicleItem } from '../VehicleItem';
+import { IconButton } from '../../ui/IconButton';
 
 interface GarageActiveVehiclesListProps {
   vehicles: any[];
@@ -46,12 +47,14 @@ export const GarageActiveVehiclesList = memo(({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <IconButton
+            type="button"
             onClick={onClose}
+            aria-label="إغلاق قائمة السيارات النشطة"
             className="w-8 h-8 md:w-11 md:h-11 bg-red-500 dark:bg-red-600 text-white rounded-xl flex shrink-0 items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none shadow-sm"
           >
             <XIcon className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
+          </IconButton>
         </div>
       </div>
 

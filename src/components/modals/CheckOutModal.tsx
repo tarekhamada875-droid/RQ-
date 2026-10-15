@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { AlertTriangle, LogOut } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { Spinner } from '../ui/Spinner';
+import { IconButton } from '../ui/IconButton';
 import { safeDate, calculateCost, formatEntryTimeParts } from '../../utils';
 import { Vehicle, Garage, Staff } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -172,13 +173,15 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     transition={{ duration: 0 }}
                     className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 left-3 sm:left-6 md:left-8 lg:left-12 xl:left-16 pointer-events-auto"
                   >
-                    <button 
+                    <IconButton
+                      type="button"
                       onClick={() => handleButtonClick('left')}
                       disabled={isLoading}
+                      aria-label="بدء تأكيد خروج السيارة من الجانب الأيسر"
                       className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rotate-180 stroke-[3] text-white" />
-                    </button>
+                    </IconButton>
                   </motion.div>
                 )}
                 
@@ -191,13 +194,15 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     transition={{ duration: 0 }}
                     className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 right-3 sm:right-6 md:right-8 lg:right-12 xl:right-16 pointer-events-auto"
                   >
-                    <button 
+                    <IconButton
+                      type="button"
                       onClick={() => handleButtonClick('right')}
                       disabled={isLoading}
+                      aria-label="بدء تأكيد خروج السيارة من الجانب الأيمن"
                       className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 stroke-[3] text-white" />
-                    </button>
+                    </IconButton>
                   </motion.div>
                 )}
               </>
@@ -210,9 +215,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   transition={{ duration: 0 }}
                   className="snake-border-wrapper w-60 h-28 sm:w-96 sm:h-52 rounded-2xl sm:rounded-2xl p-[6px] pointer-events-auto shadow-xl"
                 >
-                  <button 
+                  <IconButton
+                    type="button"
                     onClick={handleGuardedConfirm}
                     disabled={isLoading || isConfirming}
+                    aria-label={`تأكيد خروج السيارة ${selectedVehicle.plateNumber}`}
                     className="relative w-full h-full rounded-[2.1rem] sm:rounded-[2.4rem] bg-slate-950 dark:bg-red-500 flex flex-col items-center justify-center z-10 outline-none transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loadingType === 'checkout' || isConfirming ? (
@@ -220,7 +227,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     ) : (
                       <LogOut className="w-12 h-12 sm:w-24 sm:h-24 -rotate-90 stroke-[4] text-white" />
                     )}
-                  </button>
+                  </IconButton>
                 </motion.div>
               </div>
             )}

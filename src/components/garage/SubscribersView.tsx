@@ -7,6 +7,7 @@ import { Subscriber, Garage } from '../../types';
 import { getCleanPlate, getRawPlate, normalizeArabicSearch, isSubscriptionExpired as checkSubscriptionExpired, safeDate } from '../../utils';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { SubscriberModals } from './SubscriberModals';
+import { IconButton } from '../ui/IconButton';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 
 const parseDateKey = (dateKey: string | any): Date => {
@@ -576,21 +577,25 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
                            <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
                            <span>تجديد الاشتراك</span>
                          </button>
-                         <button 
+                         <IconButton
+                           type="button"
                            onClick={() => handleOpenEdit(subscriber)} 
+                           aria-label={`تعديل بيانات المشترك ${subscriber.ownerName || subscriber.plateNumber || subscriber.phone}`}
                            title="تعديل البيانات"
                            className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-colors outline-none h-8 w-8 justify-center"
                          >
                             <Edit className="w-4 h-4" />
-                         </button>
-                         <button 
+                         </IconButton>
+                         <IconButton
+                           type="button"
                            onClick={() => handleDelete(subscriber.id)} 
+                           aria-label={`حذف اشتراك ${subscriber.ownerName || subscriber.plateNumber || subscriber.phone}`}
                            title="حذف نهائياً"
                            className="px-2.5 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors outline-none h-8"
                          >
                             <Trash2 className="w-4 h-4" />
                             <span className="hidden sm:inline">حذف نهائياً</span>
-                         </button>
+                         </IconButton>
                       </div>
                     </div>
                   </div>

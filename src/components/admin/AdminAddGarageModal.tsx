@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Garage } from '../../types';
 import { Spinner } from '../ui/Spinner';
+import { IconButton } from '../ui/IconButton';
 import { generateSafePin, normalizeDigits } from '../../utils';
 
 interface AdminAddGarageModalProps {
@@ -102,13 +103,14 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">{t('تسجيل جراج جديد وتحديد التعريفة')}</span>
             </div>
           </h3>
-          <button
+          <IconButton
             type="button"
             onClick={onClose}
+            aria-label={t('إغلاق')}
             className="w-10 h-10 bg-red-500 dark:bg-red-600 text-white rounded-xl flex shrink-0 items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none cursor-pointer"
           >
             <X className="w-6 h-6" />
-          </button>
+          </IconButton>
         </div>
 
         <div className="p-5 sm:p-8 max-h-[80vh] max-h-[80dvh] overflow-y-auto custom-scrollbar-slate">
@@ -303,18 +305,19 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                       className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.5em] text-center transition-all pl-14"
                       dir="ltr"
                     />
-                    <button
+                    <IconButton
                       type="button"
                       onClick={() => {
                         const newPin = generateSafePin(allGarages.map(g => g.pin));
                         setLocalPin(newPin);
                         setPinInput(newPin);
                       }}
+                      aria-label={t('توليد رقم سري عشوائي')}
                       className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                       title={t('توليد رقم سري عشوائي')}
                     >
                       <RefreshCw className="w-5 h-5 mx-auto" strokeWidth={2} />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               </div>
