@@ -67,6 +67,8 @@ const workerApp = new Hono<{
     FIREBASE_DATABASE_ID?: string;
     ALLOWED_ORIGINS?: string;
     BACKEND_OPERATOR_TOKEN?: string;
+    SPIKE_DIAGNOSTIC_TOKEN?: string;
+    SPIKE_ENVIRONMENT_ALLOWLIST?: string;
     WORKER_VERSION?: string;
     PIN_RATE_LIMITER?: PinRateLimiterNamespace;
   };
@@ -431,6 +433,46 @@ async function requireWorkerAuth(
   } catch (err: any) {
     return c.json({ success: false, error: 'INVALID_TOKEN', message: err?.message || 'Token verification failed' }, 401);
   }
+}
+
+const SPIKE_DIAGNOSTIC_HEADER = 'x-rq-diagnostic-token';
+const SPIKE_WRITE_MAX_BODY_BYTES = 2048;
+const SPIKE_WRITE_MAX_PAYLOAD_LENGTH = 512;
+const SPIKE_MIN_DIAGNOSTIC_TOKEN_LENGTH = 32;
+
+function constantTimeStringEquals(actual: string, expected: string): boolean {
+  let difference = actual.length ^ expected.length;
+  const length = Math.max(actual.length, expected.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (actual.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
+
+function authorizeSpikeEndpoint(c: any): Response | null {
+  const environment = String(c.env?.ENVIRONMENT ?? '').trim().toLowerCase();
+  if (environment === 'production') {
+    return c.json({ success: false, error: 'SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION' }, 403);
+  }
+
+  const allowedEnvironments = String(c.env?.SPIKE_ENVIRONMENT_ALLOWLIST ?? '')
+    .split(',')
+    .map((value: string) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const expectedToken = String(c.env?.SPIKE_DIAGNOSTIC_TOKEN ?? '');
+  if (!environment || !allowedEnvironments.includes(environment) || expectedToken.length < SPIKE_MIN_DIAGNOSTIC_TOKEN_LENGTH) {
+    return c.json({ success: false, error: 'SPIKE_ENDPOINT_DISABLED' }, 403);
+  }
+
+  const suppliedToken = String(c.req.header(SPIKE_DIAGNOSTIC_HEADER) ?? '').trim();
+  if (!suppliedToken) {
+    return c.json({ success: false, error: 'DIAGNOSTIC_CREDENTIAL_REQUIRED' }, 401);
+  }
+  if (!constantTimeStringEquals(suppliedToken, expectedToken)) {
+    return c.json({ success: false, error: 'DIAGNOSTIC_CREDENTIAL_INVALID' }, 403);
+  }
+
+  return null;
 }
 
 // 5. Foundation Routes (Directly wired in Worker)
@@ -1027,9 +1069,14 @@ workerApp.delete('/api/auth/sessions/:sessionKey', async (c) => {
   }
 });
 
-// Foundation Route: GET /api/system-config
-workerApp.get('/api/system-config', async (c) => {
+// Private full-config route; browser Firestore reads remain governed by firestore.rules.
+workerApp.get('/api/system-config', requireWorkerAuth, async (c) => {
   try {
+    const user = c.get('user') as WorkerUser | undefined;
+    if (!user || !['admin', 'garage', 'staff', 'delegate'].includes(user.role)) {
+      return c.json({ success: false, error: 'FORBIDDEN' }, 403);
+    }
+
     if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
@@ -4842,15 +4889,13 @@ workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
 
 // CF2 Runtime Compatibility Spike Endpoints (Pre-production only, disabled in production)
 workerApp.post('/api/test-auth-verify', async (c) => {
-  const env = c.env?.ENVIRONMENT || process.env.NODE_ENV || 'production';
-  if (env === 'production') {
-    return c.json({ success: false, error: 'SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION' }, 403);
-  }
+  const authorizationFailure = authorizeSpikeEndpoint(c);
+  if (authorizationFailure) return authorizationFailure;
 
   const authHeader = c.req.header('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   if (!token) {
-    return c.json({ success: false, error: 'TOKEN_REQUIRED' }, 400);
+    return c.json({ success: false, error: 'TOKEN_REQUIRED' }, 401);
   }
 
   if (!adminAuth) {
@@ -4877,10 +4922,8 @@ workerApp.post('/api/test-auth-verify', async (c) => {
 });
 
 workerApp.get('/api/test-firestore-read', async (c) => {
-  const env = c.env?.ENVIRONMENT || process.env.NODE_ENV || 'production';
-  if (env === 'production') {
-    return c.json({ success: false, error: 'SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION' }, 403);
-  }
+  const authorizationFailure = authorizeSpikeEndpoint(c);
+  if (authorizationFailure) return authorizationFailure;
 
   if (!adminDb) {
     return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
@@ -4907,17 +4950,40 @@ workerApp.get('/api/test-firestore-read', async (c) => {
 });
 
 workerApp.post('/api/test-firestore-write', async (c) => {
-  const env = c.env?.ENVIRONMENT || process.env.NODE_ENV || 'production';
-  if (env === 'production') {
-    return c.json({ success: false, error: 'SPIKE_ENDPOINT_DISABLED_IN_PRODUCTION' }, 403);
-  }
+  const authorizationFailure = authorizeSpikeEndpoint(c);
+  if (authorizationFailure) return authorizationFailure;
 
   if (!adminDb) {
     return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
   }
 
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const contentLengthHeader = c.req.header('content-length');
+    if (contentLengthHeader !== undefined) {
+      const contentLength = Number(contentLengthHeader);
+      if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+        return c.json({ success: false, error: 'INVALID_CONTENT_LENGTH' }, 400);
+      }
+      if (contentLength > SPIKE_WRITE_MAX_BODY_BYTES) {
+        return c.json({ success: false, error: 'SPIKE_PAYLOAD_TOO_LARGE' }, 413);
+      }
+    }
+
+    const body = await c.req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return c.json({ success: false, error: 'INVALID_SPIKE_PAYLOAD' }, 400);
+    }
+    const serializedBody = JSON.stringify(body);
+    if (new TextEncoder().encode(serializedBody).byteLength > SPIKE_WRITE_MAX_BODY_BYTES) {
+      return c.json({ success: false, error: 'SPIKE_PAYLOAD_TOO_LARGE' }, 413);
+    }
+    const payload = (body as Record<string, unknown>).payload === undefined
+      ? 'synthetic_spike_value'
+      : (body as Record<string, unknown>).payload;
+    if (typeof payload !== 'string' || payload.length > SPIKE_WRITE_MAX_PAYLOAD_LENGTH) {
+      return c.json({ success: false, error: 'INVALID_SPIKE_PAYLOAD' }, 400);
+    }
+
     const testDocId = `spike_${Date.now()}`;
     const testRef = adminDb.collection('_spike_tests').doc(testDocId);
 
@@ -4925,7 +4991,7 @@ workerApp.post('/api/test-firestore-write', async (c) => {
     await adminDb.runTransaction(async (t: any) => {
       t.set(testRef, {
         synthetic: true,
-        testPayload: body?.payload || 'synthetic_spike_value',
+        testPayload: payload,
         createdAt: new Date(),
         runtime: 'cloudflare-worker'
       });

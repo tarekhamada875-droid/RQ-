@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, beforeEach, describe, it, expect } from 'vitest';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 
 const mockDb = new MockFirestore();
@@ -16,6 +16,8 @@ import { api } from '../../server/api';
 installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
+  beforeEach(() => mockDb.clear());
+
   it('1. Verifies correlation ID and operation ID injection in all responses', async () => {
     const res = await api.fetch(new Request('http://localhost/api/health', {
       headers: {
@@ -44,18 +46,69 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(opId?.startsWith('op_')).toBe(true);
   });
 
-  it('3. Serves GET /api/system-config with default fallback or database record', async () => {
+  it('3. Rejects anonymous system-config reads before touching Firestore', async () => {
+    mockDb.seed('system_config/global', { walletNumber: 'private-wallet', syntheticSensitiveField: 'private' });
+    mockDb.resetDocumentCounts();
+
     const res = await api.fetch(new Request('http://localhost/api/system-config'));
+    expect(res.status).toBe(401);
+    expect(mockDb.documentReadCount).toBe(0);
+
+    const body = await res.json() as any;
+    expect(body.success).toBe(false);
+    expect(body.config).toBeUndefined();
+  });
+
+  it('4. Returns full system config to each active signed-in app role', async () => {
+    const privateConfig = {
+      walletNumber: 'private-wallet',
+      monthlySubscribersFlatFee: 250,
+      adminColor: '#123456',
+      syntheticSensitiveField: 'private'
+    };
+    mockDb.seed('system_config/global', privateConfig);
+
+    for (const token of [
+      'valid-admin-token',
+      'valid-garage-token-g1',
+      'valid-staff-token-g1',
+      'valid-delegate-token'
+    ]) {
+      const res = await api.fetch(new Request('http://localhost/api/system-config', {
+        headers: { Authorization: `Bearer ${token}` }
+      }));
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.success).toBe(true);
+      expect(body.config).toEqual({ id: 'global', ...privateConfig });
+    }
+  });
+
+  it('5. Preserves the authenticated default config when the document is missing', async () => {
+    const res = await api.fetch(new Request('http://localhost/api/system-config', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }));
     expect(res.status).toBe(200);
     expect(res.headers.get('x-correlation-id')).toBeDefined();
 
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.config).toBeDefined();
-    expect(body.config.monthlySubscribersFlatFee).toBeDefined();
+    expect(body.config.monthlySubscribersFlatFee).toBe(250);
+    expect(body.config.walletNumber).toBe('');
   });
 
-  it('4. Enforces authentication on POST /api/admin/update-system-config', async () => {
+  it('6. Does not allow the read-only backend operator token to access private system config', async () => {
+    const operatorToken = 'test-operator-token-32-chars-long!!';
+    mockDb.resetDocumentCounts();
+    const res = await api.fetch(new Request('http://localhost/api/system-config', {
+      headers: { 'x-backend-operator-token': operatorToken }
+    }), { BACKEND_OPERATOR_TOKEN: operatorToken });
+
+    expect(res.status).toBe(403);
+    expect(mockDb.documentReadCount).toBe(0);
+  });
+
+  it('7. Enforces authentication on POST /api/admin/update-system-config', async () => {
     // Missing credentials
     const unauthRes = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
@@ -69,7 +122,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(unauthBody.error).toContain('UNAUTHORIZED');
   });
 
-  it('5. Rejects operator token on POST /api/admin/update-system-config but allows valid admin token', async () => {
+  it('8. Rejects operator token on POST /api/admin/update-system-config but allows valid admin token', async () => {
     const operatorToken = 'test-operator-token-32-chars-long!!';
     
     // 1. Should reject operator token on mutations
@@ -101,7 +154,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(adminBody.success).toBe(true);
   });
 
-  it('6. Verifies CORS policy rejects or handles disallowed origins gracefully', async () => {
+  it('9. Verifies CORS policy rejects or handles disallowed origins gracefully', async () => {
     // Allowed origin
     const allowedRes = await api.fetch(new Request('http://localhost/api/health', {
       method: 'OPTIONS',

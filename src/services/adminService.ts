@@ -1,4 +1,4 @@
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { collection, query, where, onSnapshot, doc, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
@@ -701,6 +701,9 @@ export const adminService = {
   },
 
   getSystemConfig: async (): Promise<SystemConfig | null> => {
+    // system_config is private; use local/default bootstrap until Firebase sign-in.
+    if (!auth.currentUser) return null;
+
     try {
       const apiRes = await apiFetch<{ success?: boolean; config?: SystemConfig }>('/api/system-config');
       return apiRes?.success && apiRes.config ? apiRes.config : null;
