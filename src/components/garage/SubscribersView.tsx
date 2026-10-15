@@ -478,7 +478,11 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
         {/* Search */}
         <div className="relative mb-6">
           <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <label htmlFor="subscribers-search" className="sr-only">
+            البحث عن مشترك باللوحة أو الاسم أو رقم الهاتف
+          </label>
           <input
+            id="subscribers-search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

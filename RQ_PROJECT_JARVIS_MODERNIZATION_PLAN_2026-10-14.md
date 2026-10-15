@@ -109,6 +109,8 @@ Implement in this order:
 7. **FS-01 and FS-06:** deploy the missing staff index and remove/contain silent activity-log degradation.
 8. **RULES-02 and SPIKE-01:** project public config fields and close unauthenticated diagnostic surfaces.
 
+**Status (2026-10-15): Phase 1 is complete.** All listed work is merged. UI-002 merged in [PR #48](https://github.com/tarekhamada875-droid/RQ-/pull/48) at `6c5993fb28fd58311e346ab45c8789eebdba896c`; its post-merge Production Gate run `38710169798` and Cloudflare Worker deployment run `38710169831` succeeded.
+
 **Exit gate:** no privileged route succeeds with a stale/missing session; emulator matrix passes; same-key different-operation requests are rejected; malformed monetary events cannot produce non-finite totals; failed forms retain drafts; listener/read-count regression tests pass; required index behavior is explicit.
 
 ### Phase 2 — Accessibility and bounded frontend data flow
@@ -172,11 +174,13 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Direct modal controlled-draft false/true tests; parent handler tests for `createNewGarage` false/true and rejected promise.
 - **Risk / rollback:** Low—avoid clearing in exception paths; revert contract change if success behavior differs.
 - **Effort:** S.
-
-- **Implementation status (2026-10-15):** Implemented in [PR #48](https://github.com/tarekhamada875-droid/RQ-/pull/48), currently open. The modal now clears its local and parent-held draft only when creation returns `true`; the dashboard returns `false` on failure and reports unexpected rejected requests without closing the modal. Regression tests confirm that name, rates, phone, trial choice, and PIN survive false/rejected outcomes, while success closes and clears the form. The PR is not merged or deployed; no Firebase rules or data changed.
+- **Implementation status (2026-10-15):** Merged in [PR #48](https://github.com/tarekhamada875-droid/RQ-/pull/48) at `6c5993fb28fd58311e346ab45c8789eebdba896c` and deployed. The modal clears its local and parent-held draft only when creation returns `true`; failures keep the draft and report unexpected rejections without closing the modal. Regression tests cover false/rejected outcomes and successful close/clear behavior. Post-merge Production Gate run `38710169798` and Cloudflare Worker deployment run `38710169831` succeeded; no Firebase rules or data changed.
 - **Verification:** Local `npm run ci:check` passed (109 test files / 739 tests, TypeScript, and Pages/Worker production build); `npm run test:rules` passed against the local demo emulator; `npm run maintainability:check` and `git diff --check` passed. The focused UI tests and TypeScript check also passed after a final test-type refinement.
 
 #### UI-003 — Add programmatic names to primary form controls
+ - **Source:** `src/components/admin/AdminAddGarageModal.tsx:153-200,263-298`; `src/components/admin/AdminPackagesView.tsx:358-424,426-442`; `src/components/garage/RegistrationCard.tsx:126-153`; `src/components/garage/SubscribersView.tsx:478-487`.
+ - **Simple explanation:** Visible labels are not associated with controls; transparent plate input and subscriber search lack reliable names.
+ - **Implementation design / behavior to keep:** Add unique IDs/`htmlFor` or a small Field wrapper. Add a localized accessible name and description for the transparent plate input; add a visible or visually-hidden search label. Keep custom plate rendering, keyboard, RTL/LTR, and filtering unchanged.
 
 - **Source:** `src/components/admin/AdminAddGarageModal.tsx:153-200,263-298`; `src/components/admin/AdminPackagesView.tsx:358-424,426-442`; `src/components/garage/RegistrationCard.tsx:126-153`; `src/components/garage/SubscribersView.tsx:478-487`.
 - **Simple explanation:** Visible labels are not associated with controls; transparent plate input and subscriber search lack reliable names.
@@ -186,6 +190,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** `getByRole` named-control tests; plate virtual-keyboard update test; subscriber search filtering test.
 - **Risk / rollback:** Low—duplicate IDs/localization errors; keep one ID per control and revert only the association layer if visual behavior changes.
 - **Effort:** S.
+
+- **Implementation status (2026-10-15):** Implemented in [PR #57](https://github.com/tarekhamada875-droid/RQ-/pull/57); the PR is open and not yet merged or deployed. All 11 admin labels now explicitly label their corresponding controls; the trial switch, transparent Arabic plate input, and subscriber search expose meaningful names, with a plate-input description. Existing plate rendering, virtual keyboard, and subscriber filtering are preserved.
+- **Verification:** Testing Library named-role/accessible-name regressions cover all 11 admin fields and the plate/search flows; the plate keyboard update and existing subscriber search filtering remain covered. Focused UI suites passed (4 files / 12 tests). `npm run ci:check` passed (114 test files / 769 tests, TypeScript, and Pages/Worker production builds); `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed.
 
 #### UI-004 — Name icon-only actions
 

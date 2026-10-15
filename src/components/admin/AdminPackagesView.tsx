@@ -359,11 +359,12 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
             <form onSubmit={handleSubmitNewPackage} className="space-y-4">
               {/* Plan Name */}
               <div className="space-y-1">
-                <label className="text-xs font-black text-slate-800 dark:text-slate-200 block">
+                <label htmlFor="admin-package-name" className="text-xs font-black text-slate-800 dark:text-slate-200 block">
                   {t('اسم خطة الاشتراك')} <span className="text-red-500">*</span>
                 </label>
                 <input 
                   name="pkgName" 
+                  id="admin-package-name"
                   placeholder={t('مثال: الباقة الفضية')} 
                   required 
                   className="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-emerald-500 outline-none font-bold text-xs sm:text-sm transition-all" 
@@ -372,11 +373,12 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
 
               {/* Price */}
               <div className="space-y-1">
-                <label className="text-xs font-black text-slate-800 dark:text-slate-200 block">
+                <label htmlFor="admin-package-price" className="text-xs font-black text-slate-800 dark:text-slate-200 block">
                   {t('سعر الاشتراك الدوري (ج.م)')} <span className="text-red-500">*</span>
                 </label>
                 <input 
                   name="pkgPrice" 
+                  id="admin-package-price"
                   type="text" 
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -389,11 +391,12 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
               {/* Duration & Daily Capacity */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-slate-800 dark:text-slate-200 block">
+                  <label htmlFor="admin-package-duration" className="text-xs font-black text-slate-800 dark:text-slate-200 block">
                     {t('مدة الاشتراك (بالأيام)')}
                   </label>
                   <select 
                     name="pkgDurationDays" 
+                    id="admin-package-duration"
                     defaultValue="30"
                     className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold font-mono text-xs outline-none focus:border-emerald-500 cursor-pointer"
                   >
@@ -405,11 +408,12 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-slate-800 dark:text-slate-200 block">
+                  <label htmlFor="admin-package-capacity" className="text-xs font-black text-slate-800 dark:text-slate-200 block">
                     {t('السعة اليومية (سيارة/يوم)')}
                   </label>
                   <select 
                     name="pkgDailyCapacity" 
+                    id="admin-package-capacity"
                     defaultValue=""
                     className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold font-mono text-xs outline-none focus:border-emerald-500 cursor-pointer" 
                     dir="rtl"
@@ -425,12 +429,13 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
 
               {/* Discount */}
               <div className="space-y-1">
-                <label className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <label htmlFor="admin-package-discount" className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{t('نسبة الخصم التشجيعي (%)')}</span>
                 </label>
                 <select 
                   name="pkgDiscountValue"
+                  id="admin-package-discount"
                   className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   <option value="">{t('بدون خصم (0%)')}</option>
