@@ -183,7 +183,7 @@ Never delete a file solely because a static import graph does not find it. Exter
 
 ## 10. Standard validation gate
 
-From `/home/ubuntu/RQ`:
+From the repository root (the directory containing `package.json`):
 
 ```bash
 npm ci
