@@ -126,13 +126,14 @@ export function useGarageSync({
   }, [isAuthReady, user, view]);
 
   // Sync delegate requests
+  const delegateId = delegate?.id;
   useEffect(() => {
-    if (!isAuthReady || !user || !delegate || view !== 'delegate_dashboard') return;
+    if (!isAuthReady || !user || !delegateId || view !== 'delegate_dashboard') return;
 
     let cancelled = false;
     const loadDashboard = async () => {
       try {
-        const data = await firestoreService.getDashboardData(delegate.id);
+        const data = await firestoreService.getDashboardData(delegateId);
         if (cancelled) return;
         setDelegate(data.delegate);
         setAllGarages(data.garages as Garage[]);
@@ -148,7 +149,7 @@ export function useGarageSync({
       cancelled = true;
       window.clearInterval(refresh);
     };
-  }, [isAuthReady, user, delegate, view]);
+  }, [isAuthReady, user, delegateId, view]);
 
   // Sync packages independently (prevents redundant re-subscribing on view changes)
   useEffect(() => {

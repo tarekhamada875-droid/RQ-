@@ -251,6 +251,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Fake timers, fresh delegate objects, ID switch, late response after unmount.
 - **Risk / rollback:** Medium—wrong-account polling if ID handling is wrong. Keep stable-ID guard and revert effect dependency only if cancellation tests fail.
 - **Effort:** S.
+- **Implementation note (2026-10-15):** `useGarageSync` now keys this effect by stable `delegate?.id` rather than the full profile object. Regression tests cover the one-minute five-load ceiling, a same-ID profile refresh, ID-switch timer cleanup, and a late response after unmount.
+- **Local verification:** `npm run ci:check` passed (110 test files / 744 tests, TypeScript, Pages and Worker build); `npm run lint`, `npm run maintainability:check`, `npm run test:rules` against the local demo emulator, and `git diff --check` passed.
 
 #### FE-004 — Reuse first staff-login garage read
 
