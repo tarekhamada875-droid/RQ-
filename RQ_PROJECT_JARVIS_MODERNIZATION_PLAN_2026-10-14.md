@@ -264,6 +264,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Success, pending/rejected, missing-garage tests.
 - **Risk / rollback:** Low—control-flow mistake could bypass status validation. Keep validation before state transition; revert local reuse if status tests fail.
 - **Effort:** S.
+- **Implementation note (2026-10-15):** The first linked-garage snapshot is now reused for the post-auth state update. The pending/rejected guard, garage/staff PIN scrubbing, and missing-document behavior remain intact; regression tests assert one garage read across those paths.
+- **Local verification:** `npm run ci:check` passed (111 test files / 748 tests, TypeScript, Pages and Worker build); `npm run lint`, `npm run maintainability:check`, `npm run test:rules` against the local demo emulator, and `git diff --check` passed.
 
 #### FE-005 — Clean recharge fallback listener
 

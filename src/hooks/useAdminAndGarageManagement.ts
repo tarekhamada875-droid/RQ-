@@ -200,6 +200,7 @@ export function useAdminAndGarageManagement({
         }
       }
 
+      let linkedStaffGarage: Garage | null = null;
       if (role === 'garage' && account) {
         if (account.status === 'pending' || account.status === 'rejected') {
           showToast('عذراً، هذا الحساب قيد المراجعة والإنشاء من قبل الإدارة', 'error');
@@ -210,6 +211,7 @@ export function useAdminAndGarageManagement({
         const gSnap = await getDoc(doc(db, 'garages', account.garageId));
         if (gSnap.exists()) {
           const linkedGarage = { id: gSnap.id, ...gSnap.data() } as Garage;
+          linkedStaffGarage = linkedGarage;
           if (linkedGarage.status === 'pending' || linkedGarage.status === 'rejected') {
             showToast('عذراً، هذا الحساب قيد المراجعة والإنشاء من قبل الإدارة', 'error');
             await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch(() => {});
@@ -236,9 +238,8 @@ export function useAdminAndGarageManagement({
         setDelegate(cleanAccount);
         setView('delegate_dashboard');
       } else if (role === 'staff') {
-        const gSnap = await getDoc(doc(db, 'garages', account.garageId));
-        if (gSnap.exists()) {
-          const gData = { id: gSnap.id, ...gSnap.data() } as Garage;
+        if (linkedStaffGarage) {
+          const gData = { ...linkedStaffGarage };
           if ((gData as any).pin) delete (gData as any).pin;
           setGarage(gData);
         }
