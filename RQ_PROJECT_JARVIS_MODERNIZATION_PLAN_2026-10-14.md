@@ -8,7 +8,7 @@
 **Current delivery status (2026-10-14):** The plan began as a read-only review. After the owner approved autonomous implementation of the roadmap, **AUTH-01** was delivered in PR #35 and deployed to `main` at `e53b2cba40218fc694de2528db71f45791cf629c`. Protected Admin, Delegate, Garage, and Staff Worker requests now require an active server session; session validation checks only the caller's role collection. The local gate passed 105 test files / 645 tests plus production build and maintainability checks; GitHub's production gate, Firestore rules emulator suite, Worker deployment, and live health smoke all passed. Other roadmap items remain open unless a later dated status says otherwise.
 
 
-**Current delivery status (2026-10-15):** **FS-01** is merged in PR #53. **FS-06** is implemented and locally validated in open PR #54; the Firebase Console confirms the production `activity_logs` composite index is Enabled. PR #54 is not merged or deployed, and it changes no Firebase indexes, rules, or documents. Continue the remaining Phase 1 work only after the normal PR review and merge.
+**Current delivery status (2026-10-15):** **FS-01** is merged in PR #53. **FS-06** is merged in PR #54 at `c1296d7aba9958acdd6714e8f161e74b93fcd827` and deployed; its post-merge Production Gate, Worker deployment, and live smoke passed. **RULES-02** and **SPIKE-01** are merged in [PR #55](https://github.com/tarekhamada875-droid/RQ-/pull/55) at `20873e3306d7472621005e4ff20cfcb06e43c9c2`. Production Gate run `38776681656` and Worker deployment/smoke run `38776681671` succeeded. Live read-only smoke returned HTTP 200 for Pages/Worker health/version, 401 for anonymous system-config, and 403 for the production-disabled spike read. No Firebase rules/documents or Cloudflare diagnostic bindings/secrets were changed.
 
 **Firestore rules implementation status (2026-10-14):** **RULES-01** and the scoped **TEST-01** emulator matrix were merged to `main` by PR #37 at `2f3a61c67a8f93395cae9069d2fd2d1e71071808`. Local checks, the main-branch Production Gate, and the post-merge Cloudflare Worker workflow all passed. Staff cannot directly create/delete records or change sensitive fields; owners/Admins retain only validated name/phone edits in direct rules, while role/PIN/garage assignment changes remain on the Worker. Protected garage settings require an active owner or Admin session; staff retain only the narrow heartbeat update. The emulator covers Admin, owner, staff, delegate, sessions, `system_config`, cross-garage denial, and retired Supervisor behavior. On 2026-10-14, after the owner's explicit approval, the exact `main:firestore.rules` source (39,098 bytes; SHA-256 `8404b6a6cd833deaa4192e164a43cf2f2916e38840ce52fbce650feac4634d24`) was published in Firebase Console to project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`. A fresh reload matched that hash and showed no unpublished draft. This deployment changed rules only, not Firestore documents, and applies only to this exact target; do not infer that any other Firebase project/database was updated.
 
@@ -418,7 +418,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 
 #### RULES-02 — Make system-config public projection explicit
 
-- **Source:** `server/cloudflareWorker.ts:1023-1052`; `firestore.rules:609-612`; `src/__tests__/cloudflareWorkerFoundation.test.ts:46-55`.
+- **Source:** `server/cloudflareWorker.ts` (`GET /api/system-config`); `firestore.rules:609-612`; `src/__tests__/cloudflareWorkerFoundation.test.ts`.
 - **Simple explanation:** Public Worker route returns every Admin SDK config field even though Firestore client reads require sign-in.
 - **Implementation design / behavior to keep:** Choose public allowlist for non-sensitive startup fields plus authenticated full endpoint, or make all private. Do not spread full document. Preserve admin-only write route and pre-login bootstrap if public projection chosen.
 - **Expected benefit:** New sensitive config fields do not become public accidentally.
@@ -426,6 +426,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Foundation/public projection, role auth, emulator read tests.
 - **Risk / rollback:** Medium—private cutover can break bootstrap. Prefer allowlist if pre-login config is required.
 - **Effort:** S.
+- **Delivery status (2026-10-15):** The verified UI has no required pre-sign-in config field: admin color uses the existing local/default fallback before login, and payment settings are used after sign-in. The full-config GET now requires an active session and an Admin/Garage/Staff/Delegate app role; anonymous and diagnostic-viewer requests are rejected. The pre-login client skips the private API request while keeping existing defaults; the admin-only write route is unchanged. Worker tests cover anonymous denial before Firestore reads and full config for each app role; actual-rules emulator tests cover anonymous denial and full authenticated reads. Merged in PR #55 at `20873e3` and deployed. No Firestore rules or data were changed.
 
 #### PERF-01 — Canonical session index for repeated role scans
 
@@ -452,7 +453,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 
 #### SPIKE-01 — Gate preproduction diagnostic endpoints
 
-- **Source:** `server/cloudflareWorker.ts:4799-4832,4835-4905`; `src/__tests__/cloudflareWorkerCompatibilitySpike.test.ts:57-103`.
+- **Source:** `server/cloudflareWorker.ts` (diagnostic guard and three `/api/test-*` routes); `src/__tests__/cloudflareWorkerCompatibilitySpike.test.ts`.
 - **Simple explanation:** Non-production environment string is the only gate for Admin SDK-backed test read/write endpoints.
 - **Implementation design / behavior to keep:** Require narrowly scoped operator/diagnostic credential plus explicit environment allowlist; reject mutating calls without both; keep `_spike_tests` isolated and add payload bounds. Never put credential in source.
 - **Expected benefit:** Misconfigured staging cannot become unauthenticated Admin SDK surface.
@@ -460,6 +461,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** All three endpoints, environment matrix, collection isolation.
 - **Risk / rollback:** Low/medium—local spike usability. Use injected test credential and revert endpoint gate only in test harness, not production.
 - **Effort:** S.
+- **Delivery status (2026-10-15):** All three endpoints require a separate `X-RQ-Diagnostic-Token` credential of at least 32 characters and an explicit environment allowlist; production is hard-disabled even if accidentally listed. Firebase ID-token verification remains a separate requirement on the auth-verification route. Diagnostic write bodies are capped at 2 KiB and payload strings at 512 characters; reads/writes stay within `_spike_tests`. No secret or allowlist was added to production configuration, so production endpoints remain disabled. Tests cover allowed/unlisted/missing/production environments, missing/wrong/weak credentials, zero writes on rejection, bounds, and collection isolation. Merged and deployed in PR #55; no Firebase rules or data changed.
 
 ### F. Firestore schema, indexes, adapter, and query design
 
@@ -531,6 +533,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** 1,000 deliberately unordered logs, emulator index test, successful 200-cap test.
 - **Risk / rollback:** Medium—undeployed indexes may surface. Verify/deploy before strict mode.
 - **Effort:** M.
+- **Delivery status (2026-10-15):** Merged in PR #54 at `c1296d7aba9958acdd6714e8f161e74b93fcd827` and deployed. Production Gate run `38772778719`, Worker deployment run `38772778657`, and post-deploy live smoke passed. Firebase Console had confirmed the `activity_logs` composite index Enabled; no index, rules, or documents were changed by the PR.
 
 ### G. Tests, release gates, build scripts
 
