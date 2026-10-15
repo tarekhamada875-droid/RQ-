@@ -116,9 +116,9 @@ Implement in this order:
 ### Phase 2 — Accessibility and bounded frontend data flow
 
 1. **UI-003 and UI-004:** accessible names for form fields and icon-only controls.
-2. **UI-006:** reference-counted body scroll lock.
-3. **FE-001:** one system-config owner, preserving wallet/local-storage guards.
-4. **UI-005:** one garage-scoped listener for dashboard plus overlays.
+2. **UI-005:** one garage-scoped listener for dashboard plus overlays.
+3. **UI-006:** reference-counted body scroll lock.
+4. **FE-001:** one system-config owner, preserving wallet/local-storage guards.
 5. **FE-002:** paged admin garage/delegate lists with explicit totals/search contract.
 
 **Exit gate:** axe/name tests pass, nested overlay locks are safe, config mount has one listener/API fallback, duplicate garage listeners are gone, and admin first-page behavior is bounded without under-reporting totals.
