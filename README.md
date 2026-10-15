@@ -1,10 +1,10 @@
 # RQ
 
-For how the owner wants future agents and contributors to work, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md). For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md). [`RQ_HONO_SHORTENED_MIGRATION_PLAN.md`](./RQ_HONO_SHORTENED_MIGRATION_PLAN.md) is a **closed-workstream record, not an active plan**. The H9 succession handoff and route inventory are historical evidence only; do not resume their old next steps.
+For how the owner wants future agents and contributors to work, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md). For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md). The sole active modernization roadmap is [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md); check its status before starting a task.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-14):** `main` at `e53b2cb` is the production source of truth. PR #35 added mandatory active server-session checks for protected roles, passed CI, and deployed successfully. Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The owner last confirmed the project is using synthetic test data. Express and its old Node/Docker production path have been removed; local development uses a small Node HTTP adapter for Vite and Hono. Branch previews are not an active release environment.
+> **Current status (2026-10-15):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The latest application change, PR #40 (vehicle delete/refund retry safety), is deployed at `c7d452c`; the main Production Gate, live smoke check, and Worker deployment passed. Documentation updates since then include the portable contributor path (PR #42) and the “RQ handoff” continuity trigger (PR #43). The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Express and its old Node/Docker production path have been removed; local development uses a small Node HTTP adapter for Vite and Hono. Branch previews are not an active release environment.
 
 ## Target production architecture
 
@@ -75,7 +75,7 @@ npm test && npm run test:rules && npm run lint && npm run build && npm run maint
 
 ## Cloudflare deployment contract
 
-Hono is the production Worker backend. The H9 plan and succession handoff are closure/history records only. Use the normal branch-and-pull-request flow above; merging to `main` is what starts the guarded Worker release and Pages production publish.
+Hono is the production Worker backend. No Hono migration workstream is active; the JARVIS roadmap is the only active modernization plan. Use the normal branch-and-pull-request flow above; merging to `main` starts the guarded Worker release and Pages production publish.
 
 ## Production smoke checks
 
@@ -111,4 +111,4 @@ src/domain/              Shared business rules and domain logic
 .github/workflows/      GitHub Actions production gate
 ```
 
-For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. The Hono migration plan and succession handoff are closed/history records, not active plans.
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. For the latest verified engineering details, see `MAINTAINABILITY_HANDOFF.md`.
