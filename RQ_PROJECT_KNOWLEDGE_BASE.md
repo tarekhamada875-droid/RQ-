@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-10-15
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Current deployed application code:** `20873e3306d7472621005e4ff20cfcb06e43c9c2` (PR #55); post-merge Production Gate run [#38776681656](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38776681656), Cloudflare Worker deployment/smoke run [#38776681671](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38776681671), and live read-only smoke all succeeded. Live checks returned HTTP 200 for Pages and Worker health/version, HTTP 401 for anonymous system-config, and HTTP 403 for production spike diagnostics. PR #55 changed no Firebase rules/data or production diagnostic bindings; the exact Firebase rules publication is recorded below.
+**Current deployed application code:** `5f238aee60f3da0aab2a58f4ae6c53d529fe8e39` (PR #57). Post-merge Production Gate run [#38781032792](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38781032792) and Cloudflare Worker deployment run [#38781032673](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38781032673) succeeded. Live read-only smoke returned HTTP 200 for Pages and Worker health/version and HTTP 401 for anonymous system-config; deployed UI-003 bundles contain the new form IDs, plate description, and search label. No Firebase data/rules or Cloudflare production configuration changed in PR #57; the exact Firebase rules publication is recorded below.
+
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
@@ -107,6 +108,8 @@ The repository has completed and published repairs covering:
 - staff composite index (FS-01, PR #53): `garageId ASC, createdAt DESC` is deployed and Enabled for the named Firestore database; legacy missing-`createdAt` records are not automatically backfilled;
 - activity-log fallback correctness (FS-06, PR #54, deployed at `c1296d7`): fallback is restricted to missing-index failures, returns deterministic newest-first history with a 200-record cap, preserves Cairo-day filtering, and surfaces genuine failures rather than silently showing an empty list;
 - private system-config API access and fail-closed diagnostics (RULES-02/SPIKE-01, PR #55, deployed at `20873e3`): anonymous system-config access is denied while active app roles retain full config access; diagnostic endpoints require a scoped secret and explicit environment allowlist, with production hard-disabled;
+- add-garage draft preservation (UI-002, PR #48, deployed at `6c5993f`): failed/rejected creation keeps the form draft open for correction or retry; successful creation closes and clears the form;
+- accessible primary form controls (UI-003, PR #57, deployed at `5f238ae`): all 11 add-garage/package controls have programmatic labels, and the plate input and subscriber search have accessible names; the plate field also describes the custom keyboard;
 - the active JARVIS modernization roadmap, owner working agreement, and release documentation.
 
 ## 7. Workstream and environment boundaries
