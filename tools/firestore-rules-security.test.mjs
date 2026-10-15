@@ -95,7 +95,12 @@ try {
     await setDoc(doc(db, 'staff/staff-index-other-garage'), {
       ...staff('Other Garage Indexed Staff', 'g-2'), createdAt: new Date('2026-10-16T12:00:00.000Z')
     });
-    await setDoc(doc(db, 'system_config/safe-config'), { startupNotice: 'synthetic' });
+    await setDoc(doc(db, 'system_config/safe-config'), {
+      startupNotice: 'synthetic',
+      walletNumber: 'synthetic-wallet',
+      monthlySubscribersFlatFee: 250,
+      syntheticSensitiveField: 'private-to-authenticated'
+    });
 
     await setDoc(doc(db, 'garages/g-1/subscribers/sub-1'), {
       id: 'sub-1', ownerName: 'Synthetic Owner', phone: '000', plateNumber: 'ABC123',
@@ -216,10 +221,12 @@ try {
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
 
-  // Any signed-in role can read the intended config projection; only Admin writes it.
-  await assertSucceeds(getDoc(doc(ownerDb, 'system_config/safe-config')));
-  await assertSucceeds(getDoc(doc(staffDb, 'system_config/safe-config')));
-  await assertSucceeds(getDoc(doc(delegateDb, 'system_config/safe-config')));
+  // Any signed-in role can read full private config; anonymous clients cannot.
+  for (const signedInDb of [adminDb, ownerDb, staffDb, delegateDb]) {
+    const config = await assertSucceeds(getDoc(doc(signedInDb, 'system_config/safe-config')));
+    assert.equal(config.data().walletNumber, 'synthetic-wallet');
+    assert.equal(config.data().syntheticSensitiveField, 'private-to-authenticated');
+  }
   await assertFails(getDoc(doc(unauthenticatedDb, 'system_config/safe-config')));
   await assertSucceeds(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
   await assertFails(updateDoc(doc(staffDb, 'system_config/safe-config'), { startupNotice: 'staff-update' }));
