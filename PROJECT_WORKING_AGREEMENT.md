@@ -47,3 +47,19 @@ The production architecture is Cloudflare Pages (the website) → Cloudflare Wor
 ## Continuity across contributors or accounts
 
 No new agent should pretend to be the same person or to remember a private conversation it cannot access. Instead, preserve relevant decisions, verified facts, open questions, and milestone status in these tracked project documents and focused PRs. A future contributor should be able to read them and continue the work in the owner’s preferred style.
+
+### The “RQ handoff” trigger
+
+When Tarek says **“RQ handoff”**, or when an agent expects its available context/session to end soon, prepare a concise, current handoff for the next RQ contributor. Treat the phrase as a request to summarize and preserve continuity—not permission to deploy, merge, change Firebase, or revive a retired workstream.
+
+Before handing off, check the actual repository and GitHub state. Record or report:
+
+- the task and its current status;
+- branch, commit, working-tree state, and any open PR;
+- files or behavior changed, plus checks actually run and their results;
+- unresolved decisions, blockers, and external actions not completed;
+- the single next recommended step, with the roadmap section to read.
+
+Update the tracked roadmap, knowledge base, or maintainer handoff when verified project facts or decisions have changed; do not add speculative status or duplicate unchanged notes. Never include credentials, secrets, or private customer data in the handoff. If context is ending during unfinished work, state exactly what is incomplete and do not imply that it has been committed, merged, or deployed.
+
+This is a new, general RQ continuity practice. The historical **“tokens ending”** wording refers to the archived H9 succession protocol only; that protocol remains closed and must not be restarted.
