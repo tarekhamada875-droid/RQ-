@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-15
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Current deployed application code:** `c7d452c2bc5f354052d986dd58a9db804cc28749` (PR #40); its post-merge Production Gate, live smoke, and Cloudflare Worker deployment all succeeded. PR #40 is the latest application change; the exact Firebase rules publication is recorded below.
+**Current deployed application code:** `20873e3306d7472621005e4ff20cfcb06e43c9c2` (PR #55); post-merge Production Gate run [#38776681656](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38776681656), Cloudflare Worker deployment/smoke run [#38776681671](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38776681671), and live read-only smoke all succeeded. Live checks returned HTTP 200 for Pages and Worker health/version, HTTP 401 for anonymous system-config, and HTTP 403 for production spike diagnostics. PR #55 changed no Firebase rules/data or production diagnostic bindings; the exact Firebase rules publication is recorded below.
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
 ## 1. What RQ is
@@ -104,6 +104,9 @@ The repository has completed and published repairs covering:
 - mandatory active server-session validation for Admin, Delegate, Garage, and Staff Worker routes, plus role-scoped session lookups (PR #35, deployed at `e53b2cb`);
 - owner-scoped Firestore staff/garage rules and the actual-rules emulator matrix (PR #37, `2f3a61c`); after explicit owner approval, the exact `main:firestore.rules` source was published on 2026-10-14 to Firebase project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`. A fresh Console reload matched SHA-256 `8404b6a6cd833deaa4192e164a43cf2f2916e38840ce52fbce650feac4634d24` and showed no unpublished draft. No Firestore documents were changed; this applies only to that exact Firebase target;
 - delete/refund idempotency protection (F1, PR #40, merged at `c7d452c`): retries are fingerprinted by garage, vehicle, semantic operation, and normalized amount; a mismatched key reuse now returns a clear conflict instead of being mistaken for success;
+- staff composite index (FS-01, PR #53): `garageId ASC, createdAt DESC` is deployed and Enabled for the named Firestore database; legacy missing-`createdAt` records are not automatically backfilled;
+- activity-log fallback correctness (FS-06, PR #54, deployed at `c1296d7`): fallback is restricted to missing-index failures, returns deterministic newest-first history with a 200-record cap, preserves Cairo-day filtering, and surfaces genuine failures rather than silently showing an empty list;
+- private system-config API access and fail-closed diagnostics (RULES-02/SPIKE-01, PR #55, deployed at `20873e3`): anonymous system-config access is denied while active app roles retain full config access; diagnostic endpoints require a scoped secret and explicit environment allowlist, with production hard-disabled;
 - the active JARVIS modernization roadmap, owner working agreement, and release documentation.
 
 ## 7. Workstream and environment boundaries
