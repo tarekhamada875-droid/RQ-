@@ -170,6 +170,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Low—avoid clearing in exception paths; revert contract change if success behavior differs.
 - **Effort:** S.
 
+- **Implementation status (2026-10-15):** Implemented in [PR #48](https://github.com/tarekhamada875-droid/RQ-/pull/48), currently open. The modal now clears its local and parent-held draft only when creation returns `true`; the dashboard returns `false` on failure and reports unexpected rejected requests without closing the modal. Regression tests confirm that name, rates, phone, trial choice, and PIN survive false/rejected outcomes, while success closes and clears the form. The PR is not merged or deployed; no Firebase rules or data changed.
+- **Verification:** Local `npm run ci:check` passed (109 test files / 739 tests, TypeScript, and Pages/Worker production build); `npm run test:rules` passed against the local demo emulator; `npm run maintainability:check` and `git diff --check` passed. The focused UI tests and TypeScript check also passed after a final test-type refinement.
+
 #### UI-003 — Add programmatic names to primary form controls
 
 - **Source:** `src/components/admin/AdminAddGarageModal.tsx:153-200,263-298`; `src/components/admin/AdminPackagesView.tsx:358-424,426-442`; `src/components/garage/RegistrationCard.tsx:126-153`; `src/components/garage/SubscribersView.tsx:478-487`.
