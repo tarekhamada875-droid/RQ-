@@ -54,14 +54,14 @@ export const getApiUrl = (endpoint: string): string => {
 
   if (typeof window !== 'undefined' && window.location) {
     const currentHost = (window.location.hostname || '').toLowerCase();
-    if (currentHost.endsWith('.run.app') || currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
       return endpoint;
     }
   }
 
   const rawBaseUrl = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_API_URL || '') : '';
   const customBaseUrl = typeof rawBaseUrl === 'string' ? rawBaseUrl.trim().replace(/\/+$/, '') : '';
-  if (!customBaseUrl || customBaseUrl === 'https://run.app' || customBaseUrl === 'http://run.app') {
+  if (!customBaseUrl) {
     return `${DEFAULT_BACKEND_API_URL}${endpoint}`;
   }
   return `${customBaseUrl}${endpoint}`;
