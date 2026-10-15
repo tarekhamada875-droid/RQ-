@@ -59,8 +59,10 @@ export const DelegateDashboardOverlays = (props: any) => {
   
               <form 
                 onSubmit={async (e) => {
-                  await onCreateGarage(e);
-                  setShowAddGarage(false);
+                  e.preventDefault();
+                  if (await onCreateGarage(e)) {
+                    setShowAddGarage(false);
+                  }
                 }}
                 className="space-y-4 text-right"
               >
