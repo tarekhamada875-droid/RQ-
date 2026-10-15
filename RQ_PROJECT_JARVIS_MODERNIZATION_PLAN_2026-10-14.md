@@ -277,6 +277,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Controllable `onSnapshot` mocks, fallback callback after unmount, tracker count.
 - **Risk / rollback:** Low—double-unsubscribe. Null handles/boolean guard and revert cleanup implementation if normal path count changes.
 - **Effort:** S.
+- **Implementation note (2026-10-15):** The owning subscription now retains primary and fallback unsubscribe handles and closes both plus the tracker idempotently. Late listener emissions are ignored after close; the bounded 100-record fallback query is preserved. Tests cover repeated cleanup and 20 forced index-error open/close cycles.
+- **Local verification:** `npm run ci:check` passed (112 test files / 751 tests, TypeScript, Pages and Worker build); `npm run lint`, `npm run maintainability:check`, `npm run test:rules` against the local demo emulator, and `git diff --check` passed.
 
 ### C. Worker API structure and request performance
 
