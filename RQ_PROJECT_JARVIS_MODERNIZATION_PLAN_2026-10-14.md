@@ -470,6 +470,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Emulator query/index and legacy-document behavior.
 - **Risk / rollback:** Low—index rollout; backfill must precede assumptions.
 - **Effort:** S.
+- **Implementation note (2026-10-15):** Worker-created staff documents include `createdAt`. Legacy staff documents without that field remain excluded by the existing ordered query; the emulator test documents this behavior. No automatic production backfill will be performed, to avoid modifying existing records; any later remediation needs a separately scoped migration.
+- **Local verification:** `npm run ci:check` passed (112 test files / 751 tests, TypeScript, Pages and Worker builds); `npm run lint`, `npm run maintainability:check`, `npm run test:rules` against the local demo emulator, and `git diff --check` passed. The emulator matrix checks the index declaration, garage scoping, descending order, and missing-`createdAt` legacy behavior.
+- **Production deployment (2026-10-15):** Created the matching `staff` index in project `gen-lang-client-0091669619`, named database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`; Firebase Console shows **Enabled** (index ID `CICAgOjXh4EK`). This was index-only; no documents or security rules were changed.
 
 #### FS-02 — Add Worker cursor/page-token support and bound lists
 
