@@ -5,7 +5,9 @@ import { useGarageSync } from './useGarageSync';
 
 const serviceMocks = vi.hoisted(() => ({
   getDashboardData: vi.fn(),
-  subscribeToPackages: vi.fn()
+  subscribeToPackages: vi.fn(),
+  subscribeToActiveVehicles: vi.fn(),
+  subscribeToTodayTransactions: vi.fn()
 }));
 
 vi.mock('../services', () => ({
@@ -23,10 +25,13 @@ const createBaseProps = () => ({
   view: 'delegate_dashboard',
   garage: null,
   setGarage: vi.fn(),
+  delegate: null,
+  setDelegate: vi.fn(),
   selectedGarageForDetails: null,
   setSelectedGarageForDetails: vi.fn(),
   setVehicles: vi.fn(),
   setTodayTransactions: vi.fn(),
+  showToast: vi.fn(),
   garageRef: { current: null },
   lastHealTimeRef: { current: {} }
 });
@@ -41,6 +46,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   serviceMocks.getDashboardData.mockReset();
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
+  serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
+  serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
 });
 
 afterEach(() => {
@@ -138,5 +145,34 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     });
 
     expect(setDelegate).not.toHaveBeenCalled();
+  });
+
+  it('warns when activity history is unavailable and keeps the last displayed records', () => {
+    const previousTransactions = [{ id: 'last-known-transaction' }];
+    const showToast = vi.fn();
+    serviceMocks.subscribeToTodayTransactions.mockImplementation((_garageId: string, callback: (logs: any[], error?: Error) => void) => {
+      callback([], Object.assign(new Error('ACTIVITY_LOGS_UNAVAILABLE'), { code: 'ACTIVITY_LOGS_UNAVAILABLE' }));
+      return () => {};
+    });
+
+    const { result, unmount } = renderHook(() => {
+      const [todayTransactions, setTodayTransactions] = useState(previousTransactions as any[]);
+      useGarageSync({
+        ...createBaseProps(),
+        isSessionReady: true,
+        user: null,
+        garage: { id: 'garage-1' } as any,
+        setTodayTransactions,
+        showToast
+      });
+      return todayTransactions;
+    });
+
+    expect(result.current).toEqual(previousTransactions);
+    expect(showToast).toHaveBeenCalledWith(
+      'تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.',
+      'error'
+    );
+    unmount();
   });
 });

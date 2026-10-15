@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, writeBatch } from 'firebase/firestore';
 
 const firestoreIndexes = JSON.parse(fs.readFileSync(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
 const staffCompositeIndex = firestoreIndexes.indexes.find((index) =>
@@ -11,6 +11,13 @@ assert.deepEqual(staffCompositeIndex?.fields, [
   { fieldPath: 'garageId', order: 'ASCENDING' },
   { fieldPath: 'createdAt', order: 'DESCENDING' }
 ], 'firestore.indexes.json must retain the staff garageId/createdAt composite index');
+const activityLogCompositeIndex = firestoreIndexes.indexes.find((index) =>
+  index.collectionGroup === 'activity_logs' && index.queryScope === 'COLLECTION' && index.fields.length === 2
+);
+assert.deepEqual(activityLogCompositeIndex?.fields, [
+  { fieldPath: 'garageId', order: 'ASCENDING' },
+  { fieldPath: 'timestamp', order: 'DESCENDING' }
+], 'firestore.indexes.json must retain the activity_logs garageId/timestamp composite index');
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',
@@ -99,6 +106,19 @@ try {
       dateId: '2026-10-07', count: 1, limit: 10
     });
 
+    const activityLogBatch = writeBatch(db);
+    for (let index = 0; index < 205; index += 1) {
+      const logId = `activity-index-${String(index).padStart(3, '0')}`;
+      activityLogBatch.set(doc(db, `activity_logs/${logId}`), {
+        garageId: 'g-1',
+        timestamp: new Date(Date.UTC(2026, 9, 15, 12, 0, 0) - index * 60 * 1000),
+        actionType: 'vehicle_exit',
+        staffName: 'Synthetic Staff',
+        plateNumberRaw: `TEST${index}`
+      });
+    }
+    await activityLogBatch.commit();
+
     const orderedStaff = await getDocs(query(
       collection(db, 'staff'),
       where('garageId', '==', 'g-1'),
@@ -119,6 +139,18 @@ try {
   const otherGarageStaffDb = env.authenticatedContext('other-garage-staff-uid').firestore();
   const delegateDb = env.authenticatedContext('delegate-uid').firestore();
   const unauthenticatedDb = env.unauthenticatedContext().firestore();
+
+  const orderedActivityLogs = await getDocs(query(
+    collection(adminDb, 'activity_logs'),
+    where('garageId', '==', 'g-1'),
+    where('timestamp', '>=', new Date('2026-10-15T00:00:00.000Z')),
+    orderBy('timestamp', 'desc'),
+    limit(200)
+  ));
+  assert.equal(orderedActivityLogs.size, 200, 'activity history query must retain its documented 200-record cap');
+  assert.equal(orderedActivityLogs.docs[0].id, 'activity-index-000', 'activity history must return the newest matching record first');
+  assert.equal(orderedActivityLogs.docs[199].id, 'activity-index-199', 'the final record must still be within the newest 200');
+  assert.ok(orderedActivityLogs.docs.every((log) => log.data().garageId === 'g-1'), 'activity history must remain garage-scoped');
 
   // Admin, owner, staff, and delegate access stays scoped to the expected records.
   await assertSucceeds(getDoc(doc(adminDb, 'garages/g-1')));
@@ -235,7 +267,7 @@ try {
     assert.deepEqual((await getDoc(doc(storedDb, 'supervisors/sup-1'))).data(), legacySupervisor);
   });
 
-  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff composite index ordering, protected staff and garage writes, sessions, config, cross-garage denials, and retired Supervisor access.');
+  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff/activity-log composite indexes and ordering, protected staff and garage writes, sessions, config, cross-garage denials, and retired Supervisor access.');
 } finally {
   await env.cleanup();
 }

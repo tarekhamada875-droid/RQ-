@@ -7,12 +7,57 @@ import { listenerTracker } from '../utils/listenerTracker';
 const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.docs
   .map((doc: any) => ({ id: doc.id, ...doc.data() }))
   .filter((log: any) => log.timestamp && getCairoDateKey(safeDate(log.timestamp)) === today)
-  .sort((a: any, b: any) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
+  .sort((a: any, b: any) => {
+    const byTimestamp = safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime();
+    return byTimestamp || String(a.id).localeCompare(String(b.id));
+  })
+  .slice(0, TODAY_ACTIVITY_LOG_LIMIT);
 import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 const TODAY_ACTIVITY_LOG_LIMIT = 200;
+
+type TodayActivityLogSource = 'live' | 'one-shot';
+type TodayActivityLogCallback = (logs: any[], error?: Error) => void;
+
+function isMissingActivityLogIndexError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code.toLowerCase() : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  return (code === 'failed-precondition' && /index/i.test(message)) ||
+    /(?:requires|missing)\s+(?:a\s+|the\s+)?(?:composite\s+)?index/i.test(message);
+}
+
+function makeActivityLogUnavailableError(cause: unknown): Error & { code: string } {
+  return Object.assign(new Error('ACTIVITY_LOGS_UNAVAILABLE', { cause }), {
+    code: 'ACTIVITY_LOGS_UNAVAILABLE'
+  });
+}
+
+function recordActivityLogIndexFallback(source: TodayActivityLogSource, error: unknown): void {
+  const code = error && typeof error === 'object' && 'code' in error
+    ? String((error as { code?: unknown }).code ?? 'unknown')
+    : 'unknown';
+  // Stable, non-sensitive event name makes missing-index fallback occurrences countable.
+  console.warn('[vehicleService] activity_logs_index_fallback', {
+    event: 'activity_logs_index_fallback',
+    source,
+    code
+  });
+}
+
+function recordActivityLogQueryFailure(source: TodayActivityLogSource, error: unknown): void {
+  const code = error && typeof error === 'object' && 'code' in error
+    ? String((error as { code?: unknown }).code ?? 'unknown')
+    : 'unknown';
+  console.error('[vehicleService] activity_logs_query_unavailable', {
+    event: 'activity_logs_query_unavailable',
+    source,
+    code
+  });
+}
 
 function getCairoDateKey(date: Date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -105,25 +150,20 @@ export const vehicleService = {
     };
   },
 
-  subscribeToTodayTransactions: (garageId: string, callback: (logs: any[]) => void) => {
+  subscribeToTodayTransactions: (garageId: string, callback: TodayActivityLogCallback) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/today_transactions`);
     const today = getCairoDateKey();
     const startTime = getCairoDayStartTimestamp();
     const firestoreTimestamp = Timestamp.fromDate(startTime);
+    let isClosed = false;
+    let primaryUnsub: (() => void) | null = null;
+    let fallbackUnsub: (() => void) | null = null;
 
+    const emit = (logs: any[], error?: Error) => {
+      if (!isClosed) callback(logs, error);
+    };
     const handleSnapshot = (snapshot: any) => {
-      const logs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-      const todayLogs = logs.filter((log: any) => {
-        if (!log.timestamp) return false;
-        const d = safeDate(log.timestamp);
-        return getCairoDateKey(d) === today;
-      });
-      todayLogs.sort((a: any, b: any) => {
-        const ta = safeDate(a.timestamp).getTime();
-        const tb = safeDate(b.timestamp).getTime();
-        return tb - ta;
-      });
-      callback(todayLogs);
+      emit(mapTodayTransactions(snapshot, today));
     };
 
     // The UI labels the daily report as a maximum of 200 activity records.
@@ -135,26 +175,41 @@ export const vehicleService = {
       limit(TODAY_ACTIVITY_LOG_LIMIT)
     );
 
-    let activeSubUnsub: (() => void) | null = null;
-    activeSubUnsub = onSnapshot(q, handleSnapshot, (err) => {
-      console.warn('[vehicleService] subscribeToTodayTransactions index fallback:', err);
-      // Fallback query if the composite index is missing; the same visible cap applies.
-      const fallbackQ = query(
-        collection(db, 'activity_logs'),
-        where('garageId', '==', garageId),
-        where('timestamp', '>=', firestoreTimestamp),
-        limit(TODAY_ACTIVITY_LOG_LIMIT)
-      );
-      activeSubUnsub = onSnapshot(fallbackQ, handleSnapshot, (fallbackErr) => {
-        console.error('[vehicleService] subscribeToTodayTransactions error:', fallbackErr);
-        callback([]);
-      });
-    });
-
-    return () => {
-      if (activeSubUnsub) activeSubUnsub();
+    const unsubscribe = () => {
+      if (isClosed) return;
+      isClosed = true;
+      primaryUnsub?.();
+      fallbackUnsub?.();
       trackerUnsub();
     };
+
+    const startFallback = (indexError: unknown) => {
+      recordActivityLogIndexFallback('live', indexError);
+      // This compatibility query deliberately reads all logs for this garage so
+      // local Cairo-day filtering can select the true newest 200 without the index.
+      // Keep the declared composite index deployed to avoid this higher-read path.
+      const fallbackQ = query(
+        collection(db, 'activity_logs'),
+        where('garageId', '==', garageId)
+      );
+      fallbackUnsub = onSnapshot(fallbackQ, handleSnapshot, (fallbackError) => {
+        if (isClosed) return;
+        recordActivityLogQueryFailure('live', fallbackError);
+        emit([], makeActivityLogUnavailableError(fallbackError));
+      });
+    };
+
+    primaryUnsub = onSnapshot(q, handleSnapshot, (error) => {
+      if (isClosed) return;
+      if (isMissingActivityLogIndexError(error)) {
+        startFallback(error);
+        return;
+      }
+      recordActivityLogQueryFailure('live', error);
+      emit([], makeActivityLogUnavailableError(error));
+    });
+
+    return unsubscribe;
   },
 
   getVehiclesByPlateOnce: async (garageId: string, plateNumberRaw: string): Promise<Vehicle[]> => {
@@ -181,15 +236,24 @@ export const vehicleService = {
         limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       return mapTodayTransactions(await getDocs(q), today);
-    } catch (err) {
-      console.warn('[vehicleService] getTodayTransactionsOnce fallback:', err);
+    } catch (primaryError) {
+      if (!isMissingActivityLogIndexError(primaryError)) {
+        recordActivityLogQueryFailure('one-shot', primaryError);
+        throw makeActivityLogUnavailableError(primaryError);
+      }
+      recordActivityLogIndexFallback('one-shot', primaryError);
+      // Match the live fallback: never cap an unordered Firestore result before
+      // sorting, or it may omit the newest records entirely.
       const fallbackQ = query(
         collection(db, 'activity_logs'),
-        where('garageId', '==', garageId),
-        where('timestamp', '>=', firestoreTimestamp),
-        limit(TODAY_ACTIVITY_LOG_LIMIT)
+        where('garageId', '==', garageId)
       );
-      return mapTodayTransactions(await getDocs(fallbackQ), today);
+      try {
+        return mapTodayTransactions(await getDocs(fallbackQ), today);
+      } catch (fallbackError) {
+        recordActivityLogQueryFailure('one-shot', fallbackError);
+        throw makeActivityLogUnavailableError(fallbackError);
+      }
     }
   }
 };
