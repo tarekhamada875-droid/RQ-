@@ -24,10 +24,9 @@ The product is working, but several parts are harder and more expensive to chang
 
 This plan sequences the safest correctness and security fixes first, then measures and reduces Firebase reads/writes, then performs incremental decomposition. **No 10x, 50x, or other large speed/cost claim is made without the benchmarks specified below.**
 
-> **Out of scope:** the existing seven-day subscription feature is already on `main` from PR #34. It is not a modernization task here.
+> **Current billing-model direction (owner-approved 2026-10-16):** Replace time-based RQ garage-access plans, including the existing seven-day feature from PR #34, with manually granted, non-expiring prepaid entry credits. Keep the current implementation only until a separately tested and approved cutover; do not retain two competing RQ billing models as the end state. This does **not** replace the date-based monthly subscriptions that garages sell to their own parking customers. This roadmap update records the direction only; it does not change application code or data.
 
 ## 2. Review boundary and original read-only review status
-
 ### Boundary
 
 The synthesis covers exactly these eight review areas:
@@ -92,10 +91,9 @@ The acceptance criteria below therefore use count, parity, correctness, and boun
 - Capture the 87 method/path route inventory, response envelopes, TypeScript/build status, bounded Worker tests, Firestore rule test status, and current CI runner-minute/read-count baselines.
 - Add read-count/latency instrumentation or deterministic mocks for session resolution, summaries, subscriber lookup, system config, and the listed admin collections. Do not change behavior in the instrumentation PR.
 - Add an explicit PR rule: one finding or one tightly coupled acceptance gate per PR; no simultaneous Worker extraction + service facade migration + App contract migration.
-- Preserve the current public routes, aliases, Hono default fetch export, Firestore paths, and seven-day subscription behavior.
+- Preserve the current public routes, aliases, Hono default fetch export, Firestore paths, and time-based RQ garage billing only until the tested prepaid-credit cutover; preserve historical records.
 
 **PR-sized deliverable:** `P0-01 Baselines and route/read inventories` (S/M). Rollback is removal of instrumentation and generated reports; no product behavior changes.
-
 ### Phase 1 — Security and correctness blockers
 
 Implement in this order:
@@ -135,18 +133,36 @@ Implement in this order:
 
 **Exit gate:** dedicated Firebase read/write-cost plan below reports before/after counts; all fast paths have parity against current full scans; missing/stale summaries and legacy records have recovery behavior; no unbounded normal path remains where the task says it should be bounded.
 
-### Phase 4 — Domain consistency and release reliability
+### Phase 4 — Replace time-based RQ garage billing with prepaid entry credits
+
+**Owner-approved direction (2026-10-16):** The garage’s RQ access uses a non-expiring credit balance. One credit costs 1 EGP. A successful regular, non-subscriber vehicle entry consumes one credit; checkout does not refund it. Admin package creation remains, but packages become credit bundles without duration. Tarek manually confirms payment and grants the credits to the garage. A garage’s own monthly parking subscriber remains date-based: renewal consumes five credits once, and that subscriber’s normal visits do not incur per-entry credit debits. Subscriber arrivals and departures still need operational records and staff feedback. The three free mistake/correction events are shared by the whole garage across staff for a Cairo calendar day—not three per staff member.
+
+This is an intentional product and financial-contract change, not a compatibility-preserving refactor. The immediate technical order is unchanged: complete the remaining Phase 3 work (FS-02 and WKR-04) first. Then execute this phase before general domain cleanup and large-file decomposition. Do not implement the billing transition as a second permanent model running alongside time-based access.
+
+1. **BILL-01 — Finalize the billing contract and cutover policy (decision gate).** Confirm zero-credit behavior for new entries, insufficient-credit monthly renewals, exactly which actions count as a “mistake,” what happens after the shared three-event allowance, handling/reversal of erroneous entries, treatment of existing active time plans, and whether package discounts or operational daily-capacity limits remain. Compare representative garages’ expected monthly cost with the current model before enabling the new rate. No schema migration or customer-facing cutover before these choices are recorded.
+2. **BILL-02 — Add an auditable prepaid-credit ledger.** Keep integer usage credits separate from the existing EGP monetary balance and money events. Record manual grants, regular-entry debits, subscriber-renewal debits, and authorized corrections with actor, garage, reason/reference, timestamp, and idempotency key. Use server-authoritative atomic transactions; never permit negative credits or double-debit a retried request.
+3. **BILL-03 — Convert Admin package definitions to non-expiring credit bundles.** Preserve the familiar Admin package-management experience, changing duration/daily-capacity billing fields to bundle name, credit quantity, and price. Example quantities such as 40, 100, 200, or 400 are examples, not a required catalog. Packages describe offers; they do not themselves confirm payment or automatically grant credits. Keep any true operational vehicle-capacity limit separate from the credit bundle.
+4. **BILL-04 — Charge regular vehicle entries and enforce the shared mistake allowance.** Debit one credit atomically with a successful regular check-in, never on checkout; preserve normal vehicle/occupancy/audit writes. Apply the shared garage/day allowance across all staff using the decided Cairo-day and correction contract. Preserve retry idempotency and prevent charging a monthly parking subscriber again per visit.
+5. **BILL-05 — Debit monthly parking-subscriber renewals.** Debit five credits exactly once for each successful monthly renewal, atomically with that renewal. Do not debit for that subscriber’s later entry/exit operations during the renewed term. Keep subscriber membership expiry, visitor recognition, occupancy, and activity/history distinct from garage RQ credit expiry (credits do not expire).
+6. **BILL-06 — Add the manual Admin grant and garage credit experience.** After Tarek confirms the external payment, an authorized Admin grants the selected bundle or entered amount through the Worker. Show remaining non-expiring credits and clear grant/usage history in the appropriate garage/Admin screens; do not add an automatic payment integration or self-service activation without a separate owner decision.
+7. **BILL-07 — Extend financial reporting without mixing units.** Report EGP received/recorded separately from credit grants, credit consumption, and subscriber renewals. Extend the bounded report contract and audit trail; do not reinterpret or rewrite historical money events or combine “credits” and “EGP” into one balance. Preserve F4’s money validation and add integer-credit invariants.
+8. **BILL-08 — Cut over and retire time-based RQ access.** First rehearse the migration on synthetic fixtures and choose how currently active time plans are honored or converted. Preserve historical records. Only after parity, authorization, accounting, support/rollback, and owner cutover approval may new RQ access stop using `balanceExpiry`, duration-based offers/filters, and the old self-subscribe path. Keep the garage’s own monthly parking subscriptions time-limited.
+
+**Acceptance and test gates:** transaction-level tests for grants/debits, concurrent check-ins, retry/idempotency, no negative balance, and subscriber renewal; shared allowance boundary tests with multiple staff and Cairo midnight; zero-credit/insufficient-credit behavior; proof checkout is not blocked by a lack of entry credits; old and new reports reconcile without changing history; Admin authorization and audit fields; synthetic migration rehearsal. The shared mistake allowance’s exact event definition and post-limit behavior are decision gates, not implementation assumptions.
+
+**Explicitly retire at cutover:** time-expiring RQ garage-access plans, their duration-based package filters/pricing/expiry display, and the associated self-service RQ subscription activation. Do not retire garage customer monthly-subscription dates, historical ledgers, manual-payment wallet details still needed by Admin, or a separate operational capacity rule unless independently approved.
+
+### Phase 5 — Domain consistency and release reliability
 
 1. **F2:** make reconciliation day-safe even with a wider/malformed input array.
 2. **F3:** one package-unlimited classifier.
 3. **RQ-TG-01 through RQ-TG-06:** one SHA-bound release DAG, strict smoke, pinned emulator CLI, artifact smoke, and fail-fast local gate.
 
-### Phase 5 — Incremental decomposition
+### Phase 6 — Incremental decomposition
 
 1. **Cross-F1 / WKR-05:** extract read routes, then vehicle, subscriber, financial/recharge/delegate, and garage route factories.
 2. **Cross-F2:** split `adminService` behind unchanged `firestoreService` keys; only then change system-config transport policy if still needed.
 3. **Cross-F3 / UI-001:** characterize `useGarageApp`, group its return contract, and move App route/overlay ownership one route at a time.
-
 ## 6. Detailed task register
 
 Each task below is a PR-sized unit. “Keep” statements are compatibility requirements, not optional polish.
@@ -255,9 +271,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—could erase cached wallet or alter startup defaults. Keep guards and revert consumers while retaining instrumentation if parity fails.
 - **Effort:** M.
 
-- **Implementation status (2026-10-16):** Implemented on branch `fix/fe-001-single-system-config-listener`, open for review in [PR #66](https://github.com/tarekhamada875-droid/RQ-/pull/66). `useGarageApp` now uses `useGarageSystemConfigSync` for wallet/prices; `AdminGlobalSettingsView` consumes the same singleton and protects in-progress edits from snapshots; `AdminWalletView` uses its parent's shared wallet state. The unused wallet/price subscription wrappers were removed. Empty wallet fallbacks are ignored, and non-empty partial prices merge into defaults/current values. Direct `getSystemConfig()` calls in application views are eliminated; remaining calls are inside the shared service bootstrap/fallback.
+- **Implementation status (2026-10-16):** Merged in [PR #66](https://github.com/tarekhamada875-droid/RQ-/pull/66) at `9a5d4d83ec622d964a3e208a01b3186960dcbf1e`. `useGarageApp` uses `useGarageSystemConfigSync` for shared wallet/prices; the admin global-settings and wallet views consume that state, and the separate wallet/price listener wrappers were removed. The shared-listener work remains complete. The later billing cutover may remove only obsolete RQ time-plan price settings; preserve the wallet number/manual-transfer details still needed for Admin-issued credits and any separate garage-customer subscription pricing.
 - **Coverage and verification:** Tests prove config plus fee consumers share one subscription/snapshot, cleanup waits for the last consumer, empty wallet/price events preserve cached/default state, partial prices merge, wallet text is normalized, and global-settings edits survive a refresh. Focused tests passed (4 files / 7 tests). Final `npm run ci:check` passed (125 test files / 798 tests, TypeScript and Pages/Worker builds); `npm run lint`, `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed. Independent review found no blockers. The listener-sharing tests mock the service rather than mounting the complete App tree; source audit confirms no separate app-level config fetch remains.
-- **Release boundary:** PR #66 is open and hosted checks are running; FE-001 is not merged or deployed.
+- **Release boundary:** PR #66 is merged. No Firebase data or security rules changed as part of FE-001. The prepaid-credit phase must audit consumers before retiring any old price setting.
 
 #### FE-002 — Page admin garage/delegate lists
 
@@ -408,6 +424,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Conflict/legacy matrix and existing unlimited/fair-use tests.
 - **Risk / rollback:** Medium—conflicting legacy fields. Document precedence first; do not reinterpret explicit bounded data without decision.
 - **Effort:** M.
+- **Billing-model impact (2026-10-16):** Do not apply the legacy duration/capacity package classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity remains a separate operational limit; retain and test that rule separately if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
 #### F4 — Enforce finite, non-negative money event invariant
 
@@ -771,7 +788,7 @@ These are engineering acceptance budgets for the changed paths, not promises abo
 ### Before coding
 
 - [ ] Confirm checkout is `9d0c705...` or record the exact newer baseline.
-- [ ] Confirm the seven-day subscription from PR #34 is treated as out of scope.
+- [ ] Treat PR #34’s seven-day RQ garage-access plan as legacy behavior to retire only at the tested prepaid-credit cutover; preserve garages’ own time-based monthly parking memberships.
 - [ ] Read the exact task section and all listed source lines.
 - [ ] Record route inventory, facade key inventory, current tests, and relevant Firebase counters.
 - [ ] Define the compatibility behavior that must remain and the one behavior intentionally changing.
@@ -821,5 +838,8 @@ The owner approved the recommendations below on 2026-10-14. They are implementat
 | Direct staff/garage Firestore writes | Sensitive role, ownership, PIN, rate, and financial changes go through the Worker. Keep only narrowly necessary low-risk direct writes. | Inventory supported client versions and migrate any legitimate direct-write callers before tightening rules. |
 | Removing legacy fallbacks | Keep fallbacks until there are 30 consecutive days with no legitimate use, or all relevant old sessions have expired and the new path is verified, whichever is longer. | Instrument fallback use first; preserve rollback until the observation condition is met. Do not delay fixes that can safely coexist with fallback. |
 | First pagination/cost rollout | Start with 50 records per page and a test/staging account. Measure Firebase reads, writes, listener counts, errors, and payload sizes before/after. | Establish actual cost budgets from measurements; name a rollback owner before rollout. |
+| RQ garage billing model | Replace time-expiring RQ access plans with manually granted, non-expiring prepaid credits; one regular successful entry costs one credit at the 1 EGP/credit base rate; each successful monthly parking-subscriber renewal costs five credits, with no per-entry charge for that subscriber. | Keep this separate from the garage’s time-limited customer memberships. Resolve zero-credit behavior, current-plan migration, subscriber renewals with insufficient credit, credit correction/refund rules, mistake-limit behavior, and independent capacity limits before implementation/cutover. |
+| Shared daily mistake allowance | Three free mistake/correction events per garage per Cairo day, shared across all staff. | Define which operations count and what happens after the third event before coding; do not implement a per-staff reset or paid bypass. |
+| Manual credit grants and bundles | Admin confirms payment and manually grants a non-expiring credit bundle to the garage; packages are credit quantities, not durations. | Keep money and credit ledgers distinct; confirm discount/bonus policy and required audit fields. Do not add automatic payment or self-service activation without owner approval. |
 
 The implementation order remains one PR-sized task at a time. The first work should close high-priority security gaps and add tests/measurements; large rewrites, fallback removals, or user-visible contract changes must not be bundled into one release. Any unresolved conflict with the guardrails above must be brought back to the owner with concrete evidence.

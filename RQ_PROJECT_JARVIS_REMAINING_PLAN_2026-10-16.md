@@ -1,19 +1,19 @@
 # JARVIS Modernization — Remaining Work
 
-**Last verified:** 2026-10-16  
-**Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)  
-**Repository state:** FS-03 is merged to `main` in PR [#73](https://github.com/tarekhamada875-droid/RQ-/pull/73) at `31f733fac610cd2dce5b28cbbd28dce1ecd396b2`; post-merge Production Gate and Worker deployment passed, and live Pages/Worker smoke checks returned HTTP 200.
+**Last verified:** 2026-10-16
+**Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
+**Repository state:** Current deployed application code is PR #77 / `d5a42ba`; PR #76 fixed the FS-03 timestamp-type mismatch and PR #77 fixed the WKR-02 last-subscriber counter. PRs #78–#80 changed documentation only; local/remote `main` is `d983036` before this documentation branch.
 **Next task:** **FS-02** (do not begin until the owner says to continue)
 
-This is a navigation summary, not a replacement for the full roadmap. The full plan contains the detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, and measurement plan.
+This is a navigation summary, not a replacement for the full roadmap. The full plan contains detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, measurements, and the new owner-approved prepaid-credit workstream.
 
 ## Recently completed
 
 ### FS-03 — Bound financial reports and aggregate page by page (implemented; PR #73)
 
-The owner selected a rolling latest-12-calendar-month default for undated reports; explicit date ranges remain available for older history. Partial date ranges are bounded as well. Worker queries now use stable timestamp/document-name cursors and page size 250; settlements are aggregated first, followed by events, with no full ledger arrays retained. Inclusive-start/exclusive-end semantics and delegate filtering are preserved.
+The owner selected a rolling latest-12-calendar-month default for undated reports; explicit date ranges remain available for older history. Partial date ranges are bounded as well. Worker queries use stable timestamp/document-name cursors and page size 250; settlements are aggregated first, followed by events, with no full ledger arrays retained. Inclusive-start/exclusive-end semantics and delegate filtering are preserved.
 
-Focused parity and cursor contract tests passed. `npm run ci:check` passed (125 test files / 807 tests, TypeScript, Pages/Worker builds and artifact checks); maintainability and whitespace checks passed. The synthetic `npm run financial-report:benchmark` recorded: 1y = 1,616 modeled reads / 1.716 ms local p95 / 185,680-byte peak heap growth; 3y = 4,824 / 1.645 ms / 325,288 bytes; 10y = 16,064 / 4.637 ms / 332,648 bytes (25 runs, page size 250). These are synthetic local aggregation/heap measurements, not live Firestore billing or Worker/network p95. PR Production Gate checks, the post-merge Production Gate, and Worker deployment all passed; Pages, Worker health, and Worker version endpoints returned HTTP 200. No production data was changed.
+A post-review fix in PR #76 changed event-range bounds to ISO strings to match the persisted `occurredAt` field; settlement timestamps remain Date/Timestamp values. Focused parity/cursor/type regressions passed. The full CI and release gates passed, and live Pages/Worker health and version checks returned HTTP 200. The synthetic benchmark in the full roadmap is not live Firestore billing or Worker/network p95. No production data was changed.
 
 ## Remaining implementation tasks
 
@@ -25,19 +25,25 @@ Add stable ordering and encoded last-value/document-name cursors to the Worker a
 
 Stop consuming GET/HEAD request bodies, enforce a configurable body limit for write methods including chunked-body byte counting, and stream `response.body` to Node where supported. Preserve headers, status, Fetch behavior, and the buffered fallback. Add oversized-body, byte-equality, concurrency, and health tests.
 
-### 3. UI-001 — Move route and overlay ownership out of App
+### 3. BILL-01 through BILL-08 — Replace time-based RQ access with prepaid credits (owner-approved direction; not implemented)
+
+After the remaining Phase 3 work above, replace expiring RQ garage-access plans with manually granted, non-expiring credits, before general domain cleanup and decomposition. Keep the garage’s own date-based monthly parking memberships. Confirmed direction: one credit costs 1 EGP; a successful regular non-subscriber entry consumes one credit; a successful monthly parking-subscriber renewal consumes five credits once; subscriber visits do not use per-entry credits; the three free mistake/correction events are shared across the garage’s staff per Cairo day. The familiar Admin package editor remains but defines credit bundles, not days; payment confirmation and credit grant remain manual.
+
+The full plan breaks this into a contract/migration decision gate, auditable integer-credit ledger, package and Admin grant changes, atomic entry charging, subscriber renewal charging, garage/Admin balance and history UI, separate money-versus-credit reporting, and a tested cutover that retires the old RQ expiry flow. Before implementation, resolve zero-credit behavior, insufficient-credit renewals, active-plan migration, mistake definitions/post-limit behavior, corrections/refunds, discounts/bonuses, and whether daily vehicle capacity remains a separate limit. No app code or customer data has changed as part of the roadmap update.
+
+### 4. UI-001 — Move route and overlay ownership out of App
 
 Introduce typed garage/admin route containers and reduce App to authentication/session gates, route choice, back trapping, and a small action model. Preserve route names, browser-back behavior, RTL/LTR behavior, custom plate input, pagination, callbacks, and mount/unmount semantics. Target no more than 15 direct App bindings, 8 route-boundary props, and 300 App lines, with render-count and route-contract tests.
 
-### 4. F2 — Make reconciliation day-safe
+### 5. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 5. F3 — One unlimited-package classifier
+### 6. F3 — One unlimited-package classifier (reassess under BILL-01)
 
-Create one pure classifier for explicit unlimited flags, capacity, names, legacy variants, and numeric-string fields. Use it consistently in package catalog, vehicle check-in, and fair-use paths. Establish precedence for conflicting fields before changing behavior and cover the full compatibility matrix.
+Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays as a separate operational limit; retain and test that rule separately if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 6. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 7. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 - **RQ-TG-01:** one canonical verification job/install/full suite with artifact upload and no redundant subscriber rerun.
 - **RQ-TG-02:** immutable verify → deploy → smoke DAG tied to the exact commit/artifact, including rollback identity.
@@ -46,15 +52,15 @@ Create one pure classifier for explicit unlimited flags, capacity, names, legacy
 - **RQ-TG-05:** smoke the built Worker artifact, not only source modules.
 - **RQ-TG-06:** make local CI fail fast while retaining an explicit diagnostic mode.
 
-### 7. WKR-05 / Cross-F1 — Extract Worker route modules mechanically
+### 8. WKR-05 / Cross-F1 — Extract Worker route modules mechanically
 
 Add typed route dependencies and extract route families one at a time from `server/cloudflareWorker.ts`: read/system, vehicle, subscriber, financial/recharge/delegate, and garage. Preserve middleware, aliases, order, envelopes, authentication, idempotency, rate limits, and the exact 87-route inventory. This is a reviewability/decomposition task, not a performance claim.
 
-### 8. Cross-F2 — Split adminService behind its unchanged facade
+### 9. Cross-F2 — Split adminService behind its unchanged facade
 
 Move method bodies into domain-sized modules while preserving the `firestoreService` key set, method names, return types, listener cleanup, callback timing, pagination, and transport semantics. Keep callers unchanged during the first decomposition PR and verify system-config call-count behavior.
 
-### 9. Cross-F3 — Group the useGarageApp contract before migrating App
+### 10. Cross-F3 — Group the useGarageApp contract before migrating App
 
 Add renderHook characterization for session readiness, offline gating, fallback views, forwarding, and cleanup. Return stable groups for session, navigation/UI, garage data, vehicle operations, subscriptions, and admin management. Temporarily retain flat aliases, then migrate App only after the transition matrix passes.
 
@@ -62,9 +68,10 @@ Add renderHook characterization for session readiness, offline gating, fallback 
 
 1. **FS-02** — shared cursor/page-token adapter support and remaining bounded lists.
 2. **WKR-04** — request/response body and streaming bounds.
-3. **F2 and F3** — domain consistency repairs.
-4. **RQ-TG-01 through RQ-TG-06** — release-gate consolidation.
-5. **UI-001, WKR-05/Cross-F1, Cross-F2, Cross-F3** — incremental decomposition, one bounded PR at a time.
+3. **BILL-01 through BILL-08** — prepaid-credit product decisions and staged implementation; no billing code before the decision gate.
+4. **F2 and the BILL-01-qualified scope of F3** — domain consistency repairs.
+5. **RQ-TG-01 through RQ-TG-06** — release-gate consolidation.
+6. **UI-001, WKR-05/Cross-F1, Cross-F2, Cross-F3** — incremental decomposition, one bounded PR at a time.
 
 ## Standing completion workflow
 
