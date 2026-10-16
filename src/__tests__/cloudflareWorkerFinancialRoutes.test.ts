@@ -13,6 +13,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+import { calculateFinancialReport } from '../../server/financialReporting';
 installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () => {
@@ -548,6 +549,56 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(bounded.status).toBe(200);
     expect((await bounded.json() as any).data.report.grossRechargeTotal).toBe(100);
     expect(mockDb.documentReadCount).toBeLessThan(unboundedReads);
+  });
+  it('defaults an undated report to a bounded 12-month window', async () => {
+    const response = await api.fetch(new Request('http://localhost/api/reports/financial', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.data.filters.start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.data.filters.end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const days = (Date.parse(`${body.data.filters.end}T00:00:00.000Z`) - Date.parse(`${body.data.filters.start}T00:00:00.000Z`)) / 86_400_000;
+    expect(days).toBeGreaterThanOrEqual(365);
+    expect(days).toBeLessThanOrEqual(367);
+  });
+  it('aggregates across stable cursor pages with exact totals, settlement cutoffs, and delegate filtering', async () => {
+    const events: any[] = [];
+    const settlements: any[] = [];
+    for (let index = 0; index < 250; index += 1) {
+      const occurredAt = new Date('2026-01-15T12:00:00.000Z');
+      const event = { eventType: 'recharge_approved', aggregateId: `recharge-${index}`, occurredAt, payload: { amount: 1, delegateId: 'delegate-a' } };
+      events.push(event);
+      mockDb.seed(`garages/financial-pages/events/event-${String(index).padStart(3, '0')}`, event);
+      const settledAt = new Date(`2026-01-16T12:${String(index % 60).padStart(2, '0')}:00.000Z`);
+      const settlement = { settlementId: `settlement-${index}`, delegateId: 'delegate-a', settledAt, previousCycleTotal: 1 };
+      settlements.push(settlement);
+      mockDb.seed(`settlements/settlement-${String(index).padStart(3, '0')}`, settlement);
+    }
+    const finalEvent = { eventType: 'recharge_approved', aggregateId: 'recharge-final', occurredAt: new Date('2026-01-18T12:00:00.000Z'), payload: { amount: 12, delegateId: 'delegate-a' } };
+    const finalSettlement = { settlementId: 'settlement-final', delegateId: 'delegate-a', settledAt: new Date('2026-01-17T12:00:00.000Z'), previousCycleTotal: 5 };
+    events.push(finalEvent);
+    settlements.push(finalSettlement);
+    mockDb.seed('garages/financial-pages/events/event-final', finalEvent);
+    mockDb.seed('settlements/settlement-final', finalSettlement);
+    const otherDelegateEvent = { eventType: 'recharge_approved', aggregateId: 'other-delegate', occurredAt: new Date('2026-01-18T13:00:00.000Z'), payload: { amount: 999, delegateId: 'delegate-b' } };
+    mockDb.seed('garages/financial-pages/events/other-delegate', otherDelegateEvent);
+    const endBoundaryEvent = { eventType: 'recharge_approved', aggregateId: 'boundary', occurredAt: new Date('2026-02-01T00:00:00.000Z'), payload: { amount: 10000, delegateId: 'delegate-a' } };
+    mockDb.seed('garages/financial-pages/events/end-boundary', endBoundaryEvent);
+
+    mockDb.resetDocumentCounts();
+    const response = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-01&end=2026-02-01&delegateId=delegate-a', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    const expected = calculateFinancialReport([...events, otherDelegateEvent, endBoundaryEvent], settlements, {
+      start: '2026-01-01', end: '2026-02-01', delegateId: 'delegate-a'
+    });
+    expect(body.data.report).toEqual(expected);
+    expect(body.data.report).toMatchObject({ grossRechargeTotal: 262, historicalSettledTotal: 255, currentUnsettledByDelegate: { 'delegate-a': 12 } });
+    expect(mockDb.queryResultSizes).toContain(250);
+    expect(Math.max(...mockDb.queryResultSizes)).toBeLessThanOrEqual(250);
   });
 
   it('8. financial reports reject an invalid date range before reading projections', async () => {

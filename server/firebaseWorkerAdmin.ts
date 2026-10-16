@@ -149,10 +149,11 @@ class DocumentReference {
 }
 
 class QueryReference {
-  constructor(public readonly collectionPath: string, public readonly filters: Array<{ field: string; op: string; value: unknown }> = [], public readonly maxResults?: number, public readonly sort?: { field: string; direction: string }, public readonly allDescendants = false) {}
-  where(field: string, op: string, value: unknown): QueryReference { return new QueryReference(this.collectionPath, [...this.filters, { field, op, value }], this.maxResults, this.sort, this.allDescendants); }
-  limit(value: number): QueryReference { return new QueryReference(this.collectionPath, this.filters, value, this.sort, this.allDescendants); }
-  orderBy(field: string, direction = 'asc'): QueryReference { return new QueryReference(this.collectionPath, this.filters, this.maxResults, { field, direction }, this.allDescendants); }
+  constructor(public readonly collectionPath: string, public readonly filters: Array<{ field: string; op: string; value: unknown }> = [], public readonly maxResults?: number, public readonly sorts: Array<{ field: string; direction: string }> = [], public readonly allDescendants = false, public readonly cursor?: unknown[]) {}
+  where(field: string, op: string, value: unknown): QueryReference { return new QueryReference(this.collectionPath, [...this.filters, { field, op, value }], this.maxResults, this.sorts, this.allDescendants, this.cursor); }
+  limit(value: number): QueryReference { return new QueryReference(this.collectionPath, this.filters, value, this.sorts, this.allDescendants, this.cursor); }
+  orderBy(field: string, direction = 'asc'): QueryReference { return new QueryReference(this.collectionPath, this.filters, this.maxResults, [...this.sorts, { field, direction }], this.allDescendants, this.cursor); }
+  startAfter(...values: unknown[]): QueryReference { return new QueryReference(this.collectionPath, this.filters, this.maxResults, this.sorts, this.allDescendants, values); }
   async get(): Promise<{ empty: boolean; size: number; docs: DocumentSnapshot[] }> { const docs = await activeDb!.query(this); return { empty: docs.length === 0, size: docs.length, docs: docs.map((raw) => new DocumentSnapshot(raw)) }; }
 }
 
@@ -192,7 +193,7 @@ class FirestoreRest {
   constructor(public readonly projectId: string, public readonly databaseId: string) { this.documentsRoot = `projects/${projectId}/databases/${databaseId}/documents`; }
   doc(path: string): DocumentReference { return new DocumentReference(`${this.documentsRoot}/${path}`); }
   collection(path: string): CollectionReference { return new CollectionReference(path); }
-  collectionGroup(path: string): QueryReference { return new QueryReference(path, [], undefined, undefined, true); }
+  collectionGroup(path: string): QueryReference { return new QueryReference(path, [], undefined, [], true); }
   batch(): FirestoreBatch { return new FirestoreBatch(); }
   async runTransaction<T>(callback: (transaction: FirestoreTransaction) => Promise<T>): Promise<T> {
     const begin = await firestoreRequest(`${this.documentsRoot}:beginTransaction`, { method: 'POST', body: JSON.stringify({ options: { readWrite: {} } }) });
@@ -234,8 +235,12 @@ class FirestoreRest {
     } else if (query.filters.length > 1) {
       structuredQuery.where = { compositeFilter: { op: 'AND', filters: query.filters.map((filter) => ({ fieldFilter: { field: { fieldPath: filter.field }, op: firestoreFilterOperator(filter.op), value: encodeValue(filter.value) } })) } };
     }
-    if (query.sort) structuredQuery.orderBy = [{ field: { fieldPath: query.sort.field }, direction: query.sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }];
+    if (query.sorts.length) structuredQuery.orderBy = query.sorts.map((sort) => ({ field: { fieldPath: sort.field }, direction: sort.direction.toLowerCase() === 'desc' ? 'DESCENDING' : 'ASCENDING' }));
     if (query.maxResults) structuredQuery.limit = query.maxResults;
+    if (query.cursor) structuredQuery.startAt = {
+      values: query.cursor.map((value) => value instanceof DocumentReference ? { referenceValue: value.name } : encodeValue(value)),
+      before: false
+    };
     const response = await firestoreRequest(`${parent}:runQuery`, { method: 'POST', body: JSON.stringify({ parent, structuredQuery, ...(transaction ? { transaction } : {}) }) });
     if (!response.ok) throw new Error(`FIRESTORE_QUERY_FAILED:${response.status}`);
     const rows = await response.json() as Array<{ document?: any }>;

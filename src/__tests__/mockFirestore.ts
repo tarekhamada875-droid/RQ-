@@ -60,7 +60,8 @@ export class MockQuery {
     protected readonly wheres: Array<{ field: string; op: string; value: any }> = [],
     protected readonly limitVal?: number,
     protected readonly isCollectionGroup: boolean = false,
-    protected readonly orderings: Array<{ field: string; direction: 'asc' | 'desc' }> = []
+    protected readonly orderings: Array<{ field: string; direction: 'asc' | 'desc' }> = [],
+    protected readonly cursor?: any[]
   ) {}
 
   where(field: string, op: string, value: any) {
@@ -70,16 +71,20 @@ export class MockQuery {
       [...this.wheres, { field, op, value }],
       this.limitVal,
       this.isCollectionGroup,
-      this.orderings
+      this.orderings,
+      this.cursor
     );
   }
 
   limit(limitVal: number) {
-    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup, this.orderings);
+    return new MockQuery(this.db, this.collectionPath, this.wheres, limitVal, this.isCollectionGroup, this.orderings, this.cursor);
   }
 
   orderBy(field: string, direction: 'asc' | 'desc' = 'asc') {
-    return new MockQuery(this.db, this.collectionPath, this.wheres, this.limitVal, this.isCollectionGroup, [...this.orderings, { field, direction }]);
+    return new MockQuery(this.db, this.collectionPath, this.wheres, this.limitVal, this.isCollectionGroup, [...this.orderings, { field, direction }], this.cursor);
+  }
+  startAfter(...values: any[]) {
+    return new MockQuery(this.db, this.collectionPath, this.wheres, this.limitVal, this.isCollectionGroup, this.orderings, values);
   }
 
   async get() {
@@ -128,13 +133,34 @@ export class MockQuery {
       }
     }
 
-    for (const ordering of this.orderings) {
-      docs.sort((left, right) => {
-        const leftValue = left.data()?.[ordering.field];
-        const rightValue = right.data()?.[ordering.field];
-        if (leftValue === rightValue) return 0;
-        const comparison = leftValue < rightValue ? -1 : 1;
-        return ordering.direction === 'desc' ? -comparison : comparison;
+    const comparable = (value: any) => value instanceof Date ? value.getTime() : value;
+    const compareValues = (left: any, right: any, ordering: { field: string; direction: 'asc' | 'desc' }) => {
+      const leftValue = comparable(ordering.field === '__name__' ? left.ref?.path : left.data()?.[ordering.field]);
+      const rightValue = comparable(ordering.field === '__name__' ? right.ref?.path : right.data()?.[ordering.field]);
+      if (leftValue === rightValue) return 0;
+      const comparison = leftValue < rightValue ? -1 : 1;
+      return ordering.direction === 'desc' ? -comparison : comparison;
+    };
+    docs.sort((left, right) => {
+      for (const ordering of this.orderings) {
+        const comparison = compareValues(left, right, ordering);
+        if (comparison) return comparison;
+      }
+      return 0;
+    });
+    if (this.cursor && this.orderings.length) {
+      docs = docs.filter((doc) => {
+        for (let index = 0; index < this.orderings.length; index += 1) {
+          const ordering = this.orderings[index];
+          const docValue = comparable(ordering.field === '__name__' ? doc.ref?.path : doc.data()?.[ordering.field]);
+          const cursorValue = comparable(ordering.field === '__name__' && this.cursor?.[index]?.path
+            ? this.cursor[index].path
+            : this.cursor?.[index]);
+          if (docValue === cursorValue) continue;
+          const comparison = docValue < cursorValue ? -1 : 1;
+          return ordering.direction === 'asc' ? comparison > 0 : comparison < 0;
+        }
+        return false;
       });
     }
 
@@ -142,6 +168,7 @@ export class MockQuery {
       docs = docs.slice(0, this.limitVal);
     }
 
+    this.db.queryResultSizes.push(docs.length);
     this.db.documentReadCount += Math.max(1, docs.length);
 
     return {
@@ -200,6 +227,7 @@ export class MockFirestore {
   public readonly records = new Map<string, any>();
   public documentReadCount = 0;
   public documentWriteCount = 0;
+  public readonly queryResultSizes: number[] = [];
   private readonly virtualDocuments = new Map<string, any>();
   private transactionQueue: Promise<void> = Promise.resolve();
 
@@ -278,6 +306,7 @@ export class MockFirestore {
   resetDocumentCounts() {
     this.documentReadCount = 0;
     this.documentWriteCount = 0;
+    this.queryResultSizes.length = 0;
   }
 }
 

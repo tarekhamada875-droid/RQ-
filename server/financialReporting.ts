@@ -31,6 +31,17 @@ export interface FinancialReport {
   currentUnsettledByDelegate: Record<string, number>;
 }
 
+export interface FinancialReportAccumulator {
+  readonly options: FinancialReportOptions;
+  grossRechargeTotal: number;
+  walletTopupTotal: number;
+  commissionTotal: number;
+  refundTotal: number;
+  historicalSettledTotal: number;
+  currentUnsettledByDelegate: Record<string, number>;
+  latestSettlementByDelegate: Record<string, Date>;
+}
+
 function asDate(value: string | Date | undefined): Date | null {
   if (!value) return null;
   if (typeof value === 'object' && 'toDate' in value && typeof (value as any).toDate === 'function') return asDate((value as any).toDate());
@@ -48,6 +59,78 @@ function inRange(value: string | Date | undefined, options: FinancialReportOptio
 
 function round(value: number): number {
   return Number(value.toFixed(2));
+}
+
+/** Creates constant-in-record-count state for page-by-page financial report aggregation. */
+export function createFinancialReportAccumulator(options: FinancialReportOptions = {}): FinancialReportAccumulator {
+  return {
+    options,
+    grossRechargeTotal: 0,
+    walletTopupTotal: 0,
+    commissionTotal: 0,
+    refundTotal: 0,
+    historicalSettledTotal: 0,
+    currentUnsettledByDelegate: {},
+    latestSettlementByDelegate: {}
+  };
+}
+
+/** Adds one settlement while retaining only totals and the latest cutoff per delegate. */
+export function addFinancialReportSettlement(accumulator: FinancialReportAccumulator, settlement: SettlementRecord): void {
+  if (!inRange(settlement.settledAt, accumulator.options)) return;
+  const delegateId = settlement.delegateId || '';
+  if (accumulator.options.delegateId && delegateId !== accumulator.options.delegateId) return;
+  accumulator.historicalSettledTotal = addMoney(accumulator.historicalSettledTotal, settlement.previousCycleTotal);
+  if (!delegateId) return;
+  if (accumulator.currentUnsettledByDelegate[delegateId] === undefined) accumulator.currentUnsettledByDelegate[delegateId] = 0;
+  const settledAt = asDate(settlement.settledAt);
+  if (settledAt && (!accumulator.latestSettlementByDelegate[delegateId] || settledAt > accumulator.latestSettlementByDelegate[delegateId])) {
+    accumulator.latestSettlementByDelegate[delegateId] = settledAt;
+  }
+}
+
+/** Adds one event after settlement pages are loaded, preserving report and delegate rules. */
+export function addFinancialReportEvent(accumulator: FinancialReportAccumulator, event: FinancialReportEvent): void {
+  if (!inRange(event.occurredAt, accumulator.options)) return;
+  const payload = event.payload || {};
+  if (accumulator.options.delegateId && String(payload.delegateId || '') !== accumulator.options.delegateId) return;
+  if (event.eventType === 'recharge_approved') {
+    accumulator.grossRechargeTotal = addMoney(accumulator.grossRechargeTotal, payload.amount);
+  }
+  if (event.eventType === 'wallet_topup_approved') {
+    accumulator.walletTopupTotal = addMoney(accumulator.walletTopupTotal, payload.amount);
+  }
+  if (event.eventType === 'commission_earned') {
+    accumulator.commissionTotal = addMoney(accumulator.commissionTotal, payload.commissionAmount);
+  }
+  if (event.eventType === 'vehicle_refunded') {
+    accumulator.refundTotal = addMoney(accumulator.refundTotal, payload.refundAmount);
+  }
+  if (event.eventType === 'recharge_approved' && event.aggregateId) {
+    const delegateId = String(payload.delegateId || '');
+    if (delegateId) {
+      const occurredAt = asDate(event.occurredAt);
+      const cutoff = accumulator.latestSettlementByDelegate[delegateId];
+      if (!cutoff || (occurredAt && occurredAt > cutoff)) {
+        accumulator.currentUnsettledByDelegate[delegateId] = addMoney(accumulator.currentUnsettledByDelegate[delegateId] || 0, payload.amount);
+      }
+    }
+  }
+}
+
+/** Finalizes streamed state into the public report shape. */
+export function finishFinancialReport(accumulator: FinancialReportAccumulator): FinancialReport {
+  const { grossRechargeTotal, walletTopupTotal, commissionTotal, refundTotal, historicalSettledTotal } = accumulator;
+  return {
+    grossRechargeTotal: round(grossRechargeTotal),
+    walletTopupTotal: round(walletTopupTotal),
+    cashCollectedTotal: addMoney(grossRechargeTotal, walletTopupTotal),
+    commissionTotal: round(commissionTotal),
+    refundTotal: round(refundTotal),
+    companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),
+    historicalSettledTotal: round(historicalSettledTotal),
+    currentUnsettledByDelegate: Object.fromEntries(Object.entries(accumulator.currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)]))
+  };
 }
 
 /** Derives financial totals from immutable events and settlement records without mutating state. */

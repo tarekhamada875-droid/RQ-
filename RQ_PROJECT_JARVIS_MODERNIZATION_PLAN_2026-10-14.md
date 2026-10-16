@@ -534,6 +534,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Date contract, page totals, delegate filter across pages, settlement totals.
 - **Risk / rollback:** High—historical report expectations. Default window must be owner-approved; retain explicit historical path.
 - **Effort:** L.
+- **Implementation status (2026-10-16):** Implemented on `feat/fs-03-bounded-financial-reports` in PR [#73](https://github.com/tarekhamada875-droid/RQ-/pull/73), awaiting required GitHub checks and merge. Owner-approved behavior: undated reports default to the latest 12 calendar months; explicit date ranges allow older history. Partial ranges are bounded. Event and settlement reads use stable timestamp/document-name cursors with 250-record pages; settlements are aggregated before events using totals and per-delegate settlement cutoffs rather than full document arrays. Inclusive-start/exclusive-end and delegate filters are preserved. Exact multi-page parity, settlement cutoff, delegate isolation, date-window, and REST cursor tests were added.
+- **Local verification:** `npm run ci:check` passed (125 test files / 807 tests, TypeScript, Pages/Worker build and artifact verification); `npm run maintainability:check` and `git diff --check` passed. `npm run financial-report:benchmark` (25 local synthetic runs per size) measured 1y: 1,616 modeled reads / 1.716 ms p95 / 185,680-byte peak heap growth; 3y: 4,824 / 1.645 ms / 325,288 bytes; 10y: 16,064 / 4.637 ms / 332,648 bytes. The benchmark is not live Firestore, billing, network, or Worker runtime measurement. No production data/settings were changed.
 
 #### FS-04 — Resolve subscriber in check-in transaction
 
