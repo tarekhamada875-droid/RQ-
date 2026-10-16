@@ -129,3 +129,7 @@ For every bounded JARVIS task, all agents MUST complete the full workflow before
 8. Stop and report the completed task to Tarek before starting the next roadmap task. Do not silently continue to the next task.
 
 This workflow is part of the owner’s standing authorization for routine roadmap engineering. It does not authorize destructive data operations, unapproved Firebase changes, payments, security/ownership changes, or other consequential actions outside the roadmap.
+
+### Continuity trigger: “tokens ending”
+
+When the owner says **“tokens ending”**, immediately activate the handoff version of this workflow. Preserve the exact current status in the tracked roadmap/knowledge-base/maintainer handoff, including incomplete work, tests, branch/commit, PR, merge, deployment, blockers, and the single next task. Commit and push any completed work, use the normal PR and Production Gate process, merge only after required checks pass, verify the final remote state, and stop so the owner can hand the project to the next agent. Never claim unfinished work is pushed, merged, deployed, or live.
