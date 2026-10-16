@@ -62,7 +62,7 @@ Before handing off, check the actual repository and GitHub state. Record or repo
 
 Update the tracked roadmap, knowledge base, or maintainer handoff when verified project facts or decisions have changed; do not add speculative status or duplicate unchanged notes. Never include credentials, secrets, or private customer data in the handoff. If context is ending during unfinished work, state exactly what is incomplete and do not imply that it has been committed, merged, or deployed.
 
-This is a new, general RQ continuity practice. The historical **“tokens ending”** wording refers to the archived H9 succession protocol only; that protocol remains closed and must not be restarted.
+The exact phrase **“tokens ending”** is now an active owner continuity trigger. When Tarek says it, the current agent must immediately prepare the factual handoff and apply the standing completion workflow: finish or clearly mark the current bounded task, run the relevant checks, update the roadmap/knowledge-base/maintainer-handoff records, commit and push all work, open a PR to `main`, wait for the required Production Gate, merge when approved by passing checks, verify the merged commit and post-merge workflows, and stop with a concise handoff for the next agent. If the task is incomplete, state exactly what remains and do not imply that it was committed, merged, deployed, or live. This trigger does not authorize destructive data operations, unapproved Firebase changes, payments, or other consequential actions.
 
 ## Owner’s standing task-completion instruction
 
