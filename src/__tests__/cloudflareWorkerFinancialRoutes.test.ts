@@ -524,15 +524,15 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
   it('pushes the selected date range into Firestore reads and preserves matching totals', async () => {
     mockDb.seed('garages/financial-read-test/events/before', {
       eventType: 'recharge_approved', aggregateId: 'before',
-      occurredAt: new Date('2025-12-31T23:59:59.000Z'), payload: { amount: 11 }
+      occurredAt: '2025-12-31T23:59:59.000Z', payload: { amount: 11 }
     });
     mockDb.seed('garages/financial-read-test/events/in-range', {
       eventType: 'recharge_approved', aggregateId: 'in-range',
-      occurredAt: new Date('2026-01-15T12:00:00.000Z'), payload: { amount: 100 }
+      occurredAt: '2026-01-15T12:00:00.000Z', payload: { amount: 100 }
     });
     mockDb.seed('garages/financial-read-test/events/after', {
       eventType: 'recharge_approved', aggregateId: 'after',
-      occurredAt: new Date('2026-02-01T00:00:00.000Z'), payload: { amount: 13 }
+      occurredAt: '2026-02-01T00:00:00.000Z', payload: { amount: 13 }
     });
 
     mockDb.resetDocumentCounts();
@@ -566,7 +566,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const events: any[] = [];
     const settlements: any[] = [];
     for (let index = 0; index < 250; index += 1) {
-      const occurredAt = new Date('2026-01-15T12:00:00.000Z');
+      const occurredAt = '2026-01-15T12:00:00.000Z';
       const event = { eventType: 'recharge_approved', aggregateId: `recharge-${index}`, occurredAt, payload: { amount: 1, delegateId: 'delegate-a' } };
       events.push(event);
       mockDb.seed(`garages/financial-pages/events/event-${String(index).padStart(3, '0')}`, event);
@@ -575,15 +575,15 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       settlements.push(settlement);
       mockDb.seed(`settlements/settlement-${String(index).padStart(3, '0')}`, settlement);
     }
-    const finalEvent = { eventType: 'recharge_approved', aggregateId: 'recharge-final', occurredAt: new Date('2026-01-18T12:00:00.000Z'), payload: { amount: 12, delegateId: 'delegate-a' } };
+    const finalEvent = { eventType: 'recharge_approved', aggregateId: 'recharge-final', occurredAt: '2026-01-18T12:00:00.000Z', payload: { amount: 12, delegateId: 'delegate-a' } };
     const finalSettlement = { settlementId: 'settlement-final', delegateId: 'delegate-a', settledAt: new Date('2026-01-17T12:00:00.000Z'), previousCycleTotal: 5 };
     events.push(finalEvent);
     settlements.push(finalSettlement);
     mockDb.seed('garages/financial-pages/events/event-final', finalEvent);
     mockDb.seed('settlements/settlement-final', finalSettlement);
-    const otherDelegateEvent = { eventType: 'recharge_approved', aggregateId: 'other-delegate', occurredAt: new Date('2026-01-18T13:00:00.000Z'), payload: { amount: 999, delegateId: 'delegate-b' } };
+    const otherDelegateEvent = { eventType: 'recharge_approved', aggregateId: 'other-delegate', occurredAt: '2026-01-18T13:00:00.000Z', payload: { amount: 999, delegateId: 'delegate-b' } };
     mockDb.seed('garages/financial-pages/events/other-delegate', otherDelegateEvent);
-    const endBoundaryEvent = { eventType: 'recharge_approved', aggregateId: 'boundary', occurredAt: new Date('2026-02-01T00:00:00.000Z'), payload: { amount: 10000, delegateId: 'delegate-a' } };
+    const endBoundaryEvent = { eventType: 'recharge_approved', aggregateId: 'boundary', occurredAt: '2026-02-01T00:00:00.000Z', payload: { amount: 10000, delegateId: 'delegate-a' } };
     mockDb.seed('garages/financial-pages/events/end-boundary', endBoundaryEvent);
 
     mockDb.resetDocumentCounts();
