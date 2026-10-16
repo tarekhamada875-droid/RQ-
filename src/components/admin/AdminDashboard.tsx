@@ -14,6 +14,7 @@ import { useAdminTranslation } from '../../utils/adminTranslations';
 import { normalizeArabicSearch, resolveShimmerColor, isLightColor, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 import { AdminGarageList } from './AdminGarageList';
 import { AdminHeader } from './AdminHeader';
@@ -254,16 +255,7 @@ export const AdminDashboard = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  React.useEffect(() => {
-    if (showPlansModal || showOverview) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showPlansModal, showOverview]);
+  useBodyScrollLock(showPlansModal || showOverview);
 
   const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

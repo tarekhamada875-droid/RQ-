@@ -10,6 +10,7 @@ import { SubscriberModals } from './SubscriberModals';
 import { IconButton } from '../ui/IconButton';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import type { SharedSubscriberPage } from '../../hooks/useGarageDashboardLiveData';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 const parseDateKey = (dateKey: string | any): Date => {
   if (!dateKey) return new Date();
@@ -204,12 +205,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
     };
   }, [garage.id, isAuthResolved, subscriberPage]);
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   const handleLoadMoreSubscribers = async () => {
     if (!subscriberCursor || !hasMoreSubscribers || isLoadingMoreSubscribers) return;

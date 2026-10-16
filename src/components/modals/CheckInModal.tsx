@@ -5,6 +5,7 @@ import { Spinner } from '../ui/Spinner';
 import { APP_TEXT } from '../../constants';
 import { Garage } from '../../types';
 import { formatPlateNumber } from '../../utils';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CheckInModalProps {
   newPlateNumber: string;
@@ -24,6 +25,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
   onCancel
 }) => {
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
+  useBodyScrollLock();
 
   React.useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)');
@@ -31,13 +33,6 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
     const listener = (e: MediaQueryListEvent) => setIsLargeScreen(e.matches);
     media.addEventListener('change', listener);
     return () => media.removeEventListener('change', listener);
-  }, []);
-
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, []);
 
   return (

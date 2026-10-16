@@ -16,6 +16,7 @@ import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { Garage, Staff, Package } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 import { soundManager } from '../../utils/sounds';
 import { useAppStore } from '../../store/appStore';
@@ -355,16 +356,7 @@ export const AdminGarageDetailsView = memo(({
     }
   };
 
-  useEffect(() => {
-    if (showAddStaffModal || staffToDelete) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showAddStaffModal, staffToDelete]);
+  useBodyScrollLock(Boolean(showAddStaffModal || staffToDelete));
 
   const today = getCairoDateKey();
   const isTodayValid = selectedGarageForDetails.lastTransactionDate === today;

@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Vehicle } from '../../types';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface DeleteVehicleConfirmModalProps {
   vehicle: Vehicle;
@@ -15,12 +16,7 @@ export const DeleteVehicleConfirmModal: React.FC<DeleteVehicleConfirmModalProps>
   onConfirm,
   onCancel
 }) => {
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

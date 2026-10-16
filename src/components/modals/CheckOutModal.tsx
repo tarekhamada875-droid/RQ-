@@ -6,6 +6,7 @@ import { IconButton } from '../ui/IconButton';
 import { safeDate, calculateCost, formatEntryTimeParts } from '../../utils';
 import { Vehicle, Garage, Staff } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CheckOutModalProps {
   selectedVehicle: Vehicle;
@@ -78,10 +79,9 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     }, 10000);
   };
 
+  useBodyScrollLock();
   React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = 'unset';
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
