@@ -9,6 +9,7 @@ import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { SubscriberModals } from './SubscriberModals';
 import { IconButton } from '../ui/IconButton';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
+import type { SharedSubscriberPage } from '../../hooks/useGarageDashboardLiveData';
 
 const parseDateKey = (dateKey: string | any): Date => {
   if (!dateKey) return new Date();
@@ -35,6 +36,7 @@ interface SubscribersViewProps {
   onClose: () => void;
   showToast: (msg: string, type: 'success' | 'error') => void;
   onToggleMenu?: () => void;
+  subscriberPage?: SharedSubscriberPage;
 }
 
 const mergeSubscriberPages = (current: Subscriber[], incoming: Subscriber[]): Subscriber[] => {
@@ -46,7 +48,7 @@ const mergeSubscriberPages = (current: Subscriber[], incoming: Subscriber[]): Su
   });
 };
 
-export const SubscribersView = memo(({ garage, onClose, showToast }: SubscribersViewProps) => {
+export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPage }: SubscribersViewProps) => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [subscriberCursor, setSubscriberCursor] = useState<SubscriberPageCursor | null>(null);
   const [hasMoreSubscribers, setHasMoreSubscribers] = useState(false);
@@ -60,6 +62,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
 
   const [isAuthResolved, setIsAuthResolved] = useState(!!auth.currentUser);
   const hasReceivedSubscriberSnapshotRef = React.useRef(false);
+  const activeGarageIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -164,6 +167,25 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
 
   useEffect(() => {
     if (!isAuthResolved) return;
+    if (activeGarageIdRef.current !== garage.id) {
+      activeGarageIdRef.current = garage.id;
+      hasReceivedSubscriberSnapshotRef.current = false;
+      setSubscribers([]);
+      setSubscriberCursor(null);
+      setHasMoreSubscribers(false);
+    }
+
+    if (subscriberPage) {
+      if (subscriberPage.garageId !== garage.id || !subscriberPage.hasSnapshot) return;
+      setSubscribers((current) => hasReceivedSubscriberSnapshotRef.current
+        ? mergeSubscriberPages(current, subscriberPage.subscribers)
+        : subscriberPage.subscribers);
+      hasReceivedSubscriberSnapshotRef.current = true;
+      setSubscriberCursor((current) => current || subscriberPage.lastDoc);
+      setHasMoreSubscribers(subscriberPage.hasMore);
+      return;
+    }
+
     hasReceivedSubscriberSnapshotRef.current = false;
     setSubscribers([]);
     setSubscriberCursor(null);
@@ -177,15 +199,17 @@ export const SubscribersView = memo(({ garage, onClose, showToast }: Subscribers
       setHasMoreSubscribers(page.hasMore);
     });
 
-    // Lock body scroll
-    document.body.style.overflow = 'hidden';
-
     return () => {
       unsub();
-      // Unlock body scroll
+    };
+  }, [garage.id, isAuthResolved, subscriberPage]);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [garage.id, isAuthResolved]);
+  }, []);
 
   const handleLoadMoreSubscribers = async () => {
     if (!subscriberCursor || !hasMoreSubscribers || isLoadingMoreSubscribers) return;

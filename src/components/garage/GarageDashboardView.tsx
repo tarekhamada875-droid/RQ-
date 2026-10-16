@@ -35,6 +35,7 @@ import { SmartActionPrompt } from "./SmartActionPrompt";
 import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeaderAndDrawer";
 import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveVehiclesList } from "./dashboard/GarageActiveVehiclesList";
+import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 
 export const GarageDashboardView = memo((props: any) => {
   const {
@@ -73,7 +74,6 @@ export const GarageDashboardView = memo((props: any) => {
   const shimmerColor = resolveShimmerColor(garage?.shimmerColor, theme);
   const [activeTab, setActiveTab] = useState<"main" | "active_vehicles">("main");
   const [itemsPerPage, setItemsPerPage] = useState(15);
-  const [expiringSubscribersCount, setExpiringSubscribersCount] = useState(0);
   const [isRechargeHistoryOpen, setIsRechargeHistoryOpen] = useState(false);
   const [hasNewRecharge, setHasNewRecharge] = useState(false);
   const [latestRechargeLog, setLatestRechargeLog] = useState<any>(null);
@@ -94,6 +94,27 @@ export const GarageDashboardView = memo((props: any) => {
   ) ?? null;
 
   const garageId = garage?.id;
+  const shouldSubscribeToSubscribers = Boolean(
+    garage?.hasMonthlySubscribers && (!currentStaff || showSubscribers),
+  );
+  const { rechargeLogs, isRechargeLoading, subscriberPage } = useGarageDashboardLiveData({
+    garageId,
+    isAuthenticated,
+    isRechargeHistoryOpen,
+    shouldSubscribeToSubscribers,
+  });
+  const processedRechargeNotificationRef = useRef<{ garageId: string | undefined; logId: string | null }>({
+    garageId,
+    logId: null,
+  });
+  const expiringSubscribersCount = useMemo(() => {
+    const todayZero = new Date();
+    todayZero.setHours(0, 0, 0, 0);
+    return subscriberPage.subscribers.filter((subscriber) => {
+      const endDate = new Date(subscriber.endDate);
+      return Math.ceil((endDate.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)) <= 3;
+    }).length;
+  }, [subscriberPage.subscribers]);
 
   useEffect(() => {
     const unsub = firestoreService.onAnnouncementsChange((list) => {
@@ -145,90 +166,71 @@ export const GarageDashboardView = memo((props: any) => {
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   useEffect(() => {
+    if (processedRechargeNotificationRef.current.garageId !== garage?.id) {
+      processedRechargeNotificationRef.current = { garageId: garage?.id, logId: null };
+    }
+
     if (!isAuthenticated || !garage?.id) return;
-    const unsub = firestoreService.subscribeToGarageRechargeLogs(garage.id, (logs) => {
-      const candidateLogs = (logs || []).filter((log: any) => {
-        if (!log) return false;
-        if (log.details?.type === 'use_referral_reward') return false;
-        if (log.plateNumber && String(log.plateNumber).includes('استخدام مكافأة')) return false;
-        return true;
-      });
+    const candidateLogs = (rechargeLogs || []).filter((log: any) => {
+      if (!log) return false;
+      if (log.details?.type === 'use_referral_reward') return false;
+      if (log.plateNumber && String(log.plateNumber).includes('استخدام مكافأة')) return false;
+      return true;
+    });
 
-      const lastAckId = localStorage.getItem(`acknowledged_recharge_${garage.id}`);
-      const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${garage.id}`) || 0);
+    const lastAckId = localStorage.getItem(`acknowledged_recharge_${garage.id}`);
+    const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${garage.id}`) || 0);
+    const latest = candidateLogs[0];
+    const fallbackDate = latest ? null : garage.lastRechargeDate;
+    if (!latest && !fallbackDate) {
+      setHasNewRecharge(false);
+      setLatestRechargeLog(null);
+      setIsRechargeNotificationOpen(false);
+      return;
+    }
 
-      if (candidateLogs.length > 0) {
-        const latest = candidateLogs[0];
-        const logId = latest.id;
-        const logDate = safeDate(latest.timestamp);
-        const logTime = logDate.getTime();
-        const diffMs = Date.now() - logTime;
-        const isRecent = diffMs < 15 * 60 * 1000;
-        const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
+    const logDate = safeDate(latest?.timestamp ?? fallbackDate);
+    const logTime = logDate.getTime();
+    const logId = latest?.id ?? `recharge_${logTime}`;
+    const notificationKey = `${garage.id}:${logId}`;
+    if (processedRechargeNotificationRef.current.logId === notificationKey) return;
+    processedRechargeNotificationRef.current.logId = notificationKey;
 
-        if (!isAcknowledged && isRecent) {
-          setHasNewRecharge(true);
-          setLatestRechargeLog(latest);
-          setIsRechargeNotificationOpen(true);
-          if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== logId) {
-            try {
-              soundManager.play("checkIn");
-            } catch (err) {
-              console.error(err);
-            }
-            localStorage.setItem(`dashboard_sound_recharge_${garage.id}`, logId);
-          }
-        } else {
-          setHasNewRecharge(false);
-          setLatestRechargeLog(null);
-          setIsRechargeNotificationOpen(false);
+    const diffMs = Date.now() - logTime;
+    const isRecent = diffMs < 15 * 60 * 1000;
+    const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
+
+    if (!isAcknowledged && isRecent) {
+      const fallbackLog: any = latest || {
+        id: logId,
+        garageId: garage.id,
+        actionType: 'recharge',
+        plateNumber: garage.lastRechargePackageName ? `شحن باقة: ${garage.lastRechargePackageName}` : 'شحن رصيد الجراج',
+        amount: garage.lastRechargeAmount || 0,
+        timestamp: garage.lastRechargeDate,
+        details: {
+          packageName: garage.lastRechargePackageName || 'الباقة',
+          revenueAmount: garage.lastRechargeAmount || 0,
+          isTrial: Boolean(garage?.isTrial),
+        },
+      };
+      setHasNewRecharge(true);
+      setLatestRechargeLog(fallbackLog);
+      setIsRechargeNotificationOpen(true);
+      if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== logId) {
+        try {
+          soundManager.play("checkIn");
+        } catch (err) {
+          console.error(err);
         }
-      } else if (garage?.lastRechargeDate) {
-        const logDate = safeDate(garage.lastRechargeDate);
-        const logTime = logDate.getTime();
-        const diffMs = Date.now() - logTime;
-        const fallbackId = `recharge_${logTime}`;
-        const isRecent = diffMs < 15 * 60 * 1000;
-        const isAcknowledged = lastAckId === fallbackId || (lastAckTime > 0 && logTime <= lastAckTime);
-
-        if (!isAcknowledged && isRecent) {
-          const fallbackLog: any = {
-            id: fallbackId,
-            garageId: garage.id,
-            actionType: 'recharge',
-            plateNumber: garage.lastRechargePackageName ? `شحن باقة: ${garage.lastRechargePackageName}` : 'شحن رصيد الجراج',
-            amount: garage.lastRechargeAmount || 0,
-            timestamp: garage.lastRechargeDate,
-            details: {
-              packageName: garage.lastRechargePackageName || 'الباقة',
-              revenueAmount: garage.lastRechargeAmount || 0,
-              isTrial: Boolean(garage?.isTrial)
-            }
-          };
-          setHasNewRecharge(true);
-          setLatestRechargeLog(fallbackLog);
-          setIsRechargeNotificationOpen(true);
-          if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== fallbackId) {
-            try {
-              soundManager.play("checkIn");
-            } catch (err) {
-              console.error(err);
-            }
-            localStorage.setItem(`dashboard_sound_recharge_${garage.id}`, fallbackId);
-          }
-        } else {
-          setHasNewRecharge(false);
-          setLatestRechargeLog(null);
-          setIsRechargeNotificationOpen(false);
-        }
-      } else {
-        setHasNewRecharge(false);
-        setLatestRechargeLog(null);
-        setIsRechargeNotificationOpen(false);
+        localStorage.setItem(`dashboard_sound_recharge_${garage.id}`, logId);
       }
-    }, 1);
-    return () => unsub();
-  }, [garage?.id, isAuthenticated, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
+    } else {
+      setHasNewRecharge(false);
+      setLatestRechargeLog(null);
+      setIsRechargeNotificationOpen(false);
+    }
+  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
 
   useEffect(
     () => () => {
@@ -236,24 +238,6 @@ export const GarageDashboardView = memo((props: any) => {
     },
     [isLockedOrSuspended],
   );
-
-  useEffect(() => {
-    if (isAuthenticated && !currentStaff && garage?.hasMonthlySubscribers && garage?.id) {
-      const unsub = firestoreService.subscribeToSubscribers(garage.id, (subs) => {
-        const todayZero = new Date();
-        todayZero.setHours(0, 0, 0, 0);
-        let expiringCount = 0;
-        subs.forEach((sub) => {
-          const endDate = new Date(sub.endDate);
-          if (Math.ceil((endDate.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)) <= 3) {
-            expiringCount++;
-          }
-        });
-        setExpiringSubscribersCount(expiringCount);
-      });
-      return () => unsub();
-    }
-  }, [garage?.id, currentStaff, isAuthenticated, garage?.hasMonthlySubscribers]);
 
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garage?.id) {
@@ -486,6 +470,9 @@ export const GarageDashboardView = memo((props: any) => {
         isLocked={isLockedOrSuspended}
         isSubscribersOpen={showSubscribers}
         isRechargeHistoryOpen={isRechargeHistoryOpen}
+        rechargeLogs={rechargeLogs}
+        isRechargeLogsLoading={isRechargeLoading}
+        subscriberPage={subscriberPage}
         isPackagesOpen={showPackages}
         isStaffStatsOpen={showStaffStats}
         isReportsOpen={isReportsOpen}

@@ -17,6 +17,9 @@ export const GarageDashboardOverlays = (props: any) => {
     isLocked,
     isSubscribersOpen,
     isRechargeHistoryOpen,
+    rechargeLogs,
+    isRechargeLogsLoading,
+    subscriberPage,
     isPackagesOpen,
     isStaffStatsOpen,
     isReportsOpen,
@@ -70,10 +73,10 @@ export const GarageDashboardOverlays = (props: any) => {
         </div>
       )}
       {isSubscribersOpen && garage?.hasMonthlySubscribers && (
-        <SubscribersView garage={garage} onClose={onCloseSubscribers} showToast={showToast} onToggleMenu={onToggleMenu} />
+        <SubscribersView garage={garage} onClose={onCloseSubscribers} showToast={showToast} onToggleMenu={onToggleMenu} subscriberPage={subscriberPage} />
       )}
       {isRechargeHistoryOpen && (
-        <RechargeHistoryView garage={garage} onClose={onCloseRechargeHistory} showToast={showToast} onToggleMenu={onToggleMenu} />
+        <RechargeHistoryView garage={garage} onClose={onCloseRechargeHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={rechargeLogs} sharedIsLoading={isRechargeLogsLoading} />
       )}
       {isPackagesOpen && (
         <PackagesModal
