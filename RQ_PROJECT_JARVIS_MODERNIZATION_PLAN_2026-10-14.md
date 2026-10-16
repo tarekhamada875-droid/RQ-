@@ -238,9 +238,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—incorrect prior-value restoration. Keep old utility behind a small adapter and revert to prior hook if main dashboard scrolling changes.
 - **Effort:** M.
 
-- **Implementation status (2026-10-16):** Implemented on branch `fix/ui-006-reference-counted-scroll-lock`. A shared token-based `useBodyScrollLock` keeps the page locked until the final overlay releases it, restores the original inline overflow exactly, and supports out-of-order release. Per-body lock sessions prevent late cleanup from restoring state onto a replaced or detached `document.body`. All application-level body overflow writers now use this hook; the garage dashboard's unconditional cleanup reset was removed. Admin, delegate, garage history/subscriber views, and modal owners are covered.
+- **Implementation status (2026-10-16):** Implemented on branch `fix/ui-006-reference-counted-scroll-lock` and open for review in [PR #65](https://github.com/tarekhamada875-droid/RQ-/pull/65). A shared token-based `useBodyScrollLock` keeps the page locked until the final overlay releases it, restores the original inline overflow exactly, and supports out-of-order release. Per-body lock sessions prevent late cleanup from restoring state onto a replaced or detached `document.body`. All application-level body overflow writers now use this hook; the garage dashboard's unconditional cleanup reset was removed. Admin, delegate, garage history/subscriber views, and modal owners are covered.
 - **Coverage and verification:** Eight hook tests cover both two-owner release orders, exact prior-style restoration, enable/disable, React StrictMode replay, and body removal/replacement; a mobile-viewport CheckIn + DeleteVehicle modal integration test confirms closing one owner does not unlock the other. Local `npm run ci:check` passed (123 test files / 794 tests, TypeScript and Pages/Worker builds); `npm run lint`, `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed.
-- **Release boundary:** UI-006 is not merged or deployed; its focused PR and hosted checks remain pending.
+- **Release boundary:** PR #65 is open; hosted checks are running. UI-006 is not merged or deployed.
 
 ### B. Frontend services, hooks, Firestore reads/writes, and listener callsites
 
