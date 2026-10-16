@@ -2,7 +2,7 @@
 
 **Last verified:** 2026-10-16
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
-**Repository state:** Current deployed application code is PR #77 / `d5a42ba`; PR #76 fixed the FS-03 timestamp-type mismatch and PR #77 fixed the WKR-02 last-subscriber counter. PRs #78–#80 changed documentation only; local/remote `main` is `d983036` before this documentation branch.
+**Application release baseline:** Deployed application code remains PR #77 / `d5a42ba`; PR #76 fixed the FS-03 timestamp-type mismatch and PR #77 fixed the WKR-02 last-subscriber counter. PRs #78–#81 were documentation-only; PR #81 recorded the prepaid-credit plan at `a9719ad`, and its Production Gate and Worker deployment passed. Re-check current `main` and open PRs before working.
 **Next task:** **FS-02** (do not begin until the owner says to continue)
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, measurements, and the new owner-approved prepaid-credit workstream.
