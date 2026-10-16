@@ -18,6 +18,14 @@ assert.deepEqual(activityLogCompositeIndex?.fields, [
   { fieldPath: 'garageId', order: 'ASCENDING' },
   { fieldPath: 'timestamp', order: 'DESCENDING' }
 ], 'firestore.indexes.json must retain the activity_logs garageId/timestamp composite index');
+const rechargeActivityLogCompositeIndex = firestoreIndexes.indexes.find((index) =>
+  index.collectionGroup === 'activity_logs' && index.queryScope === 'COLLECTION' && index.fields.length === 3
+);
+assert.deepEqual(rechargeActivityLogCompositeIndex?.fields, [
+  { fieldPath: 'garageId', order: 'ASCENDING' },
+  { fieldPath: 'actionType', order: 'ASCENDING' },
+  { fieldPath: 'timestamp', order: 'DESCENDING' }
+], 'firestore.indexes.json must retain the ordered garage recharge activity-log index');
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',

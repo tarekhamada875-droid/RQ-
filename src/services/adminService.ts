@@ -485,11 +485,13 @@ export const adminService = {
     };
 
     try {
-      const fetchLimit = Math.max(limitCount, 25);
+      const resultLimit = Math.max(0, Math.floor(limitCount));
+      const fetchLimit = Math.max(resultLimit, 1);
       const q = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
         where('actionType', '==', 'recharge'),
+        orderBy('timestamp', 'desc'),
         limit(fetchLimit)
       );
       primaryUnsub = onSnapshot(q, (snapshot) => {
@@ -497,13 +499,14 @@ export const adminService = {
         const data = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
         data.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-        callback(data.slice(0, limitCount));
+        callback(data.slice(0, resultLimit));
       }, (err) => {
         if (isClosed || fallbackUnsub) return;
         console.warn('Targeted recharge query fallback needed:', err);
         const fallbackQ = query(
           collection(db, 'activity_logs'),
           where('garageId', '==', garageId),
+          orderBy('timestamp', 'desc'),
           limit(100)
         );
         fallbackUnsub = onSnapshot(fallbackQ, (snapshot) => {
@@ -512,7 +515,7 @@ export const adminService = {
             .map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog))
             .filter(log => log.actionType === 'recharge' || (log.plateNumber && (log.plateNumber.includes('شحن') || log.plateNumber.includes('تفعيل'))));
           data.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-          callback(data.slice(0, limitCount));
+          callback(data.slice(0, resultLimit));
         }, (fallbackErr) => {
           if (isClosed) return;
           handleFirestoreError(fallbackErr, OperationType.LIST, 'activity_logs');
