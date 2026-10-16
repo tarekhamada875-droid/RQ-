@@ -6,7 +6,7 @@
 
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
-**Current JARVIS continuation point (verified 2026-10-16):** Phase 1 and the completed Phase 2/3 items through **WKR-02** are merged into `main` through PR #67 at commit `bb537194ec3be199d1afd757643ee22faf95aeb4`. The next uncompleted roadmap task is **FS-03 — Bound financial reports and aggregate page by page**. The post-merge Production Gate and Worker deployment were still running at the time of this note; verify their final status before treating the change as live.
+**Current JARVIS continuation point (verified 2026-10-16):** Phase 1 and the completed Phase 2/3 items through **WKR-02** are merged into `main` through PR #67 at commit `bb537194ec3be199d1afd757643ee22faf95aeb4`. The next uncompleted roadmap task is **FS-03 — Bound financial reports and aggregate page by page**. See [`RQ_PROJECT_JARVIS_REMAINING_PLAN_2026-10-16.md`](./RQ_PROJECT_JARVIS_REMAINING_PLAN_2026-10-16.md) for the concise remaining-work list and recommended order. The post-merge Production Gate and Worker deployment were still running at the time of this note; verify their final status before treating the change as live.
 
 ## 1. What RQ is
 
