@@ -238,22 +238,26 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—incorrect prior-value restoration. Keep old utility behind a small adapter and revert to prior hook if main dashboard scrolling changes.
 - **Effort:** M.
 
-- **Implementation status (2026-10-16):** Implemented on branch `fix/ui-006-reference-counted-scroll-lock` and open for review in [PR #65](https://github.com/tarekhamada875-droid/RQ-/pull/65). A shared token-based `useBodyScrollLock` keeps the page locked until the final overlay releases it, restores the original inline overflow exactly, and supports out-of-order release. Per-body lock sessions prevent late cleanup from restoring state onto a replaced or detached `document.body`. All application-level body overflow writers now use this hook; the garage dashboard's unconditional cleanup reset was removed. Admin, delegate, garage history/subscriber views, and modal owners are covered.
+- **Implementation status (2026-10-16):** Merged via [PR #65](https://github.com/tarekhamada875-droid/RQ-/pull/65) at `673787972cbc72ee4e8b7b3bf2761730c9eab67c`. A shared token-based `useBodyScrollLock` keeps the page locked until the final overlay releases it, restores the original inline overflow exactly, and supports out-of-order release. Per-body lock sessions prevent late cleanup from restoring state onto a replaced or detached `document.body`. All application-level body overflow writers now use this hook; the garage dashboard's unconditional cleanup reset was removed. Admin, delegate, garage history/subscriber views, and modal owners are covered.
 - **Coverage and verification:** Eight hook tests cover both two-owner release orders, exact prior-style restoration, enable/disable, React StrictMode replay, and body removal/replacement; a mobile-viewport CheckIn + DeleteVehicle modal integration test confirms closing one owner does not unlock the other. Local `npm run ci:check` passed (123 test files / 794 tests, TypeScript and Pages/Worker builds); `npm run lint`, `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed.
-- **Release boundary:** PR #65 is open; hosted checks are running. UI-006 is not merged or deployed.
+- **Release verification:** Post-merge Production Gate [#38873331878](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38873331878) and Worker deployment/health smoke [#38873331931](https://github.com/tarekhamada875-droid/RQ-/actions/runs/38873331931) succeeded, including the live smoke check. UI-006 is merged/deployed; no Firebase documents or security rules changed.
 
 ### B. Frontend services, hooks, Firestore reads/writes, and listener callsites
 
 #### FE-001 — Make system config single-owner
 
-- **Source:** `src/hooks/useGarageApp.ts:40-42,99-121,250-257`; `src/hooks/useSystemConfig.ts:5-15`; `src/services/adminService.ts:153-175,621-667`.
-- **Simple explanation:** Fee hooks and `useSystemConfig` share a hook-level singleton, but wallet and subscription-price effects bypass it; a normal mount creates three API fetches and three listeners.
+- **Source:** `src/hooks/useGarageApp.ts`; `src/hooks/useGarageSystemConfigSync.ts`; `src/hooks/useSystemConfig.ts`; `src/components/admin/AdminGlobalSettingsView.tsx`; `src/components/admin/AdminWalletView.tsx`; `src/services/adminService.ts` system-config subscription/fallback.
+- **Simple explanation:** Fee hooks and `useSystemConfig` share a hook-level singleton, but wallet/prices and two admin views also read config independently; a normal mount can create several API fetches/listeners.
 - **Implementation design / behavior to keep:** Have `useSystemConfig` return wallet number and subscription prices (or typed selectors). Remove independent wallet/price subscriptions. Preserve non-empty guards, local-storage wallet behavior, API fallback ordering, defaults, and public fee-hook values.
 - **Expected benefit:** Fewer startup reads/listeners and duplicate React updates.
 - **Acceptance criteria:** Cold mount with all consumers: 3 to 1 `onSnapshot` and `/api/system-config` calls; one config update has one shared notification path; singleton unsubscribes once after all consumers unmount.
-- **Test plan:** Hook/service count tests, empty-event cache preservation, offline/error fallback tests.
+- **Test plan:** Hook subscription-count and last-consumer cleanup tests; empty-value preservation, partial-price merge, and admin-form refresh tests. The service API/Firestore fallback path is unchanged and audited.
 - **Risk / rollback:** Medium—could erase cached wallet or alter startup defaults. Keep guards and revert consumers while retaining instrumentation if parity fails.
 - **Effort:** M.
+
+- **Implementation status (2026-10-16):** In progress on branch `fix/fe-001-single-system-config-listener`. `useGarageApp` now uses `useGarageSystemConfigSync` for wallet/prices; `AdminGlobalSettingsView` consumes the same singleton and protects in-progress edits from snapshots; `AdminWalletView` uses its parent's shared wallet state. The unused wallet/price subscription wrappers were removed. Empty wallet fallbacks are ignored, and non-empty partial prices merge into defaults/current values. Direct `getSystemConfig()` calls in application views are eliminated; remaining calls are inside the shared service bootstrap/fallback.
+- **Coverage and verification:** Tests prove config plus fee consumers share one subscription/snapshot, cleanup waits for the last consumer, empty wallet/price events preserve cached/default state, partial prices merge, wallet text is normalized, and global-settings edits survive a refresh. Focused tests passed (4 files / 7 tests). Final `npm run ci:check` passed (125 test files / 798 tests, TypeScript and Pages/Worker builds); `npm run lint`, `npm run test:rules`, `npm run maintainability:check`, and `git diff --check` passed. Independent review found no blockers. The listener-sharing tests mock the service rather than mounting the complete App tree; source audit confirms no separate app-level config fetch remains.
+- **Release boundary:** FE-001 is not merged or deployed.
 
 #### FE-002 — Page admin garage/delegate lists
 

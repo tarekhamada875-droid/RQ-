@@ -150,12 +150,6 @@ export const adminService = {
     }
   },
 
-  subscribeToWalletNumber: (callback: (wallet: string) => void) => {
-    return adminService.subscribeToSystemConfig((config) => {
-      callback(config?.walletNumber || '');
-    });
-  },
-
   updateWalletNumber: async (walletNumber: string): Promise<void> => {
     try {
       await apiFetch('/api/admin/update-system-config', {
@@ -166,12 +160,6 @@ export const adminService = {
       handleFirestoreError(error, OperationType.UPDATE, 'system_config/global');
       throw error;
     }
-  },
-
-  subscribeToSubscriptionPrices: (callback: (prices: any) => void) => {
-    return adminService.subscribeToSystemConfig((config) => {
-      callback(config?.subscriptionPrices || {});
-    });
   },
 
   // Packages Management
