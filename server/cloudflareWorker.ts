@@ -20,7 +20,7 @@ import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageS
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
-import { calculateFinancialReport } from './financialReporting';
+import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import {
@@ -3701,8 +3701,8 @@ const handleFinancialSummaryReport = async (c: any) => {
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const start = c.req.query('start');
-    const end = c.req.query('end');
+    const requestedStart = c.req.query('start');
+    const requestedEnd = c.req.query('end');
     const delegateId = c.req.query('delegateId') ? validateId(c.req.query('delegateId'), 'delegateId', true) : undefined;
 
     const isStrictDateOnly = (value?: string) => {
@@ -3711,42 +3711,64 @@ const handleFinancialSummaryReport = async (c: any) => {
       const parsed = new Date(`${value}T00:00:00.000Z`);
       return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
     };
-    if (!isStrictDateOnly(start) || !isStrictDateOnly(end)) {
+    if (!isStrictDateOnly(requestedStart) || !isStrictDateOnly(requestedEnd)) {
       return c.json({ success: false, code: 'INVALID_REPORT_DATE', error: 'INVALID_REPORT_DATE', statusCode: 400 }, 400);
     }
 
-    if (start && end && new Date(start) >= new Date(end)) {
+    if (requestedStart && requestedEnd && new Date(requestedStart) >= new Date(requestedEnd)) {
       return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
     }
 
-    // Apply the same inclusive-start / exclusive-end boundaries in Firestore,
-    // not just after downloading every historical record into the Worker.
-    const startAt = start ? new Date(`${start}T00:00:00.000Z`) : undefined;
-    const endAt = end ? new Date(`${end}T00:00:00.000Z`) : undefined;
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const defaultEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const subtractOneCalendarYear = (date: Date) => {
+      const year = date.getUTCFullYear() - 1;
+      const month = date.getUTCMonth();
+      const day = Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
+      return new Date(Date.UTC(year, month, day));
+    };
+    // No-date reports default to the latest 12 calendar months. Partial ranges
+    // are bounded too; older history remains available through explicit dates.
+    const start = requestedStart || subtractOneCalendarYear(requestedEnd ? new Date(`${requestedEnd}T00:00:00.000Z`) : today).toISOString().slice(0, 10);
+    const end = requestedEnd || defaultEnd.toISOString().slice(0, 10);
+    if (new Date(start) >= new Date(end)) {
+      return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
+    }
+    // Apply inclusive-start/exclusive-end boundaries in Firestore and process
+    // stable cursor pages so Worker memory is independent of ledger history.
+    const startAt = new Date(`${start}T00:00:00.000Z`);
+    const endAt = new Date(`${end}T00:00:00.000Z`);
     let eventsQuery: any = adminDb.collectionGroup('events');
     let settlementsQuery: any = adminDb.collection('settlements');
-    if (startAt) {
-      eventsQuery = eventsQuery.where('occurredAt', '>=', startAt);
-      settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt);
-    }
-    if (endAt) {
-      eventsQuery = eventsQuery.where('occurredAt', '<', endAt);
-      settlementsQuery = settlementsQuery.where('settledAt', '<', endAt);
-    }
-
-    const [eventsSnap, settlementsSnap] = await Promise.all([
-      eventsQuery.get(),
-      settlementsQuery.get()
-    ]);
-    const events = eventsSnap.docs.map((doc: any) => doc.data() || {});
-    const settlements = settlementsSnap.docs.map((doc: any) => doc.data() || {});
-    const report = calculateFinancialReport(events, settlements, { start, end, delegateId });
+    eventsQuery = eventsQuery.where('occurredAt', '>=', startAt).where('occurredAt', '<', endAt);
+    settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
+    const accumulator = createFinancialReportAccumulator({ start, end, delegateId });
+    const pageSize = 250;
+    const forEachPage = async (baseQuery: any, timestampField: string, consume: (value: any) => void) => {
+      let cursor: any = null;
+      while (true) {
+        let pageQuery = baseQuery.orderBy(timestampField, 'asc').orderBy('__name__', 'asc').limit(pageSize);
+        if (cursor) pageQuery = pageQuery.startAfter(cursor.timestamp, cursor.ref);
+        const page = await pageQuery.get();
+        if (page.docs.length === 0) break;
+        for (const document of page.docs) consume(document.data() || {});
+        if (page.docs.length < pageSize) break;
+        const last = page.docs[page.docs.length - 1];
+        cursor = { timestamp: last.data()?.[timestampField], ref: last.ref };
+      }
+    };
+    // Load settlement cutoffs before events; keep only totals and one latest
+    // timestamp per delegate, never the underlying document arrays.
+    await forEachPage(settlementsQuery, 'settledAt', (settlement) => addFinancialReportSettlement(accumulator, settlement));
+    await forEachPage(eventsQuery, 'occurredAt', (event) => addFinancialReportEvent(accumulator, event));
+    const report = finishFinancialReport(accumulator);
 
     return c.json({
       success: true,
       data: {
         report,
-        filters: { start: start || null, end: end || null, delegateId: delegateId || null },
+        filters: { start, end, delegateId: delegateId || null },
         generatedAt: new Date().toISOString()
       }
     });

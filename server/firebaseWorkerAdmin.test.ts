@@ -76,4 +76,55 @@ describe('Worker Firestore transaction adapter', () => {
     expect(urls.some((url) => url.includes(':beginTransaction'))).toBe(true);
     expect(urls.some((url) => url.includes(':commit'))).toBe(true);
   });
+
+  it('serializes stable timestamp and document-reference cursors for paged queries', async () => {
+    const requests: Array<{ url: string; body?: string }> = [];
+    const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      requests.push({ url, body: typeof init?.body === 'string' ? init.body : undefined });
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return new Response(JSON.stringify({ access_token: 'test-access-token', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes(':runQuery')) return new Response('[]', { status: 200 });
+      throw new Error(`Unexpected Firestore request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    initializeFirebaseAdmin({
+      FIREBASE_PROJECT_ID: 'cursor-test-project',
+      FIREBASE_DATABASE_ID: '(default)',
+      FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        project_id: 'cursor-test-project',
+        client_email: 'cursor-test@example.invalid',
+        private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+        token_uri: 'https://oauth2.googleapis.com/token'
+      })
+    });
+
+    const timestamp = new Date('2026-01-15T12:00:00.000Z');
+    const reference = adminDb.doc('garages/garage-a/events/event-last');
+    await adminDb.collectionGroup('events')
+      .where('occurredAt', '>=', timestamp)
+      .orderBy('occurredAt', 'asc')
+      .orderBy('__name__', 'asc')
+      .limit(250)
+      .startAfter(timestamp, reference)
+      .get();
+
+    const request = requests.find((entry) => entry.url.includes(':runQuery'));
+    const structuredQuery = JSON.parse(request?.body || '{}').structuredQuery;
+    expect(structuredQuery.orderBy).toEqual([
+      { field: { fieldPath: 'occurredAt' }, direction: 'ASCENDING' },
+      { field: { fieldPath: '__name__' }, direction: 'ASCENDING' }
+    ]);
+    expect(structuredQuery.startAt).toEqual({
+      values: [
+        { timestampValue: timestamp.toISOString() },
+        { referenceValue: `projects/cursor-test-project/databases/(default)/documents/garages/garage-a/events/event-last` }
+      ],
+      before: false
+    });
+    expect(structuredQuery.limit).toBe(250);
+  });
 });

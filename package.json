@@ -14,6 +14,7 @@
     "lint": "tsc --noEmit",
     "ci:check": "tsx tools/ci-check.ts",
     "benchmark": "tsx tools/performance-benchmark.ts",
+    "financial-report:benchmark": "tsx tools/financial-report-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
     "maintainability:check": "tsx tools/maintainability-check.ts",
     "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
