@@ -63,3 +63,9 @@ Before handing off, check the actual repository and GitHub state. Record or repo
 Update the tracked roadmap, knowledge base, or maintainer handoff when verified project facts or decisions have changed; do not add speculative status or duplicate unchanged notes. Never include credentials, secrets, or private customer data in the handoff. If context is ending during unfinished work, state exactly what is incomplete and do not imply that it has been committed, merged, or deployed.
 
 This is a new, general RQ continuity practice. The historical **“tokens ending”** wording refers to the archived H9 succession protocol only; that protocol remains closed and must not be restarted.
+
+## Owner’s standing task-completion instruction
+
+For every bounded JARVIS task, Tarek requires the same complete release cycle: implement the selected task; run focused tests and the repository’s full verification gates; update the roadmap, knowledge base, or maintainer handoff; commit the complete change; push the feature branch; open a pull request into `main`; wait for the required Production Gate checks; merge the pull request when those checks pass; verify the merged commit, remote `main`, working tree, and post-merge workflows; and then stop to report the finished task before beginning another one. Agents must not silently continue to the next roadmap item.
+
+The agent must accurately distinguish **local**, **pushed**, **in a PR**, **merged**, **deployed**, and **live** status. It must not claim deployment until the guarded workflow and relevant smoke checks succeed. This standing instruction covers routine roadmap engineering only; it does not authorize destructive data operations, unapproved Firebase changes, payments, security or ownership changes, or other consequential actions outside the approved roadmap.

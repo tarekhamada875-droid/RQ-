@@ -112,3 +112,20 @@
 
 ### 10. Law of Hardware-Accelerated Micro-Interactions
 - **Smooth 60fps Motion:** Use hardware-accelerated Tailwind transitions (`transition-all duration-200 ease-in-out`) or `motion/react` for modals and dropdowns. Avoid animating heavy properties like `width`, `height`, or `top` directly; prefer `transform` (`scale`, `translate`) and `opacity`.
+
+---
+
+## Owner-mandated completion workflow
+
+For every bounded JARVIS task, all agents MUST complete the full workflow before stopping:
+
+1. Implement only the selected task and preserve existing behavior outside its scope.
+2. Run focused regression tests, then `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` as applicable. Report warnings separately from failures and never claim a check passed unless it actually passed.
+3. Update the JARVIS roadmap and the tracked knowledge base or maintainer handoff with the verified implementation status, test evidence, GitHub state, unresolved risks, and the single next task.
+4. Commit all source, test, and documentation changes.
+5. Push the feature branch to GitHub.
+6. Open a pull request into `main`, wait for the required Production Gate checks, and merge the pull request when those checks pass. Do not bypass protected release checks. Merging to `main` may trigger the guarded Pages/Worker deployment; verify its workflow result before calling the change live.
+7. Verify the merged commit, remote `main`, working-tree state, and relevant post-merge workflows. Leave the local workspace on the current `main` branch when practical.
+8. Stop and report the completed task to Tarek before starting the next roadmap task. Do not silently continue to the next task.
+
+This workflow is part of the owner’s standing authorization for routine roadmap engineering. It does not authorize destructive data operations, unapproved Firebase changes, payments, security/ownership changes, or other consequential actions outside the roadmap.
