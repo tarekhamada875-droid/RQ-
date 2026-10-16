@@ -47,8 +47,8 @@
 - **Zero Unresolved Identifiers:** Never rely on implicit globals or assume a utility is present without verifying its import line.
 
 ### 4. Law of Dynamic Business Logic & Hardcoding Prohibition
-- **Dynamic Package & Subscription Handling:** Never hardcode package checks to a limited subset (e.g. only `'weekly_sub'` and `'monthly_sub'`). Always support all package types including `'biweekly_sub'`, 15-day packages, custom packages, or fallback dynamically to `pkg.vehiclesCount` / `carsCount` / `balanceDays`.
-- **Flexible Expiry Logic:** Calculate subscription end dates dynamically based on actual package days added onto either current expiry (if in the future) or current time.
+- **Dynamic Package & Subscription Handling:** Keep package logic data-driven. Garage RQ-access credit bundles are integer credit quantities with no expiry; do not attach duration or `balanceDays` to them. The garage’s own monthly parking memberships remain time-based. If operational vehicle capacity remains, keep it separate from credit-bundle quantity.
+- **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. Follow the active roadmap task for any planned cutover; preserve historical records.
 
 ### 5. Law of Input Hygiene & Numeric Sanitization
 - **Strict Numeric Fields:** All numeric input fields must use `type="text" inputMode="numeric" pattern="[0-9]*"` with `.replace(/\D/g, '')` in `onChange` to prevent `NaN`, browser spin artifacts, or forced direction issues.
