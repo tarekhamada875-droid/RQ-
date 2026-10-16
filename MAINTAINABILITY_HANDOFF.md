@@ -19,9 +19,9 @@ The application is a React/Vite static PWA on Cloudflare Pages connected to a Fe
 - Live health check: `https://rq.tarekhamada875.workers.dev/api/health`.
 - Live frontend check: `https://rq-acg.pages.dev`.
 
-## FS-03 — Bounded financial reports (PR #73)
+## FS-03 — Bounded financial reports (merged and deployed in PR #73)
 
-Undated reports now use the owner-approved latest 12 calendar months; explicit older date ranges remain supported. Worker event and settlement reads use stable timestamp/document-name cursors in 250-record pages and feed constant-in-record-count aggregation state. Settlement cutoffs are loaded before events; date boundaries and delegate filtering remain unchanged. PR #73 is open on `feat/fs-03-bounded-financial-reports`; local validation passed, while GitHub Production Gate/merge remain pending. No production data or settings were changed.
+Undated reports now use the owner-approved latest 12 calendar months; explicit older date ranges remain supported. Worker event and settlement reads use stable timestamp/document-name cursors in 250-record pages and feed constant-in-record-count aggregation state. Settlement cutoffs are loaded before events; date boundaries and delegate filtering remain unchanged. PR #73 merged to `main` at `31f733fac610cd2dce5b28cbbd28dce1ecd396b2`; the post-merge Production Gate and Worker deployment succeeded. Live Pages, Worker health, and Worker version endpoints returned HTTP 200. No production data or settings were changed.
 
 The synthetic `npm run financial-report:benchmark` reports 1/3/10-year modeled reads of 1,616 / 4,824 / 16,064; local aggregation p95 of 1.716 / 1.645 / 4.637 ms; and peak heap growth of 185,680 / 325,288 / 332,648 bytes (25 runs, 250-document pages). These numbers are local synthetic estimates, not billed reads or live Worker/network performance.
 
