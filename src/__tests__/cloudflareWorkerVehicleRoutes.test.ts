@@ -98,6 +98,46 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(replayRes.status).toBe(200);
   });
 
+  it('resolves deterministic subscribers inside the transaction and bounds legacy fallback reads', async () => {
+    const deterministicPlateRaw = 'ABC1234';
+    const deterministicSubscriberId = `plate_${Buffer.from(deterministicPlateRaw).toString('base64url')}`;
+    mockDb.seed(`garages/${testGarageId}/subscribers/${deterministicSubscriberId}`, {
+      plateNumber: 'ABC 1234',
+      plateNumberRaw: deterministicPlateRaw,
+      startDate: '2020-01-01',
+      endDate: '2099-12-31'
+    });
+
+    mockDb.resetDocumentCounts();
+    const deterministicResponse = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 1234', plateRaw: deterministicPlateRaw })
+    }), workerEnv);
+
+    expect(deterministicResponse.status).toBe(409);
+    expect(await deterministicResponse.json()).toMatchObject({ success: false });
+    const deterministicReadCount = mockDb.documentReadCount;
+
+    const legacyPlateRaw = 'XYZ9876';
+    mockDb.seed(`garages/${testGarageId}/subscribers/legacy-sub`, {
+      plateNumber: 'XYZ 9876',
+      plateNumberRaw: legacyPlateRaw,
+      startDate: '2020-01-01',
+      endDate: '2099-12-31'
+    });
+    mockDb.resetDocumentCounts();
+    const legacyResponse = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'XYZ 9876', plateRaw: legacyPlateRaw })
+    }), workerEnv);
+
+    expect(legacyResponse.status).toBe(409);
+    expect(await legacyResponse.json()).toMatchObject({ success: false });
+    expect(mockDb.documentReadCount).toBe(deterministicReadCount + 2);
+  });
+
   it('2. POST /api/vehicles/check-out processes vehicle exit and calculates cost', async () => {
     // Check in vehicle first
     await api.fetch(new Request('http://localhost/api/vehicles/check-in', {

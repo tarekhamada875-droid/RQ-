@@ -8,7 +8,8 @@ import {
   doc, 
   getDocs, 
   orderBy, 
-  limit
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import type { Delegate, Garage, RechargeRequest, ActivityLog } from '../types';
 import { safeDate } from '../utils';
@@ -21,6 +22,21 @@ export interface DelegateDashboardData {
   garages: Garage[];
   requests: RechargeRequest[];
 }
+
+export interface DelegatePage {
+  delegates: Delegate[];
+  lastDoc: any;
+  hasMore: boolean;
+}
+
+const mapDelegatePage = (snapshot: any, pageSize: number): DelegatePage => ({
+  delegates: snapshot.docs.map((delegateDoc: any) => ({
+    id: delegateDoc.id,
+    ...delegateDoc.data()
+  } as Delegate)),
+  lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+  hasMore: snapshot.docs.length === pageSize,
+});
 
 async function createSettlementIdempotencyKey(delegateId: string, totalRechargedAmount: number, lastSettledAt?: unknown): Promise<string> {
   let settlementMarker = 'initial';
@@ -87,6 +103,18 @@ export const delegateService = {
       unsub();
       trackerUnsub();
     };
+  },
+
+  getAdminDelegatesPage: async (pageSize = 50, lastDocRef: any = null): Promise<DelegatePage> => {
+    try {
+      const q = lastDocRef
+        ? query(collection(db, 'delegates'), orderBy('createdAt', 'desc'), startAfter(lastDocRef), limit(pageSize))
+        : query(collection(db, 'delegates'), orderBy('createdAt', 'desc'), limit(pageSize));
+      return mapDelegatePage(await getDocs(q), pageSize);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'delegates/admin-page');
+      throw error;
+    }
   },
 
   subscribeToDelegate: (delegateId: string, callback: (delegate: Delegate) => void) => {

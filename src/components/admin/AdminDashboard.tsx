@@ -38,6 +38,20 @@ interface AdminDashboardProps {
   packages: Package[];
   onLogout: () => void;
   rechargeRequests: RechargeRequest[];
+  adminGarageHasMore?: boolean;
+  adminDelegateHasMore?: boolean;
+  adminListsLoading?: boolean;
+  adminListsError?: boolean;
+  adminSummary?: {
+    totalGarages: number;
+    activeGarages: number;
+    lockedGarages: number;
+    totalDelegates: number;
+    totalAdminRevenue: number;
+  } | null;
+  onLoadMoreAdminGarages?: () => Promise<void>;
+  onLoadMoreAdminDelegates?: () => Promise<void>;
+  onRefreshAdminLists?: () => Promise<void>;
   // Retained only to constrain stale legacy Supervisor client state.
   currentSupervisor?: Supervisor | null;
   currentAdminPin: string;
@@ -59,6 +73,14 @@ export const AdminDashboard = memo(({
   packages,
   onLogout,
   rechargeRequests,
+  adminGarageHasMore = false,
+  adminDelegateHasMore = false,
+  adminListsLoading = false,
+  adminListsError = false,
+  adminSummary = null,
+  onLoadMoreAdminGarages,
+  onLoadMoreAdminDelegates,
+  onRefreshAdminLists,
   currentSupervisor = null,
   currentAdminPin,
   currentWalletNumber,
@@ -443,6 +465,14 @@ export const AdminDashboard = memo(({
             setPinInput('');
             setShowOverview(true);
           } : undefined}
+          adminGarageHasMore={adminGarageHasMore}
+          adminDelegateHasMore={adminDelegateHasMore}
+          adminListsLoading={adminListsLoading}
+          adminListsError={adminListsError}
+          adminSummary={adminSummary}
+          onLoadMoreAdminGarages={onLoadMoreAdminGarages}
+          onLoadMoreAdminDelegates={onLoadMoreAdminDelegates}
+          onRefreshAdminLists={onRefreshAdminLists}
           handleApproveRequest={handleApproveRequest}
           handleRejectRequest={handleRejectRequest}
           handleApproveGarage={handleApproveGarage}

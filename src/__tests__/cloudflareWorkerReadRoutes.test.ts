@@ -56,6 +56,47 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(notFoundBody.subscriber).toBeNull();
   });
 
+  it('uses the canonical subscriber document before bounded legacy queries and preserves precedence', async () => {
+    const garageId = 'lookup-precedence-garage';
+    const plateRaw = 'ABC123';
+    mockDb.seed(`garages/${garageId}/subscribers/plate_${Buffer.from(plateRaw).toString('base64url')}`, {
+      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001', startDate: '2026-10-01', endDate: '2026-10-31'
+    });
+    mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
+      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000002', startDate: '2026-10-01', endDate: '2026-10-31'
+    });
+
+    mockDb.resetDocumentCounts();
+    const canonicalResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
+    }));
+    const canonicalBody = await canonicalResponse.json() as any;
+
+    expect(canonicalResponse.status).toBe(200);
+    expect(canonicalBody.subscriber.id).toBe(`plate_${Buffer.from(plateRaw).toString('base64url')}`);
+    expect(mockDb.documentReadCount).toBe(1);
+
+    mockDb.clear();
+    mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
+      plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001', startDate: '2026-10-01', endDate: '2026-10-31'
+    });
+    mockDb.seed(`garages/${garageId}/subscribers/legacy-formatted`, {
+      plateNumber: 'ABC 123', plateNumberRaw: 'DIFFERENT', phone: '01000000002', startDate: '2026-10-01', endDate: '2026-10-31'
+    });
+    mockDb.resetDocumentCounts();
+    const fallbackResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
+    }));
+    const fallbackBody = await fallbackResponse.json() as any;
+
+    expect(fallbackBody.subscriber.id).toBe('legacy-raw');
+    expect(mockDb.documentReadCount).toBe(4); // canonical miss plus raw, formatted, and phone fallbacks
+  });
+
   it('2. GET /api/garage-summary requires auth and returns garage summary', async () => {
     // Unauthenticated
     const unauthRes = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage'));
@@ -71,6 +112,42 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(body.data).toBeDefined();
+  });
+
+  it('serves fresh maintained garage, admin, and subscriber summaries without collection scans', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed('garages/test-garage/maintained_summary/current', {
+      schemaVersion: 1, garageId: 'test-garage', name: 'Summary Test Garage', carsInside: 4,
+      activeSubscribersCount: 3, totalSubscribersCount: 5, balanceExpiry: null, isTrial: false,
+      dailyCapacity: 40, hourlyRate: 10
+    });
+    mockDb.seed(`garages/test-garage/maintained_summary/daily_${today}`, {
+      schemaVersion: 1, garageId: 'test-garage', dateId: today, todayEntries: 12, todayRevenue: 80
+    });
+    mockDb.seed('admin_summary/global', {
+      schemaVersion: 1, totalGarages: 10, activeGarages: 8, lockedGarages: 1, totalDelegates: 4, totalAdminRevenue: 1200
+    });
+    mockDb.seed('subscriber_summary/global', {
+      schemaVersion: 1, totalSubscribers: 50, activeSubscribers: 40, expiredSubscribers: 10, garagesCount: 9
+    });
+
+    const garageResponse = await api.fetch(new Request('http://localhost/api/garage-summary?garageId=test-garage', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(garageResponse.headers.get('X-Summary-Source')).toBe('maintained_summary');
+    expect((await garageResponse.json() as any).data).toMatchObject({ carsInside: 4, activeSubscribersCount: 3, todayEntries: 12 });
+
+    const adminResponse = await api.fetch(new Request('http://localhost/api/admin/summary', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(adminResponse.headers.get('X-Summary-Source')).toBe('maintained_summary');
+    expect((await adminResponse.json() as any).summary).toMatchObject({ totalGarages: 10, totalDelegates: 4 });
+
+    const subscriberResponse = await api.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(subscriberResponse.headers.get('X-Summary-Source')).toBe('maintained_summary');
+    expect((await subscriberResponse.json() as any).data).toMatchObject({ totalSubscribers: 50, activeSubscribers: 40 });
   });
 
   it('3. GET /api/admin/summary returns aggregated system statistics', async () => {

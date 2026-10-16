@@ -91,6 +91,35 @@ function workerSessionDefinition(role: string | undefined) {
   return role ? WORKER_SESSION_DEFINITIONS[role] : undefined;
 }
 
+const SESSION_INDEX_COLLECTION = 'session_index';
+
+function sessionIndexPath(uid: string, sessionId: string): string {
+  return `${SESSION_INDEX_COLLECTION}/${hashSessionId(`${uid}:${sessionId}`)}`;
+}
+
+function writeSessionIndex(transaction: any, sessionData: Record<string, any>): void {
+  if (!sessionData.uid || !sessionData.sessionId || !sessionData.role) return;
+  const definition = workerSessionDefinition(sessionData.role);
+  if (!definition) return;
+  transaction.set(adminDb!.doc(sessionIndexPath(sessionData.uid, sessionData.sessionId)), {
+    uid: sessionData.uid,
+    sessionHash: hashSessionId(sessionData.sessionId),
+    role: sessionData.role,
+    entityCollection: definition.entity,
+    entityId: sessionData.entityId || '',
+    garageId: sessionData.garageId || null,
+    displayName: sessionData.displayName || null,
+    isActive: sessionData.isActive === true,
+    lastActive: sessionData.lastActive || new Date(),
+    updatedAt: new Date()
+  }, { merge: true });
+}
+
+function updateSessionIndex(uid: string, sessionId: string, updates: Record<string, any>): Promise<any> {
+  if (!adminDb) return Promise.resolve();
+  return adminDb.doc(sessionIndexPath(uid, sessionId)).set({ ...updates, updatedAt: new Date() }, { merge: true });
+}
+
 async function resolveWorkerSessionUser(
   uid: string,
   sessionId: string,
@@ -98,6 +127,64 @@ async function resolveWorkerSessionUser(
 ): Promise<{ user: WorkerUser; error?: never } | { user?: never; error: 'SESSION_REVOKED' | 'SESSION_EXPIRED' }> {
   if (!adminDb || !uid || !sessionId) return { error: 'SESSION_REVOKED' };
   const sessionTimeoutMs = 24 * 60 * 60 * 1000;
+
+  const indexedSessionSnap = await adminDb.doc(sessionIndexPath(uid, sessionId)).get();
+  if (indexedSessionSnap.exists) {
+    const indexData = indexedSessionSnap.data() || {};
+    const indexedRole = typeof indexData.role === 'string' ? indexData.role : '';
+    const indexedDefinition = workerSessionDefinition(indexedRole);
+    const roleMatches = !expectedRole || expectedRole === indexedRole;
+    const indexMatches = indexData.uid === uid
+      && indexData.sessionHash === hashSessionId(sessionId)
+      && indexData.isActive === true
+      && roleMatches
+      && indexedDefinition
+      && indexData.entityCollection === indexedDefinition.entity
+      && typeof indexData.entityId === 'string'
+      && indexData.entityId.length > 0;
+
+    if (indexMatches) {
+      const indexedDeviceSnap = await adminDb.doc(`${indexedDefinition.sessions}/${uid}/sessions/${sessionId}`).get();
+      if (indexedDeviceSnap.exists) {
+        const sessionData = indexedDeviceSnap.data() || {};
+        const sessionRoleMatches = sessionData.role ? sessionData.role === indexedRole : true;
+        if (sessionData.uid === uid && sessionData.isActive === true && sessionData.sessionId === sessionId && sessionRoleMatches) {
+          const rawLastActive = sessionData.lastActive || indexData.lastActive;
+          const lastActive = rawLastActive?.toDate
+            ? rawLastActive.toDate().getTime()
+            : new Date(rawLastActive || 0).getTime();
+          if (!Number.isFinite(lastActive) || !lastActive || Date.now() - lastActive > sessionTimeoutMs) {
+            console.info('[Worker Auth] session resolution', { path: 'indexed', outcome: 'expired', role: indexedRole });
+            return { error: 'SESSION_EXPIRED' };
+          }
+
+          const entityId = indexedRole === 'admin' ? 'auth_pin' : indexData.entityId;
+          const entitySnap = await adminDb.doc(`${indexedDefinition.entity}/${entityId}`).get();
+          if (entitySnap.exists && hasActiveSession(entitySnap.data() || {}, sessionId)) {
+            const entityData = entitySnap.data() || {};
+            let garageId = sessionData.garageId || indexData.garageId || (indexedRole === 'garage' ? entityId : null);
+            let displayName = sessionData.displayName || indexData.displayName || '';
+            if (indexedRole === 'staff') {
+              garageId = garageId || entityData.garageId || null;
+              displayName = displayName || entityData.name || '';
+            }
+            console.info('[Worker Auth] session resolution', { path: 'indexed', outcome: 'hit', role: indexedRole });
+            return {
+              user: {
+                uid,
+                role: indexedRole,
+                garageId,
+                entityId,
+                displayName: displayName || undefined
+              }
+            };
+          }
+        }
+      }
+    }
+  }
+
+  console.info('[Worker Auth] session resolution', { path: 'legacy', outcome: 'fallback', expectedRole: expectedRole || 'any' });
 
   const roleEntries: Array<[string, { sessions: string; entity: string }]> = expectedRole && workerSessionDefinition(expectedRole)
     ? [[expectedRole, WORKER_SESSION_DEFINITIONS[expectedRole]]]
@@ -573,6 +660,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds: addActiveSession(entityData, sessionId), lastActive: now }, { merge: true });
         transaction.set(securityRef, sessionData, { merge: true });
         transaction.set(deviceSecurityRef, sessionData, { merge: true });
+        writeSessionIndex(transaction, sessionData);
       });
       await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
       return c.json({ success: true, role: 'delegate', accountId: delegate.id, account: { id: delegate.id, ...account }, sessionClaimed: true });
@@ -649,6 +737,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
       transaction.set(securityRef, sessionData, { merge: true });
       transaction.set(deviceSecurityRef, sessionData, { merge: true });
+      writeSessionIndex(transaction, sessionData);
     });
     const sessionClaimMs = Date.now() - sessionClaimStartedAt;
 
@@ -792,6 +881,7 @@ workerApp.post('/api/auth/claim-admin-session', async (c) => {
       transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
       transaction.set(rootRef, { ...sessionData, currentSessionId: sessionId, activeSessionIds }, { merge: true });
       transaction.set(deviceRef, sessionData, { merge: true });
+      writeSessionIndex(transaction, sessionData);
     });
     return c.json({ success: true, sessionClaimed: true });
   } catch (error: any) {
@@ -851,11 +941,13 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
           activeSessionIds: remaining,
           ...(rootData.sessionId === sessionId ? { sessionId: remaining.at(-1) ?? null, isActive: remaining.length > 0 } : {})
         }, { merge: true });
+        await updateSessionIndex(effectiveUid, sessionId, { isActive: false });
         return c.json({ success: false, valid: false, error: 'SESSION_REVOKED' });
       }
       await entityRef.set({ lastActive: new Date() }, { merge: true });
     }
     await rootRef.set({ lastActive: new Date() }, { merge: true });
+    await updateSessionIndex(effectiveUid, sessionId, { isActive: true, lastActive: new Date() });
     return c.json({ success: true, valid: true });
   } catch (error: any) {
     console.error('[Worker Auth] Error validating session:', error);
@@ -914,6 +1006,7 @@ workerApp.post('/api/auth/release-session', async (c) => {
       }, { merge: true });
     }
     await adminDb.doc(`${definition.sessions}/${targetUid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
+    await updateSessionIndex(targetUid, sessionId, { isActive: false });
     return c.json({ success: true });
   } catch (error: any) {
     console.error('[Worker Auth] Error releasing session:', error);
@@ -941,6 +1034,7 @@ workerApp.post('/api/auth/release-admin-session', async (c) => {
     const entitySnap = await entityRef.get();
     if (entitySnap.exists) await entityRef.set({ activeSessionIds: removeActiveSession(entitySnap.data() || {}, sessionId), currentSessionId: remaining.at(-1) ?? null }, { merge: true });
     await adminDb.doc(`admin_sessions/${targetUid}/sessions/${sessionId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
+    await updateSessionIndex(targetUid, sessionId, { isActive: false });
     return c.json({ success: true });
   } catch (error: any) {
     console.error('[Worker Auth] Error releasing admin session:', error);
@@ -985,6 +1079,10 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
         if (sessionData.isActive === true) invalidatedSessions += 1;
         batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
         batchWrites += 1;
+        if (sessionData.uid && sessionData.sessionId) {
+          batch.set(adminDb.doc(sessionIndexPath(sessionData.uid, sessionData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
+          batchWrites += 1;
+        }
 
         const entityId = entry.fixedEntityId || sessionData.entityId;
         if (entityId) {
@@ -995,9 +1093,14 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
         }
         const deviceSessions = await adminDb.collection(`${entry.name}/${sessionDoc.id}/sessions`).get();
         for (const deviceSession of deviceSessions.docs) {
-          if (deviceSession.data()?.isActive === true) invalidatedSessions += 1;
+          const deviceData = deviceSession.data() || {};
+          if (deviceData.isActive === true) invalidatedSessions += 1;
           batch.update(deviceSession.ref, { isActive: false, lastActive: now });
           batchWrites += 1;
+          if (deviceData.uid && deviceData.sessionId) {
+            batch.set(adminDb.doc(sessionIndexPath(deviceData.uid, deviceData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
+            batchWrites += 1;
+          }
           await commitBatchIfNeeded();
         }
         await commitBatchIfNeeded();
@@ -1208,6 +1311,63 @@ function safeDateMillis(val: any): number {
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
+type SubscriberLookupInput = {
+  subscriberId?: string;
+  plateRaw?: string;
+  plateNumber?: string;
+  phone?: string;
+};
+
+type SubscriberLookupReader = (target: any) => Promise<any>;
+
+function deterministicSubscriberId(plateRaw: string): string {
+  return `plate_${Buffer.from(plateRaw).toString('base64url')}`;
+}
+
+async function lookupSubscriber(
+  subscriberCollection: any,
+  input: SubscriberLookupInput,
+  read: SubscriberLookupReader = (target) => target.get()
+): Promise<{ id: string; [key: string]: any } | null> {
+  if (input.subscriberId) {
+    const subscriberSnap = await read(subscriberCollection.doc(input.subscriberId));
+    if (subscriberSnap.exists) return { id: subscriberSnap.id, ...subscriberSnap.data() };
+  }
+
+  const normalizedRaw = input.plateRaw ? normalizePlateRaw(input.plateRaw) || input.plateRaw : '';
+  if (normalizedRaw) {
+    const deterministicSnap = await read(subscriberCollection.doc(deterministicSubscriberId(normalizedRaw)));
+    if (deterministicSnap.exists) return { id: deterministicSnap.id, ...deterministicSnap.data() };
+  }
+
+  const fallbackTargets: Array<{ precedence: number; target: any }> = [];
+  if (normalizedRaw) {
+    fallbackTargets.push({ precedence: 0, target: subscriberCollection.where('plateNumberRaw', '==', normalizedRaw).limit(1) });
+  }
+  if (input.plateNumber) {
+    fallbackTargets.push({ precedence: 1, target: subscriberCollection.where('plateNumber', '==', input.plateNumber).limit(1) });
+  }
+  if (input.phone) {
+    fallbackTargets.push({ precedence: 2, target: subscriberCollection.where('phone', '==', input.phone).limit(1) });
+  }
+  if (fallbackTargets.length === 0) return null;
+
+  const fallbackSnapshots = await Promise.all(fallbackTargets.map(({ target }) => read(target)));
+  const candidates = fallbackSnapshots.flatMap((snapshot, index) =>
+    snapshot.docs.length > 0
+      ? [{ precedence: fallbackTargets[index].precedence, snapshot: snapshot.docs[0] }]
+      : []
+  );
+  const seenIds = new Set<string>();
+  candidates.sort((left, right) => left.precedence - right.precedence);
+  for (const candidate of candidates) {
+    if (seenIds.has(candidate.snapshot.id)) continue;
+    seenIds.add(candidate.snapshot.id);
+    return { id: candidate.snapshot.id, ...candidate.snapshot.data() };
+  }
+  return null;
+}
+
 // 6. Public and Read-Heavy Business Routes (CF4)
 
 // Route 1: POST /api/check-subscriber
@@ -1228,38 +1388,7 @@ workerApp.post('/api/check-subscriber', async (c) => {
     }
 
     const subCollection = adminDb.collection(`garages/${garageId}/subscribers`);
-    let foundDoc: any = null;
-
-    if (subscriberId) {
-      const snap = await subCollection.doc(subscriberId).get();
-      if (snap.exists) {
-        foundDoc = { id: snap.id, ...snap.data() };
-      }
-    }
-
-    if (!foundDoc && plateRaw) {
-      const snap = await subCollection.where('plateNumberRaw', '==', plateRaw).limit(1).get();
-      if (!snap.empty) {
-        const doc = snap.docs[0];
-        foundDoc = { id: doc.id, ...doc.data() };
-      }
-    }
-
-    if (!foundDoc && plateNumber) {
-      const snap = await subCollection.where('plateNumber', '==', plateNumber).limit(1).get();
-      if (!snap.empty) {
-        const doc = snap.docs[0];
-        foundDoc = { id: doc.id, ...doc.data() };
-      }
-    }
-
-    if (!foundDoc && phone) {
-      const snap = await subCollection.where('phone', '==', phone).limit(1).get();
-      if (!snap.empty) {
-        const doc = snap.docs[0];
-        foundDoc = { id: doc.id, ...doc.data() };
-      }
-    }
+    const foundDoc = await lookupSubscriber(subCollection, { subscriberId, plateRaw, plateNumber, phone });
 
     if (!foundDoc) {
       return c.json({
@@ -1310,6 +1439,33 @@ workerApp.get('/api/garage-summary', requireWorkerAuth, async (c) => {
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
+    const [maintainedGarageSnap, maintainedDailySnap] = await Promise.all([
+      maintainedGarageSummaryRef(garageId).get(),
+      maintainedGarageDailySummaryRef(garageId, today).get()
+    ]);
+    const maintainedGarage = maintainedGarageSnap.exists ? maintainedGarageSnap.data() || {} : null;
+    const maintainedDaily = maintainedDailySnap.exists ? maintainedDailySnap.data() || {} : null;
+    if (isUsableMaintainedSummary(maintainedGarage, ['carsInside', 'activeSubscribersCount', 'totalSubscribersCount']) &&
+        isUsableMaintainedSummary(maintainedDaily, ['todayEntries', 'todayRevenue'])) {
+      c.header('X-Summary-Source', 'maintained_summary');
+      return c.json({
+        success: true,
+        data: {
+          garageId,
+          name: maintainedGarage.name || '',
+          carsInside: Number(maintainedGarage.carsInside || 0),
+          activeSubscribersCount: Number(maintainedGarage.activeSubscribersCount || 0),
+          totalSubscribersCount: Number(maintainedGarage.totalSubscribersCount || 0),
+          todayEntries: Number(maintainedDaily.todayEntries || 0),
+          todayRevenue: Number(maintainedDaily.todayRevenue || 0),
+          balanceExpiry: maintainedGarage.balanceExpiry || null,
+          isTrial: Boolean(maintainedGarage.isTrial),
+          dailyCapacity: Number(maintainedGarage.dailyCapacity || 0),
+          hourlyRate: Number(maintainedGarage.hourlyRate || 0)
+        }
+      });
+    }
+
     const [garageSnap, insideVehiclesSnap, subscribersSnap, dailyStatsSnap] = await Promise.all([
       adminDb.doc(`garages/${garageId}`).get(),
       adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
@@ -1330,6 +1486,28 @@ workerApp.get('/api/garage-summary', requireWorkerAuth, async (c) => {
       const end = safeDateMillis(data.endDate);
       return end === 0 || end >= now;
     }).length;
+
+    await maintainedGarageSummaryRef(garageId).set({
+      schemaVersion: MAINTAINED_SUMMARY_VERSION,
+      garageId,
+      name: garageData.name || '',
+      carsInside: insideVehiclesSnap.size,
+      activeSubscribersCount: activeSubscribers,
+      totalSubscribersCount: subscribersSnap.size,
+      balanceExpiry: garageData.balanceExpiry || null,
+      isTrial: Boolean(garageData.isTrial),
+      dailyCapacity: Number(garageData.dailyCapacity || 0),
+      hourlyRate: Number(garageData.hourlyRate || 0),
+      rebuiltAt: new Date()
+    }, { merge: true });
+    await maintainedGarageDailySummaryRef(garageId, today).set({
+      schemaVersion: MAINTAINED_SUMMARY_VERSION,
+      garageId,
+      dateId: today,
+      todayEntries: Number(dailyStats.count || 0),
+      todayRevenue: Number(dailyStats.revenue || dailyStats.netRevenue || 0),
+      rebuiltAt: new Date()
+    }, { merge: true });
 
     return c.json({
       success: true,
@@ -1364,29 +1542,68 @@ workerApp.get('/api/admin/summary', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
-    const [garagesSnap, delegatesSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
-      adminDb.collection('garages').get(),
-      adminDb.collection('delegates').get(),
+    const [maintainedAdminSnap, rechargeRequestsSnap, announcementsSnap] = await Promise.all([
+      maintainedAdminSummaryRef().get(),
       adminDb.collection('recharge_requests').where('status', '==', 'pending').get(),
       adminDb.collection('announcements').where('isActive', '==', true).get()
+    ]);
+    const maintainedAdmin = maintainedAdminSnap.exists ? maintainedAdminSnap.data() || {} : null;
+    if (isUsableMaintainedSummary(maintainedAdmin, ['totalGarages', 'activeGarages', 'lockedGarages', 'totalDelegates', 'totalAdminRevenue'])) {
+      c.header('X-Summary-Source', 'maintained_summary');
+      return c.json({
+        success: true,
+        summary: {
+          totalGarages: Number(maintainedAdmin.totalGarages || 0),
+          activeGarages: Number(maintainedAdmin.activeGarages || 0),
+          lockedGarages: Number(maintainedAdmin.lockedGarages || 0),
+          totalDelegates: Number(maintainedAdmin.totalDelegates || 0),
+          totalAdminRevenue: Number(maintainedAdmin.totalAdminRevenue || 0),
+          pendingRechargeRequests: rechargeRequestsSnap.size,
+          activeAnnouncements: announcementsSnap.size,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
+    const [garagesSnap, delegatesSnap] = await Promise.all([
+      adminDb.collection('garages').get(),
+      adminDb.collection('delegates').get()
     ]);
 
     const now = Date.now();
     let activeGarages = 0;
+    let lockedGarages = 0;
+    let totalAdminRevenue = 0;
     garagesSnap.docs.forEach((doc: any) => {
       const data = doc.data() || {};
       const expiry = safeDateMillis(data.balanceExpiry);
       if (!data.isTrial || expiry >= now) {
         activeGarages += 1;
       }
+      if (data.isLocked) lockedGarages += 1;
+      const revenue = Number(data.totalAdminRevenue);
+      if (Number.isFinite(revenue)) totalAdminRevenue += revenue;
     });
+
+    await maintainedAdminSummaryRef().set({
+      schemaVersion: MAINTAINED_SUMMARY_VERSION,
+      summaryScope: 'admin',
+      totalGarages: garagesSnap.size,
+      activeGarages,
+      lockedGarages,
+      totalDelegates: delegatesSnap.size,
+      totalAdminRevenue,
+      rebuiltAt: new Date()
+    }, { merge: true });
 
     return c.json({
       success: true,
       summary: {
         totalGarages: garagesSnap.size,
         activeGarages,
+        lockedGarages,
         totalDelegates: delegatesSnap.size,
+        totalAdminRevenue,
         pendingRechargeRequests: rechargeRequestsSnap.size,
         activeAnnouncements: announcementsSnap.size,
         timestamp: new Date().toISOString()
@@ -1409,6 +1626,22 @@ workerApp.get('/api/admin/monthly-subscribers-summary', requireWorkerAuth, async
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
+    const maintainedSnap = await maintainedSubscriberSummaryRef().get();
+    const maintained = maintainedSnap.exists ? maintainedSnap.data() || {} : null;
+    if (isUsableMaintainedSummary(maintained, ['totalSubscribers', 'activeSubscribers', 'expiredSubscribers', 'garagesCount'])) {
+      c.header('X-Summary-Source', 'maintained_summary');
+      return c.json({
+        success: true,
+        data: {
+          totalSubscribers: Number(maintained.totalSubscribers || 0),
+          activeSubscribers: Number(maintained.activeSubscribers || 0),
+          expiredSubscribers: Number(maintained.expiredSubscribers || 0),
+          garagesCount: Number(maintained.garagesCount || 0),
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
     const subscribersSnap = await adminDb.collectionGroup('subscribers').get();
     const now = Date.now();
     let activeCount = 0;
@@ -1427,6 +1660,16 @@ workerApp.get('/api/admin/monthly-subscribers-summary', requireWorkerAuth, async
         distinctGarages.add(data.garageId);
       }
     });
+
+    await maintainedSubscriberSummaryRef().set({
+      schemaVersion: MAINTAINED_SUMMARY_VERSION,
+      summaryScope: 'subscribers',
+      totalSubscribers: subscribersSnap.size,
+      activeSubscribers: activeCount,
+      expiredSubscribers: expiredCount,
+      garagesCount: distinctGarages.size,
+      rebuiltAt: new Date()
+    }, { merge: true });
 
     return c.json({
       success: true,
@@ -1575,6 +1818,76 @@ function writeProjectionBucket(transaction: any, garageId: string, dateId: strin
   transaction.set(bucketRef, { ...increments, operationId: bucket.operationId, projectionVersion: bucket.projectionVersion, dateId: bucket.dateId, shard: bucket.shard, updatedAt: new Date() }, { merge: true });
 }
 
+const MAINTAINED_SUMMARY_VERSION = 1;
+
+function maintainedGarageSummaryRef(garageId: string): any {
+  return adminDb?.doc(`garages/${garageId}/maintained_summary/current`);
+}
+
+function maintainedGarageDailySummaryRef(garageId: string, dateId: string): any {
+  return adminDb?.doc(`garages/${garageId}/maintained_summary/daily_${dateId}`);
+}
+
+function maintainedAdminSummaryRef(): any {
+  return adminDb?.doc('admin_summary/global');
+}
+
+function maintainedSubscriberSummaryRef(): any {
+  return adminDb?.doc('subscriber_summary/global');
+}
+
+function writeMaintainedSummaryDelta(transaction: any, ref: any, delta: Record<string, number>, metadata: Record<string, any> = {}): void {
+  if (!ref) return;
+  const increments = Object.fromEntries(Object.entries(delta).map(([field, value]) => [field, FieldValue.increment(Number(value || 0))]));
+  transaction.set(ref, {
+    schemaVersion: MAINTAINED_SUMMARY_VERSION,
+    ...increments,
+    ...metadata,
+    updatedAt: new Date()
+  }, { merge: true });
+}
+
+function writeMaintainedGarageDelta(transaction: any, garageId: string, delta: Record<string, number>, metadata: Record<string, any> = {}): void {
+  writeMaintainedSummaryDelta(transaction, maintainedGarageSummaryRef(garageId), delta, metadata);
+}
+
+function writeMaintainedGarageDailyDelta(transaction: any, garageId: string, dateId: string, delta: Record<string, number>): void {
+  writeMaintainedSummaryDelta(transaction, maintainedGarageDailySummaryRef(garageId, dateId), delta, {
+    garageId,
+    dateId,
+    schemaVersion: MAINTAINED_SUMMARY_VERSION
+  });
+}
+
+function writeMaintainedAdminDelta(transaction: any, delta: Record<string, number>): void {
+  writeMaintainedSummaryDelta(transaction, maintainedAdminSummaryRef(), delta, { summaryScope: 'admin' });
+}
+
+function writeMaintainedSubscriberDelta(transaction: any, delta: Record<string, number>): void {
+  writeMaintainedSummaryDelta(transaction, maintainedSubscriberSummaryRef(), delta, { summaryScope: 'subscribers' });
+}
+
+function invalidateMaintainedAdminSummary(transaction: any): void {
+  const ref = maintainedAdminSummaryRef();
+  if (ref) transaction.set(ref, { schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
+}
+
+function isUsableMaintainedSummary(value: any, requiredFields: string[] = []): boolean {
+  return Boolean(value && value.schemaVersion === MAINTAINED_SUMMARY_VERSION && value.stale !== true && requiredFields.every((field) => Number.isFinite(Number(value[field]))));
+}
+
+function subscriberActivityDelta(before: any, after: any): { activeSubscribersCount: number; expiredSubscribersCount: number; activeSubscribers: number; expiredSubscribers: number } {
+  const active = (value: any) => Boolean(value) && (safeDateMillis(value?.endDate) === 0 || safeDateMillis(value?.endDate) >= Date.now());
+  const beforeActive = active(before);
+  const afterActive = active(after);
+  return {
+    activeSubscribersCount: Number(afterActive) - Number(beforeActive),
+    expiredSubscribersCount: Number(!afterActive) - Number(!beforeActive),
+    activeSubscribers: Number(afterActive) - Number(beforeActive),
+    expiredSubscribers: Number(!afterActive) - Number(!beforeActive)
+  };
+}
+
 // 7. Vehicle Operations & Operational Flow (CF5)
 
 // Route 1: POST /api/vehicles/check-in
@@ -1612,26 +1925,6 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let resultData: Record<string, any> = {};
-    let isSubscriberAuthoritative = false;
-    try {
-      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
-      const [subSnapRaw, subSnapPlate] = await Promise.all([
-        subscriberCollection.where('plateNumberRaw', '==', plateRaw).get(),
-        subscriberCollection.where('plateNumber', '==', plateNumber).get()
-      ]);
-      for (const doc of [...subSnapRaw.docs, ...subSnapPlate.docs]) {
-        const subData = doc.data() || {};
-        const startDate = subData.startDate || '';
-        const endDate = subData.endDate || '';
-        if (startDate && endDate && today >= startDate && today <= endDate) {
-          isSubscriberAuthoritative = true;
-          break;
-        }
-      }
-    } catch (subErr) {
-      console.warn('[Worker Check-In] Subscriber lookup failed before transaction:', subErr);
-      throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
-    }
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
@@ -1644,6 +1937,18 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const garageRef = adminDb.doc(`garages/${garageId}`);
       const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
+
+      let isSubscriberAuthoritative = false;
+      try {
+        const subscriber = await lookupSubscriber(subscriberCollection, { plateRaw, plateNumber }, (target) => t.get(target));
+        const startDate = subscriber?.startDate || '';
+        const endDate = subscriber?.endDate || '';
+        isSubscriberAuthoritative = Boolean(startDate && endDate && today >= startDate && today <= endDate);
+      } catch (subErr) {
+        console.warn('[Worker Check-In] Subscriber lookup failed inside transaction:', subErr);
+        throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
+      }
 
       const [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
         t.get(garageRef),
@@ -1736,6 +2041,16 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       } else {
         t.set(dailyStatsRef, { count: (dailyStatsSnap.data()?.count || 0) + 1 }, { merge: true });
       }
+
+      writeMaintainedGarageDelta(t, garageId, { carsInside: 1 }, {
+        garageId,
+        name: garageData.name || '',
+        balanceExpiry: garageData.balanceExpiry || null,
+        isTrial: Boolean(garageData.isTrial),
+        dailyCapacity: Number(garageData.dailyCapacity || 0),
+        hourlyRate: Number(garageData.hourlyRate || 0)
+      });
+      writeMaintainedGarageDailyDelta(t, garageId, today, { todayEntries: 1 });
 
       const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
@@ -1907,6 +2222,16 @@ workerApp.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       } else {
         t.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + finalDecisionCost }, { merge: true });
       }
+
+      writeMaintainedGarageDelta(t, garageId, { carsInside: -1 }, {
+        garageId,
+        name: garageData.name || '',
+        balanceExpiry: garageData.balanceExpiry || null,
+        isTrial: Boolean(garageData.isTrial),
+        dailyCapacity: Number(garageData.dailyCapacity || 0),
+        hourlyRate: Number(garageData.hourlyRate || 0)
+      });
+      writeMaintainedGarageDailyDelta(t, garageId, today, { todayRevenue: finalDecisionCost, todayExits: 1 });
 
       const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
@@ -2114,6 +2439,21 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         }
       }
 
+      const maintainedGarageDelta: Record<string, number> = {};
+      if (vehicleData.status === 'inside') maintainedGarageDelta.carsInside = -1;
+      writeMaintainedGarageDelta(t, garageId, maintainedGarageDelta, {
+        garageId,
+        name: garageData.name || '',
+        balanceExpiry: garageData.balanceExpiry || null,
+        isTrial: Boolean(garageData.isTrial),
+        dailyCapacity: Number(garageData.dailyCapacity || 0),
+        hourlyRate: Number(garageData.hourlyRate || 0)
+      });
+      const maintainedDailyDelta: Record<string, number> = {};
+      if (enteredToday) maintainedDailyDelta.todayEntries = -1;
+      if (refundAmt > 0) maintainedDailyDelta.todayRevenue = -refundAmt;
+      writeMaintainedGarageDailyDelta(t, garageId, todayYMD, maintainedDailyDelta);
+
       const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
         garageId,
@@ -2294,11 +2634,25 @@ workerApp.post('/api/subscribers/add', requireWorkerAuth, async (c) => {
           return;
         }
       }
-      const deterministicSnap = await t.get(docRef);
-      const legacyMatches = await t.get(subscriberCollection.where('plateNumberRaw', '==', plateRaw).limit(1));
-      if (deterministicSnap.exists || !legacyMatches.empty) {
+      const existingSubscriber = await lookupSubscriber(subscriberCollection, { plateRaw, plateNumber }, (target) => t.get(target));
+      if (existingSubscriber) {
         throw new Error('SUBSCRIBER_ALREADY_EXISTS');
       }
+      const maintainedGarageSnap = await t.get(maintainedGarageSummaryRef(validatedGarageId));
+      const maintainedGarage = maintainedGarageSnap.exists ? maintainedGarageSnap.data() || {} : {};
+      const activeSubscriber = safeDateMillis(dates.endDate) === 0 || safeDateMillis(dates.endDate) >= Date.now();
+      const garageDelta = {
+        totalSubscribersCount: 1,
+        activeSubscribersCount: activeSubscriber ? 1 : 0,
+        expiredSubscribersCount: activeSubscriber ? 0 : 1
+      };
+      writeMaintainedGarageDelta(t, validatedGarageId, garageDelta, { garageId: validatedGarageId });
+      writeMaintainedSubscriberDelta(t, {
+        totalSubscribers: 1,
+        activeSubscribers: activeSubscriber ? 1 : 0,
+        expiredSubscribers: activeSubscriber ? 0 : 1,
+        garagesCount: Number(maintainedGarage.totalSubscribersCount || 0) === 0 ? 1 : 0
+      });
       const decision = decideSubscriberAdd(null, addRequestToCommand(subscriberData, { plateNumber, plateRaw }, dates));
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
       t.set(docRef, {
@@ -2367,6 +2721,15 @@ workerApp.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
       const currentState = subscriberDocumentToState(currentSnap.data() || {});
       const decision = decideSubscriberRenew(currentState, dates);
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      const activityDelta = subscriberActivityDelta(currentSnap.data() || {}, { ...currentSnap.data(), ...dates });
+      writeMaintainedGarageDelta(t, validatedGarageId, {
+        activeSubscribersCount: activityDelta.activeSubscribersCount,
+        expiredSubscribersCount: activityDelta.expiredSubscribersCount
+      }, { garageId: validatedGarageId });
+      writeMaintainedSubscriberDelta(t, {
+        activeSubscribers: activityDelta.activeSubscribers,
+        expiredSubscribers: activityDelta.expiredSubscribers
+      });
       t.update(subscriberRef, {
         startDate: decision.value.state?.startDate,
         endDate: decision.value.state?.endDate
@@ -2435,6 +2798,15 @@ workerApp.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
       const currentState = subscriberDocumentToState(currentData);
       const decision = decideSubscriberUpdate(currentState, updateRequestToCommand(mergedData, currentState, dates));
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      const activityDelta = subscriberActivityDelta(currentData, mergedData);
+      writeMaintainedGarageDelta(t, validatedGarageId, {
+        activeSubscribersCount: activityDelta.activeSubscribersCount,
+        expiredSubscribersCount: activityDelta.expiredSubscribersCount
+      }, { garageId: validatedGarageId });
+      writeMaintainedSubscriberDelta(t, {
+        activeSubscribers: activityDelta.activeSubscribers,
+        expiredSubscribers: activityDelta.expiredSubscribers
+      });
       t.update(subscriberRef, transitionToFirestoreUpdate(decision.value));
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
@@ -2486,8 +2858,20 @@ workerApp.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
       }
       const currentSnap = await t.get(subscriberRef);
       if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
-      const decision = decideSubscriberDelete(subscriberDocumentToState(currentSnap.data() || {}));
+      const currentData = currentSnap.data() || {};
+      const decision = decideSubscriberDelete(subscriberDocumentToState(currentData));
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      const activityDelta = subscriberActivityDelta(currentData, null);
+      writeMaintainedGarageDelta(t, validatedGarageId, {
+        totalSubscribersCount: -1,
+        activeSubscribersCount: activityDelta.activeSubscribersCount,
+        expiredSubscribersCount: activityDelta.expiredSubscribersCount
+      }, { garageId: validatedGarageId });
+      writeMaintainedSubscriberDelta(t, {
+        totalSubscribers: -1,
+        activeSubscribers: activityDelta.activeSubscribers,
+        expiredSubscribers: activityDelta.expiredSubscribers
+      });
       t.delete(subscriberRef);
       recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
@@ -2866,6 +3250,7 @@ const handleApproveRechargeRequest = async (c: any) => {
         lastRechargePackageName: requestData.packageName || null,
         unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName || requestData.packageName || '') : null
       }, { merge: true });
+      invalidateMaintainedAdminSummary(t);
 
       t.set(requestRef, {
         status: 'approved',
@@ -3119,6 +3504,7 @@ workerApp.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async
         lastRechargeAmount: numAmount,
         lastRechargePackageName: `شحن رصيد مباشر (${numAmount} ج.م)`
       }, { merge: true });
+      invalidateMaintainedAdminSummary(t);
 
       const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
@@ -3563,6 +3949,25 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
 
       await saveEntityPinInTransaction(t, 'garages', garageId, normPin);
       t.set(garageRef, garageDoc);
+      t.set(maintainedGarageSummaryRef(garageId), {
+        schemaVersion: MAINTAINED_SUMMARY_VERSION,
+        garageId,
+        name: garageDoc.name,
+        carsInside: 0,
+        totalSubscribersCount: 0,
+        activeSubscribersCount: 0,
+        expiredSubscribersCount: 0,
+        balanceExpiry,
+        isTrial: isTrialBool,
+        dailyCapacity: finalDailyCapacity,
+        hourlyRate: hourlyRateValue,
+        createdAt: now,
+        updatedAt: now
+      });
+      writeMaintainedAdminDelta(t, {
+        totalGarages: 1,
+        activeGarages: (!isTrialBool || balanceExpiry.getTime() >= Date.now()) ? 1 : 0
+      });
       t.set(logRef, activityLog);
       if (idempotencyKey) {
         storeIdempotencyInTransaction(
@@ -3607,6 +4012,7 @@ workerApp.post('/api/garages/update', requireWorkerAuth, async (c) => {
     }
 
     await adminDb.collection('garages').doc(id).update(updates);
+    await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
     return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker Garage] Error updating garage:', err);
@@ -3817,14 +4223,14 @@ workerApp.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c)
     if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const [bucketSnap, garageSnap, summarySnap] = await Promise.all([
+    const [bucketSnap, garageSnap] = await Promise.all([
       adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', today).get(),
-      adminDb.doc(`garages/${garageId}`).get(),
-      adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get()
+      adminDb.doc(`garages/${garageId}`).get()
     ]);
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
     c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
     if (bucketSnap.empty) {
+      const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
       if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
       const storedSummary = summarySnap.data() || {};
       if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
@@ -4074,6 +4480,7 @@ workerApp.post('/api/delegates/create', requireWorkerAuth, async (c) => {
         totalEarned: 0,
         createdAt: new Date()
       });
+      writeMaintainedAdminDelta(t, { totalDelegates: 1 });
     });
 
     return c.json({ success: true, id: delId });
@@ -4168,6 +4575,7 @@ workerApp.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
       }, 409);
     }
 
+    await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Delegate] Error in delete:', e);
@@ -4556,6 +4964,7 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
       };
 
       t.set(garageRef, updateData, { merge: true });
+      invalidateMaintainedAdminSummary(t);
 
       const logRef = adminDb.collection('activity_logs').doc();
       const staffNameText = adminDetails.staffName || 'مدير النظام (Admin)';

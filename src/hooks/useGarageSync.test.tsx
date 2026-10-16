@@ -5,9 +5,13 @@ import { useGarageSync } from './useGarageSync';
 
 const serviceMocks = vi.hoisted(() => ({
   getDashboardData: vi.fn(),
+  getAdminGaragesPage: vi.fn(),
+  getAdminDelegatesPage: vi.fn(),
+  getAdminSummary: vi.fn(),
   subscribeToPackages: vi.fn(),
   subscribeToActiveVehicles: vi.fn(),
-  subscribeToTodayTransactions: vi.fn()
+  subscribeToTodayTransactions: vi.fn(),
+  subscribeToPendingRechargeRequests: vi.fn()
 }));
 
 vi.mock('../services', () => ({
@@ -45,9 +49,13 @@ const dashboardResponse = (delegate: { id: string; name: string }) => ({
 beforeEach(() => {
   vi.useFakeTimers();
   serviceMocks.getDashboardData.mockReset();
+  serviceMocks.getAdminGaragesPage.mockReset();
+  serviceMocks.getAdminDelegatesPage.mockReset();
+  serviceMocks.getAdminSummary.mockReset();
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
+  serviceMocks.subscribeToPendingRechargeRequests.mockReset().mockReturnValue(() => {});
 });
 
 afterEach(() => {
@@ -173,6 +181,40 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       'تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.',
       'error'
     );
+    unmount();
+  });
+
+  it('loads one bounded admin page and requests the next page only explicitly', async () => {
+    serviceMocks.getAdminGaragesPage
+      .mockResolvedValueOnce({ garages: [{ id: 'garage-1' }], lastDoc: 'garage-cursor', hasMore: true })
+      .mockResolvedValueOnce({ garages: [{ id: 'garage-2' }], lastDoc: null, hasMore: false });
+    serviceMocks.getAdminDelegatesPage.mockResolvedValue({ delegates: [{ id: 'delegate-1' }], lastDoc: null, hasMore: false });
+    serviceMocks.getAdminSummary.mockResolvedValue({ totalGarages: 2, activeGarages: 2, lockedGarages: 0, totalDelegates: 1, totalAdminRevenue: 0 });
+
+    const { result, unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      isSessionReady: true,
+      view: 'admin_dashboard'
+    }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(serviceMocks.getAdminGaragesPage).toHaveBeenCalledWith(50, null);
+    expect(serviceMocks.getAdminDelegatesPage).toHaveBeenCalledWith(50, null);
+    expect(serviceMocks.getAdminSummary).toHaveBeenCalledOnce();
+    expect(result.current.allGarages).toEqual([{ id: 'garage-1' }]);
+    expect(result.current.adminGarageHasMore).toBe(true);
+
+    await act(async () => {
+      await result.current.loadMoreAdminGarages();
+    });
+
+    expect(serviceMocks.getAdminGaragesPage).toHaveBeenLastCalledWith(50, 'garage-cursor');
+    expect(result.current.allGarages).toEqual([{ id: 'garage-1' }, { id: 'garage-2' }]);
+    expect(result.current.adminGarageHasMore).toBe(false);
     unmount();
   });
 });

@@ -80,7 +80,8 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(body.success).toBe(true);
     expect(body.id).toBeDefined();
 
-    // Duplicate plate should return 409
+    // Duplicate plate should return 409 without falling through to legacy queries.
+    mockDb.resetDocumentCounts();
     const duplicateRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {
@@ -103,6 +104,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const duplicateBody = await duplicateRes.json() as any;
     expect(duplicateRes.status).toBe(409);
     expect(duplicateBody.success).toBe(false);
+    expect(mockDb.documentReadCount).toBe(5); // Canonical-index miss, Worker auth reads, plus one deterministic subscriber document
   });
 
   it('replays an identical add idempotently and rejects key reuse with a changed payload', async () => {

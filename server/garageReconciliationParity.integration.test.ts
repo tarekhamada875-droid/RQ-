@@ -643,7 +643,7 @@ describe('garage creation Hono contract', () => {
     const replayBody = await replay.json();
     expect([first.status, replay.status]).toEqual([200, 200]);
     expect(replayBody).toEqual(firstBody);
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => /^garages\/[^/]+$/.test(path))).toHaveLength(1);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(1);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('private_pins/'))).toHaveLength(1);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('pin_reservations/'))).toHaveLength(1);
@@ -656,7 +656,7 @@ describe('garage creation Hono contract', () => {
     expect(firstConflict.status).toBe(200);
     expect(changed.status).toBe(409);
     expect(await changed.json()).toMatchObject({ success: false });
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => /^garages\/[^/]+$/.test(path))).toHaveLength(1);
 
     mockDb.clear();
     const concurrentBody = { name: 'Concurrent Keyed Garage', pin: '75319486', idempotencyKey: 'garage-create-concurrent-20261010' };
@@ -667,7 +667,7 @@ describe('garage creation Hono contract', () => {
     const concurrentBodies = await Promise.all(concurrent.map((response) => response.json()));
     expect(concurrent.map((response) => response.status).sort()).toEqual([200, 200]);
     expect(concurrentBodies[0]).toEqual(concurrentBodies[1]);
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('garages/'))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => /^garages\/[^/]+$/.test(path))).toHaveLength(1);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(1);
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
   });

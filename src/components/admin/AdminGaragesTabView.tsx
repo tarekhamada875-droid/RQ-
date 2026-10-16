@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Search, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
+import { Plus, Search, ChevronRight, ChevronLeft, Building2, Loader2, RefreshCw } from 'lucide-react';
 import { Garage } from '../../types';
 
 interface AdminGaragesTabViewProps {
@@ -11,6 +11,11 @@ interface AdminGaragesTabViewProps {
   onOpenAddGarage: () => void;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
+  hasMore?: boolean;
+  isLoading?: boolean;
+  hasError?: boolean;
+  onLoadMore?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }
 
 export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
@@ -22,6 +27,11 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
   onOpenAddGarage,
   adminLang,
   t,
+  hasMore = false,
+  isLoading = false,
+  hasError = false,
+  onLoadMore,
+  onRefresh,
 }) => {
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -56,6 +66,12 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
               </div>
             </div>
           </div>
+          {hasError && (
+            <div className="px-4 pb-3 flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
+              <span>تعذر تحميل قائمة الجراجات.</span>
+              {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
+            </div>
+          )}
           <div className="p-3 sm:p-4 flex flex-col gap-2 min-h-[160px]">
             {displayedGarages.length === 0 ? (
               <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
@@ -102,6 +118,12 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                   </div>
                 );
               })
+            )}
+            {hasMore && onLoadMore && (
+              <button type="button" disabled={isLoading} onClick={() => void onLoadMore()} className="w-full min-h-11 mt-2 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isLoading ? 'جاري تحميل المزيد...' : 'تحميل المزيد من الجراجات'}
+              </button>
             )}
           </div>
         </div>

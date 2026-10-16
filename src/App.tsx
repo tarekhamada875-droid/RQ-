@@ -116,6 +116,14 @@ export default function App() {
     inputRef,
     sortedPackages,
     delegateGarages,
+    adminGarageHasMore,
+    adminDelegateHasMore,
+    adminListsLoading,
+    adminListsError,
+    adminSummary,
+    loadMoreAdminGarages,
+    loadMoreAdminDelegates,
+    refreshAdminLists,
     showToast,
     handleLogout,
     handleInitiateLogout,
@@ -246,6 +254,14 @@ export default function App() {
             packages={sortedPackages}
             onLogout={handleInitiateLogout}
             rechargeRequests={rechargeRequests}
+            adminGarageHasMore={adminGarageHasMore}
+            adminDelegateHasMore={adminDelegateHasMore}
+            adminListsLoading={adminListsLoading}
+            adminListsError={adminListsError}
+            adminSummary={adminSummary}
+            onLoadMoreAdminGarages={loadMoreAdminGarages}
+            onLoadMoreAdminDelegates={loadMoreAdminDelegates}
+            onRefreshAdminLists={refreshAdminLists}
             currentSupervisor={currentSupervisor}
             currentAdminPin={activeAdminPin}
             currentWalletNumber={effectiveWalletNumber}
