@@ -20,6 +20,13 @@ import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
 interface AdminOverviewViewProps {
   allGarages: Garage[];
   delegates: Delegate[];
+  adminSummary?: {
+    totalGarages: number;
+    activeGarages: number;
+    lockedGarages: number;
+    totalDelegates: number;
+    totalAdminRevenue: number;
+  } | null;
   onSelectGarage?: (garage: Garage) => void;
   onOpenAddGarage?: () => void;
   setActiveTab?: (tab: any) => void;
@@ -29,6 +36,7 @@ interface AdminOverviewViewProps {
 export const AdminOverviewView = memo(({ 
   allGarages, 
   delegates, 
+  adminSummary = null,
   onSelectGarage,
   onOpenAddGarage,
   isSupervisor = false
@@ -40,11 +48,11 @@ export const AdminOverviewView = memo(({
   const [showExportModal, setShowExportModal] = useState(false);
 
   const systemMetrics = useMemo(() => {
-    const totalGarages = allGarages.length;
-    const activeGarages = allGarages.filter(g => !g.isLocked && g.status !== 'pending').length;
-    const lockedGarages = allGarages.filter(g => g.isLocked).length;
+    const totalGarages = adminSummary?.totalGarages ?? allGarages.length;
+    const activeGarages = adminSummary?.activeGarages ?? allGarages.filter(g => !g.isLocked && g.status !== 'pending').length;
+    const lockedGarages = adminSummary?.lockedGarages ?? allGarages.filter(g => g.isLocked).length;
     
-    const totalAdminRevenue = allGarages.reduce((sum, g) => sum + (g.totalAdminRevenue || 0), 0);
+    const totalAdminRevenue = adminSummary?.totalAdminRevenue ?? allGarages.reduce((sum, g) => sum + (g.totalAdminRevenue || 0), 0);
 
     // Expiring soon garages count
     const expiringSoonCount = allGarages.filter(g => {
@@ -59,7 +67,7 @@ export const AdminOverviewView = memo(({
       totalAdminRevenue,
       expiringSoonCount
     };
-  }, [allGarages, warningDaysThreshold]);
+  }, [adminSummary, allGarages, warningDaysThreshold]);
 
   const expiringGarages = useMemo(() => {
     return allGarages
@@ -81,7 +89,7 @@ export const AdminOverviewView = memo(({
             لوحة قيادة النظام
           </h2>
           <p className="text-xs font-bold text-slate-400 mt-0.5">
-            {allGarages.length} جراج مسجل • {delegates.length} مندوب معتمد
+            {systemMetrics.totalGarages} جراج مسجل • {adminSummary?.totalDelegates ?? delegates.length} مندوب معتمد
           </p>
         </div>
 
@@ -220,4 +228,3 @@ export const AdminOverviewView = memo(({
 });
 
 export default AdminOverviewView;
-

@@ -23,13 +23,23 @@ interface AdminPeopleViewProps {
   currentSupervisor: Supervisor | null;
   allGarages?: Garage[];
   onSelectDelegate: (delegate: Delegate) => void;
+  hasMore?: boolean;
+  isLoading?: boolean;
+  hasError?: boolean;
+  onLoadMore?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }
 
 export const AdminPeopleView = memo(({
   delegates,
   currentSupervisor,
   allGarages = [],
-  onSelectDelegate
+  onSelectDelegate,
+  hasMore = false,
+  isLoading = false,
+  hasError = false,
+  onLoadMore,
+  onRefresh
 }: AdminPeopleViewProps) => {
   const { adminLang } = useTheme();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -224,6 +234,13 @@ export const AdminPeopleView = memo(({
         </div>
       )}
 
+      {hasError && (
+        <div className="flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
+          <span>تعذر تحميل قائمة المناديب.</span>
+          {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
+        </div>
+      )}
+
       {/* Delegates Section Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {delegates.map((d) => {
@@ -279,6 +296,13 @@ export const AdminPeopleView = memo(({
             </div>
           )}
       </div>
+
+      {hasMore && onLoadMore && (
+        <button type="button" disabled={isLoading} onClick={() => void onLoadMore()} className="w-full min-h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {isLoading ? 'جاري تحميل المزيد...' : 'تحميل المزيد من المناديب'}
+        </button>
+      )}
 
     </div>
   );

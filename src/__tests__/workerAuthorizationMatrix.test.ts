@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth } from './mockFirestore';
+import { hashSessionId } from '../../server/auth/sessionMarkers';
 
 const mockDb = new MockFirestore();
 
@@ -106,6 +107,41 @@ describe('Worker role and garage-scope authorization matrix', () => {
       expect(requestedPaths).not.toContain('admin_sessions/garage-uid-garage-a');
       expect(requestedPaths).not.toContain('delegate_sessions/garage-uid-garage-a');
       expect(requestedPaths).not.toContain('staff_sessions/garage-uid-garage-a');
+    } finally {
+      documentPathSpy.mockRestore();
+    }
+  });
+
+  it('resolves an indexed garage session without probing the four legacy role collections', async () => {
+    const sessionId = 'indexed-garage-session';
+    const uid = 'garage-uid-garage-a';
+    mockDb.seed(`session_index/${hashSessionId(`${uid}:${sessionId}`)}`, {
+      uid,
+      sessionHash: hashSessionId(sessionId),
+      role: 'garage',
+      entityCollection: 'garages',
+      entityId: 'garage-a',
+      garageId: 'garage-a',
+      isActive: true,
+      lastActive: new Date()
+    });
+    mockDb.seed(`garage_sessions/${uid}/sessions/${sessionId}`, {
+      uid, role: 'garage', entityId: 'garage-a', sessionId, isActive: true, lastActive: new Date()
+    });
+    mockDb.seed('garages/garage-a', { id: 'garage-a', name: 'Garage Alpha', activeSessionIds: [sessionId] });
+
+    const documentPathSpy = vi.spyOn(mockDb, 'doc');
+    try {
+      const response = await call('/api/garages/garage-a', tokens.garage, { headers: { 'x-session-id': sessionId } });
+      expect(response.status).toBe(200);
+      const requestedPaths = documentPathSpy.mock.calls.map(([path]) => path);
+      expect(requestedPaths).toContain(`session_index/${hashSessionId(`${uid}:${sessionId}`)}`);
+      expect(requestedPaths).toContain(`garage_sessions/${uid}/sessions/${sessionId}`);
+      expect(requestedPaths).toContain('garages/garage-a');
+      expect(requestedPaths).not.toContain(`garage_sessions/${uid}`);
+      expect(requestedPaths).not.toContain(`admin_sessions/${uid}`);
+      expect(requestedPaths).not.toContain(`delegate_sessions/${uid}`);
+      expect(requestedPaths).not.toContain(`staff_sessions/${uid}`);
     } finally {
       documentPathSpy.mockRestore();
     }
@@ -382,6 +418,41 @@ describe('Worker role and garage-scope authorization matrix', () => {
 
     const crossGarage = await call('/api/garages/garage-b/dashboard-summary', tokens.garage);
     expect(crossGarage.status).toBe(403);
+  });
+
+  it('defers the stored summary read when live projection buckets are available', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed('garages/garage-a/projection_buckets/live', {
+      dateId: today,
+      entriesToday: 1,
+      exitsToday: 0,
+      grossRevenue: 25,
+      refundTotal: 0,
+      netRevenue: 25
+    });
+
+    mockDb.resetDocumentCounts();
+    const liveResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+    const liveReadCount = mockDb.documentReadCount;
+    expect(liveResponse.status).toBe(200);
+    expect(mockDb.records.has('garages/garage-a/dashboard_summary/current')).toBe(false);
+
+    mockDb.records.delete('garages/garage-a/projection_buckets/live');
+    mockDb.seed('garages/garage-a/dashboard_summary/current', {
+      dateId: today,
+      rebuiltAt: new Date().toISOString(),
+      activeVehicleCount: 1,
+      entriesToday: 1,
+      exitsToday: 0,
+      grossRevenue: 25,
+      refundTotal: 0,
+      netRevenue: 25
+    });
+    mockDb.resetDocumentCounts();
+    const fallbackResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+    const fallbackReadCount = mockDb.documentReadCount;
+    expect(fallbackResponse.status).toBe(200);
+    expect(fallbackReadCount).toBe(liveReadCount + 1);
   });
 
   it('serves a fresh stored dashboard summary when live buckets are absent', async () => {

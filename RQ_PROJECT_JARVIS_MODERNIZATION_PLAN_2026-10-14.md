@@ -321,6 +321,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** All four roles, no match, expiry, revocation, atomic index writes, Hono contract tests.
 - **Risk / rollback:** Medium—stale/wrong index could reject/select wrong entity. Dual-resolution parity telemetry and fallback permit rollback.
 - **Effort:** L.
+- **Implementation status (2026-10-16):** Added a server-owned `session_index/{sha256(uid:sessionId)}` written atomically with delegate, admin, garage, and staff session claims. The index stores role, entity collection/id, garage scope, active state, last-active time, and only a non-secret session hash; root/device records remain unchanged. Worker authentication now attempts index → selected device session → selected entity (the shipped entity-preserving target is at most three session-resolution reads), validates expiry, role, UID, and entity active-session markers, and falls back to the legacy role scan for missing/incomplete migration records. Refresh, release, and invalidate-all paths synchronize index state. Resolution logs bounded indexed-hit versus legacy-fallback telemetry without exposing session IDs.
+- **Verification (2026-10-16):** Added canonical-path coverage proving no four-role probe occurs on an indexed garage session; existing expiry, revocation, role, release, and legacy-compatibility tests remain green. Full `npm run ci:check` passed with 125 test files / 803 tests, TypeScript, Pages/Worker builds, and production artifact verification.
 
 #### WKR-02 — Replace normal full-scan summaries with maintained summaries
 
@@ -332,6 +334,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Route read assertions, add/renew/delete/check-in/out parity, admin large-fixture response envelope tests.
 - **Risk / rollback:** High—counter drift/date semantics. Dual-read rollout and recovery path; do not remove scans until parity clean.
 - **Effort:** L.
+- **Implementation status (2026-10-16):** Added versioned maintained summary documents for per-garage current counters, per-garage Cairo-day counters, the global admin aggregate, and the global subscriber aggregate. Normal garage, admin, and monthly-subscriber summary reads now use bounded summary-document reads when the summary is present and not marked stale; legacy full collection scans remain as migration/reconciliation fallbacks and rebuild the corresponding read models. Vehicle check-in/check-out/delete-refund and subscriber add/renew/update/delete transaction writers update the maintained counters atomically; garage and delegate creation seed the maintained aggregates.
+- **Verification (2026-10-16):** Added maintained-summary fast-path coverage across all three summary routes and preserved garage-creation idempotency assertions for root documents. Focused WKR-02 and vehicle/subscriber compatibility tests passed (52 tests). Full `npm run ci:check` passed with 125 test files / 804 tests, TypeScript, Pages/Worker builds, production artifact verification, and release gate green.
 
 #### WKR-03 — Centralize subscriber lookup and reduce serial/duplicate reads
 
@@ -343,6 +347,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Precedence, count, raw/formatted legacy, check-in compatibility, canonical lifecycle parity.
 - **Risk / rollback:** Medium—ambiguous/stale canonical keys. Keep fallback and explicit precedence until backfill parity.
 - **Effort:** M.
+- **Implementation status (2026-10-16):** Added one shared Worker subscriber lookup helper for public checks, transactional vehicle check-in, and subscriber creation duplicate protection. It preserves ID > raw plate > formatted plate > phone precedence; attempts the deterministic canonical plate document before any legacy query; runs eligible legacy fallbacks concurrently after a canonical miss; and selects/deduplicates matches deterministically. Subscriber creation now avoids legacy queries when the canonical duplicate exists.
+- **Verification (2026-10-16):** Added canonical-hit, precedence, fallback-count, deterministic-duplicate, and check-in compatibility regression coverage. Focused WKR-03 suite passed (33 tests). Full `npm run ci:check` passed with 125 test files / 802 tests, TypeScript, Pages/Worker builds, and release artifact verification.
 
 #### WKR-04 — Bound and stream Node Fetch adapter
 
@@ -464,6 +470,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Read-count cases for all roles/missing/expired/wrong role; revoke/refresh race and legacy compatibility.
 - **Risk / rollback:** Medium—partial migration can create false revocation. Dual-resolution compare and retain fallback.
 - **Effort:** M.
+- **Implementation status (2026-10-16):** Shipped the canonical hashed session index as the migration fast path while retaining root/device records and the bounded legacy fallback. The index is updated on claim, refresh, release, and global invalidation; missing or structurally incomplete indexes continue through the legacy resolver, so migration can be rolled back without rejecting older sessions. The current design deliberately keeps the entity marker read for revocation parity; therefore it documents the WKR-01 three-read target rather than claiming PERF-01's optional two-read entity-sufficient target.
+- **Verification (2026-10-16):** Canonical indexed resolution and legacy fallback are covered by Worker authorization/session tests; the migration read-count characterization was updated to include the intentional canonical-index miss. Full CI passed with 125 test files / 803 tests and all production gates green. p50/p95 traffic benchmarking and fallback-zero removal criteria remain rollout measurements, not yet claimed complete.
 
 #### TEST-01 — Execute actual Firestore rules in emulator
 
@@ -537,6 +545,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Deterministic, legacy representation, transaction conflict/concurrent renewal, existing vehicle/activity/projection tests.
 - **Risk / rollback:** Medium—larger transaction read set and contention. Benchmark and feature-gate deterministic path.
 - **Effort:** M.
+- **Implementation status (2026-10-16):** Check-in subscriber classification now runs inside the Firestore transaction. It reads the deterministic `plate_<base64url(normalizedPlate)>` document first; only when absent does it use bounded `limit(1)` legacy lookups for both stored plate representations, deduplicating matching documents. The active-date decision is therefore based on the transaction snapshot while preserving legacy records and existing writes/responses.
+- **Verification (2026-10-16):** Vehicle route regression coverage confirms deterministic classification and legacy fallback behavior, including the expected read-count difference. Focused check-in tests passed. Full `npm run ci:check` passed with 125 test files / 801 tests, TypeScript, Pages/Worker builds, and release artifact verification.
 
 #### FS-05 — Defer unused stored dashboard summary read
 
@@ -548,6 +558,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Read-count live/fallback/stale tests.
 - **Risk / rollback:** Low—fallback becomes sequential; benchmark rare path and revert ordering if latency/response changes.
 - **Effort:** S.
+- **Implementation status (2026-10-16):** The dashboard-summary route now reads the current projection buckets and garage document first, and fetches `dashboard_summary/current` only when no live bucket exists. Response envelopes, freshness checks, source headers, garage scope, and stale/not-ready errors are unchanged.
+- **Verification (2026-10-16):** Authorization/read-route tests passed, including a read-count regression proving the live path avoids the stored-summary read and the fallback path performs exactly one additional document read. Full `npm run ci:check` passed with 125 test files / 800 tests, TypeScript, Pages/Worker builds, and release artifact verification.
 
 #### FS-06 — Make activity-log index/fallback behavior explicit
 

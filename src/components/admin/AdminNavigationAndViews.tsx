@@ -35,6 +35,20 @@ interface AdminNavigationAndViewsProps {
   currentSupervisor: Supervisor | null;
   delegates: Delegate[];
   rechargeRequests: RechargeRequest[];
+  adminGarageHasMore?: boolean;
+  adminDelegateHasMore?: boolean;
+  adminListsLoading?: boolean;
+  adminListsError?: boolean;
+  adminSummary?: {
+    totalGarages: number;
+    activeGarages: number;
+    lockedGarages: number;
+    totalDelegates: number;
+    totalAdminRevenue: number;
+  } | null;
+  onLoadMoreAdminGarages?: () => Promise<void>;
+  onLoadMoreAdminDelegates?: () => Promise<void>;
+  onRefreshAdminLists?: () => Promise<void>;
   pendingGarages: Garage[];
   packages: Package[];
   approvedGarages: Garage[];
@@ -66,6 +80,14 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   currentSupervisor,
   delegates,
   rechargeRequests,
+  adminGarageHasMore = false,
+  adminDelegateHasMore = false,
+  adminListsLoading = false,
+  adminListsError = false,
+  adminSummary = null,
+  onLoadMoreAdminGarages,
+  onLoadMoreAdminDelegates,
+  onRefreshAdminLists,
   pendingGarages,
   packages,
   approvedGarages,
@@ -264,6 +286,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminOverviewView
           allGarages={approvedGarages}
           delegates={delegates}
+          adminSummary={adminSummary}
           isSupervisor={Boolean(currentSupervisor)}
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage}
@@ -274,6 +297,11 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           currentSupervisor={currentSupervisor}
           allGarages={approvedGarages}
           onSelectDelegate={onSelectDelegate}
+          hasMore={adminDelegateHasMore}
+          isLoading={adminListsLoading}
+          hasError={adminListsError}
+          onLoadMore={onLoadMoreAdminDelegates}
+          onRefresh={onRefreshAdminLists}
         />
       ) : activeTab === 'fair_use' ? (
         <AdminFairUseView 
@@ -380,6 +408,11 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'garages' ? (
         <AdminGaragesTabView
           displayedGarages={displayedGarages}
+          hasMore={adminGarageHasMore}
+          isLoading={adminListsLoading}
+          hasError={adminListsError}
+          onLoadMore={onLoadMoreAdminGarages}
+          onRefresh={onRefreshAdminLists}
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
           currentSupervisor={currentSupervisor}

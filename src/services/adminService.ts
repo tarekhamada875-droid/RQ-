@@ -31,6 +31,17 @@ export interface FinancialReportFilters {
   end: string;
 }
 
+export interface AdminSummary {
+  totalGarages: number;
+  activeGarages: number;
+  lockedGarages: number;
+  totalDelegates: number;
+  totalAdminRevenue: number;
+  pendingRechargeRequests: number;
+  activeAnnouncements: number;
+  timestamp: string;
+}
+
 export type SubscriberPageCursor = QueryDocumentSnapshot<DocumentData>;
 
 export interface SubscriberPageInfo {
@@ -47,6 +58,11 @@ export interface SubscriberPage {
 const SUBSCRIBER_PAGE_SIZE = 50;
 
 export const adminService = {
+  getAdminSummary: async (): Promise<AdminSummary> => {
+    const response = await apiFetch<{ summary: AdminSummary }>('/api/admin/summary');
+    return response.summary;
+  },
+
   // Staff
   addStaff: async (data: Omit<Staff, 'id'>) => {
     try {

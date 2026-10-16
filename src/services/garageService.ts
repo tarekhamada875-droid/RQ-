@@ -36,6 +36,14 @@ export interface GarageDashboardSummary {
   source?: 'live_projection_buckets' | 'rebuild';
 }
 
+export type GaragePageCursor = any;
+
+export interface GaragePage {
+  garages: Garage[];
+  lastDoc: GaragePageCursor | null;
+  hasMore: boolean;
+}
+
 export function isFreshGarageDashboardSummary(summary: GarageDashboardSummary | null | undefined, now = Date.now(), maxAgeMs = 5 * 60 * 1000): summary is GarageDashboardSummary {
   if (!summary?.dateId || !summary.rebuiltAt) return false;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now));
@@ -43,11 +51,7 @@ export function isFreshGarageDashboardSummary(summary: GarageDashboardSummary | 
   return summary.dateId === today && Number.isFinite(rebuiltAt) && now - rebuiltAt >= 0 && now - rebuiltAt <= maxAgeMs;
 }
 
-const mapGaragePage = (snapshot: any, pageSize: number): {
-  garages: Garage[];
-  lastDoc: any;
-  hasMore: boolean;
-} => {
+const mapGaragePage = (snapshot: any, pageSize: number): GaragePage => {
   const rawGarages: Garage[] = snapshot.docs.map((garageDoc: any) => ({
     id: garageDoc.id,
     ...garageDoc.data()
@@ -129,7 +133,7 @@ export const garageService = {
     };
   },
 
-  getAdminGaragesPage: async (pageSize = 50, lastDocRef: any = null) => {
+  getAdminGaragesPage: async (pageSize = 50, lastDocRef: GaragePageCursor = null): Promise<GaragePage> => {
     try {
       let q = query(
         collection(db, 'garages'),

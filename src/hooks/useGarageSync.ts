@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Garage, Vehicle, Package, Staff, RechargeRequest } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
@@ -40,6 +40,22 @@ export function useGarageSync({
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
+  const [adminGarageHasMore, setAdminGarageHasMore] = useState(false);
+  const [adminDelegateHasMore, setAdminDelegateHasMore] = useState(false);
+  const [adminListsLoading, setAdminListsLoading] = useState(false);
+  const [adminListsError, setAdminListsError] = useState(false);
+  const [adminSummary, setAdminSummary] = useState<{
+    totalGarages: number;
+    activeGarages: number;
+    lockedGarages: number;
+    totalDelegates: number;
+    totalAdminRevenue: number;
+  } | null>(null);
+  const adminGarageCursorRef = useRef<any>(null);
+  const adminDelegateCursorRef = useRef<any>(null);
+  const adminGarageLoadingRef = useRef(false);
+  const adminDelegateLoadingRef = useRef(false);
+  const adminListsLoadedRef = useRef(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
   const [delegateRequests, setDelegateRequests] = useState<RechargeRequest[]>([]);
@@ -120,6 +136,70 @@ export function useGarageSync({
     }
   }, [setStaffList]);
 
+  const loadAdminGaragePage = useCallback(async (reset = false) => {
+    if (adminGarageLoadingRef.current || (!reset && !adminGarageHasMore)) return;
+    adminGarageLoadingRef.current = true;
+    setAdminListsLoading(true);
+    setAdminListsError(false);
+    try {
+      const page = await firestoreService.getAdminGaragesPage(50, reset ? null : adminGarageCursorRef.current);
+      setAllGarages((previous) => {
+        const rows = reset ? page.garages : [...previous, ...page.garages];
+        return Array.from(new Map(rows.map((garage) => [garage.id, garage])).values());
+      });
+      adminGarageCursorRef.current = page.lastDoc;
+      setAdminGarageHasMore(page.hasMore);
+    } catch (error) {
+      console.error('Failed to load admin garage page:', error);
+      setAdminListsError(true);
+    } finally {
+      adminGarageLoadingRef.current = false;
+      setAdminListsLoading(false);
+    }
+  }, [adminGarageHasMore]);
+
+  const loadAdminDelegatePage = useCallback(async (reset = false) => {
+    if (adminDelegateLoadingRef.current || (!reset && !adminDelegateHasMore)) return;
+    adminDelegateLoadingRef.current = true;
+    setAdminListsLoading(true);
+    setAdminListsError(false);
+    try {
+      const page = await firestoreService.getAdminDelegatesPage(50, reset ? null : adminDelegateCursorRef.current);
+      setDelegates((previous) => {
+        const rows = reset ? page.delegates : [...previous, ...page.delegates];
+        return Array.from(new Map(rows.map((delegate) => [delegate.id, delegate])).values());
+      });
+      adminDelegateCursorRef.current = page.lastDoc;
+      setAdminDelegateHasMore(page.hasMore);
+    } catch (error) {
+      console.error('Failed to load admin delegate page:', error);
+      setAdminListsError(true);
+    } finally {
+      adminDelegateLoadingRef.current = false;
+      setAdminListsLoading(false);
+    }
+  }, [adminDelegateHasMore]);
+
+  const loadAdminSummary = useCallback(async () => {
+    try {
+      const summary = await firestoreService.getAdminSummary();
+      setAdminSummary(summary);
+    } catch (error) {
+      console.error('Failed to load admin summary:', error);
+      setAdminListsError(true);
+    }
+  }, []);
+
+  const refreshAdminLists = useCallback(async () => {
+    if (adminListsLoadedRef.current && adminListsLoading) return;
+    adminListsLoadedRef.current = true;
+    adminGarageCursorRef.current = null;
+    adminDelegateCursorRef.current = null;
+    setAdminGarageHasMore(false);
+    setAdminDelegateHasMore(false);
+    await Promise.all([loadAdminGaragePage(true), loadAdminDelegatePage(true), loadAdminSummary()]);
+  }, [adminListsLoading, loadAdminDelegatePage, loadAdminGaragePage, loadAdminSummary]);
+
   // Sync Recharge Requests (Admin Only)
   useEffect(() => {
     if (!isAuthReady || !user) return;
@@ -172,17 +252,13 @@ export function useGarageSync({
     };
   }, [isAuthReady, user]);
 
-  // Sync global collections
+  // Sync bounded admin collections. Detail pages retain their own selected-document reads.
   useEffect(() => {
-    if (!isSessionReady || !isAuthReady || !user || (view !== 'admin_dashboard' && view !== 'admin_garage_details' && view !== 'admin_delegate_details' && view !== 'garage' && view !== 'delegate_dashboard')) return;
+    if (!isSessionReady || !isAuthReady || !user) return;
 
-    const unsubGarages = (view === 'admin_dashboard' || view === 'admin_garage_details')
-      ? firestoreService.subscribeToGarages(setAllGarages)
-      : () => {};
-
-    const unsubDelegates = (view === 'admin_dashboard' || view === 'admin_delegate_details')
-      ? firestoreService.subscribeToDelegates(setDelegates)
-      : () => {};
+    if ((view === 'admin_dashboard' || view === 'admin_garage_details' || view === 'admin_delegate_details') && !adminListsLoadedRef.current) {
+      void refreshAdminLists();
+    }
 
     const unsubCurrentGarage = (view === 'garage' && garage?.id)
       ? firestoreService.subscribeToGarage(garage.id, setGarage)
@@ -191,12 +267,10 @@ export function useGarageSync({
     const unsubCurrentDelegate = () => {};
 
     return () => {
-      unsubGarages();
-      unsubDelegates();
       unsubCurrentGarage();
       unsubCurrentDelegate();
     };
-  }, [isSessionReady, isAuthReady, user, view, delegate?.id, garage?.id, setGarage, setDelegate]);
+  }, [isSessionReady, isAuthReady, user, view, garage?.id, setGarage, refreshAdminLists]);
 
   // Load Admin specific garage details once
   useEffect(() => {
@@ -234,6 +308,14 @@ export function useGarageSync({
     setAllGarages,
     delegates,
     setDelegates,
+    adminGarageHasMore,
+    adminDelegateHasMore,
+    adminListsLoading,
+    adminListsError,
+    adminSummary,
+    loadMoreAdminGarages: () => loadAdminGaragePage(false),
+    loadMoreAdminDelegates: () => loadAdminDelegatePage(false),
+    refreshAdminLists,
     staffList,
     setStaffList,
     rechargeRequests,

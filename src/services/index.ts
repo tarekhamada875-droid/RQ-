@@ -4,7 +4,7 @@ import { delegateService } from './delegateService';
 import { adminService } from './adminService';
 import { authService } from './authService';
 import { garageDeletionService } from './garageDeletionService';
-export type { GarageDashboardSummary } from './garageService';
+export type { GarageDashboardSummary, GaragePage } from './garageService';
 export { isFreshGarageDashboardSummary } from './garageService';
 
 export const firestoreService = {
