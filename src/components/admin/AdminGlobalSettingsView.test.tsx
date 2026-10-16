@@ -3,11 +3,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { firestoreService } from '../../services';
 
+const configMock = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+
 vi.mock('../../services', () => ({
   firestoreService: {
-    getSystemConfig: vi.fn(),
     updateSystemConfig: vi.fn(),
   },
+}));
+
+vi.mock('../../hooks/useSystemConfig', () => ({
+  useSystemConfig: () => configMock.current,
 }));
 
 vi.mock('../../utils/ThemeContext', () => ({
@@ -31,7 +36,7 @@ const storedConfig = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(firestoreService.getSystemConfig).mockResolvedValue(storedConfig as any);
+  configMock.current = { ...storedConfig };
   vi.mocked(firestoreService.updateSystemConfig).mockResolvedValue(undefined);
 });
 
@@ -51,5 +56,16 @@ describe('AdminGlobalSettingsView', () => {
       warningDaysThreshold: 4,
       monthlySubscribersFlatFee: 300,
     });
+  });
+
+  it('does not overwrite an in-progress edit when the shared snapshot refreshes', async () => {
+    const { rerender } = render(<AdminGlobalSettingsView />);
+    const trialDaysInput = await screen.findByDisplayValue('7');
+    fireEvent.change(trialDaysInput, { target: { value: '9' } });
+
+    configMock.current = { ...storedConfig, defaultTrialDays: 8 };
+    rerender(<AdminGlobalSettingsView />);
+
+    expect(screen.getByDisplayValue('9')).toBeInTheDocument();
   });
 });

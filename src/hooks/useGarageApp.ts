@@ -14,8 +14,7 @@ import { useVehicleOperations } from './useVehicleOperations';
 import { useGarageSubscription } from './useGarageSubscription';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { useGarageSync } from './useGarageSync';
-import { useSystemConfig } from './useSystemConfig';
-import { getWalletNumberUpdate } from '../utils/walletNumber';
+import { useGarageSystemConfigSync, type SubscriptionPriceState } from './useGarageSystemConfigSync';
 
 const CURRENT_VERSION = '1.0.4';
 
@@ -82,7 +81,7 @@ export function useGarageApp() {
   const [adminPin, setAdminPin] = useState<string>('');
   const [activeAdminPin, setActiveAdminPin] = useState<string>('');
   const [walletNumber, setWalletNumber] = useLocalStorageState<string>('app_wallet_number', '');
-  const [subscriptionPrices, setSubscriptionPrices] = useState<{ weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number }>({ weekly: 800, biweekly: 1500, monthly: 3000 });
+  const [subscriptionPrices, setSubscriptionPrices] = useState<SubscriptionPriceState>({ weekly: 800, biweekly: 1500, monthly: 3000 });
   // Sanitize any previously cached hardcoded dummy wallet number
   useEffect(() => {
     try {
@@ -96,29 +95,6 @@ export function useGarageApp() {
     }
   }, [setWalletNumber]);
 
-  // Real-time synchronization of system wallet number and subscription prices
-  useEffect(() => {
-    const unsubWallet = firestoreService.subscribeToWalletNumber((wallet) => {
-      // An empty value can be a fallback from a transient Firestore listener
-      // error or an older/incomplete config document. Never let it erase a
-      // previously loaded valid number from local storage.
-      const nextWalletNumber = getWalletNumberUpdate(wallet);
-      if (nextWalletNumber) {
-        setWalletNumber(nextWalletNumber);
-      }
-    });
-
-    const unsubPrices = firestoreService.subscribeToSubscriptionPrices((prices) => {
-      if (prices && Object.keys(prices).length > 0) {
-        setSubscriptionPrices(prev => ({ ...prev, ...prices }));
-      }
-    });
-
-    return () => {
-      unsubWallet();
-      unsubPrices();
-    };
-  }, [setWalletNumber]);
   const [loginPhone, setLoginPhone] = useState<string>('');
 
   const [selectedGarageForDetails, setSelectedGarageForDetails] = useLocalStorageState<Garage | null>('app_selected_garage_details', null);
@@ -248,14 +224,8 @@ export function useGarageApp() {
     return () => unsub();
   }, [user, view, setActiveAdminPin]);
 
-  // System Config Sync (Wallet & Prices) via shared singleton
-  const systemConfig = useSystemConfig();
-  useEffect(() => {
-    if (systemConfig) {
-      if (systemConfig.walletNumber) setWalletNumber(systemConfig.walletNumber);
-      if (systemConfig.subscriptionPrices) setSubscriptionPrices(systemConfig.subscriptionPrices as any);
-    }
-  }, [systemConfig, setWalletNumber]);
+  // Wallet and prices share the same system-config listener used by fee hooks.
+  useGarageSystemConfigSync(setWalletNumber, setSubscriptionPrices);
 
   // 3. Vehicle Operations Hook
   const {

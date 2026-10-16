@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Save, 
   Loader2,
@@ -6,8 +6,9 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
-import { SystemConfig } from '../../types';
+import type { SystemConfig } from '../../types';
 import { firestoreService } from '../../services';
+import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 
@@ -33,34 +34,26 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const systemConfig = useSystemConfig();
+  const hasUserEdited = useRef(false);
 
   useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    const loadConfig = async () => {
-      try {
-        const fetchedConfig = await firestoreService.getSystemConfig();
-        if (fetchedConfig) {
-          setConfig(prev => ({ 
-            ...prev, 
-            ...fetchedConfig,
-          }));
-        }
-      } catch (e) {
-        console.error('Failed to load system config:', e);
-      } finally {
-        clearTimeout(timeout);
-        setIsLoading(false);
+    if (systemConfig) {
+      if (!hasUserEdited.current) {
+        setConfig((current) => ({ ...current, ...systemConfig }));
       }
-    };
-    
-    timeout = setTimeout(() => {
       setIsLoading(false);
-    }, 5000);
-    
-    loadConfig();
-    
+      return;
+    }
+
+    const timeout = setTimeout(() => setIsLoading(false), 5000);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [systemConfig]);
+
+  const updateConfig = (updates: Partial<SystemConfig>) => {
+    hasUserEdited.current = true;
+    setConfig((current) => ({ ...current, ...updates }));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +107,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={config.defaultTrialDays}
-                  onChange={(e) => setConfig({ ...config, defaultTrialDays: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+                  onChange={(e) => updateConfig({ defaultTrialDays: Number(e.target.value.replace(/\D/g, '')) || 0 })}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                   required
                 />
@@ -137,7 +130,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={config.warningDaysThreshold}
-                  onChange={(e) => setConfig({ ...config, warningDaysThreshold: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+                  onChange={(e) => updateConfig({ warningDaysThreshold: Number(e.target.value.replace(/\D/g, '')) || 0 })}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                   required
                 />
@@ -162,7 +155,7 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={config.monthlySubscribersFlatFee}
-                  onChange={(e) => setConfig({ ...config, monthlySubscribersFlatFee: Number(e.target.value.replace(/\D/g, '')) || 0 })}
+                  onChange={(e) => updateConfig({ monthlySubscribersFlatFee: Number(e.target.value.replace(/\D/g, '')) || 0 })}
                   className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                   required
                 />
