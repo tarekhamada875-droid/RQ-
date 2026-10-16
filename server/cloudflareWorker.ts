@@ -2861,6 +2861,9 @@ workerApp.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
       const currentData = currentSnap.data() || {};
       const decision = decideSubscriberDelete(subscriberDocumentToState(currentData));
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      const maintainedGarageSnap = await t.get(maintainedGarageSummaryRef(validatedGarageId));
+      const maintainedGarage = maintainedGarageSnap.exists ? maintainedGarageSnap.data() || {} : {};
+      const removesLastGarageSubscriber = Number(maintainedGarage.totalSubscribersCount) === 1;
       const activityDelta = subscriberActivityDelta(currentData, null);
       writeMaintainedGarageDelta(t, validatedGarageId, {
         totalSubscribersCount: -1,
@@ -2870,7 +2873,8 @@ workerApp.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
       writeMaintainedSubscriberDelta(t, {
         totalSubscribers: -1,
         activeSubscribers: activityDelta.activeSubscribers,
-        expiredSubscribers: activityDelta.expiredSubscribers
+        expiredSubscribers: activityDelta.expiredSubscribers,
+        garagesCount: removesLastGarageSubscriber ? -1 : 0
       });
       t.delete(subscriberRef);
       recordDomainEventInTransaction(t, adminDb, {

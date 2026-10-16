@@ -279,6 +279,55 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(deleteBody.success).toBe(true);
   });
 
+  it('decrements maintained garagesCount only when deleting the last subscriber in a garage', async () => {
+    const addSubscriber = async (plate: string) => {
+      const response = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer valid-admin-token'
+        },
+        body: JSON.stringify({
+          garageId: testGarageId,
+          subscriberData: {
+            name: 'Summary Count Subscriber',
+            plateNumber: plate,
+            plateNumberRaw: plate,
+            startDate: '2026-10-01',
+            endDate: '2026-10-31'
+          }
+        })
+      }), workerEnv);
+      expect(response.status).toBe(200);
+      return (await response.json() as any).id as string;
+    };
+    const deleteSubscriber = async (subscriberId: string) => api.fetch(new Request('http://localhost/api/subscribers/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId })
+    }), workerEnv);
+    const getSummary = async () => {
+      const response = await api.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+      expect(response.status).toBe(200);
+      return (await response.json() as any).data.garagesCount as number;
+    };
+
+    const firstId = await addSubscriber('AB12345');
+    expect(await getSummary()).toBe(1);
+    const secondId = await addSubscriber('CD67890');
+    expect(await getSummary()).toBe(1);
+
+    expect((await deleteSubscriber(firstId)).status).toBe(200);
+    expect(await getSummary()).toBe(1);
+    expect((await deleteSubscriber(secondId)).status).toBe(200);
+    expect(await getSummary()).toBe(0);
+  });
+
   it('rejects cross-garage lifecycle mutations and immutable plate changes without writes', async () => {
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
