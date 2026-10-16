@@ -222,6 +222,11 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—freshness/cursor behavior can change. Characterize callback payloads before removing listeners; feature-flag or revert shared store if parity fails.
 - **Effort:** M.
 
+- **Implementation status (2026-10-16):** Implemented in [PR #64](https://github.com/tarekhamada875-droid/RQ-/pull/64), commit `3ddeb52` (awaiting review/merge). `useGarageDashboardLiveData` owns the garage-ID-scoped recharge and subscriber snapshots; the dashboard badge and full-screen overlays consume that same data. The recharge subscription switches between the badge-sized and history-sized result while remaining a single listener. The subscriber overlay retains the original first-page cursor, 50-row load-more calls, and local older-page merge behavior.
+- **Listener lifecycle clarification:** The garage-owner dashboard still needs these snapshots for its live badges, so its one subscriber listener and one recharge listener remain while that dashboard is mounted, including when an overlay closes. Overlays add no duplicate listener; unmount releases both. For staff, the subscriber listener is only enabled while the subscriber overlay is open. This preserves existing realtime badge behavior while keeping cleanup deterministic.
+- **Coverage and verification:** Shared listener count, close/unmount cleanup, garage-switch stale callback rejection, shared snapshot rendering, and older-page pagination are covered. Local `npm run ci:check` passed (120 test files / 782 tests, TypeScript and Pages/Worker production builds); `npm run test:rules` passed against the local demo emulator; `npm run maintainability:check` and `git diff --check` passed.
+- **Release boundary:** No live Firebase data, security rules, or production configuration were changed. The PR is not merged or deployed yet.
+
 #### UI-006 — Centralize nested-overlay scroll locking
 
 - **Source:** `src/App.tsx:483-563`; `src/components/modals/CheckOutModal.tsx:80-86`; `src/components/modals/DeleteVehicleConfirmModal.tsx:18-23`; `src/components/modals/CheckInModal.tsx:36-41`; `src/components/garage/SubscribersView.tsx:179-187`; `src/components/garage/RechargeHistoryView.tsx:21-52`.
