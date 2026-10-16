@@ -3739,9 +3739,13 @@ const handleFinancialSummaryReport = async (c: any) => {
     // stable cursor pages so Worker memory is independent of ledger history.
     const startAt = new Date(`${start}T00:00:00.000Z`);
     const endAt = new Date(`${end}T00:00:00.000Z`);
+    // Domain events persist occurredAt as an ISO string, unlike settlement
+    // records, whose settledAt field is a Firestore Timestamp/Date.
+    const eventStartAt = startAt.toISOString();
+    const eventEndAt = endAt.toISOString();
     let eventsQuery: any = adminDb.collectionGroup('events');
     let settlementsQuery: any = adminDb.collection('settlements');
-    eventsQuery = eventsQuery.where('occurredAt', '>=', startAt).where('occurredAt', '<', endAt);
+    eventsQuery = eventsQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
     settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
     const accumulator = createFinancialReportAccumulator({ start, end, delegateId });
     const pageSize = 250;
