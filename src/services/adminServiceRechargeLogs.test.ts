@@ -136,4 +136,67 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
     expect(primaryUnsub).toHaveBeenCalledTimes(1);
     expect(listenerTracker.getActiveListenerCount()).toBe(0);
   });
+
+  it('orders the primary query before applying a one-record latest-recharge limit', () => {
+    const callback = vi.fn();
+    const unsubscribeSnapshot = vi.fn();
+    const makeDoc = (id: string, timestamp: string) => ({
+      id,
+      data: () => ({ garageId: 'garage-latest', actionType: 'recharge', timestamp: new Date(timestamp) }),
+    });
+    firestoreMocks.onSnapshot.mockImplementationOnce((_query, onNext) => {
+      onNext({ docs: [
+        makeDoc('older', '2026-10-15T08:00:00.000Z'),
+        makeDoc('newest', '2026-10-16T08:00:00.000Z'),
+        makeDoc('middle', '2026-10-15T20:00:00.000Z'),
+      ] });
+      return unsubscribeSnapshot;
+    });
+
+    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-latest', callback, 1);
+
+    expect(firestoreMocks.orderBy).toHaveBeenCalledWith('timestamp', 'desc');
+    expect(firestoreMocks.limit).toHaveBeenCalledWith(1);
+    expect(callback).toHaveBeenCalledWith([expect.objectContaining({ id: 'newest' })]);
+    unsubscribe();
+    expect(unsubscribeSnapshot).toHaveBeenCalledOnce();
+  });
+
+  it('orders the bounded compatibility fallback newest-first before filtering recharge rows', () => {
+    const callback = vi.fn();
+    const primaryUnsubscribe = vi.fn();
+    const fallbackUnsubscribe = vi.fn();
+    const makeDoc = (id: string, actionType: string, timestamp: string) => ({
+      id,
+      data: () => ({ garageId: 'garage-fallback', actionType, timestamp: new Date(timestamp) }),
+    });
+    let failPrimary: ((error: Error) => void) | undefined;
+    firestoreMocks.onSnapshot
+      .mockImplementationOnce((_query, _onNext, onError) => {
+        failPrimary = onError;
+        return primaryUnsubscribe;
+      })
+      .mockImplementationOnce((_query, onNext) => {
+        onNext({ docs: [
+          makeDoc('oldest-recharge', 'recharge', '2026-10-15T08:00:00.000Z'),
+          makeDoc('latest-other', 'vehicle_checkin', '2026-10-16T09:00:00.000Z'),
+          makeDoc('latest-recharge', 'recharge', '2026-10-16T08:00:00.000Z'),
+        ] });
+        return fallbackUnsubscribe;
+      });
+
+    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-fallback', callback, 1);
+    failPrimary?.(new Error('missing composite index'));
+
+    expect(firestoreMocks.orderBy).toHaveBeenCalledTimes(2);
+    expect(firestoreMocks.orderBy).toHaveBeenNthCalledWith(1, 'timestamp', 'desc');
+    expect(firestoreMocks.orderBy).toHaveBeenNthCalledWith(2, 'timestamp', 'desc');
+    expect(firestoreMocks.limit).toHaveBeenNthCalledWith(1, 1);
+    expect(firestoreMocks.limit).toHaveBeenNthCalledWith(2, 100);
+    expect(callback).toHaveBeenCalledWith([expect.objectContaining({ id: 'latest-recharge' })]);
+
+    unsubscribe();
+    expect(primaryUnsubscribe).toHaveBeenCalledOnce();
+    expect(fallbackUnsubscribe).toHaveBeenCalledOnce();
+  });
 });

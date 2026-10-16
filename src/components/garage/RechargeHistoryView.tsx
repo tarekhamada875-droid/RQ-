@@ -11,17 +11,27 @@ interface RechargeHistoryViewProps {
   onClose: () => void;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
   onToggleMenu?: () => void;
+  sharedLogs?: ActivityLog[];
+  sharedIsLoading?: boolean;
 }
 
-export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToast }: RechargeHistoryViewProps) => {
+export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToast, sharedLogs, sharedIsLoading }: RechargeHistoryViewProps) => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const systemPackages = useAppStore(state => state.packages);
+  const visibleLogs = sharedLogs ?? logs;
+  const visibleLoading = sharedLogs !== undefined ? Boolean(sharedIsLoading) : isLoading;
 
-  // Subscribe to activity logs for this garage in real-time
   useEffect(() => {
-    // Lock body scroll
     document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  // Standalone use retains the service subscription; dashboard use receives the shared snapshot.
+  useEffect(() => {
+    if (sharedLogs !== undefined) return;
 
     // Safety fallback timeout in case of network latency
     const fallbackTimer = setTimeout(() => {
@@ -46,10 +56,8 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
     return () => {
       clearTimeout(fallbackTimer);
       unsub();
-      // Unlock body scroll
-      document.body.style.overflow = 'unset';
     };
-  }, [garage.id]);
+  }, [garage.id, sharedLogs]);
 
   const resolvePackagePrice = useCallback((
     rawPkgName: string,
@@ -141,7 +149,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
   }, [systemPackages]);
 
   const displayLogs = useMemo(() => {
-    const list = [...logs];
+    const list = [...visibleLogs];
     if (list.length === 0 && garage) {
       if (garage.isTrial) {
         list.push({
@@ -187,7 +195,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
       }
     }
     return list.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-  }, [logs, garage, resolvePackagePrice]);
+  }, [visibleLogs, garage, resolvePackagePrice]);
 
   const latestRecharge = useMemo(() => {
     return displayLogs[0] || null;
@@ -252,11 +260,11 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
 
   // Check if there is a "New" recharge that we haven't acknowledged
   useEffect(() => {
-    if (latestRecharge && !isLoading) {
+    if (latestRecharge && !visibleLoading) {
       // Mark as acknowledged immediately so the dashboard notification/dot turns off instantly or upon next visit
       localStorage.setItem(`acknowledged_recharge_${garage.id}`, latestRecharge.id);
     }
-  }, [latestRecharge, isLoading, garage.id]);
+  }, [latestRecharge, visibleLoading, garage.id]);
 
   // When a new recharge is received in real-time, update seen last recharge so we track it
   useEffect(() => {
@@ -319,7 +327,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
         <div className="space-y-4">
           <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">سجل العمليات السابقة</h3>
           
-          {isLoading ? (
+          {visibleLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div

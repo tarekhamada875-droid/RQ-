@@ -11,10 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../services', () => ({
   firestoreService: {
-    subscribeToSubscribers: vi.fn((_garageId, callback) => {
-      callback(mocks.firstPage, { lastDoc: { id: 'cursor-50' }, hasMore: true });
-      return vi.fn();
-    }),
+    subscribeToSubscribers: mocks.subscribe,
     getMoreSubscribers: mocks.getMore,
     addSubscriber: vi.fn(),
     updateSubscriber: vi.fn(),
@@ -66,6 +63,10 @@ const makeGarage = (id = 'garage-subscriber-page-test') => ({
 describe('SubscribersView pagination and accessible names', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.subscribe.mockImplementation((_garageId, callback) => {
+      callback(mocks.firstPage, { lastDoc: { id: 'cursor-50' }, hasMore: true });
+      return vi.fn();
+    });
     mocks.firstPage = Array.from({ length: 50 }, (_, index) => makeSubscriber(index));
     mocks.secondPage = [makeSubscriber(50, 'Older Subscriber Search Target')];
     mocks.getMore.mockResolvedValue({
@@ -90,6 +91,37 @@ describe('SubscribersView pagination and accessible names', () => {
     });
     await waitFor(() => expect(screen.getByText('Older Subscriber Search Target')).toBeTruthy());
     expect(screen.queryByRole('button', { name: 'تحميل 50 مشتركاً أقدم' })).toBeNull();
+  });
+
+  it('uses a shared live first page without opening a duplicate listener and retains cursor pagination', async () => {
+    const firstSubscriber = makeSubscriber(1);
+    const sharedPage = {
+      garageId: 'garage-subscriber-page-test',
+      subscribers: [firstSubscriber],
+      lastDoc: { id: 'shared-cursor-50' } as any,
+      hasMore: true,
+      hasSnapshot: true,
+    };
+    const { rerender } = render(
+      <SubscribersView garage={makeGarage()} onClose={vi.fn()} showToast={vi.fn()} subscriberPage={sharedPage} />,
+    );
+
+    expect(screen.getByText('Subscriber 1')).toBeTruthy();
+    expect(mocks.subscribe).not.toHaveBeenCalled();
+
+    const refreshedPage = {
+      ...sharedPage,
+      subscribers: [{ ...firstSubscriber, ownerName: 'Updated Subscriber 1' }],
+    };
+    rerender(
+      <SubscribersView garage={makeGarage()} onClose={vi.fn()} showToast={vi.fn()} subscriberPage={refreshedPage} />,
+    );
+    expect(screen.getByText('Updated Subscriber 1')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'تحميل 50 مشتركاً أقدم' }));
+    expect(await screen.findByText('Older Subscriber Search Target')).toBeTruthy();
+    expect(mocks.getMore).toHaveBeenCalledWith('garage-subscriber-page-test', { id: 'shared-cursor-50' });
+    expect(mocks.subscribe).not.toHaveBeenCalled();
   });
 
   it('gives subscriber search an accessible label', () => {
