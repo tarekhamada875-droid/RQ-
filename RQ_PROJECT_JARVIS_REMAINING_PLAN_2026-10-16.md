@@ -2,18 +2,18 @@
 
 **Last verified:** 2026-10-16  
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)  
-**Repository state:** The roadmap work through WKR-02 is merged into `main` and its guarded Production Gate and Worker deployment passed.  
-**Next task:** **FS-03**
+**Repository state:** Roadmap work through WKR-02 is merged into `main`; FS-03 is implemented and tested on branch `feat/fs-03-bounded-financial-reports` in PR [#73](https://github.com/tarekhamada875-droid/RQ-/pull/73), awaiting required GitHub checks and merge.
+**Next task after FS-03 completes:** **FS-02**
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains the detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, and measurement plan.
 
 ## Remaining implementation tasks
 
-### 1. FS-03 — Bound financial reports and aggregate page by page
+### FS-03 — Bound financial reports and aggregate page by page (implemented; PR #73)
 
-**Next task.** The no-date financial report currently materializes all event and settlement history. Define the owner-approved no-date behavior (bounded default window or explicit date validation), then aggregate events and settlements page by page with cursors without retaining all arrays. Preserve inclusive-start/exclusive-end boundaries and delegate filtering. Add exact multi-page parity tests and 1/3/10-year read, CPU, memory, and p95 measurements. Keep an explicit historical/rebuild path.
+The owner selected a rolling latest-12-calendar-month default for undated reports; explicit date ranges remain available for older history. Partial date ranges are bounded as well. Worker queries now use stable timestamp/document-name cursors and page size 250; settlements are aggregated first, followed by events, with no full ledger arrays retained. Inclusive-start/exclusive-end semantics and delegate filtering are preserved.
 
-**Important decision:** The default no-date report behavior must be explicitly chosen and recorded before implementation changes the finance contract.
+Focused parity and cursor contract tests passed. `npm run ci:check` passed (125 test files / 807 tests, TypeScript, Pages/Worker builds and artifact checks); maintainability and whitespace checks passed. The synthetic `npm run financial-report:benchmark` recorded: 1y = 1,616 modeled reads / 1.716 ms local p95 / 185,680-byte peak heap growth; 3y = 4,824 / 1.645 ms / 325,288 bytes; 10y = 16,064 / 4.637 ms / 332,648 bytes (25 runs, page size 250). These are synthetic local aggregation/heap measurements, not live Firestore billing or Worker/network p95. PR #73 is open and awaiting GitHub checks; no production data was changed.
 
 ### 2. FS-02 — Add Worker cursor/page-token support and bound lists
 
@@ -58,12 +58,11 @@ Add renderHook characterization for session readiness, offline gating, fallback 
 
 ## Recommended order
 
-1. **FS-03** — financial report contract and page-bounded aggregation.
-2. **FS-02** — shared cursor/page-token adapter support and remaining bounded lists.
-3. **WKR-04** — request/response body and streaming bounds.
-4. **F2 and F3** — domain consistency repairs.
-5. **RQ-TG-01 through RQ-TG-06** — release-gate consolidation.
-6. **UI-001, WKR-05/Cross-F1, Cross-F2, Cross-F3** — incremental decomposition, one bounded PR at a time.
+1. **FS-02** — shared cursor/page-token adapter support and remaining bounded lists.
+2. **WKR-04** — request/response body and streaming bounds.
+3. **F2 and F3** — domain consistency repairs.
+4. **RQ-TG-01 through RQ-TG-06** — release-gate consolidation.
+5. **UI-001, WKR-05/Cross-F1, Cross-F2, Cross-F3** — incremental decomposition, one bounded PR at a time.
 
 ## Standing completion workflow
 
