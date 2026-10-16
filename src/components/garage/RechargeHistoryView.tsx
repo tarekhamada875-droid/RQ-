@@ -5,6 +5,7 @@ import { ActivityLog, Garage } from '../../types';
 import { safeDate } from '../../utils';
 import { getCleanPackageInfo } from '../../constants/packages';
 import { useAppStore } from '../../store/appStore';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface RechargeHistoryViewProps {
   garage: Garage;
@@ -22,12 +23,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
   const visibleLogs = sharedLogs ?? logs;
   const visibleLoading = sharedLogs !== undefined ? Boolean(sharedIsLoading) : isLoading;
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   // Standalone use retains the service subscription; dashboard use receives the shared snapshot.
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Vehicle } from '../../types';
 import { getDuration } from '../../utils';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface RecentExitWarningModalProps {
   vehicle: Vehicle;
@@ -16,12 +17,7 @@ export const RecentExitWarningModal: React.FC<RecentExitWarningModalProps> = mem
   onConfirm,
   onCancel
 }) => {
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -232,13 +232,6 @@ export const GarageDashboardView = memo((props: any) => {
     }
   }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
 
-  useEffect(
-    () => () => {
-      document.body.style.overflow = "unset";
-    },
-    [isLockedOrSuspended],
-  );
-
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garage?.id) {
       localStorage.setItem(`acknowledged_recharge_${garage.id}`, latestRechargeLog.id);

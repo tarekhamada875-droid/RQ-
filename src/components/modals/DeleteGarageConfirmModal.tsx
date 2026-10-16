@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Garage } from '../../types';
 import type { GarageDeletionProgress } from '../../services/garageDeletionService';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface DeleteGarageConfirmModalProps {
   garage: Garage;
@@ -18,12 +19,7 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
   onConfirm,
   onCancel
 }) => {
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

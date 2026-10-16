@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface SubscriberWarningModalProps {
   plateNumber: string;
@@ -11,12 +12,7 @@ export const SubscriberWarningModal: React.FC<SubscriberWarningModalProps> = mem
   plateNumber,
   onConfirm
 }) => {
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">

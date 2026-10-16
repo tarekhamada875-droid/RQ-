@@ -24,6 +24,7 @@ import {
   getAvailableRequestMonths 
 } from '../../utils/delegateCommissionCalculations';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
 import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
@@ -103,16 +104,7 @@ export const DelegateDashboardView = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  React.useEffect(() => {
-    if (showAddGarage || selectedGarage) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showAddGarage, selectedGarage]);
+  useBodyScrollLock(Boolean(showAddGarage || selectedGarage));
 
   const filteredGarages = React.useMemo(() => {
     const rawSearch = searchTerm.trim();

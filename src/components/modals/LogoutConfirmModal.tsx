@@ -1,5 +1,6 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, memo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface LogoutConfirmModalProps {
   onConfirm: () => void;
@@ -21,12 +22,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
 
   const displayLength = Math.max(4, pin.length);
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useBodyScrollLock();
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 10 && !isLoggingOut) {
@@ -191,4 +187,3 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
     </div>
   );
 });
-
