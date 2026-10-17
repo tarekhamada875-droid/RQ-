@@ -209,8 +209,8 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
     }), workerEnv);
     expect(renewRes.status).toBe(200);
-    expect(await renewRes.json()).toMatchObject({ success: true, creditBalance: { paid: 7, referral: 20 }, creditDebit: { amount: 5, bucket: 'paid' } });
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 7, referral: 20 });
+    expect(await renewRes.json()).toMatchObject({ success: true, creditBalance: { paid: 7, referral: 20, trial: 0 }, creditDebit: { amount: 5, bucket: 'paid' } });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 7, referral: 20, trial: 0 });
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit' && record.amount === 5 && record.bucket === 'paid')).toBe(true);
   });
 

@@ -29,6 +29,7 @@ export type BillingMigrationIssue =
 export interface RehearsalCreditBalance {
   readonly paid: number;
   readonly referral: number;
+  readonly trial: number;
 }
 
 export interface LegacyBillingSnapshot {
@@ -48,7 +49,7 @@ export interface LegacyBillingSnapshot {
 }
 
 export interface RehearsalCreditEntry {
-  readonly source: 'active_plan' | 'legacy_wallet';
+  readonly source: 'active_plan' | 'trial_time' | 'legacy_wallet';
   readonly sourceAmount: number;
   readonly sourceUnit: 'remaining_days' | 'EGP';
   readonly credits: number;
@@ -64,7 +65,9 @@ export interface BillingMigrationRehearsal {
   readonly legacyWalletEgp: number | null;
   readonly candidatePlanCredits: number;
   readonly candidateWalletCredits: number;
+  readonly candidateTrialCredits: number;
   readonly convertedPaidCredits: number | null;
+  readonly convertedTrialCredits: number | null;
   readonly resultingCreditBalance: RehearsalCreditBalance | null;
   readonly creditEntries: readonly RehearsalCreditEntry[];
   readonly historicalReferralDaysNotAdded: number | null;
@@ -108,8 +111,9 @@ function parseCreditBalance(value: unknown): RehearsalCreditBalance | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const paid = parseNonNegativeInteger(raw.paid);
-  const referral = parseNonNegativeInteger(raw.referral);
-  return paid === null || referral === null ? null : { paid, referral };
+  const referral = parseNonNegativeInteger(raw.referral, true);
+  const trial = parseNonNegativeInteger(raw.trial, true);
+  return paid === null || referral === null || trial === null ? null : { paid, referral, trial };
 }
 
 function buildResult(
@@ -123,8 +127,9 @@ function buildResult(
  * 24-hour plan day (rounded up, matching the legacy garage display) and 1
  * credit per whole EGP in the legacy wallet. No source value is changed.
  *
- * Unknown eligibility, pending requests, trials, unsupported legacy referral
- * value, or mixed billing data stop the preview from producing write entries.
+ * Unknown eligibility, pending requests, unsupported legacy referral value, or
+ * mixed billing data stop the preview from producing write entries. Trial time
+ * is previewed separately as non-expiring Trial credits.
  */
 export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): BillingMigrationRehearsal {
   const garageId = typeof input.garageId === 'string' && input.garageId.trim() ? input.garageId.trim() : null;
@@ -151,7 +156,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
         legacyWalletEgp: null,
         candidatePlanCredits: 0,
         candidateWalletCredits: 0,
+        candidateTrialCredits: 0,
         convertedPaidCredits: null,
+        convertedTrialCredits: null,
         resultingCreditBalance: null,
         creditEntries: [],
         historicalReferralDaysNotAdded: null,
@@ -168,7 +175,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
         legacyWalletEgp: null,
         candidatePlanCredits: 0,
         candidateWalletCredits: 0,
+        candidateTrialCredits: 0,
         convertedPaidCredits: null,
+        convertedTrialCredits: null,
         resultingCreditBalance: null,
         creditEntries: [],
         historicalReferralDaysNotAdded: null,
@@ -185,7 +194,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
         legacyWalletEgp: null,
         candidatePlanCredits: 0,
         candidateWalletCredits: 0,
+        candidateTrialCredits: 0,
         convertedPaidCredits: null,
+        convertedTrialCredits: null,
         resultingCreditBalance: null,
         creditEntries: [],
         historicalReferralDaysNotAdded: null,
@@ -201,7 +212,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
         legacyWalletEgp: null,
         candidatePlanCredits: 0,
         candidateWalletCredits: 0,
+        candidateTrialCredits: 0,
         convertedPaidCredits: null,
+        convertedTrialCredits: null,
         resultingCreditBalance: null,
         creditEntries: [],
         historicalReferralDaysNotAdded: null,
@@ -216,7 +229,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
       legacyWalletEgp: null,
       candidatePlanCredits: 0,
       candidateWalletCredits: 0,
+      candidateTrialCredits: 0,
       convertedPaidCredits: 0,
+      convertedTrialCredits: 0,
       resultingCreditBalance: existingCreditBalance,
       creditEntries: [],
       historicalReferralDaysNotAdded: null,
@@ -231,7 +246,6 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
   } else if (input.status !== 'approved') {
     issues.push('GARAGE_NOT_APPROVED');
   }
-  if (input.isTrial === true) issues.push('TRIAL_REQUIRES_POLICY');
   if (input.isLocked === true) issues.push('GARAGE_LOCKED_REQUIRES_REVIEW');
   if (input.isSuspended === true) issues.push('GARAGE_SUSPENDED_REQUIRES_REVIEW');
 
@@ -271,9 +285,12 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
   const candidatePlanCredits = input.isTrial === true || remainingPlanDays === null
     ? 0
     : remainingPlanDays * CREDITS_PER_PLAN_DAY;
+  const candidateTrialCredits = input.isTrial === true && remainingPlanDays !== null
+    ? remainingPlanDays * CREDITS_PER_PLAN_DAY
+    : 0;
   const candidateWalletCredits = legacyWalletEgp ?? 0;
   const totalCredits = candidatePlanCredits + candidateWalletCredits;
-  if (!Number.isSafeInteger(candidatePlanCredits) || !Number.isSafeInteger(totalCredits)) {
+  if (!Number.isSafeInteger(candidatePlanCredits) || !Number.isSafeInteger(candidateTrialCredits) || !Number.isSafeInteger(totalCredits + candidateTrialCredits)) {
     issues.push('CREDIT_TOTAL_OVERFLOW');
   }
 
@@ -287,7 +304,9 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
       legacyWalletEgp,
       candidatePlanCredits: Number.isSafeInteger(candidatePlanCredits) ? candidatePlanCredits : 0,
       candidateWalletCredits,
+      candidateTrialCredits,
       convertedPaidCredits: null,
+      convertedTrialCredits: null,
       resultingCreditBalance: null,
       creditEntries: [],
       historicalReferralDaysNotAdded,
@@ -301,6 +320,14 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
       sourceAmount: remainingPlanDays || 0,
       sourceUnit: 'remaining_days',
       credits: candidatePlanCredits,
+    });
+  }
+  if (candidateTrialCredits > 0) {
+    creditEntries.push({
+      source: 'trial_time',
+      sourceAmount: remainingPlanDays || 0,
+      sourceUnit: 'remaining_days',
+      credits: candidateTrialCredits,
     });
   }
   if (candidateWalletCredits > 0) {
@@ -321,8 +348,10 @@ export function rehearseLegacyBillingConversion(input: LegacyBillingSnapshot): B
     legacyWalletEgp,
     candidatePlanCredits,
     candidateWalletCredits,
+    candidateTrialCredits,
     convertedPaidCredits: totalCredits,
-    resultingCreditBalance: { paid: totalCredits, referral: 0 },
+    convertedTrialCredits: candidateTrialCredits,
+    resultingCreditBalance: { paid: totalCredits, referral: 0, trial: candidateTrialCredits },
     creditEntries,
     historicalReferralDaysNotAdded,
   });

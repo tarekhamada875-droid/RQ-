@@ -91,3 +91,8 @@ Move route/overlay ownership out of `App`; extract Worker route families mechani
 ## Standing completion workflow
 
 For every item: read the relevant full-plan block; verify GitHub and the working tree; work on one bounded task; run focused tests and the full repository gates; update the roadmap and handoff; commit; push; open a PR into `main`; wait for the Production Gate; merge after required checks pass; verify the merged commit and post-merge workflows; then stop and report the completed task. Do not start the next item until the owner says to continue.
+
+
+### BILL-08 Trial-credit policy and local implementation checkpoint (2026-10-17)
+
+The owner selected non-expiring Trial credits after conversion. A local, unreleased implementation now adds the separate `trial` ledger bucket, previews remaining trial time at 10 credits per rounded-up day, allows Trial credits for regular non-subscriber entries, keeps subscriber renewals paid-only, restores Trial credits to the same bucket on authorized corrections, and exposes Trial balances/activity in garage/Admin UI and financial reporting. Existing prepaid records treat a missing Trial field as zero. No live migration, Firestore balance write, cutover route, or deployment occurred. Focused TypeScript and 46 tests passed; full repository gates and the branch/PR/release workflow remain pending.

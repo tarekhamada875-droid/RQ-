@@ -35,16 +35,20 @@ export interface CreditActivityMetrics {
   paidCreditsWithoutEgpRecord: number;
   referralAwardCount: number;
   referralCreditsGranted: number;
+  trialGrantCount: number;
+  trialCreditsGranted: number;
   regularEntryDebitCount: number;
   regularEntryCreditsConsumed: number;
   regularEntryPaidCreditsConsumed: number;
   regularEntryReferralCreditsConsumed: number;
+  regularEntryTrialCreditsConsumed: number;
   subscriberRenewalCount: number;
   subscriberRenewalCreditsConsumed: number;
   correctionRestoreCount: number;
   restoredCredits: number;
   restoredPaidCredits: number;
   restoredReferralCredits: number;
+  restoredTrialCredits: number;
 }
 
 export interface FinancialReportFilters {

@@ -110,7 +110,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }), workerEnv);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ success: true, data: { creditBalance: { paid: 1, referral: 1 }, remainingCredits: 2, creditDebit: { amount: 1, bucket: 'paid' } } });
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 1 });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 1, trial: 0 });
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'regular_entry_debit' && record.amount === 1)).toBe(true);
   });
 
@@ -153,7 +153,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, vehicleId: 'ABC3333', refundAmount: 0 }),
     }), workerEnv);
     expect(deletion.status).toBe(200);
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 0 });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 0, trial: 0 });
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'correction_restore' && record.amount === 1)).toBe(true);
   });
 

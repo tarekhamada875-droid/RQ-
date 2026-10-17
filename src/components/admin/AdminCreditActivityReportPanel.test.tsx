@@ -14,16 +14,20 @@ const creditActivity = {
   paidCreditsWithoutEgpRecord: 0,
   referralAwardCount: 1,
   referralCreditsGranted: 20,
+  trialGrantCount: 0,
+  trialCreditsGranted: 0,
   regularEntryDebitCount: 2,
   regularEntryCreditsConsumed: 2,
   regularEntryPaidCreditsConsumed: 2,
   regularEntryReferralCreditsConsumed: 0,
+  regularEntryTrialCreditsConsumed: 0,
   subscriberRenewalCount: 1,
   subscriberRenewalCreditsConsumed: 5,
   correctionRestoreCount: 0,
   restoredCredits: 0,
   restoredPaidCredits: 0,
   restoredReferralCredits: 0,
+  restoredTrialCredits: 0,
 };
 
 beforeEach(() => vi.clearAllMocks());

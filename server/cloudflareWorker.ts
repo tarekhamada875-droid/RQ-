@@ -2042,6 +2042,7 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           balance: {
             paid: Number(garageData.creditBalance?.paid || 0),
             referral: Number(garageData.creditBalance?.referral || 0),
+            trial: Number(garageData.creditBalance?.trial || 0),
           },
           amount: 1,
           garageId,
@@ -2169,7 +2170,7 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       };
       if (creditDebit) {
         resultData.creditBalance = creditDebit.balance;
-        resultData.remainingCredits = creditDebit.balance.paid + creditDebit.balance.referral;
+        resultData.remainingCredits = creditDebit.balance.paid + creditDebit.balance.referral + creditDebit.balance.trial;
         resultData.creditDebit = {
           amount: creditDebit.entry.amount,
           bucket: creditDebit.entry.bucket,
@@ -2500,6 +2501,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           balance: {
             paid: Number(garageData.creditBalance?.paid || 0),
             referral: Number(garageData.creditBalance?.referral || 0),
+            trial: Number(garageData.creditBalance?.trial || 0),
           },
           amount: Number(vehicleData.creditDebit.amount),
           bucket: vehicleData.creditDebit.bucket,
@@ -2873,6 +2875,7 @@ workerApp.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
           balance: {
             paid: Number(garageData.creditBalance?.paid || 0),
             referral: Number(garageData.creditBalance?.referral || 0),
+            trial: Number(garageData.creditBalance?.trial || 0),
           },
           amount: 5,
           garageId: validatedGarageId,
@@ -5226,6 +5229,7 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
       const balance = {
         paid: Number(garage.creditBalance?.paid || 0),
         referral: Number(garage.creditBalance?.referral || 0),
+        trial: Number(garage.creditBalance?.trial || 0),
       };
       const transition = grantPaidCredits({ balance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, reference: paymentReference, occurredAt: new Date().toISOString(), idempotencyKey });
       if (transition.ok === false) throw new Error(transition.error);
@@ -5238,7 +5242,7 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
         const referrer = referrerSnap.data() || {};
         const rewardIdempotencyKey = `first_paid_grant:${garageId}`;
         referralTransition = awardReferralCredits({
-          balance: { paid: Number(referrer.creditBalance?.paid || 0), referral: Number(referrer.creditBalance?.referral || 0) },
+          balance: { paid: Number(referrer.creditBalance?.paid || 0), referral: Number(referrer.creditBalance?.referral || 0), trial: Number(referrer.creditBalance?.trial || 0) },
           garageId: referrerGarageId,
           actorUid: callerUid,
           actorRole: 'admin',

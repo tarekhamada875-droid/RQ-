@@ -20,30 +20,30 @@ const base = {
 
 describe('prepaid credit ledger', () => {
   it('grants only positive integer paid credits without touching referral credits', () => {
-    expect(grantPaidCredits({ ...base, balance: { paid: 5, referral: 2 }, amount: 10 })).toMatchObject({
+    expect(grantPaidCredits({ ...base, balance: { trial: 0, paid: 5, referral: 2 }, amount: 10 })).toMatchObject({
       ok: true,
       value: {
-        balance: { paid: 15, referral: 2 },
+        balance: { trial: 0, paid: 15, referral: 2 },
         entry: { kind: 'paid_grant', bucket: 'paid', amount: 10, balanceBefore: 5, balanceAfter: 15 },
       },
     });
-    expect(grantPaidCredits({ ...base, balance: { paid: 0, referral: 0 }, amount: 1.5 })).toEqual({ ok: false, error: 'INVALID_CREDIT_AMOUNT' });
-    expect(grantPaidCredits({ ...base, balance: { paid: Number.MAX_SAFE_INTEGER, referral: 0 }, amount: 1 })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
+    expect(grantPaidCredits({ ...base, balance: { trial: 0, paid: 0, referral: 0 }, amount: 1.5 })).toEqual({ ok: false, error: 'INVALID_CREDIT_AMOUNT' });
+    expect(grantPaidCredits({ ...base, balance: { trial: 0, paid: Number.MAX_SAFE_INTEGER, referral: 0 }, amount: 1 })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
   it('awards exactly 20 referral credits only after the first paid grant', () => {
     expect(awardReferralCredits({
       ...base,
-      balance: { paid: 0, referral: 0 },
+      balance: { trial: 0, paid: 0, referral: 0 },
       referrerGarageId: 'referrer-1',
       referredGarageId: 'garage-1',
       paidGrantConfirmed: true,
       firstPaidGrant: true,
-    })).toMatchObject({ ok: true, value: { balance: { paid: 0, referral: 20 }, entry: { kind: 'referral_award', amount: 20 } } });
+    })).toMatchObject({ ok: true, value: { balance: { trial: 0, paid: 0, referral: 20 }, entry: { kind: 'referral_award', amount: 20 } } });
 
     expect(awardReferralCredits({
       ...base,
-      balance: { paid: 0, referral: 0 },
+      balance: { trial: 0, paid: 0, referral: 0 },
       referrerGarageId: 'referrer-1',
       referredGarageId: 'garage-1',
       paidGrantConfirmed: false,
@@ -51,7 +51,7 @@ describe('prepaid credit ledger', () => {
     })).toEqual({ ok: false, error: 'REFERRAL_AWARD_NOT_ELIGIBLE' });
     expect(awardReferralCredits({
       ...base,
-      balance: { paid: 0, referral: 0 },
+      balance: { trial: 0, paid: 0, referral: 0 },
       referrerGarageId: 'garage-1',
       referredGarageId: 'garage-1',
       paidGrantConfirmed: true,
@@ -60,29 +60,29 @@ describe('prepaid credit ledger', () => {
   });
 
   it('debits one regular entry from the combined eligible pool and records the source', () => {
-    expect(debitRegularEntry({ ...base, balance: { paid: 2, referral: 1 }, amount: 1 })).toMatchObject({
+    expect(debitRegularEntry({ ...base, balance: { trial: 0, paid: 2, referral: 1 }, amount: 1 })).toMatchObject({
       ok: true,
-      value: { balance: { paid: 1, referral: 1 }, entry: { kind: 'regular_entry_debit', bucket: 'paid', amount: 1 } },
+      value: { balance: { trial: 0, paid: 1, referral: 1 }, entry: { kind: 'regular_entry_debit', bucket: 'paid', amount: 1 } },
     });
-    expect(debitRegularEntry({ ...base, balance: { paid: 0, referral: 1 }, amount: 1 })).toMatchObject({
+    expect(debitRegularEntry({ ...base, balance: { trial: 0, paid: 0, referral: 1 }, amount: 1 })).toMatchObject({
       ok: true,
-      value: { balance: { paid: 0, referral: 0 }, entry: { kind: 'regular_entry_debit', bucket: 'referral', amount: 1 } },
+      value: { balance: { trial: 0, paid: 0, referral: 0 }, entry: { kind: 'regular_entry_debit', bucket: 'referral', amount: 1 } },
     });
-    expect(debitRegularEntry({ ...base, balance: { paid: 0, referral: 0 }, amount: 1 })).toEqual({ ok: false, error: 'INSUFFICIENT_ELIGIBLE_CREDITS' });
+    expect(debitRegularEntry({ ...base, balance: { trial: 0, paid: 0, referral: 0 }, amount: 1 })).toEqual({ ok: false, error: 'INSUFFICIENT_ELIGIBLE_CREDITS' });
   });
 
   it('allows subscriber renewals only from paid credits', () => {
-    expect(debitSubscriberRenewal({ ...base, balance: { paid: 5, referral: 20 }, amount: 5 })).toMatchObject({
+    expect(debitSubscriberRenewal({ ...base, balance: { trial: 0, paid: 5, referral: 20 }, amount: 5 })).toMatchObject({
       ok: true,
-      value: { balance: { paid: 0, referral: 20 }, entry: { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5 } },
+      value: { balance: { trial: 0, paid: 0, referral: 20 }, entry: { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5 } },
     });
-    expect(debitSubscriberRenewal({ ...base, balance: { paid: 0, referral: 20 }, amount: 5 })).toEqual({ ok: false, error: 'INSUFFICIENT_PAID_CREDITS' });
+    expect(debitSubscriberRenewal({ ...base, balance: { trial: 0, paid: 0, referral: 20 }, amount: 5 })).toEqual({ ok: false, error: 'INSUFFICIENT_PAID_CREDITS' });
   });
 
   it('restores the original bucket for an authorized correction', () => {
-    expect(restoreCredits({ ...base, balance: { paid: 0, referral: 4 }, amount: 1, bucket: 'referral' })).toMatchObject({
+    expect(restoreCredits({ ...base, balance: { trial: 0, paid: 0, referral: 4 }, amount: 1, bucket: 'referral' })).toMatchObject({
       ok: true,
-      value: { balance: { paid: 0, referral: 5 }, entry: { kind: 'correction_restore', bucket: 'referral', amount: 1 } },
+      value: { balance: { trial: 0, paid: 0, referral: 5 }, entry: { kind: 'correction_restore', bucket: 'referral', amount: 1 } },
     });
   });
 
@@ -98,6 +98,23 @@ describe('prepaid credit ledger', () => {
     expect(result).toEqual({
       ok: true,
       value: expect.objectContaining({ entryId: 'garage-1:operation-1' }),
+    });
+  });
+});
+
+describe('Trial credits', () => {
+  it('grants and debits Trial credits for regular entries but not renewals', () => {
+    expect(debitRegularEntry({ ...base, balance: { paid: 0, referral: 0, trial: 2 }, amount: 1 })).toMatchObject({
+      ok: true,
+      value: { balance: { paid: 0, referral: 0, trial: 1 }, entry: { kind: 'regular_entry_debit', bucket: 'trial', amount: 1 } },
+    });
+    expect(debitSubscriberRenewal({ ...base, balance: { paid: 0, referral: 0, trial: 5 }, amount: 5 })).toEqual({ ok: false, error: 'INSUFFICIENT_PAID_CREDITS' });
+  });
+
+  it('restores a Trial credit to the Trial bucket', () => {
+    expect(restoreCredits({ ...base, balance: { paid: 0, referral: 0, trial: 1 }, amount: 1, bucket: 'trial' })).toMatchObject({
+      ok: true,
+      value: { balance: { paid: 0, referral: 0, trial: 2 }, entry: { kind: 'correction_restore', bucket: 'trial', amount: 1 } },
     });
   });
 });

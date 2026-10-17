@@ -35,7 +35,8 @@ export const GarageSubscriptionCard = memo(({
   const prepaidCreditsEnabled = garage.billingModel === 'prepaid_credits' || garage.creditBalance !== undefined;
   const paidCredits = Math.max(0, Number(garage.creditBalance?.paid || 0));
   const referralCredits = Math.max(0, Number(garage.creditBalance?.referral || 0));
-  const totalCredits = paidCredits + referralCredits;
+  const trialCredits = Math.max(0, Number(garage.creditBalance?.trial || 0));
+  const totalCredits = paidCredits + referralCredits + trialCredits;
   const previousCredits = useRef<number | null>(null);
   const [showDebitFeedback, setShowDebitFeedback] = useState(false);
   const [showCreditHistory, setShowCreditHistory] = useState(false);
@@ -69,7 +70,7 @@ export const GarageSubscriptionCard = memo(({
               </span>
             )}
           </div>
-          <span className="text-[10px] md:text-xs font-bold text-slate-500">مدفوع: {paidCredits} · إحالة: {referralCredits}</span>
+          <span className="text-[10px] md:text-xs font-bold text-slate-500">مدفوع: {paidCredits} · إحالة: {referralCredits} · تجربة: {trialCredits}</span>
           <span className="sr-only">إجمالي الرصيد {totalCredits} رصيد دخول</span>
           <button type="button" className="mt-2 text-xs font-bold underline" onClick={async () => {
             const next = !showCreditHistory;
