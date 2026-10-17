@@ -5,6 +5,9 @@ import { sortGaragesNewestFirst } from '../../utils';
 
 interface AdminRequestsViewProps {
   rechargeRequests: RechargeRequest[];
+  adminRechargeHasMore?: boolean;
+  adminRechargeListsLoading?: boolean;
+  onLoadMoreAdminRechargeRequests?: () => Promise<void>;
   pendingGarages: Garage[];
   handleApproveRequest: (request: RechargeRequest) => Promise<void>;
   handleRejectRequest: (requestId: string) => Promise<void>;
@@ -16,11 +19,15 @@ interface AdminRequestsViewProps {
 
 export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
   rechargeRequests,
+  adminRechargeHasMore = false,
+  adminRechargeListsLoading = false,
+  onLoadMoreAdminRechargeRequests,
   pendingGarages,
   handleApproveRequest,
   handleRejectRequest,
   handleApproveGarage,
   handleRejectGarage,
+  adminLang = 'ar',
   t,
 }) => {
   const [requestSubTab, setRequestSubTab] = useState<'recharge' | 'creation'>(() => {
@@ -255,6 +262,18 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
               <p className="text-xs font-medium text-slate-400">ستظهر هنا أية طلبات شحن جديدة مقدمة من المندوبين.</p>
             </div>
           )}
+          {adminRechargeHasMore && onLoadMoreAdminRechargeRequests && (
+            <button
+              type="button"
+              onClick={() => void onLoadMoreAdminRechargeRequests()}
+              disabled={adminRechargeListsLoading}
+              className="w-full min-h-[44px] mt-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {adminRechargeListsLoading
+                ? (adminLang === 'en' ? 'Loading more requests...' : 'جارٍ تحميل المزيد...')
+                : (adminLang === 'en' ? 'Load older requests' : 'تحميل طلبات أقدم')}
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -362,4 +381,3 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
 };
 
 export default AdminRequestsView;
-

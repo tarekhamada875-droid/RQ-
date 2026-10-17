@@ -8,12 +8,8 @@ import {
   onSnapshot, 
   doc, 
   getDoc,
-  getDocs, 
   runTransaction, 
-  orderBy, 
-  limit, 
   serverTimestamp, 
-  startAfter
 } from 'firebase/firestore';
 import type { Garage } from '../types';
 import { withRetry, sortGaragesNewestFirst } from '../utils';
@@ -36,7 +32,7 @@ export interface GarageDashboardSummary {
   source?: 'live_projection_buckets' | 'rebuild';
 }
 
-export type GaragePageCursor = any;
+export type GaragePageCursor = string;
 
 export interface GaragePage {
   garages: Garage[];
@@ -51,17 +47,7 @@ export function isFreshGarageDashboardSummary(summary: GarageDashboardSummary | 
   return summary.dateId === today && Number.isFinite(rebuiltAt) && now - rebuiltAt >= 0 && now - rebuiltAt <= maxAgeMs;
 }
 
-const mapGaragePage = (snapshot: any, pageSize: number): GaragePage => {
-  const rawGarages: Garage[] = snapshot.docs.map((garageDoc: any) => ({
-    id: garageDoc.id,
-    ...garageDoc.data()
-  } as Garage));
-  return {
-    garages: sortGaragesNewestFirst(rawGarages),
-    lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-    hasMore: snapshot.docs.length === pageSize
-  };
-};
+type WorkerGaragePage = { garages: Garage[]; hasMore: boolean; nextCursor: string | null };
 
 export const garageService = {
   getDashboardSummary: async (garageId: string): Promise<GarageDashboardSummary> => {
@@ -133,43 +119,16 @@ export const garageService = {
     };
   },
 
-  getAdminGaragesPage: async (pageSize = 50, lastDocRef: GaragePageCursor = null): Promise<GaragePage> => {
+  getAdminGaragesPage: async (pageSize = 50, lastDocRef: GaragePageCursor | null = null): Promise<GaragePage> => {
     try {
-      let q = query(
-        collection(db, 'garages'),
-        orderBy('createdAt', 'desc'),
-        limit(pageSize)
-      );
-
-      if (lastDocRef) {
-        q = query(
-          collection(db, 'garages'),
-          orderBy('createdAt', 'desc'),
-          startAfter(lastDocRef),
-          limit(pageSize)
-        );
-      }
-
-      return mapGaragePage(await getDocs(q), pageSize);
-    } catch {
-      try {
-        let fallbackQ = query(
-          collection(db, 'garages'),
-          limit(pageSize)
-        );
-        if (lastDocRef) {
-          fallbackQ = query(
-            collection(db, 'garages'),
-            startAfter(lastDocRef),
-            limit(pageSize)
-          );
-        }
-        return mapGaragePage(await getDocs(fallbackQ), pageSize);
-      } catch (fallbackErr) {
-        console.warn('Failed to load admin garage page:', fallbackErr);
-        handleFirestoreError(fallbackErr, OperationType.LIST, 'garages/admin-page');
-        throw fallbackErr;
-      }
+      const params = new URLSearchParams({ limit: String(pageSize) });
+      if (lastDocRef) params.set('cursor', lastDocRef);
+      const page = await apiFetch<WorkerGaragePage>(`/api/garages?${params.toString()}`);
+      return { garages: page.garages, lastDoc: page.nextCursor, hasMore: page.hasMore };
+    } catch (error) {
+      console.warn('Failed to load admin garage page:', error);
+      handleFirestoreError(error, OperationType.LIST, 'garages/admin-page');
+      throw error;
     }
   },
 

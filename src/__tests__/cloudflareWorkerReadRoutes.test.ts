@@ -199,6 +199,7 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     // Seed some delegate data
     mockDb.seed('delegates/del-1', {
       name: 'Test Delegate',
+      createdAt: new Date('2026-10-17T10:00:00.000Z'),
       pin: '12345678',
       ownerPin: '12345678',
       adminPin: '12345678',
@@ -224,6 +225,69 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     }
   });
 
+  it('paginates Admin delegates with a stable tie-break and reads only one page plus sentinel', async () => {
+    for (let index = 0; index < 7; index += 1) {
+      mockDb.seed(`delegates/page-${index}`, {
+        name: `Delegate ${index}`,
+        createdAt: new Date('2026-10-17T10:00:00.000Z')
+      });
+    }
+    mockDb.resetDocumentCounts();
+
+    const requestPage = (cursor?: string) => {
+      const params = new URLSearchParams({ limit: '3' });
+      if (cursor) params.set('cursor', cursor);
+      return api.fetch(new Request(`http://localhost/api/admin/delegates?${params}`, {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+    };
+    const firstResponse = await requestPage();
+    const first = await firstResponse.json() as any;
+    expect(firstResponse.status).toBe(200);
+    expect(first.delegates).toHaveLength(3);
+    expect(first.hasMore).toBe(true);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(mockDb.queryResultSizes.at(-1)).toBe(4);
+
+    const secondResponse = await requestPage(first.nextCursor);
+    const second = await secondResponse.json() as any;
+    expect(secondResponse.status).toBe(200);
+    expect(second.delegates).toHaveLength(3);
+    expect(second.delegates.map((item: any) => item.id)).not.toEqual(expect.arrayContaining(first.delegates.map((item: any) => item.id)));
+    expect(mockDb.queryResultSizes.at(-1)).toBe(4);
+
+    const thirdResponse = await requestPage(second.nextCursor);
+    const third = await thirdResponse.json() as any;
+    expect(third.delegates).toHaveLength(1);
+    expect(third.hasMore).toBe(false);
+    expect(third.nextCursor).toBeNull();
+    expect(mockDb.queryResultSizes.at(-1)).toBe(1);
+
+    const allIds = [...first.delegates, ...second.delegates, ...third.delegates].map((item: any) => item.id);
+    expect(new Set(allIds).size).toBe(7);
+    expect(allIds).toEqual([...allIds].sort((left, right) => right.localeCompare(left)));
+  });
+
+  it('rejects malformed, expired, and cross-route page cursors', async () => {
+    for (const cursor of ['not-a-token', 'a'.repeat(5000)]) {
+      const response = await api.fetch(new Request(`http://localhost/api/admin/delegates?cursor=${cursor}`, {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+      expect(response.status).toBe(400);
+    }
+
+    mockDb.seed('delegates/cursor-source', { createdAt: new Date('2026-10-17T10:00:00.000Z') });
+    mockDb.seed('delegates/cursor-source-2', { createdAt: new Date('2026-10-16T10:00:00.000Z') });
+    const firstResponse = await api.fetch(new Request('http://localhost/api/admin/delegates?limit=1', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    const first = await firstResponse.json() as any;
+    const crossRoute = await api.fetch(new Request(`http://localhost/api/garages?cursor=${encodeURIComponent(first.nextCursor)}`, {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(crossRoute.status).toBe(400);
+  });
+
   it('7. GET /api/admin/delegates/:id handles lookup and 404 on unknown delegate', async () => {
     const res = await api.fetch(new Request('http://localhost/api/admin/delegates/non-existent-delegate-id', {
       headers: { 'Authorization': 'Bearer valid-admin-token' }
@@ -233,5 +297,35 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     const body = await res.json() as any;
     expect(body.success).toBe(false);
     expect(body.error).toBe('DELEGATE_NOT_FOUND');
+  });
+
+  it('bounds Admin delegate-detail child lists and supports section cursor continuation', async () => {
+    mockDb.seed('delegates/del-page', { name: 'Paginated Detail Delegate' });
+    for (let index = 0; index < 4; index += 1) {
+      mockDb.seed(`garages/detail-created-${index}`, { createdByDelegateId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`garages/detail-referred-${index}`, { referrerId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`recharge_requests/detail-${index}`, { delegateId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+    }
+    mockDb.resetDocumentCounts();
+    const response = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?limit=2', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    const first = await response.json() as any;
+    expect(response.status).toBe(200);
+    expect(first.garages).toHaveLength(4);
+    expect(first.requests).toHaveLength(2);
+    expect(first.pagination.createdGarages.hasMore).toBe(true);
+    expect(first.pagination.referredGarages.hasMore).toBe(true);
+    expect(first.pagination.requests.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.slice(-3)).toEqual([3, 3, 3]);
+
+    const params = new URLSearchParams({ section: 'createdGarages', limit: '2', cursor: first.pagination.createdGarages.nextCursor });
+    const nextResponse = await api.fetch(new Request(`http://localhost/api/admin/delegates/del-page?${params}`, {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    const next = await nextResponse.json() as any;
+    expect(nextResponse.status).toBe(200);
+    expect(next.garages).toHaveLength(2);
+    expect(next.garages.map((garage: any) => garage.id)).not.toEqual(expect.arrayContaining(first.garages.map((garage: any) => garage.id)));
   });
 });
