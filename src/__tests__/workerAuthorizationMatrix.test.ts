@@ -249,8 +249,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
   it.each([
     ['/api/admin/summary', 'GET'],
     ['/api/financial-summary', 'GET'],
-    ['/api/garages/delete', 'POST'],
-    ['/api/transactions/admin-topup-balance', 'POST']
+    ['/api/garages/delete', 'POST']
   ])('denies non-admin access to %s for every non-admin role', async (path, method) => {
     for (const token of [tokens.supervisor, tokens.delegate, tokens.garage, tokens.staff]) {
       const response = await call(path, token, {

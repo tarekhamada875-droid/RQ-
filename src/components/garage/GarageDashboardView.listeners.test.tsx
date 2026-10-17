@@ -54,7 +54,6 @@ vi.mock('./RechargeHistoryView', () => ({
 vi.mock('../modals/TrialExpiryModal', () => ({ TrialExpiryModal: () => null }));
 vi.mock('./modals/RechargeNotificationModal', () => ({ RechargeNotificationModal: () => null }));
 vi.mock('./modals/AnnouncementModal', () => ({ AnnouncementModal: () => null }));
-vi.mock('../modals/PackagesModal', () => ({ PackagesModal: () => null }));
 vi.mock('../modals/StaffStatsModal', () => ({ StaffStatsModal: () => null }));
 vi.mock('./GarageReportsView', () => ({ GarageReportsView: () => null }));
 vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));

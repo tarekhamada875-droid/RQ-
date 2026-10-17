@@ -3091,6 +3091,7 @@ workerApp.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
 
 // Handler 1: Create Recharge Request (POST /api/recharge-requests/create & POST /api/recharge-requests)
 const handleCreateRechargeRequest = async (c: any) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
   try {
     const user = c.get('user') as WorkerUser | undefined;
     if (user?.role !== 'garage' && user?.role !== 'delegate') {
@@ -3230,6 +3231,7 @@ workerApp.post('/api/recharge-requests', requireWorkerAuth, enforceWorkerFinanci
 
 // Handler 2: Process/Approve Recharge Request (POST /api/recharge-requests/process & POST /api/transactions/approve-recharge-request)
 const handleApproveRechargeRequest = async (c: any) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
   const user = c.get('user');
   if (user?.role !== 'admin') {
     return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
@@ -3681,6 +3683,7 @@ workerApp.get('/api/recharge-requests/my', requireWorkerAuth, async (c) => {
 
 // Handler 6: Direct Balance Top-Up (POST /api/transactions/admin-topup-balance)
 workerApp.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async (c) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
   const user = c.get('user');
   if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
   const callerUid = user?.uid;
@@ -4055,7 +4058,7 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
 
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'trialDays', 'defaultTrialDays', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
-    const { phone: rawPhone, hourlyRate: rawHourlyRate, overnightRate: rawOvernightRate, billingModel: rawBillingModel, isTrial, trialDays, defaultTrialDays, createdByDelegateId, createdByDelegateName, referrerId, referrerName, referredByGarageId, referredByGarageName } = sanitized;
+    const { phone: rawPhone, hourlyRate: rawHourlyRate, overnightRate: rawOvernightRate, createdByDelegateId, createdByDelegateName, referrerId, referrerName, referredByGarageId, referredByGarageName } = sanitized;
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(sanitized.pin);
     const idempotencyKey = validateIdempotencyKey(
@@ -4124,11 +4127,6 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
       }, 400);
     }
 
-    const isTrialBool = isTrial === undefined ? true : (isTrial === true || isTrial === 'true');
-    const rawTrialDays = trialDays !== undefined ? trialDays : defaultTrialDays;
-    const finalTrialDays = rawTrialDays !== undefined
-      ? validateNumber(rawTrialDays, 'trialDays', { min: 1, max: 365, required: false })
-      : 2;
     const phone = rawPhone ? String(rawPhone).trim() : '';
     const hourlyRateValue = rawHourlyRate !== undefined
       ? validateNumber(rawHourlyRate, 'hourlyRate', { min: 0, max: 10000, required: false })
@@ -4136,14 +4134,11 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
     const overnightRateValue = rawOvernightRate !== undefined
       ? validateNumber(rawOvernightRate, 'overnightRate', { min: 0, max: 10000, required: false })
       : 0;
-    const billingModel = ['subscription', 'trial'].includes(rawBillingModel) ? rawBillingModel : 'subscription';
-
     const now = new Date();
-    const finalDailyCapacity = isTrialBool ? 100 : 0;
-    const activePackageName = isTrialBool ? `الباقة التجريبية (${finalTrialDays} يوم)` : 'بدون باقة';
-    const balanceExpiry = isTrialBool
-      ? new Date(now.getTime() + (finalTrialDays > 0 ? finalTrialDays : 2) * 24 * 60 * 60 * 1000)
-      : new Date(now.getTime() - 1000);
+    const billingModel = 'prepaid_credits';
+    const finalDailyCapacity = 0;
+    const activePackageName = '';
+    const balanceExpiry = null;
     const garageRef = adminDb.collection('garages').doc();
     const garageId = garageRef.id;
     const logRef = adminDb.collection('activity_logs').doc();
@@ -4156,12 +4151,13 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
       status: (callerRole === 'delegate' || createdByDelegateId) ? 'pending' : 'approved',
       hasMonthlySubscribers: false,
       createdAt: now,
-      isTrial: isTrialBool,
+      isTrial: false,
       dailyCapacity: finalDailyCapacity,
       activePackageName,
       packageName: activePackageName,
       balanceExpiry,
       balance: 0,
+      creditBalance: { paid: 0, referral: 0, trial: 0 },
       carsInside: 0,
       carsInsideCount: 0,
       todayCount: 0,
@@ -4198,17 +4194,17 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
       garageId,
       garageName: garageDoc.name,
       staffId: callerUid || null,
-      staffName: callerName || (isTrialBool ? 'النظام (تفعيل تجريبي)' : 'الإدارة (إنشاء جراج)'),
-      actionType: isTrialBool ? 'recharge' : 'create',
-      plateNumber: isTrialBool ? `تفعيل الباقة التجريبية (${finalTrialDays} يوم)` : 'إنشاء حساب جراج جديد (بدون باقة)',
+      staffName: callerName || 'الإدارة (إنشاء جراج)',
+      actionType: 'create',
+      plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)',
       timestamp: now,
       amount: 0,
       details: {
-        packageName: isTrialBool ? `الباقة التجريبية (${finalTrialDays} يوم)` : activePackageName,
-        durationDays: isTrialBool ? finalTrialDays : 0,
-        carsCount: finalDailyCapacity,
+        packageName: activePackageName,
+        durationDays: 0,
+        carsCount: 0,
         revenueAmount: 0,
-        isTrial: Boolean(isTrialBool)
+        isTrial: false
       }
     };
     const result = { success: true, id: garageId };
@@ -4238,7 +4234,7 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
         activeSubscribersCount: 0,
         expiredSubscribersCount: 0,
         balanceExpiry,
-        isTrial: isTrialBool,
+        isTrial: false,
         dailyCapacity: finalDailyCapacity,
         hourlyRate: hourlyRateValue,
         createdAt: now,
@@ -4246,7 +4242,7 @@ workerApp.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialR
       });
       writeMaintainedAdminDelta(t, {
         totalGarages: 1,
-        activeGarages: (!isTrialBool || balanceExpiry.getTime() >= Date.now()) ? 1 : 0
+        activeGarages: 1
       });
       t.set(logRef, activityLog);
       if (idempotencyKey) {
@@ -5492,6 +5488,8 @@ workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c)
 
 // Transactions: Garage Self-Subscribe Using Balance
 workerApp.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, async (c) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
+  /* istanbul ignore next -- retained below only as a migration reference until the route is deleted */
   try {
     const user = c.get('user');
     const userRole = user?.role;
@@ -5648,6 +5646,7 @@ workerApp.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, asy
 
 // Transactions: Use Referral Reward Days
 workerApp.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
   try {
     const user = c.get('user');
     const callerUid = user?.uid;

@@ -1,20 +1,12 @@
-import React, { useMemo } from 'react';
-import { 
-  Phone, 
-  AlertTriangle, 
-  Crown
-} from 'lucide-react';
-import { calculateFinalPrice } from '../../utils';
-import { useSystemSubscribersFlatFee } from '../../hooks/useSystemSubscribersFlatFee';
-import { filterPackagesForGarage, getCleanPackageInfo } from '../../constants/packages';
+import React from 'react';
+import { AlertTriangle, Phone } from 'lucide-react';
 import type { Garage, Package } from '../../types';
-import { BorderShimmer } from './BorderShimmer';
 
 interface SmartActionPromptProps {
   garage: Garage;
-  packages: Package[];
+  packages?: Package[];
   walletNumber?: string;
-  onOpenPackages: (initialDuration?: number) => void;
+  onOpenPackages?: (initialDuration?: number) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   isDailyLimitReached?: boolean;
   isExpired?: boolean;
@@ -24,227 +16,45 @@ interface SmartActionPromptProps {
   onSubscribedSuccess?: (updatedGarageInfo?: any) => void;
 }
 
-export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({
-  garage,
-  packages = [],
-  walletNumber = '',
-  onOpenPackages,
-  showToast: _showToast,
-  isDailyLimitReached = false,
-  isExpired = false,
-  packageDurationDays = 30,
-  todayCount = 0,
-  dailyCapacity = 0,
-  onSubscribedSuccess: _onSubscribedSuccess
-}) => {
-  const subscriberFlatFee = useSystemSubscribersFlatFee();
-
-  // 1. Resolve Target Phone: Always Tarek's System Wallet Number directly
-  const targetWalletPhone = useMemo(() => {
-    const raw = walletNumber ? walletNumber.replace(/\D/g, '') : '';
-    return raw.length >= 10 ? raw : '01000000000';
-  }, [walletNumber]);
-
-  const formattedWalletNumber = useMemo(() => {
-    if (targetWalletPhone.length === 11) {
-      return `${targetWalletPhone.slice(0, 4)} - ${targetWalletPhone.slice(4, 7)} - ${targetWalletPhone.slice(7, 11)}`;
-    }
-    return targetWalletPhone;
-  }, [targetWalletPhone]);
-
-  // 2. Analyze Available Packages and Balance Eligibility
-  const currentBalance = Number(garage?.balance || 0);
-  const hasMonthlySubs = Boolean(garage?.hasMonthlySubscribers);
-  // Trial access is granted by balanceExpiry and intentionally has no wallet
-  // balance. Only show the wallet-depleted state for non-trial garages.
-  const isActiveTrial = garage?.isTrial === true && !isExpired;
-  const isBalanceDepleted = currentBalance <= 0 && !isActiveTrial;
-
-  const {
-    hasEnoughBalanceForAny,
-    recommendedDuration,
-    actionButtonText
-  } = useMemo(() => {
-    const validPackages = filterPackagesForGarage(packages || [], hasMonthlySubs);
-    if (!validPackages || validPackages.length === 0) {
-      return {
-        hasEnoughBalanceForAny: false,
-        canAffordMonthly: false,
-        recommendedDuration: undefined,
-        actionButtonText: 'شوف الباقات ورقم التحويل'
-      };
-    }
-
-    // Calculate final effective price for each package
-    const packagesWithPricing = validPackages.map(pkg => {
-      const cleanInfo = getCleanPackageInfo(pkg);
-      const { finalPrice } = calculateFinalPrice(pkg, hasMonthlySubs, subscriberFlatFee, 0);
-      return {
-        pkg,
-        durationDays: cleanInfo.durationDays,
-        finalPrice,
-        canAfford: currentBalance >= finalPrice && finalPrice > 0
-      };
-    });
-
-    const affordablePackages = packagesWithPricing.filter(p => p.canAfford);
-    const hasEnough = affordablePackages.length > 0;
-
-    // Check if user can afford monthly (durationDays >= 30)
-    const affordableMonthly = affordablePackages.filter(p => p.durationDays >= 30);
-    const canAffordMonth = affordableMonthly.length > 0;
-
-    // Determine recommended duration tab
-    let recDuration: number | undefined = undefined;
-    let btnText = 'شوف الباقات ورقم التحويل';
-
-    if (hasEnough) {
-      if (canAffordMonth) {
-        recDuration = 30;
-        btnText = 'ادخل واختار باقتك الشهرية';
-      } else {
-        // Find best affordable duration (e.g. 15 or 7 or 1)
-        const highestAffordable = [...affordablePackages].sort((a, b) => b.durationDays - a.durationDays)[0];
-        recDuration = highestAffordable?.durationDays || 1;
-        if (recDuration === 1) {
-          btnText = 'ادخل واختار باقتك اليومية';
-        } else if (recDuration === 7) {
-          btnText = 'ادخل واختار باقتك الأسبوعية';
-        } else if (recDuration === 15) {
-          btnText = 'ادخل واختار باقتك (15 يوم)';
-        } else {
-          btnText = 'ادخل واختار باقتك';
-        }
-      }
-    }
-
-    return {
-      hasEnoughBalanceForAny: hasEnough,
-      canAffordMonthly: canAffordMonth,
-      recommendedDuration: recDuration,
-      actionButtonText: btnText
-    };
-  }, [packages, hasMonthlySubs, subscriberFlatFee, currentBalance]);
+/**
+ * Garage access is prepaid-credit only. Package selection and time-based
+ * subscription renewal were retired; depleted garages are funded by an admin
+ * credit grant instead.
+ */
+export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ garage, walletNumber = '' }) => {
+  const paid = Math.max(0, Number(garage.creditBalance?.paid || 0));
+  const referral = Math.max(0, Number(garage.creditBalance?.referral || 0));
+  const trial = Math.max(0, Number(garage.creditBalance?.trial || 0));
+  const total = paid + referral + trial;
+  const phone = walletNumber.replace(/\D/g, '');
 
   return (
-    <div 
+    <div
       id="smart-action-prompt-card"
-      className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border-2 border-red-500/50 dark:border-red-500/60 relative shrink-0 p-5 sm:p-7 max-w-md md:max-w-xl mx-auto w-full transition-all duration-200 shadow-xl overflow-hidden text-center"
+      className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border-2 border-amber-500/50 relative shrink-0 p-5 sm:p-7 max-w-md md:max-w-xl mx-auto w-full text-center shadow-xl"
+      dir="rtl"
     >
-      {/* Alert Icon */}
       <div className="flex justify-center mb-3">
-        <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-500/30">
-          <AlertTriangle className="w-6 h-6 animate-pulse" />
+        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg">
+          <AlertTriangle className="w-6 h-6" />
         </div>
       </div>
-
-      {/* Direct Title in Egyptian Arabic */}
-      <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight mb-2">
-        {isBalanceDepleted
-          ? 'الرصيد خلص'
-            : isExpired
-            ? (packageDurationDays <= 2 ? 'انتهت الـ 24 ساعة' : 'باقة الجراج خلصت')
-            : 'وصلت للحد الأقصى لسيارات النهاردة'}
-      </h3>
-
-      {/* Clean Egyptian description / 2-step structured layout */}
-      {isBalanceDepleted ? (
-        <div className="mb-5 space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-          <p>حوّل الرصيد الذي تريد إضافته في محفظتك، ثم اتصل بنا لتأكيد التحويل وإضافة الرصيد.</p>
-          <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/60 p-3">
-            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">رقم محفظة الإدارة</div>
-            <div className="mt-1 font-mono text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-wider" dir="ltr">
-              {formattedWalletNumber}
-            </div>
-          </div>
-        </div>
-      ) : hasEnoughBalanceForAny ? (
-        <div className="mb-5 space-y-1.5 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">1</span>
-            <span>معاك رصيد في المحفظة:</span>
-            <strong className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">({currentBalance.toLocaleString()} ج.م)</strong>
-          </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-black flex items-center justify-center shrink-0">2</span>
-            <span>
-              {recommendedDuration === 30 
-                ? 'دوس على الزرار ده علشان تشحن الباقة الشهرية'
-                : recommendedDuration === 15
-                ? 'دوس على الزرار ده علشان تشحن باقة الـ 15 يوم'
-                : recommendedDuration === 7
-                ? 'دوس على الزرار ده علشان تشحن الباقة الأسبوعية'
-                : 'دوس على الزرار ده علشان تشحن الباقة اليومية'}
-            </span>
-          </div>
-          {isDailyLimitReached && !isExpired && (
-            <span className="block mt-1 font-mono font-bold text-red-600 dark:text-red-400">
-              ({todayCount} / {dailyCapacity} سيارة النهاردة)
-            </span>
-          )}
-        </div>
-      ) : (
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium mb-5 leading-relaxed">
-          رصيدك الحالي (<strong className="font-mono font-bold text-slate-900 dark:text-white">{currentBalance.toLocaleString()} ج.م</strong>) ميكفيش التجديد.. حوّل قيمة الباقة كاش الأول، وبعدها اتصل لتأكيد الشحن.
-          {isDailyLimitReached && !isExpired && (
-            <span className="block mt-1 font-mono font-bold text-red-600 dark:text-red-400">
-              ({todayCount} / {dailyCapacity} سيارة النهاردة)
-            </span>
-          )}
-        </p>
+      <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mb-2">لا يوجد رصيد دخول كافٍ</h3>
+      <p className="text-sm text-slate-600 dark:text-slate-300 font-medium mb-4 leading-relaxed">
+        نظام الجراج يعمل بأرصدة الدخول فقط. اطلب من الإدارة إضافة أرصدة إلى حساب الجراج.
+      </p>
+      <div className="font-mono text-2xl font-black text-slate-900 dark:text-white mb-1">{total.toLocaleString('en-US')}</div>
+      <div className="text-xs font-bold text-slate-500 mb-5">مدفوع: {paid} · إحالة: {referral} · تجربة: {trial}</div>
+      {phone && (
+        <a
+          id="btn-smart-direct-call"
+          href={`tel:${phone}`}
+          className="w-full min-h-[52px] py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2.5"
+        >
+          <Phone className="w-5 h-5" />
+          <span>الاتصال بالإدارة</span>
+        </a>
       )}
-
-      {/* Main Clean Actions */}
-      <div className="space-y-2.5">
-        {isBalanceDepleted ? (
-          <a
-            id="btn-smart-direct-call"
-            href={`tel:${targetWalletPhone}`}
-            className="w-full min-h-[52px] py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-          >
-            <Phone className="w-5 h-5" />
-            <span>اتصل لتأكيد التحويل</span>
-          </a>
-        ) : hasEnoughBalanceForAny ? (
-          /* When balance is enough for at least one package: ONLY ONE primary button directing to package page */
-          <div className="relative rounded-2xl p-[2px] overflow-hidden">
-            <BorderShimmer isActive={true} rx={16} ry={16} color="#fbbf24" dur="2.5s" />
-            <button
-              id="btn-smart-view-packages"
-              type="button"
-              onClick={() => onOpenPackages(recommendedDuration)}
-              className="w-full min-h-[52px] py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer relative z-20"
-            >
-              <Crown className="w-5 h-5 text-amber-300" />
-              <span>{actionButtonText}</span>
-            </button>
-          </div>
-        ) : (
-          /* When balance is insufficient: First see packages & transfer number, then call to confirm */
-          <>
-            {/* Step 1 Button: View packages & transfer number */}
-            <button
-              id="btn-smart-view-packages"
-              type="button"
-              onClick={() => onOpenPackages()}
-              className="w-full min-h-[52px] py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-            >
-              <Crown className="w-5 h-5 text-amber-300" />
-              <span>شوف الباقات ورقم التحويل</span>
-            </button>
-
-            {/* Step 2 Button: Call to confirm transfer and add balance */}
-            <a
-              id="btn-smart-direct-call"
-              href={`tel:${targetWalletPhone}`}
-              className="w-full min-h-[44px] py-2.5 px-4 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-            >
-              <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>اتصل لتأكيد التحويل وإضافة الرصيد</span>
-            </a>
-          </>
-        )}
-      </div>
     </div>
   );
 };

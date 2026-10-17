@@ -58,27 +58,14 @@ export function decideVehicleCheckIn(
   command: VehicleCheckInCommand,
   garage: VehicleCheckInGarageState,
   vehicle: VehicleCheckInVehicleState,
-  fairUse: FairUseDecision | null,
+  _fairUse: FairUseDecision | null,
 ): VehicleCheckInResult<VehicleCheckInDecision> {
   if (!garage.exists) return { ok: false, error: 'GARAGE_NOT_FOUND' };
   if (garage.isDeleting) return { ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' };
   if (garage.isLocked || garage.isSuspended) return { ok: false, error: 'GARAGE_CHECK_IN_LOCKED' };
   if (garage.isSubscriberAuthoritative) return { ok: false, error: 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN' };
-  if (!garage.prepaidCreditsEnabled && (garage.balanceExpiryMs === null || garage.balanceExpiryMs < command.nowMs)) {
+  if (!garage.prepaidCreditsEnabled) {
     return { ok: false, error: 'SUBSCRIPTION_EXPIRED' };
-  }
-
-  const isNewDay = garage.lastTransactionDate !== command.today;
-  const capacity = garage.dailyCapacity;
-  const used = isNewDay ? 0 : garage.todayCount;
-  const isUnlimited = capacity === 0 || garage.activePackageName.includes('مفتوح');
-
-  if (garage.prepaidCreditsEnabled) {
-    // The prepaid contract retires the legacy daily vehicle-capacity gate.
-  } else if (isUnlimited) {
-    if (!fairUse || !fairUse.allowed) return { ok: false, error: 'FAIR_USE_LIMIT_REACHED' };
-  } else if (used >= capacity) {
-    return { ok: false, error: 'CAPACITY_LIMIT_REACHED' };
   }
 
   if (vehicle.exists && vehicle.status === 'inside') {
@@ -88,11 +75,10 @@ export function decideVehicleCheckIn(
   return {
     ok: true,
     value: {
-      isUnlimited,
-      isNewDay,
-      used,
-      capacity,
-      ...(isUnlimited && fairUse ? { fairUse } : {}),
+      isUnlimited: true,
+      isNewDay: garage.lastTransactionDate !== command.today,
+      used: 0,
+      capacity: 0,
     },
   };
 }
