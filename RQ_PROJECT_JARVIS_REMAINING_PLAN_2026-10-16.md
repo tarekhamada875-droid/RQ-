@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** `9f0ba2b` (PR #103 / BILL-07 prepaid EGP and credit reporting). PR #101’s post-merge Production Gate, guarded Worker deployment, and Worker health smoke passed; the approved `credit_ledger(garageId ASC, occurredAt DESC)` Firestore index is enabled as `CICAgJj7z4EK`. The current main checkout is clean and matches `origin/main`. BILL-07 PR #103 is merged; the post-merge Production Gate and Worker deployment/health smoke passed. The live Worker health and version endpoints returned HTTP 200.
+**Latest merged code-bearing commit:** `9f0ba2b` (PR #103 / BILL-07 prepaid EGP and credit reporting). PR #101’s post-merge Production Gate, guarded Worker deployment, and Worker health smoke passed; the approved `credit_ledger(garageId ASC, occurredAt DESC)` Firestore index is enabled as `CICAgJj7z4EK`. `main` and `origin/main` remain at `eeba689`; local branch `feat/bill-08-migration-rehearsal` is based on that commit and contains preview-only source commit `40f1fae`. Full CI passed (132 files / 890 tests), as did maintainability and diff checks. No PR has been opened yet; no production data or balances were read or changed.
 
-**Current checkpoint:** BILL-07 is complete, merged, and live. Stop here and report the result; do not begin BILL-08 until the owner directs continuation.
+**Current checkpoint:** The owner directed continuation to BILL-08 on 2026-10-17. Its synthetic preview calculator is locally verified but not yet pushed; it does not switch garages or change the old wallet/time-based screen. Actual cutover is still a separate step. Before any live migration, resolve how free-trial time and unclaimed legacy referral-day/cash balances should be treated, then prepare a support/rollback plan and obtain explicit cutover approval.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -82,8 +82,8 @@ Move route/overlay ownership out of `App`; extract Worker route families mechani
 
 ## Recommended order
 
-1. **BILL-01 through BILL-07** are complete; BILL-07 is merged and live. Stop and report this bounded task.
-2. **BILL-08** remains a separate cutover task; do not begin it until the owner explicitly directs continuation.
+1. **BILL-01 through BILL-07** are complete; BILL-07 is merged and live. BILL-08’s synthetic rehearsal is implemented and verified on its feature branch; no live conversion was made.
+2. **Actual BILL-08 cutover** remains a separate, approval-gated step. Do not convert live balances or retire the legacy screen until the exception policy, parity/support/rollback plan, and cutover permission are settled.
 3. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
 4. **RQ-TG-01 through RQ-TG-06** — release reliability.
 5. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.
