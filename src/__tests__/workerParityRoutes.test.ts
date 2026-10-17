@@ -480,6 +480,33 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ id: newPkgId })
       });
       expect(deletePkg.status).toBe(200);
+
+      const creditPkgRes = await call('/api/admin/packages/create', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'قالب 400 رصيد',
+          price: 400,
+          creditQuantity: 400
+        })
+      });
+      expect(creditPkgRes.status).toBe(200);
+      const creditPkgId = (await creditPkgRes.json()).id;
+      const creditPkgSnapshot = await mockDb.collection('packages').doc(creditPkgId).get();
+      expect(creditPkgSnapshot.data()).toMatchObject({
+        name: 'قالب 400 رصيد',
+        price: 400,
+        creditQuantity: 400,
+        catalogType: 'credit_bundle',
+        isActive: true
+      });
+      expect(creditPkgSnapshot.data()).not.toHaveProperty('durationDays');
+      expect(creditPkgSnapshot.data()).not.toHaveProperty('dailyCapacity');
+
+      const deleteCreditPkg = await call('/api/admin/packages/delete', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ id: creditPkgId })
+      });
+      expect(deleteCreditPkg.status).toBe(200);
     });
   });
 

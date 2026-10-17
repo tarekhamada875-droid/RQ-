@@ -1,8 +1,12 @@
 import { parseMoneyAmount } from './money';
 
+export type PackageCatalogType = 'legacy_time' | 'credit_bundle';
+
 export interface ValidatedPackage {
   id: string;
   name: string;
+  catalogType: PackageCatalogType;
+  creditQuantity?: number;
   durationDays: number;
   basePrice: number;
   discountAmount: number;
@@ -11,16 +15,41 @@ export interface ValidatedPackage {
   isUnlimited: boolean;
 }
 
+const MAX_CREDIT_QUANTITY = 1_000_000;
+
 export function validatePackageCatalogRecord(raw: Record<string, any>, id: string): ValidatedPackage {
   if (!raw || raw.isActive === false) throw new Error('PACKAGE_INACTIVE');
 
   const name = String(raw.name || raw.packageName || '').trim();
-  const durationDays = Number(raw.durationDays ?? raw.vehiclesCount);
   const basePrice = parseMoneyAmount(raw.price ?? raw.priceAmount);
-  if (!name || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) {
+  if (!name || basePrice === null || basePrice <= 0) throw new Error('INVALID_PACKAGE_CONFIGURATION');
+
+  const hasCreditQuantity = raw.creditQuantity !== undefined && raw.creditQuantity !== null && String(raw.creditQuantity).trim() !== '';
+  if (hasCreditQuantity) {
+    const creditQuantity = Number(raw.creditQuantity);
+    const discountValue = Number(raw.discountValue ?? 0);
+    const hasDiscount = raw.discountType !== undefined && raw.discountType !== null && raw.discountType !== '' || discountValue !== 0;
+    if (!Number.isSafeInteger(creditQuantity) || creditQuantity < 1 || creditQuantity > MAX_CREDIT_QUANTITY || hasDiscount) {
+      throw new Error('INVALID_PACKAGE_CONFIGURATION');
+    }
+    return {
+      id,
+      name,
+      catalogType: 'credit_bundle',
+      creditQuantity,
+      durationDays: 0,
+      basePrice,
+      discountAmount: 0,
+      finalPrice: basePrice,
+      dailyCapacity: 0,
+      isUnlimited: false,
+    };
+  }
+
+  const durationDays = Number(raw.durationDays ?? raw.vehiclesCount);
+  if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) {
     throw new Error('INVALID_PACKAGE_CONFIGURATION');
   }
-  if (basePrice === null) throw new Error('INVALID_PACKAGE_CONFIGURATION');
 
   const discountType = raw.discountType === undefined || raw.discountType === null || raw.discountType === ''
     ? null
@@ -54,11 +83,12 @@ export function validatePackageCatalogRecord(raw: Record<string, any>, id: strin
   return {
     id,
     name,
+    catalogType: 'legacy_time',
     durationDays,
     basePrice,
     discountAmount,
     finalPrice: Math.max(0, basePrice - discountAmount),
     dailyCapacity,
-    isUnlimited
+    isUnlimited,
   };
 }
