@@ -1,14 +1,14 @@
 # RQ Maintainability Handoff
 
-## Current work: RQ-TG-01 canonical verification and release artifact (2026-10-17)
+## Current checkpoint: RQ-TG-01 merged and deployed (2026-10-17)
 
-Current `main` is clean at `e1c5ca8a745a2c6c2ec15ae8876b7baf00ce6f6d` (PR #120, documentation-only). Work is on branch `chore/rq-tg-01-single-release-verification`; PR [#121](https://github.com/tarekhamada875-droid/RQ-/pull/121) is open. The current code commit is `6e26866`; branch and PR Production Gates are running. No production deployment has occurred.
+Current `main` is at merge commit `8035fe24d78549b9d29d1f50cd909a8dfae60f7e` from PR [#121](https://github.com/tarekhamada875-droid/RQ-/pull/121). The PR gate passed, and the post-merge main Production Gate [39063103597](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39063103597) passed, including deployment of the verified Worker artifact and the strict live smoke. A docs-only follow-up branch, `docs/rq-tg-01-merged-status`, is recording this final checkpoint.
 
-The old standalone Worker deployment workflow is being removed. The Production Gate now performs the single full install/test/build, uploads the verified `dist/` artifact under a name containing the event SHA, then deploys that exact artifact in a dependent job and runs the strict live smoke only after deployment. The former redundant subscriber-test rerun is removed; it remains covered by the full test suite. Production releases are not cancelled by newer pushes.
+The old standalone Worker deployment workflow is removed. The Production Gate now performs the single full install/test/build, uploads the verified `dist/` artifact under a name containing the event SHA, then deploys that exact artifact in a dependent job and runs the strict live smoke only after deployment. The former redundant subscriber-test rerun is removed; it remains covered by the full test suite. Production releases are not cancelled by newer pushes.
 
-Local checks passed: focused workflow test (3 tests), `npm run ci:check` (133 files / 869 tests, production build/artifact checks), `npm run test:rules`, `npm run maintainability:check`, YAML parsing, Wrangler `--no-bundle --dry-run`, and `git diff --check`. Existing test logs include Vite optimization deprecation and React `act(...)` warnings; they did not fail tests. Firestore emulator permission-denial logs are expected from negative security-rule cases; the matrix exited successfully. No Firebase data/rules/configuration changed and no production deployment occurred.
+Local checks passed: focused workflow test (3 tests), `npm run ci:check` (133 files / 869 tests, production build/artifact checks), `npm run test:rules`, `npm run maintainability:check`, YAML parsing, Wrangler `--no-bundle --dry-run`, and `git diff --check`. PR #121’s full Production Gate passed (run 39062872565), and main deployment/live smoke passed (run 39063103597). Existing test logs include Vite optimization deprecation and React `act(...)` warnings; they did not fail tests. Firestore emulator permission-denial logs are expected from negative security-rule cases; the matrix exited successfully. No Firebase data/rules/configuration changed.
 
-**Single next step:** wait for PR #121’s required Production Gate checks; merge only if they pass, then verify the merged commit and post-merge deploy/smoke result. Do not start RQ-TG-02 until the owner asks to continue.
+**Single next step:** RQ-TG-01 is complete. Do not start RQ-TG-02 until the owner asks to continue.
 
 ## Previous checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
 
