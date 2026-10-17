@@ -244,7 +244,7 @@ describe('Modularized Admin Components Integrity', () => {
 });
 
 describe('Modularized Garage Dashboard Components Integrity', () => {
-  it('renders GarageSubscriptionCard correctly with remaining days and capacity', () => {
+  it('renders GarageSubscriptionCard correctly with remaining subscription data', () => {
     renderWithTheme(
       <GarageSubscriptionCard
         garage={mockGarage}
@@ -253,17 +253,11 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         isWarningYellow={false}
         countdownValue={10}
         isCountdownInHours={false}
-        displayTodayCount={25}
-        dailyCapacity={100}
-        isUnlimited={false}
       />
     );
 
     expect(screen.getByText('الرصيد المتبقي')).toBeDefined();
     expect(screen.getByText('أيام')).toBeDefined();
-    expect(screen.getByText('العدد اليومي')).toBeDefined();
-    expect(screen.getByText('25')).toBeDefined();
-    expect(screen.getByText('/100')).toBeDefined();
   });
 
   it('renders GarageActiveVehiclesList and handles empty state', () => {

@@ -466,10 +466,9 @@ describe('Worker Route Parity Suite', () => {
       const pkgRes = await call('/api/admin/packages/create', tokens.admin, {
         method: 'POST',
         body: JSON.stringify({
-          name: 'باقة جديدة',
+          name: 'رصيد جديد',
           price: 150,
-          durationDays: 15,
-          dailyCapacity: 30
+          creditQuantity: 150
         })
       });
       expect(pkgRes.status).toBe(200);

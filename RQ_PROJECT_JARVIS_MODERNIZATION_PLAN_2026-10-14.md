@@ -468,6 +468,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—some shared helpers serve both RQ access and customer subscriptions. Extract or retain the customer-subscription-specific helper before deleting shared code; do not restore the old RQ path as a rollback.
 - **Effort:** M.
 - **Billing-model impact (2026-10-17):** PR #114 retired the active RQ duration/capacity/fair-use path. F3 is cleanup/isolation only; it must not reopen a capacity decision or reintroduce a second billing model.
+- **Implementation checkpoint (2026-10-17):** Implemented locally. Active vehicle authorization no longer evaluates duration, daily capacity, unlimited-package names, or fair-use state; prepaid frontend paths no longer apply legacy expiry/capacity gates; Admin package creation accepts only credit bundles; and fair-use extension is retired with HTTP 410 and no writes. Garage-owned monthly parking subscriptions remain date-based and historical records remain readable. Full `npm run ci:check` (132 files / 866 tests), production build/artifact verification, maintainability, and diff checks passed locally. Awaiting the required PR and guarded release cycle.
 
 #### F4 — Enforce finite, non-negative money event invariant
 

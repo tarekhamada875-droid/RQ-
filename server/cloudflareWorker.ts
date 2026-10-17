@@ -7,13 +7,13 @@ import { withTraceContext } from './operationTrace';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { parseMoneyAmount } from './money';
-import { evaluateFairUseCheckIn, initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
+import { initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
 import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { createOperationId, createVehicleDelta, nextOperationVersion, projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
 import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
-import { fairUseResultToDecision, garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
+import { garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
@@ -2015,26 +2015,14 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
       const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
-      const isUnlimited = checkInGarage.dailyCapacity === 0 || checkInGarage.activePackageName.includes('مفتوح');
-      let fairUseDecision = null;
-      if (isUnlimited) {
-        const evalResult = evaluateFairUseCheckIn(
-          garageData.unlimitedFairUse,
-          garageData.durationDays || 30,
-          garageData.activePackageName || ''
-        );
-        fairUseDecision = fairUseResultToDecision(evalResult);
-      }
       const decision = decideVehicleCheckIn(
         { today, nowMs: Date.now(), plateNumber, plateNumberRaw: plateRaw },
         checkInGarage,
         checkInVehicle,
-        fairUseDecision
+        null
       );
       if (decision.ok === false) throw new Error(decision.error);
-      const { isNewDay, used, capacity } = decision.value;
-      const updatedFairUse = decision.value.fairUse?.updatedFairUse;
-      const didAutoExtend = decision.value.fairUse?.autoExtended === true;
+      const { isNewDay, used } = decision.value;
       const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
       let creditDebit: any = null;
       if (prepaidCreditsEnabled && !isSubscriberAuthoritative) {
@@ -2089,39 +2077,17 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         todayRevenue: isNewDay ? 0 : (garageData.todayRevenue || 0),
         lastTransactionDate: today
       };
-      if (updatedFairUse) {
-        garageUpdate.unlimitedFairUse = updatedFairUse;
-      }
       if (creditDebit) {
         garageUpdate.creditBalance = creditDebit.balance;
       }
 
       t.set(garageRef, garageUpdate, { merge: true });
 
-      if (didAutoExtend && updatedFairUse) {
-        const autoExtLogRef = adminDb.collection('activity_logs').doc();
-        t.set(autoExtLogRef, {
-          garageId,
-          garageName: garageData.name || '',
-          staffId: 'system',
-          staffName: 'نظام الاستخدام العادل',
-          actionType: 'fair_use_auto_extended',
-          plateNumber: `تمديد تلقائي لسعة الباقة (+${updatedFairUse.stepAmount} سيارة)`,
-          timestamp: new Date(),
-          details: {
-            currentAllowance: updatedFairUse.currentAllowance,
-            maxAllowance: updatedFairUse.maxAllowance,
-            cycleCarsCount: updatedFairUse.cycleCarsCount,
-            tierType: updatedFairUse.tierType
-          }
-        });
-      }
-
       if (!dailyStatsSnap.exists) {
         t.set(dailyStatsRef, {
           dateId: today,
           count: 1,
-          limit: isUnlimited ? 0 : capacity,
+          limit: 0,
           revenue: 0,
           createdAt: new Date()
         });
@@ -2166,7 +2132,7 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         },
         carsInside: Number(garageUpdate.carsInside || 0),
         dailyCount: Number(garageUpdate.todayCount || 0),
-        dailyCapacity: isUnlimited ? 0 : capacity
+        dailyCapacity: 0
       };
       if (creditDebit) {
         resultData.creditBalance = creditDebit.balance;
@@ -5041,6 +5007,7 @@ workerApp.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
 
     const rawPackage = await c.req.json().catch(() => ({}));
     const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
+    if (validatedPackage.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
     const pkgData: Record<string, any> = {
       name: validatedPackage.name,
       price: validatedPackage.basePrice,
@@ -5048,22 +5015,13 @@ workerApp.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
       isActive: true,
       createdAt: new Date()
     };
-    if (validatedPackage.catalogType === 'credit_bundle') {
-      pkgData.creditQuantity = validatedPackage.creditQuantity;
-    } else {
-      pkgData.durationDays = validatedPackage.durationDays;
-      pkgData.dailyCapacity = validatedPackage.dailyCapacity;
-      pkgData.vehiclesCount = validatedPackage.dailyCapacity;
-      pkgData.discountType = rawPackage.discountType ?? null;
-      pkgData.discountValue = Number(rawPackage.discountValue ?? 0);
-      pkgData.isUnlimited = validatedPackage.isUnlimited;
-    }
+    pkgData.creditQuantity = validatedPackage.creditQuantity;
 
     const docRef = await adminDb.collection('packages').add(pkgData);
     return c.json({ success: true, id: docRef.id });
   } catch (e: any) {
     console.error('[Worker Packages] Error in create:', e);
-    const statusCode = e?.message === 'INVALID_PACKAGE_CONFIGURATION' ? 400 : 500;
+    const statusCode = ['INVALID_PACKAGE_CONFIGURATION', 'PACKAGE_NOT_CREDIT_BUNDLE'].includes(e?.message) ? 400 : 500;
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, statusCode as any);
   }
 });
@@ -5088,6 +5046,7 @@ workerApp.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
 
 // Keep the legacy Admin Extend Fair Use frontend path as a supported alias.
 const handleExtendFairUse = async (c: any) => {
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
