@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** `a85ac79` (PR #114 / active legacy garage-billing retirement). PR #114 merged to `main`; its PR gates, post-merge Production Gate [39050430571](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39050430571), and guarded Worker deployment/health smoke [39050430577](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39050430577) all passed. The documentation status update merged in PR #115 at `31ef653`. `main` and `origin/main` are clean and match. Full CI passed (132 files / 870 tests), as did maintainability and diff checks. No Firestore records, balances, or historical payment events were changed.
+**Latest merged code-bearing commit:** `7f7778c` (PR #119 / F3 RQ classifier isolation). PR #119 merged to `main`; its PR gates, post-merge Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882), and guarded Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) all passed. `main` and `origin/main` are clean and match. Full CI passed (132 files / 866 tests), as did maintainability, production artifact, and diff checks. No Firestore records, balances, or historical payment events were changed.
 
-**Current checkpoint:** F2 merged in PR #117 at `eaca8db` and is deployed. BILL-08 active-runtime retirement is complete for the synthetic/test-only environment. PR #114 made new garages prepaid-credit-only, removed the owner package-purchase UI, and retired active time-plan, wallet top-up, self-subscribe, recharge, fair-use, daily-capacity, and referral-day paths. Historical records remain preserved. A separate historical balance conversion/migration has not been performed and still requires idempotency, reconciliation, rollback/support controls, and explicit approval if it is ever needed.
+**Current checkpoint:** F3 merged in PR #119 at `7f7778c` and is deployed. Active RQ garage access is prepaid-credit-only without duration, daily-capacity, unlimited-package, fair-use, or legacy-expiry authorization. Garage-owned monthly parking subscriptions remain date-based. Historical records remain preserved. A separate historical balance conversion/migration has not been performed and still requires idempotency, reconciliation, rollback/support controls, and explicit approval if it is ever needed.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -68,13 +68,13 @@ Added an Admin-only Worker route to grant either a selected active credit-bundle
 
 `server/projections.ts` now owns a robust `getCairoDateKey` helper for valid strings, numbers, `Date` values, Firestore-like `toDate()` values, and malformed inputs. Both daily projection and garage reconciliation use it, so previous-day, next-day, missing, invalid, and non-date events cannot contaminate today’s counts or revenue. `totalRecordedEvents` remains the raw input-array length for diagnostics, while today-specific fields use only valid events for the requested Cairo day. Focused tests passed (63 tests across reconciliation, projection, parity, and Worker garage-route coverage); `npm run ci:check` passed with 132 test files / 871 tests, production build/artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data or configuration changed.
 
-F3 is implemented locally and is awaiting its PR release cycle.
+F3 merged and deployed in PR #119 at `7f7778c`.
 
 ### 9. F3 — Remove the obsolete RQ unlimited/package classifier
 
 F3 removes the classifier from active RQ access paths. Vehicle authorization no longer evaluates duration, daily capacity, unlimited-package names, or fair-use state. Prepaid garages are not blocked by legacy subscription expiry in the frontend, and Admin package creation accepts only prepaid credit bundles. The old fair-use extension endpoint returns HTTP 410 without writes. Garage-owned monthly parking subscriptions remain date-based, and historical package/billing records remain readable. Focused tests, full `npm run ci:check` (132 files / 866 tests), production build/artifact verification, maintainability, and diff checks passed locally. No Firestore data, rules, balances, or configuration changed.
 
-The single next task after F3 release is RQ-TG-01 through RQ-TG-06 release reliability.
+The single next task is RQ-TG-01 through RQ-TG-06 release reliability, beginning with RQ-TG-01.
 
 ### 10. RQ-TG-01 through RQ-TG-06 — Release reliability
 

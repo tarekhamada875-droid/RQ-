@@ -1,12 +1,12 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: F3 RQ classifier isolation (2026-10-17; local, awaiting PR)
+## Current checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
 
 F3 removes the obsolete duration/capacity/unlimited/fair-use classifier from active RQ access behavior. The Worker vehicle-entry decision no longer receives or evaluates classifier state; the frontend no longer applies daily-capacity or legacy subscription-expiry gates to prepaid garages; prepaid dashboard depletion uses paid/referral/trial credits; Admin package creation accepts only credit bundles; and both fair-use extension aliases return HTTP 410 without writes. Garage-owned monthly parking subscriptions remain date-based, and historical records remain readable.
 
-Focused F3 regressions passed. Full `npm run ci:check` passed with 132 test files / 866 tests, production build and artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data, rules, balances, configuration, or deployment was changed. The branch still requires commit, PR, Production Gate, merge, and post-merge deployment verification.
+Focused F3 regressions passed. Full `npm run ci:check` passed with 132 test files / 866 tests, production build and artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data, rules, balances, or configuration was changed. PR #119 merged at `7f7778c`; its Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882) and guarded Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) passed. `main` and `origin/main` are clean and match.
 
-The next task after F3 release is RQ-TG-01 through RQ-TG-06 release reliability.
+The single next task is RQ-TG-01 through RQ-TG-06 release reliability, beginning with RQ-TG-01. Do not begin it in this handoff cycle.
 
 ## Previous checkpoint: F2 Cairo-day reconciliation (2026-10-17; merged PR #117)
 
