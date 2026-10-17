@@ -32,6 +32,7 @@ export interface VehicleCheckInGarageState {
   readonly lastTransactionDate?: string;
   readonly isSubscriberAuthoritative: boolean;
   readonly activePackageName: string;
+  readonly prepaidCreditsEnabled?: boolean;
 }
 
 export interface VehicleCheckInVehicleState {
@@ -63,7 +64,7 @@ export function decideVehicleCheckIn(
   if (garage.isDeleting) return { ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' };
   if (garage.isLocked || garage.isSuspended) return { ok: false, error: 'GARAGE_CHECK_IN_LOCKED' };
   if (garage.isSubscriberAuthoritative) return { ok: false, error: 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN' };
-  if (garage.balanceExpiryMs === null || garage.balanceExpiryMs < command.nowMs) {
+  if (!garage.prepaidCreditsEnabled && (garage.balanceExpiryMs === null || garage.balanceExpiryMs < command.nowMs)) {
     return { ok: false, error: 'SUBSCRIPTION_EXPIRED' };
   }
 
@@ -72,7 +73,9 @@ export function decideVehicleCheckIn(
   const used = isNewDay ? 0 : garage.todayCount;
   const isUnlimited = capacity === 0 || garage.activePackageName.includes('مفتوح');
 
-  if (isUnlimited) {
+  if (garage.prepaidCreditsEnabled) {
+    // The prepaid contract retires the legacy daily vehicle-capacity gate.
+  } else if (isUnlimited) {
     if (!fairUse || !fairUse.allowed) return { ok: false, error: 'FAIR_USE_LIMIT_REACHED' };
   } else if (used >= capacity) {
     return { ok: false, error: 'CAPACITY_LIMIT_REACHED' };

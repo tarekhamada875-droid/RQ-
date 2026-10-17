@@ -55,7 +55,8 @@ export interface Garage {
   ownerUid?: string;
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
-  billingModel?: 'subscription';
+  billingModel?: 'subscription' | 'prepaid_credits';
+  creditBalance?: { paid: number; referral: number };
   commissionPerVehicle?: number;
   monthlySubscriptionFee?: number;
   balance?: number;

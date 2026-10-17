@@ -19,6 +19,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
+import { debitRegularEntry, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
@@ -2034,6 +2035,29 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const { isNewDay, used, capacity } = decision.value;
       const updatedFairUse = decision.value.fairUse?.updatedFairUse;
       const didAutoExtend = decision.value.fairUse?.autoExtended === true;
+      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
+      let creditDebit: any = null;
+      if (prepaidCreditsEnabled && !isSubscriberAuthoritative) {
+        const creditResult = debitRegularEntry({
+          balance: {
+            paid: Number(garageData.creditBalance?.paid || 0),
+            referral: Number(garageData.creditBalance?.referral || 0),
+          },
+          amount: 1,
+          garageId,
+          actorUid: user?.uid || staffId || 'system',
+          actorRole: callerRole || 'staff',
+          reason: 'regular_vehicle_entry',
+          reference: operationId,
+          occurredAt: new Date().toISOString(),
+          idempotencyKey: idempotencyKey || operationId,
+        });
+        if (creditResult.ok === false) throw new Error(creditResult.error);
+        const materialized = materializeCreditLedgerEntry(creditResult.value.entry);
+        if (materialized.ok === false) throw new Error(materialized.error);
+        creditDebit = { ...creditResult.value, entry: materialized.value };
+        t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
+      }
 
       t.set(vehicleRef, {
         id: plateRaw,
@@ -2048,7 +2072,14 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         staffName: resolvedStaffName,
         enteredByUid: user?.uid || null,
         operationId,
-        operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion)
+        operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
+        ...(creditDebit ? {
+          creditDebit: {
+            amount: creditDebit.entry.amount,
+            bucket: creditDebit.entry.bucket,
+            ledgerEntryId: creditDebit.entry.entryId,
+          }
+        } : {})
       }, { merge: true });
 
       const garageUpdate: any = {
@@ -2059,6 +2090,9 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       };
       if (updatedFairUse) {
         garageUpdate.unlimitedFairUse = updatedFairUse;
+      }
+      if (creditDebit) {
+        garageUpdate.creditBalance = creditDebit.balance;
       }
 
       t.set(garageRef, garageUpdate, { merge: true });
@@ -2133,6 +2167,15 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         dailyCount: Number(garageUpdate.todayCount || 0),
         dailyCapacity: isUnlimited ? 0 : capacity
       };
+      if (creditDebit) {
+        resultData.creditBalance = creditDebit.balance;
+        resultData.remainingCredits = creditDebit.balance.paid + creditDebit.balance.referral;
+        resultData.creditDebit = {
+          amount: creditDebit.entry.amount,
+          bucket: creditDebit.entry.bucket,
+          ledgerEntryId: creditDebit.entry.entryId,
+        };
+      }
 
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
@@ -2151,6 +2194,11 @@ workerApp.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           staffName: resolvedStaffName,
           operationId,
           operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
+          ...(creditDebit ? {
+            creditAmount: creditDebit.entry.amount,
+            creditBucket: creditDebit.entry.bucket,
+            creditLedgerEntryId: creditDebit.entry.entryId,
+          } : {}),
           projectionDelta: createVehicleDelta('vehicle_entered')
         }
       });
@@ -2446,6 +2494,29 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         ? parseMoneyAmount(vehicleData.totalCost) ?? 0
         : 0;
       const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
+      let creditRestore: any = null;
+      if (garageData.creditBalance !== undefined && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
+        const restoreResult = restoreCredits({
+          balance: {
+            paid: Number(garageData.creditBalance?.paid || 0),
+            referral: Number(garageData.creditBalance?.referral || 0),
+          },
+          amount: Number(vehicleData.creditDebit.amount),
+          bucket: vehicleData.creditDebit.bucket,
+          garageId,
+          actorUid: user?.uid || staffId || 'system',
+          actorRole: callerRole || 'staff',
+          reason: 'authorized_vehicle_deletion_refund',
+          reference: operationId,
+          occurredAt: new Date().toISOString(),
+          idempotencyKey: idempotencyKey || operationId,
+        });
+        if (restoreResult.ok === false) throw new Error(restoreResult.error);
+        const materializedRestore = materializeCreditLedgerEntry(restoreResult.value.entry);
+        if (materializedRestore.ok === false) throw new Error(materializedRestore.error);
+        creditRestore = { ...restoreResult.value, entry: materializedRestore.value };
+        t.set(adminDb.doc(`credit_ledger/${materializedRestore.value.entryId}`), materializedRestore.value);
+      }
 
       let enteredToday = false;
       if (vehicleData.status === 'inside' && vehicleData.entryTime) {
@@ -2470,6 +2541,9 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       if (refundAmt > 0) {
         updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
         updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
+      }
+      if (creditRestore) {
+        updates.creditBalance = creditRestore.balance;
       }
       if (vehicleData.status === 'inside') updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
       if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
@@ -2515,7 +2589,12 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         actionType: 'delete_refund',
         plateNumber: `مسح لوحة: ${vehicleData.plateNumber || vehicleId}`,
         timestamp: new Date(),
-        amount: refundAmt
+        amount: refundAmt,
+        ...(creditRestore ? {
+          creditAmount: creditRestore.entry.amount,
+          creditBucket: creditRestore.entry.bucket,
+          creditLedgerEntryId: creditRestore.entry.entryId,
+        } : {})
       });
       recordDomainEventInTransaction(t, adminDb, {
         garageId,
@@ -2534,6 +2613,11 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           originalCheckoutAt: vehicleData.exitTime?.toDate ? vehicleData.exitTime.toDate().toISOString() : (vehicleData.exitTime || null),
           previousStatus: vehicleData.status,
           previousCost: vehicleData.totalCost || 0,
+          ...(creditRestore ? {
+            creditRestored: creditRestore.entry.amount,
+            creditRestoreBucket: creditRestore.entry.bucket,
+            creditRestoreLedgerEntryId: creditRestore.entry.entryId,
+          } : {}),
           staffId: staffId || null,
           staffName: resolvedStaffName,
           operationId,

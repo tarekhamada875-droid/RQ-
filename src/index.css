@@ -304,6 +304,20 @@ input[type="number"]::-webkit-outer-spin-button {
   will-change: opacity;
 }
 
+@keyframes credit-debit {
+  0% { opacity: 0; transform: translateY(-0.75rem); }
+  35% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(2.5rem); }
+}
+
+.animate-credit-debit {
+  animation: credit-debit 0.9s ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-credit-debit { animation: none; opacity: 1; }
+}
+
 /* Freeze dynamic layout properties to isolate composition pipelines entirely within GPU layers */
 .animate-popup-30fps, 
 .animate-overlay-30fps,
@@ -326,7 +340,6 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
 }
-
 
 
 
