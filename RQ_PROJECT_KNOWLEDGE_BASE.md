@@ -87,10 +87,10 @@ The owner-approved product direction includes the 24-hour session timeout, fixed
 - Delegate dashboard collection data uses the scoped server endpoint because Firestore list rules correctly deny the previous browser queries.
 - The partner dividend calculator’s actual mode uses the current UTC-month authoritative financial report and is explicitly an estimate, not an accounting or settlement ledger.
 - Financial behavior must remain server-authoritative, transactional, idempotent, and auditable.
-- The garage’s RQ access target is prepaid credits with no expiry; Admin manually grants credits after confirming payment. The existing RQ time-based expiry model remains active until a tested, owner-approved cutover.
+- The garage’s RQ access target is prepaid credits with no expiry; after confirming offline payment, Admin directly grants credits. Garage owners do not purchase packages or top up an EGP wallet to activate credits. The Admin package editor remains as an Admin-only template catalog, not customer checkout. The existing RQ time-based expiry model remains active until a tested, owner-approved cutover.
 - The garage’s own monthly parking memberships remain time-based. Their successful renewal consumes five prepaid credits once; later subscriber entries/exits are not charged per visit but remain operationally recorded.
 - The agreed shared mistake allowance is three free events per garage per Cairo day across all staff. Exact qualifying actions and behavior after the allowance are unresolved and must be decided before implementation.
-- Before billing implementation/cutover, decide zero-credit check-in behavior, insufficient-credit subscriber renewals, treatment of active time plans, correction/refund rules, discount/bonus treatment, and whether daily vehicle-capacity limits remain separate from credit bundles.
+- Before billing implementation/cutover, decide zero-credit check-in behavior, insufficient-credit subscriber renewals, treatment of active time plans, disposition and independent uses of legacy EGP wallet balances, correction/refund rules, discount/bonus treatment, and whether daily vehicle-capacity limits remain separate from credit bundles.
 
 ## 6. Completed production-readiness work
 
