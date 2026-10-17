@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** `2f6cfb8` (PR #95 / BILL-04 regular-entry debit and correction allowance). PR #95’s Production Gate, post-merge Production Gate, guarded Worker deployment, and live Worker smoke passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
+**Latest merged code-bearing commit:** `00d1309` (PR #97 / BILL-05 subscriber-renewal debit). PR #97’s required and post-merge Production Gates, guarded Worker deployment, and live Worker smoke passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-06 — add the manual Admin grant and garage credit experience.** BILL-05’s bounded subscriber-renewal debit is complete on this feature branch; Admin grants, reporting, migration, and cutover remain separate tasks.
+**Next task:** **BILL-06 — add the manual Admin grant and garage credit experience.** BILL-05’s bounded subscriber-renewal debit is complete on merged main; Admin grants, reporting, migration, and cutover remain separate tasks.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
