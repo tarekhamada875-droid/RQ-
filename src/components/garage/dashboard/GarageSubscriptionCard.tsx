@@ -7,6 +7,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowDown } from 'lucide-react';
 import { AnimatedCounter } from '../../AnimatedCounter';
 import { Garage } from '../../../types';
+import { firestoreService } from '../../../services';
 
 interface GarageSubscriptionCardProps {
   garage: Garage;
@@ -37,6 +38,9 @@ export const GarageSubscriptionCard = memo(({
   const totalCredits = paidCredits + referralCredits;
   const previousCredits = useRef<number | null>(null);
   const [showDebitFeedback, setShowDebitFeedback] = useState(false);
+  const [showCreditHistory, setShowCreditHistory] = useState(false);
+  const [creditHistory, setCreditHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   useEffect(() => {
     if (previousCredits.current !== null && totalCredits < previousCredits.current) {
       setShowDebitFeedback(true);
@@ -67,6 +71,19 @@ export const GarageSubscriptionCard = memo(({
           </div>
           <span className="text-[10px] md:text-xs font-bold text-slate-500">مدفوع: {paidCredits} · إحالة: {referralCredits}</span>
           <span className="sr-only">إجمالي الرصيد {totalCredits} رصيد دخول</span>
+          <button type="button" className="mt-2 text-xs font-bold underline" onClick={async () => {
+            const next = !showCreditHistory;
+            setShowCreditHistory(next);
+            if (next && creditHistory.length === 0) {
+              setHistoryLoading(true);
+              try { setCreditHistory(await firestoreService.getGarageCreditLedger(garage.id)); }
+              catch { setCreditHistory([]); }
+              finally { setHistoryLoading(false); }
+            }
+          }}>{showCreditHistory ? 'إخفاء سجل الرصيد' : 'عرض سجل الرصيد'}</button>
+          {showCreditHistory && <div className="w-full max-h-36 overflow-auto mt-2 text-[10px] text-right border-t pt-2" aria-label="سجل أرصدة الدخول">
+            {historyLoading ? 'جارٍ تحميل السجل…' : creditHistory.length ? creditHistory.map((entry) => <div key={entry.entryId} className="flex justify-between gap-2 py-1"><span>{entry.kind} · {entry.bucket}</span><span className="font-mono">{entry.kind?.endsWith('_debit') ? '−' : '+'}{entry.amount} · {String(entry.occurredAt || '').slice(0, 10)}</span></div>) : 'لا يوجد سجل أرصدة متاح.'}
+          </div>}
         </div>
       </div>
     );

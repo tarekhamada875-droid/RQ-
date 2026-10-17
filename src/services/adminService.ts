@@ -571,6 +571,18 @@ export const adminService = {
     }
   },
 
+  adminGrantGarageCredits: async (garageId: string, command: { packageId?: string; amount?: number; paymentReference: string; reason: string; paymentConfirmed: boolean; idempotencyKey: string }): Promise<any> => {
+    return apiFetch(`/api/garages/${encodeURIComponent(garageId)}/credit-grants`, {
+      method: 'POST',
+      body: command
+    });
+  },
+
+  getGarageCreditLedger: async (garageId: string): Promise<any[]> => {
+    const response = await apiFetch<{ data: any[] }>(`/api/garages/${encodeURIComponent(garageId)}/credit-ledger?limit=50`);
+    return Array.isArray(response?.data) ? response.data : [];
+  },
+
   adminExtendFairUse: async (
     garageId: string,
     extraCars?: number

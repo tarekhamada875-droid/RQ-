@@ -19,7 +19,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
-import { debitRegularEntry, debitSubscriberRenewal, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
+import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
@@ -5168,6 +5168,142 @@ const handleExtendFairUse = async (c: any) => {
 
 workerApp.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
 workerApp.post('/api/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
+
+// Admin confirms offline payment and explicitly grants non-expiring prepaid credits.
+workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const garageId = validateId(c.req.param('id'), 'garageId', true);
+    const body = await c.req.json().catch(() => ({}));
+    const sanitized = sanitizePayload(body, ['packageId', 'amount', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
+    if (sanitized.paymentConfirmed !== true) return c.json({ success: false, error: 'PAYMENT_CONFIRMATION_REQUIRED' }, 400);
+    const paymentReference = validateString(sanitized.paymentReference, 'paymentReference', { min: 1, max: 120, required: true });
+    const reason = validateString(sanitized.reason, 'reason', { min: 1, max: 300, required: true });
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
+    const packageId = sanitized.packageId ? validateId(sanitized.packageId, 'packageId', true) : null;
+    if (packageId === null && sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
+    if (packageId !== null && sanitized.amount !== undefined) return c.json({ success: false, error: 'CHOOSE_TEMPLATE_OR_AMOUNT' }, 400);
+    const callerUid = user.uid;
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentReference, reason });
+    let granted: any = null;
+    await adminDb.runTransaction(async (t: any) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
+      if (isDuplicate) { granted = cachedResult; return; }
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+      const garage = garageSnap.data() || {};
+      if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
+      const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
+      const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
+      const referralMarkerRef = isFirstPaidGrant ? adminDb.doc(`credit_referral_awards/${garageId}`) : null;
+      const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
+      const referrerRef = isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? adminDb.doc(`garages/${referrerGarageId}`) : null;
+      const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
+      let amount: number;
+      let template: any = null;
+      if (packageId) {
+        const templateRef = adminDb.doc(`packages/${packageId}`);
+        const templateSnap = await t.get(templateRef);
+        if (!templateSnap.exists) throw new Error('PACKAGE_NOT_FOUND');
+        template = { id: templateSnap.id, ...templateSnap.data() };
+        if (template.isActive === false || template.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
+        amount = validatePackageCatalogRecord(template, template.id).creditQuantity;
+      } else {
+        amount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
+      }
+      const balance = {
+        paid: Number(garage.creditBalance?.paid || 0),
+        referral: Number(garage.creditBalance?.referral || 0),
+      };
+      const transition = grantPaidCredits({ balance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, reference: paymentReference, occurredAt: new Date().toISOString(), idempotencyKey });
+      if (transition.ok === false) throw new Error(transition.error);
+      const entry = materializeCreditLedgerEntry(transition.value.entry);
+      if (entry.ok === false) throw new Error(entry.error);
+      let referralAward: any = null;
+      let referralLedger: any = null;
+      let referralTransition: any = null;
+      if (isFirstPaidGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
+        const referrer = referrerSnap.data() || {};
+        const rewardIdempotencyKey = `first_paid_grant:${garageId}`;
+        referralTransition = awardReferralCredits({
+          balance: { paid: Number(referrer.creditBalance?.paid || 0), referral: Number(referrer.creditBalance?.referral || 0) },
+          garageId: referrerGarageId,
+          actorUid: callerUid,
+          actorRole: 'admin',
+          reason: 'First confirmed paid grant referral reward',
+          reference: garageId,
+          occurredAt: transition.value.entry.occurredAt,
+          idempotencyKey: rewardIdempotencyKey,
+          referrerGarageId,
+          referredGarageId: garageId,
+          paidGrantConfirmed: true,
+          firstPaidGrant: true,
+        });
+        if (referralTransition.ok === false) throw new Error(referralTransition.error);
+        const materializedReward = materializeCreditLedgerEntry(referralTransition.value.entry);
+        if (materializedReward.ok === false) throw new Error(materializedReward.error);
+        referralLedger = materializedReward.value;
+        referralAward = { garageId: referrerGarageId, amount: 20, bucket: 'referral', entryId: referralLedger.entryId };
+      }
+      const now = new Date();
+      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}) }, { merge: true });
+      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentReference });
+      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, packageId, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
+      if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
+        t.set(referrerRef, { creditBalance: referralTransition.value.balance }, { merge: true });
+        t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
+        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
+      }
+      if (isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
+        t.set(referralMarkerRef, {
+          referredGarageId: garageId,
+          referrerGarageId: referrerGarageId || null,
+          ledgerEntryId: referralLedger?.entryId || null,
+          amount: referralLedger ? 20 : 0,
+          status: referralLedger ? 'awarded' : (referrerGarageId ? 'referrer_not_prepaid' : 'no_eligible_referrer'),
+          createdAt: now,
+          createdBy: callerUid,
+        });
+      }
+      granted = { garageId, amount, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
+      storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
+    });
+    return c.json({ success: true, data: granted });
+  } catch (error: any) {
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Admin and the garage owner can inspect the same scoped, read-only credit history.
+workerApp.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const garageId = validateId(c.req.param('id'), 'garageId', true);
+    const scopedGarage = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
+    if (user?.role !== 'admin' && !scopedGarage) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
+    const pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), `credit-ledger:${garageId}`);
+    const collection = adminDb.collection('credit_ledger');
+    let query = collection.where('garageId', '==', garageId).orderBy('occurredAt', 'desc').orderBy('__name__', 'desc');
+    query = firestorePageStartAfter(query, collection, pageRequest.cursor);
+    const snapshot = await query.limit(pageRequest.pageSize + 1).get();
+    const page = buildFirestorePage(snapshot.docs, pageRequest, 'occurredAt');
+    const entries = page.documents.map((doc: any) => {
+      const row = doc.data() || {};
+      const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, bucket: row.bucket, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, occurredAt: row.occurredAt };
+      return user?.role === 'admin' ? { ...common, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, reference: row.reference, idempotencyKey: row.idempotencyKey, source: row.source, packageId: row.packageId, packageName: row.packageName } : common;
+    });
+    return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });
+  } catch (error: any) {
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
 
 // Transactions: Recharge Garage
 workerApp.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
