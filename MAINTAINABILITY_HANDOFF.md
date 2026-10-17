@@ -2,13 +2,13 @@
 
 ## Current work: RQ-TG-01 canonical verification and release artifact (2026-10-17)
 
-Current `main` is clean at `e1c5ca8a745a2c6c2ec15ae8876b7baf00ce6f6d` (PR #120, documentation-only). Work is on branch `chore/rq-tg-01-single-release-verification`; no PR is open yet.
+Current `main` is clean at `e1c5ca8a745a2c6c2ec15ae8876b7baf00ce6f6d` (PR #120, documentation-only). Work is on branch `chore/rq-tg-01-single-release-verification`; PR [#121](https://github.com/tarekhamada875-droid/RQ-/pull/121) is open. The current code commit is `6e26866`; branch and PR Production Gates are running. No production deployment has occurred.
 
 The old standalone Worker deployment workflow is being removed. The Production Gate now performs the single full install/test/build, uploads the verified `dist/` artifact under a name containing the event SHA, then deploys that exact artifact in a dependent job and runs the strict live smoke only after deployment. The former redundant subscriber-test rerun is removed; it remains covered by the full test suite. Production releases are not cancelled by newer pushes.
 
 Local checks passed: focused workflow test (3 tests), `npm run ci:check` (133 files / 869 tests, production build/artifact checks), `npm run test:rules`, `npm run maintainability:check`, YAML parsing, Wrangler `--no-bundle --dry-run`, and `git diff --check`. Existing test logs include Vite optimization deprecation and React `act(...)` warnings; they did not fail tests. Firestore emulator permission-denial logs are expected from negative security-rule cases; the matrix exited successfully. No Firebase data/rules/configuration changed and no production deployment occurred.
 
-**Single next step:** review the final diff, commit and push this focused branch, open its PR to `main`, and wait for the required Production Gate plus post-merge deploy/smoke checks. Do not start RQ-TG-02 until the owner asks to continue.
+**Single next step:** wait for PR #121’s required Production Gate checks; merge only if they pass, then verify the merged commit and post-merge deploy/smoke result. Do not start RQ-TG-02 until the owner asks to continue.
 
 ## Previous checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
 
