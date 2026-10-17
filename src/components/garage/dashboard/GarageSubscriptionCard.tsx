@@ -16,9 +16,6 @@ interface GarageSubscriptionCardProps {
   isWarningYellow: boolean;
   countdownValue: number;
   isCountdownInHours: boolean;
-  displayTodayCount: number;
-  dailyCapacity: number;
-  isUnlimited: boolean;
 }
 
 export const GarageSubscriptionCard = memo(({
@@ -28,9 +25,6 @@ export const GarageSubscriptionCard = memo(({
   isWarningYellow,
   countdownValue,
   isCountdownInHours,
-  displayTodayCount,
-  dailyCapacity,
-  isUnlimited,
 }: GarageSubscriptionCardProps) => {
   const prepaidCreditsEnabled = garage.billingModel === 'prepaid_credits' || garage.creditBalance !== undefined;
   const paidCredits = Math.max(0, Number(garage.creditBalance?.paid || 0));
@@ -129,15 +123,6 @@ export const GarageSubscriptionCard = memo(({
           </div>
         )}
       </div>
-      {!isUnlimited && (
-        <div className="flex-1 transition-all duration-300 py-2.5 md:py-6 px-4 md:px-6 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">العدد اليومي</span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl md:text-6xl font-extrabold font-mono text-slate-900 dark:text-slate-100">{displayTodayCount}</span>
-            <span className="text-lg md:text-2xl font-bold text-slate-400 font-mono">/{dailyCapacity}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 });

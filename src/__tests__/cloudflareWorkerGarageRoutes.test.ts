@@ -204,135 +204,16 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.success).toBe(true);
   });
 
-  it('2a. POST /api/garages/:id/extend-fair-use aliases the Hono admin fair-use handler', async () => {
-    mockDb.seed(`garages/${testGarageId}`, {
-      name: 'Unlimited Garage',
-      dailyCapacity: 0,
-      activePackageName: 'باقة مفتوحة',
-      durationDays: 30,
-      unlimitedFairUse: {
-        isActive: true,
-        tierType: 'monthly',
-        cycleCarsCount: 40,
-        currentAllowance: 1000,
-        maxAllowance: 5000,
-        stepAmount: 1000,
-        threshold: 100,
-        extensionsCount: 0
-      }
-    });
-
+  it('2. rejects the retired fair-use extension endpoint without writing', async () => {
     const response = await api.fetch(new Request(`http://localhost/api/garages/${testGarageId}/extend-fair-use`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-admin-token'
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' },
       body: JSON.stringify({ extraCars: 250 })
     }), workerEnv);
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ success: true, unlimitedFairUse: { maxAllowance: 5250, currentAllowance: 1250 } });
-    expect([...mockDb.records.values()].some((record) => record.actionType === 'fair_use_admin_extended')).toBe(true);
-  });
-
-  it('2b. denies non-admin fair-use extension without writing', async () => {
-    const response = await api.fetch(new Request(`http://localhost/api/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-garage-token-garage-a'
-      },
-      body: JSON.stringify({ extraCars: 250 })
-    }), workerEnv);
-
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(410);
+    expect(await response.json()).toEqual({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
     expect([...mockDb.records.values()].some((record) => record.actionType === 'fair_use_admin_extended')).toBe(false);
-  });
-
-  it('2c. rejects finite packages and missing garages without writing', async () => {
-    mockDb.seed(`garages/${testGarageId}`, { name: 'Finite Garage', dailyCapacity: 50, activePackageName: 'باقة شهرية' });
-    const finite = await api.fetch(new Request(`http://localhost/api/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' },
-      body: JSON.stringify({ extraCars: 250 })
-    }), workerEnv);
-    expect(finite.status).toBe(400);
-    expect(await finite.json()).toMatchObject({ success: false, error: 'تمديد الاستخدام العادل متاح للباقات المفتوحة فقط' });
-
-    const missing = await api.fetch(new Request('http://localhost/api/garages/missing-fair-use/extend-fair-use', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' },
-      body: JSON.stringify({ extraCars: 250 })
-    }), workerEnv);
-    expect(missing.status).toBe(404);
-    expect(await missing.json()).toMatchObject({ success: false, error: 'الجراج غير موجود' });
-  });
-
-  it('2d. uses the configured fair-use step when extraCars is omitted', async () => {
-    mockDb.seed(`garages/${testGarageId}`, {
-      name: 'Unlimited Garage',
-      dailyCapacity: 0,
-      activePackageName: 'باقة مفتوحة',
-      unlimitedFairUse: {
-        isActive: true, tierType: 'monthly', cycleCarsCount: 40, currentAllowance: 1000,
-        maxAllowance: 5000, stepAmount: 1000, threshold: 100, extensionsCount: 0
-      }
-    });
-    const response = await api.fetch(new Request(`http://localhost/api/admin/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' },
-      body: JSON.stringify({})
-    }), workerEnv);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ success: true, unlimitedFairUse: { maxAllowance: 6000, currentAllowance: 2000 } });
-  });
-
-  it('2e. replays a keyed fair-use extension without applying it twice', async () => {
-    mockDb.seed(`garages/${testGarageId}`, {
-      name: 'Unlimited Garage', dailyCapacity: 0, activePackageName: 'باقة مفتوحة',
-      unlimitedFairUse: {
-        isActive: true, tierType: 'monthly', cycleCarsCount: 40, currentAllowance: 1000,
-        maxAllowance: 5000, stepAmount: 1000, threshold: 100, extensionsCount: 0
-      }
-    });
-    const request = () => api.fetch(new Request(`http://localhost/api/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' },
-      body: JSON.stringify({ extraCars: 250, idempotencyKey: 'fair-use-replay-key-001' })
-    }), workerEnv);
-
-    const first = await request();
-    const firstBody = await first.json() as any;
-    const second = await request();
-    const secondBody = await second.json() as any;
-
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(200);
-    expect(secondBody).toEqual(firstBody);
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.unlimitedFairUse).toMatchObject({ maxAllowance: 5250, currentAllowance: 1250 });
-    expect([...mockDb.records.values()].filter((record) => record.actionType === 'fair_use_admin_extended')).toHaveLength(1);
-  });
-
-  it('2f. rejects reusing a fair-use idempotency key with a different payload', async () => {
-    mockDb.seed(`garages/${testGarageId}`, {
-      name: 'Unlimited Garage', dailyCapacity: 0, activePackageName: 'باقة مفتوحة',
-      unlimitedFairUse: {
-        isActive: true, tierType: 'monthly', cycleCarsCount: 40, currentAllowance: 1000,
-        maxAllowance: 5000, stepAmount: 1000, threshold: 100, extensionsCount: 0
-      }
-    });
-    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer valid-admin-token' };
-    const first = await api.fetch(new Request(`http://localhost/api/admin/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST', headers, body: JSON.stringify({ extraCars: 250, idempotencyKey: 'fair-use-reuse-key-001' })
-    }), workerEnv);
-    expect(first.status).toBe(200);
-
-    const reused = await api.fetch(new Request(`http://localhost/api/admin/garages/${testGarageId}/extend-fair-use`, {
-      method: 'POST', headers, body: JSON.stringify({ extraCars: 500, idempotencyKey: 'fair-use-reuse-key-001' })
-    }), workerEnv);
-    expect(reused.status).toBe(409);
-    expect([...mockDb.records.values()].filter((record) => record.actionType === 'fair_use_admin_extended')).toHaveLength(1);
   });
 
   it('3. POST /api/garages/delete starts a resumable job; bounded steps remove only owned data and complete it', async () => {

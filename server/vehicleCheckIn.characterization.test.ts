@@ -18,7 +18,7 @@ const command = { today: '2026-09-24', nowMs: Date.parse('2026-09-24T12:00:00.00
 describe('credit-only vehicle check-in authorization', () => {
   it('converts any garage record into an explicit credit-enabled state', () => {
     expect(garageDocumentToCheckInState(baseGarage, false)).toMatchObject({
-      exists: true, balanceExpiryMs: Date.parse('2020-01-01T00:00:00.000Z'), dailyCapacity: 20, todayCount: 99,
+      exists: true,
       prepaidCreditsEnabled: true,
     });
     expect(vehicleDocumentToCheckInState({ status: 'outside' })).toEqual({ exists: true, status: 'outside' });

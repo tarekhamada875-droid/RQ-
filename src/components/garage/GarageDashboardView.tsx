@@ -20,15 +20,12 @@ import {
   isLightColor,
   getRemainingSubscriptionInfo,
   safeDate,
-  getEffectiveDailyCapacity,
-  isUnlimitedCapacity,
   isSubscriptionExpired,
   packageIdToDays
 } from "../../utils";
 import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
 import { firestoreService } from '../../services';
-import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
@@ -139,10 +136,12 @@ export const GarageDashboardView = memo((props: any) => {
     return () => clearInterval(timer);
   }, []);
 
+  const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
   const packageDays = useMemo(() => {
+    if (prepaidCreditsEnabled) return 30;
     if (!garage) return 30;
     return packageIdToDays(garage.activePackageId || garage.packageId || '', garage.activePackageName || garage.packageName || garage.lastPackageName || '');
-  }, [garage]);
+  }, [garage, prepaidCreditsEnabled]);
 
   const isDailyPackage = packageDays <= 2;
   const subInfo = getRemainingSubscriptionInfo(garage, packageDays);
@@ -162,7 +161,7 @@ export const GarageDashboardView = memo((props: any) => {
     [vehicles.length, garage?.carsInside],
   );
 
-  const isExpired = isSubscriptionExpired(garage);
+  const isExpired = !prepaidCreditsEnabled && isSubscriptionExpired(garage);
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   useEffect(() => {
@@ -284,17 +283,17 @@ export const GarageDashboardView = memo((props: any) => {
     setShowTermsModal(target === "terms");
   };
 
-  const todayStr = getCairoDateKey();
-  const displayTodayCount = garage?.lastTransactionDate === todayStr ? (garage.todayCount || 0) : 0;
-  const isDailyLimitReached = !isUnlimitedCapacity(garage) && displayTodayCount >= getEffectiveDailyCapacity(garage);
 
   // Check if balance or package status requires the SmartActionPrompt
   const isActiveTrial = garage?.isTrial === true && !isExpired;
   const hasActivePaidPackage = !isExpired && (
     garage?.billingModel === 'subscription' || Boolean(garage?.activePackageName || garage?.packageName)
   );
-  const isBalanceDepleted = Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
-  const shouldShowSmartPrompt = isBalanceDepleted || isDailyLimitReached || isExpired;
+  const prepaidCreditTotal = Number(garage?.creditBalance?.paid || 0) + Number(garage?.creditBalance?.referral || 0) + Number(garage?.creditBalance?.trial || 0);
+  const isBalanceDepleted = prepaidCreditsEnabled
+    ? prepaidCreditTotal <= 0
+    : Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
+  const shouldShowSmartPrompt = isBalanceDepleted || isExpired;
 
   return (
     <div
@@ -327,8 +326,8 @@ export const GarageDashboardView = memo((props: any) => {
           isInputFocused ? "gap-3 pt-3 pb-3" : "gap-4"
         }`}
       >
-        {/* Subscription / Daily Capacity Card */}
-        {!((isInputFocused && activeTab === "main") || isDailyLimitReached || isExpired) && (
+        {/* Subscription balance card */}
+        {!((isInputFocused && activeTab === "main") || isExpired) && (
           <GarageSubscriptionCard
             garage={garage}
             isUrgentRed={isUrgentRed}
@@ -336,9 +335,6 @@ export const GarageDashboardView = memo((props: any) => {
             isWarningYellow={isWarningYellow}
             countdownValue={countdownValue}
             isCountdownInHours={isCountdownInHours}
-            displayTodayCount={displayTodayCount}
-            dailyCapacity={getEffectiveDailyCapacity(garage)}
-            isUnlimited={isUnlimitedCapacity(garage)}
           />
         )}
 
@@ -356,11 +352,8 @@ export const GarageDashboardView = memo((props: any) => {
                   }
                 }}
                 showToast={showToast}
-                isDailyLimitReached={isDailyLimitReached}
                 isExpired={isExpired}
                 packageDurationDays={packageDays}
-                todayCount={displayTodayCount}
-                dailyCapacity={getEffectiveDailyCapacity(garage)}
               />
             ) : (
               <RegistrationCard

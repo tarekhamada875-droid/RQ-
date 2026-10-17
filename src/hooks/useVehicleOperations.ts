@@ -7,9 +7,7 @@ import {
   getRawPlate, 
   formatPlateNumber, 
   calculateCost,
-  isSubscriptionExpired,
-  getEffectiveDailyCapacity,
-  isUnlimitedCapacity
+  isSubscriptionExpired
 } from '../utils';
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
@@ -131,22 +129,11 @@ export function useVehicleOperations({
       return;
     }
 
-    if (isSubscriptionExpired(garage)) {
+    const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
+    if (!prepaidCreditsEnabled && isSubscriptionExpired(garage)) {
       showToast('عفواً، انتهى اشتراك الجراج. يرجى تجديد الاشتراك.', 'error');
       soundManager.play('error');
       return;
-    }
-
-    if (!isUnlimitedCapacity(garage)) {
-      const effCap = getEffectiveDailyCapacity(garage);
-      const today = getCairoDateKey();
-      const isToday = garage?.lastTransactionDate === today;
-      const todayCount = isToday ? (garage.todayCount || 0) : 0;
-      if (todayCount >= effCap) {
-        showToast(`عفواً، وصلت للحد الأقصى اليومي للباقة (${effCap} سيارة/يوم). يرجى ترقية الباقة لتسجيل المزيد.`, 'error');
-        soundManager.play('error');
-        return;
-      }
     }
 
     // Execute Check-In optimistically and handle per-plate async lock

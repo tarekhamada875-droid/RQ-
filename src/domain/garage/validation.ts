@@ -1,4 +1,4 @@
-import { isSubscriptionExpired, calculateCapacityUsed } from './subscription';
+import { isSubscriptionExpired } from './subscription';
 
 export interface ValidationResult {
   valid: boolean;
@@ -57,12 +57,6 @@ export const validateVehicleEntry = (garage: any, plateNumber: string): Validati
   
   if (isSubscriptionExpired(garage)) {
     errors.push('اشتراك الجراج منتهي');
-  }
-  
-  // Check daily capacity
-  const { used, limit, isUnlimited } = calculateCapacityUsed(garage);
-  if (!isUnlimited && used >= limit) {
-    errors.push('تم الوصول للحد الأقصى اليومي');
   }
   
   return { valid: errors.length === 0, errors };

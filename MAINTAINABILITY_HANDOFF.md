@@ -1,6 +1,14 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: F2 Cairo-day reconciliation (2026-10-17; merged PR #117)
+## Current checkpoint: F3 RQ classifier isolation (2026-10-17; local, awaiting PR)
+
+F3 removes the obsolete duration/capacity/unlimited/fair-use classifier from active RQ access behavior. The Worker vehicle-entry decision no longer receives or evaluates classifier state; the frontend no longer applies daily-capacity or legacy subscription-expiry gates to prepaid garages; prepaid dashboard depletion uses paid/referral/trial credits; Admin package creation accepts only credit bundles; and both fair-use extension aliases return HTTP 410 without writes. Garage-owned monthly parking subscriptions remain date-based, and historical records remain readable.
+
+Focused F3 regressions passed. Full `npm run ci:check` passed with 132 test files / 866 tests, production build and artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data, rules, balances, configuration, or deployment was changed. The branch still requires commit, PR, Production Gate, merge, and post-merge deployment verification.
+
+The next task after F3 release is RQ-TG-01 through RQ-TG-06 release reliability.
+
+## Previous checkpoint: F2 Cairo-day reconciliation (2026-10-17; merged PR #117)
 
 The focused branch `fix/f2-cairo-day-reconciliation` implements the next JARVIS task. `server/projections.ts` now owns the shared `getCairoDateKey` helper, which safely handles ISO strings, numbers, `Date` values, Firestore-like `toDate()` values, and malformed timestamps. Daily projection and `server/domain/garageReconciliation.ts` use the same Cairo-date predicate, so off-day and invalid events cannot affect today’s counts or revenue. `totalRecordedEvents` intentionally remains the raw input-array length for diagnostic visibility.
 

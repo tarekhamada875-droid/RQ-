@@ -68,11 +68,13 @@ Added an Admin-only Worker route to grant either a selected active credit-bundle
 
 `server/projections.ts` now owns a robust `getCairoDateKey` helper for valid strings, numbers, `Date` values, Firestore-like `toDate()` values, and malformed inputs. Both daily projection and garage reconciliation use it, so previous-day, next-day, missing, invalid, and non-date events cannot contaminate today’s counts or revenue. `totalRecordedEvents` remains the raw input-array length for diagnostics, while today-specific fields use only valid events for the requested Cairo day. Focused tests passed (63 tests across reconciliation, projection, parity, and Worker garage-route coverage); `npm run ci:check` passed with 132 test files / 871 tests, production build/artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data or configuration changed.
 
-The single next task is F3.
+F3 is implemented locally and is awaiting its PR release cycle.
 
 ### 9. F3 — Remove the obsolete RQ unlimited/package classifier
 
-Remove or isolate the old duration/capacity/unlimited classifier for RQ garage access. Do not apply it to prepaid credit bundles. Preserve only the separate date-based logic required for garage-owned monthly parking subscriptions. The RQ daily vehicle-capacity limit is retired, so F3 must not reintroduce it as an operational gate.
+F3 removes the classifier from active RQ access paths. Vehicle authorization no longer evaluates duration, daily capacity, unlimited-package names, or fair-use state. Prepaid garages are not blocked by legacy subscription expiry in the frontend, and Admin package creation accepts only prepaid credit bundles. The old fair-use extension endpoint returns HTTP 410 without writes. Garage-owned monthly parking subscriptions remain date-based, and historical package/billing records remain readable. Focused tests, full `npm run ci:check` (132 files / 866 tests), production build/artifact verification, maintainability, and diff checks passed locally. No Firestore data, rules, balances, or configuration changed.
+
+The single next task after F3 release is RQ-TG-01 through RQ-TG-06 release reliability.
 
 ### 10. RQ-TG-01 through RQ-TG-06 — Release reliability
 
