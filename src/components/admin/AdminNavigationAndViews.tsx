@@ -28,6 +28,7 @@ import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
+import { AdminCreditActivityReportPanel } from './AdminCreditActivityReportPanel';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -317,7 +318,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           t={t}
         />
       ) : activeTab === 'partners_calculator' ? (
-        <div className="animate-in fade-in duration-200">
+        <div className="space-y-5 animate-in fade-in duration-200">
+          <AdminCreditActivityReportPanel adminLang={adminLang} />
           <AdminPartnerDividendCard
             currentActiveGarages={approvedGarages.length}
           />

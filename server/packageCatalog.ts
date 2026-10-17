@@ -29,7 +29,7 @@ export function validatePackageCatalogRecord(raw: Record<string, any>, id: strin
     const creditQuantity = Number(raw.creditQuantity);
     const discountValue = Number(raw.discountValue ?? 0);
     const hasDiscount = raw.discountType !== undefined && raw.discountType !== null && raw.discountType !== '' || discountValue !== 0;
-    if (!Number.isSafeInteger(creditQuantity) || creditQuantity < 1 || creditQuantity > MAX_CREDIT_QUANTITY || hasDiscount) {
+    if (!Number.isSafeInteger(creditQuantity) || creditQuantity < 1 || creditQuantity > MAX_CREDIT_QUANTITY || hasDiscount || basePrice !== creditQuantity) {
       throw new Error('INVALID_PACKAGE_CONFIGURATION');
     }
     return {
