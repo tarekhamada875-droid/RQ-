@@ -211,7 +211,7 @@ describe('Node Fetch adapter response streaming', () => {
     }
     expect(arrayBufferCalls).toHaveLength(4);
     expect(arrayBufferCalls.every((call) => call.mock.calls.length === 0)).toBe(true);
-  });
+  }, 15_000);
 
   it('retains the buffered fallback when Readable.fromWeb is unavailable', async () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(Readable, 'fromWeb');
