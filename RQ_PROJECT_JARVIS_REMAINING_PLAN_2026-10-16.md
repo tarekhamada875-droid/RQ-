@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** PR #94 / BILL-03 catalog foundation. The BILL-04 implementation is currently on the focused feature branch and must complete the normal PR, Production Gate, merge, and post-merge verification workflow before becoming the latest main revision. Re-check current `main` and open PRs before working.
+**Latest merged code-bearing commit:** `2f6cfb8` (PR #95 / BILL-04 regular-entry debit and correction allowance). PR #95’s Production Gate, post-merge Production Gate, guarded Worker deployment, and live Worker smoke passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-05 — debit monthly parking-subscriber renewals.** BILL-04’s bounded regular-entry debit and shared correction-allowance implementation is complete on this feature branch; subscriber renewal integration, Admin grants, migration, and cutover remain separate tasks.
+**Next task:** **BILL-05 — debit monthly parking-subscriber renewals.** BILL-04’s bounded regular-entry debit and shared correction-allowance implementation is complete on merged main; subscriber renewal integration, Admin grants, migration, and cutover remain separate tasks.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
