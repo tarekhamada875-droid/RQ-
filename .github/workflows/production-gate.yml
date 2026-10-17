@@ -20,47 +20,115 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Markdown-only change
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+
+          docs_only=true
+          changed_paths="$(mktemp)"
+          trap 'rm -f "$changed_paths"' EXIT
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            docs_only=false
+          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if ! git diff --name-only -z "$BASE_SHA...$GITHUB_SHA" > "$changed_paths"; then
+              docs_only=false
+            fi
+          else
+            if ! git diff --name-only -z "$BASE_SHA" "$GITHUB_SHA" > "$changed_paths"; then
+              docs_only=false
+            fi
+          fi
+
+          if [[ "$docs_only" == "true" ]]; then
+            if [[ ! -s "$changed_paths" ]]; then
+              docs_only=false
+            else
+              while IFS= read -r -d '' path; do
+                case "$path" in
+                  *.md) ;;
+                  *) docs_only=false ;;
+                esac
+              done < "$changed_paths"
+            fi
+          fi
+
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "Markdown-only change: $docs_only"
+
+      - name: Validate Markdown-only change
+        if: steps.scope.outputs.docs_only == 'true'
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            git diff --check "$BASE_SHA...$GITHUB_SHA"
+          else
+            git diff --check "$BASE_SHA" "$GITHUB_SHA"
+          fi
+          echo "Markdown-only validation passed; application checks and build are skipped."
 
       - name: Setup Node
+        if: steps.scope.outputs.docs_only != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Setup Java for Firestore emulator
+        if: steps.scope.outputs.docs_only != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Install dependencies
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm run lint
 
       - name: Tests
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm run test
 
       - name: Firestore security rules emulator tests
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm run test:rules
 
       - name: Production build
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm run build
 
       - name: Subscriber lifecycle regression gate
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm test -- --run server/subscriberLifecycle.test.ts
 
       - name: Verify production artifacts
+        if: steps.scope.outputs.docs_only != 'true'
         run: |
           test -f dist/index.html
           test -f dist/worker.js
 
       - name: Maintainability checks
+        if: steps.scope.outputs.docs_only != 'true'
         run: npm run maintainability:check
 
       - name: Wait for Cloudflare deployment and run live smoke check
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.scope.outputs.docs_only != 'true'
         env:
           SMOKE_BASE_URL: https://rq.tarekhamada875.workers.dev
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
