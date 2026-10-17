@@ -445,7 +445,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Effort:** M.
 - **Status (2026-10-14):** Completed in PR #40, merged to `main` at `c7d452c2bc5f354052d986dd58a9db804cc28749`. Local validation passed (`npm run ci:check`, 106 test files / 647 tests, lint, build, maintainability, and Firestore rules emulator). The PR gate and post-merge Production Gate/live smoke passed; the Cloudflare Worker deployment succeeded. No Firebase rules or documents were changed by F1.
 
-#### F2 — Make reconciliation day-safe — implemented on branch `fix/f2-cairo-day-reconciliation`
+#### F2 — Make reconciliation day-safe — merged and deployed in PR #117 at `eaca8db`
 
 - **Status:** The shared `getCairoDateKey` helper now filters both projection and reconciliation events by the requested Cairo date, safely ignores malformed timestamps, and supports Firestore-like timestamp values. `totalRecordedEvents` remains the raw input count. Focused and full gates passed: 63 focused tests; 132 test files / 871 full tests; production build/artifact verification, maintainability, and diff checks passed. No Firestore data or configuration changed.
 - **Source:** `server/domain/garageReconciliation.ts:49-79,81-114`; `server/cloudflareWorker.ts:3577-3593`; `server/domain/garageReconciliation.test.ts:11-16`.
