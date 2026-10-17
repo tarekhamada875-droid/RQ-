@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest code-bearing commit:** `fa5fa33` (PR #88, WKR-04). The only application-code change there is the local Node/Vite adapter; production Worker/API behavior, Firebase data, rules, and settings were not changed by WKR-04. The guarded Worker workflow and post-deploy health smoke passed. Later commits may update documentation only. Re-check current `main` and open PRs before working.
+**Latest code-bearing commit:** `f24c953` (PR #93, BILL-02 ledger foundation). PR #93’s Production Gate and guarded Worker deployment passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-03 — convert Admin package definitions to non-expiring credit bundles.** BILL-02’s bounded ledger foundation was implemented and verified on 2026-10-17; route integration, migration, and cutover remain separate tasks.
+**Next task:** **BILL-04 — charge regular vehicle entries and enforce the shared mistake allowance.** BILL-03’s bounded Admin credit-bundle catalog foundation was implemented and verified on 2026-10-17; direct grants, entry debits, migration, and cutover remain separate tasks.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -44,25 +44,29 @@ The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per cre
 
 Added `server/domain/prepaidCreditLedger.ts` and focused tests. The pure reducer keeps paid and referral balances separate, supports Admin-confirmed paid grants, the one-time 20-credit referral award, one-credit regular-entry debits, five-credit paid-only subscriber-renewal debits, and authorized correction restores. Entries require garage, actor, reason/reference, timestamp, and idempotency-key context; deterministic entry identity prevents ambiguous retry records. `npm run ci:check` passed with 128 test files / 836 tests, including production build and artifact verification. No Worker route, Firestore data, migration, or customer-facing cutover changed; integration begins with BILL-03 through BILL-06.
 
-### 3. F2 — Make reconciliation day-safe
+### 3. BILL-03 — Convert Admin package definitions to non-expiring credit bundles — completed foundation
+
+Admin package creation now validates `catalogType: credit_bundle`, integer `creditQuantity`, and positive price, rejects discounts on new credit bundles, and persists no duration/daily-capacity fields for the new catalog type. Both Admin package entry points use bundle name, credit quantity, and price; legacy records remain visible for review. The garage owner’s legacy self-purchase selector filters out credit bundles. Focused package-catalog, Admin UI, Worker parity, and TypeScript checks passed. No payment confirmation, automatic grant, Firebase backfill, migration, or customer-facing cutover occurred; BILL-04 through BILL-06 own the next integration boundaries.
+
+### 4. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 4. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 5. F3 — One unlimited-package classifier (reassess under BILL-01)
 
 Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 5. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 6. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 RQ-TG-01 consolidates verification/install/suite and artifact upload; RQ-TG-02 ties verify → deploy → smoke to the exact commit/artifact and rollback identity; RQ-TG-03 strengthens health checks; RQ-TG-04 pins Firebase CLI and aligns local rules checks; RQ-TG-05 smokes the built Worker artifact; RQ-TG-06 makes local CI fail fast while retaining diagnostic mode.
 
-### 6. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
+### 7. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
 
 Move route/overlay ownership out of `App`; extract Worker route families mechanically while preserving route inventory and contracts; split `adminService` behind its unchanged facade; and group the `useGarageApp` contract before migrating `App`. Keep each as a separately tested, bounded PR.
 
 ## Recommended order
 
-1. **BILL-01** decision gate, then BILL-02 ledger foundation, then BILL-03 through BILL-08 only after the required product decisions are recorded.
+1. **BILL-01** decision gate, BILL-02 ledger foundation, and BILL-03 Admin catalog foundation are complete; proceed to BILL-04 through BILL-08 only within their stated release boundaries.
 2. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
 3. **RQ-TG-01 through RQ-TG-06** — release reliability.
 4. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.

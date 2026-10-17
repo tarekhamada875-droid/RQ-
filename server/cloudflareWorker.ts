@@ -4906,18 +4906,23 @@ workerApp.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
 
     const rawPackage = await c.req.json().catch(() => ({}));
     const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
-    const pkgData = {
+    const pkgData: Record<string, any> = {
       name: validatedPackage.name,
       price: validatedPackage.basePrice,
-      durationDays: validatedPackage.durationDays,
-      dailyCapacity: validatedPackage.dailyCapacity,
-      vehiclesCount: validatedPackage.dailyCapacity,
-      discountType: rawPackage.discountType ?? null,
-      discountValue: Number(rawPackage.discountValue ?? 0),
-      isUnlimited: validatedPackage.isUnlimited,
+      catalogType: validatedPackage.catalogType,
       isActive: true,
       createdAt: new Date()
     };
+    if (validatedPackage.catalogType === 'credit_bundle') {
+      pkgData.creditQuantity = validatedPackage.creditQuantity;
+    } else {
+      pkgData.durationDays = validatedPackage.durationDays;
+      pkgData.dailyCapacity = validatedPackage.dailyCapacity;
+      pkgData.vehiclesCount = validatedPackage.dailyCapacity;
+      pkgData.discountType = rawPackage.discountType ?? null;
+      pkgData.discountValue = Number(rawPackage.discountValue ?? 0);
+      pkgData.isUnlimited = validatedPackage.isUnlimited;
+    }
 
     const docRef = await adminDb.collection('packages').add(pkgData);
     return c.json({ success: true, id: docRef.id });

@@ -34,8 +34,9 @@ export const getDefaultDurationFilter = (packages: Package[], hasMonthlySubscrib
 
 export const filterPackagesForGarage = (packages: Package[], hasMonthlySubscribers: boolean = false): Package[] => {
   if (!packages || !Array.isArray(packages)) return [];
-  if (!hasMonthlySubscribers) return packages;
-  return packages.filter(p => {
+  const legacyPackages = packages.filter(p => p.catalogType !== 'credit_bundle');
+  if (!hasMonthlySubscribers) return legacyPackages;
+  return legacyPackages.filter(p => {
     const info = getCleanPackageInfo(p);
     return info.durationDays === 30;
   });

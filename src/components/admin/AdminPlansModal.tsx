@@ -4,11 +4,10 @@ import {
   X,
   Trash2,
   Loader2,
-  Car
+  Coins
 } from 'lucide-react';
 import { Package } from '../../types';
 import { firestoreService } from '../../services';
-import { getCleanPackageInfo } from '../../constants/packages';
 
 interface AdminPlansModalProps {
   isOpen: boolean;
@@ -62,17 +61,16 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
               const form = e.target as HTMLFormElement;
               const name = (form.elements.namedItem('name') as HTMLInputElement).value;
               const price = Number((form.elements.namedItem('price') as HTMLInputElement).value);
-              const durationDays = Number((form.elements.namedItem('durationDays') as HTMLInputElement).value) || 30;
-              const dailyCapacity = Number((form.elements.namedItem('dailyCapacity') as HTMLInputElement).value) || 100;
+              const creditQuantity = Number((form.elements.namedItem('creditQuantity') as HTMLInputElement).value);
               
               setIsSubmitting(true);
               try {
                 await firestoreService.addPackage({ 
                   name, 
                   price, 
-                  durationDays, 
-                  dailyCapacity, 
-                  vehiclesCount: dailyCapacity 
+                  creditQuantity,
+                  catalogType: 'credit_bundle',
+                  vehiclesCount: creditQuantity
                 });
                 form.reset();
               } catch (err) {
@@ -95,12 +93,12 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-400 pr-1">{t('مدة الاشتراك (أيام)')}</label>
-                <input name="durationDays" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue="30" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono text-sm" />
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400 pr-1">{t('عدد أرصدة الدخول')}</label>
+                <input name="creditQuantity" type="text" inputMode="numeric" pattern="[0-9]*" placeholder="400" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono text-sm" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-400 pr-1">{t('السعة اليومية (سيارة/يوم)')}</label>
-                <input name="dailyCapacity" type="text" inputMode="numeric" pattern="[0-9]*" placeholder="100" defaultValue="100" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono text-sm" />
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400 pr-1">{t('ملاحظة')}</label>
+                <div className="w-full p-3.5 bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-100 dark:border-amber-900/50 rounded-2xl font-bold text-amber-700 dark:text-amber-200 text-xs">{t('القالب غير منتهٍ ولا يحدد سعة يومية')}</div>
               </div>
             </div>
             <button 
@@ -127,7 +125,6 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
               </div>
             ) : (
               packages.map(pkg => {
-                const info = getCleanPackageInfo(pkg);
                 return (
                   <div key={pkg.id} className="p-4 sm:p-5 bg-white dark:bg-slate-800/90 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col gap-3 group hover:border-emerald-500/30 transition-all shadow-sm">
                     <div className="flex items-center justify-between gap-2">
@@ -168,10 +165,12 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
 
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700/60 pt-2.5">
                       <div className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <Car className="w-3 h-3" />
+                        <Coins className="w-3 h-3" />
                       </div>
                       <span>
-                        {info.isUnlimited ? t('سعة مفتوحة بدون حد أقصى') : `${info.dailyCapacity} ${t('سيارة/يوم')}`}
+                        {pkg.catalogType === 'credit_bundle' && pkg.creditQuantity
+                          ? `${pkg.creditQuantity} ${t('رصيد دخول غير منتهٍ')}`
+                          : t('سجل زمني قديم حتى الترحيل')}
                       </span>
                     </div>
                   </div>
