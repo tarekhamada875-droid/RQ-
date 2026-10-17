@@ -11,7 +11,7 @@ This is a navigation summary, not a replacement for the full roadmap. The full p
 
 ### CI Markdown-only fast path and protected main (merged PR #84)
 
-The Production Gate now keeps the required `verify` check while running only `git diff --check` for Markdown-only diffs; unknown or non-Markdown changes fail closed to the full gate. The Worker deploy workflow ignores Markdown-only pushes. Main ruleset #25292182 requires PRs and `verify`, requires branches up to date, blocks force-push/deletion, and has no bypass actors. PR checks and post-merge Production Gate/Worker deployment passed; live Pages, Worker health, and version endpoints returned HTTP 200. No application code or Firebase data/rules changed. A follow-up documentation-only PR exercises the fast path end-to-end.
+The Production Gate now keeps the required `verify` check while running only `git diff --check` for Markdown-only diffs; unknown or non-Markdown changes fail closed to the full gate. The Worker deploy workflow ignores Markdown-only pushes. Main ruleset #25292182 requires PRs and `verify`, requires branches up to date, blocks force-push/deletion, and has no bypass actors. PR checks and post-merge Production Gate/Worker deployment passed; live Pages, Worker health, and version endpoints returned HTTP 200. Documentation-only PR #85's required PR run #39006619479 passed after Markdown validation with application steps skipped. Its first branch push had no base SHA and correctly ran the full gate (run #39006610687, passed). No application code or Firebase data/rules changed.
 
 ### FS-03 — Bound financial reports and aggregate page by page (implemented; PR #73)
 
