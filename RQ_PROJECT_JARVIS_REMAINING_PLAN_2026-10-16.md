@@ -3,7 +3,7 @@
 **Last verified:** 2026-10-17
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 **Application release baseline:** Deployed application code remains PR #77 / `d5a42ba`; PR #76 fixed the FS-03 timestamp-type mismatch and PR #77 fixed the WKR-02 last-subscriber counter. PRs #78–#81 were documentation-only; PR #81 recorded the prepaid-credit plan at `a9719ad`, and its Production Gate and Worker deployment passed. Re-check current `main` and open PRs before working.
-**Active task:** **FS-02** is implemented in PR [#86](https://github.com/tarekhamada875-droid/RQ-/pull/86), commit `7d82a46`; local validation is green. Do not merge/deploy until the configured Firestore composite-index state is verified or enabled. Firebase CLI authentication is currently unavailable in this workspace; no Firebase change has been made.
+**Active task:** **FS-02** is implemented in PR [#86](https://github.com/tarekhamada875-droid/RQ-/pull/86), code commit `7d82a46`; local validation is green. The four required composite indexes are deployed and `READY` in the configured database. Wait for the final PR Production Gate, then use the standard merge/deployment flow.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, measurements, and the new owner-approved prepaid-credit workstream.
 
@@ -25,7 +25,7 @@ A post-review fix in PR #76 changed event-range bounds to ISO strings to match t
 
 Implemented in PR #86: stable, scope-bound cursor tokens expire after 30 minutes; pages default to 50 and cap at 100. Worker garage, Admin delegate, recharge-request, Admin delegate-detail child, and delegate-dashboard queries are limited to page size plus a sentinel, with compatibility arrays, role/status filters, client callers, and explicit load-more actions retained. Regression tests cover page continuity, tie-breaking, scope, filters, token errors, and read bounds.
 
-Verification: `npm run ci:check` passed (126 files / 819 tests plus TypeScript and production builds); `npm run maintainability:check` and `git diff --check` passed. The synthetic 1k/10k/100k traversal measured at most 51 returned rows per query (page size 50), with local p95 of 4.867 / 14.367 / 256.534 ms. These are not live Firestore, billing, or Worker/network measurements. The required additive indexes are in the manifest, but their live state is unverified because Firebase CLI authentication failed; no Firebase changes were made. Keep PR #86 unmerged until verified.
+Verification: `npm run ci:check` passed (126 files / 819 tests plus TypeScript and production builds); `npm run maintainability:check` and `git diff --check` passed. The synthetic 1k/10k/100k traversal measured at most 51 returned rows per query (page size 50), with local p95 of 4.867 / 14.367 / 256.534 ms. These are not live Firestore, billing, or Worker/network measurements. Four required composite indexes were deployed index-only to the configured database and reached `READY`; two pre-existing indexes were preserved, and no Firestore rules/data or application code were changed by that rollout. PR #86 remains unmerged pending the final PR gate.
 
 ### 2. WKR-04 — Bound and stream the Node Fetch adapter
 
