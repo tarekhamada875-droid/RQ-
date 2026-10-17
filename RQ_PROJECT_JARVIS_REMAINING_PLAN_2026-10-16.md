@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** `83a54b5` (PR #105 / BILL-08 synthetic preview calculator). PR #105 merged to `main`; its PR/push Production Gates [39040323348](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39040323348) and [39040318902](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39040318902), post-merge Production Gate [39040610349](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39040610349), and guarded Worker deployment/health smoke [39040610241](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39040610241) all passed. `main` and `origin/main` are clean and match at `83a54b5`. Full CI passed (132 files / 890 tests), as did maintainability and diff checks. No production data or balances were read or changed.
+**Latest merged code-bearing commit:** `a85ac79` (PR #114 / active legacy garage-billing retirement). PR #114 merged to `main`; its PR gates, post-merge Production Gate [39050430571](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39050430571), and guarded Worker deployment/health smoke [39050430577](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39050430577) all passed. The documentation status update merged in PR #115 at `31ef653`. `main` and `origin/main` are clean and match. Full CI passed (132 files / 870 tests), as did maintainability and diff checks. No Firestore records, balances, or historical payment events were changed.
 
-**Current checkpoint:** The BILL-08 synthetic rehearsal is complete and merged; it remains preview-only and does not switch garages or change the old wallet/time-based screen. Actual cutover is still a separate step. Before any live migration, resolve how free-trial time and unclaimed legacy referral-day/cash balances should be treated, reconcile pending requests, prepare a support/rollback plan, and obtain explicit cutover approval.
+**Current checkpoint:** BILL-08 active-runtime retirement is complete for the synthetic/test-only environment. PR #114 made new garages prepaid-credit-only, removed the owner package-purchase UI, and retired active time-plan, wallet top-up, self-subscribe, recharge, fair-use, daily-capacity, and referral-day paths. Historical records remain preserved. A separate historical balance conversion/migration has not been performed and still requires idempotency, reconciliation, rollback/support controls, and explicit approval if it is ever needed.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -36,7 +36,7 @@ Tests cover direct and real-HTTP GET/HEAD bodies, exact-limit and oversized Cont
 
 The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per credit: one credit for each successful regular non-subscriber entry; five credits once for a successful monthly parking-subscriber renewal; no per-visit subscriber debit; and three free mistake/correction events per garage per Cairo day, shared across staff. Admin confirms offline payment and directly grants credits; garage owners do not purchase packages. The garage’s own monthly parking memberships stay date-based.
 
-**Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. Existing day-based referral rewards remain unchanged until the tested cutover.
+**Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. The old active referral-day claim path is retired by PR #114; historical referral records remain read-only history.
 
 **Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md).
 
@@ -68,9 +68,9 @@ Added an Admin-only Worker route to grant either a selected active credit-bundle
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 9. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 9. F3 — Remove the obsolete RQ unlimited/package classifier
 
-Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
+Remove or isolate the old duration/capacity/unlimited classifier for RQ garage access. Do not apply it to prepaid credit bundles. Preserve only the separate date-based logic required for garage-owned monthly parking subscriptions. The RQ daily vehicle-capacity limit is retired, so F3 must not reintroduce it as an operational gate.
 
 ### 10. RQ-TG-01 through RQ-TG-06 — Release reliability
 
@@ -82,9 +82,9 @@ Move route/overlay ownership out of `App`; extract Worker route families mechani
 
 ## Recommended order
 
-1. **BILL-01 through BILL-07** are complete; BILL-07 is merged and live. BILL-08’s synthetic rehearsal is implemented and verified on its feature branch; no live conversion was made.
-2. **Actual BILL-08 cutover** remains a separate, approval-gated step. Do not convert live balances or retire the legacy screen until the exception policy, parity/support/rollback plan, and cutover permission are settled.
-3. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
+1. **BILL-01 through BILL-07** are complete and deployed. BILL-08 active-runtime retirement is complete in PR #114; no historical balance conversion was performed.
+2. **F2, then the revised F3** — reconciliation safety followed by removal/isolation of the obsolete RQ classifier.
+3. **Historical balance conversion, if ever needed, remains separately approval-gated** and must not be mixed into F2/F3 or treated as already completed.
 4. **RQ-TG-01 through RQ-TG-06** — release reliability.
 5. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.
 
@@ -93,9 +93,9 @@ Move route/overlay ownership out of `App`; extract Worker route families mechani
 For every item: read the relevant full-plan block; verify GitHub and the working tree; work on one bounded task; run focused tests and the full repository gates; update the roadmap and handoff; commit; push; open a PR into `main`; wait for the Production Gate; merge after required checks pass; verify the merged commit and post-merge workflows; then stop and report the completed task. Do not start the next item until the owner says to continue.
 
 
-### BILL-08 Trial-credit policy and local implementation checkpoint (2026-10-17)
+### BILL-08 Trial-credit implementation checkpoint (2026-10-17; PR #112)
 
-The owner selected non-expiring Trial credits after conversion. A local, unreleased implementation now adds the separate `trial` ledger bucket, previews remaining trial time at 10 credits per rounded-up day, allows Trial credits for regular non-subscriber entries, keeps subscriber renewals paid-only, restores Trial credits to the same bucket on authorized corrections, and exposes Trial balances/activity in garage/Admin UI and financial reporting. Existing prepaid records treat a missing Trial field as zero. No live migration, Firestore balance write, cutover route, or deployment occurred. Focused TypeScript and 46 tests passed; full repository gates and the branch/PR/release workflow remain pending.
+The owner selected non-expiring Trial credits after conversion. PR #112 implemented the separate `trial` ledger bucket, previews remaining trial time at 10 credits per rounded-up day, allows Trial credits for regular non-subscriber entries, keeps subscriber renewals paid-only, restores Trial credits to the same bucket on authorized corrections, and exposes Trial balances/activity in garage/Admin UI and financial reporting. Existing prepaid records treat a missing Trial field as zero. No historical migration or Firestore balance write occurred; the implementation is deployed and available for a future explicitly approved conversion.
 
 
 ### Latest Jarvis checkpoint — legacy garage billing retired (2026-10-17; PR #114)
