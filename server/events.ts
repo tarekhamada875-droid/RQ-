@@ -17,9 +17,10 @@ export type DomainEventType =
   | 'package_purchased'
   | 'recharge_rejected'
   | 'delegate_settled'
-  | 'commission_earned';
+  | 'commission_earned'
+  | 'prepaid_credit_grant_paid';
 
-type AggregateType = 'vehicle' | 'subscriber' | 'delegate' | 'recharge' | 'wallet';
+type AggregateType = 'vehicle' | 'subscriber' | 'delegate' | 'recharge' | 'wallet' | 'credit_grant';
 export type EventPayload = Record<string, unknown>;
 
 export interface DelegateSettledPayload extends EventPayload {
@@ -74,7 +75,7 @@ export interface CreateEventParams {
 const EVENT_AGGREGATE_TYPES: Record<DomainEventType, AggregateType> = {
   vehicle_entered: 'vehicle', vehicle_exited: 'vehicle', vehicle_refunded: 'vehicle', vehicle_deleted: 'vehicle',
   subscriber_created: 'subscriber', subscriber_renewed: 'subscriber', subscriber_updated: 'subscriber', subscriber_deleted: 'subscriber',
-  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', wallet_debited: 'wallet', package_purchased: 'recharge', recharge_rejected: 'recharge', delegate_settled: 'delegate', commission_earned: 'delegate'
+  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', wallet_debited: 'wallet', package_purchased: 'recharge', recharge_rejected: 'recharge', delegate_settled: 'delegate', commission_earned: 'delegate', prepaid_credit_grant_paid: 'credit_grant'
 };
 const SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 
@@ -96,7 +97,8 @@ const MONEY_EVENT_RULES: Partial<Record<DomainEventType, MoneyEventRule>> = {
   wallet_debited: { required: ['amount'], errorCode: 'INVALID_WALLET_DEBIT_PAYLOAD' },
   package_purchased: { required: ['amount'], errorCode: 'INVALID_PACKAGE_PURCHASE_PAYLOAD' },
   delegate_settled: { required: ['previousRechargedAmount'], errorCode: 'INVALID_DELEGATE_SETTLEMENT_PAYLOAD' },
-  commission_earned: { required: ['commissionAmount'], errorCode: 'INVALID_COMMISSION_PAYLOAD' }
+  commission_earned: { required: ['commissionAmount'], errorCode: 'INVALID_COMMISSION_PAYLOAD' },
+  prepaid_credit_grant_paid: { required: ['amount'], errorCode: 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD' }
 };
 
 function isValidEventMoneyAmount(value: unknown): value is number {
@@ -134,6 +136,13 @@ function validateEventParams(params: CreateEventParams): void {
   if (params.eventType === 'commission_earned') {
     const p = params.payload as Partial<CommissionEarnedPayload>;
     if (!p.delegateId || typeof p.commissionAmount !== 'number' || !p.sourceRechargeId || !p.earnedAt) throw new Error('INVALID_COMMISSION_PAYLOAD');
+  }
+  if (params.eventType === 'prepaid_credit_grant_paid') {
+    const amount = params.payload.amount;
+    const creditAmount = params.payload.creditAmount;
+    if (!Number.isSafeInteger(creditAmount) || Number(creditAmount) < 1 || amount !== creditAmount || typeof params.payload.creditLedgerEntryId !== 'string' || !params.payload.creditLedgerEntryId) {
+      throw new Error('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
+    }
   }
 }
 

@@ -18,12 +18,33 @@ import { listenerTracker } from '../utils/listenerTracker';
 export interface FinancialReportData {
   grossRechargeTotal: number;
   walletTopupTotal: number;
+  prepaidCreditPaymentsEgp: number | null;
   cashCollectedTotal: number;
   commissionTotal: number;
   refundTotal: number;
   companyNetRevenue: number;
   historicalSettledTotal: number;
   currentUnsettledByDelegate: Record<string, number>;
+  creditActivity: CreditActivityMetrics | null;
+}
+
+export interface CreditActivityMetrics {
+  paidGrantCount: number;
+  paidCreditsGranted: number;
+  paidGrantCountWithoutEgpRecord: number;
+  paidCreditsWithoutEgpRecord: number;
+  referralAwardCount: number;
+  referralCreditsGranted: number;
+  regularEntryDebitCount: number;
+  regularEntryCreditsConsumed: number;
+  regularEntryPaidCreditsConsumed: number;
+  regularEntryReferralCreditsConsumed: number;
+  subscriberRenewalCount: number;
+  subscriberRenewalCreditsConsumed: number;
+  correctionRestoreCount: number;
+  restoredCredits: number;
+  restoredPaidCredits: number;
+  restoredReferralCredits: number;
 }
 
 export interface FinancialReportFilters {
@@ -571,7 +592,7 @@ export const adminService = {
     }
   },
 
-  adminGrantGarageCredits: async (garageId: string, command: { packageId?: string; amount?: number; paymentReference: string; reason: string; paymentConfirmed: boolean; idempotencyKey: string }): Promise<any> => {
+  adminGrantGarageCredits: async (garageId: string, command: { packageId?: string; amount?: number; paymentAmountEgp: number; paymentReference: string; reason: string; paymentConfirmed: boolean; idempotencyKey: string }): Promise<any> => {
     return apiFetch(`/api/garages/${encodeURIComponent(garageId)}/credit-grants`, {
       method: 'POST',
       body: command

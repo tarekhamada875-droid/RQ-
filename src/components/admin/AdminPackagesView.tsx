@@ -41,6 +41,10 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
       setFormError(t('يرجى إدخال اسم وسعر وعدد أرصدة صالحين'));
       return;
     }
+    if (price !== creditQuantity) {
+      setFormError(t('سعر قالب الأرصدة يجب أن يساوي عدد الأرصدة: 1 جنيه لكل رصيد'));
+      return;
+    }
 
     const duplicate = (packages || []).find((pkg) => (
       pkg.catalogType === 'credit_bundle'

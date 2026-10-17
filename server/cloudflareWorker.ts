@@ -21,7 +21,7 @@ import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
-import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
+import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
@@ -3993,8 +3993,10 @@ const handleFinancialSummaryReport = async (c: any) => {
     const eventEndAt = endAt.toISOString();
     let eventsQuery: any = adminDb.collectionGroup('events');
     let settlementsQuery: any = adminDb.collection('settlements');
+    let creditLedgerQuery: any = adminDb.collection('credit_ledger');
     eventsQuery = eventsQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
     settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
+    if (!delegateId) creditLedgerQuery = creditLedgerQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
     const accumulator = createFinancialReportAccumulator({ start, end, delegateId });
     const pageSize = 250;
     const forEachPage = async (baseQuery: any, timestampField: string, consume: (value: any) => void) => {
@@ -4014,6 +4016,7 @@ const handleFinancialSummaryReport = async (c: any) => {
     // timestamp per delegate, never the underlying document arrays.
     await forEachPage(settlementsQuery, 'settledAt', (settlement) => addFinancialReportSettlement(accumulator, settlement));
     await forEachPage(eventsQuery, 'occurredAt', (event) => addFinancialReportEvent(accumulator, event));
+    if (!delegateId) await forEachPage(creditLedgerQuery, 'occurredAt', (entry) => addFinancialReportCreditLedgerEntry(accumulator, entry));
     const report = finishFinancialReport(accumulator);
 
     return c.json({
@@ -5061,7 +5064,8 @@ workerApp.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
     return c.json({ success: true, id: docRef.id });
   } catch (e: any) {
     console.error('[Worker Packages] Error in create:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+    const statusCode = e?.message === 'INVALID_PACKAGE_CONFIGURATION' ? 400 : 500;
+    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, statusCode as any);
   }
 });
 
@@ -5177,7 +5181,7 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['packageId', 'amount', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
+    const sanitized = sanitizePayload(body, ['packageId', 'amount', 'paymentAmountEgp', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
     if (sanitized.paymentConfirmed !== true) return c.json({ success: false, error: 'PAYMENT_CONFIRMATION_REQUIRED' }, 400);
     const paymentReference = validateString(sanitized.paymentReference, 'paymentReference', { min: 1, max: 120, required: true });
     const reason = validateString(sanitized.reason, 'reason', { min: 1, max: 300, required: true });
@@ -5186,8 +5190,9 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
     const packageId = sanitized.packageId ? validateId(sanitized.packageId, 'packageId', true) : null;
     if (packageId === null && sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     if (packageId !== null && sanitized.amount !== undefined) return c.json({ success: false, error: 'CHOOSE_TEMPLATE_OR_AMOUNT' }, 400);
+    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 1, max: 1_000_000, integerOnly: true });
     const callerUid = user.uid;
-    const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentReference, reason });
+    const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
     let granted: any = null;
     await adminDb.runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
@@ -5211,10 +5216,13 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
         if (!templateSnap.exists) throw new Error('PACKAGE_NOT_FOUND');
         template = { id: templateSnap.id, ...templateSnap.data() };
         if (template.isActive === false || template.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
-        amount = validatePackageCatalogRecord(template, template.id).creditQuantity;
+        const validatedTemplate = validatePackageCatalogRecord(template, template.id);
+        amount = validatedTemplate.creditQuantity;
+        if (validatedTemplate.finalPrice !== amount) throw new Error('CREDIT_TEMPLATE_PRICE_MISMATCH');
       } else {
         amount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
       }
+      if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
       const balance = {
         paid: Number(garage.creditBalance?.paid || 0),
         referral: Number(garage.creditBalance?.referral || 0),
@@ -5251,8 +5259,18 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
       }
       const now = new Date();
       t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}) }, { merge: true });
-      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentReference });
-      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, packageId, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentAmountEgp, paymentReference });
+      recordDomainEventInTransaction(t, adminDb, {
+        garageId,
+        aggregateType: 'credit_grant',
+        aggregateId: entry.value.entryId,
+        eventType: 'prepaid_credit_grant_paid',
+        actorUid: callerUid,
+        actorRole: 'admin',
+        idempotencyKey,
+        payload: { amount: paymentAmountEgp, creditAmount: amount, creditLedgerEntryId: entry.value.entryId }
+      });
+      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, packageId, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { creditBalance: referralTransition.value.balance }, { merge: true });
         t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
@@ -5269,7 +5287,7 @@ workerApp.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) =>
           createdBy: callerUid,
         });
       }
-      granted = { garageId, amount, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
+      granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
     });
     return c.json({ success: true, data: granted });
@@ -5296,7 +5314,7 @@ workerApp.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => 
     const entries = page.documents.map((doc: any) => {
       const row = doc.data() || {};
       const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, bucket: row.bucket, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, occurredAt: row.occurredAt };
-      return user?.role === 'admin' ? { ...common, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, reference: row.reference, idempotencyKey: row.idempotencyKey, source: row.source, packageId: row.packageId, packageName: row.packageName } : common;
+      return user?.role === 'admin' ? { ...common, paymentAmountEgp: row.paymentAmountEgp, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, reference: row.reference, idempotencyKey: row.idempotencyKey, source: row.source, packageId: row.packageId, packageName: row.packageName } : common;
     });
     return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });
   } catch (error: any) {

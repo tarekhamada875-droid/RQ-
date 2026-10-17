@@ -641,6 +641,56 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(days).toBeGreaterThanOrEqual(365);
     expect(days).toBeLessThanOrEqual(367);
   });
+
+  it('reports prepaid EGP receipts separately from date-bounded credit grants and usage', async () => {
+    const occurredAt = '2026-01-15T12:00:00.000Z';
+    mockDb.seed('garages/credit-financial-report/events/payment-1', {
+      eventType: 'prepaid_credit_grant_paid', aggregateType: 'credit_grant', aggregateId: 'grant-1', occurredAt,
+      payload: { amount: 50, creditAmount: 50, creditLedgerEntryId: 'grant-1' }
+    });
+    mockDb.seed('credit_ledger/grant-1', { kind: 'paid_grant', bucket: 'paid', amount: 50, paymentAmountEgp: 50, occurredAt });
+    mockDb.seed('credit_ledger/referral-1', { kind: 'referral_award', bucket: 'referral', amount: 20, occurredAt });
+    mockDb.seed('credit_ledger/entry-1', { kind: 'regular_entry_debit', bucket: 'paid', amount: 1, occurredAt });
+    mockDb.seed('credit_ledger/entry-2', { kind: 'regular_entry_debit', bucket: 'referral', amount: 1, occurredAt });
+    mockDb.seed('credit_ledger/renewal-1', { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5, occurredAt });
+    mockDb.seed('credit_ledger/restore-1', { kind: 'correction_restore', bucket: 'referral', amount: 1, occurredAt });
+    mockDb.seed('credit_ledger/end-boundary', { kind: 'paid_grant', bucket: 'paid', amount: 100, paymentAmountEgp: 100, occurredAt: '2026-02-01T00:00:00.000Z' });
+
+    const response = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-01&end=2026-02-01', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(response.status).toBe(200);
+    const report = (await response.json() as any).data.report;
+    expect(report).toMatchObject({
+      prepaidCreditPaymentsEgp: 50,
+      cashCollectedTotal: 0,
+      companyNetRevenue: 0,
+      creditActivity: {
+        paidGrantCount: 1,
+        paidCreditsGranted: 50,
+        referralAwardCount: 1,
+        referralCreditsGranted: 20,
+        regularEntryDebitCount: 2,
+        regularEntryCreditsConsumed: 2,
+        regularEntryPaidCreditsConsumed: 1,
+        regularEntryReferralCreditsConsumed: 1,
+        subscriberRenewalCount: 1,
+        subscriberRenewalCreditsConsumed: 5,
+        correctionRestoreCount: 1,
+        restoredCredits: 1,
+        restoredReferralCredits: 1,
+      }
+    });
+
+    const delegateResponse = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-01&end=2026-02-01&delegateId=worker-test-delegate-cf7', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(delegateResponse.status).toBe(200);
+    const delegateReport = (await delegateResponse.json() as any).data.report;
+    expect(delegateReport.prepaidCreditPaymentsEgp).toBeNull();
+    expect(delegateReport.creditActivity).toBeNull();
+  });
+
   it('aggregates across stable cursor pages with exact totals, settlement cutoffs, and delegate filtering', async () => {
     const events: any[] = [];
     const settlements: any[] = [];

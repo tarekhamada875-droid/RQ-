@@ -29,17 +29,17 @@ beforeEach(() => {
 });
 
 describe('AdminPackagesView credit-bundle catalog', () => {
-  it('creates a valid credit bundle through the service', async () => {
+  it('creates a valid one-to-one credit bundle through the service', async () => {
     render(<AdminPackagesView {...props} />);
     openAndFillPackageForm();
-    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '600' } });
+    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '400' } });
     fireEvent.change(screen.getByPlaceholderText('400'), { target: { value: '400' } });
     fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
 
     await waitFor(() => expect(firestoreService.addPackage).toHaveBeenCalledTimes(1));
     expect(firestoreService.addPackage).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Test credits',
-      price: 600,
+      price: 400,
       creditQuantity: 400,
       catalogType: 'credit_bundle',
     }));
@@ -63,14 +63,25 @@ describe('AdminPackagesView credit-bundle catalog', () => {
   it('rejects a duplicate quantity and price without calling the service', async () => {
     render(<AdminPackagesView
       {...props}
-      packages={[{ id: 'credit-400', name: 'Existing', price: 600, creditQuantity: 400, catalogType: 'credit_bundle', vehiclesCount: 400, isActive: true }]}
+      packages={[{ id: 'credit-400', name: 'Existing', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', vehiclesCount: 400, isActive: true }]}
     />);
+    openAndFillPackageForm();
+    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '400' } });
+    fireEvent.change(screen.getByPlaceholderText('400'), { target: { value: '400' } });
+    fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Existing');
+    expect(firestoreService.addPackage).not.toHaveBeenCalled();
+  });
+
+  it('rejects a credit bundle whose EGP price differs from its credit count', async () => {
+    render(<AdminPackagesView {...props} />);
     openAndFillPackageForm();
     fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '600' } });
     fireEvent.change(screen.getByPlaceholderText('400'), { target: { value: '400' } });
     fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Existing');
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 جنيه لكل رصيد');
     expect(firestoreService.addPackage).not.toHaveBeenCalled();
   });
 
@@ -89,7 +100,7 @@ describe('AdminPackagesView credit-bundle catalog', () => {
     vi.mocked(firestoreService.addPackage).mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', { status: 500, correlationId: 'corr-plan-500' }));
     render(<AdminPackagesView {...props} />);
     openAndFillPackageForm();
-    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '600' } });
+    fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '400' } });
     fireEvent.change(screen.getByPlaceholderText('400'), { target: { value: '400' } });
     fireEvent.submit(screen.getByPlaceholderText('800').closest('form')!);
 

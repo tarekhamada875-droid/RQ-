@@ -11,16 +11,16 @@ const basePackage = {
 
 describe('server package catalog validation', () => {
   it('accepts a non-expiring credit bundle', () => {
-    expect(validatePackageCatalogRecord({ name: 'Starter credits', price: 300, creditQuantity: 400 }, 'credit-400'))
+    expect(validatePackageCatalogRecord({ name: 'Starter credits', price: 400, creditQuantity: 400 }, 'credit-400'))
       .toEqual({
         id: 'credit-400',
         name: 'Starter credits',
         catalogType: 'credit_bundle',
         creditQuantity: 400,
         durationDays: 0,
-        basePrice: 300,
+        basePrice: 400,
         discountAmount: 0,
-        finalPrice: 300,
+        finalPrice: 400,
         dailyCapacity: 0,
         isUnlimited: false,
       });
@@ -28,6 +28,7 @@ describe('server package catalog validation', () => {
 
   it('rejects credit-bundle discounts and invalid quantities', () => {
     expect(() => validatePackageCatalogRecord({ name: 'Discounted credits', price: 300, creditQuantity: 400, discountType: 'percentage', discountValue: 10 }, 'credit-discount')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ name: 'Mismatched price', price: 600, creditQuantity: 400 }, 'credit-price-mismatch')).toThrow('INVALID_PACKAGE_CONFIGURATION');
     expect(() => validatePackageCatalogRecord({ name: 'Zero credits', price: 300, creditQuantity: 0 }, 'credit-zero')).toThrow('INVALID_PACKAGE_CONFIGURATION');
     expect(() => validatePackageCatalogRecord({ name: 'Fractional credits', price: 300, creditQuantity: 1.5 }, 'credit-fraction')).toThrow('INVALID_PACKAGE_CONFIGURATION');
   });

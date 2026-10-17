@@ -4,9 +4,9 @@
 
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
-**Latest merged code-bearing commit:** `f99a67b` (PR #101 / BILL-06 Admin grants and history). PR #101’s post-merge Production Gate, guarded Worker deployment, and Worker health smoke passed; the approved `credit_ledger(garageId ASC, occurredAt DESC)` Firestore index is enabled as `CICAgJj7z4EK`. The current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
+**Latest merged code-bearing commit:** `f99a67b` (PR #101 / BILL-06 Admin grants and history). PR #101’s post-merge Production Gate, guarded Worker deployment, and Worker health smoke passed; the approved `credit_ledger(garageId ASC, occurredAt DESC)` Firestore index is enabled as `CICAgJj7z4EK`. The current main checkout is clean and matches `origin/main`. Active BILL-07 work is on `feat/bill-07-credit-financial-reporting`; local verification passed, but the branch was not yet pushed or opened as a PR at this checkpoint.
 
-**Current checkpoint:** **BILL-06 is complete and merged** in [PR #101](https://github.com/tarekhamada875-droid/RQ-/pull/101). The post-merge Production Gate, Worker deploy, and health smoke passed; the required Firestore index is enabled. Stop and report BILL-06 here; do not begin BILL-07 without the owner's next instruction.
+**Current checkpoint:** BILL-06 is complete and merged. BILL-07 was separately authorized by the owner on 2026-10-17 and is in progress on `feat/bill-07-credit-financial-reporting`; local full CI and maintainability gates passed. The work is not yet merged/deployed. Do not begin BILL-08 until BILL-07 is complete and the owner directs continuation.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -58,28 +58,32 @@ The opt-in `prepaid_credits` renewal path debits exactly five paid credits atomi
 
 ### 6. BILL-06 — Admin manual credit grants and garage balance/history — merged and deployed
 
-Added an Admin-only Worker route to grant either a selected active credit-bundle template quantity or a positive entered integer after explicit external/offline payment confirmation, payment reference, and reason. The atomic, idempotent transaction writes paid credits only, an auditable `credit_ledger` record, and an activity record. The first-paid-grant trigger is recorded once per referred garage; a distinct one-time 20-credit referral award is written only if the referrer is already prepaid-enabled. If the referrer is legacy, the route records `referrer_not_prepaid` and does not activate it. It refuses legacy subscription target garages rather than enabling them, and never touches the EGP wallet. Admin garage details show paid/referral/total balances, grant controls, and up to 50 paged grant/usage records; garage balance UI exposes read-only scoped history. Garage users do not receive Admin-only payment references. PR #101 is merged at `f99a67b2e7023d61d36fd1df1f27c40cf9bbc071`. Post-merge Production Gate [39033339698](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39033339698) and Worker deployment/health smoke [39033339649](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39033339649) passed. With owner approval, the `credit_ledger(garageId ASC, occurredAt DESC)` composite index was created and verified Enabled (ID `CICAgJj7z4EK`) in the documented production Firestore project/database. TypeScript and 11 focused tests passed; local `npm run ci:check` passed with 130 files / 856 tests, `npm run maintainability:check`, and `git diff --check` passed. Generated `dist/` and `build/` were removed. No data migration, automatic payment, reporting change, or customer-facing cutover occurred. Stop after BILL-06; do not begin BILL-07 without owner direction.
+Added an Admin-only Worker route to grant either a selected active credit-bundle template quantity or a positive entered integer after explicit external/offline payment confirmation, payment reference, and reason. The atomic, idempotent transaction writes paid credits only, an auditable `credit_ledger` record, and an activity record. The first-paid-grant trigger is recorded once per referred garage; a distinct one-time 20-credit referral award is written only if the referrer is already prepaid-enabled. If the referrer is legacy, the route records `referrer_not_prepaid` and does not activate it. It refuses legacy subscription target garages rather than enabling them, and never touches the EGP wallet. Admin garage details show paid/referral/total balances, grant controls, and up to 50 paged grant/usage records; garage balance UI exposes read-only scoped history. Garage users do not receive Admin-only payment references. PR #101 is merged at `f99a67b2e7023d61d36fd1df1f27c40cf9bbc071`. Post-merge Production Gate [39033339698](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39033339698) and Worker deployment/health smoke [39033339649](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39033339649) passed. With owner approval, the `credit_ledger(garageId ASC, occurredAt DESC)` composite index was created and verified Enabled (ID `CICAgJj7z4EK`) in the documented production Firestore project/database. TypeScript and 11 focused tests passed; local `npm run ci:check` passed with 130 files / 856 tests, `npm run maintainability:check`, and `git diff --check` passed. Generated `dist/` and `build/` were removed. No data migration, automatic payment, reporting change, or customer-facing cutover occurred in BILL-06. BILL-07 is the separately authorized reporting task below.
 
-### 7. F2 — Make reconciliation day-safe
+### 7. BILL-07 — Separate verified prepaid EGP receipts from credit activity — implementation in progress
+
+**BILL-07 implementation checkpoint (2026-10-17; local branch, not merged or deployed):** Owner clarified that the money is transferred outside RQ, then Admin records the amount already received and confirms it; the owner approved a strict 1 EGP per credit. Manual grants now require the verified integer EGP amount to equal the credit quantity, and atomically write the payment amount to the Admin-only ledger plus a new immutable payment event. New credit-bundle prices must also equal their credit quantities. The bounded financial report adds a separate EGP receipts total and separate integer credit grant, referral, entry, renewal, correction, and historical-unrecorded-amount metrics; existing cash/net-revenue totals and partner-dividend math remain unchanged. The bilingual Admin report card displays EGP and credits separately. Historical paid grants without a saved payment amount remain explicitly identified as unrecorded rather than inferred. Focused validation passed (132 tests); full `npm run ci:check` passed (131 files / 872 tests, including TypeScript, rules/build/artifact gates); `npm run maintainability:check` and `git diff --check` passed. No production data/rules, migration, payment, deployment, or cutover changed.
+
+### 8. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 8. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 9. F3 — One unlimited-package classifier (reassess under BILL-01)
 
 Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 9. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 10. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 RQ-TG-01 consolidates verification/install/suite and artifact upload; RQ-TG-02 ties verify → deploy → smoke to the exact commit/artifact and rollback identity; RQ-TG-03 strengthens health checks; RQ-TG-04 pins Firebase CLI and aligns local rules checks; RQ-TG-05 smokes the built Worker artifact; RQ-TG-06 makes local CI fail fast while retaining diagnostic mode.
 
-### 10. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
+### 11. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
 
 Move route/overlay ownership out of `App`; extract Worker route families mechanically while preserving route inventory and contracts; split `adminService` behind its unchanged facade; and group the `useGarageApp` contract before migrating `App`. Keep each as a separately tested, bounded PR.
 
 ## Recommended order
 
-1. **BILL-01** decision gate and BILL-02 through BILL-06 are complete, with BILL-06 merged and post-merge verified. Stop and report BILL-06 before beginning BILL-07.
-2. **BILL-07 then BILL-08** — billing/reporting and cutover, each under its own release gate.
+1. **BILL-01 through BILL-06** are complete; BILL-07 reporting work is in progress and remains unmerged/unreleased.
+2. **BILL-08** remains a separate, approval-gated cutover task; do not begin it until BILL-07 is complete and the owner directs continuation.
 3. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
 4. **RQ-TG-01 through RQ-TG-06** — release reliability.
 5. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.

@@ -1,4 +1,4 @@
-import { addMoney } from './money';
+import { addMoney, parseMoneyAmount } from './money';
 
 export interface FinancialReportEvent {
   eventType?: string;
@@ -14,6 +14,33 @@ export interface SettlementRecord {
   previousCycleTotal?: number;
 }
 
+export interface CreditLedgerReportEntry {
+  kind?: string;
+  bucket?: string;
+  amount?: unknown;
+  paymentAmountEgp?: unknown;
+  occurredAt?: string | Date;
+}
+
+export interface CreditActivityMetrics {
+  paidGrantCount: number;
+  paidCreditsGranted: number;
+  paidGrantCountWithoutEgpRecord: number;
+  paidCreditsWithoutEgpRecord: number;
+  referralAwardCount: number;
+  referralCreditsGranted: number;
+  regularEntryDebitCount: number;
+  regularEntryCreditsConsumed: number;
+  regularEntryPaidCreditsConsumed: number;
+  regularEntryReferralCreditsConsumed: number;
+  subscriberRenewalCount: number;
+  subscriberRenewalCreditsConsumed: number;
+  correctionRestoreCount: number;
+  restoredCredits: number;
+  restoredPaidCredits: number;
+  restoredReferralCredits: number;
+}
+
 export interface FinancialReportOptions {
   start?: string | Date;
   end?: string | Date;
@@ -23,24 +50,47 @@ export interface FinancialReportOptions {
 export interface FinancialReport {
   grossRechargeTotal: number;
   walletTopupTotal: number;
+  prepaidCreditPaymentsEgp: number | null;
   cashCollectedTotal: number;
   commissionTotal: number;
   refundTotal: number;
   companyNetRevenue: number;
   historicalSettledTotal: number;
   currentUnsettledByDelegate: Record<string, number>;
+  creditActivity: CreditActivityMetrics | null;
 }
 
 export interface FinancialReportAccumulator {
   readonly options: FinancialReportOptions;
   grossRechargeTotal: number;
   walletTopupTotal: number;
+  prepaidCreditPaymentsEgp: number;
   commissionTotal: number;
   refundTotal: number;
   historicalSettledTotal: number;
   currentUnsettledByDelegate: Record<string, number>;
   latestSettlementByDelegate: Record<string, Date>;
+  creditActivity: CreditActivityMetrics | null;
 }
+
+const emptyCreditActivity = (): CreditActivityMetrics => ({
+  paidGrantCount: 0,
+  paidCreditsGranted: 0,
+  paidGrantCountWithoutEgpRecord: 0,
+  paidCreditsWithoutEgpRecord: 0,
+  referralAwardCount: 0,
+  referralCreditsGranted: 0,
+  regularEntryDebitCount: 0,
+  regularEntryCreditsConsumed: 0,
+  regularEntryPaidCreditsConsumed: 0,
+  regularEntryReferralCreditsConsumed: 0,
+  subscriberRenewalCount: 0,
+  subscriberRenewalCreditsConsumed: 0,
+  correctionRestoreCount: 0,
+  restoredCredits: 0,
+  restoredPaidCredits: 0,
+  restoredReferralCredits: 0,
+});
 
 function asDate(value: string | Date | undefined): Date | null {
   if (!value) return null;
@@ -61,17 +111,29 @@ function round(value: number): number {
   return Number(value.toFixed(2));
 }
 
+function addCredits(total: number, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) return total;
+  const next = total + value;
+  return Number.isSafeInteger(next) ? next : total;
+}
+
+function incrementCount(count: number): number {
+  return Number.isSafeInteger(count + 1) ? count + 1 : count;
+}
+
 /** Creates constant-in-record-count state for page-by-page financial report aggregation. */
 export function createFinancialReportAccumulator(options: FinancialReportOptions = {}): FinancialReportAccumulator {
   return {
     options,
     grossRechargeTotal: 0,
     walletTopupTotal: 0,
+    prepaidCreditPaymentsEgp: 0,
     commissionTotal: 0,
     refundTotal: 0,
     historicalSettledTotal: 0,
     currentUnsettledByDelegate: {},
-    latestSettlementByDelegate: {}
+    latestSettlementByDelegate: {},
+    creditActivity: options.delegateId ? null : emptyCreditActivity(),
   };
 }
 
@@ -100,6 +162,12 @@ export function addFinancialReportEvent(accumulator: FinancialReportAccumulator,
   if (event.eventType === 'wallet_topup_approved') {
     accumulator.walletTopupTotal = addMoney(accumulator.walletTopupTotal, payload.amount);
   }
+  if (event.eventType === 'prepaid_credit_grant_paid') {
+    if (typeof payload.amount === 'number' && Number.isSafeInteger(payload.amount) && payload.amount > 0
+      && payload.amount === payload.creditAmount && typeof payload.creditLedgerEntryId === 'string' && payload.creditLedgerEntryId) {
+      accumulator.prepaidCreditPaymentsEgp = addMoney(accumulator.prepaidCreditPaymentsEgp, payload.amount);
+    }
+  }
   if (event.eventType === 'commission_earned') {
     accumulator.commissionTotal = addMoney(accumulator.commissionTotal, payload.commissionAmount);
   }
@@ -118,18 +186,60 @@ export function addFinancialReportEvent(accumulator: FinancialReportAccumulator,
   }
 }
 
+/** Adds one ledger entry while retaining only bounded aggregate credit counts. */
+export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReportAccumulator, entry: CreditLedgerReportEntry): void {
+  const activity = accumulator.creditActivity;
+  if (!activity || !inRange(entry.occurredAt, accumulator.options)) return;
+  const amount = entry.amount;
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 1) return;
+
+  switch (entry.kind) {
+    case 'paid_grant':
+      activity.paidGrantCount = incrementCount(activity.paidGrantCount);
+      activity.paidCreditsGranted = addCredits(activity.paidCreditsGranted, amount);
+      if (parseMoneyAmount(entry.paymentAmountEgp) !== amount) {
+        activity.paidGrantCountWithoutEgpRecord = incrementCount(activity.paidGrantCountWithoutEgpRecord);
+        activity.paidCreditsWithoutEgpRecord = addCredits(activity.paidCreditsWithoutEgpRecord, amount);
+      }
+      break;
+    case 'referral_award':
+      activity.referralAwardCount = incrementCount(activity.referralAwardCount);
+      activity.referralCreditsGranted = addCredits(activity.referralCreditsGranted, amount);
+      break;
+    case 'regular_entry_debit':
+      activity.regularEntryDebitCount = incrementCount(activity.regularEntryDebitCount);
+      activity.regularEntryCreditsConsumed = addCredits(activity.regularEntryCreditsConsumed, amount);
+      if (entry.bucket === 'paid') activity.regularEntryPaidCreditsConsumed = addCredits(activity.regularEntryPaidCreditsConsumed, amount);
+      if (entry.bucket === 'referral') activity.regularEntryReferralCreditsConsumed = addCredits(activity.regularEntryReferralCreditsConsumed, amount);
+      break;
+    case 'subscriber_renewal_debit':
+      activity.subscriberRenewalCount = incrementCount(activity.subscriberRenewalCount);
+      activity.subscriberRenewalCreditsConsumed = addCredits(activity.subscriberRenewalCreditsConsumed, amount);
+      break;
+    case 'correction_restore':
+      activity.correctionRestoreCount = incrementCount(activity.correctionRestoreCount);
+      activity.restoredCredits = addCredits(activity.restoredCredits, amount);
+      if (entry.bucket === 'paid') activity.restoredPaidCredits = addCredits(activity.restoredPaidCredits, amount);
+      if (entry.bucket === 'referral') activity.restoredReferralCredits = addCredits(activity.restoredReferralCredits, amount);
+      break;
+  }
+}
+
 /** Finalizes streamed state into the public report shape. */
 export function finishFinancialReport(accumulator: FinancialReportAccumulator): FinancialReport {
-  const { grossRechargeTotal, walletTopupTotal, commissionTotal, refundTotal, historicalSettledTotal } = accumulator;
+  const { grossRechargeTotal, walletTopupTotal, prepaidCreditPaymentsEgp, commissionTotal, refundTotal, historicalSettledTotal } = accumulator;
+  const cashCollectedTotal = addMoney(grossRechargeTotal, walletTopupTotal);
   return {
     grossRechargeTotal: round(grossRechargeTotal),
     walletTopupTotal: round(walletTopupTotal),
-    cashCollectedTotal: addMoney(grossRechargeTotal, walletTopupTotal),
+    prepaidCreditPaymentsEgp: accumulator.options.delegateId ? null : round(prepaidCreditPaymentsEgp),
+    cashCollectedTotal,
     commissionTotal: round(commissionTotal),
     refundTotal: round(refundTotal),
     companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),
     historicalSettledTotal: round(historicalSettledTotal),
-    currentUnsettledByDelegate: Object.fromEntries(Object.entries(accumulator.currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)]))
+    currentUnsettledByDelegate: Object.fromEntries(Object.entries(accumulator.currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)])),
+    creditActivity: accumulator.creditActivity,
   };
 }
 
@@ -137,64 +247,12 @@ export function finishFinancialReport(accumulator: FinancialReportAccumulator): 
 export function calculateFinancialReport(
   events: FinancialReportEvent[],
   settlements: SettlementRecord[],
-  options: FinancialReportOptions = {}
+  options: FinancialReportOptions = {},
+  creditLedgerEntries: CreditLedgerReportEntry[] = []
 ): FinancialReport {
-  let grossRechargeTotal = 0;
-  let walletTopupTotal = 0;
-  let commissionTotal = 0;
-  let refundTotal = 0;
-  let historicalSettledTotal = 0;
-  const currentUnsettledByDelegate: Record<string, number> = {};
-  const latestSettlementByDelegate: Record<string, Date> = {};
-
-  for (const settlement of settlements) {
-    if (!inRange(settlement.settledAt, options)) continue;
-    const delegateId = settlement.delegateId || '';
-    if (options.delegateId && delegateId !== options.delegateId) continue;
-    historicalSettledTotal = addMoney(historicalSettledTotal, settlement.previousCycleTotal);
-    if (delegateId && currentUnsettledByDelegate[delegateId] === undefined) currentUnsettledByDelegate[delegateId] = 0;
-    const settledAt = asDate(settlement.settledAt);
-    if (delegateId && settledAt && (!latestSettlementByDelegate[delegateId] || settledAt > latestSettlementByDelegate[delegateId])) {
-      latestSettlementByDelegate[delegateId] = settledAt;
-    }
-  }
-
-  for (const event of events) {
-    if (!inRange(event.occurredAt, options)) continue;
-    const payload = event.payload || {};
-    if (options.delegateId && String(payload.delegateId || '') !== options.delegateId) continue;
-    if (event.eventType === 'recharge_approved') {
-      grossRechargeTotal = addMoney(grossRechargeTotal, payload.amount);
-    }
-    if (event.eventType === 'wallet_topup_approved') {
-      walletTopupTotal = addMoney(walletTopupTotal, payload.amount);
-    }
-    if (event.eventType === 'commission_earned') {
-      commissionTotal = addMoney(commissionTotal, payload.commissionAmount);
-    }
-    if (event.eventType === 'vehicle_refunded') {
-      refundTotal = addMoney(refundTotal, payload.refundAmount);
-    }
-    if (event.eventType === 'recharge_approved' && event.aggregateId) {
-      const delegateId = String(payload.delegateId || '');
-      if (delegateId) {
-        const occurredAt = asDate(event.occurredAt);
-        const cutoff = latestSettlementByDelegate[delegateId];
-        if (!cutoff || (occurredAt && occurredAt > cutoff)) {
-          currentUnsettledByDelegate[delegateId] = addMoney(currentUnsettledByDelegate[delegateId] || 0, payload.amount);
-        }
-      }
-    }
-  }
-
-  return {
-    grossRechargeTotal: round(grossRechargeTotal),
-    walletTopupTotal: round(walletTopupTotal),
-    cashCollectedTotal: addMoney(grossRechargeTotal, walletTopupTotal),
-    commissionTotal: round(commissionTotal),
-    refundTotal: round(refundTotal),
-    companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),
-    historicalSettledTotal: round(historicalSettledTotal),
-    currentUnsettledByDelegate: Object.fromEntries(Object.entries(currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)]))
-  };
+  const accumulator = createFinancialReportAccumulator(options);
+  for (const settlement of settlements) addFinancialReportSettlement(accumulator, settlement);
+  for (const event of events) addFinancialReportEvent(accumulator, event);
+  for (const entry of creditLedgerEntries) addFinancialReportCreditLedgerEntry(accumulator, entry);
+  return finishFinancialReport(accumulator);
 }

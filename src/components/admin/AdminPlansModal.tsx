@@ -27,6 +27,7 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
   t,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   if (!isOpen) return null;
 
@@ -62,6 +63,11 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
               const name = (form.elements.namedItem('name') as HTMLInputElement).value;
               const price = Number((form.elements.namedItem('price') as HTMLInputElement).value);
               const creditQuantity = Number((form.elements.namedItem('creditQuantity') as HTMLInputElement).value);
+              if (!Number.isSafeInteger(price) || price < 1 || !Number.isSafeInteger(creditQuantity) || creditQuantity < 1 || price !== creditQuantity) {
+                setFormError(t('سعر قالب الأرصدة يجب أن يساوي عدد الأرصدة: 1 جنيه لكل رصيد'));
+                return;
+              }
+              setFormError('');
               
               setIsSubmitting(true);
               try {
@@ -101,6 +107,7 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
                 <div className="w-full p-3.5 bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-100 dark:border-amber-900/50 rounded-2xl font-bold text-amber-700 dark:text-amber-200 text-xs">{t('القالب غير منتهٍ ولا يحدد سعة يومية')}</div>
               </div>
             </div>
+            {formError && <p role="alert" className="text-xs font-bold text-red-600 dark:text-red-400">{formError}</p>}
             <button 
               type="submit"
               disabled={isSubmitting}

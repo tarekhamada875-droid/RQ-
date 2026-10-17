@@ -256,6 +256,7 @@ export const adminTranslationsBase: Record<string, string> = {
   'تم تحديث رقم المحفظة الذكية بنجاح': 'Smart collection wallet updated successfully!',
   'فشل تحديث رقم المحفظة': 'Failed to edit collection wallet',
   'رقم المحفظة الحالي:': 'Current Wallet Number:',
+  'سعر قالب الأرصدة يجب أن يساوي عدد الأرصدة: 1 جنيه لكل رصيد': 'Credit bundle price must equal the credit count: EGP 1 per credit.',
 
   // Common UI Elements & Modals
   'تنبيه': 'Alert',

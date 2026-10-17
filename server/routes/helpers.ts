@@ -14,7 +14,7 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('GARAGE_NOT_PREPAID')) {
     return { statusCode: 409, code: 'GARAGE_NOT_PREPAID', message: errMsg };
   }
-  if (errMsg.includes('PAYMENT_CONFIRMATION_REQUIRED') || errMsg.includes('CREDIT_AMOUNT_REQUIRED') || errMsg.includes('CHOOSE_TEMPLATE_OR_AMOUNT') || errMsg.includes('PACKAGE_NOT_CREDIT_BUNDLE') || errMsg.includes('INVALID_CREDIT_AMOUNT')) {
+  if (errMsg.includes('PAYMENT_CONFIRMATION_REQUIRED') || errMsg.includes('CREDIT_AMOUNT_REQUIRED') || errMsg.includes('CHOOSE_TEMPLATE_OR_AMOUNT') || errMsg.includes('PACKAGE_NOT_CREDIT_BUNDLE') || errMsg.includes('INVALID_CREDIT_AMOUNT') || errMsg.includes('PAYMENT_AMOUNT_MUST_MATCH_CREDITS') || errMsg.includes('CREDIT_TEMPLATE_PRICE_MISMATCH')) {
     return { statusCode: 400, code: 'INVALID_CREDIT_GRANT', message: errMsg };
   }
 
