@@ -107,7 +107,7 @@ function decodeValue(value: any): any {
   if ('booleanValue' in value) return value.booleanValue;
   if ('integerValue' in value) return Number(value.integerValue);
   if ('doubleValue' in value) return value.doubleValue;
-  if ('timestampValue' in value) return value.timestampValue;
+  if ('timestampValue' in value) return new Date(value.timestampValue);
   if ('stringValue' in value) return value.stringValue;
   if ('referenceValue' in value) return value.referenceValue;
   if ('bytesValue' in value) return value.bytesValue;

@@ -28,7 +28,8 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
       hourlyRate: 10,
       overnightRate: 50,
       status: 'approved',
-      dailyCapacity: 40
+      dailyCapacity: 40,
+      createdAt: new Date('2026-10-17T10:00:00.000Z')
     });
   });
 
@@ -582,5 +583,39 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const getBody = await getRes.json() as any;
     expect(getBody.success).toBe(true);
     expect(getBody.garage.id).toBe(testGarageId);
+  });
+
+  it('pages the garage list with a stable tie-break and a bounded sentinel read', async () => {
+    for (let index = 0; index < 6; index += 1) {
+      mockDb.seed(`garages/page-${index}`, { name: `Garage ${index}`, createdAt: new Date('2026-10-17T10:00:00.000Z') });
+    }
+    mockDb.resetDocumentCounts();
+    const fetchPage = (cursor?: string) => {
+      const params = new URLSearchParams({ limit: '2' });
+      if (cursor) params.set('cursor', cursor);
+      return api.fetch(new Request(`http://localhost/api/garages?${params}`, {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+    };
+    const firstResponse = await fetchPage();
+    const first = await firstResponse.json() as any;
+    expect(firstResponse.status).toBe(200);
+    expect(first.garages).toHaveLength(2);
+    expect(first.items).toEqual(first.garages);
+    expect(first.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+
+    const secondResponse = await fetchPage(first.nextCursor);
+    const second = await secondResponse.json() as any;
+    const thirdResponse = await fetchPage(second.nextCursor);
+    const third = await thirdResponse.json() as any;
+    const fourthResponse = await fetchPage(third.nextCursor);
+    const fourth = await fourthResponse.json() as any;
+    const ids = [...first.garages, ...second.garages, ...third.garages, ...fourth.garages].map((garage: any) => garage.id);
+    expect(new Set(ids).size).toBe(7);
+    expect(ids).toEqual([...ids].sort((left, right) => right.localeCompare(left)));
+    expect(fourth.hasMore).toBe(false);
+    expect(fourth.nextCursor).toBeNull();
+    expect(mockDb.queryResultSizes.slice(-4)).toEqual([3, 3, 3, 1]);
   });
 });

@@ -6,10 +6,10 @@ import {
   where, 
   onSnapshot, 
   doc, 
+  documentId,
   getDocs, 
   orderBy, 
   limit,
-  startAfter
 } from 'firebase/firestore';
 import type { Delegate, Garage, RechargeRequest, ActivityLog } from '../types';
 import { safeDate } from '../utils';
@@ -21,22 +21,27 @@ export interface DelegateDashboardData {
   delegate: Delegate;
   garages: Garage[];
   requests: RechargeRequest[];
+  pagination: Record<DelegateDashboardSection, { hasMore: boolean; nextCursor: string | null }>;
+}
+
+export type DelegateDashboardSection = 'createdGarages' | 'referredGarages' | 'requests';
+export interface DelegateDashboardPage {
+  items: Array<Garage | RechargeRequest>;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 export interface DelegatePage {
   delegates: Delegate[];
-  lastDoc: any;
+  lastDoc: string | null;
   hasMore: boolean;
 }
 
-const mapDelegatePage = (snapshot: any, pageSize: number): DelegatePage => ({
-  delegates: snapshot.docs.map((delegateDoc: any) => ({
-    id: delegateDoc.id,
-    ...delegateDoc.data()
-  } as Delegate)),
-  lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-  hasMore: snapshot.docs.length === pageSize,
-});
+export interface AdminRechargeRequestPage {
+  requests: RechargeRequest[];
+  lastDoc: string | null;
+  hasMore: boolean;
+}
 
 async function createSettlementIdempotencyKey(delegateId: string, totalRechargedAmount: number, lastSettledAt?: unknown): Promise<string> {
   let settlementMarker = 'initial';
@@ -59,6 +64,20 @@ export const delegateService = {
     const response = await apiFetch<DelegateDashboardData & { success: boolean }>('/api/delegates/dashboard');
     if (response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
     return response;
+  },
+
+  getDashboardDataPage: async (delegateId: string, section: DelegateDashboardSection, cursor: string): Promise<DelegateDashboardPage> => {
+    const params = new URLSearchParams({ section, limit: '50', cursor });
+    const response = await apiFetch<DelegateDashboardPage & { delegate: Delegate }>(`/api/delegates/dashboard?${params.toString()}`);
+    if (response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
+    return response;
+  },
+
+  getAdminRechargeRequestsPage: async (pageSize = 20, cursor: string | null = null): Promise<AdminRechargeRequestPage> => {
+    const params = new URLSearchParams({ limit: String(pageSize), status: 'pending' });
+    if (cursor) params.set('cursor', cursor);
+    const page = await apiFetch<{ requests: RechargeRequest[]; hasMore: boolean; nextCursor: string | null }>(`/api/recharge-requests?${params.toString()}`);
+    return { requests: page.requests, lastDoc: page.nextCursor, hasMore: page.hasMore };
   },
 
   addDelegate: async (data: Omit<Delegate, 'id'>) => {
@@ -105,12 +124,12 @@ export const delegateService = {
     };
   },
 
-  getAdminDelegatesPage: async (pageSize = 50, lastDocRef: any = null): Promise<DelegatePage> => {
+  getAdminDelegatesPage: async (pageSize = 50, lastDocRef: string | null = null): Promise<DelegatePage> => {
     try {
-      const q = lastDocRef
-        ? query(collection(db, 'delegates'), orderBy('createdAt', 'desc'), startAfter(lastDocRef), limit(pageSize))
-        : query(collection(db, 'delegates'), orderBy('createdAt', 'desc'), limit(pageSize));
-      return mapDelegatePage(await getDocs(q), pageSize);
+      const params = new URLSearchParams({ limit: String(pageSize) });
+      if (lastDocRef) params.set('cursor', lastDocRef);
+      const page = await apiFetch<{ delegates: Delegate[]; hasMore: boolean; nextCursor: string | null }>(`/api/admin/delegates?${params.toString()}`);
+      return { delegates: page.delegates, lastDoc: page.nextCursor, hasMore: page.hasMore };
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'delegates/admin-page');
       throw error;
@@ -230,6 +249,8 @@ export const delegateService = {
     const q = query(
       collection(db, 'recharge_requests'),
       where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+      orderBy(documentId(), 'desc'),
       limit(20)
     );
     const unsub = onSnapshot(q, (snapshot) => {

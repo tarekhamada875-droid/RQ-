@@ -98,7 +98,15 @@ export default function App() {
     staffList,
     setStaffList,
     rechargeRequests,
+    adminRechargeHasMore,
+    adminRechargeListsLoading,
+    loadMoreAdminRechargeRequests,
+    markAdminRechargeRequestResolved,
     delegateRequests,
+    delegatePagination,
+    delegateListsLoading,
+    loadMoreDelegateGarages,
+    loadMoreDelegateRequests,
     currentStaff,
     toast,
     setToast,
@@ -254,6 +262,10 @@ export default function App() {
             packages={sortedPackages}
             onLogout={handleInitiateLogout}
             rechargeRequests={rechargeRequests}
+            adminRechargeHasMore={adminRechargeHasMore}
+            adminRechargeListsLoading={adminRechargeListsLoading}
+            onLoadMoreAdminRechargeRequests={loadMoreAdminRechargeRequests}
+            onRechargeRequestResolved={markAdminRechargeRequestResolved}
             adminGarageHasMore={adminGarageHasMore}
             adminDelegateHasMore={adminDelegateHasMore}
             adminListsLoading={adminListsLoading}
@@ -297,6 +309,10 @@ export default function App() {
             packages={sortedPackages}
             pendingRequests={delegateRequests.filter(r => r.status === 'pending')}
             delegateRequests={delegateRequests}
+            delegatePagination={delegatePagination}
+            delegateListsLoading={delegateListsLoading}
+            onLoadMoreDelegateGarages={loadMoreDelegateGarages}
+            onLoadMoreDelegateRequests={loadMoreDelegateRequests}
             showToast={showToast}
             subscriptionPrices={subscriptionPrices}
           />

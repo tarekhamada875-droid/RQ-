@@ -54,6 +54,85 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     });
   });
 
+  it('pages Admin and delegate recharge-request lists with filters and strict role scopes', async () => {
+    for (let index = 0; index < 6; index += 1) {
+      mockDb.seed(`recharge_requests/admin-page-${index}`, {
+        status: index === 5 ? 'approved' : 'pending',
+        createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000),
+        delegateId: 'delegate-uid',
+        garageId: `garage-${index}`
+      });
+    }
+    mockDb.resetDocumentCounts();
+    const adminPage = (cursor?: string) => {
+      const params = new URLSearchParams({ limit: '2', status: 'pending' });
+      if (cursor) params.set('cursor', cursor);
+      return api.fetch(new Request(`http://localhost/api/recharge-requests?${params}`, {
+        headers: { Authorization: 'Bearer valid-admin-token' }
+      }), workerEnv);
+    };
+    const firstResponse = await adminPage();
+    const first = await firstResponse.json() as any;
+    expect(firstResponse.status).toBe(200);
+    expect(first.requests).toHaveLength(2);
+    expect(first.requests.every((request: any) => request.status === 'pending')).toBe(true);
+    expect(first.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+    const secondResponse = await adminPage(first.nextCursor);
+    const second = await secondResponse.json() as any;
+    expect([...first.requests, ...second.requests]).toHaveLength(4);
+    expect(new Set([...first.requests, ...second.requests].map((request: any) => request.id)).size).toBe(4);
+    expect(second.hasMore).toBe(true);
+    const finalResponse = await adminPage(second.nextCursor);
+    const final = await finalResponse.json() as any;
+    expect(final.requests).toHaveLength(1);
+    expect(final.hasMore).toBe(false);
+    expect([...first.requests, ...second.requests, ...final.requests]).toHaveLength(5);
+
+    const delegatePage = await api.fetch(new Request('http://localhost/api/recharge-requests/my?limit=2', {
+      headers: { Authorization: 'Bearer valid-delegate-token' }
+    }), workerEnv);
+    const delegateBody = await delegatePage.json() as any;
+    expect(delegatePage.status).toBe(200);
+    expect(delegateBody.requests).toHaveLength(2);
+    expect(delegateBody.requests.every((request: any) => request.delegateId === 'delegate-uid')).toBe(true);
+    expect(delegateBody.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+  });
+
+  it('bounds delegate dashboard child lists and continues a selected section without duplicate rows', async () => {
+    mockDb.seed('delegates/delegate-uid', { name: 'Paginated Delegate' });
+    for (let index = 0; index < 5; index += 1) {
+      mockDb.seed(`garages/created-${index}`, { createdByDelegateId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`garages/referred-${index}`, { referrerId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`recharge_requests/delegate-page-${index}`, { delegateId: 'delegate-uid', status: 'approved', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+    }
+    mockDb.resetDocumentCounts();
+
+    const response = await api.fetch(new Request('http://localhost/api/delegates/dashboard?limit=2', {
+      headers: { Authorization: 'Bearer valid-delegate-token' }
+    }), workerEnv);
+    const first = await response.json() as any;
+    expect(response.status).toBe(200);
+    expect(first.garages).toHaveLength(4);
+    expect(first.requests).toHaveLength(2);
+    expect(first.pagination.createdGarages.hasMore).toBe(true);
+    expect(first.pagination.referredGarages.hasMore).toBe(true);
+    expect(first.pagination.requests.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.slice(-3)).toEqual([3, 3, 3]);
+
+    const params = new URLSearchParams({ section: 'requests', limit: '2', cursor: first.pagination.requests.nextCursor });
+    const nextResponse = await api.fetch(new Request(`http://localhost/api/delegates/dashboard?${params}`, {
+      headers: { Authorization: 'Bearer valid-delegate-token' }
+    }), workerEnv);
+    const next = await nextResponse.json() as any;
+    expect(nextResponse.status).toBe(200);
+    expect(next.requests).toHaveLength(2);
+    expect(next.requests.map((request: any) => request.id)).not.toEqual(expect.arrayContaining(first.requests.map((request: any) => request.id)));
+    expect(next.hasMore).toBe(true);
+    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+  });
+
   it('1. POST /api/recharge-requests/create creates pending request', async () => {
     const unauthRes = await api.fetch(new Request('http://localhost/api/recharge-requests/create', {
       method: 'POST',

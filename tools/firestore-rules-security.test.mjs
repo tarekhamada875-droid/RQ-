@@ -26,6 +26,18 @@ assert.deepEqual(rechargeActivityLogCompositeIndex?.fields, [
   { fieldPath: 'actionType', order: 'ASCENDING' },
   { fieldPath: 'timestamp', order: 'DESCENDING' }
 ], 'firestore.indexes.json must retain the ordered garage recharge activity-log index');
+for (const [collectionGroup, equalityField] of [
+  ['garages', 'createdByDelegateId'],
+  ['garages', 'referrerId'],
+  ['recharge_requests', 'delegateId']
+]) {
+  const pageIndex = firestoreIndexes.indexes.find((index) =>
+    index.collectionGroup === collectionGroup && index.queryScope === 'COLLECTION' &&
+    index.fields.some((field) => field.fieldPath === equalityField) &&
+    index.fields.some((field) => field.fieldPath === 'createdAt' && field.order === 'DESCENDING')
+  );
+  assert.ok(pageIndex, `firestore.indexes.json must include ${collectionGroup}.${equalityField}/createdAt descending for cursor pages`);
+}
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',

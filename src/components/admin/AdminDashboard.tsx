@@ -38,6 +38,10 @@ interface AdminDashboardProps {
   packages: Package[];
   onLogout: () => void;
   rechargeRequests: RechargeRequest[];
+  adminRechargeHasMore?: boolean;
+  adminRechargeListsLoading?: boolean;
+  onLoadMoreAdminRechargeRequests?: () => Promise<void>;
+  onRechargeRequestResolved?: (requestId: string) => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -73,6 +77,10 @@ export const AdminDashboard = memo(({
   packages,
   onLogout,
   rechargeRequests,
+  adminRechargeHasMore = false,
+  adminRechargeListsLoading = false,
+  onLoadMoreAdminRechargeRequests,
+  onRechargeRequestResolved,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -177,6 +185,7 @@ export const AdminDashboard = memo(({
         try {
           const result = await firestoreService.approveRechargeRequest(request);
           if (result.success) {
+            onRechargeRequestResolved?.(request.id);
             soundManager.play('checkIn');
             showToast?.('تم تفعيل اشتراك الجراج بنجاح', 'success');
           } else {
@@ -205,6 +214,7 @@ export const AdminDashboard = memo(({
       onConfirm: async () => {
         try {
           await firestoreService.rejectRechargeRequest(requestId);
+          onRechargeRequestResolved?.(requestId);
           showToast?.('تم رفض طلب الشحن', 'error');
         } catch (error: any) {
           console.error('Failed to reject request:', error);
@@ -444,6 +454,9 @@ export const AdminDashboard = memo(({
           currentSupervisor={currentSupervisor}
           delegates={delegates}
           rechargeRequests={rechargeRequests}
+          adminRechargeHasMore={adminRechargeHasMore}
+          adminRechargeListsLoading={adminRechargeListsLoading}
+          onLoadMoreAdminRechargeRequests={onLoadMoreAdminRechargeRequests}
           pendingGarages={pendingGarages}
           packages={packages}
           approvedGarages={approvedGarages}

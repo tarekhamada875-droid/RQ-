@@ -35,6 +35,9 @@ interface AdminNavigationAndViewsProps {
   currentSupervisor: Supervisor | null;
   delegates: Delegate[];
   rechargeRequests: RechargeRequest[];
+  adminRechargeHasMore?: boolean;
+  adminRechargeListsLoading?: boolean;
+  onLoadMoreAdminRechargeRequests?: () => Promise<void>;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -80,6 +83,9 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   currentSupervisor,
   delegates,
   rechargeRequests,
+  adminRechargeHasMore = false,
+  adminRechargeListsLoading = false,
+  onLoadMoreAdminRechargeRequests,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -424,6 +430,9 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'requests' ? (
         <AdminRequestsView
           rechargeRequests={rechargeRequests}
+          adminRechargeHasMore={adminRechargeHasMore}
+          adminRechargeListsLoading={adminRechargeListsLoading}
+          onLoadMoreAdminRechargeRequests={onLoadMoreAdminRechargeRequests}
           pendingGarages={pendingGarages}
           handleApproveRequest={handleApproveRequest}
           handleRejectRequest={handleRejectRequest}

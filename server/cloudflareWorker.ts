@@ -23,6 +23,7 @@ import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } f
 import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
+import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
 import {
   startGarageDeletionRoute,
   advanceGarageDeletionRoute,
@@ -58,6 +59,13 @@ export interface WorkerUser {
   garageId?: string | null;
   entityId?: string;
   displayName?: string;
+}
+
+async function readWorkerFirestorePage(query: any, collection: any, pageRequest: ReturnType<typeof parseFirestorePageRequest>, orderField = 'createdAt') {
+  const orderedQuery = query.orderBy(orderField, 'desc').orderBy('__name__', 'desc');
+  const afterCursor = firestorePageStartAfter(orderedQuery, collection, pageRequest.cursor);
+  const snapshot = await afterCursor.limit(pageRequest.pageSize + 1).get();
+  return buildFirestorePage(snapshot.docs, pageRequest, orderField);
 }
 
 const workerApp = new Hono<{
@@ -1746,14 +1754,25 @@ workerApp.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
-    const delegatesSnap = await adminDb.collection('delegates').get();
-    const delegates = delegatesSnap.docs
-      .map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => safeDateMillis(b.createdAt) - safeDateMillis(a.createdAt));
+    let pageRequest;
+    try {
+      pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), `admin-delegates:${user.uid}`);
+    } catch (error: any) {
+      return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
+    }
+    const delegatesCollection = adminDb.collection('delegates');
+    let delegatesQuery = delegatesCollection.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
+    delegatesQuery = firestorePageStartAfter(delegatesQuery, delegatesCollection, pageRequest.cursor);
+    const delegatesSnapshot = await delegatesQuery.limit(pageRequest.pageSize + 1).get();
+    const delegatePage = buildFirestorePage(delegatesSnapshot.docs, pageRequest, 'createdAt');
+    const delegates = delegatePage.documents.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
 
     return c.json({
       success: true,
-      delegates
+      delegates,
+      items: delegates,
+      hasMore: delegatePage.hasMore,
+      nextCursor: delegatePage.nextCursor
     });
   } catch (err: any) {
     console.error('[Worker Admin] Error in admin delegates:', err);
@@ -1774,34 +1793,67 @@ workerApp.get('/api/admin/delegates/:id', requireWorkerAuth, async (c) => {
 
     const delegateId = c.req.param('id');
     const delegateRef = adminDb.collection('delegates').doc(delegateId);
-    const [delegateSnap, createdGaragesSnap, referredGaragesSnap, requestsSnap] = await Promise.all([
-      delegateRef.get(),
-      adminDb.collection('garages').where('createdByDelegateId', '==', delegateId).get(),
-      adminDb.collection('garages').where('referrerId', '==', delegateId).get(),
-      adminDb.collection('recharge_requests').where('delegateId', '==', delegateId).get()
-    ]);
+    const delegateSnap = await delegateRef.get();
+    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
-    if (!delegateSnap.exists) {
-      return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
-    }
-
-    const garagesById = new Map<string, any>();
-    for (const snap of [createdGaragesSnap, referredGaragesSnap]) {
-      for (const garage of snap.docs) {
-        garagesById.set(garage.id, sanitizeDelegateDoc({ id: garage.id, ...garage.data() }));
+    const section = c.req.query('section');
+    const garagesCollection = adminDb.collection('garages');
+    const requestsCollection = adminDb.collection('recharge_requests');
+    const childQuery = (name: string) => name === 'createdGarages'
+      ? garagesCollection.where('createdByDelegateId', '==', delegateId)
+      : name === 'referredGarages'
+        ? garagesCollection.where('referrerId', '==', delegateId)
+        : requestsCollection.where('delegateId', '==', delegateId);
+    const allowedSections = ['createdGarages', 'referredGarages', 'requests'];
+    const readChildPage = async (name: string, cursor?: string) => {
+      const collection = name === 'requests' ? requestsCollection : garagesCollection;
+      const pageRequest = parseFirestorePageRequest(c.req.query('limit'), cursor, `admin-delegate:${delegateId}:${name}`);
+      return readWorkerFirestorePage(childQuery(name), collection, pageRequest);
+    };
+    try {
+      if (section && section !== 'all') {
+        if (!allowedSections.includes(section)) return c.json({ success: false, error: 'INVALID_PAGE_SECTION' }, 400);
+        const page = await readChildPage(section, c.req.query('cursor'));
+        const items = page.documents.map((doc: any) => section === 'requests'
+          ? ({ id: doc.id, ...doc.data() })
+          : sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+        return c.json({
+          success: true,
+          delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+          ...(section === 'requests' ? { requests: items } : { garages: items }),
+          items, hasMore: page.hasMore, nextCursor: page.nextCursor,
+          pagination: { [section]: { hasMore: page.hasMore, nextCursor: page.nextCursor } }
+        });
       }
+
+      const [createdPage, referredPage, requestPage] = await Promise.all([
+        readChildPage('createdGarages', c.req.query('createdGaragesCursor')),
+        readChildPage('referredGarages', c.req.query('referredGaragesCursor')),
+        readChildPage('requests', c.req.query('requestsCursor'))
+      ]);
+      const garagesById = new Map<string, any>();
+      for (const doc of [...createdPage.documents, ...referredPage.documents]) {
+        garagesById.set(doc.id, sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+      }
+      const garages = Array.from(garagesById.values());
+      const requests = requestPage.documents.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      return c.json({
+        success: true,
+        delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+        garages,
+        requests,
+        pagination: {
+          createdGarages: { hasMore: createdPage.hasMore, nextCursor: createdPage.nextCursor },
+          referredGarages: { hasMore: referredPage.hasMore, nextCursor: referredPage.nextCursor },
+          requests: { hasMore: requestPage.hasMore, nextCursor: requestPage.nextCursor }
+        }
+      });
+    } catch (error: any) {
+      if (error?.message === 'INVALID_PAGE_SIZE' || error?.message === 'INVALID_PAGE_CURSOR') {
+        return c.json({ success: false, error: error.message }, 400);
+      }
+      throw error;
     }
-
-    const requests = requestsSnap.docs
-      .map((req: any) => ({ id: req.id, ...req.data() }))
-      .sort((a: any, b: any) => safeDateMillis(b.createdAt) - safeDateMillis(a.createdAt));
-
-    return c.json({
-      success: true,
-      delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
-      garages: Array.from(garagesById.values()),
-      requests
-    });
   } catch (err: any) {
     console.error('[Worker Admin] Error in admin delegate details:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
@@ -3427,12 +3479,24 @@ workerApp.get('/api/recharge-requests', requireWorkerAuth, async (c) => {
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const snap = await adminDb.collection('recharge_requests').get();
-    const requests = snap.docs
-      .map((doc: any) => ({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => safeDateMillis(b.createdAt) - safeDateMillis(a.createdAt));
+    const status = c.req.query('status');
+    if (status && !['pending', 'approved', 'rejected'].includes(status)) return c.json({ success: false, error: 'INVALID_STATUS' }, 400);
+    let pageRequest;
+    try {
+      pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), `recharge-requests:admin:${status || 'all'}`);
+    } catch (error: any) {
+      return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
+    }
+    const requestsCollection = adminDb.collection('recharge_requests');
+    let requestsQuery: any = requestsCollection;
+    if (status) requestsQuery = requestsQuery.where('status', '==', status);
+    requestsQuery = requestsQuery.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
+    requestsQuery = firestorePageStartAfter(requestsQuery, requestsCollection, pageRequest.cursor);
+    const requestsSnapshot = await requestsQuery.limit(pageRequest.pageSize + 1).get();
+    const requestPage = buildFirestorePage(requestsSnapshot.docs, pageRequest, 'createdAt');
+    const requests = requestPage.documents.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-    return c.json({ success: true, requests });
+    return c.json({ success: true, requests, items: requests, hasMore: requestPage.hasMore, nextCursor: requestPage.nextCursor });
   } catch (err: any) {
     console.error('[Worker] Error fetching recharge requests:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
@@ -3448,20 +3512,31 @@ workerApp.get('/api/recharge-requests/my', requireWorkerAuth, async (c) => {
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     let query: any;
+    let scope: string;
     if (delegateId) {
       query = adminDb.collection('recharge_requests').where('delegateId', '==', delegateId);
+      scope = `recharge-requests:delegate:${delegateId}`;
     } else if (garageId) {
       query = adminDb.collection('recharge_requests').where('garageId', '==', garageId);
+      scope = `recharge-requests:garage:${garageId}`;
     } else {
-      return c.json({ success: true, requests: [] });
+      return c.json({ success: true, requests: [], items: [], hasMore: false, nextCursor: null });
     }
 
-    const snap = await query.get();
-    const requests = snap.docs
-      .map((doc: any) => ({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => safeDateMillis(b.createdAt) - safeDateMillis(a.createdAt));
+    let pageRequest;
+    try {
+      pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), scope);
+    } catch (error: any) {
+      return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
+    }
+    const requestsCollection = adminDb.collection('recharge_requests');
+    query = query.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
+    query = firestorePageStartAfter(query, requestsCollection, pageRequest.cursor);
+    const snap = await query.limit(pageRequest.pageSize + 1).get();
+    const requestPage = buildFirestorePage(snap.docs, pageRequest, 'createdAt');
+    const requests = requestPage.documents.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-    return c.json({ success: true, requests });
+    return c.json({ success: true, requests, items: requests, hasMore: requestPage.hasMore, nextCursor: requestPage.nextCursor });
   } catch (err: any) {
     console.error('[Worker] Error fetching my recharge requests:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
@@ -3567,32 +3642,68 @@ const handleDelegateDashboard = async (c: any) => {
 
     const delegateId = user.entityId;
     const delegateRef = adminDb.collection('delegates').doc(delegateId);
-    const [delegateSnap, createdGaragesSnap, referredGaragesSnap, requestsSnap] = await Promise.all([
-      delegateRef.get(),
-      adminDb.collection('garages').where('createdByDelegateId', '==', delegateId).get(),
-      adminDb.collection('garages').where('referrerId', '==', delegateId).get(),
-      adminDb.collection('recharge_requests').where('delegateId', '==', delegateId).get()
-    ]);
+    const delegateSnap = await delegateRef.get();
+    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
-    if (!delegateSnap.exists) {
-      return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+    const garagesCollection = adminDb.collection('garages');
+    const requestsCollection = adminDb.collection('recharge_requests');
+    const childQuery = (name: string) => name === 'createdGarages'
+      ? garagesCollection.where('createdByDelegateId', '==', delegateId)
+      : name === 'referredGarages'
+        ? garagesCollection.where('referrerId', '==', delegateId)
+        : requestsCollection.where('delegateId', '==', delegateId);
+    const allowedSections = ['createdGarages', 'referredGarages', 'requests'];
+    const readChildPage = async (name: string, cursor?: string) => {
+      const collection = name === 'requests' ? requestsCollection : garagesCollection;
+      const pageRequest = parseFirestorePageRequest(c.req.query('limit'), cursor, `delegate-dashboard:${delegateId}:${name}`);
+      return readWorkerFirestorePage(childQuery(name), collection, pageRequest);
+    };
+    try {
+      const section = c.req.query('section');
+      if (section && section !== 'all') {
+        if (!allowedSections.includes(section)) return c.json({ success: false, error: 'INVALID_PAGE_SECTION' }, 400);
+        const page = await readChildPage(section, c.req.query('cursor'));
+        const items = page.documents.map((doc: any) => section === 'requests'
+          ? ({ id: doc.id, ...doc.data() })
+          : sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+        return c.json({
+          success: true,
+          delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+          ...(section === 'requests' ? { requests: items } : { garages: items }),
+          items, hasMore: page.hasMore, nextCursor: page.nextCursor,
+          pagination: { [section]: { hasMore: page.hasMore, nextCursor: page.nextCursor } }
+        });
+      }
+
+      const [createdPage, referredPage, requestPage] = await Promise.all([
+        readChildPage('createdGarages', c.req.query('createdGaragesCursor')),
+        readChildPage('referredGarages', c.req.query('referredGaragesCursor')),
+        readChildPage('requests', c.req.query('requestsCursor'))
+      ]);
+      const garagesById = new Map<string, any>();
+      for (const doc of [...createdPage.documents, ...referredPage.documents]) {
+        garagesById.set(doc.id, sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+      }
+      const garages = Array.from(garagesById.values());
+      const requests = requestPage.documents.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+      return c.json({
+        success: true,
+        delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+        garages,
+        requests,
+        pagination: {
+          createdGarages: { hasMore: createdPage.hasMore, nextCursor: createdPage.nextCursor },
+          referredGarages: { hasMore: referredPage.hasMore, nextCursor: referredPage.nextCursor },
+          requests: { hasMore: requestPage.hasMore, nextCursor: requestPage.nextCursor }
+        }
+      });
+    } catch (error: any) {
+      if (error?.message === 'INVALID_PAGE_SIZE' || error?.message === 'INVALID_PAGE_CURSOR') {
+        return c.json({ success: false, error: error.message }, 400);
+      }
+      throw error;
     }
-
-    const garagesById = new Map<string, any>();
-    for (const snapshot of [createdGaragesSnap, referredGaragesSnap]) {
-      for (const garage of snapshot.docs) garagesById.set(garage.id, sanitizeDelegateDoc({ id: garage.id, ...garage.data() }));
-    }
-
-    const requests = requestsSnap.docs
-      .map((reqDoc: any) => ({ id: reqDoc.id, ...reqDoc.data() }))
-      .sort((a: any, b: any) => safeDateMillis(b.createdAt) - safeDateMillis(a.createdAt));
-
-    return c.json({
-      success: true,
-      delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
-      garages: Array.from(garagesById.values()),
-      requests
-    });
   } catch (err: any) {
     console.error('[Worker Delegate] Error loading dashboard:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
@@ -4064,16 +4175,28 @@ workerApp.get('/api/garages', requireWorkerAuth, async (c) => {
     }
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    let query: any = adminDb.collection('garages');
+    const garagesCollection = adminDb.collection('garages');
+    let query: any = garagesCollection;
+    let pageScope = `garages:admin:${user.uid}`;
     if (user?.role === 'delegate') {
       const delegateId = user.entityId || user.uid;
       query = query.where('createdByDelegateId', '==', delegateId);
+      pageScope = `garages:delegate:${delegateId}`;
     }
 
-    const snap = await query.get();
-    const garages = snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    let pageRequest;
+    try {
+      pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), pageScope);
+    } catch (error: any) {
+      return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
+    }
+    query = query.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
+    query = firestorePageStartAfter(query, garagesCollection, pageRequest.cursor);
+    const snap = await query.limit(pageRequest.pageSize + 1).get();
+    const garagePage = buildFirestorePage(snap.docs, pageRequest, 'createdAt');
+    const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
 
-    return c.json({ success: true, garages });
+    return c.json({ success: true, garages, items: garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });
   } catch (err: any) {
     console.error('[Worker Garage] Error listing garages:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);

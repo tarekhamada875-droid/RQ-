@@ -85,7 +85,12 @@ describe('Worker Firestore transaction adapter', () => {
       if (url.includes('oauth2.googleapis.com/token')) {
         return new Response(JSON.stringify({ access_token: 'test-access-token', expires_in: 3600 }), { status: 200 });
       }
-      if (url.includes(':runQuery')) return new Response('[]', { status: 200 });
+      if (url.includes(':runQuery')) return new Response(JSON.stringify([{
+        document: {
+          name: 'projects/cursor-test-project/databases/(default)/documents/garages/garage-a/events/event-last',
+          fields: { occurredAt: { timestampValue: '2026-01-15T12:00:00.000Z' } }
+        }
+      }]), { status: 200 });
       throw new Error(`Unexpected Firestore request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -104,13 +109,15 @@ describe('Worker Firestore transaction adapter', () => {
 
     const timestamp = new Date('2026-01-15T12:00:00.000Z');
     const reference = adminDb.doc('garages/garage-a/events/event-last');
-    await adminDb.collectionGroup('events')
+    const pageSnapshot = await adminDb.collectionGroup('events')
       .where('occurredAt', '>=', timestamp)
       .orderBy('occurredAt', 'asc')
       .orderBy('__name__', 'asc')
       .limit(250)
       .startAfter(timestamp, reference)
       .get();
+    expect(pageSnapshot.docs[0].data()?.occurredAt).toEqual(timestamp);
+    expect(pageSnapshot.docs[0].data()?.occurredAt).toBeInstanceOf(Date);
 
     const request = requests.find((entry) => entry.url.includes(':runQuery'));
     const structuredQuery = JSON.parse(request?.body || '{}').structuredQuery;

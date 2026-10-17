@@ -45,6 +45,10 @@ interface DelegateDashboardViewProps {
   packages: Package[];
   pendingRequests: RechargeRequest[];
   delegateRequests?: RechargeRequest[];
+  delegatePagination?: Record<'createdGarages' | 'referredGarages' | 'requests', { hasMore: boolean; nextCursor: string | null }>;
+  delegateListsLoading?: boolean;
+  onLoadMoreDelegateGarages?: () => void;
+  onLoadMoreDelegateRequests?: () => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
   subscriptionPrices?: { weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number };
 }
@@ -60,6 +64,10 @@ export const DelegateDashboardView = memo(({
   packages,
   pendingRequests,
   delegateRequests = [],
+  delegatePagination,
+  delegateListsLoading = false,
+  onLoadMoreDelegateGarages,
+  onLoadMoreDelegateRequests,
   showToast,
   subscriptionPrices: _subscriptionPrices = { weekly: 800, biweekly: 1500, monthly: 3000 }
 }: DelegateDashboardViewProps) => {
@@ -488,6 +496,16 @@ export const DelegateDashboardView = memo(({
                 <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">لا توجد جراجات مطابقة للبحث</p>
               </div>
             )}
+            {(delegatePagination?.createdGarages.hasMore || delegatePagination?.referredGarages.hasMore) && onLoadMoreDelegateGarages && (
+              <button
+                type="button"
+                onClick={onLoadMoreDelegateGarages}
+                disabled={delegateListsLoading}
+                className="w-full min-h-[44px] mt-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {delegateListsLoading ? 'جارٍ تحميل المزيد...' : 'عرض المزيد من الجراجات'}
+              </button>
+            )}
           </div>
         ) : (
           /* 5) Performance Report View */
@@ -535,6 +553,11 @@ export const DelegateDashboardView = memo(({
                 </div>
               </div>
             </div>
+            {delegatePagination?.requests.hasMore && (
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300" role="status">
+                لا تزال هناك عمليات أقدم؛ قد تكون أرقام الفترة غير مكتملة إلى أن تحمّل المزيد.
+              </p>
+            )}
 
             {/* 5.c) Operations History */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
@@ -604,6 +627,16 @@ export const DelegateDashboardView = memo(({
                 >
                   <span>{showAllOperations ? 'إخفاء العمليات القديمة' : 'عرض كل العمليات'}</span>
                   {showAllOperations ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              )}
+              {delegatePagination?.requests.hasMore && onLoadMoreDelegateRequests && (
+                <button
+                  type="button"
+                  onClick={onLoadMoreDelegateRequests}
+                  disabled={delegateListsLoading}
+                  className="mt-2 w-full min-h-[44px] px-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl font-bold text-xs text-amber-700 dark:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {delegateListsLoading ? 'جارٍ تحميل المزيد...' : 'تحميل عمليات أقدم'}
                 </button>
               )}
             </div>

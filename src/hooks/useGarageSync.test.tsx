@@ -1,12 +1,14 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGarageSync } from './useGarageSync';
 
 const serviceMocks = vi.hoisted(() => ({
   getDashboardData: vi.fn(),
+  getDashboardDataPage: vi.fn(),
   getAdminGaragesPage: vi.fn(),
   getAdminDelegatesPage: vi.fn(),
+  getAdminRechargeRequestsPage: vi.fn(),
   getAdminSummary: vi.fn(),
   subscribeToPackages: vi.fn(),
   subscribeToActiveVehicles: vi.fn(),
@@ -43,14 +45,21 @@ const createBaseProps = () => ({
 const dashboardResponse = (delegate: { id: string; name: string }) => ({
   delegate,
   garages: [],
-  requests: []
+  requests: [],
+  pagination: {
+    createdGarages: { hasMore: false, nextCursor: null },
+    referredGarages: { hasMore: false, nextCursor: null },
+    requests: { hasMore: false, nextCursor: null }
+  }
 });
 
 beforeEach(() => {
   vi.useFakeTimers();
   serviceMocks.getDashboardData.mockReset();
+  serviceMocks.getDashboardDataPage.mockReset();
   serviceMocks.getAdminGaragesPage.mockReset();
   serviceMocks.getAdminDelegatesPage.mockReset();
+  serviceMocks.getAdminRechargeRequestsPage.mockReset().mockResolvedValue({ requests: [], lastDoc: null, hasMore: false });
   serviceMocks.getAdminSummary.mockReset();
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
@@ -155,6 +164,49 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(setDelegate).not.toHaveBeenCalled();
   });
 
+  it('loads delegate garage and request continuations only when their actions are invoked', async () => {
+    vi.useRealTimers();
+    const initial = {
+      delegate: { id: 'delegate-1', name: 'Delegate' },
+      garages: [{ id: 'garage-1' }],
+      requests: [{ id: 'request-1' }],
+      pagination: {
+        createdGarages: { hasMore: true, nextCursor: 'created-cursor' },
+        referredGarages: { hasMore: true, nextCursor: 'referred-cursor' },
+        requests: { hasMore: true, nextCursor: 'requests-cursor' }
+      }
+    };
+    serviceMocks.getDashboardData.mockResolvedValue(initial);
+    serviceMocks.getDashboardDataPage.mockImplementation(async (_id: string, section: string) => ({
+      items: section === 'requests' ? [{ id: 'request-2' }] : [{ id: `${section}-garage-2` }],
+      hasMore: false,
+      nextCursor: null
+    }));
+
+    const { result, unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: initial.delegate
+    }));
+    await waitFor(() => expect(result.current.allGarages).toEqual(initial.garages));
+    expect(serviceMocks.getDashboardDataPage).not.toHaveBeenCalled();
+    expect(result.current.allGarages).toEqual(initial.garages);
+    expect(result.current.delegateRequests).toEqual(initial.requests);
+
+    act(() => { void result.current.loadMoreDelegateGarages(); });
+    await waitFor(() => expect(result.current.allGarages).toHaveLength(3));
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenNthCalledWith(1, 'delegate-1', 'createdGarages', 'created-cursor');
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenNthCalledWith(2, 'delegate-1', 'referredGarages', 'referred-cursor');
+    expect(result.current.allGarages.map((garage: any) => garage.id)).toEqual(['garage-1', 'createdGarages-garage-2', 'referredGarages-garage-2']);
+    expect(result.current.delegatePagination.createdGarages.hasMore).toBe(false);
+
+    act(() => { void result.current.loadMoreDelegateRequests(); });
+    await waitFor(() => expect(result.current.delegateRequests).toHaveLength(2));
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenNthCalledWith(3, 'delegate-1', 'requests', 'requests-cursor');
+    expect(result.current.delegateRequests.map((request: any) => request.id)).toEqual(['request-1', 'request-2']);
+    expect(result.current.delegatePagination.requests.hasMore).toBe(false);
+    unmount();
+  });
+
   it('warns when activity history is unavailable and keeps the last displayed records', () => {
     const previousTransactions = [{ id: 'last-known-transaction' }];
     const showToast = vi.fn();
@@ -185,11 +237,15 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
   });
 
   it('loads one bounded admin page and requests the next page only explicitly', async () => {
+    vi.useRealTimers();
     serviceMocks.getAdminGaragesPage
       .mockResolvedValueOnce({ garages: [{ id: 'garage-1' }], lastDoc: 'garage-cursor', hasMore: true })
       .mockResolvedValueOnce({ garages: [{ id: 'garage-2' }], lastDoc: null, hasMore: false });
     serviceMocks.getAdminDelegatesPage.mockResolvedValue({ delegates: [{ id: 'delegate-1' }], lastDoc: null, hasMore: false });
     serviceMocks.getAdminSummary.mockResolvedValue({ totalGarages: 2, activeGarages: 2, lockedGarages: 0, totalDelegates: 1, totalAdminRevenue: 0 });
+    serviceMocks.getAdminRechargeRequestsPage
+      .mockResolvedValueOnce({ requests: [{ id: 'request-1' }], lastDoc: 'request-cursor', hasMore: true })
+      .mockResolvedValueOnce({ requests: [{ id: 'request-2' }], lastDoc: null, hasMore: false });
 
     const { result, unmount } = renderHook(() => useGarageSync({
       ...createBaseProps(),
@@ -197,24 +253,29 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       view: 'admin_dashboard'
     }));
 
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    await waitFor(() => expect(result.current.allGarages).toEqual([{ id: 'garage-1' }]));
 
     expect(serviceMocks.getAdminGaragesPage).toHaveBeenCalledWith(50, null);
     expect(serviceMocks.getAdminDelegatesPage).toHaveBeenCalledWith(50, null);
     expect(serviceMocks.getAdminSummary).toHaveBeenCalledOnce();
+    expect(serviceMocks.getAdminRechargeRequestsPage).toHaveBeenCalledWith(20, null);
     expect(result.current.allGarages).toEqual([{ id: 'garage-1' }]);
     expect(result.current.adminGarageHasMore).toBe(true);
+    expect(result.current.rechargeRequests).toEqual([{ id: 'request-1' }]);
+    expect(result.current.adminRechargeHasMore).toBe(true);
 
-    await act(async () => {
-      await result.current.loadMoreAdminGarages();
-    });
+    act(() => { void result.current.loadMoreAdminGarages(); });
+    await waitFor(() => expect(result.current.allGarages).toHaveLength(2));
 
     expect(serviceMocks.getAdminGaragesPage).toHaveBeenLastCalledWith(50, 'garage-cursor');
     expect(result.current.allGarages).toEqual([{ id: 'garage-1' }, { id: 'garage-2' }]);
     expect(result.current.adminGarageHasMore).toBe(false);
+
+    act(() => { void result.current.loadMoreAdminRechargeRequests(); });
+    await waitFor(() => expect(result.current.rechargeRequests).toHaveLength(2));
+    expect(serviceMocks.getAdminRechargeRequestsPage).toHaveBeenLastCalledWith(20, 'request-cursor');
+    expect(result.current.rechargeRequests.map((request: any) => request.id)).toEqual(['request-1', 'request-2']);
+    expect(result.current.adminRechargeHasMore).toBe(false);
     unmount();
   });
 });
