@@ -9,6 +9,7 @@ await build({
   bundle: true,
   platform: 'node',
   format: 'esm',
+  minify: true,
   mainFields: ['module', 'main'],
   define: { __dirname: JSON.stringify('.') },
   outfile: path.resolve(root, 'dist/worker.js'),
