@@ -646,8 +646,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 
 #### RQ-TG-01 — One canonical verification job
 
-- **Source:** `.github/workflows/production-gate.yml:3-6,36-60`; `.github/workflows/cloudflare-worker-deploy.yml:3-5,29-45`; `package.json:13-18`.
-- **Simple explanation:** Main push runs two installs/full Vitest runs and an extra subscriber suite.
+- **Source:** `.github/workflows/production-gate.yml`; `package.json:13-21`.
+- **Simple explanation:** Two release workflows repeated installs, tests, and builds, then deployed from a separate build.
 - **Implementation design / behavior to keep:** One verify job installs, runs full suite/typecheck/rules/maintainability/builds, uploads artifacts; deploy consumes artifact. Remove redundant focused rerun while retaining its coverage in full suite; preserve rules/build checks.
 - **Expected benefit:** Less duplicate CI work and clearer failures.
 - **Acceptance criteria:** One full Vitest invocation and one install per main push; same SHA verified/deployed; subscriber failure blocks deployment.
@@ -655,16 +655,21 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—omitted check or wrong artifact. Explicit SHA and artifact assertions; revert workflow composition.
 - **Effort:** M.
 
+- **Implementation checkpoint (2026-10-17; local branch `chore/rq-tg-01-single-release-verification`):** The standalone Worker deployment workflow is removed. The Production Gate now performs one dependency install and one full test suite, retains typecheck, Firestore rules tests, maintainability and Pages/Worker build, then uploads `dist/` under an artifact name containing `github.sha`. A dependent deployment job checks out that same event SHA, downloads that exact artifact, and deploys the Worker without rebuilding it; strict live smoke runs only after deployment. A test confirms the one-install/one-suite contract and verify-before-deploy dependency. `cancel-in-progress` is disabled so a newer push does not interrupt an active release.
+- **Local verification:** `npm run ci:check` passed (133 files / 869 tests, build and artifact checks); `npm run test:rules` passed; the focused workflow test passed (3 tests); maintainability and diff checks passed; YAML parsing and Wrangler `--no-bundle --dry-run` passed. No production deployment or Firebase data/rules/configuration changes occurred. PR and post-merge workflow status are pending.
+
 #### RQ-TG-02 — Make deploy/smoke one immutable-commit DAG
 
-- **Source:** `.github/workflows/cloudflare-worker-deploy.yml:47-75`; `.github/workflows/production-gate.yml:62-70`; `wrangler.toml:7-11`; `tools/release-smoke.ts:35-50,69-75`.
-- **Simple explanation:** Deploy and smoke are separate workflow paths, and human version `1.0.0-production` cannot prove which commit is serving.
+- **Source:** `.github/workflows/production-gate.yml`; `wrangler.toml:7-11`; `tools/release-smoke.ts:35-50,69-75`.
+- **Simple explanation:** Verification, deploy, and smoke now follow one job dependency and share the SHA-named artifact, but the live Worker reports only the human label `1.0.0-production`.
 - **Implementation design / behavior to keep:** Verify → deploy → smoke; add immutable SHA while retaining human label; rollback same artifact/version and smoke.
 - **Expected benefit:** Green release proves exact verified commit is serving.
 - **Acceptance criteria:** Stale SHA fails smoke; smoke cannot start before deploy; rollback reports exact selected SHA.
 - **Test plan:** Unit stale/matching/malformed health; workflow DAG and rollback rehearsal.
 - **Risk / rollback:** Medium—monitoring/client version expectations. Add immutable field rather than replace label.
 - **Effort:** M.
+
+- **Partial progress (2026-10-17):** RQ-TG-01 establishes the verify → deploy → smoke dependency and passes the verified build artifact to deploy. RQ-TG-02 remains open for reporting and checking the deployed source SHA and rehearsing rollback against the same artifact.
 
 #### RQ-TG-03 — Replace grep health check with strict release smoke
 
@@ -676,6 +681,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Deterministic fixtures and workflow invocation.
 - **Risk / rollback:** Low—may block currently superficial deployments; fix endpoint contract, do not weaken check.
 - **Effort:** S.
+
+- **Partial progress (2026-10-17):** The unified release job now runs the existing strict `tools/release-smoke.ts` after Worker deployment instead of the old loose grep check. Deterministic healthy/unhealthy fixture coverage and the remaining exact health-contract tests are still required.
 
 #### RQ-TG-04 — Pin Firebase CLI and align local rules gate
 

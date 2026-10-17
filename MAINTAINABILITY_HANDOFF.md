@@ -1,12 +1,20 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
+## Current work: RQ-TG-01 canonical verification and release artifact (2026-10-17)
+
+Current `main` is clean at `e1c5ca8a745a2c6c2ec15ae8876b7baf00ce6f6d` (PR #120, documentation-only). Work is on branch `chore/rq-tg-01-single-release-verification`; no PR is open yet.
+
+The old standalone Worker deployment workflow is being removed. The Production Gate now performs the single full install/test/build, uploads the verified `dist/` artifact under a name containing the event SHA, then deploys that exact artifact in a dependent job and runs the strict live smoke only after deployment. The former redundant subscriber-test rerun is removed; it remains covered by the full test suite. Production releases are not cancelled by newer pushes.
+
+Local checks passed: focused workflow test (3 tests), `npm run ci:check` (133 files / 869 tests, production build/artifact checks), `npm run test:rules`, `npm run maintainability:check`, YAML parsing, Wrangler `--no-bundle --dry-run`, and `git diff --check`. Existing test logs include Vite optimization deprecation and React `act(...)` warnings; they did not fail tests. Firestore emulator permission-denial logs are expected from negative security-rule cases; the matrix exited successfully. No Firebase data/rules/configuration changed and no production deployment occurred.
+
+**Single next step:** review the final diff, commit and push this focused branch, open its PR to `main`, and wait for the required Production Gate plus post-merge deploy/smoke checks. Do not start RQ-TG-02 until the owner asks to continue.
+
+## Previous checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
 
 F3 removes the obsolete duration/capacity/unlimited/fair-use classifier from active RQ access behavior. The Worker vehicle-entry decision no longer receives or evaluates classifier state; the frontend no longer applies daily-capacity or legacy subscription-expiry gates to prepaid garages; prepaid dashboard depletion uses paid/referral/trial credits; Admin package creation accepts only credit bundles; and both fair-use extension aliases return HTTP 410 without writes. Garage-owned monthly parking subscriptions remain date-based, and historical records remain readable.
 
-Focused F3 regressions passed. Full `npm run ci:check` passed with 132 test files / 866 tests, production build and artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data, rules, balances, or configuration was changed. PR #119 merged at `7f7778c`; its Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882) and guarded Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) passed. `main` and `origin/main` are clean and match.
-
-The single next task is RQ-TG-01 through RQ-TG-06 release reliability, beginning with RQ-TG-01. Do not begin it in this handoff cycle.
+Focused F3 regressions passed. Full `npm run ci:check` passed with 132 test files / 866 tests, production build and artifact verification passed, `npm run maintainability:check` passed, and `git diff --check` passed. No Firestore data, rules, balances, or configuration was changed. PR #119 merged at `7f7778c`; its Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882) and guarded Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) passed. `main` and `origin/main` were clean and matched at that checkpoint.
 
 ## Previous checkpoint: F2 Cairo-day reconciliation (2026-10-17; merged PR #117)
 
