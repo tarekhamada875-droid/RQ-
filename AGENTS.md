@@ -47,7 +47,7 @@
 - **Zero Unresolved Identifiers:** Never rely on implicit globals or assume a utility is present without verifying its import line.
 
 ### 4. Law of Dynamic Business Logic & Hardcoding Prohibition
-- **Dynamic Package & Subscription Handling:** Keep package logic data-driven. Garage RQ-access credit bundles are integer credit quantities with no expiry; do not attach duration or `balanceDays` to them. The garage’s own monthly parking memberships remain time-based. If operational vehicle capacity remains, keep it separate from credit-bundle quantity.
+- **Dynamic Package & Subscription Handling:** Keep package logic data-driven. Garage RQ-access credit bundles are integer quantities with no expiry; Admin confirms offline payment and directly grants credits. Garage owners do not purchase packages; the Admin package editor defines reusable credit/price templates only. Do not attach duration or `balanceDays` to credits. The garage’s own monthly parking memberships remain time-based. If operational vehicle capacity remains, keep it separate from credit quantity.
 - **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. Follow the active roadmap task for any planned cutover; preserve historical records.
 
 ### 5. Law of Input Hygiene & Numeric Sanitization
@@ -55,7 +55,7 @@
 - **Arabic/English Digit Normalization:** Ensure user inputs pass through `normalizeDigits()` where appropriate and keep typography & currency badges (`ج.م`) cleanly aligned (`font-mono`).
 
 ### 6. Law of Atomic Firestore Transactions & Consistency
-- **Concurrency Protection:** Multi-document updates (e.g. package recharge, subscriber renewal, delegate balance settlement) MUST use atomic Firestore transactions (`runTransaction`) or batch operations (`writeBatch`) with pre-read verification to prevent race conditions, duplicate charges, or partial document corruption.
+- **Concurrency Protection:** Multi-document updates (e.g. Admin credit grants, subscriber renewal, delegate balance settlement) MUST use atomic Firestore transactions (`runTransaction`) or batch operations (`writeBatch`) with pre-read verification to prevent race conditions, duplicate charges, or partial document corruption.
 
 ### 7. Law of Clean State & Memory Leak Prevention
 - **Functional State Updates:** Use functional state updates (`setItems(prev => ...)`) to prevent stale closure bugs in async operations.
