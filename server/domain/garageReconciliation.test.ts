@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { reconcileGarageState } from './garageReconciliation';
+import { calculateDailyProjection } from '../projections';
 
 describe('garage state reconciliation reducer', () => {
   it('derives matching garage, daily-stat, and event-ledger totals without mutation', () => {
@@ -53,6 +54,48 @@ describe('garage state reconciliation reducer', () => {
 
     expect(result.actual).toEqual({ carsInside: 0, todayCount: 0, todayRevenue: 0 });
     expect(result.overallConsistent).toBe(true);
+  });
+
+  it('ignores previous-day, next-day, missing, and invalid timestamps while preserving the raw event count', () => {
+    const events = [
+      { occurredAt: '2026-09-23T20:59:59.000Z', eventType: 'vehicle_entered' },
+      { occurredAt: '2026-09-23T21:00:00.000Z', eventType: 'vehicle_entered' },
+      { occurredAt: '2026-09-24T20:59:59.000Z', eventType: 'vehicle_exited', payload: { cost: 80 } },
+      { occurredAt: '2026-09-24T21:00:00.000Z', eventType: 'vehicle_refunded', payload: { refundAmount: 5 } },
+      { eventType: 'vehicle_entered' },
+      { occurredAt: 'not-a-date', eventType: 'vehicle_exited', payload: { cost: 999 } }
+    ] as const;
+    const result = reconcileGarageState({
+      today: '2026-09-24',
+      insideVehicleCount: 1,
+      garage: { carsInside: 1, lastTransactionDate: '2026-09-24', todayCount: 1, todayRevenue: 75 },
+      dailyStats: { count: 1, revenue: 75, exitsCount: 1 },
+      events
+    });
+
+    expect(result.eventLedgerSummary).toMatchObject({
+      totalRecordedEvents: 6,
+      todayEnters: 1,
+      todayExits: 1,
+      todayRefunds: 0,
+      eventGrossRevenue: 80,
+      eventRefundRevenue: 0,
+      eventDerivedRevenue: 80
+    });
+    const projection = calculateDailyProjection(events, '2026-09-24');
+    expect({
+      todayEnters: result.eventLedgerSummary.todayEnters,
+      todayExits: result.eventLedgerSummary.todayExits,
+      eventGrossRevenue: result.eventLedgerSummary.eventGrossRevenue,
+      eventRefundRevenue: result.eventLedgerSummary.eventRefundRevenue,
+      eventDerivedRevenue: result.eventLedgerSummary.eventDerivedRevenue
+    }).toEqual({
+      todayEnters: projection.count,
+      todayExits: projection.exitsCount,
+      eventGrossRevenue: projection.grossRevenue,
+      eventRefundRevenue: projection.refundRevenue,
+      eventDerivedRevenue: projection.revenue
+    });
   });
 
   it('reports differences between operational state, daily stats, and event totals', () => {

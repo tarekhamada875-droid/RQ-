@@ -1,4 +1,5 @@
 import { addMoney, parseMoneyAmount } from '../money';
+import { getCairoDateKey } from '../projections';
 
 export type ReconciliationEvent = Readonly<{
   occurredAt?: unknown;
@@ -63,7 +64,7 @@ export function reconcileGarageState(input: Readonly<{
   let todayRefunds = 0;
 
   for (const event of input.events) {
-    if (!event.occurredAt) continue;
+    if (getCairoDateKey(event.occurredAt) !== input.today) continue;
     if (event.eventType === 'vehicle_entered') todayEnters += 1;
     if (event.eventType === 'vehicle_exited') {
       todayExits += 1;

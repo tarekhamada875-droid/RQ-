@@ -2,7 +2,7 @@ import { addMoney } from './money';
 
 export interface ProjectionEvent {
   eventId?: string;
-  occurredAt?: string | Date;
+  occurredAt?: unknown;
   eventType?: string;
   payload?: Record<string, unknown>;
 }
@@ -16,10 +16,27 @@ export interface DailyProjection {
   revenue: number;
 }
 
-function cairoDate(value: string | Date | undefined): string {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
+function toValidDate(value: unknown): Date | null {
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    try {
+      const date = value.toDate();
+      return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Returns the Africa/Cairo calendar date for a supported timestamp value. */
+export function getCairoDateKey(value: unknown): string {
+  const date = toValidDate(value);
+  if (!date) return '';
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Africa/Cairo',
     year: 'numeric',
@@ -44,12 +61,12 @@ function cairoDayStart(dateKey: string): Date {
   let high = nominalUtc.getTime() + CAIRO_BOUNDARY_SEARCH_RADIUS_MS;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    if (cairoDate(new Date(middle)) >= dateKey) high = middle;
+    if (getCairoDateKey(new Date(middle)) >= dateKey) high = middle;
     else low = middle + 1;
   }
 
   const boundary = new Date(low);
-  if (cairoDate(boundary) !== dateKey) throw new Error('INVALID_DATE');
+  if (getCairoDateKey(boundary) !== dateKey) throw new Error('INVALID_DATE');
   return boundary;
 }
 
@@ -64,14 +81,14 @@ export function getCairoDayBounds(dateKey: string): { start: Date; end: Date } {
 }
 
 /** Rebuilds one day's projection from events without mutating or accumulating prior state. */
-export function calculateDailyProjection(events: ProjectionEvent[], targetDate: string): DailyProjection {
+export function calculateDailyProjection(events: readonly ProjectionEvent[], targetDate: string): DailyProjection {
   let count = 0;
   let exitsCount = 0;
   let grossRevenue = 0;
   let refundRevenue = 0;
 
   for (const event of events) {
-    if (cairoDate(event.occurredAt) !== targetDate) continue;
+    if (getCairoDateKey(event.occurredAt) !== targetDate) continue;
     if (event.eventType === 'vehicle_entered') count += 1;
     if (event.eventType === 'vehicle_exited') {
       exitsCount += 1;
