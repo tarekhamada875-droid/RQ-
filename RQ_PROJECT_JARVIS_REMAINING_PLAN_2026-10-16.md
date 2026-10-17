@@ -6,7 +6,7 @@
 
 **Latest code-bearing commit:** `fa5fa33` (PR #88, WKR-04). The only application-code change there is the local Node/Vite adapter; production Worker/API behavior, Firebase data, rules, and settings were not changed by WKR-04. The guarded Worker workflow and post-deploy health smoke passed. Later commits may update documentation only. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-02 — add the auditable prepaid-credit ledger.** BILL-01’s product decision gate was finalized by the owner on 2026-10-17; implementation remains bounded to BILL-02 and must not include migration or cutover.
+**Next task:** **BILL-03 — convert Admin package definitions to non-expiring credit bundles.** BILL-02’s bounded ledger foundation was implemented and verified on 2026-10-17; route integration, migration, and cutover remain separate tasks.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -32,33 +32,37 @@ Tests cover direct and real-HTTP GET/HEAD bodies, exact-limit and oversized Cont
 
 ## Remaining implementation tasks
 
-### 1. BILL-01 — Finalize the prepaid-credit contract and cutover policy (decision gate)
+### 1. BILL-01 — Finalize the prepaid-credit contract and cutover policy (decision gate) — completed
 
 The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per credit: one credit for each successful regular non-subscriber entry; five credits once for a successful monthly parking-subscriber renewal; no per-visit subscriber debit; and three free mistake/correction events per garage per Cairo day, shared across staff. Admin confirms offline payment and directly grants credits; garage owners do not purchase packages. The garage’s own monthly parking memberships stay date-based.
 
 **Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. Existing day-based referral rewards remain unchanged until the tested cutover.
 
-**Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md). BILL-02 through BILL-08 remain staged implementation tasks; no billing code, schema migration, data migration, or customer-facing cutover has started.
+**Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md).
 
-### 2. F2 — Make reconciliation day-safe
+### 2. BILL-02 — Add the auditable prepaid-credit ledger — completed foundation
+
+Added `server/domain/prepaidCreditLedger.ts` and focused tests. The pure reducer keeps paid and referral balances separate, supports Admin-confirmed paid grants, the one-time 20-credit referral award, one-credit regular-entry debits, five-credit paid-only subscriber-renewal debits, and authorized correction restores. Entries require garage, actor, reason/reference, timestamp, and idempotency-key context; deterministic entry identity prevents ambiguous retry records. `npm run ci:check` passed with 128 test files / 836 tests, including production build and artifact verification. No Worker route, Firestore data, migration, or customer-facing cutover changed; integration begins with BILL-03 through BILL-06.
+
+### 3. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 3. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 4. F3 — One unlimited-package classifier (reassess under BILL-01)
 
 Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 4. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 5. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 RQ-TG-01 consolidates verification/install/suite and artifact upload; RQ-TG-02 ties verify → deploy → smoke to the exact commit/artifact and rollback identity; RQ-TG-03 strengthens health checks; RQ-TG-04 pins Firebase CLI and aligns local rules checks; RQ-TG-05 smokes the built Worker artifact; RQ-TG-06 makes local CI fail fast while retaining diagnostic mode.
 
-### 5. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
+### 6. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
 
 Move route/overlay ownership out of `App`; extract Worker route families mechanically while preserving route inventory and contracts; split `adminService` behind its unchanged facade; and group the `useGarageApp` contract before migrating `App`. Keep each as a separately tested, bounded PR.
 
 ## Recommended order
 
-1. **BILL-01** decision gate, then BILL-02 through BILL-08 only after the required product decisions are recorded.
+1. **BILL-01** decision gate, then BILL-02 ledger foundation, then BILL-03 through BILL-08 only after the required product decisions are recorded.
 2. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
 3. **RQ-TG-01 through RQ-TG-06** — release reliability.
 4. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.
