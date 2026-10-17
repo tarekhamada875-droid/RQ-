@@ -20,6 +20,7 @@ const garageIn = {
   lastTransactionDate: '2026-09-25',
   isSubscriberAuthoritative: false,
   activePackageName: 'Standard',
+  prepaidCreditsEnabled: true,
 };
 
 const garageOut = { exists: true, lastTransactionDate: '2026-09-25' };

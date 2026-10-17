@@ -27,7 +27,6 @@ import { lazyWithRetry } from './utils/lazyWithRetry';
 // Loaded only when the related route or confirmation is opened.
 const CheckInModal = lazyWithRetry(() => import('./components/modals/CheckInModal').then(m => ({ default: m.CheckInModal })));
 const CheckOutModal = lazyWithRetry(() => import('./components/modals/CheckOutModal').then(m => ({ default: m.CheckOutModal })));
-const PackagesModal = lazyWithRetry(() => import('./components/modals/PackagesModal').then(m => ({ default: m.PackagesModal })));
 const DeleteGarageConfirmModal = lazyWithRetry(() => import('./components/modals/DeleteGarageConfirmModal').then(m => ({ default: m.DeleteGarageConfirmModal })));
 const DeleteVehicleConfirmModal = lazyWithRetry(() => import('./components/modals/DeleteVehicleConfirmModal').then(m => ({ default: m.DeleteVehicleConfirmModal })));
 const RecentExitWarningModal = lazyWithRetry(() => import('./components/modals/RecentExitWarningModal').then(m => ({ default: m.RecentExitWarningModal })));
@@ -392,24 +391,6 @@ export default function App() {
             isLoading={isLoading}
           />
         </ErrorBoundary>
-      );
-    }
-
-    if (view === 'packages' && garage) {
-      return (
-        <PackagesModal
-          packages={sortedPackages}
-          onClose={() => setView('garage')}
-          garageHourlyRate={garage.hourlyRate}
-          walletNumber={effectiveWalletNumber}
-          subscriptionPrices={subscriptionPrices}
-          hasMonthlySubscribers={garage.hasMonthlySubscribers}
-          referrerId={garage.referrerId || garage.createdByDelegateId || null}
-          garage={garage}
-          garageId={garage.id}
-          garageBalance={garage.balance || 0}
-          showToast={showToast}
-        />
       );
     }
 

@@ -2,7 +2,6 @@ import { AlertTriangle } from "lucide-react";
 import { TrialExpiryModal } from "../modals/TrialExpiryModal";
 import { SubscribersView } from "./SubscribersView";
 import { RechargeHistoryView } from "./RechargeHistoryView";
-import { PackagesModal } from "../modals/PackagesModal";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { GarageReportsView } from "./GarageReportsView";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
@@ -20,7 +19,6 @@ export const GarageDashboardOverlays = (props: any) => {
     rechargeLogs,
     isRechargeLogsLoading,
     subscriberPage,
-    isPackagesOpen,
     isStaffStatsOpen,
     isReportsOpen,
     isAppearanceOpen,
@@ -29,14 +27,10 @@ export const GarageDashboardOverlays = (props: any) => {
     onToggleMenu,
     onCloseSubscribers,
     onCloseRechargeHistory,
-    onClosePackages,
     onCloseStaffStats,
     onCloseReports,
     onCloseAppearance,
     onCloseTerms,
-    packages,
-    subscriptionPrices,
-    packagesInitialDuration,
     currentStaff,
     staffList,
     vehiclesInside,
@@ -77,23 +71,6 @@ export const GarageDashboardOverlays = (props: any) => {
       )}
       {isRechargeHistoryOpen && (
         <RechargeHistoryView garage={garage} onClose={onCloseRechargeHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={rechargeLogs} sharedIsLoading={isRechargeLogsLoading} />
-      )}
-      {isPackagesOpen && (
-        <PackagesModal
-          packages={packages}
-          onClose={onClosePackages}
-          garageHourlyRate={garage.hourlyRate}
-          walletNumber={adminPhone}
-          onToggleMenu={onToggleMenu}
-          subscriptionPrices={subscriptionPrices}
-          hasMonthlySubscribers={garage.hasMonthlySubscribers}
-          referrerId={garage.referrerId || garage.createdByDelegateId || null}
-          garage={garage}
-          garageId={garage.id}
-          garageBalance={garage.balance || 0}
-          showToast={showToast}
-          initialDurationFilter={packagesInitialDuration}
-        />
       )}
       {isStaffStatsOpen && !currentStaff && (
         <StaffStatsModal

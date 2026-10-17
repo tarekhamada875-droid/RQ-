@@ -54,7 +54,8 @@ export function garageDocumentToCheckInState(
     ...(typeof document.lastTransactionDate === 'string' ? { lastTransactionDate: document.lastTransactionDate } : {}),
     isSubscriberAuthoritative,
     activePackageName: typeof document.activePackageName === 'string' ? document.activePackageName : '',
-    prepaidCreditsEnabled: document.billingModel === 'prepaid_credits' || document.creditBalance !== undefined,
+    // Garage access is credit-only after the legacy time-based model retirement.
+    prepaidCreditsEnabled: true,
   };
 }
 

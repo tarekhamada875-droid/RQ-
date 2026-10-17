@@ -566,7 +566,7 @@ describe('garage creation Hono contract', () => {
     expect(snapshotRecords()).toEqual(before);
   });
 
-  it('creates an Admin trial with the complete activity-log details', async () => {
+  it('creates an Admin garage with the prepaid-credit defaults and complete activity-log details', async () => {
     mockDb.clear();
     const response = await callHonoCreate('valid-admin-token', {
       name: '  Synthetic Trial Garage  ', pin: '62841357', isTrial: true, trialDays: 3
@@ -577,15 +577,15 @@ describe('garage creation Hono contract', () => {
       .find(([path, record]) => path.startsWith('activity_logs/') && record.garageId === result.id)?.[1];
     expect(response.status).toBe(200);
     expect(garage).toMatchObject({
-      name: 'Synthetic Trial Garage', status: 'approved', isTrial: true,
-      dailyCapacity: 100, activePackageName: 'الباقة التجريبية (3 يوم)',
-      packageName: 'الباقة التجريبية (3 يوم)', balance: 0
+      name: 'Synthetic Trial Garage', status: 'approved', isTrial: false,
+      billingModel: 'prepaid_credits', dailyCapacity: 0, activePackageName: '',
+      packageName: '', balance: 0, creditBalance: { paid: 0, referral: 0, trial: 0 }
     });
-    expect(garage.balanceExpiry.getTime() - garage.createdAt.getTime()).toBe(3 * 24 * 60 * 60 * 1000);
+    expect(garage.balanceExpiry).toBeNull();
     expect(log).toMatchObject({
-      garageName: 'Synthetic Trial Garage', actionType: 'recharge',
-      plateNumber: 'تفعيل الباقة التجريبية (3 يوم)', amount: 0,
-      details: { packageName: 'الباقة التجريبية (3 يوم)', durationDays: 3, carsCount: 100, revenueAmount: 0, isTrial: true }
+      garageName: 'Synthetic Trial Garage', actionType: 'create',
+      plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)', amount: 0,
+      details: { packageName: '', durationDays: 0, carsCount: 0, revenueAmount: 0, isTrial: false }
     });
   });
 
