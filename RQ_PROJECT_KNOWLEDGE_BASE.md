@@ -12,6 +12,8 @@
 
 **BILL-08 documentation release status (2026-10-17):** The rollback playbook and audit notes merged in PR [#107](https://github.com/tarekhamada875-droid/RQ-/pull/107) at `42830f462f630c1bd5a9bd0715de0707d0b674b3`. The PR/push checks and main Production Gate passed. It was documentation-only; no live conversion or Worker deployment occurred. `main` and `origin/main` match cleanly at `42830f4`.
 
+**BILL-08 owner clarification and product decision (2026-10-17):** After the audit, the owner confirmed that all 16 inspected garages are test records and no real users exist yet; the instruction is to leave them in place for now. This supersedes the earlier precaution to treat their classification as unknown. When the prepaid-credit model launches, retire old time-plan/EGP-wallet features from active use but preserve historical EGP payment and receipt records as read-only audit history. Any legacy wallet value is to be converted once at 1 EGP = 1 credit so it cannot be spent twice. This does not authorize deleting garages, changing balances, or performing the cutover. Trial treatment is still open, and any nonzero legacy referral value must be held for owner review.
+
 ## 1. What RQ is
 
 RQ is a bilingual Arabic/English garage-management PWA for vehicle check-in/check-out, monthly subscribers, packages, balances, delegates, staff, and Admin operations. The Supervisor role has been retired by owner decision; existing legacy Supervisor records are preserved and do not represent active accounts.
