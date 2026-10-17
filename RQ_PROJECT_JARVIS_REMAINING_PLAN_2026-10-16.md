@@ -6,7 +6,7 @@
 
 **Latest merged code-bearing commit:** `2f6cfb8` (PR #95 / BILL-04 regular-entry debit and correction allowance). PR #95’s Production Gate, post-merge Production Gate, guarded Worker deployment, and live Worker smoke passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-05 — debit monthly parking-subscriber renewals.** BILL-04’s bounded regular-entry debit and shared correction-allowance implementation is complete on merged main; subscriber renewal integration, Admin grants, migration, and cutover remain separate tasks.
+**Next task:** **BILL-06 — add the manual Admin grant and garage credit experience.** BILL-05’s bounded subscriber-renewal debit is complete on this feature branch; Admin grants, reporting, migration, and cutover remain separate tasks.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -52,19 +52,23 @@ Admin package creation now validates `catalogType: credit_bundle`, integer `cred
 
 The opt-in `prepaid_credits` Worker path debits one credit atomically for successful regular non-subscriber check-ins, allocates paid credits first while preserving paid/referral auditability, returns the remaining balance, and rejects zero-credit entries before vehicle writes. Monthly-subscriber check-in attempts do not debit. Authorized deletion/refund restores the original credit bucket with a correction ledger entry and no cash refund. The existing shared three-event Cairo-day correction allowance is verified across staff operations. The garage balance card shows total/paid/referral credits above the plate input, announces the updated count, animates downward arrows only after a confirmed debit, and disables motion under `prefers-reduced-motion`. Legacy time-based garages remain unchanged until cutover. Full CI passed with 128 test files / 842 tests, production build and artifact verification passed, and maintainability/diff checks passed. No grants, subscriber renewal debit, migration, or production cutover occurred.
 
-### 5. F2 — Make reconciliation day-safe
+### 5. BILL-05 — Debit monthly parking-subscriber renewals — completed bounded implementation
+
+The opt-in `prepaid_credits` renewal path debits exactly five paid credits atomically with a successful monthly renewal, rejects the renewal before subscriber writes when paid credits are insufficient, never spends referral credits for renewals, returns the remaining balance, and records an auditable `subscriber_renewal_debit` ledger entry. Idempotent retries return the cached result without a second debit or renewal event. Existing legacy time-based renewals remain unchanged, and later subscriber entry/exit operations remain non-debiting. Focused BILL-05 tests and TypeScript checks passed. No Admin grant, migration, reporting change, or production cutover occurred.
+
+### 6. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 6. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 7. F3 — One unlimited-package classifier (reassess under BILL-01)
 
 Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 7. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 8. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 RQ-TG-01 consolidates verification/install/suite and artifact upload; RQ-TG-02 ties verify → deploy → smoke to the exact commit/artifact and rollback identity; RQ-TG-03 strengthens health checks; RQ-TG-04 pins Firebase CLI and aligns local rules checks; RQ-TG-05 smokes the built Worker artifact; RQ-TG-06 makes local CI fail fast while retaining diagnostic mode.
 
-### 8. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
+### 9. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
 
 Move route/overlay ownership out of `App`; extract Worker route families mechanically while preserving route inventory and contracts; split `adminService` behind its unchanged facade; and group the `useGarageApp` contract before migrating `App`. Keep each as a separately tested, bounded PR.
 
