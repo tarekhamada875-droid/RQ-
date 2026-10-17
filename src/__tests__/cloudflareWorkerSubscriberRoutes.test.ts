@@ -189,6 +189,70 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(renewBody.success).toBe(true);
   });
 
+  it('debits exactly five paid credits and returns the remaining balance for prepaid renewal', async () => {
+    mockDb.seed(`garages/${testGarageId}`, {
+      billingModel: 'prepaid_credits',
+      creditBalance: { paid: 12, referral: 20 },
+    });
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberData: {
+        name: 'Paid Renewal', plateNumber: 'س ص ع 4444', plateNumberRaw: 'سصع4444',
+        startDate: '2026-10-01', endDate: '2026-10-31'
+      } })
+    }), workerEnv);
+    const subscriberId = (await addRes.json() as any).id;
+    const renewRes = await api.fetch(new Request('http://localhost/api/subscribers/renew', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'renew-paid-five-credits' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
+    }), workerEnv);
+    expect(renewRes.status).toBe(200);
+    expect(await renewRes.json()).toMatchObject({ success: true, creditBalance: { paid: 7, referral: 20 }, creditDebit: { amount: 5, bucket: 'paid' } });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 7, referral: 20 });
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit' && record.amount === 5 && record.bucket === 'paid')).toBe(true);
+  });
+
+  it('blocks prepaid renewal below five paid credits and never spends referral credits', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 4, referral: 20 } });
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberData: { name: 'Underfunded Renewal', plateNumber: 'س ص ع 5555', plateNumberRaw: 'سصع5555', startDate: '2026-10-01', endDate: '2026-10-31' } })
+    }), workerEnv);
+    const subscriberId = (await addRes.json() as any).id;
+    const renewRes = await api.fetch(new Request('http://localhost/api/subscribers/renew', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
+    }), workerEnv);
+    expect(renewRes.status).toBe(409);
+    expect(await renewRes.json()).toMatchObject({ success: false, error: 'رصيد التجديد المدفوع غير كافٍ لإتمام تجديد المشترك' });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 4, referral: 20 });
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit')).toBe(false);
+  });
+
+  it('replays a prepaid renewal idempotently without a second debit or event', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 10, referral: 0 } });
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberData: { name: 'Replay Renewal', plateNumber: 'س ص ع 6666', plateNumberRaw: 'سصع6666', startDate: '2026-10-01', endDate: '2026-10-31' } })
+    }), workerEnv);
+    const subscriberId = (await addRes.json() as any).id;
+    const request = () => api.fetch(new Request('http://localhost/api/subscribers/renew', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'renew-replay-five-credits' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
+    }), workerEnv);
+    const first = await request();
+    const firstBody = await first.json();
+    const writesAfterFirst = mockDb.documentWriteCount;
+    const replay = await request();
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual(firstBody);
+    expect(mockDb.documentWriteCount).toBe(writesAfterFirst);
+    expect([...mockDb.records.values()].filter((record: any) => record.kind === 'subscriber_renewal_debit')).toHaveLength(1);
+    expect([...mockDb.records.values()].filter((record: any) => record.eventType === 'subscriber_renewed')).toHaveLength(1);
+  });
+
   it('3. POST /api/subscribers/update updates subscriber metadata', async () => {
     // Add subscriber
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {

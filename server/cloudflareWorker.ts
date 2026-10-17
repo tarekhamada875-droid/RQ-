@@ -19,7 +19,7 @@ import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from '.
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
-import { debitRegularEntry, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
+import { debitRegularEntry, debitSubscriberRenewal, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
@@ -2845,18 +2845,51 @@ workerApp.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
     const dates = validateDateRange(newDates.startDate, newDates.endDate);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const garageRef = adminDb.collection('garages').doc(validatedGarageId);
     const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId, newDates: dates });
+    let resultData: any = { success: true };
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/renew', user?.uid, requestFingerprint);
-        if (duplicate.isDuplicate) return;
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || resultData;
+          return;
+        }
       }
+      const garageSnap = await t.get(garageRef);
       const currentSnap = await t.get(subscriberRef);
       if (!currentSnap.exists) throw new Error('SUBSCRIBER_NOT_FOUND');
       const currentState = subscriberDocumentToState(currentSnap.data() || {});
       const decision = decideSubscriberRenew(currentState, dates);
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
+      const garageData = garageSnap.exists ? (garageSnap.data() || {}) : {};
+      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
+      let creditDebit: any = null;
+      if (prepaidCreditsEnabled) {
+        const renewalReference = `${subscriberId}:${dates.startDate}:${dates.endDate}`;
+        const renewalKey = idempotencyKey || `subscriber-renewal:${renewalReference}`;
+        const creditResult = debitSubscriberRenewal({
+          balance: {
+            paid: Number(garageData.creditBalance?.paid || 0),
+            referral: Number(garageData.creditBalance?.referral || 0),
+          },
+          amount: 5,
+          garageId: validatedGarageId,
+          actorUid: user?.uid || 'system',
+          actorRole: callerRole,
+          reason: 'monthly_subscriber_renewal',
+          reference: renewalReference,
+          occurredAt: new Date().toISOString(),
+          idempotencyKey: renewalKey,
+        });
+        if (creditResult.ok === false) throw new Error(creditResult.error);
+        const materialized = materializeCreditLedgerEntry(creditResult.value.entry);
+        if (materialized.ok === false) throw new Error(materialized.error);
+        creditDebit = { ...creditResult.value, entry: materialized.value };
+        t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
+        t.set(garageRef, { creditBalance: creditDebit.balance }, { merge: true });
+      }
       const activityDelta = subscriberActivityDelta(currentSnap.data() || {}, { ...currentSnap.data(), ...dates });
       writeMaintainedGarageDelta(t, validatedGarageId, {
         activeSubscribersCount: activityDelta.activeSubscribersCount,
@@ -2880,14 +2913,30 @@ workerApp.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         idempotencyKey: idempotencyKey || undefined,
         payload: {
           startDate: dates.startDate,
-          endDate: dates.endDate
+          endDate: dates.endDate,
+          ...(creditDebit ? {
+            creditAmount: creditDebit.entry.amount,
+            creditBucket: creditDebit.entry.bucket,
+            creditLedgerEntryId: creditDebit.entry.entryId,
+          } : {})
         }
       });
+      resultData = {
+        success: true,
+        ...(creditDebit ? {
+          creditBalance: creditDebit.balance,
+          creditDebit: {
+            amount: creditDebit.entry.amount,
+            bucket: creditDebit.entry.bucket,
+            ledgerEntryId: creditDebit.entry.entryId,
+          },
+        } : {}),
+      };
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, { success: true }, '/api/subscribers/renew', user?.uid, requestFingerprint);
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/subscribers/renew', user?.uid, requestFingerprint);
       }
     });
-    return c.json({ success: true });
+    return c.json(resultData);
   } catch (e: any) {
     console.error('[Worker Subscribers] Error in renew:', e);
     const { statusCode, message } = mapDomainErrorToStatus(e);
