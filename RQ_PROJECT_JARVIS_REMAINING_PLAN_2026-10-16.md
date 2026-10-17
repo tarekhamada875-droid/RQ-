@@ -36,7 +36,9 @@ Tests cover direct and real-HTTP GET/HEAD bodies, exact-limit and oversized Cont
 
 The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per credit: one credit for each successful regular non-subscriber entry; five credits once for a successful monthly parking-subscriber renewal; no per-visit subscriber debit; and three free mistake/correction events per garage per Cairo day, shared across staff. Admin confirms offline payment and directly grants credits; garage owners do not purchase packages. The garage’s own monthly parking memberships stay date-based.
 
-Before billing code or cutover, resolve zero-credit check-ins, insufficient-credit subscriber renewals, which actions count as mistakes and what happens after the shared allowance, active time-plan migration, legacy EGP wallet balances, correction/refund accounting, discounts/bonuses, and whether daily vehicle capacity remains a separate limit. BILL-02 through BILL-08 are staged behind this decision gate; no billing code or migration has started.
+**Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. Existing day-based referral rewards remain unchanged until the tested cutover.
+
+Before billing code or cutover, resolve zero-credit check-ins, insufficient-credit subscriber renewals, which actions count as mistakes and what happens after the shared allowance, active time-plan migration, legacy EGP wallet balances, correction/refund accounting, discounts/bonuses, whether daily vehicle capacity remains a separate limit, and whether paid credits or referral credits are used first for eligible regular entries. BILL-02 through BILL-08 are staged behind this decision gate; no billing code or migration has started.
 
 ### 2. F2 — Make reconciliation day-safe
 
