@@ -1,7 +1,8 @@
-export type CreditBucket = 'paid' | 'referral';
+export type CreditBucket = 'paid' | 'referral' | 'trial';
 export type CreditEntryKind =
   | 'paid_grant'
   | 'referral_award'
+  | 'trial_grant'
   | 'regular_entry_debit'
   | 'subscriber_renewal_debit'
   | 'correction_restore';
@@ -23,6 +24,7 @@ export type PrepaidCreditResult<T> =
 export interface CreditBalance {
   readonly paid: number;
   readonly referral: number;
+  readonly trial: number;
 }
 
 export interface CreditLedgerEntry {
@@ -90,7 +92,9 @@ function isValidNonNegativeInteger(value: unknown): value is number {
 }
 
 function validBalance(balance: CreditBalance): boolean {
-  return isValidNonNegativeInteger(balance.paid) && isValidNonNegativeInteger(balance.referral);
+  return isValidNonNegativeInteger(balance.paid)
+    && isValidNonNegativeInteger(balance.referral)
+    && isValidNonNegativeInteger(balance.trial);
 }
 
 function validEnvelope(command: CreditTransitionCommand): boolean {
@@ -141,7 +145,7 @@ function transition(
 
 function addCredits(
   command: CreditTransitionCommand,
-  kind: 'paid_grant' | 'referral_award',
+  kind: 'paid_grant' | 'referral_award' | 'trial_grant',
   bucket: CreditBucket,
   amount: number,
 ): PrepaidCreditResult<CreditTransition> {
@@ -155,6 +159,10 @@ function addCredits(
 
 export function grantPaidCredits(command: CreditGrantCommand): PrepaidCreditResult<CreditTransition> {
   return addCredits(command, 'paid_grant', 'paid', command.amount);
+}
+
+export function grantTrialCredits(command: CreditGrantCommand): PrepaidCreditResult<CreditTransition> {
+  return addCredits(command, 'trial_grant', 'trial', command.amount);
 }
 
 export function awardReferralCredits(command: ReferralAwardCommand): PrepaidCreditResult<CreditTransition> {
@@ -175,23 +183,24 @@ export function awardReferralCredits(command: ReferralAwardCommand): PrepaidCred
 export function debitRegularEntry(command: CreditDebitCommand): PrepaidCreditResult<CreditTransition> {
   if (!validBalance(command.balance)) return { ok: false, error: 'INVALID_CREDIT_BALANCE' };
   if (command.amount !== 1) return { ok: false, error: 'INVALID_CREDIT_AMOUNT' };
-  const eligible = command.balance.paid + command.balance.referral;
+  const eligible = command.balance.paid + command.balance.referral + command.balance.trial;
   if (!Number.isSafeInteger(eligible) || eligible < command.amount) {
     return { ok: false, error: 'INSUFFICIENT_ELIGIBLE_CREDITS' };
   }
 
-  // Paid and referral credits are interchangeable for regular entries. Keep the
-  // source auditable while using a stable paid-first allocation for retries.
+  // Paid, referral, and converted Trial credits are eligible for regular
+  // entries. Keep the source auditable with a stable allocation for retries.
   const paidDebit = Math.min(command.amount, command.balance.paid);
-  const referralDebit = command.amount - paidDebit;
+  const referralDebit = Math.min(command.amount - paidDebit, command.balance.referral);
+  const trialDebit = command.amount - paidDebit - referralDebit;
   return transition(
     command,
     'regular_entry_debit',
-    paidDebit > 0 ? 'paid' : 'referral',
+    paidDebit > 0 ? 'paid' : referralDebit > 0 ? 'referral' : 'trial',
     command.amount,
     eligible,
     eligible - command.amount,
-    { paid: command.balance.paid - paidDebit, referral: command.balance.referral - referralDebit },
+    { paid: command.balance.paid - paidDebit, referral: command.balance.referral - referralDebit, trial: command.balance.trial - trialDebit },
   );
 }
 
@@ -206,7 +215,7 @@ export function debitSubscriberRenewal(command: CreditDebitCommand): PrepaidCred
     command.amount,
     command.balance.paid,
     command.balance.paid - command.amount,
-    { paid: command.balance.paid - command.amount, referral: command.balance.referral },
+    { paid: command.balance.paid - command.amount, referral: command.balance.referral, trial: command.balance.trial },
   );
 }
 

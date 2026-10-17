@@ -36,7 +36,9 @@ export const AdminCreditActivityReportPanel: React.FC<Props> = ({ adminLang }) =
   const rows = activity ? [
     { label: english ? 'Paid credits added' : 'الأرصدة المدفوعة المضافة', value: `${format(activity.paidCreditsGranted)} ${english ? 'credits' : 'رصيد'}` },
     { label: english ? 'Referral credits awarded' : 'أرصدة الإحالة الممنوحة', value: `${format(activity.referralCreditsGranted)} ${english ? 'credits' : 'رصيد'}` },
+    { label: english ? 'Trial credits converted' : 'أرصدة التجربة المحولة', value: `${format(activity.trialCreditsGranted)} ${english ? 'credits' : 'رصيد'}` },
     { label: english ? 'Regular entries paid with credits' : 'دخول عادي باستخدام الأرصدة', value: `${format(activity.regularEntryCreditsConsumed)} ${english ? 'credits' : 'رصيد'}` },
+    { label: english ? 'Regular entries paid with Trial credits' : 'دخول عادي بأرصدة التجربة', value: `${format(activity.regularEntryTrialCreditsConsumed)} ${english ? 'credits' : 'رصيد'}` },
     { label: english ? 'Subscriber renewals paid with credits' : 'تجديدات المشتركين بالأرصدة', value: `${format(activity.subscriberRenewalCreditsConsumed)} ${english ? 'credits' : 'رصيد'}` },
     { label: english ? 'Credits restored after corrections' : 'أرصدة أُعيدت بعد التصحيح', value: `${format(activity.restoredCredits)} ${english ? 'credits' : 'رصيد'}` },
     { label: english ? 'Older paid credits with no saved transfer amount' : 'أرصدة قديمة لا يوجد لها مبلغ تحويل مسجل', value: `${format(activity.paidCreditsWithoutEgpRecord)} ${english ? 'credits' : 'رصيد'}` },

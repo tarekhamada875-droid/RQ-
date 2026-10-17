@@ -93,17 +93,20 @@ describe('BILL-08 synthetic billing migration rehearsal', () => {
     expect(result.creditEntries).toEqual([]);
   });
 
-  it('flags free trials for a separate policy decision instead of turning free days into credits', () => {
+  it('previews remaining free-trial time as separate non-expiring Trial credits', () => {
     const result = rehearseLegacyBillingConversion(baseSnapshot({
       isTrial: true,
       balanceExpiry: '2026-10-20T12:00:00.000Z',
       balance: 20,
     }));
 
-    expect(result.status).toBe('needs_review');
-    expect(result.issues).toContain('TRIAL_REQUIRES_POLICY');
+    expect(result.status).toBe('ready');
     expect(result.candidatePlanCredits).toBe(0);
-    expect(result.convertedPaidCredits).toBeNull();
+    expect(result.candidateTrialCredits).toBe(30);
+    expect(result.convertedPaidCredits).toBe(20);
+    expect(result.convertedTrialCredits).toBe(30);
+    expect(result.resultingCreditBalance).toEqual({ paid: 20, referral: 0, trial: 30 });
+    expect(result.creditEntries).toContainEqual({ source: 'trial_time', sourceAmount: 3, sourceUnit: 'remaining_days', credits: 30 });
   });
 
   it('requires a known clear pending-request state before a preview can be ready', () => {

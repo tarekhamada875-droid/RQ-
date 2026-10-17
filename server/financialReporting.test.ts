@@ -8,16 +8,20 @@ const emptyCreditActivity = {
   paidCreditsWithoutEgpRecord: 0,
   referralAwardCount: 0,
   referralCreditsGranted: 0,
+  trialGrantCount: 0,
+  trialCreditsGranted: 0,
   regularEntryDebitCount: 0,
   regularEntryCreditsConsumed: 0,
   regularEntryPaidCreditsConsumed: 0,
   regularEntryReferralCreditsConsumed: 0,
+  regularEntryTrialCreditsConsumed: 0,
   subscriberRenewalCount: 0,
   subscriberRenewalCreditsConsumed: 0,
   correctionRestoreCount: 0,
   restoredCredits: 0,
   restoredPaidCredits: 0,
   restoredReferralCredits: 0,
+  restoredTrialCredits: 0,
 };
 
 const events = [
@@ -105,16 +109,20 @@ describe('financial reporting projections', () => {
       paidCreditsWithoutEgpRecord: 0,
       referralAwardCount: 1,
       referralCreditsGranted: 20,
+      trialGrantCount: 0,
+      trialCreditsGranted: 0,
       regularEntryDebitCount: 2,
       regularEntryCreditsConsumed: 2,
       regularEntryPaidCreditsConsumed: 1,
       regularEntryReferralCreditsConsumed: 1,
+      regularEntryTrialCreditsConsumed: 0,
       subscriberRenewalCount: 1,
       subscriberRenewalCreditsConsumed: 5,
       correctionRestoreCount: 1,
       restoredCredits: 1,
       restoredPaidCredits: 0,
       restoredReferralCredits: 1,
+      restoredTrialCredits: 0,
     });
   });
 

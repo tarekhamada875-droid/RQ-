@@ -32,8 +32,8 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify(grantBody) }));
     const body = await response.json() as any;
     expect(response.status).toBe(200);
-    expect(body.data).toMatchObject({ garageId, amount: 30, paymentAmountEgp: 30, balance: { paid: 40, referral: 4 } });
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4 });
+    expect(body.data).toMatchObject({ garageId, amount: 30, paymentAmountEgp: 30, balance: { paid: 40, referral: 4, trial: 0 } });
+    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4, trial: 0 });
     const entries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('credit_ledger/'));
     expect(entries).toHaveLength(1);
     expect(entries[0][1]).toMatchObject({ kind: 'paid_grant', bucket: 'paid', amount: 30, paymentAmountEgp: 30, balanceBefore: 10, balanceAfter: 40, actorUid: 'admin-uid', actorRole: 'admin', reference: 'transfer-sender-123', reason: 'Verified prepaid credit payment', source: 'admin_entered_grant', paymentConfirmed: true });
@@ -55,7 +55,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
   it('grants selected template quantity only when the template obeys the one-to-one price rule', async () => {
     const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'credit-template-50', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-template', reason: 'Verified bundle payment', idempotencyKey: 'bill06-template-1' }) }));
     expect(response.status).toBe(200);
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 60, referral: 4 });
+    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 60, referral: 4, trial: 0 });
     expect(mockDb.records.get(`credit_ledger/${garageId}:bill06-template-1`)).toMatchObject({ amount: 50, paymentAmountEgp: 50, source: 'admin_template_grant', packageId: 'credit-template-50', packageName: '50 credits' });
     expect(mockDb.records.get(`garages/${garageId}`)?.balance).toBeUndefined();
   });
@@ -72,12 +72,12 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     mockDb.seed('garages/bill06-referrer', { name: 'Referrer', billingModel: 'prepaid_credits', creditBalance: { paid: 2, referral: 1 } });
     const first = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify(grantBody) }));
     expect(first.status).toBe(200);
-    expect(mockDb.records.get('garages/bill06-referrer')?.creditBalance).toEqual({ paid: 2, referral: 21 });
+    expect(mockDb.records.get('garages/bill06-referrer')?.creditBalance).toEqual({ paid: 2, referral: 21, trial: 0 });
     expect(mockDb.records.get('credit_ledger/bill06-referrer:first_paid_grant:bill06-credit-garage')).toMatchObject({ kind: 'referral_award', bucket: 'referral', amount: 20, source: 'first_paid_grant_referral', referredGarageId: garageId });
     expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({ referredGarageId: garageId, referrerGarageId: 'bill06-referrer', amount: 20 });
     const second = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, amount: 31, paymentAmountEgp: 31, idempotencyKey: 'bill06-grant-002' }) }));
     expect(second.status).toBe(200);
-    expect(mockDb.records.get('garages/bill06-referrer')?.creditBalance).toEqual({ paid: 2, referral: 21 });
+    expect(mockDb.records.get('garages/bill06-referrer')?.creditBalance).toEqual({ paid: 2, referral: 21, trial: 0 });
   });
 
   it('records a deferred legacy-referrer outcome without enabling that garage', async () => {
@@ -94,7 +94,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     const post = (body: any) => api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify(body) }));
     expect((await post(grantBody)).status).toBe(200);
     expect((await post(grantBody)).status).toBe(200);
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4 });
+    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4, trial: 0 });
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(1);
     expect([...mockDb.records.entries()].filter(([path, value]: [string, any]) => path.startsWith(`garages/${garageId}/events/`) && value.eventType === 'prepaid_credit_grant_paid')).toHaveLength(1);
     expect((await post({ ...grantBody, amount: 31 })).status).toBe(409);

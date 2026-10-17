@@ -29,16 +29,20 @@ export interface CreditActivityMetrics {
   paidCreditsWithoutEgpRecord: number;
   referralAwardCount: number;
   referralCreditsGranted: number;
+  trialGrantCount: number;
+  trialCreditsGranted: number;
   regularEntryDebitCount: number;
   regularEntryCreditsConsumed: number;
   regularEntryPaidCreditsConsumed: number;
   regularEntryReferralCreditsConsumed: number;
+  regularEntryTrialCreditsConsumed: number;
   subscriberRenewalCount: number;
   subscriberRenewalCreditsConsumed: number;
   correctionRestoreCount: number;
   restoredCredits: number;
   restoredPaidCredits: number;
   restoredReferralCredits: number;
+  restoredTrialCredits: number;
 }
 
 export interface FinancialReportOptions {
@@ -80,16 +84,20 @@ const emptyCreditActivity = (): CreditActivityMetrics => ({
   paidCreditsWithoutEgpRecord: 0,
   referralAwardCount: 0,
   referralCreditsGranted: 0,
+  trialGrantCount: 0,
+  trialCreditsGranted: 0,
   regularEntryDebitCount: 0,
   regularEntryCreditsConsumed: 0,
   regularEntryPaidCreditsConsumed: 0,
   regularEntryReferralCreditsConsumed: 0,
+  regularEntryTrialCreditsConsumed: 0,
   subscriberRenewalCount: 0,
   subscriberRenewalCreditsConsumed: 0,
   correctionRestoreCount: 0,
   restoredCredits: 0,
   restoredPaidCredits: 0,
   restoredReferralCredits: 0,
+  restoredTrialCredits: 0,
 });
 
 function asDate(value: string | Date | undefined): Date | null {
@@ -206,11 +214,16 @@ export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReport
       activity.referralAwardCount = incrementCount(activity.referralAwardCount);
       activity.referralCreditsGranted = addCredits(activity.referralCreditsGranted, amount);
       break;
+    case 'trial_grant':
+      activity.trialGrantCount = incrementCount(activity.trialGrantCount);
+      activity.trialCreditsGranted = addCredits(activity.trialCreditsGranted, amount);
+      break;
     case 'regular_entry_debit':
       activity.regularEntryDebitCount = incrementCount(activity.regularEntryDebitCount);
       activity.regularEntryCreditsConsumed = addCredits(activity.regularEntryCreditsConsumed, amount);
       if (entry.bucket === 'paid') activity.regularEntryPaidCreditsConsumed = addCredits(activity.regularEntryPaidCreditsConsumed, amount);
       if (entry.bucket === 'referral') activity.regularEntryReferralCreditsConsumed = addCredits(activity.regularEntryReferralCreditsConsumed, amount);
+      if (entry.bucket === 'trial') activity.regularEntryTrialCreditsConsumed = addCredits(activity.regularEntryTrialCreditsConsumed, amount);
       break;
     case 'subscriber_renewal_debit':
       activity.subscriberRenewalCount = incrementCount(activity.subscriberRenewalCount);
@@ -221,6 +234,7 @@ export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReport
       activity.restoredCredits = addCredits(activity.restoredCredits, amount);
       if (entry.bucket === 'paid') activity.restoredPaidCredits = addCredits(activity.restoredPaidCredits, amount);
       if (entry.bucket === 'referral') activity.restoredReferralCredits = addCredits(activity.restoredReferralCredits, amount);
+      if (entry.bucket === 'trial') activity.restoredTrialCredits = addCredits(activity.restoredTrialCredits, amount);
       break;
   }
 }
