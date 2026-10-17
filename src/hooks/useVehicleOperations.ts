@@ -220,6 +220,9 @@ export function useVehicleOperations({
           } : {}),
         } : prev);
       }
+      if (serverData?.creditBalance && typeof serverData.creditBalance.paid === 'number' && typeof serverData.creditBalance.referral === 'number') {
+        setGarage(prev => prev ? { ...prev, creditBalance: serverData.creditBalance } : prev);
+      }
     } catch (error: any) {
       setVehicles(previousVehicles);
       if (previousGarage) {

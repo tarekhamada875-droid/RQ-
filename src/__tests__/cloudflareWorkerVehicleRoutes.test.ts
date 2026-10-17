@@ -98,6 +98,86 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(replayRes.status).toBe(200);
   });
 
+  it('debits one prepaid credit atomically and returns the auditable remaining balance', async () => {
+    mockDb.seed(`garages/${testGarageId}`, {
+      billingModel: 'prepaid_credits',
+      creditBalance: { paid: 2, referral: 1 },
+    });
+    const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'prepaid-entry-1' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 1111', plateRaw: 'ABC1111' }),
+    }), workerEnv);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, data: { creditBalance: { paid: 1, referral: 1 }, remainingCredits: 2, creditDebit: { amount: 1, bucket: 'paid' } } });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 1 });
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'regular_entry_debit' && record.amount === 1)).toBe(true);
+  });
+
+  it('blocks a prepaid regular entry at zero credits without writing vehicle state', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 0, referral: 0 } });
+    const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 2222', plateRaw: 'ABC2222' }),
+    }), workerEnv);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, error: 'رصيد الدخول غير كافٍ لتسجيل هذه السيارة' });
+    expect(mockDb.records.has(`garages/${testGarageId}/vehicles/ABC2222`)).toBe(false);
+  });
+
+  it('does not debit prepaid credits for a monthly subscriber check-in attempt', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 4, referral: 3 } });
+    const subscriberId = `plate_${Buffer.from('ABC1234').toString('base64url')}`;
+    mockDb.seed(`garages/${testGarageId}/subscribers/${subscriberId}`, { plateNumberRaw: 'ABC1234', startDate: '2020-01-01', endDate: '2099-12-31' });
+    const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 1234', plateRaw: 'ABC1234' }),
+    }), workerEnv);
+    expect(response.status).toBe(409);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 4, referral: 3 });
+  });
+
+  it('restores the consumed credit on an authorized vehicle deletion', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 1, referral: 0 } });
+    const checkIn = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'prepaid-entry-restore-1' },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 3333', plateRaw: 'ABC3333' }),
+    }), workerEnv);
+    expect(checkIn.status).toBe(200);
+    const deletion = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'prepaid-delete-restore-1' },
+      body: JSON.stringify({ garageId: testGarageId, vehicleId: 'ABC3333', refundAmount: 0 }),
+    }), workerEnv);
+    expect(deletion.status).toBe(200);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 0 });
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'correction_restore' && record.amount === 1)).toBe(true);
+  });
+
+  it('shares the three-event Cairo-day correction allowance across staff operations', async () => {
+    const staffToken = `Bearer valid-staff-token-${testGarageId}`;
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed(`garages/${testGarageId}`, { dailyDeletionCount: 0, lastDeletionDate: today });
+    for (let index = 1; index <= 4; index += 1) {
+      mockDb.seed(`garages/${testGarageId}/vehicles/staff-error-${index}`, {
+        plateNumber: `staff-error-${index}`,
+        plateNumberRaw: `staff-error-${index}`,
+        status: 'outside',
+        enteredByUid: `staff-uid-${testGarageId}`,
+      });
+      const response = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: staffToken, 'x-idempotency-key': `staff-correction-${index}` },
+        body: JSON.stringify({ garageId: testGarageId, vehicleId: `staff-error-${index}`, refundAmount: 0 }),
+      }), workerEnv);
+      expect(response.status).toBe(index <= 3 ? 200 : 409);
+    }
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.dailyDeletionCount).toBe(3);
+  });
+
   it('resolves deterministic subscribers inside the transaction and bounds legacy fallback reads', async () => {
     const deterministicPlateRaw = 'ABC1234';
     const deterministicSubscriberId = `plate_${Buffer.from(deterministicPlateRaw).toString('base64url')}`;

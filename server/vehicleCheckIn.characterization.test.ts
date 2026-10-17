@@ -45,6 +45,18 @@ describe('vehicle check-in characterization', () => {
     expect(decideVehicleCheckIn(command, garageDocumentToCheckInState(baseGarage, false), { exists: true, status: 'inside' }, null)).toEqual({ ok: false, error: 'VEHICLE_ALREADY_INSIDE' });
   });
 
+  it('allows prepaid garages past legacy expiry and capacity limits', () => {
+    const prepaid = garageDocumentToCheckInState({
+      ...baseGarage,
+      balanceExpiry: '2020-01-01T00:00:00.000Z',
+      dailyCapacity: 1,
+      todayCount: 99,
+      billingModel: 'prepaid_credits',
+      creditBalance: { paid: 100, referral: 0 },
+    }, false);
+    expect(decideVehicleCheckIn(command, prepaid, { exists: false }, null)).toMatchObject({ ok: true, value: { isNewDay: false, used: 99 } });
+  });
+
   it('uses fair-use decisions for unlimited garages', () => {
     const unlimited = garageDocumentToCheckInState({ ...baseGarage, dailyCapacity: 0, activePackageName: 'مفتوح' }, false);
     const fairUse = fairUseResultToDecision({
