@@ -7,6 +7,15 @@
 - Frontend: `https://rq-acg.pages.dev`
 - Backend: `https://rq.tarekhamada875.workers.dev`
 
+## Main branch protections
+
+As of 2026-10-17, the active repository ruleset [Protect main: pull request and Production Gate](https://github.com/tarekhamada875-droid/RQ-/rules/25292182) protects `main`:
+
+- Changes must arrive through a pull request.
+- GitHub Actions check `verify` is required, and the branch must be up to date.
+- Force-pushes and branch deletion are blocked; there are no bypass actors.
+- No minimum reviewer approval count is configured.
+
 ## Normal change flow
 
 1. Update local `main` from GitHub.
