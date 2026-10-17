@@ -662,6 +662,13 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Low—secondary failures hidden in default mode. Keep diagnostic mode.
 - **Effort:** S.
 
+### Infrastructure release-control update — 2026-10-17
+
+- PR [#84](https://github.com/tarekhamada875-droid/RQ-/pull/84), merged as `ab49d40a5aca752a62132300f0eb88df25386767`, added a fail-closed, NUL-safe Markdown-only fast path. Markdown-only diffs retain the required `verify` job and run `git diff --check`; non-Markdown, empty, or unclassifiable diffs continue through the full Production Gate. The Worker deployment workflow skips only Markdown-only pushes to `main`.
+- Active ruleset [25292182](https://github.com/tarekhamada875-droid/RQ-/rules/25292182) requires PRs and the GitHub Actions `verify` check with up-to-date branches, blocks force-push/deletion, and has no bypass actors.
+- PR checks passed; post-merge Production Gate [39006255537](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255537) and Worker deployment [39006255503](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255503) succeeded. Live Pages, Worker health, and Worker version checks returned HTTP 200. The app, Firebase rules, and Firebase data were unchanged.
+- This operational checkpoint does not alter roadmap sequencing: **FS-02 remains the next implementation task**.
+
 ### H. Cross-cutting decomposition
 
 #### Cross-F1 — Extract Worker routes one family at a time

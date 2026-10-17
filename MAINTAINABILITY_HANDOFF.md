@@ -19,6 +19,14 @@ The application is a React/Vite static PWA on Cloudflare Pages connected to a Fe
 - Live health check: `https://rq.tarekhamada875.workers.dev/api/health`.
 - Live frontend check: `https://rq-acg.pages.dev`.
 
+## CI fast path and main protection — 2026-10-17
+
+- PR [#84](https://github.com/tarekhamada875-droid/RQ-/pull/84) added a fail-closed, NUL-safe Markdown-only detector to the Production Gate. Markdown-only changes keep the required `verify` job and run `git diff --check`; application installs, tests, builds, maintainability checks, and live smoke are skipped. Missing/invalid diff information falls back to the full gate. The Worker deploy workflow ignores Markdown-only pushes to `main`.
+- The repository ruleset [Protect main: pull request and Production Gate](https://github.com/tarekhamada875-droid/RQ-/rules/25292182) is active: PRs required, GitHub Actions `verify` required with strict up-to-date checks, force-push and deletion blocked, no bypass actors, and no minimum approval count.
+- PR and push Production Gate checks passed. After merge, main Production Gate run [39006255537](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255537) and Worker verification/deployment run [39006255503](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255503) both succeeded on `ab49d40a5aca752a62132300f0eb88df25386767`. The Pages frontend, Worker `/api/health`, and `/api/version` returned HTTP 200; health reported `status: ok`, `adminSdk: true`, and version `1.0.0-production`.
+- Local YAML parsing, classifier fixtures (Markdown-only, mixed paths, and a newline-containing non-Markdown path), and `git diff --check` passed. GitHub Actions reported non-blocking Node.js 20 deprecation and `ubuntu-latest` migration notices; they did not fail either workflow.
+- No application code, Firebase rules/data, or account settings changed. **Next roadmap task: FS-02** (Worker cursor/page-token support and bounded lists); do not start it until the owner says to continue.
+
 ## FS-03 — Bounded financial reports (merged and deployed in PR #73)
 
 Undated reports now use the owner-approved latest 12 calendar months; explicit older date ranges remain supported. Worker event and settlement reads use stable timestamp/document-name cursors in 250-record pages and feed constant-in-record-count aggregation state. Settlement cutoffs are loaded before events; date boundaries and delegate filtering remain unchanged. PR #73 merged to `main` at `31f733fac610cd2dce5b28cbbd28dce1ecd396b2`; the post-merge Production Gate and Worker deployment succeeded. Live Pages, Worker health, and Worker version endpoints returned HTTP 200. No production data or settings were changed.

@@ -1,6 +1,6 @@
 # JARVIS Modernization — Remaining Work
 
-**Last verified:** 2026-10-16
+**Last verified:** 2026-10-17
 **Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 **Application release baseline:** Deployed application code remains PR #77 / `d5a42ba`; PR #76 fixed the FS-03 timestamp-type mismatch and PR #77 fixed the WKR-02 last-subscriber counter. PRs #78–#81 were documentation-only; PR #81 recorded the prepaid-credit plan at `a9719ad`, and its Production Gate and Worker deployment passed. Re-check current `main` and open PRs before working.
 **Next task:** **FS-02** (do not begin until the owner says to continue)
@@ -8,6 +8,10 @@
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains detailed source references, compatibility requirements, acceptance criteria, tests, risks, rollout rules, measurements, and the new owner-approved prepaid-credit workstream.
 
 ## Recently completed
+
+### CI Markdown-only fast path and protected main (merged PR #84)
+
+The Production Gate now keeps the required `verify` check while running only `git diff --check` for Markdown-only diffs; unknown or non-Markdown changes fail closed to the full gate. The Worker deploy workflow ignores Markdown-only pushes. Main ruleset #25292182 requires PRs and `verify`, requires branches up to date, blocks force-push/deletion, and has no bypass actors. PR checks and post-merge Production Gate/Worker deployment passed; live Pages, Worker health, and version endpoints returned HTTP 200. No application code or Firebase data/rules changed. A follow-up documentation-only PR exercises the fast path end-to-end.
 
 ### FS-03 — Bound financial reports and aggregate page by page (implemented; PR #73)
 
