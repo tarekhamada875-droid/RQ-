@@ -6,7 +6,7 @@
 
 **Latest code-bearing commit:** `fa5fa33` (PR #88, WKR-04). The only application-code change there is the local Node/Vite adapter; production Worker/API behavior, Firebase data, rules, and settings were not changed by WKR-04. The guarded Worker workflow and post-deploy health smoke passed. Later commits may update documentation only. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-01 — finalize the prepaid-credit contract and cutover policy (decision gate). Do not begin until the owner says to continue.**
+**Next task:** **BILL-02 — add the auditable prepaid-credit ledger.** BILL-01’s product decision gate was finalized by the owner on 2026-10-17; implementation remains bounded to BILL-02 and must not include migration or cutover.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -38,7 +38,7 @@ The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per cre
 
 **Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. Existing day-based referral rewards remain unchanged until the tested cutover.
 
-Before billing code or cutover, resolve zero-credit check-ins, insufficient-credit subscriber renewals, which actions count as mistakes and what happens after the shared allowance, active time-plan migration, legacy EGP wallet balances, correction/refund accounting, discounts/bonuses, whether daily vehicle capacity remains a separate limit, and whether paid credits or referral credits are used first for eligible regular entries. The full decision worksheet is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md). BILL-02 through BILL-08 are staged behind this decision gate; no billing code, schema migration, data migration, or customer-facing cutover has started or is authorized.
+**Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md). BILL-02 through BILL-08 remain staged implementation tasks; no billing code, schema migration, data migration, or customer-facing cutover has started.
 
 ### 2. F2 — Make reconciliation day-safe
 
