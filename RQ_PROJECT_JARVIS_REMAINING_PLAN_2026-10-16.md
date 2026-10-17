@@ -6,7 +6,7 @@
 
 **Latest merged code-bearing commit:** `00d1309` (PR #97 / BILL-05 subscriber-renewal debit). PR #97’s required and post-merge Production Gates, guarded Worker deployment, and live Worker smoke passed; the current main checkout is clean and matches `origin/main`. Re-check current `main` and open PRs before working.
 
-**Next task:** **BILL-06 — add the manual Admin grant and garage credit experience.** BILL-05’s bounded subscriber-renewal debit is complete on merged main; Admin grants, reporting, migration, and cutover remain separate tasks.
+**Current task:** **BILL-06 — add the manual Admin grant and garage credit experience (implemented locally; full gates passed; not yet pushed/merged).** BILL-05 is complete on merged main. Do not start BILL-07 until BILL-06 has completed its PR, merge, and post-merge verification workflow.
 
 This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
 
@@ -46,7 +46,7 @@ Added `server/domain/prepaidCreditLedger.ts` and focused tests. The pure reducer
 
 ### 3. BILL-03 — Convert Admin package definitions to non-expiring credit bundles — completed foundation
 
-Admin package creation now validates `catalogType: credit_bundle`, integer `creditQuantity`, and positive price, rejects discounts on new credit bundles, and persists no duration/daily-capacity fields for the new catalog type. Both Admin package entry points use bundle name, credit quantity, and price; legacy records remain visible for review. The garage owner’s legacy self-purchase selector filters out credit bundles. Focused package-catalog, Admin UI, Worker parity, and TypeScript checks passed. No payment confirmation, automatic grant, Firebase backfill, migration, or customer-facing cutover occurred; BILL-04 through BILL-06 own the next integration boundaries.
+Admin package creation now validates `catalogType: credit_bundle`, integer `creditQuantity`, and positive price, rejects discounts on new credit bundles, and persists no duration/daily-capacity fields for the new catalog type. Both Admin package entry points use bundle name, credit quantity, and price; legacy records remain visible for review. The garage owner’s legacy self-purchase selector filters out credit bundles. Focused package-catalog, Admin UI, Worker parity, and TypeScript checks passed. No payment confirmation, automatic grant, Firebase backfill, migration, or customer-facing cutover occurred in BILL-03; subsequent bounded grants are BILL-06.
 
 ### 4. BILL-04 — Charge regular vehicle entries and enforce the shared mistake allowance — completed bounded implementation
 
@@ -56,28 +56,33 @@ The opt-in `prepaid_credits` Worker path debits one credit atomically for succes
 
 The opt-in `prepaid_credits` renewal path debits exactly five paid credits atomically with a successful monthly renewal, rejects the renewal before subscriber writes when paid credits are insufficient, never spends referral credits for renewals, returns the remaining balance, and records an auditable `subscriber_renewal_debit` ledger entry. Idempotent retries return the cached result without a second debit or renewal event. Existing legacy time-based renewals remain unchanged, and later subscriber entry/exit operations remain non-debiting. Focused BILL-05 tests and TypeScript checks passed. No Admin grant, migration, reporting change, or production cutover occurred.
 
-### 6. F2 — Make reconciliation day-safe
+### 6. BILL-06 — Admin manual credit grants and garage balance/history — implemented locally; gates passed
+
+Added an Admin-only Worker route to grant either a selected active credit-bundle template quantity or a positive entered integer after explicit external/offline payment confirmation, payment reference, and reason. The atomic, idempotent transaction writes paid credits only, an auditable `credit_ledger` record, and an activity record. The first-paid-grant trigger is recorded once per referred garage; a distinct one-time 20-credit referral award is written only if the referrer is already prepaid-enabled. If the referrer is legacy, the route records `referrer_not_prepaid` and does not activate it. It refuses legacy subscription target garages rather than enabling them, and never touches the EGP wallet. Admin garage details show the paid/referral/total balance, direct-grant form, and up to 50 paged grant/usage records; garage balance UI exposes read-only scoped history. Garage users do not receive Admin-only payment references. A composite index declaration was added but not deployed. Focused tests passed (11 total) and TypeScript passed; final `npm run ci:check` passed with 130 files / 856 tests, `npm run maintainability:check`, and `git diff --check` passed; generated `dist/` and `build/` were removed. Current local branch is not yet pushed or merged; no data migration, automatic payment, reporting change, or customer-facing cutover occurred. Continue required GitHub PR, gate, merge, and post-merge verification, then stop before BILL-07.
+
+### 7. F2 — Make reconciliation day-safe
 
 Make the pure reconciliation reducer filter valid events by the Cairo date key for `today`, even when called with wider or malformed input arrays. Keep range optimization and clarify `totalRecordedEvents` semantics. Cover previous/next-day, missing, invalid, and non-date timestamps and ensure daily projection/reconciliation parity.
 
-### 7. F3 — One unlimited-package classifier (reassess under BILL-01)
+### 8. F3 — One unlimited-package classifier (reassess under BILL-01)
 
 Do not apply the legacy duration/capacity classifier to prepaid credit bundles. BILL-01 must decide whether daily vehicle capacity stays a separate operational limit; retain and test it if it does, otherwise mark the corresponding legacy package behavior superseded at cutover.
 
-### 8. RQ-TG-01 through RQ-TG-06 — Release reliability
+### 9. RQ-TG-01 through RQ-TG-06 — Release reliability
 
 RQ-TG-01 consolidates verification/install/suite and artifact upload; RQ-TG-02 ties verify → deploy → smoke to the exact commit/artifact and rollback identity; RQ-TG-03 strengthens health checks; RQ-TG-04 pins Firebase CLI and aligns local rules checks; RQ-TG-05 smokes the built Worker artifact; RQ-TG-06 makes local CI fail fast while retaining diagnostic mode.
 
-### 9. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
+### 10. UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3 — Incremental decomposition
 
 Move route/overlay ownership out of `App`; extract Worker route families mechanically while preserving route inventory and contracts; split `adminService` behind its unchanged facade; and group the `useGarageApp` contract before migrating `App`. Keep each as a separately tested, bounded PR.
 
 ## Recommended order
 
-1. **BILL-01** decision gate, BILL-02 ledger foundation, and BILL-03 Admin catalog foundation are complete; proceed to BILL-04 through BILL-08 only within their stated release boundaries.
-2. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
-3. **RQ-TG-01 through RQ-TG-06** — release reliability.
-4. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.
+1. **BILL-01** decision gate, BILL-02 ledger foundation, BILL-03 catalog foundation, BILL-04 debit, BILL-05 renewal, and BILL-06 Admin grant/history are complete when BILL-06 is merged and post-merge verified. Stop and report BILL-06 before beginning BILL-07.
+2. **BILL-07 then BILL-08** — billing/reporting and cutover, each under its own release gate.
+3. **F2 and the BILL-01-qualified scope of F3** — domain consistency.
+4. **RQ-TG-01 through RQ-TG-06** — release reliability.
+5. **UI-001, WKR-05 / Cross-F1, Cross-F2, and Cross-F3** — incremental decomposition.
 
 ## Standing completion workflow
 

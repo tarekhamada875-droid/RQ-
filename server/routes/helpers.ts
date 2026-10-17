@@ -11,6 +11,13 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
 
   const errMsg = String(err?.message || err || '');
 
+  if (errMsg.includes('GARAGE_NOT_PREPAID')) {
+    return { statusCode: 409, code: 'GARAGE_NOT_PREPAID', message: errMsg };
+  }
+  if (errMsg.includes('PAYMENT_CONFIRMATION_REQUIRED') || errMsg.includes('CREDIT_AMOUNT_REQUIRED') || errMsg.includes('CHOOSE_TEMPLATE_OR_AMOUNT') || errMsg.includes('PACKAGE_NOT_CREDIT_BUNDLE') || errMsg.includes('INVALID_CREDIT_AMOUNT')) {
+    return { statusCode: 400, code: 'INVALID_CREDIT_GRANT', message: errMsg };
+  }
+
   if (errMsg.includes('GARAGE_NOT_FOUND')) {
     return { statusCode: 404, code: 'NOT_FOUND', message: 'الجراج غير موجود' };
   }

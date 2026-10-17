@@ -24,6 +24,7 @@ import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from './garage-details/AdminGarageFinancialsSection';
 import { AdminGarageModals } from './garage-details/AdminGarageModals';
+import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
 
 interface AdminGarageDetailsViewProps {
   selectedGarageForDetails: Garage;
@@ -50,7 +51,7 @@ export const AdminGarageDetailsView = memo(({
   setStaffList,
   isLoading,
   setIsLoading,
-  packages: _packages,
+  packages = [],
   subscriptionPrices: _subscriptionPrices = { weekly: 800, biweekly: 1500, monthly: 3000, referralFee: 50 },
   allGarages = []
 }: AdminGarageDetailsViewProps) => {
@@ -481,6 +482,7 @@ export const AdminGarageDetailsView = memo(({
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}
         />
+        <AdminCreditGrantPanel garage={selectedGarageForDetails} packages={packages} adminLang={adminLang} />
 
         {/* Zone 3: Operations & Staff Management */}
         <AdminGarageSettingsSection
