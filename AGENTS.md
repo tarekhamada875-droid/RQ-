@@ -133,3 +133,17 @@ This workflow is part of the owner’s standing authorization for routine roadma
 ### Project-wide continuity code word: “tokens ending — activate the RQ continuity handoff now.”
 
 When the owner says **“tokens ending — activate the RQ continuity handoff now.”** (or the shorter established phrase **“tokens ending”**), every agent must immediately activate the handoff version of this workflow. Preserve the exact current status in the tracked roadmap/knowledge-base/maintainer handoff, including incomplete work, tests, branch/commit, PR, merge, deployment, blockers, and the single next task. Commit and push any completed work, use the normal PR and Production Gate process, merge only after required checks pass, verify the final remote state, and stop so the owner can hand the project to the next agent. In the final response, also give Tarek a complete, ready-to-copy message to send to the next agent; that message must name the files to read, the verified repository state, the single next task, the required pre-edit checks, and the full completion workflow. Never claim unfinished work is pushed, merged, deployed, or live.
+
+
+### Required successor handoff message — applies to every handoff
+
+Whenever an agent asks Tarek to pass work to another agent, or knows another agent will continue—including a “tokens ending” handoff—the final response MUST include a detailed, ready-to-copy onboarding message. Do not reduce it to a short or minimal summary. Write it for a new agent that cannot see the earlier conversation. It must include, in plain language:
+
+- what RQ does and its relevant technical setup, plus Tarek’s priorities: preserve the Egyptian license-plate identity, favor functional code and atomic Firestore transactions, control unnecessary Firebase reads/writes, and explain progress simply;
+- what is complete, the current task, checks actually run, exact verified branch/commit/worktree/open-PR state, latest deployed application commit, and what the latest workflow did or did not deploy;
+- unresolved decisions, blockers, and safety boundaries;
+- the single next task, its scope/order, what to preserve or avoid, and a clear example of what “done” means when useful;
+- exact files to read, including the **entire** `RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md` (not only the next task section), `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `MAINTAINABILITY_HANDOFF.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
+- pre-edit checks and the complete focused-branch → local checks → PR → required gate → merge → post-merge/release verification process.
+
+Use everyday wording and briefly define technical terms. The message should be complete enough to continue safely without chat history, but it must tell the next agent to read the source-of-truth files and re-check repository/GitHub state because any copied status can become stale. This requirement applies to every future agent handoff, not only the current one.
