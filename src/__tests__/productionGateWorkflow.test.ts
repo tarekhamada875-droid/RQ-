@@ -10,6 +10,7 @@ const workerBuildScript = readFileSync(resolve(process.cwd(), 'tools/build-cloud
 const smokeScript = readFileSync(resolve(process.cwd(), 'tools/release-smoke.ts'), 'utf8');
 const artifactSmokeScript = readFileSync(resolve(process.cwd(), 'tools/worker-artifact-smoke.mjs'), 'utf8');
 const ciCheckScript = readFileSync(resolve(process.cwd(), 'tools/ci-check.ts'), 'utf8');
+const ciCheckRunnerScript = readFileSync(resolve(process.cwd(), 'tools/ci-check-runner.ts'), 'utf8');
 
 const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] ?? '';
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
@@ -58,7 +59,9 @@ describe('production release workflow', () => {
     expect(artifactUpload).toBeGreaterThan(verifySmokeCommand);
     expect(deploySmokeCommand).toBeGreaterThan(artifactDownload);
     expect(deployCommand).toBeGreaterThan(deploySmokeCommand);
-    expect(ciCheckScript).toContain("runStep('Built Cloudflare Worker artifact smoke', 'npm run smoke:worker-artifact')");
+    expect(ciCheckScript).toContain('runCiChecks({ diagnosticsMode })');
+    expect(ciCheckRunnerScript).toContain("name: 'Built Cloudflare Worker artifact smoke'");
+    expect(ciCheckRunnerScript).toContain("run: () => runCommand('npm run smoke:worker-artifact')");
     expect(artifactSmokeScript).toContain('await import(pathToFileURL(artifactPath).href)');
     expect(artifactSmokeScript).toContain("typeof worker.fetch === 'function'");
     expect(artifactSmokeScript).toContain("method: 'OPTIONS'");
