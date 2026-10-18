@@ -1,3 +1,9 @@
+## Cross-F1 release verification (2026-10-18)
+
+PR [#137](https://github.com/tarekhamada875-droid/RQ-/pull/137) merged into `main` at `ba194ea33a04dfc499292d1a67568486c116ba71`. Main Production Gate [39117269934](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39117269934) passed both verification and the guarded Worker deployment/live smoke. The live Worker health/version endpoints report the exact SHA `ba194ea33a04dfc499292d1a67568486c116ba71`. The first Cross-F1 read/system family is therefore merged, deployed, and live. No Firebase data/rules, database routing, billing behavior, or migration changed.
+
+The single next roadmap task remains the next Cross-F1 family only after Tarek’s report is complete; do not begin it in this task.
+
 ## Current checkpoint: Cross-F1 first route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f1-worker-read-routes` starts from verified `main` `410f74df446d8b143ad4f609d774151298bdf807`. The first Cross-F1 read/system family now lives in `server/readRoutes.ts`, with shared lookup/date/sanitization helpers in `server/workerReadHelpers.ts`. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, registration point, and default `fetch` export. Route aliases and registration order are preserved.
