@@ -1,14 +1,14 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: RQ-TG-06 implemented and locally verified; release pending (2026-10-18)
+## Current checkpoint: RQ-TG-06 merged, deployed, and verified (2026-10-18)
 
-The focused branch is `test/tg06-fail-fast-ci-check`, based on `main` at `ff6c34d48cabf3c0aad823c41f92389ba51fb452`. `npm run ci:check` now stops when the first check fails, names the skipped later checks, and shows how to run `npm run ci:check -- --diagnostics` when collecting multiple failures is useful. The local gate now includes the same maintainability check as the Production Gate and still checks the built files.
+PR [#133](https://github.com/tarekhamada875-droid/RQ-/pull/133) merged at `ce828f6e857e266e967f75246440759a9f3ceba5`. PR Production Gate [39110741500](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39110741500) and main Production Gate [39110920191](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39110920191) passed. The main run imported and smoke-tested the built Worker after build and after downloading the exact artifact, then deployed it. Strict live smoke reported a healthy backend and frontend, version `1.0.0-production`, and exact commit SHA `ce828f6e857e266e967f75246440759a9f3ceba5`.
 
-Focused fail-fast and workflow regression tests passed (2 files / 12 tests). The full clean-install `npm run ci:check` passed (137 test files / 895 tests, Firestore rules emulator, production build, built-Worker smoke, maintainability, and artifact verification); `npm run maintainability:check`, `npm run lint`, and `git diff --check` passed. The first full attempt correctly stopped on an old test expectation that still referred to the previous inline script; the test was updated for the shared runner, and the full gate passed on rerun. A non-blocking existing Vite configuration warning appeared during Vitest.
+TG-06 makes `npm run ci:check` stop after its first failure, identify the failed check and the skipped checks, and provide the troubleshooting command `npm run ci:check -- --diagnostics` for explicitly collecting multiple failures. The local gate now includes maintainability and artifact checks in line with Production Gate. No customer-facing behavior or Firebase data/rules changed.
 
-TG-06 changes only the local verification tools and tests. No app behavior or Firebase data/rules changed. It has not yet been merged or released. The latest deployed Worker remains TG-05 at `35d16137e48044eae53c0972ee22348936a3c343`; check GitHub for the current TG-06 PR/release state before editing. The usual PR-only Production Gate and main-branch release checks still need to complete.
+Focused fail-fast and workflow regression tests passed (2 files / 12 tests). The clean-install full local gate passed (137 test files / 895 tests, Firestore rules emulator, production build, built-Worker smoke, maintainability, and artifact verification); `npm run maintainability:check`, `npm run lint`, and `git diff --check` passed. The first full attempt correctly stopped on an old test expectation that still referred to the previous inline script; the test was updated for the shared runner, and the final full gate passed. A non-blocking existing Vite configuration warning appeared during Vitest.
 
-**Next after TG-06 release:** Cross-F1 — extract Worker route families one at a time. This work has not started; wait for Tarek to ask before beginning it.
+**Next task: Cross-F1 — extract Worker route families one at a time.** This work has not started; wait for Tarek to ask before beginning it.
 
 ## Previous checkpoint: RQ-TG-05 merged, deployed, and verified (2026-10-18)
 
