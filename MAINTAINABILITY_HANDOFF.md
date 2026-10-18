@@ -1,3 +1,13 @@
+## Current checkpoint: admin service modules extracted locally (2026-10-18)
+
+The focused branch `feat/cross-f2-admin-service-modules` starts from clean `main` `fdb759c5d4d7836823c9efdd098ec1452a637cf3`. The 790-line `adminService` implementation is now split into eight domain modules: core/staff, packages, subscribers, coupons, activity, billing, announcements, and system config. `src/services/adminService.ts` remains a compatibility facade that composes the modules; `src/services/index.ts` continues to expose the same `firestoreService` spread.
+
+The public facade contract remains unchanged with 41 method keys. Method names, return values, pagination, listener cleanup, callback order, API/Firestore transport behavior, and system-config bootstrap/fallback behavior are preserved. New characterization coverage locks the key set and system-config call counts. No system-config policy change, Firebase data/rules change, database routing, billing decision, migration, deployment, or performance claim is included.
+
+All modules are below the old 710-line service baseline. Focused checks passed 5 files / 22 tests; full local `npm run ci:check` passed 139 test files / 901 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** complete the normal PR cycle for this Cross-F2 split, then stop before Cross-F3. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+
 ## Current checkpoint: garage-management route family extracted locally (2026-10-18)
 
 PR [#145](https://github.com/tarekhamada875-droid/RQ-/pull/145) merged the focused branch `feat/cross-f5-worker-garage-routes` into `main` at `1074f5356a251c60a859b0d4b94709c1dd880198`. The CF8 garage-management family now lives in `server/garageRoutes.ts`: garage CRUD and reads, deletion/reconciliation/projection maintenance, staff/delegate administration, retired Supervisor tombstones, people PIN updates, admin announcements/coupons/packages, fair-use aliases, prepaid credit grants/ledger, legacy garage transaction endpoints, and cars-inside recalculation. The move is mechanical behind a typed `GarageRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/session infrastructure, the Worker app, family registration order, activity-log/spike endpoints, and default `fetch`.
