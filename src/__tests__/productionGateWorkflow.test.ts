@@ -7,6 +7,7 @@ const workflow = readFileSync(
   'utf8'
 );
 const workerBuildScript = readFileSync(resolve(process.cwd(), 'tools/build-cloudflare.mjs'), 'utf8');
+const smokeScript = readFileSync(resolve(process.cwd(), 'tools/release-smoke.ts'), 'utf8');
 
 const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] ?? '';
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
@@ -42,5 +43,13 @@ describe('production release workflow', () => {
     expect(deployCommand).toBeGreaterThanOrEqual(0);
     expect(smokeCommand).toBeGreaterThan(deployCommand);
     expect(deployJob).toContain('&& env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts');
+    expect(deployJob).toContain('SMOKE_MAX_ATTEMPTS: 60');
+    expect(deployJob).toContain('SMOKE_RETRY_DELAY_MS: 10000');
+  });
+
+  it('keeps health and frontend smoke checks read-only GET requests', () => {
+    expect(smokeScript).toContain('fetch(`${baseUrl}/api/health`, {');
+    expect(smokeScript).toContain("fetch(frontendUrl, { headers: { Accept: 'text/html' } })");
+    expect(smokeScript).not.toMatch(/method:\s*['\"](?:POST|PUT|PATCH|DELETE)['\"]/);
   });
 });
