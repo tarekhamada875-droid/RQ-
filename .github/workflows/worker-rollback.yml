@@ -1,0 +1,139 @@
+name: Worker Rollback
+
+run-name: Roll back Worker to ${{ inputs.target_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Full commit SHA of the previously verified release to restore
+        required: true
+        type: string
+      source_run_id:
+        description: GitHub Actions run ID of that successful main Production Gate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Restore selected verified Worker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: cloudflare-production
+      url: https://rq.tarekhamada875.workers.dev
+
+    steps:
+      - name: Confirm rollback is requested from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "Rollback is allowed only when dispatched from main." >&2
+            exit 1
+          }
+
+      - name: Validate selected successful main release
+        id: source
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        with:
+          script: |
+            const targetSha = process.env.TARGET_SHA ?? '';
+            const sourceRunId = process.env.SOURCE_RUN_ID ?? '';
+            if (!/^[0-9a-f]{40}$/.test(targetSha)) {
+              throw new Error('target_sha must be a full 40-character lowercase commit SHA.');
+            }
+            if (!/^\d+$/.test(sourceRunId)) {
+              throw new Error('source_run_id must be a numeric GitHub Actions run ID.');
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: Number(sourceRunId),
+            });
+            if (
+              run.name !== 'Production Gate' ||
+              run.path !== '.github/workflows/production-gate.yml' ||
+              run.event !== 'push' ||
+              run.head_branch !== 'main' ||
+              run.head_sha !== targetSha ||
+              run.status !== 'completed' ||
+              run.conclusion !== 'success'
+            ) {
+              throw new Error('The selected run is not a successful main Production Gate for the exact requested commit SHA.');
+            }
+
+            core.setOutput('target_sha', targetSha);
+            core.setOutput('source_run_id', sourceRunId);
+            core.info(`Selected rollback target ${targetSha} from successful main Production Gate ${sourceRunId}.`);
+
+      - name: Checkout selected release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.target_sha }}
+          fetch-depth: 1
+
+      - name: Confirm selected checkout
+        env:
+          TARGET_SHA: ${{ steps.source.outputs.target_sha }}
+        run: test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+
+      - name: Read selected release version label
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          worker_version="$(sed -n 's/^WORKER_VERSION = "\([^"]*\)"$/\1/p' wrangler.deploy.toml)"
+          if [[ ! "$worker_version" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Selected release does not declare one safe Worker version label." >&2
+            exit 1
+          fi
+          echo "worker_version=$worker_version" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download exact saved production artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rq-production-${{ steps.source.outputs.target_sha }}
+          run-id: ${{ steps.source.outputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: dist/
+
+      - name: Confirm rollback artifact supports commit identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -s dist/worker.js
+          if ! grep -q 'commitSha' dist/worker.js; then
+            echo "Selected artifact cannot report its source SHA; refusing to deploy an unverifiable rollback." >&2
+            exit 1
+          fi
+
+      - name: Deploy selected artifact and verify selected SHA
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TARGET_SHA: ${{ steps.source.outputs.target_sha }}
+          WORKER_VERSION: ${{ steps.release.outputs.worker_version }}
+        run: >-
+          npx --yes
+          --package=wrangler@4.147.0
+          --package=tsx@4.23.13
+          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle --var WORKER_COMMIT_SHA:$TARGET_SHA && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID SMOKE_BASE_URL=https://rq.tarekhamada875.workers.dev SMOKE_FRONTEND_URL=https://rq-acg.pages.dev SMOKE_EXPECTED_VERSION=$WORKER_VERSION SMOKE_EXPECTED_COMMIT_SHA=$TARGET_SHA SMOKE_MAX_ATTEMPTS=60 SMOKE_RETRY_DELAY_MS=10000 tsx tools/release-smoke.ts'

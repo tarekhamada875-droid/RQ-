@@ -79,6 +79,7 @@ const workerApp = new Hono<{
     SPIKE_DIAGNOSTIC_TOKEN?: string;
     SPIKE_ENVIRONMENT_ALLOWLIST?: string;
     WORKER_VERSION?: string;
+    WORKER_COMMIT_SHA?: string;
     PIN_RATE_LIMITER?: PinRateLimiterNamespace;
   };
   Variables: {
@@ -579,13 +580,15 @@ workerApp.get('/api/health', (c) => {
     timestamp: new Date().toISOString(),
     environment: c.env?.ENVIRONMENT || 'production',
     adminSdk: !!(adminDb && adminAuth),
-    version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0'
+    version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0',
+    commitSha: c.env?.WORKER_COMMIT_SHA || process.env.WORKER_COMMIT_SHA || 'unknown'
   });
 });
 
 workerApp.get('/api/version', (c) => {
   return c.json({
     version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0',
+    commitSha: c.env?.WORKER_COMMIT_SHA || process.env.WORKER_COMMIT_SHA || 'unknown',
     environment: c.env?.ENVIRONMENT || 'production',
     runtime: 'cloudflare-worker',
     status: 'operational',
