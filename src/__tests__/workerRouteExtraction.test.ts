@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const workerSource = readFileSync(resolve(process.cwd(), 'server/cloudflareWorker.ts'), 'utf8');
 const readRoutesSource = readFileSync(resolve(process.cwd(), 'server/readRoutes.ts'), 'utf8');
 const vehicleRoutesSource = readFileSync(resolve(process.cwd(), 'server/vehicleRoutes.ts'), 'utf8');
+const subscriberRoutesSource = readFileSync(resolve(process.cwd(), 'server/subscriberRoutes.ts'), 'utf8');
 
 function registrations(source: string): string[] {
   return [...source.matchAll(/\b(?:workerApp|app)\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)/g)]
@@ -29,11 +30,17 @@ describe('Cross-F1 Worker route extraction inventory', () => {
   it('keeps extracted family registration points in order and preserves the route count', () => {
     const readRegistrationPoint = workerSource.indexOf('registerReadRoutes(workerApp');
     const vehicleRegistrationPoint = workerSource.indexOf('registerVehicleRoutes(workerApp');
-    const subscriberRegistrationPoint = workerSource.indexOf("workerApp.post('/api/subscribers/add'");
+    const subscriberRegistrationPoint = workerSource.indexOf('registerSubscriberRoutes(workerApp');
 
     expect(readRegistrationPoint).toBeGreaterThan(-1);
     expect(readRegistrationPoint).toBeLessThan(vehicleRegistrationPoint);
     expect(vehicleRegistrationPoint).toBeLessThan(subscriberRegistrationPoint);
+    expect(registrations(subscriberRoutesSource)).toEqual([
+      'POST /api/subscribers/add',
+      'POST /api/subscribers/renew',
+      'POST /api/subscribers/update',
+      'POST /api/subscribers/delete'
+    ]);
     expect(registrations(vehicleRoutesSource)).toEqual([
       'POST /api/vehicles/check-in',
       'POST /api/vehicles/check-out',
@@ -42,7 +49,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/vehicles/inside',
       'GET /api/vehicles/history'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length).toBe(89);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length).toBe(89);
   });
 
   it('keeps the global Worker export in the monolith', () => {
