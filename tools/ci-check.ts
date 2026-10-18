@@ -50,6 +50,7 @@ try {
 
 runStep('TypeScript Linting (tsc --noEmit)', 'npm run lint');
 runStep('Vitest Automated Test Suite', 'npm run test');
+runStep('Firestore security rules emulator tests', 'npm run test:rules');
 runStep('Cloudflare Pages and Worker production build', 'npm run build');
 
 console.log('[CHECK] Production Artifact Verification...');

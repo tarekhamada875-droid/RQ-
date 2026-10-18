@@ -26,6 +26,21 @@ This plan sequences the safest correctness and security fixes first, then measur
 
 > **Current billing-model direction (owner-approved 2026-10-16):** Replace time-based RQ garage-access plans, including the existing seven-day feature from PR #34, with manually granted, non-expiring prepaid entry credits. Keep the current implementation only until a separately tested and approved cutover; do not retain two competing RQ billing models as the end state. This does **not** replace the date-based monthly subscriptions that garages sell to their own parking customers. This roadmap update records the direction only; it does not change application code or data.
 
+## Efficient task workflow for future contributors
+
+**Verified 2026-10-18:** Workflow-efficiency PR [#127](https://github.com/tarekhamada875-droid/RQ-/pull/127) merged at `7ca1438ba124f66e63f6130e60eaf0417b17407c`. The feature-branch push started no gate; its PR check [39105649832](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39105649832) passed, and main release [39105794248](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39105794248) passed verification, Worker deployment, and live smoke. The documentation-only follow-up PR [#128](https://github.com/tarekhamada875-droid/RQ-/pull/128) merged at `8fd4306386f1b3f507c5e1fe7e60e5417d8d7b0e`; its PR check [39106095137](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106095137) and main check [39106149460](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106149460) passed, while Worker deployment was correctly skipped because only Markdown changed. The live Worker therefore remains at application commit `7ca1438ba124f66e63f6130e60eaf0417b17407c`; documentation-only main commits do not deploy it.
+
+Use this shorter, verified path for each roadmap item:
+
+1. Read `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `BRANCHING_AND_RELEASES.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `MAINTAINABILITY_HANDOFF.md`, and the relevant roadmap entry. Check GitHub and the working tree rather than assuming a dated note is current.
+2. Update local `main`, create one focused branch for one item, and make the smallest safe change. Run focused tests first; after the code is stable, run the full local `npm run ci:check` once.
+3. Finish the change and update its project notes before opening the PR. Push the branch and open or update a PR to `main`; do not wait for a feature-branch push to start CI—the required Production Gate runs on the PR. This avoids running the full gate once for the branch push and again for the PR.
+4. A newer commit may cancel an older check only for that same PR. Never cancel a push-to-`main` release. Wait for the required PR check to finish before merging; use one completion wait rather than repeatedly polling.
+5. After merge, fast-forward local `main` and confirm the merge SHA and main-branch Production Gate. For application changes, confirm the guarded deployment and live smoke. For Markdown-only changes, the gate performs its text check and skips application builds/deployment; do not expect the live Worker SHA to change.
+6. Report plainly what changed, what passed, and whether it is local, in a PR, merged, deployed, or live. For a docs-only change, use the documentation checks instead of repeating the full application suite.
+
+`BRANCHING_AND_RELEASES.md` and `PROJECT_WORKING_AGREEMENT.md` contain the full operational safeguards and remain the detailed references for branch protections and owner communication.
+
 ## 2. Review boundary and original read-only review status
 ### Boundary
 
