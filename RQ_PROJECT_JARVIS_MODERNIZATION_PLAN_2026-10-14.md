@@ -763,6 +763,7 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** High if rewritten; medium for mechanical move. Move one block, compare inventory, revert module only.
 - **Effort:** L.
 - **Continuity handoff (2026-10-18):** Tarek requested that a new agent continue and has authorized Cross-F1 to start. This authorization is limited to the planned code decomposition; the separate Firestore database/billing decision remains pending.
+- **First-family implementation checkpoint (2026-10-18, local):** On branch `feat/cross-f1-worker-read-routes` from `main` `410f74df446d8b143ad4f609d774151298bdf807`, the system/read family was moved mechanically into `server/readRoutes.ts`; shared subscriber/date/sanitization helpers moved to `server/workerReadHelpers.ts`. The typed `RouteDeps` boundary resolves the Firestore binding lazily. Global middleware, auth/error/rate-limit handling, aliases, registration order, and default fetch remain in the monolith. A route inventory test confirms the nine-family registration order and total 89 registrations. Focused tests passed 6 files/85 tests; full `npm run ci:check` passed 138 files/898 tests, rules, build, built-Worker smoke, maintainability, lint, and diff checks. No latency gain is claimed and no Firebase/database/billing behavior changed. The branch is local only; complete the PR gate and post-merge verification before marking this extraction merged/live.
 
 #### Cross-F2 — Split adminService behind unchanged facade
 
