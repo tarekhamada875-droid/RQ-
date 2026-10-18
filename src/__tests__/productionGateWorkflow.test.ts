@@ -13,6 +13,13 @@ const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] 
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
 
 describe('production release workflow', () => {
+  it('runs full validation on pull requests and main pushes, not feature-branch pushes', () => {
+    expect(workflow).toMatch(/^  push:\n    branches: \[main\]$/m);
+    expect(workflow).toMatch(/^  pull_request:\n    branches: \[main\]$/m);
+    expect(workflow).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
+    expect(deployJob).toContain("if: github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  });
+
   it('installs once and runs the full test suite once without a duplicate subscriber rerun', () => {
     expect(workflow.match(/^\s+run: npm ci\b/gm)).toHaveLength(1);
     expect(workflow.match(/^\s+run: npm run test$/gm)).toHaveLength(1);
@@ -21,7 +28,7 @@ describe('production release workflow', () => {
   });
 
   it('uploads the verified commit artifact and deploys that artifact only after verification passes', () => {
-    expect(workflow).toContain('cancel-in-progress: false');
+    expect(workflow).toContain('group: production-gate-${{ github.ref }}');
     expect(verifyJob).toContain('uses: actions/upload-artifact@v4');
     expect(verifyJob).toContain('name: rq-production-${{ github.sha }}');
     expect(verifyJob).toContain('git rev-parse HEAD)" = "$GITHUB_SHA"');

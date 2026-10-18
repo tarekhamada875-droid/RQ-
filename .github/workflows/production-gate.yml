@@ -2,6 +2,7 @@ name: Production Gate
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -11,7 +12,7 @@ permissions:
 
 concurrency:
   group: production-gate-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
