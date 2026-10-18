@@ -1,6 +1,16 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: RQ-TG-05 merged, deployed, and verified (2026-10-18)
+## Current checkpoint: RQ-TG-06 implemented and locally verified; release pending (2026-10-18)
+
+The focused branch is `test/tg06-fail-fast-ci-check`, based on `main` at `ff6c34d48cabf3c0aad823c41f92389ba51fb452`. `npm run ci:check` now stops when the first check fails, names the skipped later checks, and shows how to run `npm run ci:check -- --diagnostics` when collecting multiple failures is useful. The local gate now includes the same maintainability check as the Production Gate and still checks the built files.
+
+Focused fail-fast and workflow regression tests passed (2 files / 12 tests). The full clean-install `npm run ci:check` passed (137 test files / 895 tests, Firestore rules emulator, production build, built-Worker smoke, maintainability, and artifact verification); `npm run maintainability:check`, `npm run lint`, and `git diff --check` passed. The first full attempt correctly stopped on an old test expectation that still referred to the previous inline script; the test was updated for the shared runner, and the full gate passed on rerun. A non-blocking existing Vite configuration warning appeared during Vitest.
+
+TG-06 changes only the local verification tools and tests. No app behavior or Firebase data/rules changed. It has not yet been merged or released. The latest deployed Worker remains TG-05 at `35d16137e48044eae53c0972ee22348936a3c343`; check GitHub for the current TG-06 PR/release state before editing. The usual PR-only Production Gate and main-branch release checks still need to complete.
+
+**Next after TG-06 release:** Cross-F1 — extract Worker route families one at a time. This work has not started; wait for Tarek to ask before beginning it.
+
+## Previous checkpoint: RQ-TG-05 merged, deployed, and verified (2026-10-18)
 
 PR [#131](https://github.com/tarekhamada875-droid/RQ-/pull/131) merged at `35d16137e48044eae53c0972ee22348936a3c343`. At the TG-05 release checkpoint, `main` and the deployed Worker were at this commit. PR Production Gate [39108512061](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39108512061) and main Production Gate [39108719316](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39108719316) passed. The main run imported and smoke-tested the artifact after build and after download, then deployed it and passed strict live smoke. Direct read-only health and version requests returned healthy/operational status and the exact deployed SHA. This follow-up is documentation-only and does not redeploy the Worker. No customer-facing application behavior or Firebase data/rules changed.
 
@@ -9,8 +19,6 @@ TG-05 adds `tools/worker-artifact-smoke.mjs`, which imports `dist/worker.js` and
 Focused workflow regression tests passed (1 file / 6 tests). Clean-install `npm run ci:check` passed (136 test files / 889 tests, Firestore rules emulator tests, production build, and built-artifact smoke); `npm run maintainability:check` and `git diff --check` passed. The artifact smoke itself makes no live-service calls. Only the established post-deploy GET smoke and direct health/version GETs contacted the live read-only endpoints; no Firebase data/rules or application behavior changed. The focused Vitest run printed a non-blocking existing Vite esbuild/oxc configuration warning; all tests passed.
 
 **Faster release workflow:** PR [#127](https://github.com/tarekhamada875-droid/RQ-/pull/127) removed the duplicate feature-push gate; the feature-branch push started no run, while the PR got one required check. Only an older check for the same PR may be cancelled; main releases are never cancelled. Documentation-only PR [#128](https://github.com/tarekhamada875-droid/RQ-/pull/128) also passed its fast text-only gate without redeploying the Worker. The master roadmap now includes a verified step-by-step continuation procedure for future agents.
-
-**Single next step:** RQ-TG-06—make the local CI check fail fast. TG-05 is complete; stop here and wait for Tarek to ask before starting TG-06.
 
 ## Previous checkpoint: RQ-TG-04 merged and deployed (2026-10-18)
 

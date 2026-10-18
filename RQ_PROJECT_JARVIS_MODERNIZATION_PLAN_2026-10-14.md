@@ -730,18 +730,22 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 
 #### RQ-TG-06 — Make local CI check fail fast
 
-- **Source:** `tools/ci-check.ts:11-19,51-53`; `package.json:16`; `.github/workflows/production-gate.yml:39-60`.
+- **Source:** `tools/ci-check.ts`; `tools/ci-check-runner.ts`; `src/__tests__/ciCheckRunner.test.ts`; `src/__tests__/productionGateWorkflow.test.ts`; `package.json:15`; `.github/workflows/production-gate.yml:103-143`.
 - **Simple explanation:** A failed step is recorded but later expensive steps still run; local command differs from CI.
 - **Implementation design / behavior to keep:** Fail fast for install/typecheck/test; optional explicit diagnostics mode can run all checks. Align canonical commands with CI and retain artifact assertions.
 - **Expected benefit:** Faster actionable feedback and faithful local rehearsal.
 - **Acceptance criteria:** Injected lint/typecheck/test failure invokes zero later expensive steps; successful path runs all required checks; nonzero failures stay actionable.
-- **Test plan:** Stub each command failure and successful path.
+- **Test plan:** Inject install, lint, and test failures; verify the default stops, success runs all checks, and explicit diagnostics mode continues.
 - **Risk / rollback:** Low—secondary failures hidden in default mode. Keep diagnostic mode.
 - **Effort:** S.
+
+- **Implementation (2026-10-18; focused branch `test/tg06-fail-fast-ci-check`):** Extracted the ordered checks into `tools/ci-check-runner.ts`. `npm run ci:check` now stops after the first failed step, reports the error and skipped checks, and suggests `npm run ci:check -- --diagnostics` for an explicit all-checks troubleshooting run. Preserved the clean install, Worker-source secret scan, typecheck, full tests, Firestore rules tests, production build, built-Worker smoke, and artifact assertions; added `maintainability:check` to match the Production Gate. Updated the TG-05 workflow regression test to inspect the extracted runner. No application behavior or Firebase data/rules changed.
+- **Verification (local):** Focused regression tests passed (2 files / 12 tests). Full clean-install `npm run ci:check` passed (137 test files / 895 tests, Firestore rules emulator, production build, built-Worker smoke, maintainability, and artifact verification); `npm run maintainability:check`, `npm run lint`, and `git diff --check` passed. The first full attempt correctly stopped at a stale workflow-test assertion after the runner extraction; the assertion was updated and the full gate passed on rerun. **Next after TG-06 release: Cross-F1 — Extract Worker routes one family at a time.** Do not start it before TG-06 is merged and verified.
 
 ### Infrastructure release-control update — 2026-10-17
 
 - PR [#84](https://github.com/tarekhamada875-droid/RQ-/pull/84), merged as `ab49d40a5aca752a62132300f0eb88df25386767`, added a fail-closed, NUL-safe Markdown-only fast path. Markdown-only diffs retain the required `verify` job and run `git diff --check`; non-Markdown, empty, or unclassifiable diffs continue through the full Production Gate. The Worker deployment workflow skips only Markdown-only pushes to `main`.
+- Active ruleset [25292182](https://github.com/tarekhamada875-droid/RQ-/rules/25292182) requires PRs and the GitHub Actions `verify` check with up-to-date branches, blocks force-push/deletion, and has no bypass actors.
 - Active ruleset [25292182](https://github.com/tarekhamada875-droid/RQ-/rules/25292182) requires PRs and the GitHub Actions `verify` check with up-to-date branches, blocks force-push/deletion, and has no bypass actors.
 - PR checks passed; post-merge Production Gate [39006255537](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255537) and Worker deployment [39006255503](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006255503) succeeded. Live Pages, Worker health, and Worker version checks returned HTTP 200. The app, Firebase rules, and Firebase data were unchanged.
 - Documentation-only PR [#85](https://github.com/tarekhamada875-droid/RQ-/pull/85) verified the required PR fast path: run [39006619479](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006619479) passed after Markdown validation while application setup/tests/build/smoke steps were skipped. The initial branch-push run [39006610687](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39006610687) correctly failed closed to the full gate because its base SHA was unavailable, and passed.
