@@ -17,6 +17,9 @@ Speak plainly, respectfully, and directly. The owner prefers English in this pro
 - Protect credentials and user data. Use synthetic data for tests. The owner last confirmed on 2026-10-14 that the project is still in synthetic pre-production; verify current status before assuming this remains true. Never treat test data as permission to delete or alter production records.
 - Measure before claiming a performance or cost improvement. Say “we expect fewer reads” when that is the evidence; claim a percentage or “10× faster” only when a relevant benchmark proves it.
 - Follow the repository’s actual scripts and the latest `BRANCHING_AND_RELEASES.md`; do not invent commands, deployment paths, or staging environments. Run the relevant full checks, review the diff, and use a focused branch/PR. Do not bypass release gates.
+- For code changes, run focused tests first, then the full local CI gate once after the implementation is stable. Do not repeat the full app suite for a documentation-only change; use the repository’s documentation checks.
+- Finish the code change and its project-status notes before opening the PR, so the final reviewed commit is tested once. The full GitHub gate runs on PRs and `main`, not on every feature-branch push.
+- A newer commit may cancel an older run for the same PR; never cancel a `main` release. Prefer concise command output, read only relevant file sections, and use one completion wait instead of repeated status polling.
 
 ## How to report each finished improvement
 

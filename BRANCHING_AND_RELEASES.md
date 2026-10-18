@@ -25,6 +25,12 @@ As of 2026-10-17, the active repository ruleset [Protect main: pull request and 
 5. Merge only after CI and review pass.
 6. Delete the merged branch.
 
+## Production Gate triggers and cancellation
+
+- The full Production Gate runs for pull requests targeting `main` and pushes to `main`. A feature-branch push alone does not start a second gate; open or update its PR to get the required check.
+- When a PR is updated, a newer PR check may cancel the older check for that same PR. A push to `main` is never canceled; its verification, deployment, and smoke must finish normally.
+- Documentation-only changes continue to use the existing fast validation path; the Worker deployment job remains skipped for docs-only changes.
+
 ## Manual Worker rollback
 
 The Production Gate keeps each verified release artifact for up to 30 days (subject to the repository’s artifact-retention limit). To restore a previous Worker release, start the **Worker Rollback** workflow from `main` and provide the full commit SHA plus the run ID of that commit’s successful main-branch **Production Gate**. The workflow confirms those two identifiers belong together, downloads only that run’s `rq-production-<SHA>` artifact, and refuses to deploy if the artifact cannot report its source SHA. It then deploys that exact saved Worker build and runs the strict smoke check against the selected SHA.
