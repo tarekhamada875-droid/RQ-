@@ -1,3 +1,9 @@
+## Cross-F4 financial-family release verification (2026-10-18)
+
+PR [#143](https://github.com/tarekhamada875-droid/RQ-/pull/143) merged the financial/recharge/delegate route extraction into `main` at `98f1c3ba9dabd89ee302a20ce467cc8f3e943007`. Main Production Gate [39119755307](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39119755307) passed full verification, immutable artifact deployment, and strict live smoke. The live Worker health/version endpoints report the exact same SHA. The 15 CF7 routes are therefore merged, deployed, and live. No Firebase data/rules, database routing, billing decision, or migration changed.
+
+Cross-F4 is complete for the financial/recharge/delegate family only. Stop here; do not begin garage-management extraction in this task.
+
 ## Current checkpoint: financial/recharge/delegate route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f4-worker-financial-routes` starts from clean `main` `0bd030b4db3c5d4930a51ad24c2905b1a0fbe965`. The CF7 financial family now lives in `server/financialRoutes.ts`: recharge request creation/approval/rejection/listing, legacy top-up response, delegate dashboard/settlement, and financial reports. The move is mechanical behind a typed `FinancialRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, garage-management routes, and default `fetch`.
