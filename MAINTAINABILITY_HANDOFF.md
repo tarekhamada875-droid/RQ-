@@ -1,3 +1,9 @@
+## Current checkpoint: Legacy Removal Plan validated (2026-10-18; documentation only)
+
+The owner requested a separate bounded cleanup plan for the legacy garage-owner wallet/time-based billing remnants. The validated draft is `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`. The audit found one still-active legacy writer, `POST /api/transactions/recharge-garage`, plus fail-closed but retained recharge-request, wallet top-up, self-subscribe, fair-use, referral-day, and compatibility paths. No application code, Firebase data, rules, database routing, migration, or deployment changed. Current prepaid credit grants/ledger, regular-entry and correction credit transitions, current referral credits, monthly parking-subscriber lifecycle/renewal, and historical read-only data are protected boundaries.
+
+The handoff trigger has been applied. The single next task is **LR-00 — Baseline and contract inventory**. Do not begin LR-01 or delete shared billing helpers until LR-00 records every caller and protected contract.
+
 ## Current checkpoint: UI-001 App route/modal containers released (2026-10-18)
 
 PR [#156](https://github.com/tarekhamada875-droid/RQ-/pull/156) merged the route-selection and global-modal ownership extraction at main SHA `22411c191653683c35fefadf5fee1458b396b889`. The 604-line `src/App.tsx` is now 94 lines; typed `src/components/app/AppRoutes.tsx` and `src/components/app/AppOverlays.tsx` own route and overlay composition. `App.tsx` remains responsible for global auth/session readiness, offline/landscape gates, theme/network/toast shell, browser-history trapping, and the grouped `useGarageApp` boundary. `GarageAppState` is exported as the inferred hook return type. Existing lazy route loading, route props, fallback recovery, render diagnostics, wallet precedence, modal callbacks, and cleanup semantics are preserved; no Firebase/data/rules/database/billing/performance change is included.
