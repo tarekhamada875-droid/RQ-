@@ -1,11 +1,10 @@
 import { compareCommitSha, isGitCommitSha } from './release-smoke-contract';
-
-type HealthBody = {
-  status?: unknown;
-  adminSdk?: unknown;
-  version?: unknown;
-  commitSha?: unknown;
-};
+import {
+  isHealthyHealthBody,
+  isSuccessfulHttpStatus,
+  matchesExpectedVersion,
+  type HealthBody
+} from './release-smoke-contract';
 
 const baseUrl = (process.env.SMOKE_BASE_URL || '').replace(/\/+$/, '');
 const expectedVersion = (process.env.SMOKE_EXPECTED_VERSION || '').trim();
@@ -15,17 +14,6 @@ const maxAttempts = Math.max(1, Number.parseInt(process.env.SMOKE_MAX_ATTEMPTS |
 const retryDelayMs = Math.max(1000, Number.parseInt(process.env.SMOKE_RETRY_DELAY_MS || '10000', 10) || 10000);
 
 const sleep = (delayMs: number) => new Promise((resolve) => setTimeout(resolve, delayMs));
-
-const isHealthyBody = (body: HealthBody | null): body is HealthBody & {
-  status: 'ok';
-  adminSdk: true;
-  version: string;
-} => (
-  body?.status === 'ok' &&
-  body.adminSdk === true &&
-  typeof body.version === 'string' &&
-  body.version !== 'unknown'
-);
 
 if (!baseUrl) {
   console.log('[SKIP] SMOKE_BASE_URL is not configured; live smoke check was not requested.');
@@ -48,9 +36,9 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     });
     responseStatus = response.status;
     body = await response.json().catch(() => null) as HealthBody | null;
-    healthPassed = response.ok && isHealthyBody(body);
+    healthPassed = isSuccessfulHttpStatus(responseStatus) && isHealthyHealthBody(body);
 
-    const versionMatches = healthPassed && (!expectedVersion || body.version === expectedVersion);
+    const versionMatches = healthPassed && matchesExpectedVersion(body?.version, expectedVersion);
     const commitCheck = expectedCommitSha
       ? compareCommitSha(expectedCommitSha, body?.commitSha)
       : null;
@@ -75,12 +63,12 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
   }
 }
 
-if (!healthPassed || !isHealthyBody(body)) {
+if (!healthPassed || !isHealthyHealthBody(body)) {
   console.error('[FAIL] Live health check failed:', { status: responseStatus, body });
   process.exit(1);
 }
 
-if (expectedVersion && body.version !== expectedVersion) {
+if (!matchesExpectedVersion(body.version, expectedVersion)) {
   console.error('[FAIL] Live backend version does not match the release version:', {
     expectedVersion,
     actualVersion: body.version,
@@ -97,7 +85,7 @@ if (expectedCommitSha) {
 }
 
 const frontendResponse = await fetch(frontendUrl, { headers: { Accept: 'text/html' } });
-if (!frontendResponse.ok) {
+if (!isSuccessfulHttpStatus(frontendResponse.status)) {
   console.error('[FAIL] Live frontend check failed:', { frontendUrl, status: frontendResponse.status });
   process.exit(1);
 }

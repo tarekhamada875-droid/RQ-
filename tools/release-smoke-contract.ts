@@ -45,3 +45,37 @@ export function compareCommitSha(expectedCommitSha: string, actualCommitSha: unk
 
   return { matches: true, expectedCommitSha, actualCommitSha };
 }
+
+export type HealthBody = {
+  status?: unknown;
+  adminSdk?: unknown;
+  version?: unknown;
+  commitSha?: unknown;
+};
+
+export type HealthyHealthBody = HealthBody & {
+  status: 'ok';
+  adminSdk: true;
+  version: string;
+};
+
+export const isSuccessfulHttpStatus = (status: number): boolean => (
+  Number.isInteger(status) && status >= 200 && status < 300
+);
+
+export const isHealthyHealthBody = (body: unknown): body is HealthyHealthBody => {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return false;
+
+  const health = body as HealthBody;
+  return (
+    health.status === 'ok' &&
+    health.adminSdk === true &&
+    typeof health.version === 'string' &&
+    health.version.trim().length > 0 &&
+    health.version.toLowerCase() !== 'unknown'
+  );
+};
+
+export const matchesExpectedVersion = (actualVersion: unknown, expectedVersion: string): boolean => (
+  !expectedVersion || actualVersion === expectedVersion
+);
