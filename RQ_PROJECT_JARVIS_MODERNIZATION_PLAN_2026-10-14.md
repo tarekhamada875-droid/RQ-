@@ -723,6 +723,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Test plan:** Build and artifact smoke fixtures.
 - **Risk / rollback:** Low/medium—Cloudflare shims may be needed. Keep shims test-only.
 - **Effort:** M.
+- **Implementation (2026-10-18; branch `test/tg05-built-worker-smoke`, based on main `c0782327`):** Added `tools/worker-artifact-smoke.mjs`, a Node-only script that imports the actual `dist/worker.js` bundle and exercises its default Fetch handler. It checks health and version JSON/identity, an allowed-origin CORS preflight, and that an unauthenticated `GET /api/garages` returns 401 before database access. The script supplies only synthetic version/SHA/origin bindings and no Firebase credentials. The same command is included in local `npm run ci:check`, Production Gate after the build and before artifact upload, and again after artifact download but before Worker deployment.
+- **Verification (local; PR not yet opened):** Focused workflow regression tests passed (1 file / 6 tests). Clean-install `npm run ci:check` passed (136 test files / 889 tests), including Firestore rules, production build, and the new artifact smoke; `npm run maintainability:check` and `git diff --check` passed. No live service was called and no Firebase data/rules or application behavior changed. **TG-05 remains the active task until the PR and main release checks pass; do not start TG-06 early.**
 
 #### RQ-TG-06 — Make local CI check fail fast
 

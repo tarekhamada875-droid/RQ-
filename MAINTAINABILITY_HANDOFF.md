@@ -1,16 +1,20 @@
 # RQ Maintainability Handoff
 
-## Current checkpoint: RQ-TG-04 merged, deployed, and verified (2026-10-18)
+## Current checkpoint: RQ-TG-05 implemented and locally verified; pending PR (2026-10-18)
 
-PR [#129](https://github.com/tarekhamada875-droid/RQ-/pull/129) merged at `d9c52509c85ebdc4e8d4ea852a921efdc7f673e7`; at the TG-04 release checkpoint, `main` and the deployed Worker were at this commit. PR Production Gate [39106750461](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106750461) passed; main Production Gate [39106925290](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106925290) passed verification, deployment, and strict live smoke. A fresh read-only health check returned `status=ok`, version `1.0.0-production`, and the exact TG-04 release SHA. A later documentation-only merge may advance `main` without changing the Worker. No customer-facing application behavior or Firebase data/rules changed.
+The feature branch is `test/tg05-built-worker-smoke`, based on clean main `c0782327e19891c0137b1d5240468b68ae9403eb`. TG-05 is not yet pushed or in a PR, and no deployment has occurred; the latest live Worker remains TG-04 SHA `d9c52509c85ebdc4e8d4ea852a921efdc7f673e7`.
 
-RQ-TG-04 pins `firebase-tools` at `15.34.0`, switches `test:rules` to the project-local Firebase CLI, and includes the Firestore rules emulator matrix in canonical local `npm run ci:check`, matching the production gate. The CI Java 21 setup remains unchanged.
+TG-05 adds `tools/worker-artifact-smoke.mjs`, which imports `dist/worker.js` and checks the default Worker handler, health/version responses, allowed-origin CORS, and an unauthenticated protected request. It passes only synthetic Worker bindings and no Firebase credentials. The protected check is a GET that must return 401 before any database access. The command now runs in local `npm run ci:check`, in Production Gate after building and before uploading, and again after downloading the exact artifact and before deployment.
 
-Local clean-install `npm run ci:check` passed (136 test files / 888 tests, Firestore rules matrix, production build, and artifact checks); the installed CLI reported `15.34.0`. `npm run maintainability:check` and `git diff --check` passed. The release workflow’s live smoke verified SHA `d9c52509c85ebdc4e8d4ea852a921efdc7f673e7`.
+Focused workflow regression tests passed (1 file / 6 tests). Clean-install `npm run ci:check` passed (136 test files / 889 tests, Firestore rules emulator tests, production build, and built-artifact smoke). `npm run maintainability:check` and `git diff --check` passed. No live service was called, no Firebase data/rules changed, and no application behavior changed. The focused Vitest run printed a non-blocking existing Vite esbuild/oxc configuration warning; all tests passed.
 
 **Faster release workflow:** PR [#127](https://github.com/tarekhamada875-droid/RQ-/pull/127) removed the duplicate feature-push gate; the feature-branch push started no run, while the PR got one required check. Only an older check for the same PR may be cancelled; main releases are never cancelled. Documentation-only PR [#128](https://github.com/tarekhamada875-droid/RQ-/pull/128) also passed its fast text-only gate without redeploying the Worker. The master roadmap now includes a verified step-by-step continuation procedure for future agents.
 
-**Single next step:** start RQ-TG-05—import and smoke-test the built Worker artifact before deployment.
+**Single next step:** push this branch, open its PR, wait for the required Production Gate, then merge only after it passes and verify the main deployment/live smoke for the exact SHA. Do not start TG-06 before TG-05 is merged and released.
+
+## Previous checkpoint: RQ-TG-04 merged and deployed (2026-10-18)
+
+PR [#129](https://github.com/tarekhamada875-droid/RQ-/pull/129) merged at `d9c52509c85ebdc4e8d4ea852a921efdc7f673e7`; its PR Production Gate [39106750461](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106750461) and main Production Gate [39106925290](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106925290) passed, including deployment and strict live smoke. TG-04 pinned `firebase-tools` at `15.34.0` and added the Firestore rules suite to local `npm run ci:check`; local clean-install CI passed at 136 test files / 888 tests. No customer-facing behavior or Firebase data/rules changed.
 
 ## Previous checkpoint: F3 RQ classifier isolation (2026-10-17; merged PR #119 and deployed)
 
