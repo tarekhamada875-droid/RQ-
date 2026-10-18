@@ -683,7 +683,8 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Low—may block currently superficial deployments; fix endpoint contract, do not weaken check.
 - **Effort:** S.
 
-- **Partial progress (2026-10-17):** The unified release job now runs the existing strict `tools/release-smoke.ts` after Worker deployment instead of the old loose grep check. Deterministic healthy/unhealthy fixture coverage and the remaining exact health-contract tests are still required.
+- **Implementation checkpoint (2026-10-18; PR [#125](https://github.com/tarekhamada875-droid/RQ-/pull/125)):** The unified release job already runs the strict smoke after deployment. Health-body, successful-HTTP-status, and exact expected-version checks now live in a shared helper used by that same smoke script. Deterministic fixtures cover healthy replies; `status:error`; missing/false Admin SDK; missing, blank, and unknown versions; stale expected version; malformed/non-JSON bodies; and unsuccessful HTTP/frontend statuses. The workflow regression test protects post-deploy ordering, the configured 60-attempt/10-second retry window, and read-only GET checks. The implementation commit is `e51c53336f31c06c1b4a0b2b68da0cc998c8d5fa`; PR checks are pending. It is not merged or live.
+- **Local verification (2026-10-18):** Focused smoke/workflow tests passed (3 files / 16 tests); `npm run ci:check` passed (136 test files, production build and artifact verification); `npm run lint`, `npm run test:rules` on the demo emulator, `npm run maintainability:check`, and `git diff --check` passed. No production endpoint, Firebase data, or Firebase rules were changed. Finish PR #125 and verify its post-merge guarded release before marking this item complete.
 
 #### RQ-TG-04 — Pin Firebase CLI and align local rules gate
 
