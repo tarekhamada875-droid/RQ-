@@ -1,3 +1,11 @@
+## Current checkpoint: grouped useGarageApp contract migrated locally (2026-10-18)
+
+The focused branch `feat/cross-f3-garage-app-contract` starts from clean `main` `2b2e6a311fbc32d0be832987a78be425632f74e1`. `useGarageApp` now returns six named groups: `session`, `navigationUi`, `garageData`, `vehicleOperations`, `subscriptions`, and `adminManagement`. The existing flat aliases remain for this migration step, preserving callback and setter identity. `App.tsx` now consumes only the six grouped contracts; view routing, session readiness, offline gating, fallback recovery, modal handling, and cleanup behavior remain unchanged.
+
+New renderHook characterization covers the grouped contract and handler identity. Focused checks passed 1 file / 1 test; full local `npm run ci:check` passed 140 test files / 902 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. No Firebase data/rules, database routing, billing decision, migration, deployment, or performance claim changed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** complete the normal PR cycle for this Cross-F3 contract migration, then stop before later roadmap work. Preserve the separate `readiness/firestore-decision-gate` branch.
+
 ## Current checkpoint: admin service modules extracted locally (2026-10-18)
 
 PR [#147](https://github.com/tarekhamada875-droid/RQ-/pull/147) merged the focused branch `feat/cross-f2-admin-service-modules` into `main` at `51121b473cc776f27db945639f3a957a3b2841d4`. The 790-line `adminService` implementation is now split into eight domain modules: core/staff, packages, subscribers, coupons, activity, billing, announcements, and system config. `src/services/adminService.ts` remains a compatibility facade that composes the modules; `src/services/index.ts` continues to expose the same `firestoreService` spread.
