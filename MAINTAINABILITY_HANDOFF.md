@@ -1,10 +1,10 @@
-## Current checkpoint: grouped useGarageApp contract migrated locally (2026-10-18)
+## Current checkpoint: grouped useGarageApp contract released (2026-10-18)
 
 PR [#149](https://github.com/tarekhamada875-droid/RQ-/pull/149) merged the focused branch `feat/cross-f3-garage-app-contract` into `main` at `1f2cda9758d2b7936540519f1717b157d97af979`. `useGarageApp` now returns six named groups: `session`, `navigationUi`, `garageData`, `vehicleOperations`, `subscriptions`, and `adminManagement`. The existing flat aliases remain for this migration step, preserving callback and setter identity. `App.tsx` now consumes only the six grouped contracts; view routing, session readiness, offline gating, fallback recovery, modal handling, and cleanup behavior remain unchanged.
 
 New renderHook characterization covers the grouped contract and handler identity. Focused checks passed 1 file / 1 test; full local `npm run ci:check` passed 140 test files / 902 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. No Firebase data/rules, database routing, billing decision, migration, deployment, or performance claim changed. PR #149 passed its required Production Gate. Main Production Gate [39122733505](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39122733505) passed full verification, verified artifact upload, guarded Worker deployment, and live smoke. The live Worker reports the exact same SHA `1f2cda9758d2b7936540519f1717b157d97af979`.
 
-**Cross-F3 grouped useGarageApp contract migration is complete.** Stop here; do not begin later roadmap work without a new task. Preserve the separate `readiness/firestore-decision-gate` branch.
+**Cross-F3 grouped useGarageApp contract migration is complete.** The “tokens ending” continuity handoff is active: there is no unfinished code task in this workspace. Verified `main` is `c25e4f701413ef655530028214820e6b09a6a9a3`, the live Worker remains `1f2cda9758d2b7936540519f1717b157d97af979`, no PR is open, and `readiness/firestore-decision-gate` remains `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`. **Single next task: await Tarek’s next bounded roadmap selection; do not start later roadmap work or infer a new implementation task from this handoff.**
 
 ## Current checkpoint: admin service modules extracted locally (2026-10-18)
 
