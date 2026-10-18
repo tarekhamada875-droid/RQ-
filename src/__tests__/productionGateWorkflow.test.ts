@@ -8,6 +8,8 @@ const workflow = readFileSync(
 );
 const workerBuildScript = readFileSync(resolve(process.cwd(), 'tools/build-cloudflare.mjs'), 'utf8');
 const smokeScript = readFileSync(resolve(process.cwd(), 'tools/release-smoke.ts'), 'utf8');
+const artifactSmokeScript = readFileSync(resolve(process.cwd(), 'tools/worker-artifact-smoke.mjs'), 'utf8');
+const ciCheckScript = readFileSync(resolve(process.cwd(), 'tools/ci-check.ts'), 'utf8');
 
 const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] ?? '';
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
@@ -41,6 +43,27 @@ describe('production release workflow', () => {
     expect(deployJob).toContain('--var WORKER_COMMIT_SHA:$GITHUB_SHA');
     expect(deployJob).toContain('SMOKE_EXPECTED_COMMIT_SHA: ${{ github.sha }}');
     expect(workerBuildScript).toContain('minify: true');
+  });
+
+  it('imports and smoke-tests the built artifact in local CI, verification, and before deployment', () => {
+    const buildCommand = verifyJob.indexOf('run: npm run build');
+    const verifySmokeCommand = verifyJob.indexOf('run: npm run smoke:worker-artifact');
+    const artifactUpload = verifyJob.indexOf('uses: actions/upload-artifact@v4');
+    const artifactDownload = deployJob.indexOf('uses: actions/download-artifact@v4');
+    const deploySmokeCommand = deployJob.indexOf('run: npm run smoke:worker-artifact');
+    const deployCommand = deployJob.indexOf('wrangler deploy');
+
+    expect(buildCommand).toBeGreaterThanOrEqual(0);
+    expect(verifySmokeCommand).toBeGreaterThan(buildCommand);
+    expect(artifactUpload).toBeGreaterThan(verifySmokeCommand);
+    expect(deploySmokeCommand).toBeGreaterThan(artifactDownload);
+    expect(deployCommand).toBeGreaterThan(deploySmokeCommand);
+    expect(ciCheckScript).toContain("runStep('Built Cloudflare Worker artifact smoke', 'npm run smoke:worker-artifact')");
+    expect(artifactSmokeScript).toContain('await import(pathToFileURL(artifactPath).href)');
+    expect(artifactSmokeScript).toContain("typeof worker.fetch === 'function'");
+    expect(artifactSmokeScript).toContain("method: 'OPTIONS'");
+    expect(artifactSmokeScript).toContain("method: 'GET'");
+    expect(artifactSmokeScript).not.toContain('FIREBASE_SERVICE_ACCOUNT');
   });
 
   it('runs the live smoke check only after the verified Worker artifact deploy succeeds', () => {

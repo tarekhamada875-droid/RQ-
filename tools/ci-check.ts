@@ -52,6 +52,7 @@ runStep('TypeScript Linting (tsc --noEmit)', 'npm run lint');
 runStep('Vitest Automated Test Suite', 'npm run test');
 runStep('Firestore security rules emulator tests', 'npm run test:rules');
 runStep('Cloudflare Pages and Worker production build', 'npm run build');
+runStep('Built Cloudflare Worker artifact smoke', 'npm run smoke:worker-artifact');
 
 console.log('[CHECK] Production Artifact Verification...');
 const indexHtmlExists = fs.existsSync(path.join(process.cwd(), 'dist/index.html'));

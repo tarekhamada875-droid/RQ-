@@ -120,6 +120,10 @@ jobs:
         if: steps.scope.outputs.docs_only != 'true'
         run: npm run build
 
+      - name: Smoke built Worker artifact
+        if: steps.scope.outputs.docs_only != 'true'
+        run: npm run smoke:worker-artifact
+
       - name: Maintainability checks
         if: steps.scope.outputs.docs_only != 'true'
         run: npm run maintainability:check
@@ -171,6 +175,9 @@ jobs:
         run: |
           test -f dist/index.html
           test -s dist/worker.js
+
+      - name: Smoke downloaded Worker artifact
+        run: npm run smoke:worker-artifact
 
       - name: Deploy and smoke-test verified Worker artifact
         env:

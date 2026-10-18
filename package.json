@@ -17,6 +17,7 @@
     "financial-report:benchmark": "tsx tools/financial-report-benchmark.ts",
     "firestore-pagination:benchmark": "tsx tools/firestore-pagination-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
+    "smoke:worker-artifact": "node tools/worker-artifact-smoke.mjs",
     "maintainability:check": "tsx tools/maintainability-check.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
   },
