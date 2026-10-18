@@ -1,8 +1,10 @@
 # RQ Project Knowledge Base
 
-**Last updated:** 2026-10-17
+**Last updated:** 2026-10-18
 **Repository:** `tarekhamada875-droid/RQ-`  
-**Latest merged code-bearing revision:** `7f7778c` (PR #119 / F3 RQ classifier isolation). PR #119’s protected checks, post-merge Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882), and guarded Cloudflare Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) passed. Full local CI passed (132 files / 866 tests). No production data, balances, or customer-facing historical records were changed.
+**Latest deployed application revision:** `d9c52509c85ebdc4e8d4ea852a921efdc7f673e7` (RQ-TG-04, PR [#129](https://github.com/tarekhamada875-droid/RQ-/pull/129)). Its PR Production Gate [39106750461](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106750461) passed; main Production Gate [39106925290](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39106925290) passed verification, Worker deployment, and strict live smoke. A fresh health check returned `status=ok`, `adminSdk=true`, version `1.0.0-production`, and that exact Worker SHA. TG-04 pins `firebase-tools` at `15.34.0`, uses the installed local CLI, and adds the Firestore rules suite to local `npm run ci:check`; clean-install local CI passed (136 files / 888 tests, rules matrix, build/artifact checks), and maintainability plus diff checks passed. No application behavior or Firebase data/rules changed. **Next JARVIS task: RQ-TG-05.**
+
+**For future agents:** the master roadmap now includes the verified PR-only fast path and continuation steps in “Efficient task workflow for future contributors.” Feature-branch pushes do not start a duplicate gate; PRs do. Only superseded checks for the same PR may be cancelled, never a main release. Documentation-only changes use the text-only gate and do not redeploy the Worker. The dated task notes below are historical checkpoints; verify current GitHub and working-tree state before editing.
 
 **Workstream status:** The owner stopped H9 / Express decommissioning on 2026-10-12, then explicitly authorized final Express-runtime removal on 2026-10-13. PR #32 removed the obsolete Express host, packages, middleware, and Node/Docker production artifact path. Hono remains the production backend; no Express runtime remains. The former `migration/unified-hono` branch was deleted after merge; do not recreate it as an active workstream.
 
