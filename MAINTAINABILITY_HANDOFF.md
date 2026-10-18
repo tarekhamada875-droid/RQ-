@@ -1,3 +1,13 @@
+## Current checkpoint: subscriber route family extracted locally (2026-10-18)
+
+The focused branch `feat/cross-f3-worker-subscriber-routes` starts from clean `main` `274eaff9bdda8a0453be35eebab2e26a54d94d68`. The four subscriber lifecycle registrations now live in `server/subscriberRoutes.ts`: add, renew, update, and delete. The move is mechanical behind a typed `SubscriberRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, financial/recharge routes, and default `fetch`.
+
+Subscriber lifecycle decisions, Egyptian plate normalization and immutability, duplicate lookup precedence, prepaid five-credit renewal debit, idempotency, atomic Firestore transactions, maintained garage/global subscriber summaries, domain events, and existing responses are unchanged. The route inventory regression test confirms subscriber order and the unchanged total of 89 registrations. No Firebase data, rules, database routing, billing decision, deployment, or performance claim changed.
+
+Focused regression checks passed: 5 files / 76 tests covering all 10 subscriber tests, vehicle/read regressions, authorization, and route inventory. The full local `npm run ci:check` passed: 138 test files / 898 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** finish the normal PR cycle for this subscriber-family extraction: commit/push, open the PR, wait for the required Production Gate, merge only after it passes, verify the guarded release/live result, then stop. Do not start financial/recharge/delegate or garage extraction in this task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+
 ## Cross-F2 vehicle release verification (2026-10-18)
 
 PR [#139](https://github.com/tarekhamada875-droid/RQ-/pull/139) merged the vehicle route extraction into `main` at `d9e4ced185436b1f42c8aa31a39f788d9df32535`. Main Production Gate [39118117050](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39118117050) passed full verification, immutable artifact deployment, and strict live smoke. The live Worker health/version endpoints report the exact same SHA. The six vehicle routes are therefore merged, deployed, and live. No Firebase data/rules, database routing, billing behavior, or migration changed.
