@@ -1,3 +1,13 @@
+## Current checkpoint: Cross-F1 first route family extracted locally (2026-10-18)
+
+The focused branch `feat/cross-f1-worker-read-routes` starts from verified `main` `410f74df446d8b143ad4f609d774151298bdf807`. The first Cross-F1 read/system family now lives in `server/readRoutes.ts`, with shared lookup/date/sanitization helpers in `server/workerReadHelpers.ts`. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, registration point, and default `fetch` export. Route aliases and registration order are preserved.
+
+A typed `RouteDeps` boundary supplies the route family’s dependencies; the Firestore binding is resolved lazily inside handlers so module registration does not add import-time reads or change test/runtime initialization. A route-inventory regression test confirms the nine extracted registrations and the unchanged total of 89 Worker registrations. No Firebase data, rules, database routing, billing behavior, or deployment changed.
+
+Focused regression checks passed: 6 files / 85 tests covering read routes, foundation/auth, vehicles, subscribers, authorization, and route inventory. The full local `npm run ci:check` passed: 138 test files / 898 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` also passed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** finish the normal Cross-F1 PR cycle for this first family: commit/push, open the PR, wait for the required Production Gate, merge only after it passes, verify the guarded release/live result, then stop. Do not begin vehicle extraction in this task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+
 # RQ Maintainability Handoff
 
 ## Current checkpoint: RQ-TG-06 merged, deployed, and verified (2026-10-18)

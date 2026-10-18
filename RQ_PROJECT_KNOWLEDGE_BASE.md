@@ -1,3 +1,5 @@
+**Current Cross-F1 checkpoint (2026-10-18, local):** The first Worker read/system route family is mechanically extracted on branch `feat/cross-f1-worker-read-routes` from clean `main` `410f74df446d8b143ad4f609d774151298bdf807`. `server/readRoutes.ts` owns the nine original system/read registrations; `server/workerReadHelpers.ts` owns shared subscriber/date/sanitization helpers needed by both the extracted routes and remaining monolith. Global middleware, auth/error/rate-limit handling, route order/aliases, and the default Worker fetch remain in `server/cloudflareWorker.ts`. Route inventory remains 89 registrations. Focused tests passed 6 files/85 tests; full `npm run ci:check` passed 138 files/898 tests plus rules, build, artifact smoke, maintainability, lint, and whitespace checks. This work is local only until the PR gate completes. The single next step is the PR/release cycle for this first extraction; do not start vehicle extraction here.
+
 # RQ Project Knowledge Base
 
 **Last updated:** 2026-10-18
