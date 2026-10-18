@@ -1,3 +1,9 @@
+## Cross-F2 vehicle release verification (2026-10-18)
+
+PR [#139](https://github.com/tarekhamada875-droid/RQ-/pull/139) merged the vehicle route extraction into `main` at `d9e4ced185436b1f42c8aa31a39f788d9df32535`. Main Production Gate [39118117050](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39118117050) passed full verification, immutable artifact deployment, and strict live smoke. The live Worker health/version endpoints report the exact same SHA. The six vehicle routes are therefore merged, deployed, and live. No Firebase data/rules, database routing, billing behavior, or migration changed.
+
+Cross-F2 is complete for the vehicle family only. Stop here; do not begin subscriber or admin-service extraction in this task.
+
 ## Current checkpoint: Cross-F2 vehicle route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f2-worker-routes` starts from clean `main` `a33e00b74d51adc863cec1d1dc0a7ed3f4277a11`. The six vehicle registrations now live in `server/vehicleRoutes.ts`: check-in, check-out, delete, refund, inside, and history. The move is mechanical behind a typed `VehicleRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, subscriber routes, and default `fetch`.
