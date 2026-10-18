@@ -32,15 +32,17 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
   });
 
   it('serves GET /api/health with operational JSON response from worker', async () => {
+    const commitSha = '0123456789abcdef0123456789abcdef01234567';
     const res = await api.fetch(new Request('http://localhost/api/health', {
       method: 'GET'
-    }));
+    }), { WORKER_COMMIT_SHA: commitSha });
 
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.status).toBe('ok');
     expect(body.runtime).toBe('cloudflare-worker');
     expect(body.timestamp).toBeDefined();
+    expect(body.commitSha).toBe(commitSha);
   });
 
   it('serves GET /api/version with version and environment metadata', async () => {
@@ -51,9 +53,22 @@ describe('CF1 — Cloudflare Worker Deployment Contract', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.version).toBe('1.0.0');
+    expect(body.commitSha).toBe('unknown');
     expect(body.runtime).toBe('cloudflare-worker');
     expect(body.status).toBe('operational');
     expect(body.environment).toBeDefined();
+  });
+
+  it('preserves the production version label while reporting its deployed commit SHA', async () => {
+    const commitSha = '89abcdef0123456789abcdef0123456789abcdef';
+    const res = await api.fetch(new Request('http://localhost/api/version', {
+      method: 'GET'
+    }), { WORKER_VERSION: '1.0.0-production', WORKER_COMMIT_SHA: commitSha });
+
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.version).toBe('1.0.0-production');
+    expect(body.commitSha).toBe(commitSha);
   });
 
   it('applies scoped CORS headers for allowed origins', async () => {

@@ -136,7 +136,7 @@ jobs:
           name: rq-production-${{ github.sha }}
           path: dist/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
   deploy:
     name: Deploy verified Worker and smoke test
@@ -178,10 +178,11 @@ jobs:
           SMOKE_BASE_URL: https://rq.tarekhamada875.workers.dev
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
           SMOKE_EXPECTED_VERSION: 1.0.0-production
+          SMOKE_EXPECTED_COMMIT_SHA: ${{ github.sha }}
           SMOKE_MAX_ATTEMPTS: 60
           SMOKE_RETRY_DELAY_MS: 10000
         run: >-
           npx --yes
           --package=wrangler@4.147.0
           --package=tsx@4.23.13
-          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts'
+          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle --var WORKER_COMMIT_SHA:$GITHUB_SHA && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts'

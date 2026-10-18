@@ -1,11 +1,15 @@
+import { compareCommitSha, isGitCommitSha } from './release-smoke-contract';
+
 type HealthBody = {
   status?: unknown;
   adminSdk?: unknown;
   version?: unknown;
+  commitSha?: unknown;
 };
 
 const baseUrl = (process.env.SMOKE_BASE_URL || '').replace(/\/+$/, '');
 const expectedVersion = (process.env.SMOKE_EXPECTED_VERSION || '').trim();
+const expectedCommitSha = (process.env.SMOKE_EXPECTED_COMMIT_SHA || '').trim();
 const frontendUrl = (process.env.SMOKE_FRONTEND_URL || baseUrl).replace(/\/+$/, '');
 const maxAttempts = Math.max(1, Number.parseInt(process.env.SMOKE_MAX_ATTEMPTS || '12', 10) || 12);
 const retryDelayMs = Math.max(1000, Number.parseInt(process.env.SMOKE_RETRY_DELAY_MS || '10000', 10) || 10000);
@@ -28,6 +32,11 @@ if (!baseUrl) {
   process.exit(0);
 }
 
+if (expectedCommitSha && !isGitCommitSha(expectedCommitSha)) {
+  console.error('[FAIL] SMOKE_EXPECTED_COMMIT_SHA must be a full 40-character lowercase Git commit SHA.');
+  process.exit(1);
+}
+
 let responseStatus = 0;
 let body: HealthBody | null = null;
 let healthPassed = false;
@@ -42,12 +51,17 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     healthPassed = response.ok && isHealthyBody(body);
 
     const versionMatches = healthPassed && (!expectedVersion || body.version === expectedVersion);
-    if (versionMatches) break;
+    const commitCheck = expectedCommitSha
+      ? compareCommitSha(expectedCommitSha, body?.commitSha)
+      : null;
+    if (versionMatches && (!commitCheck || commitCheck.matches)) break;
 
     if (attempt < maxAttempts) {
-      const reason = healthPassed && expectedVersion
-        ? `waiting for release ${expectedVersion}; currently serving ${body.version}`
-        : `waiting for a healthy backend response (HTTP ${responseStatus})`;
+      const reason = healthPassed && commitCheck && !commitCheck.matches
+        ? `waiting for selected commit ${expectedCommitSha}; currently serving ${String(body?.commitSha ?? 'no valid commit SHA')}`
+        : healthPassed && expectedVersion && body?.version !== expectedVersion
+          ? `waiting for release ${expectedVersion}; currently serving ${body?.version}`
+          : `waiting for a healthy backend response (HTTP ${responseStatus})`;
       console.warn(`[WAIT] ${reason} (attempt ${attempt}/${maxAttempts})`);
       await sleep(retryDelayMs);
     }
@@ -67,11 +81,19 @@ if (!healthPassed || !isHealthyBody(body)) {
 }
 
 if (expectedVersion && body.version !== expectedVersion) {
-  console.error('[FAIL] Live backend commit does not match the release commit:', {
+  console.error('[FAIL] Live backend version does not match the release version:', {
     expectedVersion,
     actualVersion: body.version,
   });
   process.exit(1);
+}
+
+if (expectedCommitSha) {
+  const commitCheck = compareCommitSha(expectedCommitSha, body.commitSha);
+  if (!commitCheck.matches) {
+    console.error('[FAIL] Live backend commit does not match the selected release commit SHA:', commitCheck);
+    process.exit(1);
+  }
 }
 
 const frontendResponse = await fetch(frontendUrl, { headers: { Accept: 'text/html' } });
@@ -80,4 +102,4 @@ if (!frontendResponse.ok) {
   process.exit(1);
 }
 
-console.log(`[PASS] Live backend ${baseUrl} and frontend ${frontendUrl} are healthy (version ${body.version}).`);
+console.log(`[PASS] Live backend ${baseUrl} and frontend ${frontendUrl} are healthy (version ${body.version}, commit SHA ${String(body.commitSha ?? 'unreported')}).`);

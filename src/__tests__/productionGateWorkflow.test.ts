@@ -30,6 +30,8 @@ describe('production release workflow', () => {
     expect(deployJob).toContain('name: rq-production-${{ github.sha }}');
     expect(deployJob).toContain('git rev-parse HEAD)" = "$GITHUB_SHA"');
     expect(deployJob).toContain('--no-bundle');
+    expect(deployJob).toContain('--var WORKER_COMMIT_SHA:$GITHUB_SHA');
+    expect(deployJob).toContain('SMOKE_EXPECTED_COMMIT_SHA: ${{ github.sha }}');
     expect(workerBuildScript).toContain('minify: true');
   });
 

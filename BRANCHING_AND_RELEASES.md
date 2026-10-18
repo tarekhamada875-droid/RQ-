@@ -25,6 +25,12 @@ As of 2026-10-17, the active repository ruleset [Protect main: pull request and 
 5. Merge only after CI and review pass.
 6. Delete the merged branch.
 
+## Manual Worker rollback
+
+The Production Gate keeps each verified release artifact for up to 30 days (subject to the repository’s artifact-retention limit). To restore a previous Worker release, start the **Worker Rollback** workflow from `main` and provide the full commit SHA plus the run ID of that commit’s successful main-branch **Production Gate**. The workflow confirms those two identifiers belong together, downloads only that run’s `rq-production-<SHA>` artifact, and refuses to deploy if the artifact cannot report its source SHA. It then deploys that exact saved Worker build and runs the strict smoke check against the selected SHA.
+
+This workflow is manual and does not roll back Pages or change Firebase data/rules. Do not select a pull-request run, use a shortened SHA, or bypass the workflow. If the selected artifact has expired or predates commit-SHA reporting, the workflow stops before deployment. A successful rollback is still a production release and must be checked in its Actions run.
+
 ## Why branches and pull requests exist
 
 A branch is an isolated line of commits used to develop or validate a change without changing `main` immediately. A pull request compares that line with `main`, runs CI, and records the review/merge decision. Once merged, the commits are part of `main`; the branch is normally disposable.
