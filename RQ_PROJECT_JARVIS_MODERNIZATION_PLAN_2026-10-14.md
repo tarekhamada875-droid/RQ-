@@ -790,6 +790,10 @@ On branch `feat/cross-f2-admin-service-modules` from clean `main` `fdb759c5d4d78
 - **Effort:** M.
 
 #### Cross-F3 — Group useGarageApp contract before migrating App
+#### Cross-F3 implementation checkpoint (2026-10-18, local)
+
+On branch `feat/cross-f3-garage-app-contract` from clean `main` `2b2e6a311fbc32d0be832987a78be425632f74e1`, `useGarageApp` now exposes six stable named groups—`session`, `navigationUi`, `garageData`, `vehicleOperations`, `subscriptions`, and `adminManagement`—with flat aliases retained for one migration step. `App.tsx` consumes only those groups. RenderHook characterization passed 1 file/1 test; full `npm run ci:check` passed 140 files/902 tests, rules, build, artifact smoke, maintainability, lint, and diff checks. Session readiness, offline gating, fallback views, forwarding, callback identity, and cleanup behavior are unchanged. This is local only; complete the PR and post-merge verification before starting later roadmap work.
+
 
 - **Source:** `src/hooks/useGarageApp.ts:22-37,176-227,241-257,259-343,345-441`; `src/App.tsx:48-135,200-393`.
 - **Simple explanation:** Five domain hooks are flattened into about 94 values and App has no direct orchestration test.
