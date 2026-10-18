@@ -1,3 +1,9 @@
+## Cross-F3 subscriber release verification (2026-10-18)
+
+PR [#141](https://github.com/tarekhamada875-droid/RQ-/pull/141) merged the subscriber route extraction into `main` at `53f1abb9e9437586ee3497767e88b9f594718ca7`. Main Production Gate [39118898026](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39118898026) passed full verification, immutable artifact deployment, and strict live smoke. The live Worker health/version endpoints report the exact same SHA. The four subscriber lifecycle routes are therefore merged, deployed, and live. No Firebase data/rules, database routing, billing decision, or migration changed.
+
+Cross-F3 is complete for the subscriber family only. Stop here; do not begin financial/recharge/delegate or garage extraction in this task.
+
 ## Current checkpoint: subscriber route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f3-worker-subscriber-routes` starts from clean `main` `274eaff9bdda8a0453be35eebab2e26a54d94d68`. The four subscriber lifecycle registrations now live in `server/subscriberRoutes.ts`: add, renew, update, and delete. The move is mechanical behind a typed `SubscriberRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, financial/recharge routes, and default `fetch`.
