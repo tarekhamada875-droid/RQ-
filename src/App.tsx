@@ -4,11 +4,7 @@
  */
 
 import { useEffect, Suspense } from 'react';
-import {
-  CheckCircle2,
-  XCircle,
-  X
-} from 'lucide-react';
+import { CheckCircle2, XCircle, X } from 'lucide-react';
 import { resolveShimmerColor } from './utils';
 import { useTheme } from './utils/ThemeContext';
 import { useLocalStorageState } from './hooks/useLocalStorage';
@@ -18,184 +14,37 @@ import { LandscapeMobileView } from './components/layout/LandscapeMobileView';
 import { OfflineView } from './components/layout/OfflineView';
 import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { logDiagnostic } from './utils/authDiagnosticLogger';
-
-import { LoginView } from './components/auth/LoginView';
-import { AdminLoginView } from './components/auth/AdminLoginView';
-import { DelegateLoginView } from './components/auth/DelegateLoginView';
-import { lazyWithRetry } from './utils/lazyWithRetry';
-
-// Loaded only when the related route or confirmation is opened.
-const CheckInModal = lazyWithRetry(() => import('./components/modals/CheckInModal').then(m => ({ default: m.CheckInModal })));
-const CheckOutModal = lazyWithRetry(() => import('./components/modals/CheckOutModal').then(m => ({ default: m.CheckOutModal })));
-const DeleteGarageConfirmModal = lazyWithRetry(() => import('./components/modals/DeleteGarageConfirmModal').then(m => ({ default: m.DeleteGarageConfirmModal })));
-const DeleteVehicleConfirmModal = lazyWithRetry(() => import('./components/modals/DeleteVehicleConfirmModal').then(m => ({ default: m.DeleteVehicleConfirmModal })));
-const RecentExitWarningModal = lazyWithRetry(() => import('./components/modals/RecentExitWarningModal').then(m => ({ default: m.RecentExitWarningModal })));
-const LogoutConfirmModal = lazyWithRetry(() => import('./components/modals/LogoutConfirmModal').then(m => ({ default: m.LogoutConfirmModal })));
-const SubscriberWarningModal = lazyWithRetry(() => import('./components/modals/SubscriberWarningModal').then(m => ({ default: m.SubscriberWarningModal })));
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
-import { firestoreService } from './services';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
-
-// Lazy Loaded Dashboard Views
-const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const DelegateDashboardView = lazyWithRetry(() => import('./components/delegate/DelegateDashboardView').then(m => ({ default: m.DelegateDashboardView })));
-const AdminGarageDetailsView = lazyWithRetry(() => import('./components/admin/AdminGarageDetailsView').then(m => ({ default: m.AdminGarageDetailsView })));
-const AdminDelegateDetailsView = lazyWithRetry(() => import('./components/admin/AdminDelegateDetailsView').then(m => ({ default: m.AdminDelegateDetailsView })));
-const GarageDashboardView = lazyWithRetry(() => import('./components/garage/GarageDashboardView').then(m => ({ default: m.GarageDashboardView })));
+import { AppRoutes } from './components/app/AppRoutes';
+import { AppOverlays } from './components/app/AppOverlays';
 
 export default function App() {
-  const {
-    session: {
-      isAuthReady,
-      isSessionReady,
-      currentStaff,
-      currentSupervisor,
-      showLogoutConfirm,
-      setShowLogoutConfirm,
-      handleLogout,
-      handleInitiateLogout,
-    },
-    navigationUi: {
-      isLandscapeMobile,
-      view,
-      setView,
-      loginPhone,
-      setLoginPhone,
-      selectedGarageForDetails,
-      setSelectedGarageForDetails,
-      selectedDelegateForDetails,
-      setSelectedDelegateForDetails,
-      showDeleteConfirm,
-      setShowDeleteConfirm,
-      garageDeletionProgress,
-      showPackages,
-      setShowPackages,
-      showStaffStats,
-      setShowStaffStats,
-      showSubscribers,
-      setShowSubscribers,
-      isInputFocused,
-      setIsInputFocused,
-      toast,
-      setToast,
-      showToast,
-      closeKeyboard,
-      plateInputRef,
-      inputRef,
-      now,
-      showOfflineScreen,
-    },
-    garageData: {
-      garage,
-      delegate,
-      delegates,
-      vehicles,
-      todayTransactions,
-      allGarages,
-      staffList,
-      setStaffList,
-      rechargeRequests,
-      adminRechargeHasMore,
-      adminRechargeListsLoading,
-      loadMoreAdminRechargeRequests,
-      markAdminRechargeRequestResolved,
-      delegateRequests,
-      delegatePagination,
-      delegateListsLoading,
-      loadMoreDelegateGarages,
-      loadMoreDelegateRequests,
-      sortedPackages,
-      delegateGarages,
-      adminGarageHasMore,
-      adminDelegateHasMore,
-      adminListsLoading,
-      adminListsError,
-      adminSummary,
-      loadMoreAdminGarages,
-      loadMoreAdminDelegates,
-      refreshAdminLists,
-    },
-    vehicleOperations: {
-      newPlateNumber,
-      setNewPlateNumber,
-      selectedVehicle,
-      setSelectedVehicle,
-      showCheckInModal,
-      setShowCheckInModal,
-      showCheckOutModal,
-      setShowCheckOutModal,
-      isLoading,
-      setIsLoading,
-      loadingType,
-      showRecentExitWarning,
-      setShowRecentExitWarning,
-      recentVehicle,
-      setRecentVehicle,
-      showSubscriberWarning,
-      setShowSubscriberWarning,
-      subscriberWarningPlate,
-      setSubscriberWarningPlate,
-      pendingCheckInType,
-      handleCheckIn,
-      confirmCheckOut,
-      handleDeleteVehicle,
-    },
-    subscriptions: {
-      walletNumber,
-      subscriptionPrices,
-      handleDelegateRecharge,
-      handleDelegateBalanceTopupRequest,
-    },
-    adminManagement: {
-      adminPin,
-      setAdminPin,
-      activeAdminPin,
-      handleGarageLogin,
-      handleDelegateLogin,
-      deleteGarage,
-      updateGarageRate,
-      createNewGarage,
-      addDelegate,
-      removeDelegate,
-    },
-  } = useGarageApp();
+  const app = useGarageApp();
+  const { session, navigationUi, vehicleOperations } = app;
+  const { isAuthReady, isSessionReady, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showPackages, setShowPackages, showStaffStats, setShowStaffStats, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { garage, delegate } = app.garageData;
+  const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
   const { theme } = useTheme();
   const systemConfig = useSystemConfig();
   const [localAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
-  const effectiveWalletNumber = walletNumber || systemConfig?.walletNumber || '';
-
-  const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard'))
-    ? adminColor
-    : (garage?.shimmerColor || '#10b981');
-
+  const effectiveWalletNumber = app.subscriptions.walletNumber || systemConfig?.walletNumber || '';
+  const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard')) ? adminColor : (garage?.shimmerColor || '#10b981');
   const resolvedColor = resolveShimmerColor(activeColor, theme);
 
-  // View auto-recovery fallback when persisted view data is missing
   useEffect(() => {
     if (!isLoading && isAuthReady) {
-      if (view === 'garage' && !garage && !currentStaff) {
-        const storedGarage = localStorage.getItem('app_garage');
-        const storedStaff = localStorage.getItem('app_staff');
-        if (!storedGarage && !storedStaff) {
-          setView('login');
-        }
-      } else if (view === 'delegate_dashboard' && !delegate) {
-        const storedDelegate = localStorage.getItem('app_delegate');
-        if (!storedDelegate) {
-          setView('login');
-        }
-      } else if (view === 'admin_garage_details' && !selectedGarageForDetails) {
-        setView('admin_dashboard');
-      } else if (view === 'admin_delegate_details' && !selectedDelegateForDetails) {
-        setView('admin_dashboard');
-      }
+      if (view === 'garage' && !garage && !currentStaff && !localStorage.getItem('app_garage') && !localStorage.getItem('app_staff')) setView('login');
+      else if (view === 'delegate_dashboard' && !delegate && !localStorage.getItem('app_delegate')) setView('login');
+      else if (view === 'admin_garage_details' && !selectedGarageForDetails) setView('admin_dashboard');
+      else if (view === 'admin_delegate_details' && !selectedDelegateForDetails) setView('admin_dashboard');
     }
-  }, [view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
+  }, [isLoading, isAuthReady, view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, setView]);
 
-  // Call useBackTrapping hook to handle browser navigation / Android popstate
   useBackTrapping({
     view,
     setView,
@@ -224,380 +73,22 @@ export default function App() {
     setSubscriberWarningPlate,
   });
 
-  const renderView = () => {
-    logDiagnostic('RENDER_VIEW_EVALUATED', {
-      view,
-      isAuthReady,
-      isLoading,
-    });
-
-    if (view === 'login') {
-      return (
-        <LoginView
-          loginPhone={loginPhone}
-          setLoginPhone={setLoginPhone}
-          handleGarageLogin={handleGarageLogin}
-          onDelegateLogin={() => setView('delegate_login')}
-          isLoading={isLoading || !isAuthReady}
-          closeKeyboard={closeKeyboard}
-        />
-      );
-    }
-
-    if (view === 'admin_login') {
-      return (
-        <AdminLoginView
-          adminPin={adminPin}
-          setAdminPin={setAdminPin}
-          setView={setView}
-          showToast={showToast}
-          closeKeyboard={closeKeyboard}
-          correctAdminPin={activeAdminPin}
-          onLogin={handleGarageLogin}
-        />
-      );
-    }
-
-    if (view === 'admin_dashboard') {
-      return (
-        <ErrorBoundary>
-          <AdminDashboard
-            allGarages={allGarages}
-            isLoading={isLoading}
-            createNewGarage={createNewGarage}
-            setView={setView}
-            setSelectedGarageForDetails={setSelectedGarageForDetails}
-            setSelectedDelegateForDetails={setSelectedDelegateForDetails}
-            delegates={delegates}
-            addDelegate={addDelegate}
-            packages={sortedPackages}
-            onLogout={handleInitiateLogout}
-            rechargeRequests={rechargeRequests}
-            adminRechargeHasMore={adminRechargeHasMore}
-            adminRechargeListsLoading={adminRechargeListsLoading}
-            onLoadMoreAdminRechargeRequests={loadMoreAdminRechargeRequests}
-            onRechargeRequestResolved={markAdminRechargeRequestResolved}
-            adminGarageHasMore={adminGarageHasMore}
-            adminDelegateHasMore={adminDelegateHasMore}
-            adminListsLoading={adminListsLoading}
-            adminListsError={adminListsError}
-            adminSummary={adminSummary}
-            onLoadMoreAdminGarages={loadMoreAdminGarages}
-            onLoadMoreAdminDelegates={loadMoreAdminDelegates}
-            onRefreshAdminLists={refreshAdminLists}
-            currentSupervisor={currentSupervisor}
-            currentAdminPin={activeAdminPin}
-            currentWalletNumber={effectiveWalletNumber}
-            onUpdateWalletNumber={firestoreService.updateWalletNumber}
-            subscriptionPrices={subscriptionPrices}
-            showToast={showToast}
-          />
-        </ErrorBoundary>
-      );
-    }
-
-    if (view === 'delegate_login') {
-      return (
-        <DelegateLoginView
-          onLogin={handleDelegateLogin}
-          isLoading={isLoading}
-          onBack={() => setView('login')}
-        />
-      );
-    }
-
-    if (view === 'delegate_dashboard' && delegate) {
-      return (
-        <ErrorBoundary>
-          <DelegateDashboardView
-            delegate={delegate}
-            allGarages={delegateGarages}
-            onLogout={handleInitiateLogout}
-            onRecharge={handleDelegateRecharge}
-            onRechargeBalance={handleDelegateBalanceTopupRequest}
-            onCreateGarage={createNewGarage}
-            isLoading={isLoading}
-            packages={sortedPackages}
-            pendingRequests={delegateRequests.filter(r => r.status === 'pending')}
-            delegateRequests={delegateRequests}
-            delegatePagination={delegatePagination}
-            delegateListsLoading={delegateListsLoading}
-            onLoadMoreDelegateGarages={loadMoreDelegateGarages}
-            onLoadMoreDelegateRequests={loadMoreDelegateRequests}
-            showToast={showToast}
-            subscriptionPrices={subscriptionPrices}
-          />
-        </ErrorBoundary>
-      );
-    }
-
-    if (view === 'admin_garage_details' && selectedGarageForDetails) {
-      return (
-        <ErrorBoundary>
-          <AdminGarageDetailsView
-            selectedGarageForDetails={selectedGarageForDetails}
-            setView={setView}
-            setSelectedGarageForDetails={setSelectedGarageForDetails}
-            setShowDeleteConfirm={setShowDeleteConfirm}
-            updateGarageRate={updateGarageRate}
-            staffList={staffList}
-            setStaffList={setStaffList}
-            isLoading={isLoading}
-            setIsLoading={setIsLoading}
-            packages={sortedPackages}
-            subscriptionPrices={subscriptionPrices}
-            allGarages={allGarages}
-          />
-        </ErrorBoundary>
-      );
-    }
-
-    if (view === 'admin_delegate_details' && selectedDelegateForDetails) {
-      // Find the most up-to-date delegate data from our synced delegates list
-      const liveDelegate = delegates.find(d => d.id === selectedDelegateForDetails.id) || selectedDelegateForDetails;
-      if (!liveDelegate) return <div className="p-8 text-center">جاري التحميل...</div>;
-
-      return (
-        <ErrorBoundary>
-          <AdminDelegateDetailsView
-            delegate={liveDelegate}
-            setView={setView}
-            setSelectedDelegate={setSelectedDelegateForDetails}
-            removeDelegate={removeDelegate}
-          />
-        </ErrorBoundary>
-      );
-    }
-
-    if (view === 'garage' && garage) {
-      return (
-        <ErrorBoundary>
-          <GarageDashboardView
-            garage={garage}
-            currentStaff={currentStaff}
-            isInputFocused={isInputFocused}
-            now={now}
-            vehicles={vehicles}
-            todayTransactions={todayTransactions}
-            setSelectedVehicle={setSelectedVehicle}
-            setShowCheckOutModal={setShowCheckOutModal}
-            closeKeyboard={closeKeyboard}
-            newPlateNumber={newPlateNumber}
-            setNewPlateNumber={setNewPlateNumber}
-            setIsInputFocused={setIsInputFocused}
-            plateInputRef={plateInputRef}
-            handleCheckIn={handleCheckIn}
-            inputRef={inputRef}
-            onLogout={handleInitiateLogout}
-            showToast={showToast}
-            packages={sortedPackages}
-            staffList={staffList}
-            showPackages={showPackages}
-            setShowPackages={setShowPackages}
-            showStaffStats={showStaffStats}
-            setShowStaffStats={setShowStaffStats}
-            showSubscribers={showSubscribers}
-            setShowSubscribers={setShowSubscribers}
-            walletNumber={effectiveWalletNumber}
-            subscriptionPrices={subscriptionPrices}
-            isLoading={isLoading}
-          />
-        </ErrorBoundary>
-      );
-    }
-
-    // Safe fallback to login if state is inconsistent
-    return <LoginView
-      loginPhone={loginPhone}
-      setLoginPhone={setLoginPhone}
-      handleGarageLogin={handleGarageLogin}
-      onDelegateLogin={() => setView('delegate_login')}
-      isLoading={isLoading || !isAuthReady}
-      closeKeyboard={closeKeyboard}
-    />;
-  };
-
-  // --- Landscape Orientation Check for Mobiles ---
-  if (isLandscapeMobile) {
-    return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
-  }
-
-  // --- Offline Mode (Gatekeeper) ---
-  if (showOfflineScreen) {
-    return <OfflineView />;
-  }
-
-  // --- Initial Loading State ---
-  if (!isAuthReady) {
-    logDiagnostic('APP_WAITING_FOR_AUTH_READY', { isAuthReady, isLoading, view });
-    return (
-      <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">
-          جاري تحميل البيانات...
-        </p>
-      </div>
-    );
-  }
-
-  if (shouldWaitForSessionReady(view, isSessionReady)) {
-    logDiagnostic('APP_WAITING_FOR_SESSION_READY', { isAuthReady, isSessionReady, view });
-    return (
-      <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">
-          جاري تحميل البيانات...
-        </p>
-      </div>
-    );
+  if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
+  if (showOfflineScreen) return <OfflineView />;
+  if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady)) {
+    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : 'APP_WAITING_FOR_SESSION_READY', { isAuthReady, isSessionReady, view });
+    return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري تحميل البيانات...</p></div>;
   }
 
   const isLoggedIn = Boolean(view && view !== 'login');
-
-  return (
-    <div
-      className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`}
-      style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}
-    >
-      <ErrorBoundary>
-        <NetworkStatusBanner />
-        {toast && (
-          <div
-            className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"
-          >
-            <div
-              onClick={() => setToast(null)}
-              role="alert"
-              className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"
-            >
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    toast.type === 'error'
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  }`}
-                >
-                  {toast.type === 'error' ? (
-                    <XCircle className="w-5 h-5 stroke-[2.5]" />
-                  ) : (
-                    <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1 text-center" dir="rtl">
-                  <p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">
-                    {toast.message}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setToast(null);
-                }}
-                className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors"
-                title="إغلاق"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <Suspense fallback={null}>
-          {showCheckInModal && garage && (
-            <CheckInModal
-              newPlateNumber={newPlateNumber}
-              garage={garage}
-              isLoading={isLoading}
-              loadingType={loadingType}
-              onCheckIn={handleCheckIn}
-              onCancel={() => setShowCheckInModal(false)}
-            />
-          )}
-
-          {showCheckOutModal && selectedVehicle && garage && (
-            <CheckOutModal
-              selectedVehicle={selectedVehicle}
-              garage={garage}
-              currentStaff={currentStaff}
-              isLoading={isLoading}
-              loadingType={loadingType}
-              now={now}
-              onConfirm={confirmCheckOut}
-              onDelete={handleDeleteVehicle}
-              onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }}
-            />
-          )}
-
-          {showDeleteConfirm && view === 'admin_garage_details' && selectedGarageForDetails && (
-            <DeleteGarageConfirmModal
-              garage={selectedGarageForDetails}
-              isLoading={isLoading}
-              progress={garageDeletionProgress}
-              onConfirm={() => deleteGarage(selectedGarageForDetails)}
-              onCancel={() => setShowDeleteConfirm(false)}
-            />
-          )}
-
-          {showDeleteConfirm && selectedVehicle && (
-            <DeleteVehicleConfirmModal
-              vehicle={selectedVehicle}
-              isLoading={isLoading}
-              onConfirm={handleDeleteVehicle}
-              onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }}
-            />
-          )}
-
-          {showRecentExitWarning && recentVehicle && (
-            <RecentExitWarningModal
-              vehicle={recentVehicle}
-              now={now}
-              onConfirm={() => {
-                if (pendingCheckInType) {
-                  setShowRecentExitWarning(false);
-                  handleCheckIn(pendingCheckInType);
-                }
-              }}
-              onCancel={() => {
-                setShowRecentExitWarning(false);
-                setRecentVehicle(null);
-                setNewPlateNumber('');
-              }}
-            />
-          )}
-
-          {showSubscriberWarning && subscriberWarningPlate && (
-            <SubscriberWarningModal
-              plateNumber={subscriberWarningPlate}
-              onConfirm={() => {
-                setShowSubscriberWarning(false);
-                setSubscriberWarningPlate('');
-              }}
-            />
-          )}
-
-          {showLogoutConfirm && (
-            <LogoutConfirmModal
-              onConfirm={handleLogout}
-              onCancel={() => setShowLogoutConfirm(false)}
-              onVerifyPin={firestoreService.verifyAdminPinForLogout}
-            />
-          )}
-        </Suspense>
-
-        <Suspense fallback={
-          <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" />
-            <p className="text-slate-600 dark:text-slate-300 font-bold text-xs animate-pulse">
-              جاري تحميل الصفحة...
-            </p>
-          </div>
-        }>
-          {renderView()}
-        </Suspense>
-      </ErrorBoundary>
-    </div>
-  );
+  return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
+    <ErrorBoundary>
+      <NetworkStatusBanner />
+      {toast && <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"><div onClick={() => setToast(null)} role="alert" className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"><div className="flex min-w-0 flex-1 items-start gap-3"><div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>{toast.type === 'error' ? <XCircle className="w-5 h-5 stroke-[2.5]" /> : <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />}</div><div className="min-w-0 flex-1 text-center" dir="rtl"><p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">{toast.message}</p></div></div><button type="button" onClick={(event) => { event.stopPropagation(); setToast(null); }} className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors" title="إغلاق"><X className="w-4 h-4" /></button></div></div>}
+      <AppOverlays app={app} />
+      <Suspense fallback={<div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" /><p className="text-slate-600 dark:text-slate-300 font-bold text-xs animate-pulse">جاري تحميل الصفحة...</p></div>}>
+        <AppRoutes app={app} effectiveWalletNumber={effectiveWalletNumber} />
+      </Suspense>
+    </ErrorBoundary>
+  </div>;
 }

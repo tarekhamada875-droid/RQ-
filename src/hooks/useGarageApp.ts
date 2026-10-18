@@ -572,3 +572,5 @@ export function useGarageApp() {
     removeDelegate
   };
 }
+
+export type GarageAppState = ReturnType<typeof useGarageApp>;
