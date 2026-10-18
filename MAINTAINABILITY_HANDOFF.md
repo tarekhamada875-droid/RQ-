@@ -1,12 +1,12 @@
 ## Current checkpoint: admin service modules extracted locally (2026-10-18)
 
-The focused branch `feat/cross-f2-admin-service-modules` starts from clean `main` `fdb759c5d4d7836823c9efdd098ec1452a637cf3`. The 790-line `adminService` implementation is now split into eight domain modules: core/staff, packages, subscribers, coupons, activity, billing, announcements, and system config. `src/services/adminService.ts` remains a compatibility facade that composes the modules; `src/services/index.ts` continues to expose the same `firestoreService` spread.
+PR [#147](https://github.com/tarekhamada875-droid/RQ-/pull/147) merged the focused branch `feat/cross-f2-admin-service-modules` into `main` at `51121b473cc776f27db945639f3a957a3b2841d4`. The 790-line `adminService` implementation is now split into eight domain modules: core/staff, packages, subscribers, coupons, activity, billing, announcements, and system config. `src/services/adminService.ts` remains a compatibility facade that composes the modules; `src/services/index.ts` continues to expose the same `firestoreService` spread.
 
 The public facade contract remains unchanged with 41 method keys. Method names, return values, pagination, listener cleanup, callback order, API/Firestore transport behavior, and system-config bootstrap/fallback behavior are preserved. New characterization coverage locks the key set and system-config call counts. No system-config policy change, Firebase data/rules change, database routing, billing decision, migration, deployment, or performance claim is included.
 
-All modules are below the old 710-line service baseline. Focused checks passed 5 files / 22 tests; full local `npm run ci:check` passed 139 test files / 901 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. This is local only; the branch has not yet been pushed or opened as a PR.
+All modules are below the old 710-line service baseline. Focused checks passed 5 files / 22 tests; full local `npm run ci:check` passed 139 test files / 901 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. PR #147 passed its required Production Gate. Main Production Gate [39121937326](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39121937326) passed full verification, verified artifact upload, guarded Worker deployment, and live smoke. The live Worker reports the exact same SHA `51121b473cc776f27db945639f3a957a3b2841d4`.
 
-**Next step:** complete the normal PR cycle for this Cross-F2 split, then stop before Cross-F3. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+**Cross-F2 admin-service modularization is complete.** Stop here; do not begin Cross-F3 without a new task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
 
 ## Current checkpoint: garage-management route family extracted locally (2026-10-18)
 
