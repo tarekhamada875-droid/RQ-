@@ -133,11 +133,8 @@ describe('Modularized Admin Components Integrity', () => {
     expect(onToggleLock).toHaveBeenCalledTimes(1);
   });
 
-  it('renders AdminGarageFinancialsSection with wallet balance, presets, and referral options', () => {
-    const onClearBalance = vi.fn();
+  it('renders current non-wallet financial settings and referral options', () => {
     const onToggleMonthly = vi.fn();
-    const setSelectedTopup = vi.fn();
-    const onOpenTopup = vi.fn();
     const onRefChange = vi.fn();
 
     renderWithTheme(
@@ -149,25 +146,17 @@ describe('Modularized Admin Components Integrity', () => {
         showClearBalanceConfirm={false}
         setShowClearBalanceConfirm={vi.fn()}
         isLoading={false}
-        onClearBalance={onClearBalance}
         subscriberFlatFee={500}
         onToggleMonthlySubscribers={onToggleMonthly}
-        selectedTopupAmount={500}
-        setSelectedTopupAmount={setSelectedTopup}
-        onOpenTopupModal={onOpenTopup}
         allGarages={[mockGarage]}
         onReferredByChange={onRefChange}
       />
     );
 
-    expect(screen.getByText('1,500')).toBeDefined();
-    expect(screen.getByText('رصيد المحفظة الحالي')).toBeDefined();
-    expect(screen.getByText('15')).toBeDefined();
-
-    // Verify submit top-up button opens modal
-    const topupBtn = screen.getByText('شحن الرصيد الآن');
-    fireEvent.click(topupBtn);
-    expect(onOpenTopup).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('خدمة المشتركين الشهريين / الإيواء')).toBeDefined();
+    expect(screen.getByText('نظام مكافآت الإحالة')).toBeDefined();
+    expect(screen.queryByText('رصيد المحفظة الحالي')).toBeNull();
+    expect(screen.queryByText('شحن الرصيد الآن')).toBeNull();
   });
 
   it('renders complete AdminGarageDetailsView orchestrator and navigates back', () => {
@@ -244,7 +233,7 @@ describe('Modularized Admin Components Integrity', () => {
 });
 
 describe('Modularized Garage Dashboard Components Integrity', () => {
-  it('renders GarageSubscriptionCard correctly with remaining subscription data', () => {
+  it('does not render the retired subscription-wallet card for legacy garages', () => {
     renderWithTheme(
       <GarageSubscriptionCard
         garage={mockGarage}
@@ -256,8 +245,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
       />
     );
 
-    expect(screen.getByText('الرصيد المتبقي')).toBeDefined();
-    expect(screen.getByText('أيام')).toBeDefined();
+    expect(screen.queryByText('الرصيد المتبقي')).toBeNull();
   });
 
   it('renders GarageActiveVehiclesList and handles empty state', () => {

@@ -5,11 +5,9 @@
 
 import { memo } from 'react';
 import {
-  CheckCircle2,
   Trash2,
   Loader2,
-  Key,
-  Wallet
+  Key
 } from 'lucide-react';
 import { normalizeDigits } from '../../../utils';
 import { Garage, Staff } from '../../../types';
@@ -56,11 +54,11 @@ export const AdminGarageModals = memo(({
   staffForm,
   setStaffForm,
   onAddStaffSubmit,
-  showTopupModal,
-  setShowTopupModal,
-  selectedTopupAmount,
-  isTopupSuccess,
-  onTopupSubmit,
+  showTopupModal: _showTopupModal,
+  setShowTopupModal: _setShowTopupModal,
+  selectedTopupAmount: _selectedTopupAmount,
+  isTopupSuccess: _isTopupSuccess,
+  onTopupSubmit: _onTopupSubmit,
   staffToDelete,
   setStaffToDelete,
   onDeleteStaff,
@@ -126,89 +124,6 @@ export const AdminGarageModals = memo(({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Top-up Balance Confirmation Modal */}
-      {showTopupModal && selectedTopupAmount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-popup-30fps">
-            {isTopupSuccess ? (
-              <div className="flex flex-col items-center py-4 text-center">
-                <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center text-white mb-3 shadow-lg shadow-emerald-500/20">
-                  <CheckCircle2 className="w-9 h-9" />
-                </div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                  {t('تم شحن الرصيد بنجاح')}
-                </h3>
-                <p className="text-xs font-bold text-slate-400 mt-1">
-                  {garage.name}
-                </p>
-                <div className="mt-4 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-mono font-black text-base">
-                  + {selectedTopupAmount.toLocaleString('en-US')} {t('ج.م')}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="text-center mb-5">
-                  <div className="w-14 h-14 bg-amber-50 dark:bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3 text-amber-500">
-                    <Wallet className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                    {t('تأكيد شحن الرصيد للجراج؟')}
-                  </h3>
-                  <p className="text-xs font-bold text-slate-400 mt-1">
-                    {t('أنت على وشك إضافة رصيد بمقدار')} <span className="text-slate-900 dark:text-white font-black">{selectedTopupAmount.toLocaleString('en-US')} {t('ج.م')}</span> {t('لمحفظة الجراج')}
-                  </p>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 mb-5 space-y-2 border border-slate-100 dark:border-slate-800/80 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-500">{t('الرصيد الحالي')}:</span>
-                    <span className="font-black font-mono text-slate-900 dark:text-white">
-                      {(garage.balance || 0).toLocaleString('en-US')} {t('ج.م')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-amber-600 dark:text-amber-400">
-                    <span className="font-bold">{t('المبلغ المضاف')}:</span>
-                    <span className="font-black font-mono">
-                      + {selectedTopupAmount.toLocaleString('en-US')} {t('ج.م')}
-                    </span>
-                  </div>
-                  <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-                    <span className="font-black">{t('الرصيد بعد الشحن')}:</span>
-                    <span className="font-black font-mono text-sm">
-                      {((garage.balance || 0) + selectedTopupAmount).toLocaleString('en-US')} {t('ج.م')}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    disabled={isLoading}
-                    onClick={onTopupSubmit}
-                    className="flex-1 h-14 bg-emerald-600 text-white rounded-2xl font-black text-sm hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] whitespace-nowrap"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                        <span>{t('جاري شحن الرصيد...')}</span>
-                      </>
-                    ) : (
-                      <span>{t('تأكيد الشحن')}</span>
-                    )}
-                  </button>
-                  <button
-                    disabled={isLoading}
-                    onClick={() => setShowTopupModal(false)}
-                    className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
-                  >
-                    {t('إلغاء')}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}

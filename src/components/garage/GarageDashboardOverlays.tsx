@@ -12,7 +12,6 @@ import { AnnouncementModal } from "./modals/AnnouncementModal";
 export const GarageDashboardOverlays = (props: any) => {
   const {
     garage,
-    adminPhone,
     isLocked,
     isSubscribersOpen,
     isRechargeHistoryOpen,
@@ -56,12 +55,6 @@ export const GarageDashboardOverlays = (props: any) => {
               <p className="text-base md:text-lg font-bold text-slate-400 dark:text-slate-300 leading-relaxed px-4">
                 {garage.lockReason || "تم تعليق الخدمة مؤقتاً، يرجى التواصل مع الإدارة."}
               </p>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 inline-block">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">رقم الإدارة</p>
-                <p className="text-xl font-black text-white font-mono tracking-widest" dir="ltr">
-                  {adminPhone}
-                </p>
-              </div>
             </div>
           </div>
         </div>

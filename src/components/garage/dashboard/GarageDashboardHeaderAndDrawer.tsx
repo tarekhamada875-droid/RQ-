@@ -9,10 +9,8 @@ import {
   LogOut,
   X as XIcon,
   Users,
-  Zap,
   PieChart,
   Sliders,
-  Clock,
   Crown,
   Megaphone,
   FileText,
@@ -206,36 +204,6 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                       </div>
                     </button>
                   )}
-
-                  <button
-                    onClick={() => onNavigateOverlay('packages')}
-                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 active:scale-95 transition-all duration-150 outline-none cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                        <Zap className="w-4 h-4 fill-current text-amber-400 dark:text-slate-950" />
-                      </div>
-                      <span className="font-bold text-sm">شحن الرصيد والباقات</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => onNavigateOverlay('history')}
-                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 active:scale-95 transition-all duration-150 outline-none cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                        <Clock className="w-4 h-4 text-amber-400 dark:text-slate-950" />
-                      </div>
-                      <span className="font-bold text-sm">تاريخ الشحن</span>
-                    </div>
-                    {hasNewRecharge && (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-xs font-black flex items-center gap-1">
-                        <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
-                        شحن جديد
-                      </span>
-                    )}
-                  </button>
 
                   <button
                     onClick={() => onNavigateOverlay('appearance')}

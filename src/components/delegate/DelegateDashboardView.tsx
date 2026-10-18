@@ -426,7 +426,7 @@ export const DelegateDashboardView = memo(({
                         showToast('هناك طلب شحن معلق بالفعل لم يتم تفعيله بعد من قبل الإدارة', 'error');
                         return;
                       }
-                      setSelectedGarage(g);
+                      // Garage cards are informational; credit grants are now handled by administrators.
                     }}
                     className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 cursor-pointer flex flex-col justify-between min-h-[120px] transition-all shadow-sm hover:shadow-md text-right w-full ${
                       isPending 
@@ -477,9 +477,6 @@ export const DelegateDashboardView = memo(({
                       )}
 
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">
-                          الرصيد: {g.balance || 0} ج.م
-                        </span>
                         <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                           {g.hourlyRate} ج.ساعة
                         </span>
