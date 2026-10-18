@@ -1,3 +1,13 @@
+## Current checkpoint: Cross-F2 vehicle route family extracted locally (2026-10-18)
+
+The focused branch `feat/cross-f2-worker-routes` starts from clean `main` `a33e00b74d51adc863cec1d1dc0a7ed3f4277a11`. The six vehicle registrations now live in `server/vehicleRoutes.ts`: check-in, check-out, delete, refund, inside, and history. The move is mechanical behind a typed `VehicleRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, subscriber routes, and default `fetch`.
+
+The vehicle transaction logic is unchanged, including Egyptian plate normalization, idempotency, atomic credit debit/restore, maintained summaries, projections, activity logs, and domain events. The Firestore binding is resolved lazily inside handlers. The route inventory regression test confirms the vehicle order and unchanged total of 89 registrations. No Firebase data, rules, database routing, billing behavior, deployment, or performance claim changed.
+
+Focused regression checks passed: 5 files / 75 tests covering vehicle routes, authorization, read routes, foundation, and route inventory. The full local `npm run ci:check` passed: 138 test files / 898 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** finish the normal PR cycle for this vehicle-family extraction: commit/push, open the PR, wait for the required Production Gate, merge only after it passes, verify the guarded release/live result, then stop. Do not start subscriber or admin-service extraction in this task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+
 ## Cross-F1 release verification (2026-10-18)
 
 PR [#137](https://github.com/tarekhamada875-droid/RQ-/pull/137) merged into `main` at `ba194ea33a04dfc499292d1a67568486c116ba71`. Main Production Gate [39117269934](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39117269934) passed both verification and the guarded Worker deployment/live smoke. The live Worker health/version endpoints report the exact SHA `ba194ea33a04dfc499292d1a67568486c116ba71`. The first Cross-F1 read/system family is therefore merged, deployed, and live. No Firebase data/rules, database routing, billing behavior, or migration changed.
