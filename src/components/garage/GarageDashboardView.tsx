@@ -18,10 +18,8 @@ import { useTheme } from "../../utils/ThemeContext";
 import {
   resolveShimmerColor,
   isLightColor,
-  getRemainingSubscriptionInfo,
   safeDate,
   isSubscriptionExpired,
-  packageIdToDays
 } from "../../utils";
 import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
@@ -61,7 +59,6 @@ export const GarageDashboardView = memo((props: any) => {
     setShowStaffStats,
     showSubscribers,
     setShowSubscribers,
-    walletNumber = "",
     subscriptionPrices,
     isLoading = false,
   } = props;
@@ -77,7 +74,6 @@ export const GarageDashboardView = memo((props: any) => {
   const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
-  const [packagesInitialDuration, setPackagesInitialDuration] = useState<number | undefined>(undefined);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -137,19 +133,6 @@ export const GarageDashboardView = memo((props: any) => {
   }, []);
 
   const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
-  const packageDays = useMemo(() => {
-    if (prepaidCreditsEnabled) return 30;
-    if (!garage) return 30;
-    return packageIdToDays(garage.activePackageId || garage.packageId || '', garage.activePackageName || garage.packageName || garage.lastPackageName || '');
-  }, [garage, prepaidCreditsEnabled]);
-
-  const isDailyPackage = packageDays <= 2;
-  const subInfo = getRemainingSubscriptionInfo(garage, packageDays);
-  const remainingDays = useMemo(() => subInfo.days, [subInfo]);
-  const isCountdownInHours = subInfo.unit === 'hours';
-  const countdownValue = subInfo.displayCount;
-  const isUrgentRed = subInfo.isUrgentRed;
-  const isWarningYellow = isDailyPackage ? (isCountdownInHours && remainingDays === 1) : (remainingDays > 0 && remainingDays <= 3) || isUrgentRed;
 
   const totalInsideCount = useMemo(
     () =>
@@ -330,11 +313,6 @@ export const GarageDashboardView = memo((props: any) => {
         {!((isInputFocused && activeTab === "main") || isExpired) && (
           <GarageSubscriptionCard
             garage={garage}
-            isUrgentRed={isUrgentRed}
-            remainingDays={remainingDays}
-            isWarningYellow={isWarningYellow}
-            countdownValue={countdownValue}
-            isCountdownInHours={isCountdownInHours}
           />
         )}
 
@@ -343,17 +321,6 @@ export const GarageDashboardView = memo((props: any) => {
             {shouldShowSmartPrompt ? (
               <SmartActionPrompt
                 garage={garage}
-                packages={packages}
-                walletNumber={walletNumber}
-                onOpenPackages={(duration) => {
-                  setPackagesInitialDuration(duration);
-                  if (setShowPackages) {
-                    setShowPackages(true);
-                  }
-                }}
-                showToast={showToast}
-                isExpired={isExpired}
-                packageDurationDays={packageDays}
               />
             ) : (
               <RegistrationCard
@@ -452,7 +419,6 @@ export const GarageDashboardView = memo((props: any) => {
       {/* Dashboard Overlays (Modals & Fullscreen Views) */}
       <GarageDashboardOverlays
         garage={garage}
-        adminPhone={walletNumber}
         isLocked={isLockedOrSuspended}
         isSubscribersOpen={showSubscribers}
         isRechargeHistoryOpen={isRechargeHistoryOpen}
@@ -473,7 +439,6 @@ export const GarageDashboardView = memo((props: any) => {
         }}
         onClosePackages={() => {
           setShowPackages(false);
-          setPackagesInitialDuration(undefined);
         }}
         onCloseStaffStats={() => setShowStaffStats(false)}
         onCloseReports={() => setIsReportsOpen(false)}
@@ -481,7 +446,6 @@ export const GarageDashboardView = memo((props: any) => {
         onCloseTerms={() => setShowTermsModal(false)}
         packages={packages}
         subscriptionPrices={subscriptionPrices}
-        packagesInitialDuration={packagesInitialDuration}
         currentStaff={currentStaff}
         staffList={staffList}
         vehiclesInside={vehicles}

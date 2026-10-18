@@ -5,7 +5,6 @@ import {
   Users,
   Zap,
   Settings as SettingsIcon,
-  Wallet,
   Key,
   ClipboardList,
   ChevronRight,
@@ -22,7 +21,6 @@ import { AdminTrialLeadsView } from './AdminTrialLeadsView';
 import { AdminPackagesView } from './AdminPackagesView';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AdminFairUseView } from './AdminFairUseView';
-import { AdminWalletView } from './AdminWalletView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
@@ -111,8 +109,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   handleRejectGarage,
   setConfirmDialog,
   setPackageValidationError,
-  currentWalletNumber,
-  onUpdateWalletNumber,
+  currentWalletNumber: _currentWalletNumber,
+  onUpdateWalletNumber: _onUpdateWalletNumber,
   currentAdminPin,
   adminLang,
   t,
@@ -327,23 +325,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'catalog_settings' ? (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-            {/* Wallet Number */}
-            <div 
-              onClick={() => setActiveTab('wallet')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{t('رقم المحفظة الإلكترونية')}</h3>
-                <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
-                  <Wallet className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-bold font-mono">
-                <span>{currentWalletNumber}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
-              </div>
-            </div>
-
             {/* Admin PIN */}
             <div 
               onClick={() => setActiveTab('admin-pin')}
@@ -485,13 +466,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           packages={packages}
           setConfirmDialog={setConfirmDialog}
           setPackageValidationError={setPackageValidationError}
-          t={t}
-        />
-      ) : activeTab === 'wallet' ? (
-        <AdminWalletView
-          currentWalletNumber={currentWalletNumber}
-          onUpdateWalletNumber={onUpdateWalletNumber}
-          onCancel={() => setActiveTab('catalog_settings')}
           t={t}
         />
       ) : activeTab === 'announcements' ? (
