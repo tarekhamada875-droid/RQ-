@@ -18,7 +18,7 @@
     "firestore-pagination:benchmark": "tsx tools/firestore-pagination-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
     "maintainability:check": "tsx tools/maintainability-check.ts",
-    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
   },
   "dependencies": {
     "firebase": "^12.12.0",
@@ -45,6 +45,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.5.6",
     "esbuild": "^0.28.2",
+    "firebase-tools": "15.34.0",
     "jsdom": "^30.0.1",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.1.14",
