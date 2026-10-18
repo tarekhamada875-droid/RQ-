@@ -6,6 +6,7 @@ const workerSource = readFileSync(resolve(process.cwd(), 'server/cloudflareWorke
 const readRoutesSource = readFileSync(resolve(process.cwd(), 'server/readRoutes.ts'), 'utf8');
 const vehicleRoutesSource = readFileSync(resolve(process.cwd(), 'server/vehicleRoutes.ts'), 'utf8');
 const subscriberRoutesSource = readFileSync(resolve(process.cwd(), 'server/subscriberRoutes.ts'), 'utf8');
+const financialRoutesSource = readFileSync(resolve(process.cwd(), 'server/financialRoutes.ts'), 'utf8');
 
 function registrations(source: string): string[] {
   return [...source.matchAll(/\b(?:workerApp|app)\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)/g)]
@@ -31,10 +32,12 @@ describe('Cross-F1 Worker route extraction inventory', () => {
     const readRegistrationPoint = workerSource.indexOf('registerReadRoutes(workerApp');
     const vehicleRegistrationPoint = workerSource.indexOf('registerVehicleRoutes(workerApp');
     const subscriberRegistrationPoint = workerSource.indexOf('registerSubscriberRoutes(workerApp');
+    const financialRegistrationPoint = workerSource.indexOf('registerFinancialRoutes(workerApp');
 
     expect(readRegistrationPoint).toBeGreaterThan(-1);
     expect(readRegistrationPoint).toBeLessThan(vehicleRegistrationPoint);
     expect(vehicleRegistrationPoint).toBeLessThan(subscriberRegistrationPoint);
+    expect(subscriberRegistrationPoint).toBeLessThan(financialRegistrationPoint);
     expect(registrations(subscriberRoutesSource)).toEqual([
       'POST /api/subscribers/add',
       'POST /api/subscribers/renew',
@@ -49,7 +52,24 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/vehicles/inside',
       'GET /api/vehicles/history'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length).toBe(89);
+    expect(registrations(financialRoutesSource)).toEqual([
+      'POST /api/recharge-requests/create',
+      'POST /api/recharge-requests',
+      'POST /api/recharge-requests/process',
+      'POST /api/transactions/approve-recharge-request',
+      'POST /api/recharge-requests/reject',
+      'POST /api/transactions/reject-recharge-request',
+      'GET /api/recharge-requests',
+      'GET /api/recharge-requests/my',
+      'POST /api/transactions/admin-topup-balance',
+      'GET /api/delegate/commission-earnings',
+      'GET /api/delegates/dashboard',
+      'POST /api/delegate/withdraw-commission',
+      'POST /api/delegates/settle-account',
+      'GET /api/financial-summary',
+      'GET /api/reports/financial'
+    ]);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length).toBe(89);
   });
 
   it('keeps the global Worker export in the monolith', () => {

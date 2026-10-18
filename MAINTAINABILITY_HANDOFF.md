@@ -1,3 +1,13 @@
+## Current checkpoint: financial/recharge/delegate route family extracted locally (2026-10-18)
+
+The focused branch `feat/cross-f4-worker-financial-routes` starts from clean `main` `0bd030b4db3c5d4930a51ad24c2905b1a0fbe965`. The CF7 financial family now lives in `server/financialRoutes.ts`: recharge request creation/approval/rejection/listing, legacy top-up response, delegate dashboard/settlement, and financial reports. The move is mechanical behind a typed `FinancialRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, garage-management routes, and default `fetch`.
+
+Recharge and delegate transaction behavior, idempotency, pagination/cursor scopes, admin/delegate authorization, financial report date boundaries and filters, legacy retired responses, atomic Firestore transactions, credit/commission/event writes, and existing response shapes are unchanged. The route inventory regression test confirms the 15 CF7 registrations and the unchanged total of 89 registrations. No Firebase data, rules, database routing, billing decision, migration, deployment, or performance claim changed.
+
+Focused regression checks passed: 6 files / 89 tests covering all 13 financial-route tests, CF7 route inventory, authorization, subscribers, vehicles, and read routes. The full local `npm run ci:check` passed: 138 test files / 898 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. This is local only; the branch has not yet been pushed or opened as a PR.
+
+**Next step:** finish the normal PR cycle for this financial-family extraction: commit/push, open the PR, wait for the required Production Gate, merge only after it passes, verify the guarded release/live result, then stop. Do not start garage-management extraction in this task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
+
 ## Cross-F3 subscriber release verification (2026-10-18)
 
 PR [#141](https://github.com/tarekhamada875-droid/RQ-/pull/141) merged the subscriber route extraction into `main` at `53f1abb9e9437586ee3497767e88b9f594718ca7`. Main Production Gate [39118898026](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39118898026) passed full verification, immutable artifact deployment, and strict live smoke. The live Worker health/version endpoints report the exact same SHA. The four subscriber lifecycle routes are therefore merged, deployed, and live. No Firebase data/rules, database routing, billing decision, or migration changed.
