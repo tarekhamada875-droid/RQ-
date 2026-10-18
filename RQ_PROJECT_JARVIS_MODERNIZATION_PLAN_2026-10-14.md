@@ -235,6 +235,9 @@ Each task below is a PR-sized unit. “Keep” statements are compatibility requ
 - **Risk / rollback:** Medium—mount timing and browser back behavior can change. Move one route per PR; revert the route container and retain the old App wiring if its contract tests fail.
 - **Effort:** L.
 
+- **Implementation checkpoint (2026-10-18, local):** Route selection and modal ownership now live behind typed `AppRoutes` and `AppOverlays` containers. `App.tsx` retains only the global auth/session gates, theme/network shell, browser-history trap, and grouped hook boundary; the existing route props, lazy loading, fallbacks, diagnostics, wallet precedence, modal callbacks, and cleanup behavior are preserved. `useGarageApp` exports the inferred `GarageAppState` type for the boundary. `App.tsx` is 94 lines after extraction, down from 604; this is a maintainability measurement, not a performance claim.
+- **Verification:** `npm run lint` passed; focused UI/hook regressions passed 4 files / 12 tests; `npm run maintainability:check`, `git diff --check`, and full `npm run ci:check` passed. The full gate passed 140 test files / 902 tests, Firestore rules emulator, Pages/Worker build, built-Worker artifact smoke, maintainability, and artifact verification. A non-blocking existing Vite optimize-deps deprecation warning and expected emulator permission-denial logs were observed. No Firebase data/rules, database routing, billing behavior, or deployment changed. This checkpoint remains local until the normal PR and guarded release cycle completes.
+
 #### UI-002 — Preserve add-garage draft after failed save
 
 - **Source:** `src/components/admin/AdminAddGarageModal.tsx:121-150`; `src/components/admin/AdminDashboard.tsx:268-277,473-485`; `src/components/admin/AdminDashboard.test.tsx:45-47`.
