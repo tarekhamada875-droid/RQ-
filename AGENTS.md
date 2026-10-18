@@ -147,3 +147,7 @@ Whenever an agent asks Tarek to pass work to another agent, or knows another age
 - pre-edit checks and the complete focused-branch → local checks → PR → required gate → merge → post-merge/release verification process.
 
 Use everyday wording and briefly define technical terms. The message should be complete enough to continue safely without chat history, but it must tell the next agent to read the source-of-truth files and re-check repository/GitHub state because any copied status can become stale. This requirement applies to every future agent handoff, not only the current one.
+
+### Continuity lessons are mandatory
+
+Before preparing any handoff, read `RQ_CONTINUITY_LESSONS.md`. It records the required distinction between the latest application/Worker SHA and later documentation-only `main` commits, the final post-merge synchronization checklist, and the exact lesson that must be passed to the next agent. Every successor message MUST name this file and include the lesson in plain language. A copied status is never sufficient: after the last merge, fetch again and verify clean `main`, `origin/main`, the latest successful main gate for that exact commit, open PR count, live Worker identity, protected decision-branch SHA, and the tracked handoff wording. If a mismatch appears, disclose it and correct it through the normal PR and Production Gate workflow before declaring the handoff ready.
