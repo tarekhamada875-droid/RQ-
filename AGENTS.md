@@ -10,7 +10,7 @@
 - For every completed roadmap item, state the problem, what changed, a concrete user-facing example, why it helps, what was actually measured/tested, and whether it is local, in a PR, merged, or live. Use the owner's practical analogy style; never claim unmeasured 10x/50x gains.
 - Completed plans are not implementation authorization. Make routine reversible engineering decisions only for the specifically selected issue/PR scope. Ask before a material product/business choice or important irreversible action outside that scope. Ask separately before deleting stored data. Protect data and credentials regardless of broad engineering authority.
 - Persist new decisions, verified status, and remaining work in the tracked project documents; do not rely on private chat memory being available to the next contributor.
-- **Next planned task:** read [`UI_OPTIMIZATION_PLAN.md`](UI_OPTIMIZATION_PLAN.md) and [`PROJECT_ENGINEERING_KNOWLEDGE.md`](PROJECT_ENGINEERING_KNOWLEDGE.md). Begin with its browser performance baseline; do not implement a visual redesign or claim performance gains without relevant measurements.
+- **Next planned task:** read [`UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md`](UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md) and [`PROJECT_ENGINEERING_KNOWLEDGE.md`](PROJECT_ENGINEERING_KNOWLEDGE.md). Begin with its focused audit; do not implement a visual redesign or claim performance gains without relevant measurements.
 
 ## Current environment status
 - **Controlled production path:** The active deployment is Cloudflare Pages → Cloudflare Worker → Firebase. Railway deployment configuration and active service references are retired. The owner last confirmed on 2026-10-14 that the project has no real users, customer records, or live financial data; use synthetic data only and re-confirm before relying on that status for future tasks.
@@ -49,7 +49,7 @@
 
 ### 4. Law of Dynamic Business Logic & Hardcoding Prohibition
 - **Dynamic Package & Subscription Handling:** Keep package logic data-driven. Garage RQ-access credit bundles are integer quantities with no expiry; Admin confirms offline payment and directly grants credits. Garage owners do not purchase packages; the Admin package editor defines reusable credit/price templates only. Do not attach duration or `balanceDays` to credits. The garage’s own monthly parking memberships remain time-based. If operational vehicle capacity remains, keep it separate from credit quantity.
-- **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. For the next planned UI work, follow [`UI_OPTIMIZATION_PLAN.md`](UI_OPTIMIZATION_PLAN.md) and preserve current visuals while measuring real browser performance.
+- **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. For the next planned UI work, follow [`UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md`](UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md) and preserve current visuals while measuring the selected code path.
 
 ### 5. Law of Input Hygiene & Numeric Sanitization
 - **Strict Numeric Fields:** All numeric input fields must use `type="text" inputMode="numeric" pattern="[0-9]*"` with `.replace(/\D/g, '')` in `onChange` to prevent `NaN`, browser spin artifacts, or forced direction issues.

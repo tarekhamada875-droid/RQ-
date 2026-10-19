@@ -36,7 +36,7 @@ Before changing production data or deleting stored records, stop and obtain expl
 
 ## Next planned task
 
-The next agent should continue [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md) with the single bounded task **UI-OPT-01 — complete the authenticated dashboard baseline matrix**. The local Auth/Firestore fixture workflow is now merged and proven for the real garage keypad login and garage dashboard. Extend that workflow to deterministic admin and delegate sessions, then capture the representative authenticated routes and performance measurements before changing production UI code. This remains measurement-first, not a visual redesign; do not rewrite the theme, grid, `FlipNumber`, or `BorderShimmer` by assumption.
+The next agent should follow [`UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md`](./UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md) with the single bounded task: inspect `GarageDashboardView`’s timer and derived dashboard work for one demonstrably unnecessary operation. This is an internal modernization task, not a redesign. Preserve the exact current visuals, interactions, bilingual behavior, RTL/LTR behavior, Firebase/server boundaries, and financial semantics. Do not edit production UI code until the focused audit proves a specific bottleneck and records the behavior that must remain unchanged.
 
 ## Current release state
 
