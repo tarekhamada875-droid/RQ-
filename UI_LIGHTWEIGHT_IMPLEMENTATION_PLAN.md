@@ -108,6 +108,12 @@ The focused audit proved two related issues in `GarageDashboardView`:
 
 The regression coverage confirms both shared-listener cleanup and expiry at the fifteen-minute boundary.
 
+## Completed route/build graph audit
+
+The garage route eagerly imported `GarageReportsView` through `GarageDashboardOverlays`, even though the reports surface is opened only from the side panel. The reports feature was moved behind the existing retryable lazy-import pattern and a local `Suspense` boundary; all other garage overlays and their props remain unchanged.
+
+The production build provides a measurable result: the main `GarageDashboardView` chunk decreased from **104.07 KB raw / 25.60 KB gzip** to **96.52 KB raw / 23.82 KB gzip**, while the deferred `GarageReportsView` chunk is **8.51 KB raw / 3.00 KB gzip**. The report code is therefore no longer part of the initial garage route chunk and is requested only when the reports overlay is rendered.
+
 ## Next single task
 
-Inspect the route/build graph for one proven opportunity to defer feature code that is loaded before it is used. Do not split imports until the affected route, fallback, and visual behavior are identified and tested.
+Inspect one proven repeated-render or listener candidate using the existing dashboard listener tests and React dependency paths. Do not change memoization or subscription ownership until the repeated work is demonstrated and its cleanup behavior is covered.

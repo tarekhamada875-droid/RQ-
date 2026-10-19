@@ -1,12 +1,15 @@
+import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { RechargeHistoryView } from "./RechargeHistoryView";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
-import { GarageReportsView } from "./GarageReportsView";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
 import { AnnouncementModal } from "./modals/AnnouncementModal";
+import { lazyWithRetry } from "../../utils/lazyWithRetry";
+
+const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
 
 export const GarageDashboardOverlays = (props: any) => {
   const {
@@ -75,14 +78,16 @@ export const GarageDashboardOverlays = (props: any) => {
         />
       )}
       {isReportsOpen && !currentStaff && (
-        <GarageReportsView
-          garage={garage}
-          vehiclesInside={vehiclesInside}
-          todayExitedVehicles={todayExitedVehicles}
-          staffList={staffList}
-          onClose={onCloseReports}
-          onToggleMenu={onToggleMenu}
-        />
+        <Suspense fallback={null}>
+          <GarageReportsLazy
+            garage={garage}
+            vehiclesInside={vehiclesInside}
+            todayExitedVehicles={todayExitedVehicles}
+            staffList={staffList}
+            onClose={onCloseReports}
+            onToggleMenu={onToggleMenu}
+          />
+        </Suspense>
       )}
       {isAppearanceOpen && (
         <AppearanceSettingsModal garage={garage} currentStaff={currentStaff} onClose={onCloseAppearance} showToast={showToast} onToggleMenu={onToggleMenu} />
