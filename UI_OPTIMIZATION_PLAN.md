@@ -89,4 +89,4 @@ Do not combine the baseline with a theme rewrite, grid redesign, `FlipNumber` re
 
 ## Handoff to the next agent
 
-Read this plan and `PROJECT_ENGINEERING_KNOWLEDGE.md` before editing. Start from synchronized `main`, verify the current live Worker identity, run the existing production checks, and establish the Phase 0 baseline. Stop and report the evidence if no measurable bottleneck is found; do not optimize by assumption.
+The initial public baseline is complete, and the isolated local fixture workflow now proves the real garage keypad login and authenticated garage dashboard. Read this plan and `PROJECT_ENGINEERING_KNOWLEDGE.md` before editing. Start from synchronized `main`, verify the current live Worker identity and post-merge gate, then extend the fixture workflow to admin and delegate sessions and capture the authenticated dashboard/history/report matrix. Record the evidence before optimizing; stop and report if no measurable bottleneck is found. Do not optimize by assumption.
