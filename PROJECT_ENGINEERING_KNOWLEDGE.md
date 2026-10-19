@@ -36,8 +36,8 @@ Before changing production data or deleting stored records, stop and obtain expl
 
 ## Next planned task
 
-The next agent should begin with [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md). It is a measurement-first performance investigation, not a visual redesign. Start with the browser baseline and visual regression harness; do not rewrite the theme, grid, `FlipNumber`, or `BorderShimmer` by assumption.
+The next agent should continue [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md) with the single bounded task **UI-OPT-01 — complete the authenticated dashboard baseline matrix**. The local Auth/Firestore fixture workflow is now merged and proven for the real garage keypad login and garage dashboard. Extend that workflow to deterministic admin and delegate sessions, then capture the representative authenticated routes and performance measurements before changing production UI code. This remains measurement-first, not a visual redesign; do not rewrite the theme, grid, `FlipNumber`, or `BorderShimmer` by assumption.
 
 ## Current release state
 
-The latest released application commit is `4600da84f3d99965384e28618a455042f1d559f6`. The repository is on synchronized `main`; the final production gate and live Worker identity matched this SHA. No stored-data deletion is authorized by this guide.
+The repository is on synchronized `main` at merge commit `19a49bc04494a6a6c3fd6bb7c6936fbffa769634`; the working tree is clean and there are no open PRs. The live Worker `/api/health` and `/api/version` both report production commit `19a49bc04494a6a6c3fd6bb7c6936fbffa769634`. The post-merge Production Gate run `39284464127` for this exact commit was still queued at handoff time; the prior PR gate passed, and the live deployment already reported the merge SHA. The protected decision branch is `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`. No stored-data deletion is authorized by this guide.
