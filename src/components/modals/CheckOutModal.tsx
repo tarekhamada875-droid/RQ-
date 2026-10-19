@@ -33,7 +33,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 }) => {
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
-  const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5 minutes grace period for exit button hiding
+  const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5-minute entry-error correction window
   const isOwner = currentStaff 
     ? Boolean(selectedVehicle.staffId && selectedVehicle.staffId === currentStaff.id) 
     : true; // Garage Owner can delete any active vehicle entry error in their garage
@@ -319,7 +319,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               </div>
 
               {/* Entry Error Delete Action Banner */}
-              {canDelete && (
+              {canDelete && isInitialMinute && (
                 <div className="w-full mb-3 sm:mb-4 shrink-0">
                   <button 
                     onClick={onDelete}
@@ -452,20 +452,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 
               </div>
 
-              {canDelete && (
-                <button 
-                  onClick={onDelete}
-                  disabled={isLoading}
-                  className="w-full h-14 sm:h-16 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 border-2 border-red-100 dark:border-red-900/20 border-dashed shrink-0 disabled:opacity-50 active:scale-95 transition-all duration-150 cursor-pointer shadow-sm"
-                >
-                  {isLoading && loadingType === 'delete' ? (
-                    <Spinner className="!text-red-500" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
-                  )}
-                  {isLoading && loadingType === 'delete' ? 'جاري حذف السيارة...' : 'حذف السيارة (خطأ إدخال)'}
-                </button>
-              )}
                 </>
               )}
             </motion.div>

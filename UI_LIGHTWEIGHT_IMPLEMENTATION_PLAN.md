@@ -88,6 +88,17 @@ The existing listener cleanup tests and financial/authorization behavior are man
 - The before/after build or runtime measurement is recorded; expected benefits are not reported as measured gains.
 - The change goes through a short-lived branch, reviewed PR, required Production Gate, merge, and post-merge live verification.
 
+## Confirmed UI maintenance batch
+
+The following user-reported issues were verified in source and are approved for the focused fix branch:
+
+- **Checkout entry-error action:** `CheckOutModal` rendered the same “حذف السيارة (خطأ إدخال)” action twice and did not apply its five-minute correction window to either visible delete action. Keep one primary action and show it only for an eligible non-subscriber vehicle during the first five minutes after `entryTime`.
+- **Garage credit information:** the credit summary and inline ledger details occupied the main garage dashboard. Keep the summary/history behavior together on the existing dedicated `RechargeHistoryView`, expose it from the garage side panel, and keep the main dashboard focused on check-in and active vehicles.
+
+Acceptance for this batch is functional rather than a redesign: the checkout action count/timing must match the rule, and the credit page must preserve the existing ledger data, loading state, live-listener sharing, and light/dark styling.
+
+The adjacent audit did not prove additional bugs. The 60-second dashboard ticker and recharge-notification freshness are investigation candidates only; do not change them until their exact user-visible dependency is measured.
+
 ## Next single task
 
 Inspect Candidate A (`GarageDashboardView`’s timer and derived dashboard work) with a focused static/runtime audit. Do not edit production UI code until the audit proves a specific unnecessary operation and identifies the exact behavior that must remain unchanged.
