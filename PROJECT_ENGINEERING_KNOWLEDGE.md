@@ -34,6 +34,10 @@ Use a short-lived branch from synchronized `main`, make one bounded change, run 
 
 Before changing production data or deleting stored records, stop and obtain explicit approval for the exact collections, selection predicate, backup/rollback plan, and verification evidence. Source cleanup and data deletion are separate operations.
 
+## Next planned task
+
+The next agent should begin with [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md). It is a measurement-first performance investigation, not a visual redesign. Start with the browser baseline and visual regression harness; do not rewrite the theme, grid, `FlipNumber`, or `BorderShimmer` by assumption.
+
 ## Current release state
 
 The latest released application commit is `4600da84f3d99965384e28618a455042f1d559f6`. The repository is on synchronized `main`; the final production gate and live Worker identity matched this SHA. No stored-data deletion is authorized by this guide.

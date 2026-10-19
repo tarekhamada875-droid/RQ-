@@ -1,10 +1,10 @@
 # RQ
 
-For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document; do not rely on deleted task plans or historical narratives.
+For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document. The next planned task is [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md); start with measurement and visual-regression evidence.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-15):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The latest application change, PR #40 (vehicle delete/refund retry safety), is deployed at `c7d452c`; the main Production Gate, live smoke check, and Worker deployment passed. Documentation updates since then include the portable contributor path (PR #42) and the “RQ handoff” continuity trigger (PR #43). The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Express and its old Node/Docker production path have been removed; local development uses a small Node HTTP adapter for Vite and Hono. Branch previews are not an active release environment.
+> **Current status (2026-10-19):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The current application release is deployed from `4600da8`; its main Production Gate, live smoke check, and Worker deployment passed. Documentation-only follow-up is tracked separately in the current engineering guide. The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Branch previews are not an active release environment.
 
 ## Target production architecture
 
