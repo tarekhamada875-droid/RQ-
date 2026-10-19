@@ -2,13 +2,13 @@
 
 **Last verified:** 2026-10-17
 
-**Source of truth:** [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
+**Historical source:** [`archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md)
 
 **Latest merged code-bearing commit:** `7f7778c` (PR #119 / F3 RQ classifier isolation). PR #119 merged to `main`; its PR gates, post-merge Production Gate [39054718882](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054718882), and guarded Worker deployment/health smoke [39054719171](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39054719171) all passed. `main` and `origin/main` are clean and match. Full CI passed (132 files / 866 tests), as did maintainability, production artifact, and diff checks. No Firestore records, balances, or historical payment events were changed.
 
 **Current checkpoint:** F3 merged in PR #119 at `7f7778c` and is deployed. Active RQ garage access is prepaid-credit-only without duration, daily-capacity, unlimited-package, fair-use, or legacy-expiry authorization. Garage-owned monthly parking subscriptions remain date-based. Historical records remain preserved. A separate historical balance conversion/migration has not been performed and still requires idempotency, reconciliation, rollback/support controls, and explicit approval if it is ever needed.
 
-This is a navigation summary, not a replacement for the full roadmap. The full plan contains source references, compatibility requirements, tests, risks, rollout rules, and detailed billing acceptance criteria.
+This is a historical navigation summary, not an active task list. The former JARVIS roadmap is archived; the active cleanup plan is `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`.
 
 ## Recently completed
 
@@ -38,7 +38,7 @@ The owner-approved direction is non-expiring prepaid RQ credits at 1 EGP per cre
 
 **Referral rewards are now decided:** once the referred garage receives its first Admin-confirmed paid credit grant, award its referrer 20 non-expiring referral credits—usable for 20 successful regular non-subscriber entries only. Do not award for unpaid/complimentary grants, self-referrals, or later grants to the same referred garage; referral credits cannot pay monthly subscriber renewals. Preserve a distinct, auditable, one-time reward record. The old active referral-day claim path is retired by PR #114; historical referral records remain read-only history.
 
-**Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md).
+**Decision status (owner-approved 2026-10-17):** Block regular entries at zero credits and block subscriber renewals below five credits; count only Admin-authorized vehicle deletion/refunds against the shared three-event allowance; after the third event, block further staff corrections until the next Cairo day; restore the consumed credit with no cash/EGP refund; convert active plans at 10 credits per remaining plan day; convert legacy EGP balances at 1 EGP per credit; allow no discounts/bonuses; retire daily vehicle capacity; and make paid/referral credits interchangeable for eligible regular entries while keeping referral credits separately auditable and forbidden for subscriber renewals. The full decision record is in the BILL-01 section of [`archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md).
 
 ### 2. BILL-02 — Add the auditable prepaid-credit ledger — completed foundation
 

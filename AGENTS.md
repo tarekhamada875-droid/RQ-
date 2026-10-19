@@ -8,7 +8,7 @@
 ## Owner-centered collaboration
 - Read [`PROJECT_WORKING_AGREEMENT.md`](PROJECT_WORKING_AGREEMENT.md) before substantial work. Tarek is the product visionary, not a technical specialist; explain results and risks in everyday language and do not make him choose routine engineering details.
 - For every completed roadmap item, state the problem, what changed, a concrete user-facing example, why it helps, what was actually measured/tested, and whether it is local, in a PR, merged, or live. Use the owner's practical analogy style; never claim unmeasured 10x/50x gains.
-- The owner authorized autonomous implementation of the approved [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md) roadmap. Make routine reversible engineering decisions, test them, and use the repository release flow. Ask only for a material product/business choice or before an important irreversible action outside the approved scope. Protect data and credentials regardless of broad engineering authority.
+- The former JARVIS roadmap is archived and is not an active implementation authorization. Make routine reversible engineering decisions only for a specifically selected task from `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`; do not infer permission to start LR implementation from the archived plan. Ask before a material product/business choice or important irreversible action outside the selected scope. Protect data and credentials regardless of broad engineering authority.
 - Persist new decisions, verified status, and remaining work in the tracked project documents; do not rely on private chat memory being available to the next contributor.
 
 ## Current environment status
@@ -48,7 +48,7 @@
 
 ### 4. Law of Dynamic Business Logic & Hardcoding Prohibition
 - **Dynamic Package & Subscription Handling:** Keep package logic data-driven. Garage RQ-access credit bundles are integer quantities with no expiry; Admin confirms offline payment and directly grants credits. Garage owners do not purchase packages; the Admin package editor defines reusable credit/price templates only. Do not attach duration or `balanceDays` to credits. The garage’s own monthly parking memberships remain time-based. If operational vehicle capacity remains, keep it separate from credit quantity.
-- **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. Follow the active roadmap task for any planned cutover; preserve historical records.
+- **Flexible Expiry Logic:** Apply date-extension logic to genuinely time-limited memberships, including a garage’s own monthly parking subscribers. Never add an expiry date to prepaid RQ credits. Follow the selected Legacy Removal Plan task for any planned cleanup; preserve historical records.
 
 ### 5. Law of Input Hygiene & Numeric Sanitization
 - **Strict Numeric Fields:** All numeric input fields must use `type="text" inputMode="numeric" pattern="[0-9]*"` with `.replace(/\D/g, '')` in `onChange` to prevent `NaN`, browser spin artifacts, or forced direction issues.
@@ -121,7 +121,7 @@ For every bounded JARVIS task, all agents MUST complete the full workflow before
 
 1. Implement only the selected task and preserve existing behavior outside its scope.
 2. Run focused regression tests, then `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` as applicable. Report warnings separately from failures and never claim a check passed unless it actually passed.
-3. Update the JARVIS roadmap and the tracked knowledge base or maintainer handoff with the verified implementation status, test evidence, GitHub state, unresolved risks, and the single next task.
+3. Update the active Legacy Removal Plan and the tracked knowledge base or maintainer handoff with the verified implementation status, test evidence, GitHub state, unresolved risks, and the single next task.
 4. Commit all source, test, and documentation changes.
 5. Push the feature branch to GitHub.
 6. Open a pull request into `main`, wait for the required Production Gate checks, and merge the pull request when those checks pass. Do not bypass protected release checks. Merging to `main` may trigger the guarded Pages/Worker deployment; verify its workflow result before calling the change live.
@@ -143,7 +143,7 @@ Whenever an agent asks Tarek to pass work to another agent, or knows another age
 - what is complete, the current task, checks actually run, exact verified branch/commit/worktree/open-PR state, latest deployed application commit, and what the latest workflow did or did not deploy;
 - unresolved decisions, blockers, and safety boundaries;
 - the single next task, its scope/order, what to preserve or avoid, and a clear example of what “done” means when useful;
-- exact files to read, including the **entire** `RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md` (not only the next task section), `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `MAINTAINABILITY_HANDOFF.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
+- exact files to read, including the **complete** `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md` (not only the next task); consult the archived JARVIS roadmap only as historical context, `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `MAINTAINABILITY_HANDOFF.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
 - pre-edit checks and the complete focused-branch → local checks → PR → required gate → merge → post-merge/release verification process.
 
 Use everyday wording and briefly define technical terms. The message should be complete enough to continue safely without chat history, but it must tell the next agent to read the source-of-truth files and re-check repository/GitHub state because any copied status can become stale. This requirement applies to every future agent handoff, not only the current one.
