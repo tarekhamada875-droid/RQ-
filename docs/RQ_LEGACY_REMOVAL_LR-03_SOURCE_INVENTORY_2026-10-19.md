@@ -1,7 +1,7 @@
 # LR-03 Source Inventory — Owner-Side Wallet and Self-Subscribe Wiring
 
 **Inventory date:** 2026-10-19
-**Task status:** Read-only source inventory complete; LR-03 implementation has **not** been selected or started.
+**Inventory-time status:** Read-only source inventory complete; when this inventory was prepared, LR-03 implementation had **not** been selected or started. See the dated owner-selection addendum in §10.
 **Inventory baseline:** clean `main` at `effe777cf2c3e300031a58d04861813cee951c84`, matching `origin/main`. No source, tests, or configuration were changed by the inventory.
 
 ## 1. Verified repository and release state
@@ -94,4 +94,8 @@ Keep the current Admin prepaid-credit path (`POST /api/garages/:id/credit-grants
 
 ## 9. Continuity status
 
-LR-03 remains **unselected and unstarted**. The single next task is to wait for the owner’s explicit selection before implementation. This inventory is a planning aid only; it does not grant permission to start the LR-03 code change.
+At the time this inventory was prepared, LR-03 was **unselected and unstarted**. This inventory alone did not grant permission to begin implementation.
+
+## 10. Owner selection addendum
+
+On 2026-10-19, after the inventory was completed, Tarek explicitly selected LR-03 implementation for the next agent. The authorization is limited to the LR-03 scope and protections in the active plan; the implementation has not started. Before editing, the next agent must re-fetch and verify repository, PR, gate, live Worker, and protected-branch state. Do not infer authorization for LR-04/LR-06, destructive data work, migrations, or Firebase data/rules changes.
