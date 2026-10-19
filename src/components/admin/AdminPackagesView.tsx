@@ -63,8 +63,6 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
         price,
         creditQuantity,
         catalogType: 'credit_bundle',
-        // Kept only for the legacy TypeScript/package facade; the Worker does not persist it for credit bundles.
-        vehiclesCount: creditQuantity,
       });
       form.reset();
       setIsAddModalOpen(false);

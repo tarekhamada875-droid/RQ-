@@ -463,12 +463,19 @@ describe('Worker Route Parity Suite', () => {
       expect(deleteCoupon.status).toBe(200);
 
       // Packages
+      const legacyPkgRes = await call('/api/admin/packages/create', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Legacy month', price: 300, durationDays: 30, dailyCapacity: 50, catalogType: 'legacy_time' })
+      });
+      expect(legacyPkgRes.status).toBe(400);
+
       const pkgRes = await call('/api/admin/packages/create', tokens.admin, {
         method: 'POST',
         body: JSON.stringify({
           name: 'رصيد جديد',
           price: 150,
-          creditQuantity: 150
+          creditQuantity: 150,
+          catalogType: 'credit_bundle'
         })
       });
       expect(pkgRes.status).toBe(200);
@@ -485,7 +492,8 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({
           name: 'قالب 400 رصيد',
           price: 400,
-          creditQuantity: 400
+          creditQuantity: 400,
+          catalogType: 'credit_bundle'
         })
       });
       expect(creditPkgRes.status).toBe(200);

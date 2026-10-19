@@ -1110,6 +1110,7 @@ app.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const rawPackage = await c.req.json().catch(() => ({}));
+    if (rawPackage.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
     const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
     if (validatedPackage.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
     const pkgData: Record<string, any> = {
