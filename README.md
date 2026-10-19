@@ -1,6 +1,6 @@
 # RQ
 
-For how the owner wants future agents and contributors to work, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md). For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md). The sole active modernization roadmap is [`RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md); check its status before starting a task.
+For how the owner wants future agents and contributors to work, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md). For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md). The former JARVIS roadmap is archived at [`archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md) for historical reference; the sole active plan is [`RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`](./RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md).
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
@@ -75,7 +75,7 @@ npm test && npm run test:rules && npm run lint && npm run build && npm run maint
 
 ## Cloudflare deployment contract
 
-Hono is the production Worker backend. No Hono migration workstream is active; the JARVIS roadmap is the only active modernization plan. Use the normal branch-and-pull-request flow above; merging to `main` starts the guarded Worker release and Pages production publish.
+Hono is the production Worker backend. No Hono migration workstream is active; the former JARVIS roadmap is archived historical context; the Legacy Removal Plan is the only active cleanup plan. Use the normal branch-and-pull-request flow above; merging to `main` starts the guarded Worker release and Pages production publish.
 
 ## Production smoke checks
 
