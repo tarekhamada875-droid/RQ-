@@ -54,9 +54,6 @@ export const adminTranslationsBase: Record<string, string> = {
   'المشرفين': 'Supervisors',
   'مشرف نظام': 'System Supervisors',
   'إضافة مشرفين لمساعدتك في إدارة النظام وتأكيد طلبات الشحن بنطاق محدود': 'Add system supervisors to help manage notifications and authorize vault recharges.',
-  'المحفظة': 'System Wallet',
-  'رقم محفظة السيستم': 'System Wallet Number',
-  'تعديل رقم الكاش/المحفظة الذكية الذي تظهر للجراجات عند الدفع': 'Modify the mobile wallet numbers shown to garages during balance recharges.',
 
   // Admin Dashboard main labels
   'رمز دخول المدير العام (الآدمن):': 'Admin Entrance Passcode:',
@@ -187,7 +184,6 @@ export const adminTranslationsBase: Record<string, string> = {
   'تم إضافة الباقة بنجاح': 'Package added successfully',
 
   // Recharge Requests View
-  'طلبات شحن الخزينة المفتوحة': 'Pending Wallet Recharge Approvals',
   'طلبات تجديد وتفعيل اشتراكات الجراجات': 'Garage deposit transfers check and approvals',
   'طلبات الشحن المعلقة': 'Recharge Requests',
   'طلبات إنشاء الجراجات': 'Garage Registrations',
@@ -247,15 +243,8 @@ export const adminTranslationsBase: Record<string, string> = {
   'تم إضافة المشرف بنجاح': 'Supervisor created successfully',
   'تم حذف حساب المشرف': 'Supervisor account deleted successfully',
 
-  // System Wallet View
-  'رقم المحفظة الذكية لاستقبل الدفع': 'Receiving Wallet Settings',
   'تعديل الهاتف المخصص لإرسال فودافون كاش أو انستاباي وغيره للجراجات': 'Configure the active payment numbers where garages transfer fees.',
-  'المحفظة الذكية الحالية': 'Active Platform Smart Wallet',
-  'تحديث رقم المحفظة': 'Update Active Wallet Number',
   'تحديث الرقم': 'Update Number',
-  'تم تحديث رقم المحفظة الذكية بنجاح': 'Smart collection wallet updated successfully!',
-  'فشل تحديث رقم المحفظة': 'Failed to edit collection wallet',
-  'رقم المحفظة الحالي:': 'Current Wallet Number:',
   'سعر قالب الأرصدة يجب أن يساوي عدد الأرصدة: 1 جنيه لكل رصيد': 'Credit bundle price must equal the credit count: EGP 1 per credit.',
 
   // Common UI Elements & Modals
@@ -276,10 +265,8 @@ export const adminTranslationsBase: Record<string, string> = {
   'الطلبات والمراجعات': 'Requests & Approvals',
   'معلق شحن': 'Pending Recharge',
   'انتظار موافقة': 'Awaiting Approval',
-  'مراجعة طلبات شحن الأرصدة المعلقة والموافقة على إنشاء الجراجات الجديدة': 'Review pending wallet recharges and approve new garage registrations.',
   'التقارير الذكية': 'Smart Reports',
   'مشرف': 'Supervisor',
-  'رقم المحفظة': 'E-Wallet Number',
   'قائمة الجراجات': 'Garages List',
   'الاسم الثلاثي...': 'Full Name...',
   'رمز الدخول (6 أرقام)': 'Access PIN (6 digits)',
@@ -308,7 +295,6 @@ export const adminTranslationsBase: Record<string, string> = {
   'موافق': 'Approve',
   'رفض': 'Reject',
   'لا توجد طلبات معلقة': 'No pending requests',
-  'سيظهر هنا طلبات شحن الأرصدة المقدمة من قبل المندوبين': 'Recharge requests submitted by delegates will appear here.',
   'تأكيد تفعيل': 'Confirm Approval',
   'جاري التفعيل...': 'Activating...',
   'جاري الرفض...': 'Rejecting...',
@@ -324,11 +310,6 @@ export const adminTranslationsBase: Record<string, string> = {
   'سعر السيارة': 'Avg Car Price',
   'عدد السيارات': 'Vehicles Limit',
   'لا يوجد باقات مسجلة حالياً': 'No system packages created yet',
-  'الرقم بالتنسيق الملون': 'Formatted Wallet View',
-  'رقم المحفظة الإلكترونية': 'E-Smart Wallet Settings',
-  'رقم المحفظة لا يمكن أن يكون فارغاً': 'Wallet number cannot be empty',
-  'تم تحديث رقم المحفظة الإلكترونية بنجاح': 'Collection wallet updated successfully',
-  'حدث خطأ أثناء تحديث رقم المحفظة': 'Error updating collection wallet number',
   'حفظ التعديلات': 'Save Changes',
   'الباقات الحالية': 'Current Packages',
   'لا يوجد باقات': 'No packages created',
@@ -357,7 +338,6 @@ export const adminTranslationsBase: Record<string, string> = {
   'المستحقات المالية:': 'Financial Balance:',
   'تفعيل الجراج الآن': 'Activate Garage Now',
   'إيقاف الخدمة فوراً': 'Deactivate Garage Immediately',
-  'تصفير المحفظة': 'Reset Wallet/Balance',
   'تم التصفير': 'Balance Reset Successfully',
   'فشل': 'Failed',
   'تأكيد': 'Confirm',

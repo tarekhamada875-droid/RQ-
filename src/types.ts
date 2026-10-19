@@ -88,7 +88,6 @@ export interface Garage {
   referrerId?: string | null; // ID of referring delegate
   referralRewardClaimed?: boolean; // Legacy field for initial 15-day reward (now 1 day per renewal)
   referralRewardAwardedAt?: any; // Timestamp
-  totalReferralRewardDays?: number; // Total free subscription days earned via referrals
   totalGaragesReferredCount?: number; // Total count of garages referred
   shimmerColor?: string;
   activePlates?: Record<string, any>;

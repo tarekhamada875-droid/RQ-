@@ -37,7 +37,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   t,
 }) => {
   const handleBack = () => {
-    if (['wallet', 'admin-pin', 'announcements', 'global_settings', 'active_sessions'].includes(activeTab)) {
+    if (['admin-pin', 'announcements', 'global_settings', 'active_sessions'].includes(activeTab)) {
       setActiveTab('catalog_settings');
     } else {
       setActiveTab('overview');

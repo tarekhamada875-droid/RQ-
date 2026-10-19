@@ -233,7 +233,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       totalVehiclesOut: 0,
       dailyDeletionCount: 0,
       dailyRefundCount: 0,
-      totalReferralRewardDays: 0,
       totalGaragesReferredCount: 0,
       isLocked: false,
       isDeleting: false
@@ -345,7 +344,7 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
       'hasMonthlySubscribers', 'allowMonthlySubscribers', 'subscriberFlatFee', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
       'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt',
       'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
-      'balance', 'balanceExpiry', 'totalReferralRewardDays', 'carsInside'
+      'balance', 'balanceExpiry', 'carsInside'
     ];
     for (const key of allowedKeys) {
       if (key in data && data[key] !== undefined) {

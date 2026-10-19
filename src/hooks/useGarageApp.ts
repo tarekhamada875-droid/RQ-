@@ -213,7 +213,6 @@ export function useGarageApp() {
     return () => unsub();
   }, [user, view, setActiveAdminPin]);
 
-  // Wallet and prices share the same system-config listener used by fee hooks.
 
   // 3. Vehicle Operations Hook
   const {

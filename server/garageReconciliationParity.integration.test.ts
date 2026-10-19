@@ -721,7 +721,6 @@ describe('garage update Hono contract', () => {
       createdByDelegateName: 'Synthetic Delegate',
       balance: 125.5,
       balanceExpiry: '2027-01-02T00:00:00.000Z',
-      totalReferralRewardDays: 2,
       carsInside: 0
     };
     const requestBody = { id: targetId, ...allowedFields, unapprovedField: 'must-not-be-stored' };
