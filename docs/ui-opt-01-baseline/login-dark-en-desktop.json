@@ -1,0 +1,72 @@
+{
+  "item": {
+    "id": "login",
+    "route": "/",
+    "view": "login"
+  },
+  "theme": "dark",
+  "language": "en",
+  "viewport": {
+    "id": "desktop",
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "screenshot": "/home/ubuntu/RQ-/docs/ui-opt-01-baseline/login-dark-en-desktop.png",
+  "screenshotSha256": "576c239e693c3a0e91db9d9ab303ecfd30c84af6bc1ad89d5892eb35b093db64",
+  "metrics": {
+    "url": "http://127.0.0.1:4173/",
+    "title": "RQ",
+    "dir": "ltr",
+    "theme": "dark",
+    "domNodes": 77,
+    "scrollHeight": 900,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navigation": {
+      "domContentLoaded": 1269.5,
+      "loadEvent": 1277.1999999999534,
+      "responseEnd": 1166.7999999999302,
+      "transferSize": 300,
+      "encodedBodySize": 11080
+    },
+    "javascript": {
+      "resources": 76,
+      "transferSize": 113195,
+      "duration": 643.3000000000466
+    },
+    "longTasks": [],
+    "layoutShifts": [
+      {
+        "value": 0.004928163580246913,
+        "startTime": 1275.7999999999302
+      }
+    ],
+    "interactionEvents": [],
+    "react": {
+      "commits": 6,
+      "renderers": 1
+    },
+    "memory": {
+      "usedJSHeapSize": 41834335,
+      "totalJSHeapSize": 48851791,
+      "jsHeapSizeLimit": 4395630592
+    },
+    "activeAnimations": 2,
+    "reducedMotion": false
+  },
+  "accessibility": {
+    "reducedMotionHonored": true,
+    "largeFontScrollHeight": 900,
+    "largeFontDomNodes": 77
+  },
+  "assumptions": {
+    "browser": "Chrome/154.0.8037.57",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "syntheticFixture": true,
+    "firestoreWrites": false
+  }
+}

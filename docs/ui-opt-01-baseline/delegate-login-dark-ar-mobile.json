@@ -1,0 +1,67 @@
+{
+  "item": {
+    "id": "delegate-login",
+    "route": "/",
+    "view": "delegate_login"
+  },
+  "theme": "dark",
+  "language": "ar",
+  "viewport": {
+    "id": "mobile",
+    "width": 390,
+    "height": 844,
+    "deviceScaleFactor": 1
+  },
+  "screenshot": "/home/ubuntu/RQ-/docs/ui-opt-01-baseline/delegate-login-dark-ar-mobile.png",
+  "screenshotSha256": "4455a1e64546f5b1957f4f566fa8ed21e73d1e256847b596cf9ba83596cd072a",
+  "metrics": {
+    "url": "http://127.0.0.1:4173/",
+    "title": "RQ",
+    "dir": "rtl",
+    "theme": "dark",
+    "domNodes": 88,
+    "scrollHeight": 844,
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "navigation": {
+      "domContentLoaded": 1253.1999999999534,
+      "loadEvent": 1260,
+      "responseEnd": 1146.0999999999767,
+      "transferSize": 300,
+      "encodedBodySize": 11080
+    },
+    "javascript": {
+      "resources": 76,
+      "transferSize": 68263,
+      "duration": 524.6999999996042
+    },
+    "longTasks": [],
+    "layoutShifts": [],
+    "interactionEvents": [],
+    "react": {
+      "commits": 6,
+      "renderers": 1
+    },
+    "memory": {
+      "usedJSHeapSize": 27210627,
+      "totalJSHeapSize": 31119219,
+      "jsHeapSizeLimit": 4395630592
+    },
+    "activeAnimations": 2,
+    "reducedMotion": false
+  },
+  "accessibility": {
+    "reducedMotionHonored": true,
+    "largeFontScrollHeight": 844,
+    "largeFontDomNodes": 88
+  },
+  "assumptions": {
+    "browser": "Chrome/154.0.8037.57",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "syntheticFixture": true,
+    "firestoreWrites": false
+  }
+}
