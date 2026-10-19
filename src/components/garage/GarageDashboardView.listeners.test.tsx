@@ -74,7 +74,7 @@ let rechargeListeners: ActiveListener<RechargeCallback>[];
 let subscriberListeners: ActiveListener<SubscriberCallback>[];
 let announcementUnsubscribe: ReturnType<typeof vi.fn>;
 
-const makeGarage = () => ({
+const makeGarage = (overrides: Record<string, unknown> = {}) => ({
   id: 'garage-listener-integration',
   name: 'Integration Garage',
   status: 'approved',
@@ -89,16 +89,17 @@ const makeGarage = () => ({
   activePackageName: 'Monthly',
   activePackageId: 'monthly',
   lastRechargeDate: null,
+  ...overrides,
 });
 
-const DashboardHarness = () => {
+const DashboardHarness = ({ now = new Date(), garage = makeGarage() }: { now?: Date; garage?: any }) => {
   const [showSubscribers, setShowSubscribers] = useState(false);
   return (
     <GarageDashboardView
-      garage={makeGarage()}
+      garage={garage}
       currentStaff={null}
       isInputFocused={false}
-      now={new Date()}
+      now={now}
       vehicles={[]}
       todayTransactions={[]}
       setSelectedVehicle={vi.fn()}
@@ -228,5 +229,27 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     expect(activeCount(rechargeListeners)).toBe(0);
     expect(activeCount(subscriberListeners)).toBe(0);
     expect(announcementUnsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it('expires an unacknowledged recharge notification when the server clock crosses fifteen minutes', async () => {
+    const initialNow = new Date('2026-10-19T12:14:00.000Z');
+    const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
+    const garage = makeGarage({ lastRechargeDate: rechargeTime });
+    const { rerender } = render(<DashboardHarness now={initialNow} garage={garage} />);
+    const recharge = {
+      id: 'expiring-recharge',
+      garageId: garage.id,
+      actionType: 'recharge',
+      timestamp: rechargeTime,
+      amount: 100,
+      details: { packageName: 'Expiring package' },
+    };
+
+    await waitFor(() => expect(rechargeListeners).toHaveLength(1));
+    act(() => rechargeListeners[0].callback([recharge]));
+    expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
+
+    rerender(<DashboardHarness now={new Date('2026-10-19T12:16:00.000Z')} garage={garage} />);
+    await waitFor(() => expect(screen.getByTestId('recharge-badge')).toHaveTextContent('false'));
   });
 });

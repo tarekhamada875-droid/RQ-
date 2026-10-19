@@ -93,10 +93,6 @@ export const GarageDashboardView = memo((props: any) => {
     isRechargeHistoryOpen,
     shouldSubscribeToSubscribers,
   });
-  const processedRechargeNotificationRef = useRef<{ garageId: string | undefined; logId: string | null }>({
-    garageId,
-    logId: null,
-  });
   const expiringSubscribersCount = useMemo(() => {
     const todayZero = new Date();
     todayZero.setHours(0, 0, 0, 0);
@@ -121,14 +117,6 @@ export const GarageDashboardView = memo((props: any) => {
     return () => unsub();
   }, []);
 
-  const [, setTimeTicker] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeTicker(Date.now());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
   const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
 
   const totalInsideCount = useMemo(
@@ -144,10 +132,6 @@ export const GarageDashboardView = memo((props: any) => {
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   useEffect(() => {
-    if (processedRechargeNotificationRef.current.garageId !== garage?.id) {
-      processedRechargeNotificationRef.current = { garageId: garage?.id, logId: null };
-    }
-
     if (!isAuthenticated || !garage?.id) return;
     const candidateLogs = (rechargeLogs || []).filter((log: any) => {
       if (!log) return false;
@@ -170,11 +154,7 @@ export const GarageDashboardView = memo((props: any) => {
     const logDate = safeDate(latest?.timestamp ?? fallbackDate);
     const logTime = logDate.getTime();
     const logId = latest?.id ?? `recharge_${logTime}`;
-    const notificationKey = `${garage.id}:${logId}`;
-    if (processedRechargeNotificationRef.current.logId === notificationKey) return;
-    processedRechargeNotificationRef.current.logId = notificationKey;
-
-    const diffMs = Date.now() - logTime;
+    const diffMs = Math.max(0, now.getTime() - logTime);
     const isRecent = diffMs < 15 * 60 * 1000;
     const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
 
@@ -208,7 +188,7 @@ export const GarageDashboardView = memo((props: any) => {
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
     }
-  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
+  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial, now]);
 
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garage?.id) {

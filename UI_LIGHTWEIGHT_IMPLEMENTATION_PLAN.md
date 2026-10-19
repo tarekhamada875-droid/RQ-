@@ -99,6 +99,15 @@ Acceptance for this batch is functional rather than a redesign: the checkout act
 
 The adjacent audit did not prove additional bugs. The 60-second dashboard ticker and recharge-notification freshness are investigation candidates only; do not change them until their exact user-visible dependency is measured.
 
+## Completed ticker and notification audit
+
+The focused audit proved two related issues in `GarageDashboardView`:
+
+- `useServerTime` already updates the app clock every 60 seconds, so the dashboard’s second local ticker caused a redundant full-dashboard render. The redundant ticker was removed.
+- Recharge freshness was calculated with `Date.now()` only when recharge data changed. Because the effect short-circuited for the same log, an unacknowledged notification could remain visible beyond the 15-minute window. The effect now follows the existing server clock, re-evaluates freshness, and closes the notification when it expires. The sound remains protected by the existing per-log local-storage guard.
+
+The regression coverage confirms both shared-listener cleanup and expiry at the fifteen-minute boundary.
+
 ## Next single task
 
-Inspect Candidate A (`GarageDashboardView`’s timer and derived dashboard work) with a focused static/runtime audit. Do not edit production UI code until the audit proves a specific unnecessary operation and identifies the exact behavior that must remain unchanged.
+Inspect the route/build graph for one proven opportunity to defer feature code that is loaded before it is used. Do not split imports until the affected route, fallback, and visual behavior are identified and tested.
