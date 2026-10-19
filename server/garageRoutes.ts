@@ -46,8 +46,6 @@ export interface GarageRouteDeps {
   saveEntityPin: GarageRouteDependency;
   canUpdateEntityPin: GarageRouteDependency;
   validatePackageCatalogRecord: GarageRouteDependency;
-  initializeFairUse: GarageRouteDependency;
-  manualAdminExtendFairUse: GarageRouteDependency;
   grantPaidCredits: GarageRouteDependency;
   awardReferralCredits: GarageRouteDependency;
   materializeCreditLedgerEntry: GarageRouteDependency;
@@ -102,8 +100,6 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     saveEntityPin,
     canUpdateEntityPin,
     validatePackageCatalogRecord,
-    initializeFairUse,
-    manualAdminExtendFairUse,
     grantPaidCredits,
     awardReferralCredits,
     materializeCreditLedgerEntry,
@@ -1149,90 +1145,8 @@ app.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Keep the legacy Admin Extend Fair Use frontend path as a supported alias.
-const handleExtendFairUse = async (c: any) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const garageId = validateId(c.req.param('id'), 'garageId');
-    const body = await c.req.json().catch(() => ({}));
-    const extraCars = Math.max(0, Number(body?.extraCars || 0));
-    const idempotencyKey = validateIdempotencyKey(body?.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const requestFingerprint = createRequestFingerprint({ garageId, extraCars });
-
-    let resultFairUse: any = null;
-    let resultData: any = null;
-    await getAdminDb().runTransaction(async (t: any) => {
-      if (idempotencyKey) {
-        const duplicate = await checkIdempotencyInTransaction(
-          t,
-          idempotencyKey,
-          '/api/admin/garages/:id/extend-fair-use',
-          user?.uid,
-          requestFingerprint
-        );
-        if (duplicate.isDuplicate) {
-          resultData = duplicate.cachedResult;
-          return;
-        }
-      }
-
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const garageSnap = await t.get(garageRef);
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      const isUnlimited = Number(garageData.dailyCapacity || 0) === 0 || String(garageData.activePackageName || '').includes('مفتوح');
-      if (!isUnlimited) throw new Error('NOT_AN_UNLIMITED_PACKAGE');
-
-      let fairUse = garageData.unlimitedFairUse;
-      if (!fairUse || !fairUse.isActive) {
-        fairUse = initializeFairUse(garageData.durationDays || 30, garageData.activePackageName || '');
-      }
-
-      resultFairUse = manualAdminExtendFairUse(fairUse, extraCars);
-      t.set(garageRef, { unlimitedFairUse: resultFairUse }, { merge: true });
-
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: user?.uid || 'admin',
-        staffName: 'مدير النظام (Admin)',
-        actionType: 'fair_use_admin_extended',
-        plateNumber: `تمديد استثنائي للاستخدام العادل (+${extraCars > 0 ? extraCars : fairUse.stepAmount} سيارة)`,
-        timestamp: new Date(),
-        details: {
-          currentAllowance: resultFairUse.currentAllowance,
-          maxAllowance: resultFairUse.maxAllowance,
-          cycleCarsCount: resultFairUse.cycleCarsCount
-        }
-      });
-
-      resultData = { success: true, unlimitedFairUse: resultFairUse };
-      if (idempotencyKey) {
-        storeIdempotencyInTransaction(
-          t,
-          idempotencyKey,
-          resultData,
-          '/api/admin/garages/:id/extend-fair-use',
-          user?.uid,
-          requestFingerprint
-        );
-      }
-    });
-
-    return c.json(resultData);
-  } catch (err: any) {
-    console.error('[Worker Admin] Error in extend-fair-use:', err);
-    const { statusCode, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message }, statusCode as any);
-  }
-};
-
+// Keep legacy fair-use paths as authenticated no-write tombstones.
+const handleExtendFairUse = (c: any) => c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
 app.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
 app.post('/api/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
 

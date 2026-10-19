@@ -15,7 +15,6 @@ interface GarageActiveVehiclesListProps {
   hasMoreVehicles: boolean;
   observerTargetRef: React.RefObject<HTMLDivElement | null>;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-  isSubscriptionExpired: boolean;
   onClose: () => void;
   onCheckOut: (vehicle: any) => void;
   onRegisterNewCar: () => void;
@@ -28,7 +27,6 @@ export const GarageActiveVehiclesList = memo(({
   hasMoreVehicles,
   observerTargetRef,
   scrollContainerRef,
-  isSubscriptionExpired,
   onClose,
   onCheckOut,
   onRegisterNewCar,
@@ -90,14 +88,12 @@ export const GarageActiveVehiclesList = memo(({
             <p className="text-xs font-bold text-slate-300 dark:text-slate-600">
               اكتب رقم اللوحة واضغط "ساعة" أو "مبيت" لتسجيل أول عربية
             </p>
-            {!isSubscriptionExpired && (
-              <button
-                onClick={onRegisterNewCar}
-                className="mt-6 text-sm md:text-base font-black text-emerald-500 uppercase tracking-widest border-b-2 border-emerald-500/20 pb-0.5"
-              >
-                سجل دخول عربية جديدة
-              </button>
-            )}
+            <button
+              onClick={onRegisterNewCar}
+              className="mt-6 text-sm md:text-base font-black text-emerald-500 uppercase tracking-widest border-b-2 border-emerald-500/20 pb-0.5"
+            >
+              سجل دخول عربية جديدة
+            </button>
           </div>
         )}
       </div>

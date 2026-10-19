@@ -1,39 +1,19 @@
-import React, { useState } from 'react';
-import { Zap, RefreshCw, Plus, CheckCircle } from 'lucide-react';
+import React from 'react';
+import { Zap, CheckCircle } from 'lucide-react';
 import { Garage } from '../../types';
-import { adminService } from '../../services/adminService';
 
 interface AdminFairUseViewProps {
   garages?: Garage[];
   unlimitedGarages: Garage[];
   onSelectGarage?: (garage: Garage) => void;
-  onExtendAllowance?: (garageId: string) => void;
   t: (key: string) => string;
 }
 
 export const AdminFairUseView: React.FC<AdminFairUseViewProps> = ({
   unlimitedGarages,
   onSelectGarage,
-  onExtendAllowance,
   t,
 }) => {
-  const [extendingId, setExtendingId] = useState<string | null>(null);
-
-  const handleExtend = async (garage: Garage) => {
-    try {
-      setExtendingId(garage.id);
-      if (onExtendAllowance) {
-        onExtendAllowance(garage.id);
-      } else {
-        await adminService.adminExtendFairUse(garage.id);
-      }
-    } catch (err) {
-      console.error('Failed to extend fair use:', err);
-    } finally {
-      setExtendingId(null);
-    }
-  };
-
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header Banner */}
@@ -127,19 +107,6 @@ export const AdminFairUseView: React.FC<AdminFairUseViewProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  disabled={extendingId === g.id || currentAllowance >= maxAllowance}
-                  onClick={() => handleExtend(g)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-black rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/20 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {extendingId === g.id ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 stroke-[3]" />
-                  )}
-                  <span>{t('تمديد استثنائي')} (+{fu?.stepAmount || (fu?.tierType === 'daily' ? 200 : 1000)} {t('سيارة')})</span>
-                </button>
               </div>
             );
           })}
