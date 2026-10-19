@@ -25,6 +25,11 @@ export function validatePackageCatalogRecord(raw: Record<string, any>, id: strin
   if (!name || basePrice === null || basePrice <= 0) throw new Error('INVALID_PACKAGE_CONFIGURATION');
 
   const hasCreditQuantity = raw.creditQuantity !== undefined && raw.creditQuantity !== null && String(raw.creditQuantity).trim() !== '';
+  if (raw.catalogType !== undefined && raw.catalogType !== 'legacy_time' && raw.catalogType !== 'credit_bundle') {
+    throw new Error('INVALID_PACKAGE_CONFIGURATION');
+  }
+  if (raw.catalogType === 'credit_bundle' && !hasCreditQuantity) throw new Error('INVALID_PACKAGE_CONFIGURATION');
+  if (raw.catalogType === 'legacy_time' && hasCreditQuantity) throw new Error('INVALID_PACKAGE_CONFIGURATION');
   if (hasCreditQuantity) {
     const creditQuantity = Number(raw.creditQuantity);
     const discountValue = Number(raw.discountValue ?? 0);

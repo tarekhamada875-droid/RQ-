@@ -36,6 +36,9 @@ export const adminPackageService = {
       const activePkgs = snapshot.docs
         .map(doc => {
           const data = doc.data() as Package;
+          if (data.catalogType === 'credit_bundle') {
+            return { id: doc.id, ...data };
+          }
           return {
             id: doc.id,
             ...data,

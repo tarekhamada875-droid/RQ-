@@ -76,7 +76,6 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
                   price, 
                   creditQuantity,
                   catalogType: 'credit_bundle',
-                  vehiclesCount: creditQuantity
                 });
                 form.reset();
               } catch (err) {

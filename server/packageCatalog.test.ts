@@ -33,6 +33,13 @@ describe('server package catalog validation', () => {
     expect(() => validatePackageCatalogRecord({ name: 'Fractional credits', price: 300, creditQuantity: 1.5 }, 'credit-fraction')).toThrow('INVALID_PACKAGE_CONFIGURATION');
   });
 
+  it('keeps explicit legacy records out of the credit-bundle shape', () => {
+    expect(validatePackageCatalogRecord({ name: 'Legacy month', catalogType: 'legacy_time', price: 300, durationDays: 30, dailyCapacity: 50 }, 'legacy-30'))
+      .toMatchObject({ id: 'legacy-30', catalogType: 'legacy_time', durationDays: 30, dailyCapacity: 50 });
+    expect(validatePackageCatalogRecord({ name: 'Credit template', catalogType: 'credit_bundle', price: 400, creditQuantity: 400 }, 'credit-400'))
+      .toMatchObject({ id: 'credit-400', catalogType: 'credit_bundle', creditQuantity: 400, durationDays: 0, dailyCapacity: 0 });
+  });
+
   it('accepts a seven-day legacy package during the pre-cutover period', () => {
     expect(validatePackageCatalogRecord({ ...basePackage, name: 'Weekly 7', durationDays: 7 }, 'weekly-7'))
       .toMatchObject({ id: 'weekly-7', name: 'Weekly 7', catalogType: 'legacy_time', durationDays: 7 });
