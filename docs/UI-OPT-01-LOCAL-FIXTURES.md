@@ -52,4 +52,4 @@ The frontend connects to localhost only when `VITE_RQ_USE_EMULATORS=true`. Ordin
 
 ## Safety boundary
 
-The seed data is synthetic and disposable. Do not use the provided operator PINs in this workflow, and do not remove the emulator guard or replace the demo project ID with a live project. Destructive button tests should be added only after the browser harness is connected to this emulator path and can verify the expected records before and after each action.
+The seed data is synthetic and disposable, and its authentication fixtures use the application's exact eight-digit PIN contract. Do not use the provided operator PINs in this workflow, and do not remove the emulator guard or replace the demo project ID with a live project. Destructive button tests should be added only after the browser harness is connected to this emulator path and can verify the expected records before and after each action.
