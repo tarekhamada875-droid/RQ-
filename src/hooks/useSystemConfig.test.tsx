@@ -52,8 +52,6 @@ describe('useSystemConfig singleton', () => {
       warningDaysThreshold: 3,
       monthlySubscribersSurchargePercent: 25,
       monthlySubscribersFlatFee: 450,
-      walletNumber: '01012345678',
-      subscriptionPrices: { weekly: 900, monthly: 3200 },
       referralFeePerRenewal: 85,
       delegatePackageCommissions: { daily: 8, weekly: 18, biweekly: 28, monthly: 48 },
     };

@@ -25,7 +25,6 @@ export const adminSystemConfigService = {
       defaultTrialDays: 2, 
       warningDaysThreshold: 3, 
       supportPhone: '01000000000',
-      walletNumber: '',
       monthlySubscribersFlatFee: 250,
       monthlySubscribersSurchargePercent: 25,
       referralFeePerRenewal: 50,

@@ -28,7 +28,6 @@ vi.mock('./useLocalStorage', () => ({
       app_delegate: null,
       app_staff: null,
       app_supervisor: null,
-      app_wallet_number: '',
       app_selected_garage_details: null,
       app_selected_delegate_details: null,
       app_show_packages: false,
@@ -104,7 +103,6 @@ vi.mock('./useGarageSync', () => ({
     loadMoreAdminGarages: vi.fn(), loadMoreAdminDelegates: vi.fn(), refreshAdminLists: vi.fn()
   })
 }));
-vi.mock('./useGarageSystemConfigSync', () => ({ useGarageSystemConfigSync: vi.fn() }));
 vi.mock('../services', () => ({ firestoreService: { subscribeToAdminPin: vi.fn(() => vi.fn()) } }));
 
 import { useGarageApp } from './useGarageApp';
@@ -112,17 +110,16 @@ import { useGarageApp } from './useGarageApp';
 afterEach(() => cleanup());
 
 describe('useGarageApp grouped contract', () => {
-  it('returns six stable groups while preserving flat aliases and handler identity', () => {
+  it('returns five stable groups while preserving flat aliases and handler identity', () => {
     const { result } = renderHook(() => useGarageApp());
     const app = result.current;
 
-    expect(Object.keys(app).filter((key) => ['session', 'navigationUi', 'garageData', 'vehicleOperations', 'subscriptions', 'adminManagement'].includes(key))).toHaveLength(6);
+    expect(Object.keys(app).filter((key) => ['session', 'navigationUi', 'garageData', 'vehicleOperations', 'adminManagement'].includes(key))).toHaveLength(5);
     expect(app.session.handleLogout).toBe(app.handleLogout);
     expect(app.session.setUser).toBe(app.setUser);
     expect(app.navigationUi.setView).toBe(app.setView);
     expect(app.garageData.setGarage).toBe(app.setGarage);
     expect(app.vehicleOperations.handleCheckIn).toBe(app.handleCheckIn);
-    expect(app.subscriptions.subscriptionPrices).toBe(app.subscriptionPrices);
     expect(app.adminManagement.handleGarageLogin).toBe(app.handleGarageLogin);
   });
 });

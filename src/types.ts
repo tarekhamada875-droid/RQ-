@@ -236,8 +236,6 @@ export interface SystemConfig {
   defaultTrialDays: number; // e.g. 15
   warningDaysThreshold: number; // e.g. 3
   supportPhone?: string;
-  walletNumber?: string;
-  subscriptionPrices?: Record<string, number>;
   monthlySubscribersSurchargePercent: number;
   monthlySubscribersFlatFee: number; // e.g. 500
   referralFeePerRenewal?: number; // fallback e.g. 100

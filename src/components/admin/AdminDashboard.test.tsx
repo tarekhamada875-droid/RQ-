@@ -84,8 +84,6 @@ const renderDashboardForGarageCreation = (
       packages={[]}
       onLogout={vi.fn()}
       currentAdminPin=""
-      currentWalletNumber=""
-      onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
       showToast={showToast}
     />,
   );
@@ -121,8 +119,6 @@ describe('AdminDashboard garage actions', () => {
         packages={[]}
         onLogout={vi.fn()}
           currentAdminPin=""
-        currentWalletNumber=""
-        onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
@@ -208,8 +204,6 @@ describe('AdminDashboard garage actions', () => {
         packages={[]}
         onLogout={vi.fn()}
           currentAdminPin=""
-        currentWalletNumber=""
-        onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
         showToast={showToast}
       />
     );

@@ -54,9 +54,6 @@ interface AdminDashboardProps {
   // Retained only to constrain stale legacy Supervisor client state.
   currentSupervisor?: Supervisor | null;
   currentAdminPin: string;
-  currentWalletNumber: string;
-  onUpdateWalletNumber: (wallet: string) => Promise<void>;
-  subscriptionPrices?: { weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number };
   showToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -81,9 +78,6 @@ export const AdminDashboard = memo(({
   onRefreshAdminLists,
   currentSupervisor = null,
   currentAdminPin,
-  currentWalletNumber,
-  onUpdateWalletNumber,
-  subscriptionPrices: _subscriptionPrices = { weekly: 800, biweekly: 1500, monthly: 3000 },
   showToast
 }: AdminDashboardProps) => {
 
@@ -423,8 +417,6 @@ export const AdminDashboard = memo(({
           handleRejectGarage={handleRejectGarage}
           setConfirmDialog={setConfirmDialog}
           setPackageValidationError={setPackageValidationError}
-          currentWalletNumber={currentWalletNumber}
-          onUpdateWalletNumber={onUpdateWalletNumber}
           currentAdminPin={currentAdminPin}
           adminLang={adminLang}
           t={t}

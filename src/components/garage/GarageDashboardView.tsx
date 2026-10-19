@@ -58,7 +58,6 @@ export const GarageDashboardView = memo((props: any) => {
     setShowStaffStats,
     showSubscribers,
     setShowSubscribers,
-    subscriptionPrices,
     isLoading = false,
   } = props;
 
@@ -442,7 +441,6 @@ export const GarageDashboardView = memo((props: any) => {
         onCloseAppearance={() => setIsAppearanceOpen(false)}
         onCloseTerms={() => setShowTermsModal(false)}
         packages={packages}
-        subscriptionPrices={subscriptionPrices}
         currentStaff={currentStaff}
         staffList={staffList}
         vehiclesInside={vehicles}

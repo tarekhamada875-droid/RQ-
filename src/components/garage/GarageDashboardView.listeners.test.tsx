@@ -121,7 +121,6 @@ const DashboardHarness = () => {
       setShowStaffStats={vi.fn()}
       showSubscribers={showSubscribers}
       setShowSubscribers={setShowSubscribers}
-      subscriptionPrices={[]}
     />
   );
 };
