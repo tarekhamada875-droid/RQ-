@@ -1,4 +1,3 @@
-import { isSubscriptionExpired as checkExpired, isUnlimitedCapacity as checkUnlimited } from "../domain/garage/subscription";
 import { getCleanPackageInfo } from '../constants/packages';
 /**
  * @license
@@ -362,15 +361,6 @@ export const isLightColor = (color: string | undefined): boolean => {
   return false;
 };
 
-export { 
-  isSubscriptionExpired, 
-  getRemainingDays, 
-  getRemainingSubscriptionInfo,
-  type RemainingSubscriptionInfo,
-  getEffectiveDailyCapacity,
-  isUnlimitedCapacity
-} from '../domain/garage/subscription';
-
 /**
  * Applies the configured monthly-subscribers fixed fee (default 500 EGP).
  * Flat fee comes from system_config/global (monthlySubscribersFlatFee).
@@ -552,43 +542,6 @@ export function throttleSnapshot<T>(callback: (data: T) => void, limitMs = 4000)
 
 
 
-
-export const getPackageRechargeRestrictions = (garage: any, targetPackage: any) => {
-  if (!garage || !targetPackage) return { isAllowed: true, reason: '' };
-
-  const targetDays = typeof targetPackage.durationDays === 'number' ? targetPackage.durationDays : packageIdToDays(targetPackage.id, targetPackage.name);
-
-  // Business Rule: If garage has monthly subscribers service enabled, only 30-day packages are allowed
-  if (garage.hasMonthlySubscribers && targetDays !== 30) {
-    return { 
-      isAllowed: false, 
-      reason: 'خدمة المشتركين الشهريين مفعلة لهذا الجراج، لذلك يقتصر الشحن على باقات الـ 30 يوم (الشهرية) فقط.' 
-    };
-  }
-
-  const isExpired = checkExpired(garage);
-  const currentPackageName = String(garage.activePackageName || garage.packageName || garage.lastPackageName || '');
-  const currentPackageId = garage.activePackageId || garage.packageId || '';
-  
-  const currentDays = packageIdToDays(currentPackageId, currentPackageName) || 30;
-  const currentIsDaily = currentDays <= 2;
-  const currentIsUnlimited = checkUnlimited(garage);
-
-  const targetIsDaily = targetDays <= 2;
-  
-  const targetName = (targetPackage.name || '').toLowerCase();
-  const targetIsUnlimited = targetPackage.dailyCapacity === 0 || targetName.includes('مفتوح') || targetName.includes('غير محدود') || targetName.includes('بدون حد') || targetName.includes('تجريبي');
-
-  if (!isExpired && currentIsUnlimited && !targetIsUnlimited) {
-    return { isAllowed: false, reason: 'لا يمكن شحن باقة محدودة لأن الجراج يعمل حالياً بباقة غير محدودة سارية.' };
-  }
-
-  if (!isExpired && !currentIsDaily && targetIsDaily) {
-    return { isAllowed: false, reason: 'لا يمكن شحن باقة يومية لأن الجراج يمتلك باقة طويلة سارية.' };
-  }
-
-  return { isAllowed: true, reason: '' };
-};
 
 /**
  * Business Rule: Garage rates (hourly / overnight) can only be modified once every 30 days.

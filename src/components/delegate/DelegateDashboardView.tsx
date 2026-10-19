@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { generateSafePin, getRemainingDays, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
+import { generateSafePin, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
@@ -42,7 +42,6 @@ export const DelegateDashboardView = memo(({
   onLoadMoreDelegateGarages
 }: DelegateDashboardViewProps) => {
   const config = useSystemConfig();
-  const warningDaysThreshold = typeof config?.warningDaysThreshold === 'number' ? config.warningDaysThreshold : 3;
   const trialDays = typeof config?.defaultTrialDays === 'number' && config.defaultTrialDays > 0 ? config.defaultTrialDays : 2;
   const [activeTab, setActiveTab] = useState<'garages' | 'performance'>('garages');
   const [searchTerm, setSearchTerm] = useState('');
@@ -292,9 +291,6 @@ export const DelegateDashboardView = memo(({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {filteredGarages.map(g => {
                 const isPending = g.status === 'pending';
-                const remDays = getRemainingDays(g);
-                const isExpiringSoon = !isPending && remDays <= warningDaysThreshold && remDays > 0;
-                const isExpired = !isPending && remDays <= 0;
 
                 return (
                   <button
@@ -303,10 +299,6 @@ export const DelegateDashboardView = memo(({
                     className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 cursor-pointer flex flex-col justify-between min-h-[120px] transition-all shadow-sm hover:shadow-md text-right w-full ${
                       isPending 
                         ? 'border-dashed border-slate-300 dark:border-slate-800 opacity-75' 
-                        : isExpired
-                        ? 'border-red-300 dark:border-red-900/60'
-                        : isExpiringSoon
-                        ? 'border-amber-300 dark:border-amber-900/60'
                         : 'border-slate-200 dark:border-slate-800 hover:border-amber-500'
                     }`}
                   >
@@ -326,21 +318,9 @@ export const DelegateDashboardView = memo(({
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                           قيد مراجعة الإنشاء
                         </span>
-                      ) : isExpired ? (
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400">
-                          منتهي الاشتراك
-                        </span>
-                      ) : isExpiringSoon ? (
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                          ينتهي خلال {remDays} {remDays === 1 ? 'يوم' : remDays === 2 ? 'يومين' : 'أيام'}
-                        </span>
-                      ) : g.isTrial ? (
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                          تجريبي ({remDays} يوم)
-                        </span>
                       ) : (
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                          نشط ({remDays} يوم)
+                          نشط
                         </span>
                       )}
 

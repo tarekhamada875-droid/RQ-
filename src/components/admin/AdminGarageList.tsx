@@ -1,7 +1,7 @@
 import React from 'react';
-import { Building2, Phone, KeyRound, Calendar, ChevronLeft } from 'lucide-react';
+import { Building2, Phone, KeyRound, ChevronLeft } from 'lucide-react';
 import { Garage } from '../../types';
-import { safeDate, isSubscriptionExpired, formatDisplayPin } from '../../utils';
+import { formatDisplayPin } from '../../utils';
 
 interface AdminGarageListProps {
   garages: Garage[];
@@ -44,8 +44,6 @@ export const AdminGarageList: React.FC<AdminGarageListProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {garages.map((garage) => {
-          const expired = isSubscriptionExpired(garage);
-          const expiryDate = garage.balanceExpiry ? safeDate(garage.balanceExpiry) : null;
           const displayPin = formatDisplayPin(garage.ownerPin || garage.pin);
 
           return (
@@ -72,12 +70,12 @@ export const AdminGarageList: React.FC<AdminGarageListProps> = ({
 
                 <span
                   className={`px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 whitespace-nowrap ${
-                    expired
-                      ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                    garage.isLocked
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                   }`}
                 >
-                  {expired ? 'منتهي الاشتراك' : 'نشط'}
+                  {garage.isLocked ? 'مقفل' : 'نشط'}
                 </span>
               </div>
 
@@ -101,19 +99,6 @@ export const AdminGarageList: React.FC<AdminGarageListProps> = ({
 
               {/* Feature / Footer Row */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {expiryDate ? (
-                    <span className="truncate">
-                      ينتهي: <span className="font-mono text-slate-700 dark:text-slate-300">
-                        {expiryDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </span>
-                    </span>
-                  ) : (
-                    <span>اشتراك غير محدد</span>
-                  )}
-                </div>
-
                 <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-black shrink-0 group-hover:translate-x-[-2px] transition-transform">
                   <span>إدارة</span>
                   <ChevronLeft className="w-4 h-4" />
