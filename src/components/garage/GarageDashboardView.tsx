@@ -19,7 +19,6 @@ import {
   resolveShimmerColor,
   isLightColor,
   safeDate,
-  isSubscriptionExpired,
 } from "../../utils";
 import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
@@ -144,7 +143,6 @@ export const GarageDashboardView = memo((props: any) => {
     [vehicles.length, garage?.carsInside],
   );
 
-  const isExpired = !prepaidCreditsEnabled && isSubscriptionExpired(garage);
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   useEffect(() => {
@@ -268,15 +266,15 @@ export const GarageDashboardView = memo((props: any) => {
 
 
   // Check if balance or package status requires the SmartActionPrompt
-  const isActiveTrial = garage?.isTrial === true && !isExpired;
-  const hasActivePaidPackage = !isExpired && (
+  const isActiveTrial = garage?.isTrial === true;
+  const hasActivePaidPackage = (
     garage?.billingModel === 'subscription' || Boolean(garage?.activePackageName || garage?.packageName)
   );
   const prepaidCreditTotal = Number(garage?.creditBalance?.paid || 0) + Number(garage?.creditBalance?.referral || 0) + Number(garage?.creditBalance?.trial || 0);
   const isBalanceDepleted = prepaidCreditsEnabled
     ? prepaidCreditTotal <= 0
     : Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
-  const shouldShowSmartPrompt = isBalanceDepleted || isExpired;
+  const shouldShowSmartPrompt = isBalanceDepleted;
 
   return (
     <div
@@ -310,7 +308,7 @@ export const GarageDashboardView = memo((props: any) => {
         }`}
       >
         {/* Subscription balance card */}
-        {!((isInputFocused && activeTab === "main") || isExpired) && (
+        {!(isInputFocused && activeTab === "main") && (
           <GarageSubscriptionCard
             garage={garage}
           />
@@ -390,7 +388,6 @@ export const GarageDashboardView = memo((props: any) => {
             hasMoreVehicles={itemsPerPage < vehicles.length}
             observerTargetRef={observerTargetRef}
             scrollContainerRef={scrollContainerRef}
-            isSubscriptionExpired={isExpired}
             onClose={() => setActiveTab("main")}
             onCheckOut={(vehicle) => {
               closeKeyboard();

@@ -4,7 +4,7 @@ import { firestoreService } from '../../services';
 import type { SubscriberPageCursor } from '../../services/adminService';
 import { auth } from '../../firebase';
 import { Subscriber, Garage } from '../../types';
-import { getCleanPlate, getRawPlate, normalizeArabicSearch, isSubscriptionExpired as checkSubscriptionExpired, safeDate } from '../../utils';
+import { getCleanPlate, getRawPlate, normalizeArabicSearch, safeDate } from '../../utils';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { SubscriberModals } from './SubscriberModals';
 import { IconButton } from '../ui/IconButton';
@@ -71,10 +71,6 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
     });
     return () => unsubscribe();
   }, []);
-
-  const isSubscriptionExpired = React.useMemo(() => {
-    return checkSubscriptionExpired(garage);
-  }, [garage]);
 
   // Form State
   const [plateNumber, setPlateNumber] = useState(() => localStorage.getItem('sub_plate') || '');
@@ -275,10 +271,6 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   };
 
   const handleOpenAdd = () => {
-    if (isSubscriptionExpired) {
-      showToast('عفواً، انتهى اشتراك الجراج. برجاء تجديد الاشتراك أولاً لتمكين إضافة المشتركين.', 'error');
-      return;
-    }
     setEditingSubscriber(null);
     setPlateNumber('');
     setOwnerName('');
@@ -326,21 +318,12 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   };
 
   const handleOpenRenew = (s: Subscriber) => {
-    if (isSubscriptionExpired) {
-      showToast('عفواً، انتهى اشتراك الجراج. برجاء تجديد الاشتراك أولاً لتجديد المشتركين.', 'error');
-      return;
-    }
     setActiveSubscriberForRenew(s);
     setShowRenewModal(true);
   };
 
   const handleConfirmRenew = async (type: 'week' | 'two_weeks' | 'month') => {
     if (!activeSubscriberForRenew) return;
-
-    if (isSubscriptionExpired) {
-      showToast('عفواً، انتهى اشتراك الجراج. برجاء تجديد الاشتراك أولاً.', 'error');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -382,13 +365,6 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
     if (!plateNumber || !ownerName || !phone || !startDate || !endDate) {
       showToast('يرجى إكمال جميع البيانات', 'error');
       return;
-    }
-
-    if (!editingSubscriber) {
-      if (isSubscriptionExpired) {
-        showToast('عفواً، انتهى اشتراك الجراج. برجاء تجديد الاشتراك أولاً.', 'error');
-        return;
-      }
     }
 
     setIsSubmitting(true);

@@ -1,6 +1,5 @@
 import { handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { generateIdempotencyKey } from '../types/apiContracts';
 import type { FinancialReportData, FinancialReportFilters } from './adminServiceTypes';
 
 export const adminBillingService = {
@@ -16,24 +15,6 @@ export const adminBillingService = {
     const response = await apiFetch<{ data: any[] }>(`/api/garages/${encodeURIComponent(garageId)}/credit-ledger?limit=50`);
     return Array.isArray(response?.data) ? response.data : [];
   },
-
-
-  adminExtendFairUse: async (
-    garageId: string,
-    extraCars?: number
-  ): Promise<any> => {
-    try {
-      const res = await apiFetch(`/api/garages/${garageId}/extend-fair-use`, {
-        method: 'POST',
-        body: { extraCars: extraCars || 0, idempotencyKey: generateIdempotencyKey('fair_use_extension') }
-      });
-      return res;
-    } catch (error: any) {
-      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
-      throw error;
-    }
-  },
-
 
   getFinancialReport: async (filters: FinancialReportFilters): Promise<FinancialReportData> => {
     const params = new URLSearchParams({ start: filters.start, end: filters.end });

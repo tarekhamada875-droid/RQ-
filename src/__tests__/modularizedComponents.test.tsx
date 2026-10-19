@@ -255,7 +255,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         hasMoreVehicles={false}
         observerTargetRef={{ current: null }}
         scrollContainerRef={{ current: null }}
-        isSubscriptionExpired={false}
         onClose={onClose}
         onCheckOut={vi.fn()}
         onRegisterNewCar={onRegister}

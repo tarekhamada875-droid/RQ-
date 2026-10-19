@@ -7,7 +7,6 @@ import { withTraceContext } from './operationTrace';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { parseMoneyAmount } from './money';
-import { initializeFairUse, manualAdminExtendFairUse } from './unlimitedFairUse';
 import { calculateVehicleCost, checkPinAvailabilityAcrossAll, saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, computeLookupHash, cleanPin, verifyPinMatch, verifyDocMatch, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, migratePinToHash } from './utils';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, isNewPinFormat, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
@@ -1395,8 +1394,6 @@ registerGarageRoutes(workerApp, {
   saveEntityPin,
   canUpdateEntityPin,
   validatePackageCatalogRecord,
-  initializeFairUse,
-  manualAdminExtendFairUse,
   grantPaidCredits,
   awardReferralCredits,
   materializeCreditLedgerEntry,

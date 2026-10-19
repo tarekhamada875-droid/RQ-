@@ -14,7 +14,6 @@ describe('GarageActiveVehiclesList icon actions', () => {
         hasMoreVehicles={false}
         observerTargetRef={React.createRef<HTMLDivElement>()}
         scrollContainerRef={React.createRef<HTMLDivElement>()}
-        isSubscriptionExpired={false}
         onClose={onClose}
         onCheckOut={vi.fn()}
         onRegisterNewCar={vi.fn()}
