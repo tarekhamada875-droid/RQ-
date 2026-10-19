@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Calculator
 } from 'lucide-react';
-import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
+import { Garage, Delegate, Package, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
 import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
@@ -33,10 +33,6 @@ interface AdminNavigationAndViewsProps {
   setActiveTab: (tab: any) => void;
   currentSupervisor: Supervisor | null;
   delegates: Delegate[];
-  rechargeRequests: RechargeRequest[];
-  adminRechargeHasMore?: boolean;
-  adminRechargeListsLoading?: boolean;
-  onLoadMoreAdminRechargeRequests?: () => Promise<void>;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -61,8 +57,6 @@ interface AdminNavigationAndViewsProps {
   onSelectGarage: (garage: Garage) => void;
   onSelectDelegate: (delegate: Delegate) => void;
   onOpenAddGarage?: () => void;
-  handleApproveRequest: (req: RechargeRequest) => Promise<void>;
-  handleRejectRequest: (id: string) => Promise<void>;
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
   setConfirmDialog: any;
@@ -81,10 +75,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   setActiveTab,
   currentSupervisor,
   delegates,
-  rechargeRequests,
-  adminRechargeHasMore = false,
-  adminRechargeListsLoading = false,
-  onLoadMoreAdminRechargeRequests,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -103,8 +93,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   onSelectGarage,
   onSelectDelegate,
   onOpenAddGarage,
-  handleApproveRequest,
-  handleRejectRequest,
   handleApproveGarage,
   handleRejectGarage,
   setConfirmDialog,
@@ -180,13 +168,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <Zap className={`w-4 h-4 ${activeTab === 'requests' ? 'text-current' : 'text-rose-500'}`} />
               <span>{t('الطلبات والمراجعات')}</span>
-              {(rechargeRequests.length > 0 || pendingGarages.length > 0) && (
+              {pendingGarages.length > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
                   activeTab === 'requests'
                     ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
                     : 'bg-rose-500 text-white'
                 }`}>
-                  {rechargeRequests.length + pendingGarages.length}
+                  {pendingGarages.length}
                 </span>
               )}
             </button>
@@ -412,13 +400,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         />
       ) : activeTab === 'requests' ? (
         <AdminRequestsView
-          rechargeRequests={rechargeRequests}
-          adminRechargeHasMore={adminRechargeHasMore}
-          adminRechargeListsLoading={adminRechargeListsLoading}
-          onLoadMoreAdminRechargeRequests={onLoadMoreAdminRechargeRequests}
           pendingGarages={pendingGarages}
-          handleApproveRequest={handleApproveRequest}
-          handleRejectRequest={handleRejectRequest}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           adminLang={adminLang}

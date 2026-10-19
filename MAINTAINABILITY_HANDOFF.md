@@ -1,12 +1,23 @@
-> **Current authority fence (2026-10-19):** LR-00 inventory is complete (PR #167). LR-01 is complete in PR #169 at main SHA `0d7b63009bd0b2a8a68736afb376f119a835f4c6`; post-merge gate and live Worker identity verified. LR-02 is next in the plan but not selected; wait for the user. Preserve prepaid credits, monthly customer subscriptions, current referral credits, and historical reads; do not touch Firebase data/rules or database routing.
+> **Current authority fence (2026-10-19):** LR-02 is implemented and its final local gate passed on branch `feat/lr-02-retire-recharge-request-workflow`, based on `main`/`origin/main` `3bdc3cb15f1b0eb7d03b40393d1a3122fbcd15a8`. The owner selected option 2: remove all in-app recharge-request history reads. Full `npm run ci:check` exited 0: 138 test files / 889 tests, rules emulator, Pages/Worker build, Worker artifact smoke, maintainability, and artifact verification. Focused regressions passed 3 files / 27 tests; lint and whitespace checks passed. Changes remain local/uncommitted with no LR-02 PR, merge, or deployment. The live Worker remains at application SHA `0d7b63009bd0b2a8a68736afb376f119a835f4c6`; current main `3bdc3cb15f1b0eb7d03b40393d1a3122fbcd15a8` is the documentation-only PR #170 merge, whose main Production Gate #39205932375 passed without a Worker deployment. Keep garage applications, historical activity logs, delegate settlement, and stored request records; no Firebase data/rules, database routing, or migration changes.
 
-## Current checkpoint: LR-01 direct Admin recharge retirement complete (2026-10-19)
+
+## Current checkpoint: LR-02 recharge-request workflow retirement in progress (2026-10-19)
+
+The user selected option 2: remove all in-app recharge-request history reads. Legacy write/list endpoints now fail closed; the app/service/listener/pagination readers and Admin pending-count contract are removed. Route tests cover authorized 410 behavior, wrong-role denials, and no request collection access; a UI regression proves retained non-empty activity-log history still renders and contributes to totals/commission. Pending garage applications and delegate commission/settlement remain intact. Existing request/guard documents are retained; the only remaining active collection reference is the unchanged garage-deletion cleanup adapter. No Firebase data/rules or database routing changes were made.
+
+Focused route, authorization, and retained-history regressions passed (3 files / 27 tests). `npm run lint`, `npm run maintainability:check`, and `git diff --check` passed. Final `npm run ci:check` exited 0 (138 files / 889 tests plus rules, builds, artifact smoke, maintainability, and artifact verification); generated outputs were removed. Branch remains local/uncommitted, with no PR, merge, or deployment.
+
+**Next step:** commit and push the reviewed branch, open a PR to `main`, wait for the required Production Gate, merge only after it passes, and verify the post-merge deployment and live Worker identity. Do not proceed to LR-03 in this task.
+
+> **Historical-record note:** Checkpoint sections below the active LR-02 entry are historical snapshots. Any old “next step” or “stop here” directive in them is superseded by the current authority fence and active Legacy Removal Plan.
+
+## Historical checkpoint: LR-01 direct Admin recharge retirement complete (2026-10-19)
 
 LR-00 inventory `docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md` was merged in PR #167. LR-01 merged in PR [#169](https://github.com/tarekhamada875-droid/RQ-/pull/169) at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`. `POST /api/transactions/recharge-garage` remains registered as an authenticated 410 tombstone; the transactional writer and unused client method are removed. Main Production Gate [39205342165](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39205342165) passed verify, deployment, and smoke. Live health/version both report the merge SHA. Current prepaid grants/ledger, referral credits, customer subscriber lifecycle/renewal, and historical reads are protected. No Firebase data/rules or database routing changed.
 
-Validation: focused regressions passed (4 files / 71 tests); local full Production Gate passed (139 test files, Firestore rules, builds, Worker artifact smoke, maintainability, artifact verification); `npm run lint` and `git diff --check` passed. PR #169 and post-merge gate/deployment are complete. LR-02 is identified as the next plan item but is not selected; await explicit user direction. Do not alter Firebase/data/rules/database routing.
+Validation: focused regressions passed (4 files / 71 tests); local full Production Gate passed (139 test files, Firestore rules, builds, Worker artifact smoke, maintainability, artifact verification); `npm run lint` and `git diff --check` passed. PR #169 and post-merge gate/deployment are complete. At that checkpoint LR-02 had not yet been selected; the current status is recorded above. Do not alter Firebase/data/rules/database routing.
 
-## Current checkpoint: UI-001 App route/modal containers released (2026-10-18)
+## Historical checkpoint: UI-001 App route/modal containers released (2026-10-18)
 
 PR [#156](https://github.com/tarekhamada875-droid/RQ-/pull/156) merged the route-selection and global-modal ownership extraction at main SHA `22411c191653683c35fefadf5fee1458b396b889`. The 604-line `src/App.tsx` is now 94 lines; typed `src/components/app/AppRoutes.tsx` and `src/components/app/AppOverlays.tsx` own route and overlay composition. `App.tsx` remains responsible for global auth/session readiness, offline/landscape gates, theme/network/toast shell, browser-history trapping, and the grouped `useGarageApp` boundary. `GarageAppState` is exported as the inferred hook return type. Existing lazy route loading, route props, fallback recovery, render diagnostics, wallet precedence, modal callbacks, and cleanup semantics are preserved; no Firebase/data/rules/database/billing/performance change is included.
 
@@ -18,9 +29,9 @@ PR [#149](https://github.com/tarekhamada875-droid/RQ-/pull/149) merged the focus
 
 New renderHook characterization covers the grouped contract and handler identity. Focused checks passed 1 file / 1 test; full local `npm run ci:check` passed 140 test files / 902 tests, Firestore rules emulator, Pages/Worker build, built-Worker smoke, maintainability, and artifact verification. `npm run lint` and `git diff --check` passed. No Firebase data/rules, database routing, billing decision, migration, deployment, or performance claim changed. PR #149 passed its required Production Gate. Main Production Gate [39122733505](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39122733505) passed full verification, verified artifact upload, guarded Worker deployment, and live smoke. The live Worker reports the exact same SHA `1f2cda9758d2b7936540519f1717b157d97af979`.
 
-**Historical Cross-F3 checkpoint (superseded):** At that time, no unfinished code task was recorded and the handoff said to await a bounded roadmap selection. The current authority fence above supersedes this record; LR-01 is complete and LR-02 is not selected.
+**Historical Cross-F3 checkpoint (superseded):** At that time, no unfinished code task was recorded and the handoff said to await a bounded roadmap selection. The current authority fence above supersedes this historical status; LR-02 was not yet selected at that time.
 
-## Current checkpoint: admin service modules extracted locally (2026-10-18)
+## Historical checkpoint: admin service modules extracted locally (2026-10-18)
 
 PR [#147](https://github.com/tarekhamada875-droid/RQ-/pull/147) merged the focused branch `feat/cross-f2-admin-service-modules` into `main` at `51121b473cc776f27db945639f3a957a3b2841d4`. The 790-line `adminService` implementation is now split into eight domain modules: core/staff, packages, subscribers, coupons, activity, billing, announcements, and system config. `src/services/adminService.ts` remains a compatibility facade that composes the modules; `src/services/index.ts` continues to expose the same `firestoreService` spread.
 
@@ -30,7 +41,7 @@ All modules are below the old 710-line service baseline. Focused checks passed 5
 
 **Cross-F2 admin-service modularization is complete.** Stop here; do not begin Cross-F3 without a new task. Preserve the separate `readiness/firestore-decision-gate` branch and do not change database routing or run migrations.
 
-## Current checkpoint: garage-management route family extracted locally (2026-10-18)
+## Historical checkpoint: garage-management route family extracted locally (2026-10-18)
 
 PR [#145](https://github.com/tarekhamada875-droid/RQ-/pull/145) merged the focused branch `feat/cross-f5-worker-garage-routes` into `main` at `1074f5356a251c60a859b0d4b94709c1dd880198`. The CF8 garage-management family now lives in `server/garageRoutes.ts`: garage CRUD and reads, deletion/reconciliation/projection maintenance, staff/delegate administration, retired Supervisor tombstones, people PIN updates, admin announcements/coupons/packages, fair-use aliases, prepaid credit grants/ledger, legacy garage transaction endpoints, and cars-inside recalculation. The move is mechanical behind a typed `GarageRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/session infrastructure, the Worker app, family registration order, activity-log/spike endpoints, and default `fetch`.
 
@@ -46,7 +57,7 @@ PR [#143](https://github.com/tarekhamada875-droid/RQ-/pull/143) merged the finan
 
 Cross-F4 is complete for the financial/recharge/delegate family only. Stop here; do not begin garage-management extraction in this task.
 
-## Current checkpoint: financial/recharge/delegate route family extracted locally (2026-10-18)
+## Historical checkpoint: financial/recharge/delegate route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f4-worker-financial-routes` starts from clean `main` `0bd030b4db3c5d4930a51ad24c2905b1a0fbe965`. The CF7 financial family now lives in `server/financialRoutes.ts`: recharge request creation/approval/rejection/listing, legacy top-up response, delegate dashboard/settlement, and financial reports. The move is mechanical behind a typed `FinancialRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, garage-management routes, and default `fetch`.
 
@@ -62,7 +73,7 @@ PR [#141](https://github.com/tarekhamada875-droid/RQ-/pull/141) merged the subsc
 
 Cross-F3 is complete for the subscriber family only. Stop here; do not begin financial/recharge/delegate or garage extraction in this task.
 
-## Current checkpoint: subscriber route family extracted locally (2026-10-18)
+## Historical checkpoint: subscriber route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f3-worker-subscriber-routes` starts from clean `main` `274eaff9bdda8a0453be35eebab2e26a54d94d68`. The four subscriber lifecycle registrations now live in `server/subscriberRoutes.ts`: add, renew, update, and delete. The move is mechanical behind a typed `SubscriberRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, financial/recharge routes, and default `fetch`.
 
@@ -78,7 +89,7 @@ PR [#139](https://github.com/tarekhamada875-droid/RQ-/pull/139) merged the vehic
 
 Cross-F2 is complete for the vehicle family only. Stop here; do not begin subscriber or admin-service extraction in this task.
 
-## Current checkpoint: Cross-F2 vehicle route family extracted locally (2026-10-18)
+## Historical checkpoint: Cross-F2 vehicle route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f2-worker-routes` starts from clean `main` `a33e00b74d51adc863cec1d1dc0a7ed3f4277a11`. The six vehicle registrations now live in `server/vehicleRoutes.ts`: check-in, check-out, delete, refund, inside, and history. The move is mechanical behind a typed `VehicleRouteDeps` boundary. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, family registration order, subscriber routes, and default `fetch`.
 
@@ -94,7 +105,7 @@ PR [#137](https://github.com/tarekhamada875-droid/RQ-/pull/137) merged into `mai
 
 This was a historical sequencing note for Cross-F1 and is superseded. The current next task is LR-00 in the Legacy Removal Plan.
 
-## Current checkpoint: Cross-F1 first route family extracted locally (2026-10-18)
+## Historical checkpoint: Cross-F1 first route family extracted locally (2026-10-18)
 
 The focused branch `feat/cross-f1-worker-read-routes` starts from verified `main` `410f74df446d8b143ad4f609d774151298bdf807`. The first Cross-F1 read/system family now lives in `server/readRoutes.ts`, with shared lookup/date/sanitization helpers in `server/workerReadHelpers.ts`. `server/cloudflareWorker.ts` retains global middleware, authentication/error/rate-limit handling, the Worker app, registration point, and default `fetch` export. Route aliases and registration order are preserved.
 
@@ -106,7 +117,7 @@ Focused regression checks passed: 6 files / 85 tests covering read routes, found
 
 # RQ Maintainability Handoff
 
-## Current checkpoint: RQ-TG-06 merged, deployed, and verified (2026-10-18)
+## Historical checkpoint: RQ-TG-06 merged, deployed, and verified (2026-10-18)
 
 PR [#133](https://github.com/tarekhamada875-droid/RQ-/pull/133) merged at `ce828f6e857e266e967f75246440759a9f3ceba5`. PR Production Gate [39110741500](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39110741500) and main Production Gate [39110920191](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39110920191) passed. The main run imported and smoke-tested the built Worker after build and after downloading the exact artifact, then deployed it. Strict live smoke reported a healthy backend and frontend, version `1.0.0-production`, and exact commit SHA `ce828f6e857e266e967f75246440759a9f3ceba5`.
 

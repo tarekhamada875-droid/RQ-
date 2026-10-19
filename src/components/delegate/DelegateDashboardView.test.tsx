@@ -29,12 +29,8 @@ function renderDelegateDashboard(canCreateGarage?: boolean, createGarageResult =
       delegate={delegate}
       allGarages={[]}
       onLogout={vi.fn()}
-      onRecharge={vi.fn(async () => undefined)}
       onCreateGarage={onCreateGarage}
       isLoading={false}
-      packages={[]}
-      pendingRequests={[]}
-      showToast={vi.fn()}
     />
   );
 

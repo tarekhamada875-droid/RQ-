@@ -217,30 +217,6 @@ export interface Vehicle {
   isSubscriber?: boolean;
 }
 
-export interface RechargeRequest {
-  id: string;
-  requestType?: 'balance_topup' | 'package';
-  garageId: string;
-  garageName: string;
-  delegateId: string;
-  delegateName: string;
-  packageId: string;
-  packageName: string;
-  amount: number;
-  price?: number;
-  carsCount: number;
-  revenueAmount: number;
-  durationDays?: number;
-  dailyCapacity?: number;
-  originalRevenueAmount?: number;
-  couponCode?: string;
-  discountAmount?: number;
-  commission?: number;
-  referrerId?: string | null;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: any;
-  resolvedAt?: any;
-}
 
 export interface Announcement {
   id: string;

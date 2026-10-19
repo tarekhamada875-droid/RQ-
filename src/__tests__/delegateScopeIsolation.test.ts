@@ -20,10 +20,4 @@ describe('v160 — Delegate Access Scope Restriction (تقييد نطاق وصو
     unsub();
   });
 
-  test('Mandatory 3: Delegate recharge requests subscription filters explicitly by delegateId', () => {
-    const callback = vi.fn();
-    const unsub = firestoreService.subscribeToDelegateRechargeRequests('delegate_123', callback);
-    expect(typeof unsub).toBe('function');
-    unsub();
-  });
 });

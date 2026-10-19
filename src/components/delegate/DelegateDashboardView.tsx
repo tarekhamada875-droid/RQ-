@@ -1,28 +1,19 @@
 import React, { useState, memo } from 'react';
-import { 
-  Building2, 
-  Search, 
-  PlusCircle, 
-  LogOut, 
+import {
+  Building2,
+  Search,
+  PlusCircle,
+  LogOut,
   Users,
   Sun,
   Moon,
   MoreVertical,
   BarChart3,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  TrendingUp,
   FileText
 } from 'lucide-react';
-import { Garage, Delegate, Package, RechargeRequest } from '../../types';
-import { getCleanPackageInfo, getDefaultDurationFilter, filterPackagesForGarage } from '../../constants/packages';
+import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { generateSafePin, safeDate, getRemainingDays, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
-import { 
-  calculateApprovedCommission, 
-  getAvailableRequestMonths 
-} from '../../utils/delegateCommissionCalculations';
+import { generateSafePin, getRemainingDays, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
@@ -33,72 +24,36 @@ interface DelegateDashboardViewProps {
   delegate: Delegate;
   allGarages: Garage[];
   onLogout: () => void;
-  onRecharge: (
-    garageId: string, 
-    amount: number, 
-    pkg?: Package, 
-    discountInfo?: { discountAmount?: number }
-  ) => Promise<void>;
-  onRechargeBalance?: (garageId: string, amount: number) => Promise<void>;
   onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   isLoading: boolean;
-  packages: Package[];
-  pendingRequests: RechargeRequest[];
-  delegateRequests?: RechargeRequest[];
-  delegatePagination?: Record<'createdGarages' | 'referredGarages' | 'requests', { hasMore: boolean; nextCursor: string | null }>;
+  delegatePagination?: Record<'createdGarages' | 'referredGarages', { hasMore: boolean; nextCursor: string | null }>;
   delegateListsLoading?: boolean;
   onLoadMoreDelegateGarages?: () => void;
-  onLoadMoreDelegateRequests?: () => void;
-  showToast: (message: string, type?: 'success' | 'error') => void;
-  subscriptionPrices?: { weekly: number; biweekly?: number; monthly: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number };
 }
 
 export const DelegateDashboardView = memo(({ 
-  delegate, 
-  allGarages, 
+  delegate,
+  allGarages,
   onLogout,
-  onRecharge,
-  onRechargeBalance,
   onCreateGarage,
   isLoading,
-  packages,
-  pendingRequests,
-  delegateRequests = [],
   delegatePagination,
   delegateListsLoading = false,
-  onLoadMoreDelegateGarages,
-  onLoadMoreDelegateRequests,
-  showToast,
-  subscriptionPrices: _subscriptionPrices = { weekly: 800, biweekly: 1500, monthly: 3000 }
+  onLoadMoreDelegateGarages
 }: DelegateDashboardViewProps) => {
   const config = useSystemConfig();
   const warningDaysThreshold = typeof config?.warningDaysThreshold === 'number' ? config.warningDaysThreshold : 3;
   const trialDays = typeof config?.defaultTrialDays === 'number' && config.defaultTrialDays > 0 ? config.defaultTrialDays : 2;
-  const [selectedDurationFilter, setSelectedDurationFilter] = useState<number>(() => getDefaultDurationFilter(packages));
   const [activeTab, setActiveTab] = useState<'garages' | 'performance'>('garages');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedGarage, setSelectedGarage] = useState<Garage | null>(null);
-  const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [showAddGarage, setShowAddGarage] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
   const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
   const [showMenu, setShowMenu] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showAllOperations, setShowAllOperations] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
-  React.useEffect(() => {
-    if (packages && packages.length > 0) {
-      const validPackages = filterPackagesForGarage(packages, !!selectedGarage?.hasMonthlySubscribers);
-      const validDurations = validPackages.map(p => getCleanPackageInfo(p).durationDays);
-      if (!validDurations.includes(selectedDurationFilter)) {
-        setSelectedDurationFilter(getDefaultDurationFilter(packages, !!selectedGarage?.hasMonthlySubscribers));
-      }
-    }
-  }, [packages, selectedDurationFilter, selectedGarage?.hasMonthlySubscribers]);
 
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -112,7 +67,7 @@ export const DelegateDashboardView = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useBodyScrollLock(Boolean(showAddGarage || selectedGarage));
+  useBodyScrollLock(Boolean(showAddGarage));
 
   const filteredGarages = React.useMemo(() => {
     const rawSearch = searchTerm.trim();
@@ -132,88 +87,19 @@ export const DelegateDashboardView = memo(({
     return sortGaragesNewestFirst(filtered);
   }, [allGarages, searchTerm]);
 
-  const handleTopupSubmit = async () => {
-    if (!selectedGarage || !selectedTopupAmount || selectedTopupAmount <= 0) return;
-    setIsProcessing(true);
-    try {
-      if (onRechargeBalance) {
-        await onRechargeBalance(selectedGarage.id, selectedTopupAmount);
-      } else {
-        await onRecharge(selectedGarage.id, selectedTopupAmount);
-      }
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setSelectedGarage(null);
-        setSelectedTopupAmount(null);
-      }, 2000);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   // Approved garages count (excluding pending or rejected review garages)
   const approvedGarages = React.useMemo(() => {
     return sortGaragesNewestFirst((allGarages || []).filter(g => g.status !== 'pending' && g.status !== 'rejected'));
   }, [allGarages]);
 
-  // Performance and statistics calculations
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [selectedPerformanceMonth, setSelectedPerformanceMonth] = useState<string>('current');
-
-  const formatDelegateMonthName = (key: string) => {
-    if (key === 'all') return 'جميع الأوقات';
-    if (!key) return '';
-    const [yearStr, monthStr] = key.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10) - 1;
-    const d = new Date(year, month, 1);
-    if (isNaN(d.getTime())) return key;
-    return d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
-  };
-
-  const availablePerformanceMonths = React.useMemo(() => {
-    return getAvailableRequestMonths(delegateRequests, currentMonthKey);
-  }, [delegateRequests, currentMonthKey]);
-
-  const activePerfMonthKey = selectedPerformanceMonth === 'current' ? currentMonthKey : selectedPerformanceMonth;
-
-  const currentMonthCommissionValue = React.useMemo(() => {
-    return calculateApprovedCommission(delegateRequests, currentMonthKey);
-  }, [delegateRequests, currentMonthKey]);
-
-  const commissionValue = React.useMemo(() => {
-    if (activePerfMonthKey === 'all') {
-      const requestsCommission = calculateApprovedCommission(delegateRequests, 'all');
-      return requestsCommission > 0 ? requestsCommission : (delegate.totalCommissionEarned || 0);
-    }
-    return calculateApprovedCommission(delegateRequests, activePerfMonthKey);
-  }, [delegateRequests, activePerfMonthKey, delegate.totalCommissionEarned]);
-
-  const pendingRequestsCount = delegateRequests.filter(r => r.status === 'pending').length;
-
-  const sortedRequests = React.useMemo(() => {
-    return [...delegateRequests].sort((a, b) => {
-      return safeDate(b.createdAt).getTime() - safeDate(a.createdAt).getTime();
-    });
-  }, [delegateRequests]);
-
-  const formatRequestDate = (createdAt: any) => {
-    if (!createdAt) return 'مؤخراً';
-    const d = safeDate(createdAt);
-    if (isNaN(d.getTime())) return 'مؤخراً';
-    return d.toLocaleString('ar-EG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  // Request-level performance history is retired; show only the aggregate recorded on the delegate profile.
+  const pendingGarageApplicationsCount = React.useMemo(
+    () => (allGarages || []).filter((garage) => garage.status === 'pending').length,
+    [allGarages]
+  );
+  const commissionValue = Number.isFinite(Number(delegate.totalCommissionEarned))
+    ? Number(delegate.totalCommissionEarned)
+    : 0;
 
   const handleOpenAddGarage = () => {
     const initialPin = generateSafePin(allGarages.map(g => g.pin));
@@ -222,11 +108,9 @@ export const DelegateDashboardView = memo(({
     setShowAddGarage(true);
   };
 
-  const recentRequests = sortedRequests.slice(0, 3);
-  const displayedRequests = showAllOperations ? sortedRequests : recentRequests;
 
   return (
-    <div className={`h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors overflow-x-hidden ${showAddGarage || selectedGarage ? 'overflow-hidden' : 'overflow-y-auto'}`} dir="rtl">
+    <div className={`h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors overflow-x-hidden ${showAddGarage ? 'overflow-hidden' : 'overflow-y-auto'}`} dir="rtl">
       {/* 2) Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sticky top-0 z-40 transition-colors">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
@@ -365,17 +249,17 @@ export const DelegateDashboardView = memo(({
               </div>
 
               <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block mb-1">طلبات معلقة</span>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block mb-1">طلبات تسجيل معلقة</span>
                 <span className="text-xl sm:text-2xl font-black text-amber-500 font-mono leading-none">
-                  {pendingRequestsCount}
+                  {pendingGarageApplicationsCount}
                 </span>
               </div>
 
               <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block mb-1">عمولتي هذا الشهر</span>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 block mb-1">إجمالي العمولات المسجلة</span>
                 <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono leading-none flex items-baseline justify-center gap-0.5">
                   <FitText minFontSize={12}>
-                    {currentMonthCommissionValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                    {commissionValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
                   </FitText>
                   <span className="text-[10px] font-bold">ج.م</span>
                 </div>
@@ -408,26 +292,14 @@ export const DelegateDashboardView = memo(({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {filteredGarages.map(g => {
                 const isPending = g.status === 'pending';
-                const hasPending = pendingRequests.some(r => r.garageId === g.id);
                 const remDays = getRemainingDays(g);
-                const isExpiringSoon = !isPending && !hasPending && remDays <= warningDaysThreshold && remDays > 0;
-                const isExpired = !isPending && !hasPending && remDays <= 0;
+                const isExpiringSoon = !isPending && remDays <= warningDaysThreshold && remDays > 0;
+                const isExpired = !isPending && remDays <= 0;
 
                 return (
                   <button
                     key={g.id}
                     type="button"
-                    onClick={() => {
-                      if (isPending) {
-                        showToast('عذراً، هذا الجراج قيد المراجعة والإنشاء من قبل الإدارة. يرجى الانتظار حتى تتم الموافقة عليه.', 'error');
-                        return;
-                      }
-                      if (hasPending) {
-                        showToast('هناك طلب شحن معلق بالفعل لم يتم تفعيله بعد من قبل الإدارة', 'error');
-                        return;
-                      }
-                      // Garage cards are informational; credit grants are now handled by administrators.
-                    }}
                     className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 cursor-pointer flex flex-col justify-between min-h-[120px] transition-all shadow-sm hover:shadow-md text-right w-full ${
                       isPending 
                         ? 'border-dashed border-slate-300 dark:border-slate-800 opacity-75' 
@@ -453,10 +325,6 @@ export const DelegateDashboardView = memo(({
                       {isPending ? (
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                           قيد مراجعة الإنشاء
-                        </span>
-                      ) : hasPending ? (
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                          طلب شحن معلق
                         </span>
                       ) : isExpired ? (
                         <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400">
@@ -505,137 +373,17 @@ export const DelegateDashboardView = memo(({
             )}
           </div>
         ) : (
-          /* 5) Performance Report View */
+          /* 5) Aggregate Performance View */
           <div className="space-y-4">
-            {/* 5.a) Period Selector */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                اختر الفترة التي تريد مراجعتها:
-              </span>
-
-              <select
-                value={selectedPerformanceMonth}
-                onChange={(e) => setSelectedPerformanceMonth(e.target.value)}
-                className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-xs px-3 py-2 rounded-xl outline-none focus:border-amber-500 transition-colors cursor-pointer"
-              >
-                <option value="current">
-                  الشهر الحالي ({formatDelegateMonthName(currentMonthKey)})
-                </option>
-                {availablePerformanceMonths.filter(m => m !== currentMonthKey).map(m => (
-                  <option key={m} value={m}>
-                    {formatDelegateMonthName(m)}
-                  </option>
-                ))}
-                <option value="all">
-                  جميع الأوقات (التاريخ الكلي)
-                </option>
-              </select>
-            </div>
-
-            {/* 5.b) Focused Performance Summary Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="text-right">
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 block mb-1">
-                    {activePerfMonthKey === 'all' ? 'إجمالي العمولة المكتسبة (التاريخ الكلي)' : 'العمولة المكتسبة في هذه الفترة'}
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-black text-amber-500 dark:text-amber-400 font-mono leading-none flex items-baseline gap-1.5">
-                    <span>{commissionValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-                    <span className="text-sm font-bold text-slate-400">ج.م</span>
-                  </div>
-                </div>
-
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+              <span className="mb-2 block text-xs font-bold text-slate-400 dark:text-slate-500">إجمالي العمولات المسجلة على الحساب</span>
+              <div className="flex items-baseline gap-1.5 font-mono text-2xl font-black leading-none text-amber-500 dark:text-amber-400 sm:text-3xl">
+                <span>{commissionValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                <span className="text-sm font-bold text-slate-400">ج.م</span>
               </div>
-            </div>
-            {delegatePagination?.requests.hasMore && (
-              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300" role="status">
-                لا تزال هناك عمليات أقدم؛ قد تكون أرقام الفترة غير مكتملة إلى أن تحمّل المزيد.
+              <p className="mt-4 border-t border-slate-100 pt-3 text-xs font-medium leading-relaxed text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                يعرض هذا الرقم الإجمالي المحفوظ في حساب المندوب فقط؛ سجل طلبات الشحن والتجديد لم يعد متاحاً داخل التطبيق.
               </p>
-            )}
-
-            {/* 5.c) Operations History */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-black text-sm">
-                  <Calendar className="w-4 h-4 text-amber-500" />
-                  <span>سجل العمليات</span>
-                </div>
-                <span className="text-xs font-bold text-slate-400 font-mono">
-                  ({sortedRequests.length})
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {displayedRequests.map((req) => (
-                  <div 
-                    key={req.id} 
-                    className="p-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 rounded-xl flex items-center justify-between gap-3 text-right"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {req.garageName}
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
-                        <span>باقة {req.packageName}</span>
-                        <span>•</span>
-                        <span className="font-mono text-[10px]">{formatRequestDate(req.createdAt)}</span>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                        {req.revenueAmount || req.amount} ج.م
-                      </span>
-
-                      {req.status === 'pending' && (
-                        <span className="text-[10px] font-bold px-2 py-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded-lg">
-                          في الانتظار
-                        </span>
-                      )}
-                      {req.status === 'approved' && (
-                        <span className="text-[10px] font-bold px-2 py-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                          تم القبول
-                        </span>
-                      )}
-                      {req.status === 'rejected' && (
-                        <span className="text-[10px] font-bold px-2 py-1 bg-red-500/15 text-red-600 dark:text-red-400 rounded-lg">
-                          مرفوض
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {sortedRequests.length === 0 && (
-                  <div className="py-8 text-center text-slate-400 font-bold text-xs">
-                    لا توجد عمليات بعد
-                  </div>
-                )}
-              </div>
-
-              {sortedRequests.length > 3 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllOperations(prev => !prev)}
-                  className="mt-3 w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 rounded-xl font-bold text-xs text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>{showAllOperations ? 'إخفاء العمليات القديمة' : 'عرض كل العمليات'}</span>
-                  {showAllOperations ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-              )}
-              {delegatePagination?.requests.hasMore && onLoadMoreDelegateRequests && (
-                <button
-                  type="button"
-                  onClick={onLoadMoreDelegateRequests}
-                  disabled={delegateListsLoading}
-                  className="mt-2 w-full min-h-[44px] px-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl font-bold text-xs text-amber-700 dark:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {delegateListsLoading ? 'جارٍ تحميل المزيد...' : 'تحميل عمليات أقدم'}
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -654,14 +402,6 @@ export const DelegateDashboardView = memo(({
         setNewGaragePin={setNewGaragePin}
         setPinGenerationsRemaining={setPinGenerationsRemaining}
         isLoading={isLoading}
-        selectedGarage={selectedGarage}
-        setSelectedGarage={setSelectedGarage}
-        selectedTopupAmount={selectedTopupAmount}
-        setSelectedTopupAmount={setSelectedTopupAmount}
-        success={success}
-        isProcessing={isProcessing}
-        handleTopupSubmit={handleTopupSubmit}
-        pendingRequests={pendingRequests}
       />
       {showTermsModal && (
         <TermsAndConditionsModal 

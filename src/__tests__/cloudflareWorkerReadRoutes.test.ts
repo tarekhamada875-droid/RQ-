@@ -141,7 +141,9 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
       headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
     expect(adminResponse.headers.get('X-Summary-Source')).toBe('maintained_summary');
-    expect((await adminResponse.json() as any).summary).toMatchObject({ totalGarages: 10, totalDelegates: 4 });
+    const adminSummary = (await adminResponse.json() as any).summary;
+    expect(adminSummary).toMatchObject({ totalGarages: 10, totalDelegates: 4 });
+    expect(adminSummary).not.toHaveProperty('pendingRechargeRequests');
 
     const subscriberResponse = await api.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
       headers: { Authorization: 'Bearer valid-admin-token' }
@@ -150,23 +152,26 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect((await subscriberResponse.json() as any).data).toMatchObject({ totalSubscribers: 50, activeSubscribers: 40 });
   });
 
-  it('3. GET /api/admin/summary returns aggregated system statistics', async () => {
-    // Unauthenticated
+  it('3. GET /api/admin/summary returns statistics without reading recharge-request history', async () => {
+    mockDb.seed('recharge_requests/pending-summary-regression', { status: 'pending' });
+    const collectionSpy = vi.spyOn(mockDb, 'collection');
     const unauthRes = await api.fetch(new Request('http://localhost/api/admin/summary'));
     expect(unauthRes.status).toBe(401);
 
-    // Authenticated as admin
     const res = await api.fetch(new Request('http://localhost/api/admin/summary', {
-      headers: { 'Authorization': 'Bearer valid-admin-token' }
+      headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
 
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(body.summary).toBeDefined();
+    expect(body.summary).not.toHaveProperty('pendingRechargeRequests');
     expect(typeof body.summary.totalGarages).toBe('number');
     expect(typeof body.summary.activeGarages).toBe('number');
     expect(typeof body.summary.totalDelegates).toBe('number');
+    expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
+    collectionSpy.mockRestore();
   });
 
   it('4. GET /api/admin/monthly-subscribers-summary aggregates subscriber metrics', async () => {
@@ -299,33 +304,39 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(body.error).toBe('DELEGATE_NOT_FOUND');
   });
 
-  it('bounds Admin delegate-detail child lists and supports section cursor continuation', async () => {
+  it('pages Admin delegate garage lists only and closes request history', async () => {
     mockDb.seed('delegates/del-page', { name: 'Paginated Detail Delegate' });
     for (let index = 0; index < 4; index += 1) {
       mockDb.seed(`garages/detail-created-${index}`, { createdByDelegateId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
       mockDb.seed(`garages/detail-referred-${index}`, { referrerId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
-      mockDb.seed(`recharge_requests/detail-${index}`, { delegateId: 'del-page', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`recharge_requests/detail-${index}`, { delegateId: 'del-page' });
     }
     mockDb.resetDocumentCounts();
+    const collectionSpy = vi.spyOn(mockDb, 'collection');
     const response = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?limit=2', {
       headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
     const first = await response.json() as any;
     expect(response.status).toBe(200);
     expect(first.garages).toHaveLength(4);
-    expect(first.requests).toHaveLength(2);
+    expect(first).not.toHaveProperty('requests');
+    expect(first.pagination).not.toHaveProperty('requests');
     expect(first.pagination.createdGarages.hasMore).toBe(true);
     expect(first.pagination.referredGarages.hasMore).toBe(true);
-    expect(first.pagination.requests.hasMore).toBe(true);
-    expect(mockDb.queryResultSizes.slice(-3)).toEqual([3, 3, 3]);
+    expect(mockDb.queryResultSizes.slice(-2)).toEqual([3, 3]);
 
-    const params = new URLSearchParams({ section: 'createdGarages', limit: '2', cursor: first.pagination.createdGarages.nextCursor });
-    const nextResponse = await api.fetch(new Request(`http://localhost/api/admin/delegates/del-page?${params}`, {
+    const queryCount = mockDb.queryResultSizes.length;
+    const retiredRequests = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?section=requests&limit=2', {
       headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
-    const next = await nextResponse.json() as any;
-    expect(nextResponse.status).toBe(200);
-    expect(next.garages).toHaveLength(2);
-    expect(next.garages.map((garage: any) => garage.id)).not.toEqual(expect.arrayContaining(first.garages.map((garage: any) => garage.id)));
+    expect(retiredRequests.status).toBe(410);
+    expect(mockDb.queryResultSizes).toHaveLength(queryCount);
+    const wrongRoleSection = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?section=requests&limit=2', {
+      headers: { Authorization: 'Bearer valid-delegate-token' }
+    }), workerEnv);
+    expect(wrongRoleSection.status).toBe(403);
+    expect(mockDb.queryResultSizes).toHaveLength(queryCount);
+    expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
+    collectionSpy.mockRestore();
   });
 });

@@ -5,7 +5,6 @@ import {
   calculateFinalPrice, 
   applyMonthlySubscribersFlatFee, 
   packageIdToDays, 
-  validateRechargeRequest,
   throttleSnapshot,
   getEffectiveDailyCapacity,
   isUnlimitedCapacity
@@ -205,53 +204,6 @@ describe('packageIdToDays', () => {
 
   test('defaults to 30 for unknown', () => {
     expect(packageIdToDays('unknown')).toBe(30);
-  });
-});
-
-describe('validateRechargeRequest', () => {
-  test('validates delegate-created request with amount and carsCount', () => {
-    const req = {
-      garageId: 'gar-123',
-      packageId: 'silver_pkg',
-      packageName: 'الباقة الفضية (40 سيارة/يوم)',
-      amount: 360,
-      carsCount: 15,
-      delegateId: 'del-123'
-    };
-    const result = validateRechargeRequest(req);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
-
-  test('validates request with revenueAmount', () => {
-    const req = {
-      garageId: 'gar-456',
-      packageId: 'custom',
-      revenueAmount: 500,
-      durationDays: 30
-    };
-    const result = validateRechargeRequest(req);
-    expect(result.valid).toBe(true);
-  });
-
-  test('fails if garageId is missing', () => {
-    const req = {
-      packageId: 'custom',
-      amount: 500
-    };
-    const result = validateRechargeRequest(req);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain('معرف الجراج مطلوب');
-  });
-
-  test('fails if package is missing', () => {
-    const req = {
-      garageId: 'gar-123',
-      amount: 500
-    };
-    const result = validateRechargeRequest(req);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain('الباقة مطلوبة');
   });
 });
 

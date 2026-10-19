@@ -5,13 +5,11 @@ import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useServerTime } from './useServerTime';
-import { useSystemSubscribersFlatFee, useSystemReferralFee, useSystemDelegateCommissions } from './useSystemSubscribersFlatFee';
 import { soundManager } from '../utils/sounds';
 import { useAppStore } from '../store/appStore';
 
 import { useGarageSession } from './useGarageSession';
 import { useVehicleOperations } from './useVehicleOperations';
-import { useGarageSubscription } from './useGarageSubscription';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { useGarageSync } from './useGarageSync';
 import { useGarageSystemConfigSync, type SubscriptionPriceState } from './useGarageSystemConfigSync';
@@ -36,9 +34,6 @@ export function useGarageApp() {
   }, []);
 
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
-  const subscriberFlatFee = useSystemSubscribersFlatFee();
-  const systemReferralFee = useSystemReferralFee();
-  const delegateCommissions = useSystemDelegateCommissions();
   const [view, setView] = useLocalStorageState<'login' | 'garage' | 'admin_login' | 'admin_dashboard' | 'admin_garage_details' | 'admin_delegate_details' | 'delegate_login' | 'delegate_dashboard' | 'packages' | 'staff_stats'>('app_view', 'login');
 
   // Hash Navigation Support
@@ -180,16 +175,9 @@ export function useGarageApp() {
     delegates,
     staffList,
     setStaffList,
-    rechargeRequests,
-    adminRechargeHasMore,
-    adminRechargeListsLoading,
-    loadMoreAdminRechargeRequests,
-    markAdminRechargeRequestResolved,
-    delegateRequests,
     delegatePagination,
     delegateListsLoading,
     loadMoreDelegateGarages,
-    loadMoreDelegateRequests,
     packages,
     delegateGarages,
     sortedPackages,
@@ -281,17 +269,6 @@ export function useGarageApp() {
     now,
     showToast,
     closeKeyboard,
-  });
-
-  // 4. Subscriptions & Recharge Hook
-  const { handleDelegateRecharge, handleDelegateBalanceTopupRequest } = useGarageSubscription({
-    allGarages,
-    delegate,
-    subscriberFlatFee,
-    systemReferralFee,
-    delegateCommissions,
-    isOnline,
-    showToast,
   });
 
   // 5. Admin and Garage Management Hook
@@ -386,16 +363,9 @@ export function useGarageApp() {
     packages,
     staffList,
     setStaffList,
-    rechargeRequests,
-    adminRechargeHasMore,
-    adminRechargeListsLoading,
-    loadMoreAdminRechargeRequests,
-    markAdminRechargeRequestResolved,
-    delegateRequests,
     delegatePagination,
     delegateListsLoading,
     loadMoreDelegateGarages,
-    loadMoreDelegateRequests,
     sortedPackages,
     delegateGarages,
     adminGarageHasMore,
@@ -437,8 +407,6 @@ export function useGarageApp() {
   const subscriptions = {
     walletNumber,
     subscriptionPrices,
-    handleDelegateRecharge,
-    handleDelegateBalanceTopupRequest,
   };
   const adminManagement = {
     adminPin,
@@ -515,16 +483,9 @@ export function useGarageApp() {
     setIsInputFocused,
     staffList,
     setStaffList,
-    rechargeRequests,
-    adminRechargeHasMore,
-    adminRechargeListsLoading,
-    loadMoreAdminRechargeRequests,
-    markAdminRechargeRequestResolved,
-    delegateRequests,
     delegatePagination,
     delegateListsLoading,
     loadMoreDelegateGarages,
-    loadMoreDelegateRequests,
     currentStaff,
     setCurrentStaff,
     sessionId,
@@ -560,8 +521,6 @@ export function useGarageApp() {
     closeKeyboard,
     handleGarageLogin,
     handleDelegateLogin,
-    handleDelegateRecharge,
-    handleDelegateBalanceTopupRequest,
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,
