@@ -23,12 +23,6 @@ interface AdminGarageModalsProps {
   staffForm: { name: string; pin: string };
   setStaffForm: React.Dispatch<React.SetStateAction<{ name: string; pin: string }>>;
   onAddStaffSubmit: (e: React.FormEvent) => Promise<void>;
-  // Top-up Modal
-  showTopupModal: boolean;
-  setShowTopupModal: (val: boolean) => void;
-  selectedTopupAmount: number | null;
-  isTopupSuccess: boolean;
-  onTopupSubmit: () => Promise<void>;
   // Staff Delete Modal
   staffToDelete: Staff | null;
   setStaffToDelete: (staff: Staff | null) => void;
@@ -54,11 +48,6 @@ export const AdminGarageModals = memo(({
   staffForm,
   setStaffForm,
   onAddStaffSubmit,
-  showTopupModal: _showTopupModal,
-  setShowTopupModal: _setShowTopupModal,
-  selectedTopupAmount: _selectedTopupAmount,
-  isTopupSuccess: _isTopupSuccess,
-  onTopupSubmit: _onTopupSubmit,
   staffToDelete,
   setStaffToDelete,
   onDeleteStaff,

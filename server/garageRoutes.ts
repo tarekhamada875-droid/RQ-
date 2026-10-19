@@ -52,7 +52,6 @@ export interface GarageRouteDeps {
   awardReferralCredits: GarageRouteDependency;
   materializeCreditLedgerEntry: GarageRouteDependency;
   recordDomainEventInTransaction: GarageRouteDependency;
-  extendSubscriptionExpiry: GarageRouteDependency;
   startGarageDeletionRoute: GarageRouteDependency;
   advanceGarageDeletionRoute: GarageRouteDependency;
   readGarageDeletionStatusRoute: GarageRouteDependency;
@@ -109,7 +108,6 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     awardReferralCredits,
     materializeCreditLedgerEntry,
     recordDomainEventInTransaction,
-    extendSubscriptionExpiry,
     startGarageDeletionRoute,
     advanceGarageDeletionRoute,
     readGarageDeletionStatusRoute
@@ -1393,234 +1391,13 @@ app.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
   return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
 });
 
-// Transactions: Garage Self-Subscribe Using Balance
+// Retired owner self-subscribe and referral-day endpoints remain authenticated compatibility tombstones.
 app.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, async (c) => {
   return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-  /* istanbul ignore next -- retained below only as a migration reference until the route is deleted */
-  try {
-    const user = c.get('user');
-    const userRole = user?.role;
-    const userGarageId = user?.garageId || user?.entityId;
-    const callerUid = user?.uid;
-
-    const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['garageId', 'packageId', 'packageData', 'idempotencyKey'], false);
-    const bodyGarageId = validateId(sanitized.garageId, 'garageId', false);
-    const packageId = validateId(sanitized.packageId, 'packageId', true);
-    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
-    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
-
-    const garageId = userRole === 'garage' ? userGarageId : (bodyGarageId || userGarageId);
-    const requestFingerprint = createRequestFingerprint({ garageId, packageId });
-
-    if (userRole === 'garage' && userGarageId && bodyGarageId && userGarageId !== bodyGarageId) {
-      return c.json({ success: false, error: 'UNAUTHORIZED_GARAGE_ACCESS' }, 403);
-    }
-    if (!['garage', 'admin'].includes(userRole || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Role not authorized for self subscribe' }, 403);
-    }
-    if (!garageId) {
-      return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
-    }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    let resultData: any = null;
-
-    await getAdminDb().runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
-      if (isDuplicate) {
-        resultData = cachedResult;
-        return;
-      }
-
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const garageSnap = await t.get(garageRef);
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      const currentBalance = Number(garageData.balance || 0);
-
-      const settingsSnap = await t.get(getAdminDb().doc('system_config/global'));
-      const systemConfig = settingsSnap.exists ? settingsSnap.data() : {};
-      const subscriberFlatFee = systemConfig?.subscriberFlatFee !== undefined
-        ? Math.max(0, Number(systemConfig.subscriberFlatFee))
-        : (systemConfig?.monthlySubscribersFlatFee !== undefined ? Number(systemConfig.monthlySubscribersFlatFee) : 500);
-
-      let pkg: any = null;
-      if (packageId) {
-        const pkgRef = getAdminDb().doc(`packages/${packageId}`);
-        const pkgSnap = await t.get(pkgRef);
-        if (pkgSnap.exists) pkg = { id: pkgSnap.id, ...pkgSnap.data() };
-      }
-
-      if (!pkg) throw new Error('PACKAGE_NOT_FOUND');
-      if (pkg.isActive === false) throw new Error('PACKAGE_INACTIVE');
-
-      const validatedPackage = validatePackageCatalogRecord(pkg, pkg.id || packageId);
-      const durationDays = validatedPackage.durationDays;
-      let effectivePrice = validatedPackage.finalPrice;
-      if (garageData.hasMonthlySubscribers === true) {
-        effectivePrice += subscriberFlatFee;
-      }
-
-      if (currentBalance < effectivePrice) {
-        throw new Error(`INSUFFICIENT_BALANCE: الرصيد المتاح (${currentBalance} ج.م) غير كافٍ للاشتراك في هذه الباقة (${effectivePrice} ج.م)`);
-      }
-
-      const newBalance = currentBalance - effectivePrice;
-
-      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
-
-      const pkgName = validatedPackage.name;
-      const isUnlimitedPkg = validatedPackage.isUnlimited;
-      const effCapacity = validatedPackage.dailyCapacity;
-
-      t.set(garageRef, {
-        balance: newBalance,
-        balanceExpiry: baseDate,
-        dailyCapacity: effCapacity,
-        activePackageName: pkgName,
-        packageName: pkgName,
-        billingModel: 'subscription',
-        isLocked: false,
-        isTrial: false,
-        lastRechargeDate: new Date(),
-        lastRechargeAmount: effectivePrice,
-        lastRechargePackageName: pkgName,
-        unlimitedFairUse: isUnlimitedPkg ? initializeFairUse(durationDays, pkgName) : null
-      }, { merge: true });
-
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: callerUid || 'owner',
-        staffName: garageData.ownerName || 'مدير الجراج',
-        actionType: 'self_subscribe',
-        plateNumber: `تفعيل باقة بالرصيد: ${pkgName} (${durationDays} يوم)`,
-        timestamp: new Date(),
-        amount: effectivePrice,
-        packageId: pkg.id || packageId,
-        details: {
-          packageName: pkgName,
-          durationDays,
-          carsCount: effCapacity,
-          cost: effectivePrice,
-          previousBalance: currentBalance,
-          remainingBalance: newBalance
-        }
-      });
-
-      recordDomainEventInTransaction(t, getAdminDb(), {
-        garageId,
-        aggregateType: 'wallet',
-        aggregateId: garageId,
-        eventType: 'wallet_debited',
-        actorUid: callerUid || 'system',
-        actorRole: userRole || 'garage',
-        idempotencyKey,
-        payload: { amount: effectivePrice, previousBalance: currentBalance, newBalance, reason: 'package_purchase', packageId: pkg.id || packageId }
-      });
-      recordDomainEventInTransaction(t, getAdminDb(), {
-        garageId,
-        aggregateType: 'recharge',
-        aggregateId: idempotencyKey,
-        eventType: 'package_purchased',
-        actorUid: callerUid || 'system',
-        actorRole: userRole || 'garage',
-        idempotencyKey,
-        payload: { packageId: pkg.id || packageId, packageName: pkgName, amount: effectivePrice, durationDays, dailyCapacity: effCapacity, previousBalance: currentBalance, remainingBalance: newBalance }
-      });
-
-      resultData = {
-        garageId,
-        newBalance,
-        newExpiry: baseDate.toISOString(),
-        packageName: pkgName,
-        deductedAmount: effectivePrice
-      };
-
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/garage-self-subscribe', callerUid, requestFingerprint);
-    });
-
-    return c.json({ success: true, data: resultData });
-  } catch (error: any) {
-    console.error('[Worker Transaction] Error in garage-self-subscribe:', error);
-    const { statusCode, message } = mapDomainErrorToStatus(error);
-    return c.json({ success: false, error: message }, statusCode as any);
-  }
 });
 
-// Transactions: Use Referral Reward Days
 app.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) => {
   return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-  try {
-    const user = c.get('user');
-    const callerUid = user?.uid;
-    const callerRole = user?.role;
-    const callerGarageId = user?.garageId || (callerRole === 'garage' ? user?.entityId : null);
-
-    const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['garageId', 'idempotencyKey'], false);
-    const garageId = validateId(sanitized.garageId, 'garageId', true);
-    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
-
-    if (callerRole !== 'admin' && callerRole !== 'garage') {
-      return c.json({ success: false, error: 'ADMIN_OR_GARAGE_ONLY' }, 403);
-    }
-    if (callerRole === 'garage' && callerGarageId !== garageId) {
-      return c.json({ success: false, error: 'FORBIDDEN: Cannot claim reward for another garage' }, 403);
-    }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    let claimedDays = 0;
-    await getAdminDb().runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/use-referral-reward', callerUid);
-      if (isDuplicate) {
-        claimedDays = cachedResult?.daysClaimed || 0;
-        return;
-      }
-
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const garageSnap = await t.get(garageRef);
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      const rewardDays = Math.max(0, Number(garageData.totalReferralRewardDays || 0));
-      if (rewardDays <= 0) throw new Error('NO_REFERRAL_REWARDS_AVAILABLE');
-
-      claimedDays = rewardDays;
-      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, rewardDays);
-
-      t.update(garageRef, {
-        balanceExpiry: baseDate,
-        totalReferralRewardDays: 0,
-        isLocked: false,
-        lastReferralClaimAt: new Date()
-      });
-
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: callerUid || null,
-        staffName: callerRole === 'admin' ? 'الإدارة' : 'صاحب الجراج (استخدام رصيد المكافآت)',
-        actionType: 'recharge',
-        plateNumber: `استخدام مكافأة إحالة — تمديد الاشتراك +${rewardDays} ${rewardDays === 1 ? 'يوم مجاني' : rewardDays === 2 ? 'يومان مجانيان' : 'أيام مجانية'}`,
-        timestamp: new Date(),
-        amount: 0,
-        details: { type: 'use_referral_reward', claimedDays: rewardDays, newExpiry: baseDate.toISOString() }
-      });
-
-      storeIdempotencyInTransaction(t, idempotencyKey, { daysClaimed: claimedDays }, '/api/transactions/use-referral-reward', callerUid);
-    });
-
-    return c.json({ success: true, daysClaimed: claimedDays });
-  } catch (e: any) {
-    console.error('[Worker Reward] Error in use-referral-reward:', e);
-    const { statusCode, message } = mapDomainErrorToStatus(e);
-    return c.json({ success: false, error: message }, statusCode as any);
-  }
 });
 
 // Garage Maintenance: Recalculate Cars Inside

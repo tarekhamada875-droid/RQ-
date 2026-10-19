@@ -18,9 +18,7 @@ import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
-import { decideManualCredit } from './domain/manualCredit';
 import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
-import { extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
@@ -1250,11 +1248,6 @@ function writeMaintainedSubscriberDelta(transaction: any, delta: Record<string, 
   writeMaintainedSummaryDelta(transaction, maintainedSubscriberSummaryRef(), delta, { summaryScope: 'subscribers' });
 }
 
-function invalidateMaintainedAdminSummary(transaction: any): void {
-  const ref = maintainedAdminSummaryRef();
-  if (ref) transaction.set(ref, { schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
-}
-
 function isUsableMaintainedSummary(value: any, requiredFields: string[] = []): boolean {
   return Boolean(value && value.schemaVersion === MAINTAINED_SUMMARY_VERSION && value.stale !== true && requiredFields.every((field) => Number.isFinite(Number(value[field]))));
 }
@@ -1342,15 +1335,11 @@ registerFinancialRoutes(workerApp, {
   requireWorkerAuth,
   enforceWorkerFinancialRateLimit,
   validateId,
-  validateNumber,
   validateIdempotencyKey,
   checkIdempotencyInTransaction,
   createRequestFingerprint,
   storeIdempotencyInTransaction,
   recordDomainEventInTransaction,
-  mapDomainErrorToStatus,
-  decideManualCredit,
-  invalidateMaintainedAdminSummary,
   parseFirestorePageRequest,
   readWorkerFirestorePage,
   sanitizeDelegateDoc,
@@ -1412,7 +1401,6 @@ registerGarageRoutes(workerApp, {
   awardReferralCredits,
   materializeCreditLedgerEntry,
   recordDomainEventInTransaction,
-  extendSubscriptionExpiry,
   startGarageDeletionRoute,
   advanceGarageDeletionRoute,
   readGarageDeletionStatusRoute,

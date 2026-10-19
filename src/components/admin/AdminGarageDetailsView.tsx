@@ -10,15 +10,13 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { firestoreService } from '../../services';
-import { Timestamp } from 'firebase/firestore';
-import { normalizeDigits, getRemainingDays, canChangeGarageRates, isHashedPin, generateSafePin } from '../../utils';
+import { normalizeDigits, canChangeGarageRates, isHashedPin, generateSafePin } from '../../utils';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { Garage, Staff, Package } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { soundManager } from '../../utils/sounds';
 import { useAppStore } from '../../store/appStore';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
@@ -37,7 +35,6 @@ interface AdminGarageDetailsViewProps {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   packages?: Package[];
-  subscriptionPrices?: { weekly?: number; biweekly?: number; monthly?: number; referralFee?: number; weeklyDiscount?: number; biweeklyDiscount?: number; monthlyDiscount?: number };
   allGarages?: Garage[];
 }
 
@@ -52,16 +49,11 @@ export const AdminGarageDetailsView = memo(({
   isLoading,
   setIsLoading,
   packages = [],
-  subscriptionPrices: _subscriptionPrices = { weekly: 800, biweekly: 1500, monthly: 3000, referralFee: 50 },
   allGarages = []
 }: AdminGarageDetailsViewProps) => {
-  const [showClearBalanceConfirm, setShowClearBalanceConfirm] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [staffForm, setStaffForm] = useState({ name: '', pin: '' });
-  const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
-  const [showTopupModal, setShowTopupModal] = useState(false);
-  const [isTopupSuccess, setIsTopupSuccess] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { adminLang } = useTheme();
   const t = useAdminTranslation(adminLang);
@@ -137,77 +129,6 @@ export const AdminGarageDetailsView = memo(({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleTopupSubmit = async () => {
-    if (!selectedTopupAmount || selectedTopupAmount <= 0) return;
-    setIsLoading(true);
-    const { showToast } = useAppStore.getState();
-    const prevBalance = Number(selectedGarageForDetails.balance || 0);
-    const addedAmt = Number(selectedTopupAmount);
-    const expectedNewBalance = prevBalance + addedAmt;
-
-    try {
-      await firestoreService.adminTopupGarageBalance(
-        selectedGarageForDetails.id,
-        addedAmt
-      );
-
-      try {
-        soundManager.play("checkIn");
-      } catch (err) {
-        console.error("Sound error", err);
-      }
-
-      showToast?.(
-        adminLang === 'en'
-          ? `Added ${addedAmt} EGP to ${selectedGarageForDetails.name}. New Balance: ${expectedNewBalance} EGP`
-          : `تم إضافة ${addedAmt} ج.م للجراج (${selectedGarageForDetails.name}) بنجاح! الرصيد الجديد: ${expectedNewBalance} ج.م`,
-        'success'
-      );
-
-      setIsTopupSuccess(true);
-
-      if (typeof setSelectedGarageForDetails === 'function') {
-        const updated = await firestoreService.getGarageById(selectedGarageForDetails.id);
-        if (updated) {
-          setSelectedGarageForDetails(updated);
-        }
-      }
-      setTimeout(() => {
-        setShowTopupModal(false);
-        setIsTopupSuccess(false);
-        setSelectedTopupAmount(null);
-      }, 1400);
-    } catch (e: any) {
-      console.error('Balance top-up failed:', e);
-      showToast?.(
-        adminLang === 'en'
-          ? `Top-up failed: ${e?.message || 'Unknown error'}`
-          : `فشل شحن الرصيد: ${e?.message || 'خطأ غير معروف'}`,
-        'error'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClearBalance = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      const updateFields: any = { balance: 0, isLocked: true, balanceExpiry: Timestamp.fromDate(new Date()) };
-      await firestoreService.updateGarage(selectedGarageForDetails.id, updateFields);
-      setShowClearBalanceConfirm(false);
-      if (typeof setSelectedGarageForDetails === 'function') {
-        const updated = await firestoreService.getGarageById(selectedGarageForDetails.id);
-        if (updated) setSelectedGarageForDetails(updated);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleToggleLock = async () => {
     if (isUpdatingLock) return;
@@ -367,7 +288,6 @@ export const AdminGarageDetailsView = memo(({
 
   const totalCount = selectedGarageForDetails.totalVehiclesOut || 0;
   const totalRevenue = selectedGarageForDetails.totalRevenue || 0;
-  const remainingDays = getRemainingDays(selectedGarageForDetails);
   const carsInside = typeof selectedGarageForDetails.carsInside === 'number'
     ? Math.max(0, selectedGarageForDetails.carsInside)
     : (selectedGarageForDetails.activePlates ? Object.keys(selectedGarageForDetails.activePlates).length : 0);
@@ -469,16 +389,8 @@ export const AdminGarageDetailsView = memo(({
           garage={selectedGarageForDetails}
           t={t}
           adminLang={adminLang}
-          remainingDays={remainingDays}
-          showClearBalanceConfirm={showClearBalanceConfirm}
-          setShowClearBalanceConfirm={setShowClearBalanceConfirm}
-          isLoading={isLoading}
-          onClearBalance={handleClearBalance}
           subscriberFlatFee={subscriberFlatFee}
           onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
-          selectedTopupAmount={selectedTopupAmount}
-          setSelectedTopupAmount={setSelectedTopupAmount}
-          onOpenTopupModal={() => setShowTopupModal(true)}
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}
         />
@@ -520,11 +432,6 @@ export const AdminGarageDetailsView = memo(({
         staffForm={staffForm}
         setStaffForm={setStaffForm}
         onAddStaffSubmit={handleAddStaffSubmit}
-        showTopupModal={showTopupModal}
-        setShowTopupModal={setShowTopupModal}
-        selectedTopupAmount={selectedTopupAmount}
-        isTopupSuccess={isTopupSuccess}
-        onTopupSubmit={handleTopupSubmit}
         staffToDelete={staffToDelete}
         setStaffToDelete={setStaffToDelete}
         onDeleteStaff={handleDeleteStaff}

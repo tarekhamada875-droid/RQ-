@@ -55,7 +55,7 @@ export function AppRoutes({ app, effectiveWalletNumber }: AppRoutesProps) {
 
   if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} delegatePagination={delegatePagination} delegateListsLoading={delegateListsLoading} onLoadMoreDelegateGarages={loadMoreDelegateGarages} /></ErrorBoundary>;
 
-  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setShowDeleteConfirm={navigationUi.setShowDeleteConfirm} updateGarageRate={updateGarageRate} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} packages={sortedPackages} subscriptionPrices={subscriptionPrices} allGarages={allGarages} /></ErrorBoundary>;
+  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setShowDeleteConfirm={navigationUi.setShowDeleteConfirm} updateGarageRate={updateGarageRate} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} packages={sortedPackages} allGarages={allGarages} /></ErrorBoundary>;
 
   if (view === 'admin_delegate_details' && selectedDelegateForDetails) {
     const liveDelegate = delegates.find(d => d.id === selectedDelegateForDetails.id) || selectedDelegateForDetails;

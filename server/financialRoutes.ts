@@ -7,15 +7,11 @@ export interface FinancialRouteDeps {
   requireWorkerAuth: FinancialRouteDependency;
   enforceWorkerFinancialRateLimit: FinancialRouteDependency;
   validateId: FinancialRouteDependency;
-  validateNumber: FinancialRouteDependency;
   validateIdempotencyKey: FinancialRouteDependency;
   checkIdempotencyInTransaction: FinancialRouteDependency;
   createRequestFingerprint: FinancialRouteDependency;
   storeIdempotencyInTransaction: FinancialRouteDependency;
   recordDomainEventInTransaction: FinancialRouteDependency;
-  mapDomainErrorToStatus: FinancialRouteDependency;
-  decideManualCredit: FinancialRouteDependency;
-  invalidateMaintainedAdminSummary: FinancialRouteDependency;
   parseFirestorePageRequest: FinancialRouteDependency;
   readWorkerFirestorePage: FinancialRouteDependency;
   sanitizeDelegateDoc: FinancialRouteDependency;
@@ -33,15 +29,11 @@ export function registerFinancialRoutes(app: WorkerApp, deps: FinancialRouteDeps
     requireWorkerAuth,
     enforceWorkerFinancialRateLimit,
     validateId,
-    validateNumber,
     validateIdempotencyKey,
     checkIdempotencyInTransaction,
     createRequestFingerprint,
     storeIdempotencyInTransaction,
     recordDomainEventInTransaction,
-    mapDomainErrorToStatus,
-    decideManualCredit,
-    invalidateMaintainedAdminSummary,
     parseFirestorePageRequest,
     readWorkerFirestorePage,
     sanitizeDelegateDoc,
@@ -75,94 +67,9 @@ app.post('/api/transactions/reject-recharge-request', requireWorkerAuth, retireR
 app.get('/api/recharge-requests', requireWorkerAuth, retireRechargeHistory);
 app.get('/api/recharge-requests/my', requireWorkerAuth, retireMyRechargeHistory);
 
-// Handler 6: Direct Balance Top-Up (POST /api/transactions/admin-topup-balance)
+// Retired owner-wallet endpoint remains an authenticated compatibility tombstone.
 app.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async (c) => {
   return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-  const user = c.get('user');
-  if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-  const callerUid = user?.uid;
-  try {
-    const body = await c.req.json().catch(() => ({}));
-    const garageId = validateId(body.garageId, 'garageId', true);
-    const numAmount = validateNumber(body.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
-    const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
-
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    let resultData: any = null;
-
-    await getAdminDb().runTransaction(async (t: any) => {
-      const requestFingerprint = createRequestFingerprint({ garageId, amount: numAmount });
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/admin-topup-balance', callerUid, requestFingerprint);
-      if (isDuplicate) {
-        resultData = cachedResult;
-        return;
-      }
-
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const garageSnap = await t.get(garageRef);
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      const creditDecision = decideManualCredit({ amount: numAmount, previousBalance: Number(garageData.balance || 0) });
-      if (creditDecision.ok === false) throw new Error(creditDecision.error);
-      const { previousBalance, newBalance } = creditDecision.value;
-
-      t.set(garageRef, {
-        balance: newBalance,
-        totalAdminRevenue: (garageData.totalAdminRevenue || 0) + numAmount,
-        lastRechargeDate: new Date(),
-        lastRechargeAmount: numAmount,
-        lastRechargePackageName: `شحن رصيد مباشر (${numAmount} ج.م)`
-      }, { merge: true });
-      invalidateMaintainedAdminSummary(t);
-
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: callerUid || 'admin',
-        staffName: 'مدير النظام (Admin)',
-        actionType: 'balance_topup',
-        plateNumber: `شحن رصيد مباشر (${numAmount} ج.م)`,
-        timestamp: new Date(),
-        amount: numAmount
-      });
-
-      recordDomainEventInTransaction(t, getAdminDb(), {
-        garageId,
-        aggregateType: 'wallet',
-        aggregateId: garageId,
-        eventType: 'wallet_topup_approved',
-        actorUid: callerUid || 'admin',
-        actorRole: 'admin',
-        idempotencyKey,
-        payload: { amount: numAmount, previousBalance, newBalance, source: 'admin_direct_topup' }
-      });
-
-      t.set(getAdminDb().doc(`manual_credit_ledger/${createRequestFingerprint({ garageId, amount: numAmount, idempotencyKey })}`), {
-        operationId: idempotencyKey,
-        garageId,
-        amount: numAmount,
-        previousBalance,
-        newBalance,
-        source: 'admin_direct_topup',
-        approvedBy: callerUid || 'admin',
-        idempotencyKey,
-        createdAt: new Date()
-      });
-
-      resultData = { garageId, newBalance, addedAmount: numAmount };
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/admin-topup-balance', callerUid, requestFingerprint);
-    });
-
-    return c.json({ success: true, data: resultData });
-  } catch (err: any) {
-    console.error('[Worker] Error in admin balance top-up:', err);
-    const { statusCode, message } = mapDomainErrorToStatus(err);
-    return c.json({ success: false, error: message }, statusCode as any);
-  }
 });
 
 // Handler 7: Delegate Commission Earnings & Dashboard (GET /api/delegate/commission-earnings & GET /api/delegates/dashboard)

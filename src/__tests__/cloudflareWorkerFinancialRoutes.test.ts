@@ -54,6 +54,29 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     });
   });
 
+  it('closes the retired Admin wallet top-up without parsing or writing', async () => {
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const writesBefore = mockDb.documentWriteCount;
+
+    const unauthenticated = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{malformed-json'
+    }), workerEnv);
+    expect(unauthenticated.status).toBe(401);
+
+    const response = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: '{malformed-json'
+    }), workerEnv);
+
+    expect(response.status).toBe(410);
+    expect(await response.json()).toEqual({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
+    expect(mockDb.documentWriteCount).toBe(writesBefore);
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
   it('closes legacy recharge-request endpoints without reading or mutating request records', async () => {
     mockDb.seed('recharge_requests/legacy-pending', { status: 'pending', garageId: testGarageId });
     mockDb.seed('recharge_request_guards/legacy-guard', { activeRequestId: 'legacy-pending' });
