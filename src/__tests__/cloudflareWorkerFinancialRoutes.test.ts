@@ -54,60 +54,74 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     });
   });
 
-  it('pages Admin and delegate recharge-request lists with filters and strict role scopes', async () => {
-    for (let index = 0; index < 6; index += 1) {
-      mockDb.seed(`recharge_requests/admin-page-${index}`, {
-        status: index === 5 ? 'approved' : 'pending',
-        createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000),
-        delegateId: 'delegate-uid',
-        garageId: `garage-${index}`
-      });
-    }
-    mockDb.resetDocumentCounts();
-    const adminPage = (cursor?: string) => {
-      const params = new URLSearchParams({ limit: '2', status: 'pending' });
-      if (cursor) params.set('cursor', cursor);
-      return api.fetch(new Request(`http://localhost/api/recharge-requests?${params}`, {
-        headers: { Authorization: 'Bearer valid-admin-token' }
-      }), workerEnv);
-    };
-    const firstResponse = await adminPage();
-    const first = await firstResponse.json() as any;
-    expect(firstResponse.status).toBe(200);
-    expect(first.requests).toHaveLength(2);
-    expect(first.requests.every((request: any) => request.status === 'pending')).toBe(true);
-    expect(first.hasMore).toBe(true);
-    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
-    const secondResponse = await adminPage(first.nextCursor);
-    const second = await secondResponse.json() as any;
-    expect([...first.requests, ...second.requests]).toHaveLength(4);
-    expect(new Set([...first.requests, ...second.requests].map((request: any) => request.id)).size).toBe(4);
-    expect(second.hasMore).toBe(true);
-    const finalResponse = await adminPage(second.nextCursor);
-    const final = await finalResponse.json() as any;
-    expect(final.requests).toHaveLength(1);
-    expect(final.hasMore).toBe(false);
-    expect([...first.requests, ...second.requests, ...final.requests]).toHaveLength(5);
+  it('closes legacy recharge-request endpoints without reading or mutating request records', async () => {
+    mockDb.seed('recharge_requests/legacy-pending', { status: 'pending', garageId: testGarageId });
+    mockDb.seed('recharge_request_guards/legacy-guard', { activeRequestId: 'legacy-pending' });
+    const legacyBefore = [...mockDb.records.entries()].filter(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'));
+    const collectionSpy = vi.spyOn(mockDb, 'collection');
+    const docSpy = vi.spyOn(mockDb, 'doc');
+    const queryCountBefore = mockDb.queryResultSizes.length;
 
-    const delegatePage = await api.fetch(new Request('http://localhost/api/recharge-requests/my?limit=2', {
-      headers: { Authorization: 'Bearer valid-delegate-token' }
+    const routes: Array<[string, string, string]> = [
+      ['POST', '/api/recharge-requests/create', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['POST', '/api/recharge-requests', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['POST', '/api/recharge-requests/process', 'Bearer valid-admin-token'],
+      ['POST', '/api/transactions/approve-recharge-request', 'Bearer valid-admin-token'],
+      ['POST', '/api/recharge-requests/reject', 'Bearer valid-admin-token'],
+      ['POST', '/api/transactions/reject-recharge-request', 'Bearer valid-admin-token'],
+      ['GET', '/api/recharge-requests', 'Bearer valid-admin-token'],
+      ['GET', '/api/recharge-requests/my', 'Bearer valid-delegate-token']
+    ];
+
+    for (const [method, path, authorization] of routes) {
+      const response = await api.fetch(new Request(`http://localhost${path}`, {
+        method,
+        headers: { Authorization: authorization, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
+        ...(method === 'POST' ? { body: '{malformed-json' } : {})
+      }), workerEnv);
+      expect(response.status, `${method} ${path}`).toBe(410);
+      expect(await response.json()).toMatchObject({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
+    }
+
+    const forbiddenRoutes: Array<[string, string, string]> = [
+      ['POST', '/api/recharge-requests/create', 'Bearer valid-admin-token'],
+      ['POST', '/api/recharge-requests', 'Bearer valid-admin-token'],
+      ['POST', '/api/recharge-requests/process', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['POST', '/api/transactions/approve-recharge-request', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['POST', '/api/recharge-requests/reject', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['POST', '/api/transactions/reject-recharge-request', 'Bearer valid-garage-token-worker-test-garage-cf7'],
+      ['GET', '/api/recharge-requests', 'Bearer valid-garage-token-worker-test-garage-cf7']
+    ];
+    for (const [method, path, authorization] of forbiddenRoutes) {
+      const response = await api.fetch(new Request(`http://localhost${path}`, {
+        method,
+        headers: { Authorization: authorization }
+      }), workerEnv);
+      expect(response.status, `${method} ${path} wrong role`).toBe(403);
+    }
+
+    const adminPersonalHistory = await api.fetch(new Request('http://localhost/api/recharge-requests/my', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
-    const delegateBody = await delegatePage.json() as any;
-    expect(delegatePage.status).toBe(200);
-    expect(delegateBody.requests).toHaveLength(2);
-    expect(delegateBody.requests.every((request: any) => request.delegateId === 'delegate-uid')).toBe(true);
-    expect(delegateBody.hasMore).toBe(true);
-    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+    expect(adminPersonalHistory.status).toBe(410);
+
+    expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
+    expect(docSpy.mock.calls.some(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'))).toBe(false);
+    expect(mockDb.queryResultSizes).toHaveLength(queryCountBefore);
+    expect([...mockDb.records.entries()].filter(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'))).toEqual(legacyBefore);
+    collectionSpy.mockRestore();
+    docSpy.mockRestore();
   });
 
-  it('bounds delegate dashboard child lists and continues a selected section without duplicate rows', async () => {
+  it('pages delegate garages only and closes the retired request section without querying it', async () => {
     mockDb.seed('delegates/delegate-uid', { name: 'Paginated Delegate' });
     for (let index = 0; index < 5; index += 1) {
       mockDb.seed(`garages/created-${index}`, { createdByDelegateId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
       mockDb.seed(`garages/referred-${index}`, { referrerId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
-      mockDb.seed(`recharge_requests/delegate-page-${index}`, { delegateId: 'delegate-uid', status: 'approved', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
+      mockDb.seed(`recharge_requests/delegate-page-${index}`, { delegateId: 'delegate-uid', status: 'approved' });
     }
     mockDb.resetDocumentCounts();
+    const collectionSpy = vi.spyOn(mockDb, 'collection');
 
     const response = await api.fetch(new Request('http://localhost/api/delegates/dashboard?limit=2', {
       headers: { Authorization: 'Bearer valid-delegate-token' }
@@ -115,22 +129,26 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const first = await response.json() as any;
     expect(response.status).toBe(200);
     expect(first.garages).toHaveLength(4);
-    expect(first.requests).toHaveLength(2);
+    expect(first).not.toHaveProperty('requests');
     expect(first.pagination.createdGarages.hasMore).toBe(true);
     expect(first.pagination.referredGarages.hasMore).toBe(true);
-    expect(first.pagination.requests.hasMore).toBe(true);
-    expect(mockDb.queryResultSizes.slice(-3)).toEqual([3, 3, 3]);
+    expect(first.pagination).not.toHaveProperty('requests');
+    expect(mockDb.queryResultSizes.slice(-2)).toEqual([3, 3]);
 
-    const params = new URLSearchParams({ section: 'requests', limit: '2', cursor: first.pagination.requests.nextCursor });
-    const nextResponse = await api.fetch(new Request(`http://localhost/api/delegates/dashboard?${params}`, {
+    const queryCountAfterGaragePages = mockDb.queryResultSizes.length;
+    const retiredSection = await api.fetch(new Request('http://localhost/api/delegates/dashboard?section=requests&limit=2', {
       headers: { Authorization: 'Bearer valid-delegate-token' }
     }), workerEnv);
-    const next = await nextResponse.json() as any;
-    expect(nextResponse.status).toBe(200);
-    expect(next.requests).toHaveLength(2);
-    expect(next.requests.map((request: any) => request.id)).not.toEqual(expect.arrayContaining(first.requests.map((request: any) => request.id)));
-    expect(next.hasMore).toBe(true);
-    expect(mockDb.queryResultSizes.at(-1)).toBe(3);
+    expect(retiredSection.status).toBe(410);
+    expect(await retiredSection.json()).toMatchObject({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
+    expect(mockDb.queryResultSizes).toHaveLength(queryCountAfterGaragePages);
+    const wrongRoleSection = await api.fetch(new Request('http://localhost/api/delegates/dashboard?section=requests&limit=2', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(wrongRoleSection.status).toBe(403);
+    expect(mockDb.queryResultSizes).toHaveLength(queryCountAfterGaragePages);
+    expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
+    collectionSpy.mockRestore();
   });
 
   it('5. POST /api/delegate/withdraw-commission settles delegate account', async () => {

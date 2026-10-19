@@ -1,24 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Vehicle, Package, Staff, RechargeRequest } from '../types';
+import { Garage, Vehicle, Package, Staff } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
-
-const requestDateMillis = (value: any): number => {
-  try {
-    if (value instanceof Date) return value.getTime();
-    if (value && typeof value.toDate === 'function') return value.toDate().getTime();
-    const millis = new Date(value).getTime();
-    return Number.isFinite(millis) ? millis : 0;
-  } catch {
-    return 0;
-  }
-};
-
-const mergeRechargeRequests = (current: RechargeRequest[], incoming: RechargeRequest[]): RechargeRequest[] => {
-  const byId = new Map(current.map((request) => [request.id, request]));
-  for (const request of incoming) byId.set(request.id, request);
-  return Array.from(byId.values()).sort((left, right) => requestDateMillis(right.createdAt) - requestDateMillis(left.createdAt));
-};
 
 interface UseGarageSyncProps {
   isSessionReady: boolean;
@@ -55,7 +38,6 @@ export function useGarageSync({
   garageRef,
   lastHealTimeRef,
 }: UseGarageSyncProps) {
-  const userId = user?.uid;
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
   const [adminGarageHasMore, setAdminGarageHasMore] = useState(false);
@@ -75,21 +57,12 @@ export function useGarageSync({
   const adminDelegateLoadingRef = useRef(false);
   const adminListsLoadedRef = useRef(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [rechargeRequests, setRechargeRequests] = useState<RechargeRequest[]>([]);
-  const [adminRechargeHasMore, setAdminRechargeHasMore] = useState(false);
-  const [adminRechargeListsLoading, setAdminRechargeListsLoading] = useState(false);
-  const adminRechargeCursorRef = useRef<string | null>(null);
-  const adminRechargeLoadingRef = useRef(false);
-  const adminRechargeLoadedMoreRef = useRef(false);
-  const adminRechargeOwnerRef = useRef<string | undefined>(undefined);
-  const [delegateRequests, setDelegateRequests] = useState<RechargeRequest[]>([]);
   const [delegatePagination, setDelegatePagination] = useState({
     createdGarages: { hasMore: false, nextCursor: null as string | null },
     referredGarages: { hasMore: false, nextCursor: null as string | null },
-    requests: { hasMore: false, nextCursor: null as string | null }
   });
   const [delegateListsLoading, setDelegateListsLoading] = useState(false);
-  const delegatePageLoadingRef = useRef<Record<string, boolean>>({});
+  const delegatePageLoadingRef = useRef<Record<'createdGarages' | 'referredGarages', boolean>>({ createdGarages: false, referredGarages: false });
   const delegateDashboardOwnerRef = useRef<string | undefined>(undefined);
   const delegateDashboardLoadedOwnerRef = useRef<string | undefined>(undefined);
   const [packages, setPackages] = useState<Package[]>(() => {
@@ -223,45 +196,6 @@ export function useGarageSync({
     }
   }, []);
 
-  const refreshAdminRechargeRequests = useCallback(async () => {
-    if (adminRechargeLoadingRef.current) return;
-    adminRechargeLoadingRef.current = true;
-    setAdminRechargeListsLoading(true);
-    try {
-      const page = await firestoreService.getAdminRechargeRequestsPage(20, null);
-      setRechargeRequests((previous) => mergeRechargeRequests(previous, page.requests));
-      if (!adminRechargeLoadedMoreRef.current) adminRechargeCursorRef.current = page.lastDoc;
-      setAdminRechargeHasMore(page.hasMore);
-    } catch (error) {
-      console.error('Failed to load Admin recharge-request page:', error);
-    } finally {
-      adminRechargeLoadingRef.current = false;
-      setAdminRechargeListsLoading(false);
-    }
-  }, []);
-
-  const loadMoreAdminRechargeRequests = useCallback(async () => {
-    if (adminRechargeLoadingRef.current || !adminRechargeCursorRef.current || !adminRechargeHasMore) return;
-    adminRechargeLoadingRef.current = true;
-    setAdminRechargeListsLoading(true);
-    adminRechargeLoadedMoreRef.current = true;
-    try {
-      const page = await firestoreService.getAdminRechargeRequestsPage(20, adminRechargeCursorRef.current);
-      setRechargeRequests((previous) => mergeRechargeRequests(previous, page.requests));
-      adminRechargeCursorRef.current = page.lastDoc;
-      setAdminRechargeHasMore(page.hasMore);
-    } catch (error) {
-      console.error('Failed to load the next Admin recharge-request page:', error);
-    } finally {
-      adminRechargeLoadingRef.current = false;
-      setAdminRechargeListsLoading(false);
-    }
-  }, [adminRechargeHasMore]);
-
-  const markAdminRechargeRequestResolved = useCallback((requestId: string) => {
-    setRechargeRequests((previous) => previous.filter((request) => request.id !== requestId));
-  }, []);
-
   const refreshAdminLists = useCallback(async () => {
     if (adminListsLoadedRef.current && adminListsLoading) return;
     adminListsLoadedRef.current = true;
@@ -272,27 +206,7 @@ export function useGarageSync({
     await Promise.all([loadAdminGaragePage(true), loadAdminDelegatePage(true), loadAdminSummary()]);
   }, [adminListsLoading, loadAdminDelegatePage, loadAdminGaragePage, loadAdminSummary]);
 
-  // Sync Recharge Requests (Admin Only)
-  useEffect(() => {
-    if (!isAuthReady || !userId) return;
-    if (view !== 'admin_dashboard' && view !== 'admin_garage_details') return;
-
-    if (adminRechargeOwnerRef.current !== userId) {
-      adminRechargeOwnerRef.current = userId;
-      adminRechargeLoadedMoreRef.current = false;
-      adminRechargeCursorRef.current = null;
-      setRechargeRequests([]);
-      setAdminRechargeHasMore(false);
-    }
-
-    void refreshAdminRechargeRequests();
-    const unsub = firestoreService.subscribeToPendingRechargeRequests((requests) => {
-      setRechargeRequests((previous) => mergeRechargeRequests(previous, requests));
-    });
-    return () => unsub();
-  }, [isAuthReady, userId, view, refreshAdminRechargeRequests]);
-
-  // Sync delegate requests
+  // Sync delegate dashboard garage lists
   const delegateId = delegate?.id;
   useEffect(() => {
     if (!isAuthReady || !user || !delegateId || view !== 'delegate_dashboard') return;
@@ -302,11 +216,9 @@ export function useGarageSync({
       delegateDashboardOwnerRef.current = delegateId;
       delegateDashboardLoadedOwnerRef.current = undefined;
       setAllGarages([]);
-      setDelegateRequests([]);
       setDelegatePagination({
         createdGarages: { hasMore: false, nextCursor: null },
         referredGarages: { hasMore: false, nextCursor: null },
-        requests: { hasMore: false, nextCursor: null }
       });
     }
 
@@ -319,15 +231,12 @@ export function useGarageSync({
         if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
           delegateDashboardLoadedOwnerRef.current = delegateId;
           setAllGarages(data.garages as Garage[]);
-          setDelegateRequests(data.requests);
           setDelegatePagination(data.pagination || {
             createdGarages: { hasMore: false, nextCursor: null },
             referredGarages: { hasMore: false, nextCursor: null },
-            requests: { hasMore: false, nextCursor: null }
-          });
+              });
         } else {
           setAllGarages((previous) => Array.from(new Map([...previous, ...(data.garages as Garage[])].map((garage) => [garage.id, garage])).values()));
-          setDelegateRequests((previous) => Array.from(new Map([...previous, ...data.requests].map((request) => [request.id, request])).values()));
         }
       } catch (err) {
         console.error('[useGarageSync] Failed to load delegate dashboard:', err);
@@ -342,7 +251,7 @@ export function useGarageSync({
     };
   }, [isAuthReady, user, delegateId, view]);
 
-  const loadMoreDelegateSection = useCallback(async (section: 'createdGarages' | 'referredGarages' | 'requests') => {
+  const loadMoreDelegateSection = useCallback(async (section: 'createdGarages' | 'referredGarages') => {
     const page = delegatePagination[section];
     if (!delegateId || !page.hasMore || !page.nextCursor || delegatePageLoadingRef.current[section]) return;
     delegatePageLoadingRef.current[section] = true;
@@ -350,11 +259,7 @@ export function useGarageSync({
     try {
       const nextPage = await firestoreService.getDashboardDataPage(delegateId, section, page.nextCursor);
       if (delegateDashboardOwnerRef.current !== delegateId) return;
-      if (section === 'requests') {
-        setDelegateRequests((previous) => Array.from(new Map([...previous, ...(nextPage.items as RechargeRequest[])].map((request) => [request.id, request])).values()));
-      } else {
-        setAllGarages((previous) => Array.from(new Map([...previous, ...(nextPage.items as Garage[])].map((garage) => [garage.id, garage])).values()));
-      }
+      setAllGarages((previous) => Array.from(new Map([...previous, ...nextPage.items].map((garage) => [garage.id, garage])).values()));
       setDelegatePagination((previous) => ({ ...previous, [section]: { hasMore: nextPage.hasMore, nextCursor: nextPage.nextCursor } }));
     } catch (error) {
       console.error(`[useGarageSync] Failed to load delegate ${section} page:`, error);
@@ -368,7 +273,6 @@ export function useGarageSync({
     await loadMoreDelegateSection('createdGarages');
     await loadMoreDelegateSection('referredGarages');
   }, [loadMoreDelegateSection]);
-  const loadMoreDelegateRequests = useCallback(() => loadMoreDelegateSection('requests'), [loadMoreDelegateSection]);
 
   // Sync packages independently (prevents redundant re-subscribing on view changes)
   useEffect(() => {
@@ -451,16 +355,9 @@ export function useGarageSync({
     refreshAdminLists,
     staffList,
     setStaffList,
-    rechargeRequests,
-    adminRechargeHasMore,
-    adminRechargeListsLoading,
-    loadMoreAdminRechargeRequests,
-    markAdminRechargeRequestResolved,
-    delegateRequests,
     delegatePagination,
     delegateListsLoading,
     loadMoreDelegateGarages,
-    loadMoreDelegateRequests,
     packages,
     setPackages,
     loadGarageData,

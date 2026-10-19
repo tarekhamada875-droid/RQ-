@@ -20,7 +20,7 @@ import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageS
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { decideManualCredit } from './domain/manualCredit';
 import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
-import { applyReferralReward, decideReferralReward, extendSubscriptionExpiry } from './domain/subscriptionBilling';
+import { extendSubscriptionExpiry } from './domain/subscriptionBilling';
 import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
@@ -1341,10 +1341,7 @@ registerFinancialRoutes(workerApp, {
   getAdminDb: () => adminDb,
   requireWorkerAuth,
   enforceWorkerFinancialRateLimit,
-  sanitizePayload,
-  ValidationError,
   validateId,
-  validateString,
   validateNumber,
   validateIdempotencyKey,
   checkIdempotencyInTransaction,
@@ -1353,15 +1350,8 @@ registerFinancialRoutes(workerApp, {
   recordDomainEventInTransaction,
   mapDomainErrorToStatus,
   decideManualCredit,
-  validatePackageCatalogRecord,
-  decideReferralReward,
-  applyReferralReward,
-  extendSubscriptionExpiry,
-  initializeFairUse,
   invalidateMaintainedAdminSummary,
   parseFirestorePageRequest,
-  firestorePageStartAfter,
-  buildFirestorePage,
   readWorkerFirestorePage,
   sanitizeDelegateDoc,
   canViewFinancialReport,

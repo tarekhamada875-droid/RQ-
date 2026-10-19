@@ -6,39 +6,29 @@ import {
   where, 
   onSnapshot, 
   doc, 
-  documentId,
   getDocs, 
   orderBy, 
   limit,
 } from 'firebase/firestore';
-import type { Delegate, Garage, RechargeRequest, ActivityLog } from '../types';
+import type { Delegate, Garage, ActivityLog } from '../types';
 import { safeDate } from '../utils';
-import { validateRechargeRequest } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
-import { generateIdempotencyKey } from '../types/apiContracts';
 
 export interface DelegateDashboardData {
   delegate: Delegate;
   garages: Garage[];
-  requests: RechargeRequest[];
   pagination: Record<DelegateDashboardSection, { hasMore: boolean; nextCursor: string | null }>;
 }
 
-export type DelegateDashboardSection = 'createdGarages' | 'referredGarages' | 'requests';
+export type DelegateDashboardSection = 'createdGarages' | 'referredGarages';
 export interface DelegateDashboardPage {
-  items: Array<Garage | RechargeRequest>;
+  items: Garage[];
   hasMore: boolean;
   nextCursor: string | null;
 }
 
 export interface DelegatePage {
   delegates: Delegate[];
-  lastDoc: string | null;
-  hasMore: boolean;
-}
-
-export interface AdminRechargeRequestPage {
-  requests: RechargeRequest[];
   lastDoc: string | null;
   hasMore: boolean;
 }
@@ -71,13 +61,6 @@ export const delegateService = {
     const response = await apiFetch<DelegateDashboardPage & { delegate: Delegate }>(`/api/delegates/dashboard?${params.toString()}`);
     if (response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
     return response;
-  },
-
-  getAdminRechargeRequestsPage: async (pageSize = 20, cursor: string | null = null): Promise<AdminRechargeRequestPage> => {
-    const params = new URLSearchParams({ limit: String(pageSize), status: 'pending' });
-    if (cursor) params.set('cursor', cursor);
-    const page = await apiFetch<{ requests: RechargeRequest[]; hasMore: boolean; nextCursor: string | null }>(`/api/recharge-requests?${params.toString()}`);
-    return { requests: page.requests, lastDoc: page.nextCursor, hasMore: page.hasMore };
   },
 
   addDelegate: async (data: Omit<Delegate, 'id'>) => {
@@ -211,117 +194,4 @@ export const delegateService = {
     }
   },
 
-  getDelegateRechargeRequests: async (delegateId: string): Promise<RechargeRequest[]> => {
-    try {
-      const q = query(
-        collection(db, 'recharge_requests'),
-        where('delegateId', '==', delegateId),
-        limit(50)
-      );
-      const snapshot = await getDocs(q);
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
-      requests.sort((a, b) => safeDate(b.createdAt).getTime() - safeDate(a.createdAt).getTime());
-      return requests;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'recharge_requests');
-      throw error;
-    }
-  },
-
-  createRechargeRequest: async (data: Omit<RechargeRequest, 'id' | 'status' | 'createdAt'>) => {
-    try {
-      const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined)
-      );
-      const res = await apiFetch('/api/recharge-requests/create', {
-        method: 'POST',
-        body: { ...cleanData, idempotencyKey: generateIdempotencyKey('recharge_request') }
-      });
-      return { id: res.id };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'recharge_requests');
-      throw error;
-    }
-  },
-
-  subscribeToPendingRechargeRequests: (callback: (requests: RechargeRequest[]) => void) => {
-    const trackerUnsub = listenerTracker.register('pending_recharge_requests');
-    const q = query(
-      collection(db, 'recharge_requests'),
-      where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc'),
-      orderBy(documentId(), 'desc'),
-      limit(20)
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
-      requests.sort((a, b) => safeDate(b.createdAt).getTime() - safeDate(a.createdAt).getTime());
-      callback(requests);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'recharge_requests'));
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
-  },
-
-  subscribeToDelegateRechargeRequests: (delegateId: string, callback: (requests: RechargeRequest[]) => void) => {
-    const trackerUnsub = listenerTracker.register(`delegates/${delegateId}/recharge_requests`);
-    const q = query(
-      collection(db, 'recharge_requests'),
-      where('delegateId', '==', delegateId),
-      limit(20)
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RechargeRequest));
-      callback(requests);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'recharge_requests'));
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
-  },
-
-  approveRechargeRequest: async (request: any): Promise<{ success: boolean; error?: string }> => {
-    const validation = validateRechargeRequest(request);
-    if (!validation.valid) {
-      return { success: false, error: validation.errors.join(' — ') };
-    }
-
-    try {
-      await apiFetch('/api/transactions/approve-recharge-request', {
-        method: 'POST',
-        body: {
-          requestId: request.id,
-          request,
-          idempotencyKey: generateIdempotencyKey('manual_recharge_approve')
-        }
-      });
-
-      return { success: true };
-    } catch (err: any) {
-      if (err.message === 'REQUEST_ALREADY_PROCESSED') {
-        return { success: false, error: 'الطلب تم معالجته مسبقاً' };
-      } else if (err.message === 'REQUEST_NOT_FOUND') {
-        return { success: false, error: 'الطلب غير موجود' };
-      }
-      return { success: false, error: err.message || 'حدث خطأ أثناء اعتماد الطلب' };
-    }
-  },
-
-  rejectRechargeRequest: async (requestId: string) => {
-    try {
-      await apiFetch('/api/transactions/reject-recharge-request', {
-        method: 'POST',
-        body: {
-          requestId,
-          idempotencyKey: generateIdempotencyKey('manual_recharge_reject')
-        }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `recharge_requests/${requestId}/reject`);
-      throw error;
-    }
-  }
 };

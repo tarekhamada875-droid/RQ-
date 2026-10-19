@@ -370,7 +370,6 @@ export {
   getEffectiveDailyCapacity,
   isUnlimitedCapacity
 } from '../domain/garage/subscription';
-export { validateRechargeRequest } from '../domain/garage/validation';
 
 /**
  * Applies the configured monthly-subscribers fixed fee (default 500 EGP).

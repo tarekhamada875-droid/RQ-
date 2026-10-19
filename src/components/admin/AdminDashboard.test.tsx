@@ -12,8 +12,6 @@ const { deleteGarageWithRecoveryMock, garageDeletionFailureMessageMock } = vi.ho
 vi.mock('../../services', () => ({
   firestoreService: {
     getAdminGaragesPage: vi.fn(),
-    approveRechargeRequest: vi.fn(),
-    rejectRechargeRequest: vi.fn(),
     updateGarage: vi.fn(),
     deleteGarage: vi.fn(),
   },
@@ -85,7 +83,6 @@ const renderDashboardForGarageCreation = (
       delegates={[]}
       packages={[]}
       onLogout={vi.fn()}
-      rechargeRequests={[]}
       currentAdminPin=""
       currentWalletNumber=""
       onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
@@ -123,8 +120,7 @@ describe('AdminDashboard garage actions', () => {
         delegates={[]}
         packages={[]}
         onLogout={vi.fn()}
-        rechargeRequests={[]}
-        currentAdminPin=""
+          currentAdminPin=""
         currentWalletNumber=""
         onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
       />,
@@ -211,8 +207,7 @@ describe('AdminDashboard garage actions', () => {
         delegates={[]}
         packages={[]}
         onLogout={vi.fn()}
-        rechargeRequests={[]}
-        currentAdminPin=""
+          currentAdminPin=""
         currentWalletNumber=""
         onUpdateWalletNumber={vi.fn().mockResolvedValue(undefined)}
         showToast={showToast}

@@ -4,7 +4,7 @@
  */
 
 import React, { memo } from 'react';
-import { Garage, Delegate, Package, RechargeRequest, Supervisor } from '../../types';
+import { Garage, Delegate, Package, Supervisor } from '../../types';
 import { firestoreService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
@@ -37,11 +37,6 @@ interface AdminDashboardProps {
   addDelegate?: (data: Omit<Delegate, 'id'>) => Promise<any>;
   packages: Package[];
   onLogout: () => void;
-  rechargeRequests: RechargeRequest[];
-  adminRechargeHasMore?: boolean;
-  adminRechargeListsLoading?: boolean;
-  onLoadMoreAdminRechargeRequests?: () => Promise<void>;
-  onRechargeRequestResolved?: (requestId: string) => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -76,11 +71,6 @@ export const AdminDashboard = memo(({
   addDelegate: _addDelegate,
   packages,
   onLogout,
-  rechargeRequests,
-  adminRechargeHasMore = false,
-  adminRechargeListsLoading = false,
-  onLoadMoreAdminRechargeRequests,
-  onRechargeRequestResolved,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -172,59 +162,6 @@ export const AdminDashboard = memo(({
       mainScrollRef.current.scrollTop = 0;
     }
   }, [activeTab]);
-
-  const handleApproveRequest = async (request: RechargeRequest) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'تفعيل الشحن',
-      message: `هل أنت متأكد من تفعيل تجديد اشتراك جراج "${request.garageName || 'الجراج'}"؟`,
-      confirmText: 'تفعيل الآن',
-      cancelText: 'تراجع',
-      type: 'success',
-      onConfirm: async () => {
-        try {
-          const result = await firestoreService.approveRechargeRequest(request);
-          if (result.success) {
-            onRechargeRequestResolved?.(request.id);
-            soundManager.play('checkIn');
-            showToast?.('تم تفعيل اشتراك الجراج بنجاح', 'success');
-          } else {
-            soundManager.play('error');
-            showToast?.(result.error || 'تعذر تفعيل الاشتراك', 'error');
-          }
-        } catch (error: any) {
-          console.error('Failed to approve request:', error);
-          soundManager.play('error');
-          showToast?.(error?.message || 'حدث خطأ أثناء تفعيل الطلب', 'error');
-        } finally {
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
-
-  const handleRejectRequest = async (requestId: string) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: t('رفض طلب الشحن'),
-      message: 'هل أنت متأكد من رفض هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.',
-      confirmText: 'نعم، ارفض الطلب',
-      cancelText: 'إلغاء',
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          await firestoreService.rejectRechargeRequest(requestId);
-          onRechargeRequestResolved?.(requestId);
-          showToast?.('تم رفض طلب الشحن', 'error');
-        } catch (error: any) {
-          console.error('Failed to reject request:', error);
-          showToast?.(error?.message || 'حدث خطأ أثناء رفض الطلب', 'error');
-        } finally {
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
 
   const handleApproveGarage = async (garage: Garage) => {
     try {
@@ -453,10 +390,6 @@ export const AdminDashboard = memo(({
           setActiveTab={setActiveTab}
           currentSupervisor={currentSupervisor}
           delegates={delegates}
-          rechargeRequests={rechargeRequests}
-          adminRechargeHasMore={adminRechargeHasMore}
-          adminRechargeListsLoading={adminRechargeListsLoading}
-          onLoadMoreAdminRechargeRequests={onLoadMoreAdminRechargeRequests}
           pendingGarages={pendingGarages}
           packages={packages}
           approvedGarages={approvedGarages}
@@ -486,8 +419,6 @@ export const AdminDashboard = memo(({
           onLoadMoreAdminGarages={onLoadMoreAdminGarages}
           onLoadMoreAdminDelegates={onLoadMoreAdminDelegates}
           onRefreshAdminLists={onRefreshAdminLists}
-          handleApproveRequest={handleApproveRequest}
-          handleRejectRequest={handleRejectRequest}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           setConfirmDialog={setConfirmDialog}

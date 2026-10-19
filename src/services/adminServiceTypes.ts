@@ -48,7 +48,6 @@ export interface AdminSummary {
   lockedGarages: number;
   totalDelegates: number;
   totalAdminRevenue: number;
-  pendingRechargeRequests: number;
   activeAnnouncements: number;
   timestamp: string;
 }
@@ -65,4 +64,3 @@ export interface SubscriberPage {
   lastDoc: SubscriberPageCursor | null;
   hasMore: boolean;
 }
-

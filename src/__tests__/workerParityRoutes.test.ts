@@ -85,7 +85,7 @@ describe('Worker Route Parity Suite', () => {
       expect(body.delegate).not.toHaveProperty('pin');
       expect(body.garages).toHaveLength(2);
       expect(body.garages.every((garage: Record<string, unknown>) => !('pin' in garage))).toBe(true);
-      expect(body.requests).toHaveLength(1);
+      expect(body).not.toHaveProperty('requests');
     });
   });
 

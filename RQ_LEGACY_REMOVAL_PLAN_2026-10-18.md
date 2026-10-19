@@ -1,8 +1,12 @@
 # RQ Legacy Removal Plan
 
-**Status:** Draft validated against the current `main` codebase on 2026-10-18. No application code changes are included in this draft.
+**Source baseline:** The initial inventory draft was validated against `main` on 2026-10-18; current task status is recorded in the dated checkpoint below.
 
 **LR-01 completion checkpoint (2026-10-19):** LR-01 merged via PR [#169](https://github.com/tarekhamada875-droid/RQ-/pull/169) at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`. Main Production Gate [39205342165](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39205342165) passed verification, artifact deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report that exact Worker SHA. The authenticated route is retained as a 410 compatibility tombstone; its active writer and unused client method are removed. No Firebase data/rules, database routing, or migration changed.
+
+**LR-02 in-progress checkpoint (2026-10-19):** The owner selected option 2: remove all in-app recharge-request history reads. Work is on `feat/lr-02-retire-recharge-request-workflow`, based on clean `main`/`origin/main` `3bdc3cb15f1b0eb7d03b40393d1a3122fbcd15a8`. The local implementation retires request creation/approval/rejection/list routes, removes UI/service/listener/pagination paths and the Admin summary count, and removes request list/pagination fields from the Admin delegate response. Authorized legacy callers receive HTTP 410; route-specific wrong-role denials remain and are covered. Regression tests prove no request collection read/write, keep pending garage applications and delegate settlement, and render non-empty historical `activity_logs` in Admin delegate totals/commission. Stored `recharge_requests` and guard records are retained. The only remaining active collection reference is the unchanged garage-deletion cleanup adapter; no deletion action or migration was run. Focused regressions passed 3 files / 27 tests; `npm run lint`, maintainability, and whitespace checks passed. Final `npm run ci:check` exited 0 with 138 test files / 889 tests, Firestore rules emulator, Pages/Worker build, Worker artifact smoke, maintainability, and production artifact verification. Generated build outputs were removed. The implementation is committed and pushed; PR #171 is open and its required Production Gate is pending. It is not merged or deployed. No Firebase data/rules or database routing changed. The live Worker remains at application SHA `0d7b63009bd0b2a8a68736afb376f119a835f4c6`; current main `3bdc3cb15f1b0eb7d03b40393d1a3122fbcd15a8` is the documentation-only PR #170 merge, whose main Production Gate #39205932375 passed without a Worker deployment.
+
+**Current next step:** Wait for PR #171’s required Production Gate. Merge only after it passes, then verify the post-merge main workflow and live Worker identity. Do not proceed to LR-03 in this task.
 
 ## Purpose
 
@@ -74,11 +78,13 @@ Recharge-request creation aliases, rejection aliases, and Admin/scoped request-l
 
 ### LR-02 — Remove the legacy recharge-request workflow
 
-**Scope:** Remove recharge-request creation, approval, rejection, pending-request listeners, Admin request UI, delegate request UI, pagination state, and service facade methods.
+**Status:** In progress on `feat/lr-02-retire-recharge-request-workflow`; user-selected history policy is to remove all in-app reads. Existing stored request records are retained.
 
-**Protect:** pending garage-application requests, delegate garage creation, delegate commission settlement if still used, and read-only historical records.
+**Scope:** Remove recharge-request creation, approval, rejection, all in-app request-history readers, pending-request listeners, Admin request UI, delegate request UI, pagination state/response fields, the Admin summary count, and service facade methods.
 
-**Acceptance criteria:** No active UI or client service calls a recharge-request write/list workflow; old endpoints fail closed or are removed only with an explicit compatibility decision; application request views still work.
+**Protect:** pending garage-application requests, delegate garage creation, delegate commission settlement if still used, read-only historical activity logs, and all stored recharge-request documents.
+
+**Acceptance criteria:** No active UI or client service calls a recharge-request write/list workflow; no Admin summary or delegate-detail response exposes request counts/history/pagination; old routes return authenticated 410 responses while preserving role denials where applicable; application request views still work.
 
 ### LR-03 — Remove owner-side wallet and self-subscribe wiring
 
@@ -145,4 +151,4 @@ Each LR task is a separate bounded branch and PR. Before implementation, record 
 
 ## Recommended next task
 
-**LR-02 — Remove the legacy recharge-request workflow (not started).** This is the next bounded task in the plan, but it has not been selected; wait for explicit user direction before starting.
+**LR-02 — Remove the legacy recharge-request workflow (in progress).** The user selected this task on 2026-10-19 and chose removal of all in-app request-history reads. Complete validation and the standard PR/release cycle before considering LR-03.

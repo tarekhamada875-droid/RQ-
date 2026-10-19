@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, memo } from 'react';
 import { Trash2, History, Check } from 'lucide-react';
-import { Delegate, ActivityLog, RechargeRequest } from '../../types';
+import { Delegate, ActivityLog } from '../../types';
 import { firestoreService } from '../../services';
 import { safeDate } from '../../utils';
 import { 
@@ -34,7 +34,6 @@ export const AdminDelegateDetailsView = memo(({
   removeDelegate
 }: AdminDelegateDetailsViewProps) => {
   const [recharges, setRecharges] = useState<ActivityLog[]>([]);
-  const [requests, setRequests] = useState<RechargeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
@@ -58,12 +57,8 @@ export const AdminDelegateDetailsView = memo(({
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const [logsData, reqsData] = await Promise.all([
-          firestoreService.getDelegateRecharges(delegate.id),
-          firestoreService.getDelegateRechargeRequests(delegate.id)
-        ]);
+        const logsData = await firestoreService.getDelegateRecharges(delegate.id);
         setRecharges(logsData || []);
-        setRequests(reqsData || []);
         
         // Calculate sum from history for initial display if totalRechargedAmount is missing or 0
         const items = (logsData || []).filter(log => log.actionType === 'recharge');
@@ -111,11 +106,8 @@ export const AdminDelegateDetailsView = memo(({
     });
   };
 
-  // Active dataset preference: recharge requests if available, fallback to activity logs
-  const activeDataset = React.useMemo(() => {
-    if (requests && requests.length > 0) return requests;
-    return recharges;
-  }, [requests, recharges]);
+  // Preserve the audited activity-log history used by delegate settlement calculations.
+  const activeDataset = recharges;
 
   // Monthly calculations logic
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');

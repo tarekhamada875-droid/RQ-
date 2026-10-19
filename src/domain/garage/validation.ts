@@ -34,19 +34,6 @@ export const validateGarageCreation = (data: any): ValidationResult => {
   return { valid: errors.length === 0, errors };
 };
 
-export const validateRechargeRequest = (data: any): ValidationResult => {
-  const errors: string[] = [];
-  
-  if (!data?.garageId) errors.push('معرف الجراج مطلوب');
-  if (!data?.packageId && !data?.packageName) errors.push('الباقة مطلوبة');
-  
-  const rawAmount = data?.revenueAmount !== undefined ? data.revenueAmount : data?.amount;
-  if (rawAmount === undefined || rawAmount === null || isNaN(Number(rawAmount)) || Number(rawAmount) < 0) {
-    errors.push('المبلغ غير صالح');
-  }
-  
-  return { valid: errors.length === 0, errors };
-};
 
 export const validateVehicleEntry = (garage: any, plateNumber: string): ValidationResult => {
   const errors: string[] = [];
