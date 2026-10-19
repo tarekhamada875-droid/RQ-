@@ -1,15 +1,23 @@
-> **Current authority fence (2026-10-19):** LR-02 is complete. PR [#171](https://github.com/tarekhamada875-droid/RQ-/pull/171) merged as `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`; post-merge Production Gate [39214331450](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214331450) passed verification, deployment, and smoke, and live health/version report the exact SHA. The owner selected option 2: remove all in-app recharge-request history reads. Full local `npm run ci:check` exited 0 (138 test files / 889 tests plus rules, builds, artifact smoke, maintainability, and artifact verification); focused regressions passed 3 files / 27 tests; lint/whitespace passed. Request/guard records remain; the garage-deletion cleanup adapter is unchanged. No Firebase data/rules, database routing, or migration changes. LR-03 remains unselected; stop here.
+> **Current authority fence (2026-10-19):** LR-01 and LR-02 are complete; LR-02 code is live at Worker SHA `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`. The owner requested and received a read-only LR-03 inventory, recorded in [`docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md`](docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md). It was based on clean `main` snapshot `effe777cf2c3e300031a58d04861813cee951c84`; it catalogued the broad reference surface and separated likely changes from protected/conditional files. No LR-03 application code or data/rules were changed, and LR-03 implementation remains unselected and unstarted. Re-fetch and verify all GitHub/release state before any future edit; documentation-only commits may advance `main` without changing the live Worker SHA.
 
 
-## Current checkpoint: LR-02 complete (2026-10-19)
+## Current checkpoint: LR-03 source inventory complete; implementation not selected (2026-10-19)
+
+The read-only source audit is recorded in [`docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md`](docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md). It found 59 unique active/test/type paths plus 9 review-only paths; these are audit references, not files to change. Eight direct production cleanup candidates and related/conditional tests are listed there. The three legacy routes currently return authenticated HTTP 410 before their dead bodies; the bodies remain in source. The scope recommendation is to keep those 410 tombstones, remove only the unreachable writer bodies and client/UI wiring, and preserve prepaid credits, subscriber management, login/session behavior, and historical records.
+
+At the inventory baseline, local `main` was clean and matched `origin/main` at `effe777cf2c3e300031a58d04861813cee951c84`; there were no open PRs, and main Production Gate [39214987627](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214987627) succeeded for that exact SHA. Live health/version reported application SHA `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`; the difference from the inventory baseline was documentation-only. The protected decision branch was `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`. These are dated snapshot values; re-check after the documentation handoff PR and before any future source edit.
+
+**Next step:** Wait for Tarek’s explicit selection before implementing LR-03. Do not treat this inventory or the continuity trigger as implementation authorization.
+
+> **Historical-record note:** Checkpoint sections below the active LR-03 entry are historical snapshots. Any older “next step” or “stop here” directive is superseded by the active Legacy Removal Plan and this LR-03 inventory checkpoint.
+
+## Historical checkpoint: LR-02 complete (2026-10-19)
 
 The user selected option 2: remove all in-app recharge-request history reads. PR #171 is merged as `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`; the post-merge Production Gate passed deployment and smoke, and the live Worker reports the exact SHA. The app/service/listener/pagination readers and Admin pending-count/history response contracts are removed; authenticated legacy routes fail closed and preserve route-specific role denials. Pending garage applications, delegate commission/settlement, historical activity-log reads, and stored request/guard records are preserved. The only remaining active collection reference is the unchanged garage-deletion cleanup adapter. No data cleanup, migration, Firebase rule/data, or database routing change occurred.
 
 Focused route, authorization, and retained-history regressions passed (3 files / 27 tests). Full local `npm run ci:check` exited 0 (138 files / 889 tests, rules, builds, Worker smoke, maintainability, artifact verification); `npm run lint` and `git diff --check` passed. PR gate #39214021843 and post-merge gate #39214331450 both succeeded. LR-02 is merged and deployed; this task is complete.
 
-**Next step:** Stop here. LR-03 is not selected; wait for the owner to choose the next bounded task.
-
-> **Historical-record note:** Checkpoint sections below the active LR-02 entry are historical snapshots. Any old “next step” or “stop here” directive in them is superseded by the current authority fence and active Legacy Removal Plan.
+**Historical next step at LR-02 completion:** LR-03 had not yet been selected. The owner later requested a read-only inventory, which is recorded in the active checkpoint above; LR-03 implementation remains unselected.
 
 ## Historical checkpoint: LR-01 direct Admin recharge retirement complete (2026-10-19)
 

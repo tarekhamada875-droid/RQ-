@@ -4,9 +4,11 @@
 
 **LR-01 completion checkpoint (2026-10-19):** LR-01 merged via PR [#169](https://github.com/tarekhamada875-droid/RQ-/pull/169) at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`. Main Production Gate [39205342165](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39205342165) passed verification, artifact deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report that exact Worker SHA. The authenticated route is retained as a 410 compatibility tombstone; its active writer and unused client method are removed. No Firebase data/rules, database routing, or migration changed.
 
-**LR-02 completion checkpoint (2026-10-19):** The owner selected option 2: remove all in-app recharge-request history reads. PR [#171](https://github.com/tarekhamada875-droid/RQ-/pull/171) merged as `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`. PR Production Gate [39214021843](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214021843) passed on its exact head; post-merge main Production Gate [39214331450](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214331450) passed verification, deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report the exact merge SHA. The implementation retires request creation/approval/rejection/list routes, removes in-app UI/service/listener/pagination readers and Admin pending-count/history response fields, and preserves original authorization boundaries through 410/403 tests. Focused regressions passed 3 files / 27 tests; full local `npm run ci:check` exited 0 with 138 test files / 889 tests, rules emulator, Pages/Worker build, artifact smoke, maintainability, and artifact verification; lint and whitespace checks passed. Pending garage applications, delegate settlement, historical `activity_logs`, and stored `recharge_requests`/guard records remain. The only remaining active collection reference is the unchanged garage-deletion cleanup adapter; no deletion action, migration, Firebase data/rules change, or database-routing change occurred. LR-03 is not selected; stop here.
+**LR-02 completion checkpoint (2026-10-19):** The owner selected option 2: remove all in-app recharge-request history reads. PR [#171](https://github.com/tarekhamada875-droid/RQ-/pull/171) merged as `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`. PR Production Gate [39214021843](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214021843) passed on its exact head; post-merge main Production Gate [39214331450](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39214331450) passed verification, deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report the exact merge SHA. The implementation retires request creation/approval/rejection/list routes, removes in-app UI/service/listener/pagination readers and Admin pending-count/history response fields, and preserves original authorization boundaries through 410/403 tests. Focused regressions passed 3 files / 27 tests; full local `npm run ci:check` exited 0 with 138 test files / 889 tests, rules emulator, Pages/Worker build, artifact smoke, maintainability, and artifact verification; lint and whitespace checks passed. Pending garage applications, delegate settlement, historical `activity_logs`, and stored `recharge_requests`/guard records remain. The only remaining active collection reference is the unchanged garage-deletion cleanup adapter; no deletion action, migration, Firebase data/rules change, or database-routing change occurred. At this LR-02 checkpoint, LR-03 was not selected; the later read-only inventory is recorded below.
 
-**Current next step:** LR-02 is complete. LR-03 remains unstarted and unselected by the owner; do not begin it in this task.
+**LR-03 read-only source inventory checkpoint (2026-10-19):** The owner requested a scope/file-count inventory, not implementation. The read-only audit is recorded in [`docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md`](docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md), based on clean `main` `effe777cf2c3e300031a58d04861813cee951c84`. It catalogued 59 active/test/type paths plus 9 review-only paths; those counts describe the inspected surface, not expected edits. Eight direct production cleanup candidates and related/conditional tests are itemized in the inventory. The three LR-03 routes currently return authenticated 410 before their legacy bodies, which remain in source. No application code changed and no data/config/rules were touched. LR-03 implementation remains unselected and unstarted.
+
+**Current next step:** Wait for the owner’s explicit selection before starting LR-03 implementation. Do not infer authorization from this read-only inventory.
 
 ## Purpose
 
@@ -78,7 +80,7 @@ Recharge-request creation aliases, rejection aliases, and Admin/scoped request-l
 
 ### LR-02 — Remove the legacy recharge-request workflow
 
-**Status:** In progress on `feat/lr-02-retire-recharge-request-workflow`; user-selected history policy is to remove all in-app reads. Existing stored request records are retained.
+**Status:** Complete; merged via PR [#171](https://github.com/tarekhamada875-droid/RQ-/pull/171) as `935e93c336e61bcc4cfc4cf259c4cd8be028bb0d`. The user-selected history policy was to remove all in-app reads. Existing stored request records are retained; see the completion checkpoint above.
 
 **Scope:** Remove recharge-request creation, approval, rejection, all in-app request-history readers, pending-request listeners, Admin request UI, delegate request UI, pagination state/response fields, the Admin summary count, and service facade methods.
 
@@ -87,6 +89,8 @@ Recharge-request creation aliases, rejection aliases, and Admin/scoped request-l
 **Acceptance criteria:** No active UI or client service calls a recharge-request write/list workflow; no Admin summary or delegate-detail response exposes request counts/history/pagination; old routes return authenticated 410 responses while preserving role denials where applicable; application request views still work.
 
 ### LR-03 — Remove owner-side wallet and self-subscribe wiring
+
+**Status:** Read-only source inventory complete (2026-10-19); implementation not selected or started. See [`docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md`](docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md).
 
 **Scope:** Remove `admin-topup-balance`, `garage-self-subscribe`, `use-referral-reward`, dead top-up modal state, wallet UI compatibility props, wallet service methods, and legacy owner purchase handlers.
 
@@ -151,4 +155,4 @@ Each LR task is a separate bounded branch and PR. Before implementation, record 
 
 ## Recommended next task
 
-**LR-02 — Remove the legacy recharge-request workflow (in progress).** The user selected this task on 2026-10-19 and chose removal of all in-app request-history reads. Complete validation and the standard PR/release cycle before considering LR-03.
+**LR-03 — Remove owner-side wallet and self-subscribe wiring (inventory complete; implementation unselected).** The read-only inventory is recorded in [`docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md`](docs/RQ_LEGACY_REMOVAL_LR-03_SOURCE_INVENTORY_2026-10-19.md). Wait for Tarek’s explicit selection before implementation.
