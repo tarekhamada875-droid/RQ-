@@ -1,6 +1,6 @@
 # RQ
 
-For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document. The next planned task is [`UI_OPTIMIZATION_PLAN.md`](./UI_OPTIMIZATION_PLAN.md); start with measurement and visual-regression evidence.
+For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document. The next planned task is [`UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md`](./UI_LIGHTWEIGHT_IMPLEMENTATION_PLAN.md); start with a focused audit and visual-equivalence evidence.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
