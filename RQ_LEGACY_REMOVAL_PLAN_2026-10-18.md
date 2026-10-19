@@ -2,7 +2,7 @@
 
 **Status:** Draft validated against the current `main` codebase on 2026-10-18. No application code changes are included in this draft.
 
-**LR-00 baseline checkpoint (2026-10-19):** A source-level route, caller, data, test, and reporting inventory is being reviewed in [docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md](docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md) from baseline `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`. It confirms the direct Admin `recharge-garage` writer remains reachable; recharge-request creation and rejection and the request-list routes also remain reachable, while approval and several other legacy aliases return 410. No behavior change or Firebase access occurred. LR-00 is pending review; do not begin LR-01 before that review is complete.
+**LR-00 baseline checkpoint (2026-10-19):** The source-level route, caller, data, test, and reporting inventory was reviewed and merged in PR [#167](https://github.com/tarekhamada875-droid/RQ-/pull/167), from baseline `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`; see [docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md](docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md). It confirms the direct Admin `recharge-garage` writer remains reachable; recharge-request creation, rejection and list routes also remain reachable, while approval and several other legacy aliases return 410. PR Production Gate and post-merge main Production Gate passed. No behavior change or Firebase access occurred. **LR-00 is complete; LR-01 has not started and is not selected by this checkpoint.**
 
 ## Purpose
 
@@ -144,4 +144,4 @@ Each LR task is a separate bounded branch and PR. Before implementation, record 
 
 ## Recommended next task
 
-**LR-00 — Baseline and contract inventory.** It is documentation/test-baseline work and should precede LR-01 so the active recharge writer can be removed without accidentally deleting current prepaid credit or customer-subscription behavior.
+**LR-00 — Baseline and contract inventory (complete; PR #167 merged).** The reviewed source inventory is `docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md`. LR-01 remains the next distinct task only after it is explicitly selected; do not begin it as part of LR-00.
