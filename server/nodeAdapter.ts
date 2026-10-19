@@ -7,6 +7,24 @@ import api from './api';
 export const DEFAULT_MAX_REQUEST_BODY_BYTES = 1_048_576;
 export const MAX_REQUEST_BODY_BYTES_ENV = 'RQ_NODE_ADAPTER_MAX_BODY_BYTES';
 
+function resolveLocalApiEnvironment(): Record<string, unknown> | undefined {
+  if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) return undefined;
+
+  return {
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'demo-rq-ui-fixtures',
+    FIREBASE_DATABASE_ID: process.env.FIREBASE_DATABASE_ID || '(default)',
+    ENVIRONMENT: 'local',
+    PIN_RATE_LIMITER: {
+      idFromName: (name: string) => name,
+      get: () => ({
+        fetch: async () => new Response(JSON.stringify({ success: true, allowed: true }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      }),
+    },
+  };
+}
+
 export interface NodeApiAdapterOptions {
   maxRequestBodyBytes?: number;
 }
@@ -130,7 +148,7 @@ export async function handleNodeApiRequest(
       headers: nodeRequest.headers as Record<string, string>,
       body
     });
-    const response = await app.fetch(request);
+    const response = await app.fetch(request, resolveLocalApiEnvironment());
     await sendFetchResponse(response, nodeResponse);
   } catch (error) {
     writeAdapterError(nodeResponse, error);
