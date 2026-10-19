@@ -9,9 +9,10 @@ interface GarageSubscriptionCardProps {
   isWarningYellow?: boolean;
   countdownValue?: number;
   isCountdownInHours?: boolean;
+  showBreakdown?: boolean;
 }
 
-export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardProps) => {
+export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: GarageSubscriptionCardProps) => {
   const paidCredits = Math.max(0, Number(garage.creditBalance?.paid || 0));
   const referralCredits = Math.max(0, Number(garage.creditBalance?.referral || 0));
   const trialCredits = Math.max(0, Number(garage.creditBalance?.trial || 0));
@@ -44,7 +45,9 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
             </span>
           )}
         </div>
-        <span className="text-[10px] md:text-xs font-bold text-slate-500">Paid: {paidCredits} · Referral: {referralCredits} · Trial: {trialCredits}</span>
+        {showBreakdown && (
+          <span className="text-[10px] md:text-xs font-bold text-slate-500">Paid: {paidCredits} · Referral: {referralCredits} · Trial: {trialCredits}</span>
+        )}
         <span className="sr-only">Total access credits {totalCredits}</span>
       </div>
     </div>

@@ -243,6 +243,17 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.queryByText('الرصيد المتبقي')).toBeNull();
   });
 
+  it('keeps only the total credit on the dashboard card and opt-in breakdown on the history page', () => {
+    const creditGarage = { ...mockGarage, billingModel: 'prepaid_credits', creditBalance: { paid: 12, referral: 3, trial: 0 } } as any;
+
+    const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={creditGarage} />);
+    expect(screen.getByText('15')).toBeDefined();
+    expect(screen.queryByText(/Paid: 12/)).toBeNull();
+
+    rerender(<ThemeProvider><GarageSubscriptionCard garage={creditGarage} showBreakdown /></ThemeProvider>);
+    expect(screen.getByText(/Paid: 12/)).toBeDefined();
+  });
+
   it('renders GarageActiveVehiclesList and handles empty state', () => {
     const onClose = vi.fn();
     const onRegister = vi.fn();
