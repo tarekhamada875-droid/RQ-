@@ -20,7 +20,6 @@ import { AdminRequestsView } from './AdminRequestsView';
 import { AdminTrialLeadsView } from './AdminTrialLeadsView';
 import { AdminPackagesView } from './AdminPackagesView';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
-import { AdminFairUseView } from './AdminFairUseView';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
@@ -101,19 +100,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showToast,
   onLogout
 }) => {
-  const unlimitedGarages = React.useMemo(() => {
-    return approvedGarages.filter(g => {
-      if (g.status === 'pending') return false;
-      const hasFU = g.unlimitedFairUse && g.unlimitedFairUse.isActive;
-      const pkgName = g.activePackageName || g.lastRechargePackageName || '';
-      const isUnlimitedPkg = pkgName.includes('مفتوح') || 
-                             pkgName.includes('غير محدود') || 
-                             pkgName.includes('unlimited') || 
-                             pkgName.includes('بلا حدود');
-      return Boolean(hasFU || isUnlimitedPkg);
-    });
-  }, [approvedGarages]);
-
   const trialLeadsCount = React.useMemo(() => {
     return allGarages.filter(g => g.trialDecision === 'continued' || g.trialDecision === 'declined').length;
   }, [allGarages]);
@@ -226,20 +212,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('الأشخاص')}</span>
             </button>
 
-            {/* Tab 6: Fair-Use (الاستخدام العادل) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('fair_use')}
-              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'fair_use'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Zap className={`w-4 h-4 ${activeTab === 'fair_use' ? 'text-current' : 'text-amber-500'}`} />
-              <span>{t('الاستخدام العادل')}</span>
-            </button>
-
             {/* Tab: Partners & Dividend Calculator */}
             <button
               type="button"
@@ -291,13 +263,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           hasError={adminListsError}
           onLoadMore={onLoadMoreAdminDelegates}
           onRefresh={onRefreshAdminLists}
-        />
-      ) : activeTab === 'fair_use' ? (
-        <AdminFairUseView 
-          garages={approvedGarages}
-          unlimitedGarages={unlimitedGarages}
-          onSelectGarage={onSelectGarage}
-          t={t}
         />
       ) : activeTab === 'partners_calculator' ? (
         <div className="space-y-5 animate-in fade-in duration-200">
@@ -433,9 +398,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                 }
               }
             });
-          }}
-          onRechargeGarage={(garage) => {
-            onSelectGarage(garage);
           }}
           showToast={showToast}
         />

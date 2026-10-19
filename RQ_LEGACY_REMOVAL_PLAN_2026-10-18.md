@@ -1,5 +1,7 @@
 # RQ Legacy Removal Plan
 
+**LR-07 implementation checkpoint (2026-10-19; local, pre-PR):** Final legacy cleanup removes the unreferenced subscription-billing/referral-day domain module and test, stops creating or Admin-authorizing `totalReferralRewardDays`, deletes the dead Admin fair-use view/tab and legacy trial-renewal affordance, removes the retired Admin wallet tab alias and stale app comment, and deletes unreachable wallet/fair-use translation entries. Authenticated 410 compatibility tombstones remain intentionally registered for retired endpoints; no active client caller or legacy writer remains. Historical recharge/reporting fixtures and financial event schemas remain intact. Focused regressions passed 14 files / 131 tests; `npm run lint`, `git diff --check`, and full `npm run ci:check` passed with 133 test files / 879 tests, Firestore rules, Pages/Worker build, Worker artifact smoke, maintainability, and artifact verification. No Firebase data, rules, migrations, or stored-record changes were made. The remaining step is the normal commit, PR, Production Gate, merge, post-merge deployment identity, and live smoke verification.
+
 **Source baseline:** The initial inventory draft was validated against `main` on 2026-10-18; current task status is recorded in the dated checkpoint below.
 
 **LR-06 implementation checkpoint (2026-10-19; local, pre-PR):** Tarek selected LR-06 after the LR-05 implementation. The active system-config contract no longer exposes wallet payment numbers or legacy subscription-price maps: the Worker omits those fields from authenticated reads and rejects their writes, the Admin and garage client pass-through/state/hooks are removed, and the obsolete Admin wallet view/service/utility contracts are deleted. Firestore rules no longer grant retired admin-setting document reads, and package validation requires the active `credit_bundle` plus positive `creditQuantity` shape while historical records remain readable through application adapters. Monthly-subscriber fees, maintenance/admin-color settings, prepaid credit balances/ledger behavior, and historical recharge/reporting data remain in scope and unchanged. Focused regressions passed 6 files / 50 tests; `npm run lint` and `git diff --check` passed. Full CI, commit, PR gate, merge, and post-merge verification remain. No stored records or migrations were changed; this checkpoint intentionally includes the bounded Firestore-rule contract update.
@@ -18,7 +20,7 @@
 
 **LR-03 implementation selection (2026-10-19):** Tarek explicitly selected LR-03 implementation for the next agent. This authorizes only the bounded LR-03 scope below; application code has not yet been changed. Re-verify repository and release state before editing.
 
-**Current next step:** Complete the LR-06 PR/release cycle from the selected implementation branch. Do not begin LR-07, delete historical data, or migrate records.
+**Current next step:** Complete the LR-07 PR/release cycle from the selected implementation branch. Do not delete historical data or migrate records.
 
 ## Purpose
 

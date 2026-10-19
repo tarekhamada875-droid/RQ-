@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Phone, CheckCircle2, XCircle, Clock, Trash2, Zap, ExternalLink, EyeOff } from 'lucide-react';
+import { Phone, CheckCircle2, XCircle, Clock, Trash2, ExternalLink, EyeOff } from 'lucide-react';
 import { Garage } from '../../types';
 import { safeDate } from '../../utils';
 import { adminService } from '../../services/adminService';
@@ -9,7 +9,6 @@ interface AdminTrialLeadsViewProps {
   garages: Garage[];
   onSelectGarage: (garage: Garage) => void;
   onDeleteGarage: (garageId: string, garageName: string) => void;
-  onRechargeGarage?: (garage: Garage) => void;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -17,7 +16,6 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
   garages,
   onSelectGarage,
   onDeleteGarage,
-  onRechargeGarage,
   showToast
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'continued' | 'declined'>('continued');
@@ -177,17 +175,6 @@ export const AdminTrialLeadsView: React.FC<AdminTrialLeadsViewProps> = ({
                   {/* Clean Action Buttons */}
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
                     <div className="flex items-center gap-2">
-                      {onRechargeGarage && activeSubTab === 'continued' && (
-                        <button
-                          type="button"
-                          onClick={() => onRechargeGarage(garage)}
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-98 cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5 fill-current" />
-                          <span>تجديد الباقة</span>
-                        </button>
-                      )}
-
                       <button
                         type="button"
                         disabled={processingId === garage.id}
