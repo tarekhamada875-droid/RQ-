@@ -2,6 +2,8 @@
 
 **Status:** Draft validated against the current `main` codebase on 2026-10-18. No application code changes are included in this draft.
 
+**LR-00 baseline checkpoint (2026-10-19):** A source-level route, caller, data, test, and reporting inventory is being reviewed in [docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md](docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md) from baseline `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`. It confirms the direct Admin `recharge-garage` writer remains reachable; recharge-request creation and rejection and the request-list routes also remain reachable, while approval and several other legacy aliases return 410. No behavior change or Firebase access occurred. LR-00 is pending review; do not begin LR-01 before that review is complete.
+
 ## Purpose
 
 Remove the retired garage-owner time-based billing and wallet system without removing the current prepaid-credit model, the garage-owned monthly parking-subscriber system, or historical records and reporting.
@@ -21,15 +23,17 @@ The existing Jarvis/BILL-08 checkpoint is too broad. It correctly describes the 
 
 This must be retired before deleting shared legacy helpers.
 
-### Disabled but retained legacy paths
+### Disabled or partially active legacy paths
 
-These routes currently return HTTP 410 but still contain dead implementations below their early returns:
+The following routes return HTTP 410 but retain unreachable implementations below the early return:
 
-- recharge request creation, approval, and rejection in `server/financialRoutes.ts`
+- recharge-request approval in `server/financialRoutes.ts`
 - direct wallet top-up in `server/financialRoutes.ts`
 - fair-use extension in `server/garageRoutes.ts`
 - garage self-subscribe in `server/garageRoutes.ts`
 - use-referral-reward in `server/garageRoutes.ts`
+
+Recharge-request creation aliases, rejection aliases, and Admin/scoped request-list routes remain reachable in `server/financialRoutes.ts`; inventory and callers are recorded in the LR-00 baseline document. These are not 410 tombstones at this baseline.
 
 ### Remaining legacy client/UI surfaces
 
