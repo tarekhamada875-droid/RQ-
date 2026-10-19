@@ -24,7 +24,7 @@ for (const strayLock of ['bun.lock', 'bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']
   if (existsSync(resolve(root, strayLock))) fail(`Secondary lockfile ${strayLock} must not exist; project is standardized on npm.`);
 }
 
-for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'MAINTAINABILITY_HANDOFF.md']) {
+for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'PROJECT_ENGINEERING_KNOWLEDGE.md']) {
   if (!existsSync(resolve(root, requiredDoc))) fail(`Required maintainability document is missing: ${requiredDoc}.`);
 }
 

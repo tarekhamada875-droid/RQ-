@@ -2,7 +2,7 @@
 
 ## Before changing code
 
-Read `PROJECT_WORKING_AGREEMENT.md`, `AGENTS.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`, `README.md`, `BRANCHING_AND_RELEASES.md`, and the relevant section of `MAINTAINABILITY_HANDOFF.md`. The archived JARVIS roadmap is historical context only. Then start from the latest `main` and confirm the working tree is clean:
+Read `PROJECT_WORKING_AGREEMENT.md`, `AGENTS.md`, `PROJECT_ENGINEERING_KNOWLEDGE.md`, `README.md`, and `BRANCHING_AND_RELEASES.md`. Then start from the latest `main` and confirm the working tree is clean:
 
 For each finished improvement, report the problem, the change in user-visible terms, a practical example, the benefit, the checks that actually passed, and whether it is awaiting review, merged, or live. Keep the main explanation simple; retain implementation details in the PR and handoff.
 
@@ -53,4 +53,4 @@ Never commit `.env` files, service-account files, private keys, tokens, or real 
 
 ## Commit guidance
 
-Use a commit message that explains the behavior change. Update `MAINTAINABILITY_HANDOFF.md` after completing a planned structural milestone, including the commit SHA and validation results.
+Use a commit message that explains the behavior change. Update `PROJECT_ENGINEERING_KNOWLEDGE.md` only when durable current-model engineering guidance changes; keep release facts in the commit and PR records.

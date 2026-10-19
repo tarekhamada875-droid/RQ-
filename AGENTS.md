@@ -8,7 +8,7 @@
 ## Owner-centered collaboration
 - Read [`PROJECT_WORKING_AGREEMENT.md`](PROJECT_WORKING_AGREEMENT.md) before substantial work. Tarek is the product visionary, not a technical specialist; explain results and risks in everyday language and do not make him choose routine engineering details.
 - For every completed roadmap item, state the problem, what changed, a concrete user-facing example, why it helps, what was actually measured/tested, and whether it is local, in a PR, merged, or live. Use the owner's practical analogy style; never claim unmeasured 10x/50x gains.
-- The former JARVIS roadmap is archived and is not an active implementation authorization. Make routine reversible engineering decisions only for a specifically selected task from `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`; do not infer permission to start LR implementation from the archived plan. Ask before a material product/business choice or important irreversible action outside the selected scope. Protect data and credentials regardless of broad engineering authority.
+- Completed plans are not implementation authorization. Make routine reversible engineering decisions only for the specifically selected issue/PR scope. Ask before a material product/business choice or important irreversible action outside that scope. Ask separately before deleting stored data. Protect data and credentials regardless of broad engineering authority.
 - Persist new decisions, verified status, and remaining work in the tracked project documents; do not rely on private chat memory being available to the next contributor.
 
 ## Current environment status
@@ -117,7 +117,7 @@
 
 ## Owner-mandated completion workflow
 
-For every bounded JARVIS task, all agents MUST complete the full workflow before stopping:
+For every bounded task, all agents MUST complete the full workflow before stopping:
 
 1. Implement only the selected task and preserve existing behavior outside its scope.
 2. Run focused regression tests, then `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` as applicable. Report warnings separately from failures and never claim a check passed unless it actually passed.
@@ -143,11 +143,11 @@ Whenever an agent asks Tarek to pass work to another agent, or knows another age
 - what is complete, the current task, checks actually run, exact verified branch/commit/worktree/open-PR state, latest deployed application commit, and what the latest workflow did or did not deploy;
 - unresolved decisions, blockers, and safety boundaries;
 - the single next task, its scope/order, what to preserve or avoid, and a clear example of what “done” means when useful;
-- exact files to read, including the **complete** `RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md` (not only the next task); consult the archived JARVIS roadmap only as historical context, `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `MAINTAINABILITY_HANDOFF.md`, `RQ_PROJECT_KNOWLEDGE_BASE.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
+- exact files to read, including `PROJECT_ENGINEERING_KNOWLEDGE.md`, `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
 - pre-edit checks and the complete focused-branch → local checks → PR → required gate → merge → post-merge/release verification process.
 
 Use everyday wording and briefly define technical terms. The message should be complete enough to continue safely without chat history, but it must tell the next agent to read the source-of-truth files and re-check repository/GitHub state because any copied status can become stale. This requirement applies to every future agent handoff, not only the current one.
 
 ### Continuity lessons are mandatory
 
-Before preparing any handoff, read `RQ_CONTINUITY_LESSONS.md`. It records the required distinction between the latest application/Worker SHA and later documentation-only `main` commits, the final post-merge synchronization checklist, and the exact lesson that must be passed to the next agent. Every successor message MUST name this file and include the lesson in plain language. A copied status is never sufficient: after the last merge, fetch again and verify clean `main`, `origin/main`, the latest successful main gate for that exact commit, open PR count, live Worker identity, protected decision-branch SHA, and the tracked handoff wording. If a mismatch appears, disclose it and correct it through the normal PR and Production Gate workflow before declaring the handoff ready.
+Before preparing any handoff, summarize the current model and validation evidence from `PROJECT_ENGINEERING_KNOWLEDGE.md`. A copied status is never sufficient: after the last merge, fetch again and verify clean `main`, `origin/main`, the latest successful main gate for that exact commit, open PR count, live Worker identity, and protected decision-branch SHA. If a mismatch appears, disclose it and correct it through the normal PR and Production Gate workflow before declaring the handoff ready.

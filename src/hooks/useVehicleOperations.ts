@@ -6,8 +6,7 @@ import {
   safeDate, 
   getRawPlate, 
   formatPlateNumber, 
-  calculateCost,
-  isSubscriptionExpired
+  calculateCost
 } from '../utils';
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
@@ -125,13 +124,6 @@ export function useVehicleOperations({
       setShowSubscriberWarning(true);
       setShowCheckInModal(false);
       setNewPlateNumber('');
-      soundManager.play('error');
-      return;
-    }
-
-    const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
-    if (!prepaidCreditsEnabled && isSubscriptionExpired(garage)) {
-      showToast('عفواً، انتهى اشتراك الجراج. يرجى تجديد الاشتراك.', 'error');
       soundManager.play('error');
       return;
     }

@@ -7,13 +7,9 @@ import { useState, useMemo, memo } from 'react';
 import { 
   Car, 
   Plus,
-  ShieldAlert,
   Download,
-  Phone
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
-import { getRemainingDays } from '../../utils';
-import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { PlateLookupModal } from '../modals/PlateLookupModal';
 import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
 
@@ -37,13 +33,9 @@ export const AdminOverviewView = memo(({
   allGarages, 
   delegates, 
   adminSummary = null,
-  onSelectGarage,
   onOpenAddGarage,
   isSupervisor = false
 }: AdminOverviewViewProps) => {
-  const config = useSystemConfig();
-  const warningDaysThreshold = typeof config?.warningDaysThreshold === 'number' ? config.warningDaysThreshold : 3;
-
   const [showPlateLookupModal, setShowPlateLookupModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -54,31 +46,13 @@ export const AdminOverviewView = memo(({
     
     const totalAdminRevenue = adminSummary?.totalAdminRevenue ?? allGarages.reduce((sum, g) => sum + (g.totalAdminRevenue || 0), 0);
 
-    // Expiring soon garages count
-    const expiringSoonCount = allGarages.filter(g => {
-      if (g.status === 'pending' || !g.balanceExpiry) return false;
-      return getRemainingDays(g) <= warningDaysThreshold;
-    }).length;
-
     return {
       totalGarages,
       activeGarages,
       lockedGarages,
-      totalAdminRevenue,
-      expiringSoonCount
+      totalAdminRevenue
     };
-  }, [adminSummary, allGarages, warningDaysThreshold]);
-
-  const expiringGarages = useMemo(() => {
-    return allGarages
-      .filter(g => g.status !== 'pending' && g.balanceExpiry)
-      .map(g => ({
-        ...g,
-        remainingDays: getRemainingDays(g)
-      }))
-      .filter(g => g.remainingDays <= warningDaysThreshold)
-      .sort((a, b) => a.remainingDays - b.remainingDays);
-  }, [allGarages, warningDaysThreshold]);
+  }, [adminSummary, allGarages]);
 
   return (
     <div className="space-y-6 dir-rtl text-right font-sans max-w-6xl mx-auto px-2 sm:px-4 pb-12">
@@ -154,62 +128,6 @@ export const AdminOverviewView = memo(({
           </div>
         </div>
       </div>
-
-      {/* Expiring Soon Section */}
-      {expiringGarages.length > 0 && (
-        <section className="bg-white dark:bg-slate-900 border-2 border-rose-500/30 rounded-3xl p-6 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  جراجات تقترب من انتهاء الاشتراك ({expiringGarages.length})
-                </h3>
-                <p className="text-xs font-bold text-slate-400">تنبيه المتابعة لإعادة الشحن والتجديد</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {expiringGarages.map((g) => (
-              <div 
-                key={g.id}
-                className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/40 flex items-center justify-between gap-3 shadow-xs"
-              >
-                <div className="min-w-0 space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => onSelectGarage && onSelectGarage(g)}
-                    className="font-black text-sm text-slate-900 dark:text-white hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-right block truncate cursor-pointer"
-                  >
-                    {g.name}
-                  </button>
-                  {g.phone && (
-                    <a
-                      href={`tel:${g.phone}`}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-slate-500 hover:text-emerald-600 transition-colors"
-                    >
-                      <Phone className="w-3 h-3 text-emerald-500" />
-                      <span>{g.phone}</span>
-                    </a>
-                  )}
-                </div>
-
-                <span className={`font-mono text-xs font-black px-3 py-1 rounded-xl shrink-0 ${
-                  g.remainingDays <= 1 
-                    ? 'bg-rose-600 text-white shadow-xs' 
-                    : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                }`}>
-                  {g.remainingDays} {g.remainingDays === 1 ? 'يوم' : 'أيام'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Modals */}
       {!isSupervisor && showPlateLookupModal && (
         <PlateLookupModal

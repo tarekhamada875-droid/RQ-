@@ -1,6 +1,6 @@
 # RQ
 
-For how the owner wants future agents and contributors to work, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md). For project status and document authority, read [`RQ_PROJECT_KNOWLEDGE_BASE.md`](./RQ_PROJECT_KNOWLEDGE_BASE.md). The former JARVIS roadmap is archived at [`archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md`](./archive/RQ_PROJECT_JARVIS_MODERNIZATION_PLAN_2026-10-14.md) for historical reference; the sole active plan is [`RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md`](./RQ_LEGACY_REMOVAL_PLAN_2026-10-18.md).
+For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document; do not rely on deleted task plans or historical narratives.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
@@ -75,7 +75,7 @@ npm test && npm run test:rules && npm run lint && npm run build && npm run maint
 
 ## Cloudflare deployment contract
 
-Hono is the production Worker backend. No Hono migration workstream is active; the former JARVIS roadmap is archived historical context; the Legacy Removal Plan is the only active cleanup plan. Use the normal branch-and-pull-request flow above; merging to `main` starts the guarded Worker release and Pages production publish.
+Hono is the production Worker backend. No Hono migration workstream is active. Use the normal branch-and-pull-request flow above; merging to `main` starts the guarded Worker release and Pages production publish.
 
 ## Production smoke checks
 
@@ -111,4 +111,4 @@ src/domain/              Shared business rules and domain logic
 .github/workflows/      GitHub Actions production gate
 ```
 
-For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. For the latest verified engineering details, see `MAINTAINABILITY_HANDOFF.md`.
+For deployment details, use `wrangler.toml`, `wrangler.deploy.toml`, and the Cloudflare deployment workflow. For current engineering principles, see `PROJECT_ENGINEERING_KNOWLEDGE.md`.

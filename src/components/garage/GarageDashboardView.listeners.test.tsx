@@ -51,7 +51,6 @@ vi.mock('./RechargeHistoryView', () => ({
     </section>
   ),
 }));
-vi.mock('../modals/TrialExpiryModal', () => ({ TrialExpiryModal: () => null }));
 vi.mock('./modals/RechargeNotificationModal', () => ({ RechargeNotificationModal: () => null }));
 vi.mock('./modals/AnnouncementModal', () => ({ AnnouncementModal: () => null }));
 vi.mock('../modals/StaffStatsModal', () => ({ StaffStatsModal: () => null }));

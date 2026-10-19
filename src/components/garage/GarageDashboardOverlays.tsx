@@ -1,5 +1,4 @@
 import { AlertTriangle } from "lucide-react";
-import { TrialExpiryModal } from "../modals/TrialExpiryModal";
 import { SubscribersView } from "./SubscribersView";
 import { RechargeHistoryView } from "./RechargeHistoryView";
 import { StaffStatsModal } from "../modals/StaffStatsModal";
@@ -91,7 +90,6 @@ export const GarageDashboardOverlays = (props: any) => {
       {showTermsModal && <TermsAndConditionsModal onClose={onCloseTerms} />}
       <RechargeNotificationModal isOpen={isRechargeNotificationOpen && !!rechargeLog} rechargeLog={rechargeLog} onClose={onCloseRechargeNotification} />
       <AnnouncementModal announcement={selectedAnnouncement} onClose={onCloseAnnouncement} />
-      <TrialExpiryModal garage={garage} showToast={showToast} />
     </>
   );
 };
