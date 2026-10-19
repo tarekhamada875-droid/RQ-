@@ -216,6 +216,31 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect([...mockDb.records.values()].some((record) => record.actionType === 'fair_use_admin_extended')).toBe(false);
   });
 
+  it('rejects direct legacy Admin recharge without mutating garage billing or history', async () => {
+    mockDb.seed(`packages/legacy-monthly`, {
+      name: 'Legacy monthly plan', price: 300, durationDays: 30, dailyCapacity: 50, isActive: true
+    });
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const writesBefore = mockDb.documentWriteCount;
+    const unauthenticated = await api.fetch(new Request('http://localhost/api/transactions/recharge-garage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    }), workerEnv);
+    expect(unauthenticated.status).toBe(401);
+
+    for (const token of ['valid-admin-token', 'valid-garage-token-garage-a']) {
+      const response = await api.fetch(new Request('http://localhost/api/transactions/recharge-garage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ garageId: testGarageId, packageId: 'legacy-monthly', idempotencyKey: 'legacy-recharge-disabled' })
+      }), workerEnv);
+
+      expect(response.status).toBe(410);
+      expect(await response.json()).toEqual({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
+    }
+    expect(mockDb.documentWriteCount).toBe(writesBefore);
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
   it('3. POST /api/garages/delete starts a resumable job; bounded steps remove only owned data and complete it', async () => {
     for (let index = 0; index < 401; index += 1) {
       mockDb.seed(`garages/${testGarageId}/vehicles/vehicle-${index}`, { plateNumber: `TEST${index}` });
