@@ -2,7 +2,7 @@
 
 **Source baseline:** The initial inventory draft was validated against `main` on 2026-10-18; current task status is recorded in the dated checkpoint below.
 
-**LR-03 implementation checkpoint (2026-10-19):** Implementation is complete locally on branch `feat/lr03-remove-owner-wallet-wiring`; it is committed locally but has not yet been pushed, opened as a PR, merged, or deployed. The three authenticated legacy endpoints remain HTTP 410 tombstones, while their unreachable wallet/self-subscribe/referral-day writers are removed. Owner-side client methods, dead Admin top-up state/handlers, compatibility props, and the obsolete manual-credit helper are removed. Focused regressions passed 5 files / 49 tests; `npm run lint` and the full `npm run ci:check` passed (137 test files / 888 tests, rules emulator, Pages/Worker build, artifact smoke, maintainability, and artifact verification). No Firebase data/rules, historical records, subscriber management, login/session behavior, or current prepaid-credit path changed.
+**LR-03 release checkpoint (2026-10-19):** LR-03 merged in PR [#176](https://github.com/tarekhamada875-droid/RQ-/pull/176) at application commit `3909602c89cb29be376174e5ff40c50d9f7774dc`. PR Production Gate passed; post-merge main Production Gate [39227814779](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39227814779) passed verification, verified-artifact deployment, and live smoke. Live `/api/health` and `/api/version` report that exact Worker SHA. The implementation keeps authenticated 410 tombstones while removing unreachable legacy writers and owner-side wallet wiring. Focused regressions passed 5 files / 49 tests; local lint and full CI passed. No Firebase data/rules, historical records, subscriber management, login/session behavior, or current prepaid-credit path changed. The next roadmap item remains unselected; stop here.
 
 **LR-01 completion checkpoint (2026-10-19):** LR-01 merged via PR [#169](https://github.com/tarekhamada875-droid/RQ-/pull/169) at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`. Main Production Gate [39205342165](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39205342165) passed verification, artifact deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report that exact Worker SHA. The authenticated route is retained as a 410 compatibility tombstone; its active writer and unused client method are removed. No Firebase data/rules, database routing, or migration changed.
 
@@ -12,7 +12,7 @@
 
 **LR-03 implementation selection (2026-10-19):** Tarek explicitly selected LR-03 implementation for the next agent. This authorizes only the bounded LR-03 scope below; application code has not yet been changed. Re-verify repository and release state before editing.
 
-**Current next step:** Review the complete diff, run `git diff --check`, commit and push the focused branch, open the PR to `main`, and complete the required Production Gate and post-merge verification. Do not expand into LR-04/LR-06, delete historical data, migrate records, or change Firebase data/rules.
+**Current next step:** Stop after LR-03 completion and await a separate bounded roadmap selection. Do not begin LR-04/LR-06, delete historical data, migrate records, or change Firebase data/rules.
 
 ## Purpose
 
