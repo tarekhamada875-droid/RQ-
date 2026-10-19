@@ -93,7 +93,7 @@ The existing listener cleanup tests and financial/authorization behavior are man
 The following user-reported issues were verified in source and are approved for the focused fix branch:
 
 - **Checkout entry-error action:** `CheckOutModal` rendered the same “حذف السيارة (خطأ إدخال)” action twice and did not apply its five-minute correction window to either visible delete action. Keep one primary action and show it only for an eligible non-subscriber vehicle during the first five minutes after `entryTime`.
-- **Garage credit information:** the credit summary and inline ledger details occupied the main garage dashboard. Keep the summary/history behavior together on the existing dedicated `RechargeHistoryView`, expose it from the garage side panel, and keep the main dashboard focused on check-in and active vehicles.
+- **Garage credit information:** the main garage dashboard showed too much supporting credit detail beneath the balance. Keep the main credit card with only the total credit, move the paid/referral/trial breakdown and ledger details to the existing dedicated `RechargeHistoryView`, and expose that page from the garage side panel.
 
 Acceptance for this batch is functional rather than a redesign: the checkout action count/timing must match the rule, and the credit page must preserve the existing ledger data, loading state, live-listener sharing, and light/dark styling.
 
