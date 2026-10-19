@@ -155,7 +155,7 @@ export const GarageDashboardView = memo((props: any) => {
     const logDate = safeDate(latest?.timestamp ?? fallbackDate);
     const logTime = logDate.getTime();
     const logId = latest?.id ?? `recharge_${logTime}`;
-    const diffMs = Math.max(0, now.getTime() - logTime);
+    const diffMs = Math.max(0, (now?.getTime?.() ?? Date.now()) - logTime);
     const isRecent = diffMs < 15 * 60 * 1000;
     const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
 
@@ -189,7 +189,22 @@ export const GarageDashboardView = memo((props: any) => {
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
     }
-  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial, now]);
+  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
+
+  useEffect(() => {
+    if (!isRechargeNotificationOpen || !latestRechargeLog) return;
+
+    const logTime = safeDate(latestRechargeLog.timestamp).getTime();
+    const currentTime = now?.getTime?.() ?? Date.now();
+    const remainingMs = Math.max(0, logTime + 15 * 60 * 1000 - currentTime);
+    const expiryTimer = window.setTimeout(() => {
+      setHasNewRecharge(false);
+      setLatestRechargeLog(null);
+      setIsRechargeNotificationOpen(false);
+    }, remainingMs);
+
+    return () => window.clearTimeout(expiryTimer);
+  }, [isRechargeNotificationOpen, latestRechargeLog, now]);
 
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garage?.id) {

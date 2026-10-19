@@ -231,25 +231,30 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     expect(announcementUnsubscribe).toHaveBeenCalledOnce();
   });
 
-  it('expires an unacknowledged recharge notification when the server clock crosses fifteen minutes', async () => {
-    const initialNow = new Date('2026-10-19T12:14:00.000Z');
-    const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
-    const garage = makeGarage({ lastRechargeDate: rechargeTime });
-    const { rerender } = render(<DashboardHarness now={initialNow} garage={garage} />);
-    const recharge = {
-      id: 'expiring-recharge',
-      garageId: garage.id,
-      actionType: 'recharge',
-      timestamp: rechargeTime,
-      amount: 100,
-      details: { packageName: 'Expiring package' },
-    };
+  it('expires an unacknowledged recharge notification with a targeted timer', () => {
+    vi.useFakeTimers();
+    try {
+      const initialNow = new Date('2026-10-19T12:14:00.000Z');
+      const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
+      const garage = makeGarage({ lastRechargeDate: rechargeTime });
+      render(<DashboardHarness now={initialNow} garage={garage} />);
+      const recharge = {
+        id: 'expiring-recharge',
+        garageId: garage.id,
+        actionType: 'recharge',
+        timestamp: rechargeTime,
+        amount: 100,
+        details: { packageName: 'Expiring package' },
+      };
 
-    await waitFor(() => expect(rechargeListeners).toHaveLength(1));
-    act(() => rechargeListeners[0].callback([recharge]));
-    expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
+      expect(rechargeListeners).toHaveLength(1);
+      act(() => rechargeListeners[0].callback([recharge]));
+      expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
 
-    rerender(<DashboardHarness now={new Date('2026-10-19T12:16:00.000Z')} garage={garage} />);
-    await waitFor(() => expect(screen.getByTestId('recharge-badge')).toHaveTextContent('false'));
+      act(() => vi.advanceTimersByTime(60 * 1000));
+      expect(screen.getByTestId('recharge-badge')).toHaveTextContent('false');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
