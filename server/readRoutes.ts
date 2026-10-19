@@ -53,7 +53,6 @@ app.get('/api/system-config', requireWorkerAuth, async (c) => {
         config: {
           defaultTrialDays: 2,
           warningDaysThreshold: 3,
-          walletNumber: '',
           monthlySubscribersFlatFee: 250,
           monthlySubscribersSurchargePercent: 25,
           referralFeePerRenewal: 100,
@@ -64,7 +63,8 @@ app.get('/api/system-config', requireWorkerAuth, async (c) => {
         }
       });
     }
-    return c.json({ success: true, config: { id: snap.id, ...snap.data() } });
+    const { walletNumber: _walletNumber, subscriptionPrices: _subscriptionPrices, ...activeConfig } = snap.data() || {};
+    return c.json({ success: true, config: { id: snap.id, ...activeConfig } });
   } catch (e: any) {
     console.error('[Worker] Error fetching system-config:', e);
     return c.json({ success: false, error: 'SERVER_ERROR' }, 500);
@@ -88,12 +88,10 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       updatedAt: new Date()
     };
 
-    if (body.walletNumber !== undefined) {
-      if (typeof body.walletNumber !== 'string' || body.walletNumber.length > 100) {
-        throw new ValidationError('Invalid walletNumber', 'INVALID_WALLET_NUMBER', 400);
-      }
-      updatePayload.walletNumber = body.walletNumber.trim();
+    if (body.walletNumber !== undefined || body.subscriptionPrices !== undefined) {
+      throw new ValidationError('Retired configuration field', 'RETIRED_CONFIG_FIELD', 400);
     }
+
     if (body.defaultTrialDays !== undefined) {
       updatePayload.defaultTrialDays = validateNumber(body.defaultTrialDays, 'defaultTrialDays', { min: 0, integerOnly: true });
     }
@@ -130,19 +128,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       }
       updatePayload.adminColor = body.adminColor.trim();
     }
-    if (body.subscriptionPrices !== undefined) {
-      if (!body.subscriptionPrices || typeof body.subscriptionPrices !== 'object' || Array.isArray(body.subscriptionPrices)) {
-        throw new ValidationError('Invalid subscriptionPrices', 'INVALID_SUBSCRIPTION_PRICES', 400);
-      }
-      const validatedPrices: Record<string, number> = {};
-      for (const [name, price] of Object.entries(body.subscriptionPrices)) {
-        if (!name.trim() || name.length > 100) {
-          throw new ValidationError('Invalid subscription price name', 'INVALID_SUBSCRIPTION_PRICE_NAME', 400);
-        }
-        validatedPrices[name] = validateNumber(price, `subscriptionPrices.${name}`, { min: 0 });
-      }
-      updatePayload.subscriptionPrices = validatedPrices;
-    }
+
 
     await getAdminDb().doc('system_config/global').set(updatePayload, { merge: true });
     return c.json({ success: true });

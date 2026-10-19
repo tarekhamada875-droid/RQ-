@@ -62,6 +62,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
   it('4. Returns full system config to each active signed-in app role', async () => {
     const privateConfig = {
       walletNumber: 'private-wallet',
+      subscriptionPrices: { weekly: 900 },
       monthlySubscribersFlatFee: 250,
       adminColor: '#123456',
       syntheticSensitiveField: 'private'
@@ -80,7 +81,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.success).toBe(true);
-      expect(body.config).toEqual({ id: 'global', ...privateConfig });
+      expect(body.config).toEqual({ id: 'global', monthlySubscribersFlatFee: 250, adminColor: '#123456', syntheticSensitiveField: 'private' });
     }
   });
 
@@ -94,7 +95,8 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     const body = await res.json() as any;
     expect(body.success).toBe(true);
     expect(body.config.monthlySubscribersFlatFee).toBe(250);
-    expect(body.config.walletNumber).toBe('');
+    expect(body.config.walletNumber).toBeUndefined();
+    expect(body.config.subscriptionPrices).toBeUndefined();
   });
 
   it('6. Does not allow the read-only backend operator token to access private system config', async () => {

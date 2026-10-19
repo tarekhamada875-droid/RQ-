@@ -12,7 +12,6 @@ import { useGarageSession } from './useGarageSession';
 import { useVehicleOperations } from './useVehicleOperations';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { useGarageSync } from './useGarageSync';
-import { useGarageSystemConfigSync, type SubscriptionPriceState } from './useGarageSystemConfigSync';
 
 const CURRENT_VERSION = '1.0.4';
 
@@ -75,20 +74,6 @@ export function useGarageApp() {
   const [todayTransactions, setTodayTransactions] = useState<Vehicle[]>([]);
   const [adminPin, setAdminPin] = useState<string>('');
   const [activeAdminPin, setActiveAdminPin] = useState<string>('');
-  const [walletNumber, setWalletNumber] = useLocalStorageState<string>('app_wallet_number', '');
-  const [subscriptionPrices, setSubscriptionPrices] = useState<SubscriptionPriceState>({ weekly: 800, biweekly: 1500, monthly: 3000 });
-  // Sanitize any previously cached hardcoded dummy wallet number
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem('app_wallet_number');
-      if (cached && (cached.includes('015 - 524') || cached.includes('01552411323'))) {
-        localStorage.removeItem('app_wallet_number');
-        setWalletNumber('');
-      }
-    } catch {
-      // Storage access can be unavailable; continue with the in-memory wallet state.
-    }
-  }, [setWalletNumber]);
 
   const [loginPhone, setLoginPhone] = useState<string>('');
 
@@ -229,7 +214,6 @@ export function useGarageApp() {
   }, [user, view, setActiveAdminPin]);
 
   // Wallet and prices share the same system-config listener used by fee hooks.
-  useGarageSystemConfigSync(setWalletNumber, setSubscriptionPrices);
 
   // 3. Vehicle Operations Hook
   const {
@@ -404,10 +388,6 @@ export function useGarageApp() {
     confirmCheckOut,
     handleDeleteVehicle,
   };
-  const subscriptions = {
-    walletNumber,
-    subscriptionPrices,
-  };
   const adminManagement = {
     adminPin,
     setAdminPin,
@@ -425,7 +405,6 @@ export function useGarageApp() {
     navigationUi,
     garageData,
     vehicleOperations,
-    subscriptions,
     adminManagement,
     user,
     setUser,
@@ -446,8 +425,6 @@ export function useGarageApp() {
     adminPin,
     setAdminPin,
     activeAdminPin,
-    walletNumber,
-    subscriptionPrices,
     loginPhone,
     setLoginPhone,
     showCheckInModal,

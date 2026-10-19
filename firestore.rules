@@ -429,11 +429,11 @@ service cloud.firestore {
     }
 
     function isValidPackage(data) {
-      return data.keys().hasAll(['name', 'price']) &&
+      return data.keys().hasAll(['name', 'price', 'catalogType', 'creditQuantity']) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.price is number && data.price >= 0 &&
-             (('vehiclesCount' in data && data.vehiclesCount is number && data.vehiclesCount > 0) || 
-              ('durationDays' in data && data.durationDays is number && data.durationDays > 0));
+             data.catalogType == 'credit_bundle' &&
+             data.creditQuantity is number && data.creditQuantity > 0;
     }
 
     function isValidSubscriber(data) {
@@ -501,7 +501,7 @@ service cloud.firestore {
 
     match /admin_settings/{settingId} {
       allow get: if isSignedIn() && (
-        isAdmin() || settingId in ['wallet_number', 'subscription_prices']
+        isAdmin()
       );
       allow write: if false; // Server-only Admin SDK
     }

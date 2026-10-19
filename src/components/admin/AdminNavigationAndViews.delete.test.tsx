@@ -39,8 +39,6 @@ const makeProps = (setConfirmDialog: any, showToast: any) => ({
   handleRejectGarage: vi.fn().mockResolvedValue(undefined),
   setConfirmDialog,
   setPackageValidationError: vi.fn(),
-  currentWalletNumber: '',
-  onUpdateWalletNumber: vi.fn().mockResolvedValue(undefined),
   currentAdminPin: '',
   adminLang: 'en' as const,
   t: (key: string) => key,

@@ -430,7 +430,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       body: JSON.stringify({ subscriptionPrices: [] })
     }), workerEnv);
     expect(malformedPrices.status).toBe(400);
-    expect(await malformedPrices.json()).toMatchObject({ success: false, code: 'INVALID_SUBSCRIPTION_PRICES', statusCode: 400 });
+    expect(await malformedPrices.json()).toMatchObject({ success: false, code: 'RETIRED_CONFIG_FIELD', statusCode: 400 });
     expect(mockDb.records.get('system_config/global')).toMatchObject({ monthlySubscribersFlatFee: 0 });
   });
 });

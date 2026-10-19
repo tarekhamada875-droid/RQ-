@@ -122,17 +122,6 @@ export const adminCoreService = {
   },
 
 
-  updateWalletNumber: async (walletNumber: string): Promise<void> => {
-    try {
-      await apiFetch('/api/admin/update-system-config', {
-        method: 'POST',
-        body: { walletNumber }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'system_config/global');
-      throw error;
-    }
-  },
 
   // Packages Management
 };

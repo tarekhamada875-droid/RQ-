@@ -61,8 +61,6 @@ interface AdminNavigationAndViewsProps {
   handleRejectGarage: (g: Garage) => Promise<void>;
   setConfirmDialog: any;
   setPackageValidationError: any;
-  currentWalletNumber: string;
-  onUpdateWalletNumber: (num: string) => Promise<void>;
   currentAdminPin: string;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
@@ -97,8 +95,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   handleRejectGarage,
   setConfirmDialog,
   setPackageValidationError,
-  currentWalletNumber: _currentWalletNumber,
-  onUpdateWalletNumber: _onUpdateWalletNumber,
   currentAdminPin,
   adminLang,
   t,
@@ -263,12 +259,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
               className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                  activeTab === 'catalog_settings' || activeTab === 'wallet' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions'
+                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'wallet' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'global_settings' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
               <span>{t('الإعدادات')}</span>
             </button>
           </div>

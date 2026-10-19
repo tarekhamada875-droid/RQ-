@@ -68,17 +68,16 @@ describe('adminService facade contract', () => {
       'updateStaff',
       'updateSubscriber',
       'updateSystemConfig',
-      'updateTrialDecision',
-      'updateWalletNumber'
+      'updateTrialDecision'
     ]);
   });
 
   it('uses one API bootstrap call when the Firestore snapshot exists and preserves callback order', async () => {
     const callback = vi.fn();
-    mocks.apiFetch.mockResolvedValue({ success: true, config: { walletNumber: '0123' } });
+    mocks.apiFetch.mockResolvedValue({ success: true, config: { monthlySubscribersFlatFee: 250 } });
     const unsubscribeSnapshot = vi.fn();
     mocks.onSnapshot.mockImplementationOnce((_ref: unknown, onNext: (snapshot: unknown) => void) => {
-      onNext({ exists: () => true, id: 'global', data: () => ({ walletNumber: '0123' }) });
+      onNext({ exists: () => true, id: 'global', data: () => ({ monthlySubscribersFlatFee: 250 }) });
       return unsubscribeSnapshot;
     });
 
@@ -88,8 +87,8 @@ describe('adminService facade contract', () => {
 
     expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
     expect(callback.mock.calls.map(([config]) => config)).toEqual([
-      { id: 'global', walletNumber: '0123' },
-      { walletNumber: '0123' }
+      { id: 'global', monthlySubscribersFlatFee: 250 },
+      { monthlySubscribersFlatFee: 250 }
     ]);
     unsubscribe();
     expect(unsubscribeSnapshot).toHaveBeenCalledOnce();
@@ -99,8 +98,8 @@ describe('adminService facade contract', () => {
   it('keeps one fallback API call for an empty snapshot after the bootstrap attempt', async () => {
     const callback = vi.fn();
     mocks.apiFetch
-      .mockResolvedValueOnce({ success: true, config: { walletNumber: '0123' } })
-      .mockResolvedValueOnce({ success: true, config: { walletNumber: '0456' } });
+      .mockResolvedValueOnce({ success: true, config: { monthlySubscribersFlatFee: 250 } })
+      .mockResolvedValueOnce({ success: true, config: { monthlySubscribersFlatFee: 450 } });
     mocks.onSnapshot.mockImplementationOnce((_ref: unknown, onNext: (snapshot: unknown) => void) => {
       onNext({ exists: () => false, id: 'global', data: () => undefined });
       return vi.fn();
@@ -112,7 +111,7 @@ describe('adminService facade contract', () => {
     await Promise.resolve();
 
     expect(mocks.apiFetch).toHaveBeenCalledTimes(2);
-    expect(callback).toHaveBeenCalledWith({ walletNumber: '0456' });
+    expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 450 });
     unsubscribe();
   });
 });

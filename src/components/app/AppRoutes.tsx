@@ -5,7 +5,6 @@ import { DelegateLoginView } from '../auth/DelegateLoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import type { GarageAppState } from '../../hooks/useGarageApp';
-import { firestoreService } from '../../services';
 import { logDiagnostic } from '../../utils/authDiagnosticLogger';
 
 const AdminDashboardLazy = lazyWithRetry(() => import('../admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -16,16 +15,14 @@ const GarageDashboardLazy = lazyWithRetry(() => import('../garage/GarageDashboar
 
 interface AppRoutesProps {
   app: GarageAppState;
-  effectiveWalletNumber: string;
 }
 
-export function AppRoutes({ app, effectiveWalletNumber }: AppRoutesProps) {
-  const { session, navigationUi, garageData, vehicleOperations, subscriptions, adminManagement } = app;
+export function AppRoutes({ app }: AppRoutesProps) {
+  const { session, navigationUi, garageData, vehicleOperations, adminManagement } = app;
   const { view, setView, selectedGarageForDetails, selectedDelegateForDetails } = navigationUi;
   const { isAuthReady, currentStaff, currentSupervisor, handleInitiateLogout } = session;
   const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, sortedPackages, delegatePagination, delegateListsLoading, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, adminSummary, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
   const { isLoading, setIsLoading, newPlateNumber, setNewPlateNumber, setSelectedVehicle, handleCheckIn, setShowCheckOutModal } = vehicleOperations;
-  const { subscriptionPrices } = subscriptions;
   const { activeAdminPin, handleGarageLogin, handleDelegateLogin, createNewGarage, updateGarageRate, addDelegate, removeDelegate } = adminManagement;
   const { loginPhone, setLoginPhone, showToast, closeKeyboard, isInputFocused, setIsInputFocused, plateInputRef, inputRef, now, showPackages, setShowPackages, showStaffStats, setShowStaffStats, showSubscribers, setShowSubscribers } = navigationUi;
 
@@ -51,7 +48,7 @@ export function AppRoutes({ app, effectiveWalletNumber }: AppRoutesProps) {
   if (view === 'admin_login') return <AdminLoginView adminPin={adminManagement.adminPin} setAdminPin={adminManagement.setAdminPin} setView={setView} showToast={showToast} closeKeyboard={closeKeyboard} correctAdminPin={activeAdminPin} onLogin={handleGarageLogin} />;
   if (view === 'delegate_login') return <DelegateLoginView onLogin={handleDelegateLogin} isLoading={isLoading} onBack={() => setView('login')} />;
 
-  if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} addDelegate={addDelegate} packages={sortedPackages} onLogout={handleInitiateLogout} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} adminSummary={adminSummary} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} currentSupervisor={currentSupervisor} currentAdminPin={activeAdminPin} currentWalletNumber={effectiveWalletNumber} onUpdateWalletNumber={firestoreService.updateWalletNumber} subscriptionPrices={subscriptionPrices} showToast={showToast} /></ErrorBoundary>;
+  if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} addDelegate={addDelegate} packages={sortedPackages} onLogout={handleInitiateLogout} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} adminSummary={adminSummary} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} currentSupervisor={currentSupervisor} currentAdminPin={activeAdminPin} showToast={showToast} /></ErrorBoundary>;
 
   if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} delegatePagination={delegatePagination} delegateListsLoading={delegateListsLoading} onLoadMoreDelegateGarages={loadMoreDelegateGarages} /></ErrorBoundary>;
 
@@ -62,7 +59,7 @@ export function AppRoutes({ app, effectiveWalletNumber }: AppRoutesProps) {
     return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={navigationUi.setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
   }
 
-  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} isInputFocused={isInputFocused} now={now} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} setSelectedVehicle={setSelectedVehicle} setShowCheckOutModal={setShowCheckOutModal} closeKeyboard={closeKeyboard} newPlateNumber={newPlateNumber} setNewPlateNumber={setNewPlateNumber} setIsInputFocused={setIsInputFocused} plateInputRef={plateInputRef} handleCheckIn={handleCheckIn} inputRef={inputRef} onLogout={handleInitiateLogout} showToast={showToast} packages={sortedPackages} staffList={staffList} showPackages={showPackages} setShowPackages={setShowPackages} showStaffStats={showStaffStats} setShowStaffStats={setShowStaffStats} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} walletNumber={effectiveWalletNumber} subscriptionPrices={subscriptionPrices} isLoading={isLoading} /></ErrorBoundary>;
+  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} isInputFocused={isInputFocused} now={now} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} setSelectedVehicle={setSelectedVehicle} setShowCheckOutModal={setShowCheckOutModal} closeKeyboard={closeKeyboard} newPlateNumber={newPlateNumber} setNewPlateNumber={setNewPlateNumber} setIsInputFocused={setIsInputFocused} plateInputRef={plateInputRef} handleCheckIn={handleCheckIn} inputRef={inputRef} onLogout={handleInitiateLogout} showToast={showToast} packages={sortedPackages} staffList={staffList} showPackages={showPackages} setShowPackages={setShowPackages} showStaffStats={showStaffStats} setShowStaffStats={setShowStaffStats} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} isLoading={isLoading} /></ErrorBoundary>;
 
   return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} onDelegateLogin={() => setView('delegate_login')} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }
