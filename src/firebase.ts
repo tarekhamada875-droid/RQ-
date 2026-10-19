@@ -10,11 +10,19 @@ import previewFirebaseConfig from '../firebase-applet-preview-config.json';
 import { logDiagnostic, verifyFirebaseAppletConfig } from './utils/authDiagnosticLogger';
 import { selectFirebaseConfig } from './utils/firebaseConfigSelector';
 
-const firebaseConfig = selectFirebaseConfig(
+const selectedFirebaseConfig = selectFirebaseConfig(
   import.meta.env.VITE_RQ_FIREBASE_TARGET,
   productionFirebaseConfig,
   previewFirebaseConfig,
 );
+
+const useEmulators = import.meta.env.VITE_RQ_USE_EMULATORS === 'true';
+const firebaseConfig = useEmulators
+  ? {
+      ...selectedFirebaseConfig,
+      projectId: import.meta.env.VITE_RQ_EMULATOR_PROJECT_ID || 'demo-rq-ui-fixtures',
+    }
+  : selectedFirebaseConfig;
 
 // Verify config before initialization
 verifyFirebaseAppletConfig(firebaseConfig);
@@ -34,7 +42,6 @@ export const auth = getAuth(app);
 // Local UI fixture runs opt into emulators explicitly. Production and ordinary
 // development builds keep their existing Firebase targets and never connect to
 // localhost by accident.
-const useEmulators = import.meta.env.VITE_RQ_USE_EMULATORS === 'true';
 if (useEmulators) {
   const emulatorHost = import.meta.env.VITE_RQ_EMULATOR_HOST || '127.0.0.1';
   const authPort = Number(import.meta.env.VITE_RQ_AUTH_EMULATOR_PORT || 9099);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -14,11 +15,21 @@ const now = new Date('2026-10-19T12:00:00.000Z');
 const fixtureGarageId = 'ui-fixture-garage';
 const fixtureStaffId = 'ui-fixture-staff';
 const fixtureDelegateId = 'ui-fixture-delegate';
+const lookupSalt = 'ark_garage_secure_pin_lookup_salt_v2';
+const lookupHash = pin => crypto.scryptSync(pin, lookupSalt, 32).toString('hex');
 
 const documents = [
   ['admin_settings/auth_pin', {
     pin: '1234567890',
     adminColor: '#10b981',
+    createdAt: now,
+    updatedAt: now,
+  }],
+  ['private_pins/auth_pin', {
+    entityType: 'admin_settings',
+    entityId: 'auth_pin',
+    pin: '1234567890',
+    pinLookupHash: lookupHash('1234567890'),
     createdAt: now,
     updatedAt: now,
   }],
@@ -37,6 +48,14 @@ const documents = [
     createdAt: now,
     updatedAt: now,
   }],
+  [`private_pins/${fixtureGarageId}`, {
+    entityType: 'garages',
+    entityId: fixtureGarageId,
+    pin: '1234567891',
+    pinLookupHash: lookupHash('1234567891'),
+    createdAt: now,
+    updatedAt: now,
+  }],
   [`staff/${fixtureStaffId}`, {
     id: fixtureStaffId,
     name: 'UI Fixture Staff',
@@ -47,12 +66,28 @@ const documents = [
     createdAt: now,
     updatedAt: now,
   }],
+  [`private_pins/${fixtureStaffId}`, {
+    entityType: 'staff',
+    entityId: fixtureStaffId,
+    pin: '1234567892',
+    pinLookupHash: lookupHash('1234567892'),
+    createdAt: now,
+    updatedAt: now,
+  }],
   [`delegates/${fixtureDelegateId}`, {
     id: fixtureDelegateId,
     name: 'UI Fixture Delegate',
     phone: '01000000001',
     pin: '1234567893',
     commissionRate: 5,
+    createdAt: now,
+    updatedAt: now,
+  }],
+  [`private_pins/${fixtureDelegateId}`, {
+    entityType: 'delegates',
+    entityId: fixtureDelegateId,
+    pin: '1234567893',
+    pinLookupHash: lookupHash('1234567893'),
     createdAt: now,
     updatedAt: now,
   }],
