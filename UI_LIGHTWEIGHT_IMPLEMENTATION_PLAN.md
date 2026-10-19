@@ -114,6 +114,12 @@ The garage route eagerly imported `GarageReportsView` through `GarageDashboardOv
 
 The production build provides a measurable result: the main `GarageDashboardView` chunk decreased from **104.07 KB raw / 25.60 KB gzip** to **96.52 KB raw / 23.82 KB gzip**, while the deferred `GarageReportsView` chunk is **8.51 KB raw / 3.00 KB gzip**. The report code is therefore no longer part of the initial garage route chunk and is requested only when the reports overlay is rendered.
 
+## Completed repeated-render audit
+
+`useServerTime` updates the application clock every minute, and `AppRoutes` previously passed that changing `now` prop into `GarageDashboardView` even when Staff Statistics was closed. That defeated the dashboard’s `memo` boundary and caused the full garage dashboard tree to receive a clock-driven render that only Staff Statistics needed. The route now passes the clock only while Staff Statistics is open.
+
+Recharge notification freshness no longer depends on those parent clock renders. When an unacknowledged recharge is active, the dashboard schedules one targeted expiry timer for the remaining fifteen-minute window; the existing server-clock value is still used when Staff Statistics is open, and the listener ownership/cleanup remains unchanged. Focused listener tests cover both the shared subscription lifecycle and timer expiry.
+
 ## Next single task
 
-Inspect one proven repeated-render or listener candidate using the existing dashboard listener tests and React dependency paths. Do not change memoization or subscription ownership until the repeated work is demonstrated and its cleanup behavior is covered.
+Review the completed lightweight plan against the original protected-behavior checklist and stop implementation work unless a new user-reported bug or measured bottleneck is provided.
