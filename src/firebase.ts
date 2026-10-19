@@ -23,6 +23,7 @@ const firebaseConfig = useEmulators
       projectId: import.meta.env.VITE_RQ_EMULATOR_PROJECT_ID || 'demo-rq-ui-fixtures',
     }
   : selectedFirebaseConfig;
+const firestoreDatabaseId = useEmulators ? '(default)' : firebaseConfig.firestoreDatabaseId;
 
 // Verify config before initialization
 verifyFirebaseAppletConfig(firebaseConfig);
@@ -35,7 +36,7 @@ logDiagnostic('FIREBASE_APP_INITIALIZED', { appName: app.name });
 export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
   localCache: memoryLocalCache(),
-}, firebaseConfig.firestoreDatabaseId);
+}, firestoreDatabaseId);
 
 export const auth = getAuth(app);
 

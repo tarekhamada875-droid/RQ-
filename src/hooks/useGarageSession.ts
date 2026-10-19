@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import {
   type EntityRole
 } from '../services/authSessionService';
 import { authService } from '../services/authService';
+import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 import { signOut } from 'firebase/auth';
 
 interface UseGarageSessionProps {
@@ -203,8 +204,7 @@ export function useGarageSession({
       let currentUser = auth.currentUser;
       if (!currentUser) {
         try {
-          const userCred = await signInAnonymously(auth);
-          currentUser = userCred.user;
+          currentUser = await signInAnonymouslyOnce();
           if (isMounted) setUser(currentUser);
         } catch (authErr: any) {
           console.error("Anonymous authentication failed:", authErr);

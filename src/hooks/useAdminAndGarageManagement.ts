@@ -7,10 +7,10 @@ import { authService } from '../services/authService';
 import { safeDate, normalizeDigits, normalizePhone } from '../utils';
 import { APP_TEXT } from '../constants';
 import { auth, db } from '../firebase';
-import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { claimEntitySession, releaseEntitySession, recordSessionAsClaimed, EntityRole } from '../services/authSessionService';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
+import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 
 interface UseAdminAndGarageManagementProps {
   allGarages: Garage[];
@@ -92,8 +92,7 @@ export function useAdminAndGarageManagement({
       if (!currentUser) {
         try {
           logDiagnostic('LOGIN_TRIGGERING_SIGN_IN_ANONYMOUSLY');
-          const userCred = await signInAnonymously(auth);
-          currentUser = userCred.user;
+          currentUser = await signInAnonymouslyOnce();
           setUser(currentUser);
           logDiagnostic('LOGIN_SIGN_IN_ANONYMOUSLY_SUCCESS', { uid: currentUser.uid });
         } catch (authErr: any) {
@@ -281,8 +280,7 @@ export function useAdminAndGarageManagement({
       let currentUser = auth.currentUser;
       if (!currentUser) {
         try {
-          const userCred = await signInAnonymously(auth);
-          currentUser = userCred.user;
+          currentUser = await signInAnonymouslyOnce();
           setUser(currentUser);
         } catch (authErr: any) {
           console.error("Anonymous authentication failed during delegate login:", authErr);

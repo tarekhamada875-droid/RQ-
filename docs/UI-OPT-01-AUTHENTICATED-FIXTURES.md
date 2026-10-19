@@ -1,0 +1,35 @@
+# UI-OPT-01 authenticated browser fixtures
+
+Date: 2026-10-19.
+
+The local browser fixture workflow now exercises the real garage login path instead of setting a protected view through `localStorage`.
+
+## Command
+
+From a clean checkout with dependencies installed:
+
+```bash
+npm run ui-fixtures:browser-smoke
+```
+
+The command starts isolated Auth and Firestore emulators for the `demo-rq-ui-fixtures` project, seeds synthetic records, starts the existing Node/Vite server with emulator bindings, launches headless Chromium, enters the synthetic eight-digit garage PIN through the real keypad, clicks the real login button, waits for the authenticated garage dashboard, and writes:
+
+- `docs/ui-opt-01-fixture-smoke/garage-mobile-authenticated.png`
+- `docs/ui-opt-01-fixture-smoke/garage-mobile-authenticated.json`
+
+No production Worker, production Firebase project, or production records are used. The emulator process is terminated by the harness after capture.
+
+## Browser assumptions
+
+- Chromium headless with device metrics 390×844 and device scale factor 1.
+- Auth emulator on `127.0.0.1:9099`.
+- Firestore emulator on `127.0.0.1:8080`, using the `(default)` database.
+- App server on `127.0.0.1:4174`.
+
+## Verified interaction
+
+The harness entered the garage fixture PIN through keypad button clicks, submitted the visible Arabic login button, received `200` from `/api/auth/verify-pin`, and reached the garage dashboard with the fixture garage visible. The shared anonymous-auth coordinator prevents the login hook and dashboard session hook from creating two different anonymous users during the view transition.
+
+The frontend explicitly selects the emulator `(default)` Firestore database in emulator mode only. Production continues to use the configured production database ID.
+
+The JSON artifact records the browser identity, fixture identity, viewport, URL, DOM node count, scroll height, and navigation timing values for this authenticated capture.
