@@ -2,7 +2,7 @@
 
 **Status:** Draft validated against the current `main` codebase on 2026-10-18. No application code changes are included in this draft.
 
-**LR-01 implementation checkpoint (2026-10-19):** LR-00 inventory was accepted in PR #167. Work is now in progress on branch `feat/lr-01-retire-admin-recharge`, based on main `d9658e9866979d116f6b98ac5f2318323896030f`. The direct legacy recharge handler is now an authenticated 410 tombstone; its dead writer body, route-only dependencies, and unused client service method are removed. Focused and full local Production Gate checks passed. This is branch-only work: no PR, merge, Firebase change, or deployment yet. Current prepaid grants/ledger, referral credits, subscriber renewals, and historical reads remain protected.
+**LR-01 completion checkpoint (2026-10-19):** LR-01 merged via PR [#169](https://github.com/tarekhamada875-droid/RQ-/pull/169) at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`. Main Production Gate [39205342165](https://github.com/tarekhamada875-droid/RQ-/actions/runs/39205342165) passed verification, artifact deployment, and smoke. Live `/api/health` and `/api/version` both return HTTP 200 and report that exact Worker SHA. The authenticated route is retained as a 410 compatibility tombstone; its active writer and unused client method are removed. No Firebase data/rules, database routing, or migration changed.
 
 ## Purpose
 
@@ -15,11 +15,11 @@ The retirement boundary is:
 
 ## Validation findings
 
-The LR-00 baseline (`f55e5cea...`) confirmed one active legacy write path and several reachable or partially reachable legacy surfaces. LR-01 has now retired that direct recharge writer on the feature branch; the other legacy surfaces remain separately scoped.
+At the LR-00 baseline (`f55e5cea...`), one active legacy write path and several reachable or partially reachable legacy surfaces were confirmed. LR-01 retired the direct recharge writer in PR #169; the other legacy surfaces remain separately scoped.
 
-### Confirmed active legacy write path
+### Direct Admin recharge — active at LR-00 baseline; retired in LR-01
 
-`POST /api/transactions/recharge-garage` was an active writer at the LR-00 baseline (`f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`). On the current LR-01 feature branch it now returns HTTP 410 before parsing the body or accessing Firestore; the dead writer body is removed. Local focused and full checks passed; PR review remains outstanding.
+`POST /api/transactions/recharge-garage` was an active writer at the LR-00 baseline (`f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`). It is now an authenticated HTTP 410 tombstone on main `0d7b63009bd0b2a8a68736afb376f119a835f4c6`, returning before body parsing or Firestore access. PR #169 and post-merge run 39205342165 passed; live health/version report the same deployed SHA.
 
 The tombstone keeps authentication and the route path for compatibility, then returns 410 before body parsing or Firestore access. The route-specific writer and its unused dependencies have been removed after adding the fail-closed regression.
 
@@ -64,7 +64,7 @@ Recharge-request creation aliases, rejection aliases, and Admin/scoped request-l
 **No code behavior change.**
 
 ### LR-01 — Retire the active Admin legacy recharge writer
-**Status:** In progress on `feat/lr-01-retire-admin-recharge`; no PR or deployment yet.
+**Status:** Complete; merged in PR #169 at `0d7b63009bd0b2a8a68736afb376f119a835f4c6`; post-merge Production Gate and live Worker identity verified.
 
 **Scope:** Replace `/api/transactions/recharge-garage` with the same fail-closed retirement contract as other retired endpoints, then remove its dead implementation and only its now-unused dependencies.
 
@@ -145,4 +145,4 @@ Each LR task is a separate bounded branch and PR. Before implementation, record 
 
 ## Recommended next task
 
-**LR-01 — Retire the active Admin legacy recharge writer (in progress).** Work is on `feat/lr-01-retire-admin-recharge`; complete focused/full validation and the normal PR/release workflow before selecting another task.
+**LR-02 — Remove the legacy recharge-request workflow (not started).** This is the next bounded task in the plan, but it has not been selected; wait for explicit user direction before starting.
