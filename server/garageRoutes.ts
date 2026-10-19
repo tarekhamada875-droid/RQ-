@@ -52,9 +52,6 @@ export interface GarageRouteDeps {
   awardReferralCredits: GarageRouteDependency;
   materializeCreditLedgerEntry: GarageRouteDependency;
   recordDomainEventInTransaction: GarageRouteDependency;
-  invalidateMaintainedAdminSummary: GarageRouteDependency;
-  applyReferralReward: GarageRouteDependency;
-  decideReferralReward: GarageRouteDependency;
   extendSubscriptionExpiry: GarageRouteDependency;
   startGarageDeletionRoute: GarageRouteDependency;
   advanceGarageDeletionRoute: GarageRouteDependency;
@@ -112,9 +109,6 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     awardReferralCredits,
     materializeCreditLedgerEntry,
     recordDomainEventInTransaction,
-    invalidateMaintainedAdminSummary,
-    applyReferralReward,
-    decideReferralReward,
     extendSubscriptionExpiry,
     startGarageDeletionRoute,
     advanceGarageDeletionRoute,
@@ -1394,167 +1388,9 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
   }
 });
 
-// Transactions: Recharge Garage
+// Legacy Admin recharge is retired; prepaid credit grants remain available via /api/garages/:id/credit-grants.
 app.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') {
-      return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
-    }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['garageId', 'packageId', 'adminDetails', 'idempotencyKey'], false);
-    const garageId = validateId(sanitized.garageId, 'garageId', true);
-    const packageId = validateId(sanitized.packageId, 'packageId', true);
-    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
-    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
-
-    const callerUid = user?.uid;
-    const adminDetails = sanitized.adminDetails || {};
-    const requestFingerprint = createRequestFingerprint({ garageId, packageId, adminDetails });
-
-    const pkgSnap = await getAdminDb().doc(`packages/${packageId}`).get();
-    if (!pkgSnap.exists) return c.json({ success: false, error: 'PACKAGE_NOT_FOUND' }, 404);
-    const packageObj = { id: pkgSnap.id, ...pkgSnap.data() };
-    if (packageObj.isActive === false) return c.json({ success: false, error: 'PACKAGE_INACTIVE' }, 409);
-
-    const validatedPackage = validatePackageCatalogRecord(packageObj, packageObj.id);
-    const durationDays = validatedPackage.durationDays;
-    const basePrice = validatedPackage.basePrice;
-    const discountAmount = validatedPackage.discountAmount;
-    const price = validatedPackage.finalPrice;
-    const packageName = validatedPackage.name;
-    const isUnlimited = validatedPackage.isUnlimited;
-    const effCapacity = validatedPackage.dailyCapacity;
-
-    let resultData: any = null;
-
-    await getAdminDb().runTransaction(async (t: any) => {
-      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
-      if (isDuplicate) {
-        resultData = cachedResult;
-        return;
-      }
-
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const garageSnap = await t.get(garageRef);
-      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
-
-      const garageData = garageSnap.data() || {};
-      if (garageData.hasMonthlySubscribers === true && durationDays < 15) {
-        throw new Error('MONTHLY_SUBSCRIBERS_PACKAGE_RESTRICTION');
-      }
-
-      const baseDate = extendSubscriptionExpiry(garageData.balanceExpiry, durationDays);
-
-      const referrerGarageId = garageData.referredByGarageId;
-      let referrerRef: any = null;
-      let referrerSnap: any = null;
-      const isEligibleForReferral = decideReferralReward({
-        referrerGarageId,
-        targetGarageId: garageId,
-        durationDays,
-        price,
-        requiresPositivePrice: true
-      }).eligible;
-      if (isEligibleForReferral && referrerGarageId) {
-        referrerRef = getAdminDb().doc(`garages/${referrerGarageId}`);
-        referrerSnap = await t.get(referrerRef);
-      }
-
-      const newRevenue = Number(((garageData.totalAdminRevenue || 0) + price).toFixed(2));
-      const updateData: any = {
-        totalAdminRevenue: newRevenue,
-        isLocked: false,
-        isTrial: false,
-        dailyCapacity: effCapacity,
-        activePackageName: packageName,
-        packageName: packageName,
-        lastRechargeDate: new Date(),
-        lastRechargeAmount: price,
-        lastRechargePackageName: packageName,
-        balanceExpiry: baseDate,
-        billingModel: 'subscription',
-        unlimitedFairUse: isUnlimited ? initializeFairUse(durationDays, packageName) : null
-      };
-
-      t.set(garageRef, updateData, { merge: true });
-      invalidateMaintainedAdminSummary(t);
-
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      const staffNameText = adminDetails.staffName || 'مدير النظام (Admin)';
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: adminDetails.staffId ? validateId(adminDetails.staffId, 'staffId') : (callerUid || 'admin'),
-        staffName: staffNameText,
-        actionType: 'recharge',
-        plateNumber: `تجديد اشتراك: ${packageName} (${durationDays} يوم) - ${price} ج`,
-        timestamp: new Date(),
-        amount: price,
-        packageId: packageId || packageObj.id || 'direct_recharge',
-        details: {
-          packageName,
-          durationDays,
-          carsCount: effCapacity,
-          revenueAmount: price,
-          originalRevenueAmount: price,
-          discountAmount,
-          rechargedBy: staffNameText
-        }
-      });
-
-      recordDomainEventInTransaction(t, getAdminDb(), {
-        garageId,
-        aggregateType: 'recharge',
-        aggregateId: idempotencyKey || `direct_${garageId}_${Date.now()}`,
-        eventType: 'recharge_approved',
-        actorUid: callerUid || 'admin',
-        actorRole: 'admin',
-        idempotencyKey: idempotencyKey || undefined,
-        payload: { source: 'direct_admin_recharge', packageId, packageName, amount: price, originalAmount: basePrice, discountAmount, durationDays, dailyCapacity: effCapacity }
-      });
-
-      if (isEligibleForReferral && referrerRef && referrerSnap && referrerSnap.exists) {
-        const referrerData = referrerSnap.data() || {};
-        const refBaseDate = applyReferralReward(referrerData.balanceExpiry, 1);
-
-        t.set(referrerRef, {
-          balanceExpiry: refBaseDate,
-          totalGaragesReferredCount: (referrerData.totalGaragesReferredCount || 0) + 1,
-          lastReferralRewardAt: new Date()
-        }, { merge: true });
-
-        const rewardLogRef = getAdminDb().collection('activity_logs').doc();
-        t.set(rewardLogRef, {
-          garageId: referrerGarageId,
-          garageName: referrerData.name || '',
-          staffId: null,
-          staffName: 'النظام — مكافأة إحالة تلقائية',
-          actionType: 'recharge',
-          plateNumber: `🎉 مكافأة إحالة تلقائية: تمديد الاشتراك +1 يوم مجاناً لإحالة ${garageData.name || ''}`,
-          timestamp: new Date(),
-          amount: 0,
-          packageId: 'referral_reward',
-          details: { type: 'referral_reward', referrerGarageId, referredGarageId: garageId, rewardDaysGiven: 1 }
-        });
-      }
-
-      resultData = {
-        newExpiry: baseDate.toISOString(),
-        totalAdminRevenue: newRevenue
-      };
-
-      storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/transactions/recharge-garage', callerUid, requestFingerprint);
-    });
-
-    return c.json({ success: true, data: resultData });
-  } catch (error: any) {
-    console.error('[Worker Transaction] Error in recharge-garage:', error);
-    const { statusCode, message } = mapDomainErrorToStatus(error);
-    return c.json({ success: false, error: message }, statusCode as any);
-  }
+  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
 });
 
 // Transactions: Garage Self-Subscribe Using Balance

@@ -2,7 +2,7 @@
 
 **Status:** Draft validated against the current `main` codebase on 2026-10-18. No application code changes are included in this draft.
 
-**LR-00 baseline checkpoint (2026-10-19):** The source-level route, caller, data, test, and reporting inventory was reviewed and merged in PR [#167](https://github.com/tarekhamada875-droid/RQ-/pull/167), from baseline `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`; see [docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md](docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md). It confirms the direct Admin `recharge-garage` writer remains reachable; recharge-request creation, rejection and list routes also remain reachable, while approval and several other legacy aliases return 410. PR Production Gate and post-merge main Production Gate passed. No behavior change or Firebase access occurred. **LR-00 is complete; LR-01 has not started and is not selected by this checkpoint.**
+**LR-01 implementation checkpoint (2026-10-19):** LR-00 inventory was accepted in PR #167. Work is now in progress on branch `feat/lr-01-retire-admin-recharge`, based on main `d9658e9866979d116f6b98ac5f2318323896030f`. The direct legacy recharge handler is now an authenticated 410 tombstone; its dead writer body, route-only dependencies, and unused client service method are removed. Focused and full local Production Gate checks passed. This is branch-only work: no PR, merge, Firebase change, or deployment yet. Current prepaid grants/ledger, referral credits, subscriber renewals, and historical reads remain protected.
 
 ## Purpose
 
@@ -15,13 +15,13 @@ The retirement boundary is:
 
 ## Validation findings
 
-The existing Jarvis/BILL-08 checkpoint is too broad. It correctly describes the intended product decision, but the current code still contains one active legacy write path and several reachable or partially reachable legacy surfaces.
+The LR-00 baseline (`f55e5cea...`) confirmed one active legacy write path and several reachable or partially reachable legacy surfaces. LR-01 has now retired that direct recharge writer on the feature branch; the other legacy surfaces remain separately scoped.
 
 ### Confirmed active legacy write path
 
-`POST /api/transactions/recharge-garage` in `server/garageRoutes.ts:1398-1558` still accepts legacy package records and writes `balanceExpiry`, `billingModel: 'subscription'`, `dailyCapacity`, `activePackageName`, `unlimitedFairUse`, legacy recharge logs, and legacy referral-day rewards.
+`POST /api/transactions/recharge-garage` was an active writer at the LR-00 baseline (`f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`). On the current LR-01 feature branch it now returns HTTP 410 before parsing the body or accessing Firestore; the dead writer body is removed. Local focused and full checks passed; PR review remains outstanding.
 
-This must be retired before deleting shared legacy helpers.
+The tombstone keeps authentication and the route path for compatibility, then returns 410 before body parsing or Firestore access. The route-specific writer and its unused dependencies have been removed after adding the fail-closed regression.
 
 ### Disabled or partially active legacy paths
 
@@ -64,6 +64,7 @@ Recharge-request creation aliases, rejection aliases, and Admin/scoped request-l
 **No code behavior change.**
 
 ### LR-01 — Retire the active Admin legacy recharge writer
+**Status:** In progress on `feat/lr-01-retire-admin-recharge`; no PR or deployment yet.
 
 **Scope:** Replace `/api/transactions/recharge-garage` with the same fail-closed retirement contract as other retired endpoints, then remove its dead implementation and only its now-unused dependencies.
 
@@ -144,4 +145,4 @@ Each LR task is a separate bounded branch and PR. Before implementation, record 
 
 ## Recommended next task
 
-**LR-00 — Baseline and contract inventory (complete; PR #167 merged).** The reviewed source inventory is `docs/RQ_LEGACY_REMOVAL_LR-00_BASELINE_INVENTORY.md`. LR-01 remains the next distinct task only after it is explicitly selected; do not begin it as part of LR-00.
+**LR-01 — Retire the active Admin legacy recharge writer (in progress).** Work is on `feat/lr-01-retire-admin-recharge`; complete focused/full validation and the normal PR/release workflow before selecting another task.

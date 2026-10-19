@@ -1,33 +1,9 @@
 import { handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
-import type { Package } from '../types';
 import type { FinancialReportData, FinancialReportFilters } from './adminServiceTypes';
 
 export const adminBillingService = {
-  adminDirectRechargeGarage: async (
-    garageId: string,
-    pkg: Package,
-    adminDetails: { staffId?: string; staffName?: string; isEnglish?: boolean } = {}
-  ): Promise<void> => {
-    try {
-      await apiFetch('/api/transactions/recharge-garage', {
-        method: 'POST',
-        body: {
-          garageId,
-          packageId: pkg.id,
-          pkg,
-          adminDetails,
-          idempotencyKey: generateIdempotencyKey('manual_recharge')
-        }
-      });
-    } catch (error: any) {
-      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
-      throw error;
-    }
-  },
-
-
   adminGrantGarageCredits: async (garageId: string, command: { packageId?: string; amount?: number; paymentAmountEgp: number; paymentReference: string; reason: string; paymentConfirmed: boolean; idempotencyKey: string }): Promise<any> => {
     return apiFetch(`/api/garages/${encodeURIComponent(garageId)}/credit-grants`, {
       method: 'POST',

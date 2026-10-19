@@ -36,7 +36,6 @@ describe('adminService facade contract', () => {
       'addPackage',
       'addStaff',
       'addSubscriber',
-      'adminDirectRechargeGarage',
       'adminExtendFairUse',
       'adminGrantGarageCredits',
       'createAnnouncement',

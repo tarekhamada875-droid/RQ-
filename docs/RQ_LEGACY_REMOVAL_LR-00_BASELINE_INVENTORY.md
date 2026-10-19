@@ -1,10 +1,12 @@
 # LR-00 — Legacy Billing Baseline and Contract Inventory
 
-**Status:** Documentation inventory prepared on branch `docs/lr-00-baseline-inventory`; pending review through the normal PR process.
+**Status:** LR-00 baseline inventory accepted in PR #167. The route/data/caller rows below record source state at baseline `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a`; see the follow-on LR-01 implementation checkpoint below for current status.
 **Repository baseline:** `f55e5cea24e1b3cc78452df3bcde7b27bdfac45a` (`main` matched `origin/main`; clean before branch creation).
 **Production gate:** Main Production Gate run `39195590669` passed for this exact repository SHA.
 **Live application identity (separate from repository SHA):** Cloudflare Worker health and version both returned HTTP 200 and reported application SHA `ed07806770c8f3aa76d2520e84d5778058978ab5`.
-**Scope boundary:** LR-00 is inspection and documentation only. No application behavior, Firebase data/rules, database routing, migrations, or deployment were changed. LR-01 was not started.
+**Scope boundary:** This inventory itself changed no behavior/data/rules. LR-01 is now in progress on `feat/lr-01-retire-admin-recharge`; no PR or deployment yet.
+
+**Follow-on LR-01 status (2026-10-19):** The active Admin route described below was replaced on the feature branch by an authenticated HTTP 410 `{success:false,error:'LEGACY_BILLING_MODEL_RETIRED'}` response; its dead transactional implementation and unused `adminDirectRechargeGarage` client method/test were removed. A route-level regression proves unauthenticated requests remain 401, authenticated Admin/garage callers receive 410, and the endpoint writes no Firestore records. Focused Worker/service/prepaid/auth suites passed (4 files / 71 tests), and the full local `npm run ci:check` passed, including 139 test files, Firestore rules, production builds, Worker artifact smoke, maintainability, and artifact verification. PR gate, merge, and deployment remain outstanding. This preserves the baseline findings as historical evidence; it does not claim the branch is merged or deployed.
 
 ## 1. Purpose and classification rules
 
@@ -171,4 +173,4 @@ Audit gaps: test fixtures are commonly inline mock objects rather than a central
 
 ## 10. Recommended next safe implementation step
 
-After this inventory is reviewed and the conflicting route-status statements are reconciled in project documentation, the next bounded code task remains **LR-01 — retire the active Admin legacy recharge writer**. It must replace the reachable `POST /api/transactions/recharge-garage` with an explicitly tested fail-closed contract before deleting its dead dependencies, while proving that current prepaid grants/ledger, first-paid-grant referral credits, customer monthly subscriber lifecycle/renewal, historical event/report reads, and shared transaction/idempotency helpers remain unchanged. This document does not authorize starting LR-01 before LR-00 review and approval, does not authorize Firestore/data/rules changes, and does not itself establish that legacy production records are absent.
+LR-00 was reviewed and merged in PR #167. LR-01 is now in progress; its acceptance remains: no authenticated request may create or extend a legacy garage subscription, balance expiry, daily-capacity package, fair-use state, or referral-day reward through `POST /api/transactions/recharge-garage`; current prepaid grants/ledger, first-paid-grant referral credits, customer monthly subscriber lifecycle/renewal, historical event/report reads, and shared transaction/idempotency helpers must remain intact. Do not begin LR-02 until LR-01 is validated, merged, and its post-merge workflow is verified.
