@@ -40,4 +40,12 @@ describe('GarageDashboardHeaderAndDrawer icon actions', () => {
     fireEvent.click(closeButtons[1]);
     expect(props.setIsMenuOpen).toHaveBeenCalledWith(false);
   });
+
+  it('exposes charging history in the side panel', () => {
+    const props = makeProps();
+    render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'سجل شحن الباقات' }));
+    expect(props.onNavigateOverlay).toHaveBeenCalledWith('history');
+  });
 });

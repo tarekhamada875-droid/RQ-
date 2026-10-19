@@ -6,6 +6,7 @@ import { safeDate } from '../../utils';
 import { getCleanPackageInfo } from '../../constants/packages';
 import { useAppStore } from '../../store/appStore';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { GarageSubscriptionCard } from './dashboard/GarageSubscriptionCard';
 
 interface RechargeHistoryViewProps {
   garage: Garage;
@@ -318,7 +319,10 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast: _showToas
 
       {/* Main Content */}
       <main className="flex-1 w-full max-w-4xl mx-auto p-4 sm:p-6 pb-10 overflow-y-auto custom-scrollbar stable-scrollbar">
-        
+        <div className="mb-6">
+          <GarageSubscriptionCard garage={garage} />
+        </div>
+
         {/* Previous History list */}
         <div className="space-y-4">
           <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">سجل العمليات السابقة</h3>

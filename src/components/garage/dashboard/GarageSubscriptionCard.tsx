@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { Garage } from '../../../types';
-import { firestoreService } from '../../../services';
 
 interface GarageSubscriptionCardProps {
   garage: Garage;
@@ -19,9 +18,6 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
   const totalCredits = paidCredits + referralCredits + trialCredits;
   const previousCredits = useRef<number | null>(null);
   const [showDebitFeedback, setShowDebitFeedback] = useState(false);
-  const [showCreditHistory, setShowCreditHistory] = useState(false);
-  const [creditHistory, setCreditHistory] = useState<any[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (previousCredits.current !== null && totalCredits < previousCredits.current) {
@@ -50,19 +46,6 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
         </div>
         <span className="text-[10px] md:text-xs font-bold text-slate-500">Paid: {paidCredits} · Referral: {referralCredits} · Trial: {trialCredits}</span>
         <span className="sr-only">Total access credits {totalCredits}</span>
-        <button type="button" className="mt-2 text-xs font-bold underline" onClick={async () => {
-          const next = !showCreditHistory;
-          setShowCreditHistory(next);
-          if (next && creditHistory.length === 0) {
-            setHistoryLoading(true);
-            try { setCreditHistory(await firestoreService.getGarageCreditLedger(garage.id)); }
-            catch { setCreditHistory([]); }
-            finally { setHistoryLoading(false); }
-          }
-        }}>{showCreditHistory ? 'Hide credit history' : 'View credit history'}</button>
-        {showCreditHistory && <div className="w-full max-h-36 overflow-auto mt-2 text-[10px] text-left border-t pt-2" aria-label="Access credit history">
-          {historyLoading ? 'Loading history…' : creditHistory.length ? creditHistory.map((entry) => <div key={entry.entryId} className="flex justify-between gap-2 py-1"><span>{entry.kind} · {entry.bucket}</span><span className="font-mono">{entry.kind?.endsWith('_debit') ? '−' : '+'}{entry.amount} · {String(entry.occurredAt || '').slice(0, 10)}</span></div>) : 'No credit history available.'}
-        </div>}
       </div>
     </div>
   );

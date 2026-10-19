@@ -27,7 +27,6 @@ import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
 import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeaderAndDrawer";
-import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveVehiclesList } from "./dashboard/GarageActiveVehiclesList";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 
@@ -306,13 +305,6 @@ export const GarageDashboardView = memo((props: any) => {
           isInputFocused ? "gap-3 pt-3 pb-3" : "gap-4"
         }`}
       >
-        {/* Subscription balance card */}
-        {!(isInputFocused && activeTab === "main") && (
-          <GarageSubscriptionCard
-            garage={garage}
-          />
-        )}
-
         {activeTab === "main" ? (
           <React.Fragment>
             {shouldShowSmartPrompt ? (

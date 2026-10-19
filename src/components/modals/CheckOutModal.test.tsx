@@ -14,13 +14,13 @@ vi.mock('../ui/EgyptianPlate', () => ({
   EgyptianPlate: ({ plateNumber }: { plateNumber: string }) => <span>{plateNumber}</span>,
 }));
 
-const makeProps = () => {
+const makeProps = (minutesSinceEntry = 60) => {
   const now = new Date('2026-10-15T12:00:00.000Z');
   return {
     selectedVehicle: {
       id: 'vehicle-1',
       plateNumber: 'ABC 123',
-      entryTime: new Date(now.getTime() - 60 * 60 * 1000),
+      entryTime: new Date(now.getTime() - minutesSinceEntry * 60 * 1000),
       isSubscriber: false,
       type: 'hourly',
       staffId: 'staff-1',
@@ -79,15 +79,22 @@ describe('CheckOutModal icon actions', () => {
     expect(screen.getByRole('button', { name: 'تأكيد خروج السيارة ABC 123' })).toBeInTheDocument();
   });
 
-  it('keeps close and visible delete actions connected to their callbacks', () => {
-    const props = makeProps();
+  it('keeps one delete action visible during the five-minute entry-error window', () => {
+    const props = makeProps(2);
     render(<CheckOutModal {...props} />);
 
     screen.getAllByRole('button').forEach((button) => expect(button).toHaveAccessibleName());
     fireEvent.click(screen.getByRole('button', { name: 'إغلاق' }));
     expect(props.onCancel).toHaveBeenCalledOnce();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })[0]);
+    expect(screen.getAllByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' }));
     expect(props.onDelete).toHaveBeenCalledOnce();
+  });
+
+  it('hides the delete action after the five-minute entry-error window', () => {
+    render(<CheckOutModal {...makeProps(6)} />);
+
+    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
   });
 });
