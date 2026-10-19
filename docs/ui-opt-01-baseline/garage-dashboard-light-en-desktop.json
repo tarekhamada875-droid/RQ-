@@ -1,0 +1,72 @@
+{
+  "item": {
+    "id": "garage-dashboard",
+    "route": "/",
+    "view": "garage"
+  },
+  "theme": "light",
+  "language": "en",
+  "viewport": {
+    "id": "desktop",
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1
+  },
+  "screenshot": "/home/ubuntu/RQ-/docs/ui-opt-01-baseline/garage-dashboard-light-en-desktop.png",
+  "screenshotSha256": "106992b1479481048bd4fc12042198ff699f27d77aa6ebd643b17105815b927b",
+  "metrics": {
+    "url": "http://127.0.0.1:4173/",
+    "title": "RQ",
+    "dir": "ltr",
+    "theme": "light",
+    "domNodes": 77,
+    "scrollHeight": 900,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navigation": {
+      "domContentLoaded": 1137.3000000000466,
+      "loadEvent": 1144.9000000000233,
+      "responseEnd": 1046.0999999999767,
+      "transferSize": 300,
+      "encodedBodySize": 11080
+    },
+    "javascript": {
+      "resources": 76,
+      "transferSize": 38175,
+      "duration": 428.7999999994645
+    },
+    "longTasks": [],
+    "layoutShifts": [
+      {
+        "value": 0.004928163580246913,
+        "startTime": 1143.8000000000466
+      }
+    ],
+    "interactionEvents": [],
+    "react": {
+      "commits": 6,
+      "renderers": 1
+    },
+    "memory": {
+      "usedJSHeapSize": 37421204,
+      "totalJSHeapSize": 42839244,
+      "jsHeapSizeLimit": 4395630592
+    },
+    "activeAnimations": 2,
+    "reducedMotion": false
+  },
+  "accessibility": {
+    "reducedMotionHonored": true,
+    "largeFontScrollHeight": 900,
+    "largeFontDomNodes": 77
+  },
+  "assumptions": {
+    "browser": "Chrome/154.0.8037.57",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "deviceScaleFactor": 1,
+    "syntheticFixture": true,
+    "firestoreWrites": false
+  }
+}
