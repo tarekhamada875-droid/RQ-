@@ -36,4 +36,4 @@ Before changing production data or deleting stored records, stop and obtain expl
 
 ## Current release state
 
-The latest released application commit is `965652652c2a9a0562775de76bf1bffc6329bc61`. The repository is on synchronized `main`; the final production gate and live Worker identity matched this SHA. No stored-data deletion is authorized by this guide.
+The latest released application commit is `4600da84f3d99965384e28618a455042f1d559f6`. The repository is on synchronized `main`; the final production gate and live Worker identity matched this SHA. No stored-data deletion is authorized by this guide.
