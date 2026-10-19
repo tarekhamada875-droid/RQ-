@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { 
+  connectFirestoreEmulator,
   initializeFirestore, 
   memoryLocalCache
 } from 'firebase/firestore';
@@ -29,6 +30,20 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);
+
+// Local UI fixture runs opt into emulators explicitly. Production and ordinary
+// development builds keep their existing Firebase targets and never connect to
+// localhost by accident.
+const useEmulators = import.meta.env.VITE_RQ_USE_EMULATORS === 'true';
+if (useEmulators) {
+  const emulatorHost = import.meta.env.VITE_RQ_EMULATOR_HOST || '127.0.0.1';
+  const authPort = Number(import.meta.env.VITE_RQ_AUTH_EMULATOR_PORT || 9099);
+  const firestorePort = Number(import.meta.env.VITE_RQ_FIRESTORE_EMULATOR_PORT || 8080);
+  connectAuthEmulator(auth, `http://${emulatorHost}:${authPort}`, { disableWarnings: true });
+  connectFirestoreEmulator(db, emulatorHost, firestorePort);
+  logDiagnostic('FIREBASE_EMULATORS_CONNECTED', { emulatorHost, authPort, firestorePort });
+}
+
 logDiagnostic('FIREBASE_AUTH_INITIALIZED', {
   hasCurrentUser: Boolean(auth.currentUser),
   uid: auth.currentUser?.uid || null,

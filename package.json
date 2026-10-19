@@ -15,6 +15,7 @@
     "ci:check": "tsx tools/ci-check.ts",
     "benchmark": "tsx tools/performance-benchmark.ts",
     "browser-baseline": "node tools/browser-baseline.mjs",
+    "ui-fixtures:seed": "node tools/ui-fixture-seed.mjs",
     "financial-report:benchmark": "tsx tools/financial-report-benchmark.ts",
     "firestore-pagination:benchmark": "tsx tools/firestore-pagination-benchmark.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
