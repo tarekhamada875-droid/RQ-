@@ -241,6 +241,35 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
   });
 
+  it('rejects retired owner wallet actions before parsing or writing', async () => {
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const writesBefore = mockDb.documentWriteCount;
+    const routes = [
+      '/api/transactions/garage-self-subscribe',
+      '/api/transactions/use-referral-reward'
+    ];
+
+    for (const path of routes) {
+      const unauthenticated = await api.fetch(new Request(`http://localhost${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{malformed-json'
+      }), workerEnv);
+      expect(unauthenticated.status, path).toBe(401);
+
+      const response = await api.fetch(new Request(`http://localhost${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-garage-token-garage-a' },
+        body: '{malformed-json'
+      }), workerEnv);
+      expect(response.status, path).toBe(410);
+      expect(await response.json()).toEqual({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
+    }
+
+    expect(mockDb.documentWriteCount).toBe(writesBefore);
+    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
+  });
+
   it('3. POST /api/garages/delete starts a resumable job; bounded steps remove only owned data and complete it', async () => {
     for (let index = 0; index < 401; index += 1) {
       mockDb.seed(`garages/${testGarageId}/vehicles/vehicle-${index}`, { plateNumber: `TEST${index}` });

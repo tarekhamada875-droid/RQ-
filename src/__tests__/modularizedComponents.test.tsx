@@ -28,7 +28,6 @@ vi.mock('../services', () => ({
   firestoreService: {
     updateGarage: vi.fn().mockResolvedValue(true),
     getGarageById: vi.fn().mockResolvedValue(null),
-    adminTopupGarageBalance: vi.fn().mockResolvedValue(true),
     isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
     addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
     removeStaff: vi.fn().mockResolvedValue(undefined),
@@ -142,10 +141,6 @@ describe('Modularized Admin Components Integrity', () => {
         garage={mockGarage}
         t={(key) => key}
         adminLang="ar"
-        remainingDays={15}
-        showClearBalanceConfirm={false}
-        setShowClearBalanceConfirm={vi.fn()}
-        isLoading={false}
         subscriberFlatFee={500}
         onToggleMonthlySubscribers={onToggleMonthly}
         allGarages={[mockGarage]}

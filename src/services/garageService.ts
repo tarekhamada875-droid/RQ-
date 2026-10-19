@@ -15,7 +15,6 @@ import type { Garage } from '../types';
 import { withRetry, sortGaragesNewestFirst } from '../utils';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
-import { generateIdempotencyKey } from '../types/apiContracts';
 
 export type { GarageDeletionProgress, GarageDeletionStatus } from './garageDeletionService';
 
@@ -169,22 +168,6 @@ export const garageService = {
     }
   },
 
-  useReferralRewardDays: async (garageId: string): Promise<{ success: boolean; daysClaimed?: number; error?: string }> => {
-    try {
-      const json = await apiFetch('/api/transactions/use-referral-reward', {
-        method: 'POST',
-        body: { garageId }
-      });
-
-      return { success: true, daysClaimed: json.daysClaimed };
-    } catch (err: any) {
-      if (err.message === 'NO_REFERRAL_REWARDS_AVAILABLE') {
-        return { success: false, error: 'لا يوجد رصيد أيّام مجانيّة للاستخدام' };
-      }
-      return { success: false, error: err.message || 'حدث خطأ أثناء استخدام أيام المكافأة' };
-    }
-  },
-
   updateGarage: async (id: string, data: Partial<Garage>) => {
     try {
       if ('balanceExpiry' in data && data.balanceExpiry === null && data.status === 'approved') {
@@ -271,29 +254,5 @@ export const garageService = {
     }
   },
 
-  adminTopupGarageBalance: async (garageId: string, amount: number) => {
-    try {
-      const data = await apiFetch('/api/transactions/admin-topup-balance', {
-        method: 'POST',
-        body: { garageId, amount, idempotencyKey: generateIdempotencyKey('admin_wallet_topup') }
-      });
-      return data.data;
-    } catch (error) {
-      console.error('[GarageService] adminTopupGarageBalance error:', error);
-      throw error;
-    }
-  },
 
-  garageSelfSubscribe: async (garageId: string, packageId: string, packageData?: any) => {
-    try {
-      const data = await apiFetch('/api/transactions/garage-self-subscribe', {
-        method: 'POST',
-        body: { garageId, packageId, packageData, idempotencyKey: generateIdempotencyKey('garage_self_subscribe') }
-      });
-      return data.data;
-    } catch (error) {
-      console.error('[GarageService] garageSelfSubscribe error:', error);
-      throw error;
-    }
-  }
 };

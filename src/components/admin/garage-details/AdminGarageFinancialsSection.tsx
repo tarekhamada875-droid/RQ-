@@ -6,16 +6,8 @@ interface AdminGarageFinancialsSectionProps {
   garage: Garage;
   t: (key: string) => string;
   adminLang: string;
-  remainingDays?: number;
-  showClearBalanceConfirm?: boolean;
-  setShowClearBalanceConfirm?: (val: boolean) => void;
-  isLoading?: boolean;
-  onClearBalance?: () => Promise<void>;
   subscriberFlatFee: number;
   onToggleMonthlySubscribers: () => Promise<void>;
-  selectedTopupAmount?: number | null;
-  setSelectedTopupAmount?: (amt: any) => void;
-  onOpenTopupModal?: () => void;
   allGarages: Garage[];
   onReferredByChange: (refId: string) => Promise<void>;
 }
