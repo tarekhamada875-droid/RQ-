@@ -18,8 +18,9 @@ Launch a real production application with one simple financial model, no active 
 
 - **Ledger collision prevention — merged in `main` (`49e9fe6`, PR #225):** credit ledger IDs are scoped by garage, operation kind, and idempotency key, with regression coverage proving grants and restores cannot overwrite one another.
 - **Subscriber lookup security — merged in `main` (`bdb7122`, PR #226):** lookup is authenticated, garage-scoped, and response-minimized so public callers cannot probe or receive private subscriber fields.
-- **Vehicle type validation — in progress:** the check-in Worker accepts only the UI-supported `hourly` and `overnight` values, defaults omission to `hourly`, and rejects unknown values before any transaction work.
-- **Client counter repair — in progress:** removed the garage client’s direct `carsInside` Firestore write; counter correction remains an explicit server-authorized maintenance operation.
+- **Vehicle type validation — merged in `main` (PR #227):** the check-in Worker accepts only the UI-supported `hourly` and `overnight` values, defaults omission to `hourly`, and rejects unknown values before any transaction work.
+- **Client counter repair — merged in `main` (`f9244be`, PR #228):** removed the garage client’s direct `carsInside` Firestore write; counter correction remains an explicit server-authorized maintenance operation.
+- **100-credit trials — current branch:** garage creation now treats the trial flag as a boolean, grants exactly 100 trial credits server-side, writes an immutable `trial_grant` ledger entry in the same transaction, and updates the maintained summary. Both creation forms no longer send trial days or advertise the retired two-day policy.
 
 ## Execution order
 

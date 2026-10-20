@@ -445,7 +445,6 @@ export const AdminDashboard = memo(({
         setPinInput={setPinInput}
         allGarages={allGarages}
         isLoading={isLoading}
-        trialDays={typeof systemConfig?.defaultTrialDays === 'number' && systemConfig.defaultTrialDays > 0 ? systemConfig.defaultTrialDays : 2}
         onSubmit={handleAddGarage}
         t={t}
       />

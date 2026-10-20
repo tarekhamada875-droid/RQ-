@@ -32,7 +32,6 @@ interface AdminAddGarageModalProps {
   setPinInput: (pin: string) => void;
   allGarages: Garage[];
   isLoading: boolean;
-  trialDays?: number;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   t: (key: string) => string;
 }
@@ -46,7 +45,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   setPinInput,
   allGarages,
   isLoading,
-  trialDays = 2,
   onSubmit,
   t,
 }) => {
@@ -207,7 +205,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 </div>
               </div>
 
-              <input type="hidden" name="billingModel" value="subscription" />
+              <input type="hidden" name="billingModel" value="prepaid_credits" />
 
               {/* Free Trial Toggle */}
               <div
@@ -223,12 +221,12 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   <span id="admin-trial-label" className={`text-xs sm:text-sm font-bold block truncate transition-colors ${
                     localForm.isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
                   }`}>
-                    {t('تفعيل فترة تجريبية مجانية')} ({trialDays} {t('يوم')})
+                    {t('منح 100 رصيد تجربة مجاني')}
                   </span>
                   <span className={`text-[11px] block truncate transition-colors ${
                     localForm.isTrial ? 'text-emerald-600 dark:text-emerald-400/80' : 'text-slate-400 dark:text-slate-400'
                   }`}>
-                    {t('صلاحية مجانية لمدة')} {trialDays} {t('يوماً للجراج الجديد')}
+                    {t('100 رصيد دخول مجاني للجراج الجديد')}
                   </span>
                 </div>
 
@@ -246,7 +244,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     className="sr-only"
                   />
                   <input type="hidden" name="isTrial" value={localForm.isTrial ? 'true' : 'false'} />
-                  <input type="hidden" name="trialDays" value={trialDays} />
 
                   <button
                     type="button"

@@ -37,7 +37,7 @@ describe('AdminAddGarageModal accessible names', () => {
 
     expect(container.querySelectorAll('label[for^="admin-add-garage-"]')).toHaveLength(6);
     controls.forEach((control) => expect(control).toHaveAccessibleName());
-    expect(screen.getByRole('switch', { name: /تفعيل فترة تجريبية مجانية/ })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /منح 100 رصيد تجربة مجاني/ })).toBeInTheDocument();
   });
 
   it('names every button and keeps close and safe-PIN generation callbacks intact', () => {

@@ -8,7 +8,6 @@ export const DelegateDashboardOverlays = (props: any) => {
     onCreateGarage,
     isTrial,
     setIsTrial,
-    trialDays,
     newGaragePin,
     pinGenerationsRemaining,
     allGarages,
@@ -95,7 +94,7 @@ export const DelegateDashboardOverlays = (props: any) => {
                   </div>
                 </div>
   
-                <input type="hidden" name="billingModel" value="subscription" />
+                <input type="hidden" name="billingModel" value="prepaid_credits" />
   
                 {/* Free Trial Toggle */}
                 <div 
@@ -111,12 +110,12 @@ export const DelegateDashboardOverlays = (props: any) => {
                     <label className={`text-xs sm:text-sm font-bold block cursor-pointer truncate transition-colors ${
                       isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
                     }`}>
-                      تفعيل فترة تجريبية مجانية ({trialDays} يوم)
+                      منح 100 رصيد تجربة مجاني
                     </label>
                     <span className={`text-[11px] block truncate transition-colors ${
                       isTrial ? 'text-emerald-600 dark:text-emerald-400/80' : 'text-slate-400 dark:text-slate-400'
                     }`}>
-                      صلاحية مجانية لمدة {trialDays} يوماً للجراج الجديد
+                      100 رصيد دخول مجاني للجراج الجديد
                     </span>
                   </div>
   
@@ -134,7 +133,6 @@ export const DelegateDashboardOverlays = (props: any) => {
                       className="sr-only" 
                     />
                     <input type="hidden" name="isTrial_hidden" value={isTrial ? 'true' : 'false'} />
-                    <input type="hidden" name="trialDays" value={trialDays} />
                     
                     <button
                       type="button"
