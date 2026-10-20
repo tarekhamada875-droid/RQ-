@@ -10,11 +10,11 @@ The owner’s priorities are: preserve Egyptian license-plate identity, favor fu
 
 ## Handoff trigger and current status
 
-This handoff began from the owner’s `tokens ending` continuity trigger. The read-only Garage/Admin audit is complete, and the bounded ALF-01 source implementation and regression tests have now been prepared on a focused branch. No stored records, payments, or production Firebase rules were changed.
+This handoff began from the owner’s `tokens ending` continuity trigger. The read-only Garage/Admin audit is complete. ALF-01 was merged in PR #212 at `44d19571e48d5c196f4f751c54230dc98213f3fa`; its post-merge Production Gate passed and the Worker deployment was verified. No stored records, payments, or production Firebase rules were changed.
 
 ## Start here — do not repeat completed work
 
-Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, or change the UI. ALF-01’s source change blocks direct client writes to `garages.creditBalance`; its focused emulator and Worker regressions passed locally. The remaining work is to finish its normal PR/Production Gate/merge verification and report ALF-01. Do not start ALF-12 or any GLF item in the same task.
+Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, or change the UI. ALF-01’s checked-in rules and regressions are merged and the full release cycle is complete. The post-merge gate/deployment was run 39371738158; fresh `/api/health` and `/api/version` checks reported Worker commit `44d19571e48d5c196f4f751c54230dc98213f3fa`. Production Firebase rules were not deployed, so direct-write denial is not yet verified live. Wait for the owner’s direction about a separate authorized Firebase-rules deployment. Do not start ALF-12 or any GLF item in this task.
 
 Verified state at the start of ALF-01 work (re-check GitHub for current state):
 
@@ -43,14 +43,14 @@ The Business Logic Fix plan contains the confirmed Garage findings GLF-01 throug
 
 ## ALF-01 implementation result and safety boundaries
 
-- `firestore.rules` now denies direct Admin client updates to `creditBalance`; the emulator regression also confirms garage-owner clients cannot mutate it.
+- The checked-in `firestore.rules` denies direct Admin client updates to `creditBalance`; the emulator regression also confirms garage-owner clients cannot mutate it. Production Firebase rules have not been deployed, so this is not yet live protection.
 - The Worker grant route was not changed. Its combined regression verifies the authorized Admin grant, paid balance, referral reward, ledger entries, domain event, activity logs, and idempotent retry together.
 - Focused verification passed: `npm run test:rules` and the 13 tests in `src/__tests__/cloudflareWorkerCreditGrant.test.ts`.
 - The frontend search found no Admin UI path that writes `creditBalance` directly; credit changes come from the server response/API path. Your Admin role and ordinary Admin work remain intact; credit grants must use the existing Worker endpoint.
 - The Cloudflare workflow does not deploy Firestore rules. Production Firebase rules were not manually changed, so this repository change must not be described as live protection until a separately authorized Firebase-rules deployment is completed and verified.
 - Do not delete stored data, migrate records, manually change production rules, or implement trial, cash-accounting, package, settlement, or later roadmap policies in ALF-01.
 
-After ALF-01 is fully reported, ALF-12 is the next item in the plan’s implementation order. Stop after ALF-01 and wait for the owner’s direction about any separate production-rules deployment; do not begin ALF-12 here.
+ALF-01 is complete in source and merged, but production Firebase rules remain unchanged. The immediate next step is to wait for the owner’s direction about a separate authorized rules deployment. Only after that is resolved should the next roadmap item, ALF-12, begin.
 
 ## Unresolved decisions and safety boundaries
 
@@ -76,6 +76,6 @@ Read these from the new `main` state before editing:
 
 Before editing, fetch GitHub and verify the exact clean `main` SHA, matching `origin/main`, latest successful main gate for that SHA, open PR count, live `/api/health` and `/api/version`, and protected decision-branch SHA. Treat this handoff’s copied status as a snapshot, not authority.
 
-For ALF-01, use a short-lived focused branch from synchronized `main`. Add focused synthetic rules and route regressions first. Run the focused tests, then `npm run lint`, `npm run maintainability:check`, `npm run ci:check`, and `git diff --check`. Review the diff for accidental visual, data, or authorization scope changes.
+For any next authorized roadmap task, use a short-lived focused branch from synchronized `main`. Add focused synthetic regressions first. Run the focused tests, then `npm run lint`, `npm run maintainability:check`, `npm run ci:check`, and `git diff --check` as applicable. Review the diff for accidental visual, data, or authorization scope changes.
 
-Push the branch and open a PR targeting `main`. Wait for the required Production Gate. Merge only after the required checks pass; do not bypass protected checks. After merging, verify the merged commit, local `main == origin/main`, clean working tree, post-merge Production Gate/deployment result, live Worker health/version identity, open PR count, and protected decision branch. Stop and report ALF-01 before starting ALF-12 or any later Business Logic Fix item.
+Push the branch and open a PR targeting `main`. Wait for the required Production Gate. Merge only after the required checks pass; do not bypass protected checks. After merging, verify the merged commit, local `main == origin/main`, clean working tree, post-merge Production Gate/deployment result, live Worker health/version identity, open PR count, and protected decision branch. Stop and report the selected task before starting another roadmap item.
