@@ -9,3 +9,8 @@ yarn.lock
 pnpm-lock.yaml
 .env*
 !.env.example
+
+# Generated artifacts
+build/
+dist/
+firestore-debug.log

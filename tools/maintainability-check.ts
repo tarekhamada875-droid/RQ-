@@ -5,7 +5,6 @@ const root = resolve(import.meta.dirname, '..');
 const failures: string[] = [];
 const fail = (message: string) => failures.push(message);
 
-// Cloudflare Worker deployment configuration validation
 const wranglerConfig = resolve(root, 'wrangler.toml');
 if (!existsSync(wranglerConfig) || statSync(wranglerConfig).size === 0) {
   fail('wrangler.toml must exist and be non-empty for Cloudflare Worker deployment.');
@@ -24,8 +23,8 @@ for (const strayLock of ['bun.lock', 'bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']
   if (existsSync(resolve(root, strayLock))) fail(`Secondary lockfile ${strayLock} must not exist; project is standardized on npm.`);
 }
 
-for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'PROJECT_ENGINEERING_KNOWLEDGE.md']) {
-  if (!existsSync(resolve(root, requiredDoc))) fail(`Required maintainability document is missing: ${requiredDoc}.`);
+for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'docs/PROJECT.md', 'docs/SECURITY.md', 'docs/PRODUCTION_PLAN.md', 'docs/RELEASES.md', 'docs/OPERATIONS.md']) {
+  if (!existsSync(resolve(root, requiredDoc))) fail(`Required canonical document is missing: ${requiredDoc}.`);
 }
 
 if (failures.length > 0) {
@@ -38,4 +37,4 @@ console.log('Maintainability check passed.');
 console.log('- Cloudflare Worker deployment configuration: valid');
 console.log('- Cloudflare frontend remains a separate deployment');
 console.log('- npm package-manager declaration: valid');
-console.log('- required documentation: present');
+console.log('- canonical documentation set: present');
