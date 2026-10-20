@@ -16,6 +16,16 @@ This handoff was activated by the owner’s `tokens ending` continuity trigger. 
 
 Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, clean branches or documentation, or start ALF-12/GLF work. Those items are complete and verified. Do **not** change the UI. The only implementation task authorized by this handoff is **ALF-01** below: block direct client writes to `garages.creditBalance` and add the matching Firestore emulator regression test. First re-verify the current repository state, then inspect the ALF-01 code paths; do not make a broad audit or cleanup pass.
 
+## ALF-01 mistake-prevention guardrails
+
+Use the smallest existing rule change: the current Admin `garages/{garageId}` update rule already blocks several financial fields through `incoming().diff(existing()).affectedKeys().hasAny([...])`; add `creditBalance` to that blocked-field list and prove the narrow boundary. Do **not** replace the whole Admin update rule with `allow update: if false`, do not block legitimate non-credit Admin garage updates, and do not alter the owner/staff heartbeat paths or unrelated financial fields in this task.
+
+The denial proof must use the real emulator rules path: seed the synthetic garage, create an authenticated Admin client context, call `updateDoc` on `garages/g-1` with a changed `creditBalance`, and assert failure. Do not use `withSecurityRulesDisabled` for the denial assertion, do not test only a JavaScript policy mock, and include a nearby positive assertion that an allowed non-credit Admin update still succeeds. A combined update containing `creditBalance` must also fail because the affected-key set includes the protected field.
+
+Do not rewrite the Worker grant route or move credit mutations into the browser. The Worker route at `POST /api/garages/:id/credit-grants` is already the authoritative Admin-SDK transaction: it reads the garage, validates payment and idempotency, computes the ledger transition, writes `creditBalance`, ledger, event, activity log, referral award, and idempotency record in one transaction. Admin-SDK writes bypass client Firestore rules by design. Preserve that route and its existing debit/refund/renewal Worker paths; do not add a client-rule exception or a client-side retry/workaround.
+
+Do not change credit amounts, bucket ordering, EGP semantics, referral policy, Cairo dates, ledger schemas, event names, or idempotency behavior while proving ALF-01. If the route regression is missing, extend the existing Worker route/mock test boundary to prove one valid Admin grant and one replay, rather than trying to prove Admin-SDK behavior through client rules. Stop if the intended fix requires a product-policy decision.
+
 Current verified state after the handoff merge:
 
 - Local branch: `main`.
