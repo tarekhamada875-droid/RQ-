@@ -143,6 +143,8 @@ The Admin audit is now part of this plan. These are not a separate UI project: A
 
 **Proof:** Firestore emulator denial test for direct `creditBalance` writes and a route test proving a valid Admin grant records balance, ledger, event, activity log, referral behavior, and idempotency together.
 
+**Implementation status (2026-10-20):** The Admin garage-update rule now rejects direct `creditBalance` changes; the emulator regression checks both active Admin and garage-owner clients. The Worker grant route remains authoritative and unchanged, with a focused regression covering paid balance, referral award, both ledger records, the grant event, activity logs, and an idempotent retry. The focused rules suite and all 13 credit-grant tests passed locally. Firestore rules are not deployed by the Cloudflare release workflow, and production Firebase rules were not changed; do not claim the direct-write block is live until a separately authorized Firebase rules deployment is verified.
+
 ### ALF-02 — Make Admin credit retries idempotent per user intent
 
 **Severity:** High.
@@ -360,4 +362,4 @@ Until decided, do not silently change these policies. The confirmed defects abov
 
 ## Current status
 
-The Garage and Admin audits are complete and no source code or stored data has been changed as part of this plan. The plan was merged through the normal reviewed PR and Production Gate workflow; verify the exact current `main`, live health/version, open-PR state, and protected decision branch before beginning implementation. The next bounded task is ALF-01: block direct client credit-balance writes, then add the matching Firestore rules regression test.
+The Garage and Admin audits are complete. ALF-01 source and regression-test work is implemented on its focused branch; the focused Firestore emulator suite and 13 Worker credit-grant tests passed locally. Verify its current PR and required Production Gate through GitHub before treating the repository change as merged. No stored records, payments, or production Firebase rules were changed. The Cloudflare release flow does not deploy Firestore rules, so the live production rule state remains unchanged by this work. After ALF-01 is reported complete, the next roadmap item is ALF-12; do not begin it in the same task.

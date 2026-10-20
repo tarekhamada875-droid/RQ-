@@ -10,22 +10,22 @@ The owner’s priorities are: preserve Egyptian license-plate identity, favor fu
 
 ## Handoff trigger and current status
 
-This handoff was activated by the owner’s `tokens ending` continuity trigger. The bounded audit task is complete. The Garage and Admin business-logic audits were read-only: no source code, Firestore rules, stored records, payments, or production data were changed.
+This handoff began from the owner’s `tokens ending` continuity trigger. The read-only Garage/Admin audit is complete, and the bounded ALF-01 source implementation and regression tests have now been prepared on a focused branch. No stored records, payments, or production Firebase rules were changed.
 
 ## Start here — do not repeat completed work
 
-Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, clean branches or documentation, or start ALF-12/GLF work. Those items are complete and verified. Do **not** change the UI. The only implementation task authorized by this handoff is **ALF-01** below: block direct client writes to `garages.creditBalance` and add the matching Firestore emulator regression test. First re-verify the current repository state, then inspect the ALF-01 code paths; do not make a broad audit or cleanup pass.
+Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, or change the UI. ALF-01’s source change blocks direct client writes to `garages.creditBalance`; its focused emulator and Worker regressions passed locally. The remaining work is to finish its normal PR/Production Gate/merge verification and report ALF-01. Do not start ALF-12 or any GLF item in the same task.
 
-Current verified state after the handoff merge:
+Verified state at the start of ALF-01 work (re-check GitHub for current state):
 
-- Local branch: `main`.
-- Local `main` and `origin/main`: synchronized at `e942ead18df654dfb2a1e9c72c29dc92a208c226`.
-- Working tree: clean.
-- Open PRs: none.
-- Latest successful main Production Gate: run `39369384415`, for SHA `e942ead18df654dfb2a1e9c72c29dc92a208c226`; it passed the documentation-only validation path and skipped Worker deployment as expected.
+- Local branch: `main` before the ALF-01 feature branch was created.
+- Local `main` and `origin/main`: synchronized at `9b7c4497b0d2071992891617e614a7f77333ebf0`.
+- Working tree was clean before ALF-01 work.
+- Open PRs: one documentation-only PR, #211 (`docs/stabilize-handoff-verification`), with its `verify` check successful and Worker deployment skipped.
+- Latest successful main Production Gate: run `39369480257`, for SHA `9b7c4497b0d2071992891617e614a7f77333ebf0`.
 - Latest deployed Worker identity: `/api/health` and `/api/version` reported commit `77a12276756c874f8fc57c4082614f1b1ac4a2c2`, version `1.0.0-production`, environment `production`, runtime `cloudflare-worker`, status `operational`. The later plan/documentation commits did not deploy a new Worker.
 - Protected decision branch: `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`.
-- Handoff PR #207 is merged; no open PRs remain. Re-verify these values again before beginning ALF-01 rather than relying on embedded documentation alone.
+- The baseline values above are a historical start snapshot, not current status. Re-fetch and verify the exact branch, commit, PR, gate, live endpoints, and protected branch before any release action.
 
 ## Completed work
 
@@ -41,20 +41,16 @@ Current verified state after the handoff merge:
 
 The Business Logic Fix plan contains the confirmed Garage findings GLF-01 through GLF-10 and Admin/cross-role findings ALF-01 through ALF-14. Important examples include direct `creditBalance` Firestore writes bypassing the ledger, duplicate Admin grant retries, Admin/Garage summary disagreement, silently discarded trial settings, incomplete delegate settlement history, prepaid cash-report policy ambiguity, broken Admin report date format, duplicate package-management authority, stale Admin detail state, coupled lock/suspension state, stale Admin lists after logout, subscriber/config/vehicle-correction authorization gaps, and fixed-limit credit history.
 
-## Single next task
+## ALF-01 implementation result and safety boundaries
 
-Implement **ALF-01: block direct client `creditBalance` writes and add the Firestore regression test**.
+- `firestore.rules` now denies direct Admin client updates to `creditBalance`; the emulator regression also confirms garage-owner clients cannot mutate it.
+- The Worker grant route was not changed. Its combined regression verifies the authorized Admin grant, paid balance, referral reward, ledger entries, domain event, activity logs, and idempotent retry together.
+- Focused verification passed: `npm run test:rules` and the 13 tests in `src/__tests__/cloudflareWorkerCreditGrant.test.ts`.
+- The frontend search found no Admin UI path that writes `creditBalance` directly; credit changes come from the server response/API path. Your Admin role and ordinary Admin work remain intact; credit grants must use the existing Worker endpoint.
+- The Cloudflare workflow does not deploy Firestore rules. Production Firebase rules were not manually changed, so this repository change must not be described as live protection until a separately authorized Firebase-rules deployment is completed and verified.
+- Do not delete stored data, migrate records, manually change production rules, or implement trial, cash-accounting, package, settlement, or later roadmap policies in ALF-01.
 
-Scope for the next agent:
-
-1. Re-read the complete `BUSINESS_LOGIC_FIX_PLAN.md` and confirm ALF-01’s exact delete/replace/proof requirements.
-2. Inspect the existing Firestore rule for `garages/{garageId}` updates and the Worker credit-grant route before editing.
-3. Add a synthetic emulator regression proving an Admin client cannot directly mutate `creditBalance`.
-4. Preserve valid reads, Worker-authoritative grants/debits/refunds, ledger entries, events, activity logs, referral behavior, idempotency, and all current visuals.
-5. Do not implement trial, cash-accounting, package, or settlement policy changes in the ALF-01 task; those have explicit unresolved decisions in the plan.
-6. Do not delete stored data, migrate records, change production rules manually, or broaden permissions without separate explicit approval.
-
-“Done” means a direct client balance mutation is denied while a valid Worker grant still performs one atomic, auditable, idempotent balance transition and its focused rules/route tests pass.
+After ALF-01 is fully reported, ALF-12 is the next item in the plan’s implementation order. Stop after ALF-01 and wait for the owner’s direction about any separate production-rules deployment; do not begin ALF-12 here.
 
 ## Unresolved decisions and safety boundaries
 

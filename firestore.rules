@@ -661,7 +661,7 @@ service cloud.firestore {
       
       allow update: if isValidId(garageId) && isSignedIn() && (
         (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny([
-          'balance', 'balanceExpiry', 'totalAdminRevenue', 'totalRevenue',
+          'balance', 'creditBalance', 'balanceExpiry', 'totalAdminRevenue', 'totalRevenue',
           'lastRechargeDate', 'lastRechargeAmount', 'lastRechargePackageName',
           'dailyRefundCount', 'lastRefundDate', 'dailyDeletionCount', 'lastDeletionDate',
           'totalCommissionEarned', 'totalRechargedAmount', 'commission',

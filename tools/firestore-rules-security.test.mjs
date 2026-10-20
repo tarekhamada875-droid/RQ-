@@ -215,6 +215,12 @@ try {
   await assertFails(updateDoc(doc(inactiveOwnerDb, 'garages/g-1'), { hourlyRate: 99 }));
 
   // The actual garage owner and Admin retain their intended management path.
+  await assertFails(updateDoc(doc(adminDb, 'garages/g-1'), {
+    creditBalance: { paid: 999, referral: 0, trial: 0 }
+  }));
+  await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), {
+    creditBalance: { paid: 999, referral: 0, trial: 0 }
+  }));
   await assertSucceeds(updateDoc(doc(ownerDb, 'staff/staff-peer'), { name: 'Owner Updated Peer' }));
   await assertSucceeds(updateDoc(doc(ownerDb, 'staff/staff-peer'), { phone: '01112345678' }));
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { role: 'garage' }));
