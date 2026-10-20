@@ -1,331 +1,183 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import {
-  TrendingUp,
-  Sliders, 
-  ChevronDown, 
-  ChevronUp, 
-  Calculator,
-  Building2
-} from 'lucide-react';
-import { adminService } from '../../services/adminService';
-import { PartnerDividendPayouts } from './PartnerDividendPayouts';
+import React, { useMemo, useState } from 'react';
+import { Calculator, RotateCcw, TrendingUp, WalletCards } from 'lucide-react';
 
 interface AdminPartnerDividendCardProps {
   currentActiveGarages: number;
 }
 
-export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> = ({
-  currentActiveGarages
-}) => {
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const [mode, setMode] = useState<'simulation' | 'actual'>('simulation');
-  
-  // Founder is strictly locked at 52%
-  const FOUNDER_PERCENT = 52;
-  const REMAINING_POOL_PERCENT = 100 - FOUNDER_PERCENT; // 48%
+type ProjectionInputs = {
+  currentGarages: number;
+  newGaragesPerMonth: number;
+  paidCreditsPerGarage: number;
+  pricePerCredit: number;
+  monthlyOperatingCosts: number;
+  delegateCommissionRate: number;
+  paymentFeeRate: number;
+  otherMonthlyCosts: number;
+  investorOwnership: number;
+  investorCount: number;
+  projectionMonths: number;
+};
 
-  // Partner settings
-  const [partnerCount, setPartnerCount] = useState<number>(2); // Default to 2 partners (24% each)
-  const [simulatedGarages, setSimulatedGarages] = useState<number>(Math.max(10, currentActiveGarages || 30));
-  const [monthlyPackagePrice, setMonthlyPackagePrice] = useState<number>(800);
-  const [operationalCostRate, setOperationalCostRate] = useState<number>(40); // 40% standard
-  const [actualRevenue, setActualRevenue] = useState<number | null>(null);
-  const [isActualRevenueLoading, setIsActualRevenueLoading] = useState(false);
-  const [actualRevenueError, setActualRevenueError] = useState(false);
+type ProjectionRow = ProjectionInputs & {
+  month: number;
+  garages: number;
+  credits: number;
+  revenue: number;
+  delegateCommission: number;
+  paymentFees: number;
+  totalCosts: number;
+  operatingProfit: number;
+  investorShare: number;
+  founderShare: number;
+};
 
-  useEffect(() => {
-    if (!isExpanded || mode !== 'actual') return;
+const money = (value: number) => `${Math.round(value).toLocaleString('en-US')} ج.م`;
+const numberValue = (value: string, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-    let isMounted = true;
+const makeDefaults = (currentActiveGarages: number): ProjectionInputs => ({
+  currentGarages: Math.max(0, currentActiveGarages),
+  newGaragesPerMonth: 2,
+  paidCreditsPerGarage: 400,
+  pricePerCredit: 1,
+  monthlyOperatingCosts: 5000,
+  delegateCommissionRate: 0,
+  paymentFeeRate: 0,
+  otherMonthlyCosts: 0,
+  investorOwnership: 25,
+  investorCount: 1,
+  projectionMonths: 12,
+});
 
-    setIsActualRevenueLoading(true);
-    setActualRevenueError(false);
-    adminService.getFinancialReport({ start: start.toISOString(), end: end.toISOString() })
-      .then((report) => {
-        if (!isMounted) return;
-        setActualRevenue(report.cashCollectedTotal);
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        console.error('[PartnerDividend] Current-month report unavailable:', error);
-        setActualRevenue(null);
-        setActualRevenueError(true);
-      })
-      .finally(() => {
-        if (isMounted) setIsActualRevenueLoading(false);
+const InputField: React.FC<{
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+}> = ({ label, value, onChange, min = 0, max, step = 1, suffix }) => (
+  <label className="block space-y-1.5">
+    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
+    <span className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={(event) => onChange(numberValue(event.target.value, value))}
+        className="min-w-0 flex-1 bg-transparent text-sm font-black text-slate-900 outline-none dark:text-white"
+      />
+      {suffix && <span className="text-xs font-bold text-slate-400">{suffix}</span>}
+    </span>
+  </label>
+);
+
+export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> = ({ currentActiveGarages }) => {
+  const defaults = useMemo(() => makeDefaults(currentActiveGarages), [currentActiveGarages]);
+  const [inputs, setInputs] = useState<ProjectionInputs>(defaults);
+
+  const update = <K extends keyof ProjectionInputs>(key: K, value: ProjectionInputs[K]) => {
+    setInputs((previous) => ({ ...previous, [key]: value }));
+  };
+
+  const projection = useMemo(() => {
+    const rows: ProjectionRow[] = [];
+    for (let month = 1; month <= inputs.projectionMonths; month += 1) {
+      const garages = inputs.currentGarages + (inputs.newGaragesPerMonth * (month - 1));
+      const credits = garages * inputs.paidCreditsPerGarage;
+      const revenue = credits * inputs.pricePerCredit;
+      const delegateCommission = revenue * (inputs.delegateCommissionRate / 100);
+      const paymentFees = revenue * (inputs.paymentFeeRate / 100);
+      const totalCosts = inputs.monthlyOperatingCosts + inputs.otherMonthlyCosts + delegateCommission + paymentFees;
+      const operatingProfit = revenue - totalCosts;
+      const investorShare = operatingProfit * (inputs.investorOwnership / 100);
+      rows.push({
+        ...inputs,
+        month,
+        garages,
+        credits,
+        revenue,
+        delegateCommission,
+        paymentFees,
+        totalCosts,
+        operatingProfit,
+        investorShare,
+        founderShare: operatingProfit - investorShare,
       });
+    }
+    const totals = rows.reduce((summary, row) => ({
+      revenue: summary.revenue + row.revenue,
+      totalCosts: summary.totalCosts + row.totalCosts,
+      operatingProfit: summary.operatingProfit + row.operatingProfit,
+      investorShare: summary.investorShare + row.investorShare,
+      founderShare: summary.founderShare + row.founderShare,
+    }), { revenue: 0, totalCosts: 0, operatingProfit: 0, investorShare: 0, founderShare: 0 });
+    return { rows, totals };
+  }, [inputs]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isExpanded, mode]);
-
-  // Calculated equity per partner
-  const partnerSharePercent = useMemo(() => {
-    if (partnerCount <= 0) return 0;
-    return Number((REMAINING_POOL_PERCENT / partnerCount).toFixed(2));
-  }, [partnerCount, REMAINING_POOL_PERCENT]);
-
-  // Financial calculations
-  const financials = useMemo(() => {
-    const isActual = mode === 'actual';
-    const grossRevenue = isActual ? (actualRevenue ?? 0) : (simulatedGarages * monthlyPackagePrice);
-    
-    const costPool = (grossRevenue * operationalCostRate) / 100;
-    const netProfitPool = Math.max(0, grossRevenue - costPool);
-
-    const founderPayout = (netProfitPool * FOUNDER_PERCENT) / 100;
-    const totalPartnersPool = (netProfitPool * REMAINING_POOL_PERCENT) / 100;
-    const eachPartnerPayout = partnerCount > 0 ? totalPartnersPool / partnerCount : 0;
-
-    return {
-      grossRevenue,
-      costPool,
-      netProfitPool,
-      founderPayout,
-      totalPartnersPool,
-      eachPartnerPayout
-    };
-  }, [mode, actualRevenue, simulatedGarages, monthlyPackagePrice, operationalCostRate, partnerCount, FOUNDER_PERCENT, REMAINING_POOL_PERCENT]);
+  const reset = () => setInputs(makeDefaults(currentActiveGarages));
+  const averageInvestorPayout = inputs.projectionMonths > 0
+    ? projection.totals.investorShare / inputs.projectionMonths
+    : 0;
 
   return (
-    <div className="bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/20 dark:from-slate-900 dark:via-slate-900/90 dark:to-emerald-950/20 border-2 border-emerald-500/20 dark:border-emerald-500/30 rounded-3xl p-5 shadow-sm transition-all">
-      {/* Header / Summary Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
-            <Calculator className="w-6 h-6" />
-          </div>
+    <section className="mx-auto max-w-6xl space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6" aria-label="حاسبة الاستثمار">
+      <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white"><Calculator className="h-5 w-5" /></div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                حاسبة أرباح الشركاء وتوزيع الحصص
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50">
-                محاكي تقديري — حصة المؤسس 52%
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              نموذج توزيع الأرباح القياسي (40% مخصص تشغيل وتطوير / 60% صافي أرباح قابلة للتوزيع)
-            </p>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">حاسبة الاستثمار والتوقعات</h2>
+            <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">نموذج تخطيطي قابل للتعديل لاستخدامه في مناقشات الاستثمار، وليس تقريرًا محاسبيًا.</p>
           </div>
         </div>
+        <button type="button" onClick={reset} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:border-emerald-500 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300" aria-label="إعادة القيم الافتراضية">
+          <RotateCcw className="h-3.5 w-3.5" /> إعادة الافتراضيات
+        </button>
+      </header>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
-          {/* Quick Snapshot Badges */}
-          <div className="hidden md:flex items-center gap-2 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-slate-400">صافي الأرباح التقديري:</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-black">
-              {Math.round(financials.netProfitPool).toLocaleString()} ج.م
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 px-3.5 py-2 rounded-2xl border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
-          >
-            <span>{isExpanded ? 'إخفاء التفاصيل' : 'فتح الحاسبة والمحاكي'}</span>
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+      <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40" aria-labelledby="projection-assumptions">
+        <div className="mb-4 flex items-center gap-2"><WalletCards className="h-4 w-4 text-emerald-600" /><h3 id="projection-assumptions" className="text-sm font-black text-slate-900 dark:text-white">1. الافتراضات</h3></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <InputField label="الجراجات الحالية" value={inputs.currentGarages} onChange={(value) => update('currentGarages', Math.max(0, Math.floor(value)))} suffix="جراج" />
+          <InputField label="جراجات جديدة كل شهر" value={inputs.newGaragesPerMonth} onChange={(value) => update('newGaragesPerMonth', Math.max(0, Math.floor(value)))} suffix="جراج" />
+          <InputField label="الأرصدة المدفوعة لكل جراج شهريًا" value={inputs.paidCreditsPerGarage} onChange={(value) => update('paidCreditsPerGarage', Math.max(0, Math.floor(value)))} suffix="رصيد" />
+          <InputField label="سعر الرصيد" value={inputs.pricePerCredit} onChange={(value) => update('pricePerCredit', Math.max(0, value))} step={0.01} suffix="ج.م" />
+          <InputField label="المصاريف التشغيلية الشهرية" value={inputs.monthlyOperatingCosts} onChange={(value) => update('monthlyOperatingCosts', Math.max(0, value))} suffix="ج.م" />
+          <InputField label="عمولة المندوبين" value={inputs.delegateCommissionRate} onChange={(value) => update('delegateCommissionRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
+          <InputField label="رسوم الدفع والتحويل" value={inputs.paymentFeeRate} onChange={(value) => update('paymentFeeRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
+          <InputField label="مصاريف شهرية أخرى" value={inputs.otherMonthlyCosts} onChange={(value) => update('otherMonthlyCosts', Math.max(0, value))} suffix="ج.م" />
+          <InputField label="نسبة المستثمرين من الربح التشغيلي" value={inputs.investorOwnership} onChange={(value) => update('investorOwnership', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
+          <InputField label="عدد المستثمرين" value={inputs.investorCount} onChange={(value) => update('investorCount', Math.max(1, Math.floor(value)))} suffix="مستثمر" />
+          <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">مدة التوقع</span><select value={inputs.projectionMonths} onChange={(event) => update('projectionMonths', numberValue(event.target.value, 12))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"><option value={6}>6 أشهر</option><option value={12}>12 شهرًا</option><option value={24}>24 شهرًا</option></select></label>
         </div>
-      </div>
+      </section>
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800 space-y-6 animate-in fade-in duration-200">
-          {/* Control Bar: Mode Toggle + Partners Count */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/70 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-            {/* Mode Selector */}
-            <div>
-              <label className="text-xs font-black text-slate-700 dark:text-slate-300 block mb-2">
-                مصدر الأرقام:
-              </label>
-              <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setMode('simulation')}
-                  className={`py-2 px-3 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    mode === 'simulation'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>محاكي النمو والتفاوض</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('actual')}
-                  className={`py-2 px-3 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    mode === 'actual'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>الإيراد الفعلي لهذا الشهر</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Partner Count Selector */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-black text-slate-700 dark:text-slate-300">
-                  عدد الشركاء الجدد (إلى جانب طارق):
-                </label>
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                  {partnerCount === 1 ? 'حصة الشريك:' : 'حصة كل شريك:'} {partnerSharePercent}%
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
-                {[1, 2, 3, 4].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => setPartnerCount(count)}
-                    className={`py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                      partnerCount === count
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {count} {count === 1 ? 'شريك' : count === 2 ? 'شريكان' : 'شركاء'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Simulation Slider Controls (Visible when in simulation mode) */}
-          {mode === 'simulation' && (
-            <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                    عدد الجراجات المشتركة بالخدمة (المستهدفة):
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-mono font-black text-emerald-600 dark:text-emerald-400">
-                    {simulatedGarages}
-                  </span>
-                  <span className="text-xs font-bold text-slate-400">جراج نشط</span>
-                </div>
-              </div>
-
-              {/* Slider */}
-              <input
-                type="range"
-                min="5"
-                max="250"
-                step="5"
-                value={simulatedGarages}
-                onChange={(e) => setSimulatedGarages(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-              />
-
-              <div className="flex justify-between text-[11px] font-mono text-slate-400">
-                <span>5 جراجات (مرحلة تجريبية)</span>
-                <span>50 جراج</span>
-                <span>100 جراج</span>
-                <span>250 جراج (توسع شامل)</span>
-              </div>
-
-              {/* Package & Cost Tuning Parameters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">سعر الباقة الشهرية المفترض:</span>
-                  <div className="flex items-center gap-1 font-mono">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={monthlyPackagePrice}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        setMonthlyPackagePrice(Number(val) || 0);
-                      }}
-                      className="w-20 text-center font-black text-xs bg-slate-100 dark:bg-slate-800 rounded-lg py-1 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
-                    />
-                    <span className="text-xs font-bold text-slate-400">ج.م</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">مخصص المصروفات والاحتياطي:</span>
-                  <div className="flex items-center gap-1 font-mono">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={operationalCostRate}
-                      onChange={(e) => {
-                        const val = Number(e.target.value.replace(/\D/g, ''));
-                        setOperationalCostRate(Math.min(90, Math.max(0, val)));
-                      }}
-                      className="w-14 text-center font-black text-xs bg-slate-100 dark:bg-slate-800 rounded-lg py-1 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white"
-                    />
-                    <span className="text-xs font-bold text-slate-400">%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {mode === 'actual' && (
-            <div className={`text-xs rounded-xl px-3 py-2 border ${actualRevenueError ? 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-800' : 'text-slate-500 bg-slate-50 border-slate-200 dark:text-slate-400 dark:bg-slate-800/40 dark:border-slate-700'}`}>
-              {isActualRevenueLoading
-                ? 'جارٍ تحميل الإيراد المحصل للشهر الحالي من التقرير المالي المعتمد...'
-                : actualRevenueError
-                  ? 'تعذر تحميل التقرير المالي الحالي. لا تعتبر أرقام هذا الوضع صالحة للتوزيع حتى ينجح التحديث.'
-                  : 'الوضع الفعلي يعرض التحصيلات المسجلة من التقرير المالي المعتمد للشهر الميلادي الحالي.'}
-            </div>
-          )}
-
-          {/* High-Level Financial Breakdown Banner */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-              <span className="text-[11px] font-bold text-slate-400 block">إجمالي التحصيلات</span>
-              <div className="text-base font-black font-mono text-slate-900 dark:text-white">
-                {isActualRevenueLoading ? '...' : Math.round(financials.grossRevenue).toLocaleString()}{' '}
-                <span className="text-xs font-normal text-slate-400">ج.م/{mode === 'actual' ? 'الشهر الحالي' : 'شهر تقديري'}</span>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-amber-500/20 space-y-1">
-              <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 block">
-                مخصص التشغيل والمناديب ({operationalCostRate}%)
-              </span>
-              <div className="text-base font-black font-mono text-amber-600 dark:text-amber-400">
-                {Math.round(financials.costPool).toLocaleString()}{' '}
-                <span className="text-xs font-normal text-amber-600/70">ج.م</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/30 space-y-1">
-              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 block">
-                صافي الأرباح القابلة للتوزيع ({100 - operationalCostRate}%)
-              </span>
-              <div className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
-                {Math.round(financials.netProfitPool).toLocaleString()}{' '}
-                <span className="text-xs font-normal text-emerald-600/70">ج.م/{mode === 'actual' ? 'الشهر الحالي' : 'شهر تقديري'}</span>
-              </div>
-            </div>
-          </div>
-
-          <PartnerDividendPayouts
-            financials={financials}
-            partnerCount={partnerCount}
-            partnerSharePercent={partnerSharePercent}
-            founderPercent={FOUNDER_PERCENT}
-            mode={mode}
-          />
+      <section aria-labelledby="projection-results">
+        <div className="mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-emerald-600" /><h3 id="projection-results" className="text-sm font-black text-slate-900 dark:text-white">2. النتائج المتوقعة</h3></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ['إجمالي الإيرادات', projection.totals.revenue, 'text-slate-900 dark:text-white'],
+            ['إجمالي المصروفات', projection.totals.totalCosts, 'text-amber-600 dark:text-amber-400'],
+            ['صافي الربح التشغيلي', projection.totals.operatingProfit, 'text-emerald-600 dark:text-emerald-400'],
+            ['متوسط حصة المستثمر شهريًا', averageInvestorPayout / Math.max(1, inputs.investorCount), 'text-blue-600 dark:text-blue-400'],
+          ].map(([label, value, color]) => <div key={label as string} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-xs font-bold text-slate-400">{label}</p><p className={`mt-2 text-xl font-black ${color}`}>{money(value as number)}</p></div>)}
         </div>
-      )}
-    </div>
+        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs font-bold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">إجمالي حصة المستثمرين خلال فترة التوقع: {money(projection.totals.investorShare)} — حصة المؤسس: {100 - inputs.investorOwnership}%</div>
+      </section>
+
+      <section aria-labelledby="projection-table">
+        <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-emerald-600" /><h3 id="projection-table" className="text-sm font-black text-slate-900 dark:text-white">3. الجدول الشهري</h3></div>
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+          <table className="min-w-full text-right text-xs"><thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400"><tr><th className="px-3 py-3 font-black">الشهر</th><th className="px-3 py-3 font-black">الجراجات</th><th className="px-3 py-3 font-black">الأرصدة</th><th className="px-3 py-3 font-black">الإيرادات</th><th className="px-3 py-3 font-black">المصروفات</th><th className="px-3 py-3 font-black">صافي التشغيل</th></tr></thead><tbody>{projection.rows.map((row) => <tr key={row.month} className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-3 font-black text-slate-900 dark:text-white">{row.month}</td><td className="px-3 py-3 text-slate-600 dark:text-slate-300">{row.garages.toLocaleString('en-US')}</td><td className="px-3 py-3 text-slate-600 dark:text-slate-300">{row.credits.toLocaleString('en-US')}</td><td className="px-3 py-3 font-bold text-slate-900 dark:text-white">{money(row.revenue)}</td><td className="px-3 py-3 font-bold text-amber-600 dark:text-amber-400">{money(row.totalCosts)}</td><td className={`px-3 py-3 font-black ${row.operatingProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{money(row.operatingProfit)}</td></tr>)}</tbody></table>
+        </div>
+      </section>
+    </section>
   );
 };
