@@ -1,4 +1,4 @@
-# Garage Logic Fix
+# Business Logic Fix
 
 _Last updated: 2026-10-20._
 

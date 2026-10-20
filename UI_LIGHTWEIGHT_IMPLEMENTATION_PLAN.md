@@ -122,4 +122,4 @@ Recharge notification freshness no longer depends on those parent clock renders.
 
 ## Completion
 
-This lightweight UI plan is complete. The next workstream is the separate business-logic audit and repair plan: [`GARAGE_LOGIC_FIX_PLAN.md`](GARAGE_LOGIC_FIX_PLAN.md). That plan is not a visual redesign and requires confirmed bad logic to be deleted rather than archived or retained as a runtime compatibility path.
+This lightweight UI plan is complete. The next workstream is the separate business-logic audit and repair plan: [`BUSINESS_LOGIC_FIX_PLAN.md`](BUSINESS_LOGIC_FIX_PLAN.md). That plan is not a visual redesign and requires confirmed bad logic to be deleted rather than archived or retained as a runtime compatibility path.
