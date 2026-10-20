@@ -147,7 +147,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               )}
             </button>
 
-            {/* Tab 4: Subscription Pricing */}
+            {/* Tab 4: Credit Templates */}
             <button
               type="button"
               onClick={() => setActiveTab('packages')}
@@ -158,7 +158,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <Zap className={`w-4 h-4 ${activeTab === 'packages' ? 'text-current' : 'text-purple-500'}`} />
-              <span>{t('أسعار الاشتراكات')}</span>
+              <span>{t('قوالب أرصدة الدخول')}</span>
             </button>
 
             {/* Tab 5: People (Delegates) */}
