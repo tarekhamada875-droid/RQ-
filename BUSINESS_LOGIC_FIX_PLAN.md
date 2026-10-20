@@ -97,6 +97,8 @@ Preserve the current visual design, bilingual/RTL behavior, mobile/desktop layou
 
 **Proof:** Firestore rule denial for direct writes; successful route writes still update subscriber state, summaries, and events.
 
+**Implementation status (2026-10-20, pre-merge):** ALF-12 (PR #216) already blocks direct browser mutations, and the application sends subscriber add/renew/update/delete requests through Worker routes. This GLF-07 follow-up found and fixed a summary error: deleting an expired subscriber previously left it counted as expired. The Worker now treats a deleted record as absent when calculating summary deltas. A new garage-owner route test verifies stored state, summary deltas, and create/update/delete audit events; existing tests cover direct-write denial, renewal/ledger idempotency, and cross-garage rejection. The focused subscriber suite passes 11/11, and lint, Firestore rules emulator, maintainability, CI, and diff checks pass. The change is on branch `test/glf-07-subscriber-write-proof`; it is not yet merged or live. No role policy or stored data was changed. Staff subscriber access remains an unresolved policy item. GLF-10 is next after this release.
+
 ### GLF-08 — Maintain exits and current-count semantics consistently
 
 **Problem:** Checkout does not update `daily_stats.exitsCount`, and `activeVehicleCount` can mean current cars inside or a daily aggregate depending on the source.

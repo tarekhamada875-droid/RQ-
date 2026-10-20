@@ -28,9 +28,11 @@ At ALF-12 verification on 2026-10-20, `main` and `origin/main` were synchronized
 
 The protected decision branch `readiness/firestore-decision-gate` was at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2` at the same verification. Re-fetch and verify the current branch, exact `main` SHA, clean state, latest Production Gate, live Worker identity, open PRs, and protected branch before making another release decision.
 
-## Next planned task
+## Current task: GLF-07 (not yet merged)
 
-The implementation order puts GLF-07 next: ensure subscriber writes have one Worker-authoritative transactional path, correct garage scope, and audit/event behavior. Its direct-client-write restriction overlaps ALF-12. First compare the merged Worker routes and tests with the full GLF-07 scope. If ALF-12 completely satisfies it, record that in the plan without duplicating code, then the next item is GLF-10. Do not begin another roadmap item until the ALF-12 completion has been reported to the owner.
+ALF-12 already blocks direct Firestore subscriber mutations; the client’s add/renew/update/delete service calls the Worker, whose handlers use transactions, garage scope, maintained summaries, idempotency, and domain events. GLF-07 work is on local branch `test/glf-07-subscriber-write-proof`: it fixes an expired-subscriber summary delta that was not removed on delete and adds an owner-scoped lifecycle regression for state, summary deltas, and audit events. The focused suite passed 11/11; `npm run lint`, `npm run maintainability:check`, `npm run test:rules`, `npm run ci:check`, and `git diff --check` all passed. No production change is deployed yet; no stored records or Firebase rules were changed. The staff subscriber-management policy remains unresolved and is not changed by this patch.
+
+Remaining steps: inspect the final diff, commit the source/tests/status notes, push this branch, open a PR to `main`, wait for the required Production Gate, merge only if it passes, then verify the post-merge Worker deployment and live health/version. After that, update the release snapshot and stop to report GLF-07. GLF-10 is the next roadmap item; do not start it in the same task.
 
 ## Safety and workflow
 
