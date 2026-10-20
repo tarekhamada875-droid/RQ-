@@ -36,7 +36,7 @@ Before changing production data or deleting stored records, stop and obtain expl
 
 ## Next planned task
 
-The next agent should follow [`GARAGE_LOGIC_FIX_PLAN.md`](./GARAGE_LOGIC_FIX_PLAN.md), beginning with GLF-01: reject unknown vehicle types at the Worker boundary so malformed types cannot create free checkouts. Delete confirmed bad runtime logic rather than preserving it as archived, retired, or compatibility behavior. Preserve the exact current visuals, valid financial semantics, authorization boundaries, bilingual behavior, RTL/LTR behavior, and valid stored records. Do not delete stored data without separate explicit approval.
+The next agent should follow [`GARAGE_LOGIC_FIX_PLAN.md`](./GARAGE_LOGIC_FIX_PLAN.md), beginning with ALF-01: block direct client credit-balance writes and add the Firestore regression test. Then continue with the coordinated Admin/Garage order in the plan. Delete confirmed bad runtime logic rather than preserving it as archived, retired, or compatibility behavior. Preserve the exact current visuals, valid financial semantics, authorization boundaries, bilingual behavior, RTL/LTR behavior, and valid stored records. Do not delete stored data without separate explicit approval.
 
 ## Current release state
 
