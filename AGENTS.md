@@ -122,7 +122,7 @@ For every bounded task, all agents MUST complete the full workflow before stoppi
 
 1. Implement only the selected task and preserve existing behavior outside its scope.
 2. Run focused regression tests, then `npm run ci:check`, `npm run maintainability:check`, and `git diff --check` as applicable. Report warnings separately from failures and never claim a check passed unless it actually passed.
-3. Update [`PROJECT_ENGINEERING_KNOWLEDGE.md`](PROJECT_ENGINEERING_KNOWLEDGE.md) and the selected task plan with verified implementation status, test evidence, GitHub state, unresolved risks, and the single next task.
+3. Update [`PROJECT_ENGINEERING_KNOWLEDGE.md`](PROJECT_ENGINEERING_KNOWLEDGE.md) and the selected task plan with durable verified implementation/release facts, test evidence, unresolved risks, and the single next task. Put exact current `main`, worktree, open-PR, and other volatile repository details in the final handoff message after a fresh fetch; do not pin them as current facts in tracked notes.
 4. Commit all source, test, and documentation changes.
 5. Push the feature branch to GitHub.
 6. Open a pull request into `main`, wait for the required Production Gate checks, and merge the pull request when those checks pass. Do not bypass protected release checks. Merging to `main` may trigger the guarded Pages/Worker deployment; verify its workflow result before calling the change live.
@@ -131,9 +131,16 @@ For every bounded task, all agents MUST complete the full workflow before stoppi
 
 This workflow is part of the owner’s standing authorization for routine roadmap engineering. It does not authorize destructive data operations, unapproved Firebase changes, payments, security/ownership changes, or other consequential actions outside the roadmap.
 
+### Stable release facts versus transient repository state
+
+- `main` HEAD and the deployed application/Worker SHA answer different questions. A documentation-only PR may advance `main` while the Worker deployment is skipped; that is expected when the PR is docs-only, its gate passes, and live health/version still report the intended Worker release.
+- Tracked notes preserve durable facts: deployed application commit and deployment evidence, product/security decisions, completed work, checks, unresolved risks, and the next task. Do not store a supposedly current `main` SHA, working-tree state, current open-PR list, or current protected-branch SHA in those notes; they become stale after merges.
+- At handoff, fetch and verify the exact repository/GitHub state, then put it in the final copy-ready message. If a docs-only PR was needed, complete its normal gate and post-merge verification, report the resulting `main` SHA in that message, and do not open another docs PR merely to write that SHA into the files.
+- If `main` differs from the live Worker SHA, inspect intervening PRs and Production Gate results. An all-documentation merge with deployment skipped is expected; a code-release/deployment mismatch must be addressed through release verification, not by changing documentation to make the SHAs look equal.
+
 ### Project-wide continuity code word: “tokens ending — activate the RQ continuity handoff now.”
 
-When the owner says **“tokens ending — activate the RQ continuity handoff now.”** (or the shorter established phrase **“tokens ending”**), every agent must immediately activate the handoff version of this workflow. Preserve the exact current status in the tracked roadmap/knowledge-base/maintainer handoff, including incomplete work, tests, branch/commit, PR, merge, deployment, blockers, and the single next task. Commit and push any completed work, use the normal PR and Production Gate process, merge only after required checks pass, verify the final remote state, and stop so the owner can hand the project to the next agent. In the final response, also give Tarek a complete, ready-to-copy message to send to the next agent; that message must name the files to read, the verified repository state, the single next task, the required pre-edit checks, and the full completion workflow. Never claim unfinished work is pushed, merged, deployed, or live.
+When the owner says **“tokens ending — activate the RQ continuity handoff now.”** (or the shorter established phrase **“tokens ending”**), every agent must immediately prepare the factual handoff and apply the standing completion workflow. Preserve durable project facts in tracked notes; after a fresh fetch, put the exact transient `main` SHA, worktree, open PRs, latest gate, live Worker identity, and protected-branch SHA in the final copy-ready message. Distinguish `main` from the deployed Worker: a docs-only merge can advance `main` without a Worker deployment. Complete one normal PR/gate/release cycle for substantive work, verify post-merge state, then stop. Never open a follow-up docs PR solely to record the merge SHA created by a prior docs PR. Never claim unfinished work is pushed, merged, deployed, or live.
 
 
 ### Required successor handoff message — applies to every handoff
@@ -141,7 +148,7 @@ When the owner says **“tokens ending — activate the RQ continuity handoff no
 Whenever an agent asks Tarek to pass work to another agent, or knows another agent will continue—including a “tokens ending” handoff—the final response MUST include a detailed, ready-to-copy onboarding message. Do not reduce it to a short or minimal summary. Write it for a new agent that cannot see the earlier conversation. It must include, in plain language:
 
 - what RQ does and its relevant technical setup, plus Tarek’s priorities: preserve the Egyptian license-plate identity, favor functional code and atomic Firestore transactions, control unnecessary Firebase reads/writes, and explain progress simply;
-- what is complete, the current task, checks actually run, exact verified branch/commit/worktree/open-PR state, latest deployed application commit, and what the latest workflow did or did not deploy;
+- what is complete, the current task, checks actually run, exact verified branch/commit/worktree/open-PR state in the final handoff message (not as a self-updating claim in tracked notes), latest deployed application commit, and whether the latest workflow deployed it;
 - unresolved decisions, blockers, and safety boundaries;
 - the single next task, its scope/order, what to preserve or avoid, and a clear example of what “done” means when useful;
 - exact files to read, including `PROJECT_ENGINEERING_KNOWLEDGE.md`, `AGENTS.md`, `PROJECT_WORKING_AGREEMENT.md`, `BRANCHING_AND_RELEASES.md`, and relevant source/tests;
@@ -151,4 +158,4 @@ Use everyday wording and briefly define technical terms. The message should be c
 
 ### Continuity lessons are mandatory
 
-Before preparing any handoff, summarize the current model and validation evidence from `PROJECT_ENGINEERING_KNOWLEDGE.md`. A copied status is never sufficient: after the last merge, fetch again and verify clean `main`, `origin/main`, the latest successful main gate for that exact commit, open PR count, live Worker identity, and protected decision-branch SHA. If a mismatch appears, disclose it and correct it through the normal PR and Production Gate workflow before declaring the handoff ready.
+Before preparing any handoff, summarize the current model and validation evidence from `PROJECT_ENGINEERING_KNOWLEDGE.md`. A copied status is never sufficient: after the last merge, fetch and verify clean local `main`, matching `origin/main`, the latest successful main gate for that exact commit, open PR count, live Worker identity, and protected decision-branch SHA. Put these volatile values in the final handoff message. If a tracked note has an old SHA or PR list, correct the message and fetch current state; update files only for a genuinely incorrect durable fact or policy. Never open a follow-up documentation PR just to chase a SHA created by the prior docs PR.
