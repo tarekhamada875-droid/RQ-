@@ -33,14 +33,18 @@ export interface SubscriberRouteDeps {
 }
 
 function subscriberActivityDelta(before: any, after: any): { activeSubscribersCount: number; expiredSubscribersCount: number; activeSubscribers: number; expiredSubscribers: number } {
-  const active = (value: any) => Boolean(value) && (safeDateMillis(value?.endDate) === 0 || safeDateMillis(value?.endDate) >= Date.now());
-  const beforeActive = active(before);
-  const afterActive = active(after);
+  const classify = (value: any) => {
+    if (!value) return { active: 0, expired: 0 };
+    const active = safeDateMillis(value.endDate) === 0 || safeDateMillis(value.endDate) >= Date.now();
+    return { active: Number(active), expired: Number(!active) };
+  };
+  const beforeCounts = classify(before);
+  const afterCounts = classify(after);
   return {
-    activeSubscribersCount: Number(afterActive) - Number(beforeActive),
-    expiredSubscribersCount: Number(!afterActive) - Number(!beforeActive),
-    activeSubscribers: Number(afterActive) - Number(beforeActive),
-    expiredSubscribers: Number(!afterActive) - Number(!beforeActive)
+    activeSubscribersCount: afterCounts.active - beforeCounts.active,
+    expiredSubscribersCount: afterCounts.expired - beforeCounts.expired,
+    activeSubscribers: afterCounts.active - beforeCounts.active,
+    expiredSubscribers: afterCounts.expired - beforeCounts.expired
   };
 }
 

@@ -392,6 +392,71 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(await getSummary()).toBe(0);
   });
 
+  it('allows a garage owner to mutate scoped subscribers through the Worker and keeps state, summaries, and events consistent', async () => {
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer valid-garage-token-${testGarageId}`
+    };
+    const request = (path: string, body: unknown) => api.fetch(new Request(`http://localhost${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    }), workerEnv);
+    const garageSummaryPath = `garages/${testGarageId}/maintained_summary/current`;
+    const subscriberSummaryPath = 'subscriber_summary/global';
+    const summaryDelta = (path: string, field: string) => {
+      const value = mockDb.records.get(path)?.[field];
+      return value?.__op === 'increment' ? value.value : value;
+    };
+
+    const addRes = await request('/api/subscribers/add', {
+      garageId: testGarageId,
+      subscriberData: {
+        ownerName: 'Owner Managed',
+        phone: '01012345678',
+        plateNumber: 'AB12345',
+        plateNumberRaw: 'AB12345',
+        startDate: '2000-01-01',
+        endDate: '2000-01-31'
+      }
+    });
+    expect(addRes.status).toBe(200);
+    const { id: subscriberId } = await addRes.json() as any;
+    const subscriberPath = `garages/${testGarageId}/subscribers/${subscriberId}`;
+    expect(mockDb.records.get(subscriberPath)).toMatchObject({ ownerName: 'Owner Managed', garageId: testGarageId });
+    expect(summaryDelta(garageSummaryPath, 'totalSubscribersCount')).toBe(1);
+    expect(summaryDelta(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
+    expect(summaryDelta(garageSummaryPath, 'expiredSubscribersCount')).toBe(1);
+    expect(summaryDelta(subscriberSummaryPath, 'totalSubscribers')).toBe(1);
+    expect(summaryDelta(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
+    expect(summaryDelta(subscriberSummaryPath, 'expiredSubscribers')).toBe(1);
+    expect(summaryDelta(subscriberSummaryPath, 'garagesCount')).toBe(1);
+
+    const updateRes = await request('/api/subscribers/update', {
+      garageId: testGarageId,
+      subscriberId,
+      subscriberData: { ownerName: 'Updated Owner Managed' }
+    });
+    expect(updateRes.status).toBe(200);
+    expect(mockDb.records.get(subscriberPath)).toMatchObject({ ownerName: 'Updated Owner Managed' });
+
+    const deleteRes = await request('/api/subscribers/delete', { garageId: testGarageId, subscriberId });
+    expect(deleteRes.status).toBe(200);
+    expect(mockDb.records.has(subscriberPath)).toBe(false);
+    expect(summaryDelta(garageSummaryPath, 'totalSubscribersCount')).toBe(-1);
+    expect(summaryDelta(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
+    expect(summaryDelta(garageSummaryPath, 'expiredSubscribersCount')).toBe(-1);
+    expect(summaryDelta(subscriberSummaryPath, 'totalSubscribers')).toBe(-1);
+    expect(summaryDelta(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
+    expect(summaryDelta(subscriberSummaryPath, 'expiredSubscribers')).toBe(-1);
+
+    const events = [...mockDb.records.entries()]
+      .filter(([path]) => path.startsWith(`garages/${testGarageId}/events/`))
+      .map(([, event]) => event);
+    expect(events.map((event: any) => event.eventType).sort()).toEqual(['subscriber_created', 'subscriber_deleted', 'subscriber_updated']);
+    expect(events.every((event: any) => event.aggregateId === subscriberId && event.actorRole === 'garage')).toBe(true);
+  });
+
   it('rejects cross-garage lifecycle mutations and immutable plate changes without writes', async () => {
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
