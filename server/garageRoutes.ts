@@ -1290,7 +1290,7 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
     const page = buildFirestorePage(snapshot.docs, pageRequest, 'occurredAt');
     const entries = page.documents.map((doc: any) => {
       const row = doc.data() || {};
-      const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, bucket: row.bucket, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, occurredAt: row.occurredAt };
+      const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, bucket: row.bucket, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, totalBalanceAfter: row.totalBalanceAfter, occurredAt: row.occurredAt };
       return user?.role === 'admin' ? { ...common, paymentAmountEgp: row.paymentAmountEgp, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, reference: row.reference, idempotencyKey: row.idempotencyKey, source: row.source, packageId: row.packageId, packageName: row.packageName } : common;
     });
     return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });

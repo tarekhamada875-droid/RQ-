@@ -36,7 +36,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4, trial: 0 });
     const entries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('credit_ledger/'));
     expect(entries).toHaveLength(1);
-    expect(entries[0][1]).toMatchObject({ kind: 'paid_grant', bucket: 'paid', amount: 30, paymentAmountEgp: 30, balanceBefore: 10, balanceAfter: 40, actorUid: 'admin-uid', actorRole: 'admin', reference: 'transfer-sender-123', reason: 'Verified prepaid credit payment', source: 'admin_entered_grant', paymentConfirmed: true });
+    expect(entries[0][1]).toMatchObject({ kind: 'paid_grant', bucket: 'paid', amount: 30, paymentAmountEgp: 30, balanceBefore: 10, balanceAfter: 40, totalBalanceAfter: 44, actorUid: 'admin-uid', actorRole: 'admin', reference: 'transfer-sender-123', reason: 'Verified prepaid credit payment', source: 'admin_entered_grant', paymentConfirmed: true });
     const paymentEvents = [...mockDb.records.entries()].filter(([path, value]: [string, any]) => path.startsWith(`garages/${garageId}/events/`) && value.eventType === 'prepaid_credit_grant_paid');
     expect(paymentEvents).toHaveLength(1);
     expect(paymentEvents[0][1]).toMatchObject({ aggregateType: 'credit_grant', aggregateId: entries[0][1].entryId, payload: { amount: 30, creditAmount: 30, creditLedgerEntryId: entries[0][1].entryId } });
