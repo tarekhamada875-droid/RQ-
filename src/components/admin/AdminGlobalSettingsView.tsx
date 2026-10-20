@@ -21,7 +21,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   const t = useAdminTranslation(adminLang);
 
   const [config, setConfig] = useState<SystemConfig>({
-    warningDaysThreshold: 3,
     monthlySubscribersFlatFee: 250,
     monthlySubscribersSurchargePercent: 25,
     referralFeePerRenewal: 100,
@@ -60,7 +59,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
     setStatusMessage(null);
     try {
       await firestoreService.updateSystemConfig({
-        warningDaysThreshold: Number(config.warningDaysThreshold),
         monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee),
       });
       setStatusMessage({ type: 'success', text: t('تم حفظ وتحديث الإعدادات العامة للنظام بنجاح') });
@@ -85,38 +83,13 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Section 1: Subscriptions & Trials */}
+        {/* Section 1: Subscriber settings */}
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] border-2 border-slate-100 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
             <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-500" />
-              <span>{t('فترات التجربة والتنبيهات')}</span>
+              <span>{t('إعدادات المشتركين الشهريين')}</span>
             </h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-700 dark:text-slate-300 block">
-                {t('حد التنبيه باقتراب انتهاء الاشتراك (بالأيام)')}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={config.warningDaysThreshold}
-                  onChange={(e) => updateConfig({ warningDaysThreshold: Number(e.target.value.replace(/\D/g, '')) || 0 })}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
-                  required
-                />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  {t('أيام أو أقل')}
-                </span>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400">
-                {t('يظهر شريط تحذيري للجراج والمندوب عندما يتبقى هذا العدد من الأيام')}
-              </p>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

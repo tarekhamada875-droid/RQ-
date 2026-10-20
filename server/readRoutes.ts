@@ -19,13 +19,11 @@ export interface RouteDeps {
 }
 
 const ACTIVE_SYSTEM_CONFIG_FIELDS = [
-  'warningDaysThreshold',
   'monthlySubscribersFlatFee',
   'adminColor'
 ] as const;
 
 const DEFAULT_SYSTEM_CONFIG = {
-  warningDaysThreshold: 3,
   monthlySubscribersFlatFee: 250,
   adminColor: '#10b981'
 };
@@ -97,9 +95,6 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
 
     if (body.walletNumber !== undefined || body.subscriptionPrices !== undefined || body.defaultTrialDays !== undefined) {
       throw new ValidationError('Retired configuration field', 'RETIRED_CONFIG_FIELD', 400);
-    }
-    if (body.warningDaysThreshold !== undefined) {
-      updatePayload.warningDaysThreshold = validateNumber(body.warningDaysThreshold, 'warningDaysThreshold', { min: 0, integerOnly: true });
     }
     if (body.monthlySubscribersFlatFee !== undefined) {
       updatePayload.monthlySubscribersFlatFee = validateNumber(body.monthlySubscribersFlatFee, 'monthlySubscribersFlatFee', { min: 0 });

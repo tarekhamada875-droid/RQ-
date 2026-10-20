@@ -153,13 +153,3 @@ export function canReleaseSession(input: Readonly<{
   if (input.actorUid === input.targetUid) return true;
   return input.isActiveAdmin;
 }
-
-export function canUpdateTrialDecision(
-  principal: AuthorizationPrincipal | null | undefined,
-  targetGarageId: string,
-  decision: 'continued' | 'declined' | 'dismissed' | 'resolved' | null,
-): boolean {
-  if (!principal) return false;
-  if (principal.role === 'admin') return true;
-  return principal.role === 'garage' && principal.garageId === targetGarageId && decision !== null;
-}

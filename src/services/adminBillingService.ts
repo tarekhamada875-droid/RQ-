@@ -1,4 +1,3 @@
-import { handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import type { FinancialReportData, FinancialReportFilters } from './adminServiceTypes';
 
@@ -24,15 +23,4 @@ export const adminBillingService = {
   },
 
 
-  updateTrialDecision: async (garageId: string, trialDecision: 'continued' | 'declined' | 'dismissed' | 'resolved' | null): Promise<void> => {
-    try {
-      await apiFetch('/api/garages/trial-decision', {
-        method: 'POST',
-        body: { garageId, trialDecision }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `garages/${garageId}`);
-      throw error;
-    }
-  }
 };

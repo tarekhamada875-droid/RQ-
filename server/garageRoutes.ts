@@ -39,7 +39,6 @@ export interface GarageRouteDeps {
   decideGarageScope: GarageRouteDependency;
   isFreshDashboardSummary: GarageRouteDependency;
   normalizeStoredDashboardMoney: GarageRouteDependency;
-  canUpdateTrialDecision: GarageRouteDependency;
   canManageStaffForGarage: GarageRouteDependency;
   deleteEntityPinInTransaction: GarageRouteDependency;
   canManageDelegates: GarageRouteDependency;
@@ -94,7 +93,6 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     decideGarageScope,
     isFreshDashboardSummary,
     normalizeStoredDashboardMoney,
-    canUpdateTrialDecision,
     canManageStaffForGarage,
     deleteEntityPinInTransaction,
     canManageDelegates,
@@ -365,9 +363,9 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     const allowedKeys = [
       'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
       'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode', 
-      'maintenanceMessage', 'warningDaysThreshold', 'assignedDelegateId', 'currentSessionId',
+      'maintenanceMessage', 'assignedDelegateId', 'currentSessionId',
       'hasMonthlySubscribers', 'allowMonthlySubscribers', 'subscriberFlatFee', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
-      'shimmerColor', 'activePackageName', 'trialDecision', 'trialDecisionAt',
+      'shimmerColor', 'activePackageName',
       'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
       'balance', 'balanceExpiry', 'carsInside'
     ];
@@ -652,53 +650,10 @@ app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
   }
 });
 
+// The old time-based trial decision workflow is retired. Trial eligibility is represented by server-owned credits.
 app.post('/api/garages/trial-decision', requireWorkerAuth, async (c) => {
-  try {
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
-
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const garageId = validateId(body.garageId, 'garageId', true);
-    const trialDecision = body.trialDecision;
-    const allowedDecisions = ['continued', 'declined', 'dismissed', 'resolved'];
-    if (trialDecision !== null && !allowedDecisions.includes(trialDecision)) {
-      return c.json({ success: false, error: 'INVALID_TRIAL_DECISION' }, 400);
-    }
-
-    const user = c.get('user');
-    if (!canUpdateTrialDecision(user, garageId, trialDecision)) {
-      return c.json({ success: false, error: 'FORBIDDEN: Trial decision is outside your authority' }, 403);
-    }
-
-    const garageRef = getAdminDb().doc(`garages/${garageId}`);
-    const garageSnap = await garageRef.get();
-    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
-
-    await garageRef.set({
-      trialDecision,
-      trialDecisionAt: trialDecision ? new Date() : null,
-      updatedAt: new Date()
-    }, { merge: true });
-
-    const logRef = getAdminDb().collection('activity_logs').doc();
-    await logRef.set({
-      garageId,
-      garageName: garageSnap.data()?.name || '',
-      staffId: user?.uid || null,
-      staffName: user?.displayName || 'مستخدم',
-      actionType: 'update_trial_decision',
-      plateNumber: trialDecision ? `قرار التجربة: ${trialDecision}` : 'مسح قرار التجربة',
-      timestamp: new Date(),
-      amount: 0,
-      details: { trialDecision }
-    });
-
-    return c.json({ success: true });
-  } catch (error: any) {
-    console.error('[Worker Garage] Error updating trial decision:', error);
-    return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 400);
-  }
+  return c.json({ success: false, error: 'TRIAL_DECISION_WORKFLOW_RETIRED' }, 410);
 });
-
 // Staff Management Routes
 app.post('/api/staff/create', requireWorkerAuth, async (c) => {
   try {

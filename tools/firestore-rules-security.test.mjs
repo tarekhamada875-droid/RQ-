@@ -270,7 +270,7 @@ try {
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-g-2'), { name: 'Cross-Garage Change' }));
   await assertFails(deleteDoc(doc(ownerDb, 'staff/staff-g-2')));
   await assertSucceeds(updateDoc(doc(ownerDb, 'garages/g-1'), { hourlyRate: 2 }));
-  await assertSucceeds(updateDoc(doc(ownerDb, 'garages/g-1'), { trialDecision: 'continued' }));
+  await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), { trialDecision: 'continued' }));
   await assertFails(updateDoc(doc(ownerDb, 'garages/g-2'), { hourlyRate: 2 }));
   await assertSucceeds(updateDoc(doc(adminDb, 'staff/staff-g-2'), { name: 'Admin Updated Staff' }));
   await assertFails(updateDoc(doc(adminDb, 'staff/staff-g-2'), { role: 'garage' }));

@@ -24,7 +24,6 @@ vi.mock('../../utils/adminTranslations', () => ({
 }));
 
 const storedConfig = {
-  warningDaysThreshold: 4,
   monthlySubscribersFlatFee: 300,
   monthlySubscribersSurchargePercent: 37,
   referralFeePerRenewal: 45,
@@ -43,26 +42,23 @@ describe('AdminGlobalSettingsView', () => {
   it('updates visible fields without overwriting hidden system settings', async () => {
     render(<AdminGlobalSettingsView />);
 
-    const warningDaysInput = await screen.findByDisplayValue('4');
-    expect(screen.getByDisplayValue('300')).toBeInTheDocument();
-    fireEvent.change(warningDaysInput, { target: { value: '9' } });
+    expect(await screen.findByDisplayValue('300')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'حفظ وتطبيق التغييرات' }));
 
     await waitFor(() => expect(firestoreService.updateSystemConfig).toHaveBeenCalledTimes(1));
     expect(firestoreService.updateSystemConfig).toHaveBeenCalledWith({
-      warningDaysThreshold: 9,
       monthlySubscribersFlatFee: 300,
     });
   });
 
   it('does not overwrite an in-progress edit when the shared snapshot refreshes', async () => {
     const { rerender } = render(<AdminGlobalSettingsView />);
-    const warningDaysInput = await screen.findByDisplayValue('4');
-    fireEvent.change(warningDaysInput, { target: { value: '9' } });
+    const monthlyFeeInput = await screen.findByDisplayValue('300');
+    fireEvent.change(monthlyFeeInput, { target: { value: '350' } });
 
-    configMock.current = { ...storedConfig, warningDaysThreshold: 8 };
+    configMock.current = { ...storedConfig, };
     rerender(<AdminGlobalSettingsView />);
 
-    expect(screen.getByDisplayValue('9')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('350')).toBeInTheDocument();
   });
 });

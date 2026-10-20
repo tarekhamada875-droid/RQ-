@@ -8,7 +8,6 @@ import {
   Key,
   ClipboardList,
   ChevronRight,
-  Clock,
   ShieldCheck,
   Calculator
 } from 'lucide-react';
@@ -17,9 +16,7 @@ import { AdminOverviewView } from './AdminOverviewView';
 import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
-import { AdminTrialLeadsView } from './AdminTrialLeadsView';
 import { AdminPackagesView } from './AdminPackagesView';
-import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
@@ -100,9 +97,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showToast,
   onLogout
 }) => {
-  const trialLeadsCount = React.useMemo(() => {
-    return allGarages.filter(g => g.trialDecision === 'continued' || g.trialDecision === 'declined').length;
-  }, [allGarages]);
 
   return (
     <>
@@ -157,29 +151,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                     : 'bg-rose-500 text-white'
                 }`}>
                   {pendingGarages.length}
-                </span>
-              )}
-            </button>
-
-            {/* Tab: Trial Leads */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('trial_leads')}
-              className={`flex shrink-0 snap-start items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'trial_leads'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Clock className={`w-4 h-4 ${activeTab === 'trial_leads' ? 'text-current' : 'text-emerald-500'}`} />
-              <span>{t('متابعة التجارب')}</span>
-              {trialLeadsCount > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                  activeTab === 'trial_leads'
-                    ? 'bg-amber-400 text-slate-900 dark:bg-slate-950 dark:text-amber-400'
-                    : 'bg-emerald-500 text-white'
-                }`}>
-                  {trialLeadsCount}
                 </span>
               )}
             </button>
@@ -366,40 +337,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           handleRejectGarage={handleRejectGarage}
           adminLang={adminLang}
           t={t}
-        />
-      ) : activeTab === 'trial_leads' ? (
-        <AdminTrialLeadsView
-          garages={allGarages}
-          onSelectGarage={onSelectGarage}
-          onDeleteGarage={(garageId, garageName) => {
-            setConfirmDialog({
-              isOpen: true,
-              title: `حذف الجراج (${garageName})`,
-              message: `هل أنت متأكد من حذف الجراج (${garageName}) وكافة بياناته نهائياً؟ هذا الإجراء غير قابل للتراجع.`,
-              onConfirm: async () => {
-                try {
-                  const result = await deleteGarageWithRecovery(garageId);
-                  if (result.ok === false) {
-                    setConfirmDialog({
-                      isOpen: true,
-                      title: adminLang === 'en' ? 'Garage deletion failed' : 'تعذر حذف الجراج',
-                      message: garageDeletionFailureMessage(result, adminLang),
-                      onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-                      confirmText: adminLang === 'en' ? 'OK' : 'حسناً',
-                      type: 'danger'
-                    });
-                    return;
-                  }
-                  setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                  showToast?.(adminLang === 'en' ? 'Garage deleted successfully.' : 'تم حذف الجراج بنجاح', 'success');
-                } catch (error) {
-                  console.error('Failed to delete trial garage:', error);
-                  showToast?.(adminLang === 'en' ? 'The garage could not be deleted. Please try again.' : 'تعذر حذف الجراج. حاول مرة أخرى.', 'error');
-                }
-              }
-            });
-          }}
-          showToast={showToast}
         />
       ) : activeTab === 'packages' ? (
         <AdminPackagesView

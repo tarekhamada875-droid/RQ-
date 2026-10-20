@@ -93,9 +93,7 @@ export interface Garage {
   dailyCapacity?: number; // Daily car limit (50, 100, 150, or 0/undefined for unlimited)
   activePackageName?: string; // Current package name
   status?: 'pending' | 'approved' | 'rejected';
-  isTrial?: boolean; // 15-day free trial indicator
-  trialDecision?: 'continued' | 'declined' | 'dismissed' | 'resolved' | null;
-  trialDecisionAt?: any; // Timestamp when decision was made
+  isTrial?: boolean; // Server-owned trial-credit grant indicator
   unlimitedFairUse?: UnlimitedFairUse | null;
 }
 
@@ -229,7 +227,6 @@ export interface Announcement {
 
 export interface SystemConfig {
   id?: string;
-  warningDaysThreshold: number; // e.g. 3
   supportPhone?: string;
   monthlySubscribersSurchargePercent?: number;
   monthlySubscribersFlatFee: number; // e.g. 500

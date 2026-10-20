@@ -48,7 +48,6 @@ describe('useSystemConfig singleton', () => {
     expect(serviceMock.callbacks).toHaveLength(1);
 
     const config: SystemConfig = {
-      warningDaysThreshold: 3,
       monthlySubscribersSurchargePercent: 25,
       monthlySubscribersFlatFee: 450,
       referralFeePerRenewal: 85,

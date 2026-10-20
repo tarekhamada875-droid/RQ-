@@ -63,7 +63,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     const privateConfig = {
       walletNumber: 'private-wallet',
       subscriptionPrices: { weekly: 900 },
-      warningDaysThreshold: 5,
       monthlySubscribersFlatFee: 250,
       adminColor: '#123456',
       syntheticSensitiveField: 'private'
@@ -83,7 +82,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       const body = await res.json() as any;
       expect(body.success).toBe(true);
       expect(body.config).toEqual({
-        warningDaysThreshold: 5,
         monthlySubscribersFlatFee: 250,
         adminColor: '#123456'
       });
@@ -139,7 +137,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
         'Content-Type': 'application/json',
         'x-backend-operator-token': operatorToken
       },
-      body: JSON.stringify({ warningDaysThreshold: 3 })
+      body: JSON.stringify({ })
     }), { BACKEND_OPERATOR_TOKEN: operatorToken });
 
     expect(opRes.status).toBe(403);
@@ -153,7 +151,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer valid-admin-token'
       },
-      body: JSON.stringify({ warningDaysThreshold: 3 })
+      body: JSON.stringify({ })
     }), { BACKEND_OPERATOR_TOKEN: operatorToken });
 
     expect(adminRes.status).toBe(200);
