@@ -32,7 +32,6 @@ describe('adminSystemConfigService Worker-backed subscription', () => {
       .mockResolvedValueOnce({
         success: true,
         config: {
-          defaultTrialDays: 9,
           warningDaysThreshold: 4,
           monthlySubscribersFlatFee: 310,
           adminColor: '#223344'
@@ -43,7 +42,6 @@ describe('adminSystemConfigService Worker-backed subscription', () => {
     const unsubscribe = adminSystemConfigService.subscribeToSystemConfig(onConfig);
 
     await waitFor(() => expect(onConfig).toHaveBeenCalledWith({
-      defaultTrialDays: 2,
       warningDaysThreshold: 3,
       monthlySubscribersFlatFee: 250,
       adminColor: '#10b981'
@@ -51,7 +49,6 @@ describe('adminSystemConfigService Worker-backed subscription', () => {
 
     window.dispatchEvent(new Event('rq-session-ready'));
     await waitFor(() => expect(onConfig).toHaveBeenCalledWith({
-      defaultTrialDays: 9,
       warningDaysThreshold: 4,
       monthlySubscribersFlatFee: 310,
       adminColor: '#223344'

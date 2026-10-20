@@ -569,7 +569,7 @@ describe('garage creation Hono contract', () => {
   it('creates an Admin garage with the prepaid-credit defaults and complete activity-log details', async () => {
     mockDb.clear();
     const response = await callHonoCreate('valid-admin-token', {
-      name: '  Synthetic Trial Garage  ', pin: '62841357', isTrial: true, trialDays: 3
+      name: '  Synthetic Trial Garage  ', pin: '62841357', isTrial: true
     });
     const result = await response.json() as any;
     const garage = structuredClone(mockDb.records.get(`garages/${result.id}`));
@@ -594,7 +594,7 @@ describe('garage creation Hono contract', () => {
     mockDb.clear();
     seedDelegateGarages(2);
     const response = await callHonoCreate('valid-delegate-token-delegate-a', {
-      name: 'Synthetic Delegate Garage', pin: '73916428', isTrial: true, trialDays: 4,
+      name: 'Synthetic Delegate Garage', pin: '73916428', isTrial: true,
       createdByDelegateName: 'Delegate A', referrerName: 'Delegate A'
     });
     const result = await response.json() as any;
@@ -637,7 +637,7 @@ describe('garage creation Hono contract', () => {
     expect(snapshotRecords()).toEqual(invalidBefore);
 
     mockDb.clear();
-    const body = { name: 'Keyed Garage', pin: '59182736', isTrial: true, trialDays: 5, idempotencyKey: 'garage-create-key-20261010' };
+    const body = { name: 'Keyed Garage', pin: '59182736', isTrial: true, idempotencyKey: 'garage-create-key-20261010' };
     const first = await callHonoCreate('valid-admin-token', body);
     const firstBody = await first.json();
     const replay = await callHonoCreate('valid-admin-token', body);

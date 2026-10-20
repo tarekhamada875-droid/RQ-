@@ -125,7 +125,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'trialDays', 'defaultTrialDays', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
+    const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
     const { phone: rawPhone, hourlyRate: rawHourlyRate, overnightRate: rawOvernightRate, createdByDelegateId, createdByDelegateName, referrerId, referrerName, referredByGarageId, referredByGarageName } = sanitized;
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(sanitized.pin);
@@ -827,7 +827,7 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { name, phone, pin, commissionRate, commissions, defaultTrialDays } = body;
+    const { name, phone, pin, commissionRate, commissions } = body;
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPhone = phone ? String(phone).trim() : '';
     const normPin = validateNewPin(pin);
@@ -853,7 +853,6 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
         phone: normPhone,
         commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
         commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
-        defaultTrialDays: defaultTrialDays !== undefined ? Number(defaultTrialDays) : 15,
         balance: 0,
         totalEarned: 0,
         createdAt: new Date()
@@ -879,11 +878,11 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, commissionRate, commissions, defaultTrialDays, pin } = body;
+    const { id, name, phone, commissionRate, commissions, pin } = body;
     if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const delegateId = validateId(id, 'id', true);
     const unsupportedFields = Object.keys(body).filter((field) =>
-      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'defaultTrialDays', 'pin'].includes(field)
+      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'pin'].includes(field)
     );
     if (unsupportedFields.length > 0) {
       return c.json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(',')}` }, 400);
@@ -900,7 +899,6 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
     if (phone !== undefined) updates.phone = String(phone).trim();
     if (commissionRate !== undefined) updates.commissionRate = Number(commissionRate);
     if (commissions) updates.commissions = commissions;
-    if (defaultTrialDays !== undefined) updates.defaultTrialDays = Number(defaultTrialDays);
 
     const delegateRef = getAdminDb().collection('delegates').doc(delegateId);
     await getAdminDb().runTransaction(async (t: any) => {

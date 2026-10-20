@@ -4,7 +4,6 @@ import { listenerTracker } from '../utils/listenerTracker';
 import type { SystemConfig } from '../types';
 
 const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
-  defaultTrialDays: 2,
   warningDaysThreshold: 3,
   monthlySubscribersFlatFee: 250,
   adminColor: '#10b981'

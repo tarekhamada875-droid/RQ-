@@ -173,8 +173,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
         name: 'New Test Garage',
         phone: '01099990000',
         pin: testPin,
-        isTrial: true,
-        trialDays: 3
+        isTrial: true
       })
     }), workerEnv);
 
