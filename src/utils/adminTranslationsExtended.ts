@@ -102,6 +102,7 @@ export const adminTranslationsExtended: Record<string, string> = {
   'إخفاء': 'Hide',
   'إضافة جراج': 'Add Garage',
   'إعدادات النظام والعمولات': 'System Settings & Commissions',
+  'حاسبة الاستثمار': 'Investment Calculator',
   'إعلان مسجل': 'Registered Announcement',
   'إعلان نشط': 'Active Announcement',
   'إعلانات المنصة': 'Platform Announcements',

@@ -22,7 +22,6 @@ import { AdminGlobalSettingsView } from './AdminGlobalSettingsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
-import { AdminCreditActivityReportPanel } from './AdminCreditActivityReportPanel';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -175,7 +174,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('الأشخاص')}</span>
             </button>
 
-            {/* Tab: Partners & Dividend Calculator */}
+            {/* Tab: Investment Calculator */}
             <button
               type="button"
               onClick={() => setActiveTab('partners_calculator')}
@@ -186,7 +185,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <Calculator className={`w-4 h-4 ${activeTab === 'partners_calculator' ? 'text-current' : 'text-emerald-500'}`} />
-              <span>{t('حاسبة الشركاء')}</span>
+              <span>{t('حاسبة الاستثمار')}</span>
             </button>
 
             {/* Tab 7: Settings */}
@@ -226,7 +225,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         />
       ) : activeTab === 'partners_calculator' ? (
         <div className="space-y-5 animate-in fade-in duration-200">
-          <AdminCreditActivityReportPanel adminLang={adminLang} />
           <AdminPartnerDividendCard
             currentActiveGarages={approvedGarages.length}
           />
