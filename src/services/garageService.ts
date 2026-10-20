@@ -170,9 +170,6 @@ export const garageService = {
 
   updateGarage: async (id: string, data: Partial<Garage>) => {
     try {
-      if ('balanceExpiry' in data && data.balanceExpiry === null && data.status === 'approved') {
-        throw new Error('لا يمكن حذف تاريخ انتهاء الاشتراك لجراج مفعل');
-      }
       const newPin = data.pin || (data as any).ownerPin;
       if (newPin) {
         await apiFetch('/api/people/update-pin', {

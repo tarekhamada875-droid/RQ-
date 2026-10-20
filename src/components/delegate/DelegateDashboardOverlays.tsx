@@ -94,8 +94,6 @@ export const DelegateDashboardOverlays = (props: any) => {
                   </div>
                 </div>
   
-                <input type="hidden" name="billingModel" value="prepaid_credits" />
-  
                 {/* Free Trial Toggle */}
                 <div 
                   id="delegate-trial-toggle-container"

@@ -205,8 +205,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 </div>
               </div>
 
-              <input type="hidden" name="billingModel" value="prepaid_credits" />
-
               {/* Free Trial Toggle */}
               <div
                 id="trial-toggle-container"

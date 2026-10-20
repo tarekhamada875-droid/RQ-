@@ -183,6 +183,23 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.id).toBeDefined();
   });
 
+  it('rejects legacy garage creation fields before any write', async () => {
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const writesBefore = mockDb.documentWriteCount;
+    const response = await api.fetch(new Request('http://localhost/api/garages/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ name: 'Legacy Field Garage', pin: '12345678', billingModel: 'subscription' })
+    }), workerEnv);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ success: false, error: 'RETIRED_GARAGE_FIELD', field: 'billingModel' });
+    expect(mockDb.documentWriteCount).toBeGreaterThanOrEqual(writesBefore);
+    const businessRecords = (records: Map<string, any>) => [...records.entries()].filter(([path]) => !path.startsWith('rate_limits/'));
+    expect(businessRecords(mockDb.records)).toEqual(businessRecords(recordsBefore));
+    expect([...mockDb.records.keys()].some((path) => path.startsWith('garages/') && path !== `garages/${testGarageId}`)).toBe(false);
+  });
+
   it('2. POST /api/garages/update updates garage configuration fields', async () => {
     const updateRes = await api.fetch(new Request('http://localhost/api/garages/update', {
       method: 'POST',
