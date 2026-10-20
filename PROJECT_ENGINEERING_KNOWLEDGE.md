@@ -40,4 +40,4 @@ The next agent should follow [`GARAGE_LOGIC_FIX_PLAN.md`](./GARAGE_LOGIC_FIX_PLA
 
 ## Current release state
 
-The repository is on synchronized `main` at merge commit `77a12276756c874f8fc57c4082614f1b1ac4a2c2`; the working tree is clean and there are no open PRs. The post-merge Production Gate run `39364115569` for this exact commit passed and deployed the verified Worker. The live Worker reports the same commit through `/api/health` and `/api/version`. The protected decision branch is `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`. No stored-data deletion is authorized by this guide.
+The repository’s release state must be verified from GitHub and the working tree before each task; do not rely on an embedded commit from an earlier documentation merge. Confirm synchronized `main`, the latest successful Production Gate and deployment, live `/api/health` and `/api/version`, open PR count, and the protected decision branch. No stored-data deletion is authorized by this guide.
