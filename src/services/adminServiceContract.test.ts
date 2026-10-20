@@ -73,7 +73,6 @@ describe('adminService facade contract', () => {
       'updateStaff',
       'updateSubscriber',
       'updateSystemConfig',
-      'updateTrialDecision'
     ]);
   });
 
@@ -101,7 +100,6 @@ describe('adminService facade contract', () => {
 
     const unsubscribe = adminService.subscribeToSystemConfig(callback);
     await waitFor(() => expect(callback).toHaveBeenCalledWith({
-      warningDaysThreshold: 3,
       monthlySubscribersFlatFee: 250,
       adminColor: '#10b981'
     }));

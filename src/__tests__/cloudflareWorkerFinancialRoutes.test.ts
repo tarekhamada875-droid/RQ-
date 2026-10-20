@@ -406,11 +406,10 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const zeroSettings = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ warningDaysThreshold: 0, monthlySubscribersFlatFee: 0 })
+      body: JSON.stringify({ monthlySubscribersFlatFee: 0 })
     }), workerEnv);
     expect(zeroSettings.status).toBe(200);
     expect(mockDb.records.get('system_config/global')).toMatchObject({
-      warningDaysThreshold: 0,
       monthlySubscribersFlatFee: 0
     });
 

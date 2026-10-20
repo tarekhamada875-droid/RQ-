@@ -15,7 +15,7 @@ import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canUpdateTrialDecision, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
+import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
 import { validatePackageCatalogRecord } from './packageCatalog';
 import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, grantTrialCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
@@ -1387,7 +1387,6 @@ registerGarageRoutes(workerApp, {
   decideGarageScope,
   isFreshDashboardSummary,
   normalizeStoredDashboardMoney,
-  canUpdateTrialDecision,
   canManageStaffForGarage,
   deleteEntityPinInTransaction,
   canManageDelegates,

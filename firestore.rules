@@ -425,7 +425,7 @@ service cloud.firestore {
 
     function isAllowedGarageOwnerUpdate() {
       return incoming().diff(existing()).affectedKeys().hasOnly([
-               'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive', 'trialDecision', 'trialDecisionAt'
+               'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive'
              ]) &&
              (!('hourlyRate' in incoming()) || (incoming().hourlyRate is number && incoming().hourlyRate >= 0 && incoming().hourlyRate <= 10000)) &&
              (!('overnightRate' in incoming()) || (incoming().overnightRate is number && incoming().overnightRate >= 0 && incoming().overnightRate <= 10000)) &&

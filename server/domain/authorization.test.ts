@@ -12,8 +12,7 @@ import {
   canRunGarageMaintenance,
   canViewFinancialReport,
   canReleaseSession,
-  canUpdateAdminPin,
-  canUpdateTrialDecision
+  canUpdateAdminPin
 } from './authorization';
 
 describe('garage-scoped authorization policy', () => {
@@ -125,21 +124,6 @@ describe('admin-session authorization policy', () => {
   });
 });
 
-describe('trial decision authorization policy', () => {
-  it('allows an owner to record a choice only for their own garage', () => {
-    expect(canUpdateTrialDecision({ role: 'garage', garageId: 'garage_target' }, 'garage_target', 'continued')).toBe(true);
-    expect(canUpdateTrialDecision({ role: 'garage', garageId: 'garage_target' }, 'garage_target', 'declined')).toBe(true);
-    expect(canUpdateTrialDecision({ role: 'garage', garageId: 'garage_other' }, 'garage_target', 'continued')).toBe(false);
-  });
-
-  it('reserves clearing and non-owner changes to admins', () => {
-    expect(canUpdateTrialDecision({ role: 'garage', garageId: 'garage_target' }, 'garage_target', null)).toBe(false);
-    expect(canUpdateTrialDecision({ role: 'staff', garageId: 'garage_target' }, 'garage_target', 'continued')).toBe(false);
-    expect(canUpdateTrialDecision({ role: 'delegate' }, 'garage_target', 'continued')).toBe(false);
-    expect(canUpdateTrialDecision({ role: 'admin' }, 'garage_target', null)).toBe(true);
-    expect(canUpdateTrialDecision({ role: 'admin' }, 'garage_target', 'declined')).toBe(true);
-  });
-});
 
 describe('admin maintenance authorization policy', () => {
   it.each([
