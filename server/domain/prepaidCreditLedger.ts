@@ -251,7 +251,7 @@ export function materializeCreditLedgerEntry(entry: Omit<CreditLedgerEntry, 'ent
     ok: true,
     value: {
       ...entry,
-      entryId: `${entry.garageId}:${entry.idempotencyKey}`,
+      entryId: `${entry.garageId}:${entry.kind}:${entry.idempotencyKey}`,
     },
   };
 }

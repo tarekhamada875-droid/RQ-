@@ -97,8 +97,34 @@ describe('prepaid credit ledger', () => {
     });
     expect(result).toEqual({
       ok: true,
-      value: expect.objectContaining({ entryId: 'garage-1:operation-1' }),
+      value: expect.objectContaining({ entryId: 'garage-1:paid_grant:operation-1' }),
     });
+  });
+
+  it('keeps different operation kinds distinct when a key is reused', () => {
+    const paidGrant = materializeCreditLedgerEntry({
+      ...base,
+      kind: 'paid_grant',
+      bucket: 'paid',
+      amount: 10,
+      balanceBefore: 0,
+      balanceAfter: 10,
+    });
+    const restore = materializeCreditLedgerEntry({
+      ...base,
+      kind: 'correction_restore',
+      bucket: 'paid',
+      amount: 1,
+      balanceBefore: 10,
+      balanceAfter: 11,
+    });
+
+    expect(paidGrant.ok && restore.ok).toBe(true);
+    if (paidGrant.ok && restore.ok) {
+      expect(paidGrant.value.entryId).not.toBe(restore.value.entryId);
+      expect(paidGrant.value.entryId).toBe('garage-1:paid_grant:operation-1');
+      expect(restore.value.entryId).toBe('garage-1:correction_restore:operation-1');
+    }
   });
 });
 
