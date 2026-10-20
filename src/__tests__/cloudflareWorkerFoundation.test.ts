@@ -63,7 +63,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     const privateConfig = {
       walletNumber: 'private-wallet',
       subscriptionPrices: { weekly: 900 },
-      defaultTrialDays: 7,
       warningDaysThreshold: 5,
       monthlySubscribersFlatFee: 250,
       adminColor: '#123456',
@@ -84,7 +83,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       const body = await res.json() as any;
       expect(body.success).toBe(true);
       expect(body.config).toEqual({
-        defaultTrialDays: 7,
         warningDaysThreshold: 5,
         monthlySubscribersFlatFee: 250,
         adminColor: '#123456'

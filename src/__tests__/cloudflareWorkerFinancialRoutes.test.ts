@@ -406,14 +406,21 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const zeroSettings = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ defaultTrialDays: 0, warningDaysThreshold: 0, monthlySubscribersFlatFee: 0 })
+      body: JSON.stringify({ warningDaysThreshold: 0, monthlySubscribersFlatFee: 0 })
     }), workerEnv);
     expect(zeroSettings.status).toBe(200);
     expect(mockDb.records.get('system_config/global')).toMatchObject({
-      defaultTrialDays: 0,
       warningDaysThreshold: 0,
       monthlySubscribersFlatFee: 0
     });
+
+    const retiredTrialSetting = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ defaultTrialDays: 15 })
+    }), workerEnv);
+    expect(retiredTrialSetting.status).toBe(400);
+    expect(await retiredTrialSetting.json()).toMatchObject({ success: false, code: 'RETIRED_CONFIG_FIELD', statusCode: 400 });
 
     const negative = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',

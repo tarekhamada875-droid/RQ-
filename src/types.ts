@@ -229,7 +229,6 @@ export interface Announcement {
 
 export interface SystemConfig {
   id?: string;
-  defaultTrialDays: number; // e.g. 15
   warningDaysThreshold: number; // e.g. 3
   supportPhone?: string;
   monthlySubscribersSurchargePercent?: number;

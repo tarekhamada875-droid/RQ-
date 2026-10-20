@@ -21,7 +21,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
   const t = useAdminTranslation(adminLang);
 
   const [config, setConfig] = useState<SystemConfig>({
-    defaultTrialDays: 2,
     warningDaysThreshold: 3,
     monthlySubscribersFlatFee: 250,
     monthlySubscribersSurchargePercent: 25,
@@ -61,7 +60,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
     setStatusMessage(null);
     try {
       await firestoreService.updateSystemConfig({
-        defaultTrialDays: Number(config.defaultTrialDays),
         warningDaysThreshold: Number(config.warningDaysThreshold),
         monthlySubscribersFlatFee: Number(config.monthlySubscribersFlatFee),
       });
@@ -97,29 +95,6 @@ export const AdminGlobalSettingsView: React.FC<AdminGlobalSettingsViewProps> = (
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-700 dark:text-slate-300 block">
-                {t('مدة الفترة التجريبية المجانية الافتراضية (بالأيام)')}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={config.defaultTrialDays}
-                  onChange={(e) => updateConfig({ defaultTrialDays: Number(e.target.value.replace(/\D/g, '')) || 0 })}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-mono font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500"
-                  required
-                />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  {t('يوم')}
-                </span>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400">
-                {t('المدة التي تُمنح للجراجات الجديدة عند اختيار تفعيل التجربة المجانية')}
-              </p>
-            </div>
-
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-700 dark:text-slate-300 block">
                 {t('حد التنبيه باقتراب انتهاء الاشتراك (بالأيام)')}
