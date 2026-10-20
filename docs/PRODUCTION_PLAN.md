@@ -52,6 +52,35 @@ Inventory garages, balances, ledgers, packages, recharge/wallet records, events,
 
 Deploy required indexes. Remove unbounded live-listener fallbacks. Add bounded pagination and maintained aggregates. Add route/read/write/latency/transaction/listener/fallback metrics, budget alerts, rollback, restore, and incident runbooks. Load-test ten garages against the actual deployment.
 
+## Successor plan: Operation Lean UI
+
+**Operation Lean UI** begins only after the current production plan is complete, including the approved data inventory, backup, deletion, zero-residue scan, reliability work, and the ten-garage load/cost test. It is a measurement-led UI performance and maintainability program, not a redesign.
+
+### Operation Lean UI goals
+
+- Keep the existing visual design, bilingual Arabic/English behavior, Egyptian license-plate identity, RTL/LTR layout, responsive behavior, and role flows.
+- Reduce initial browser payload and avoid loading rarely used screens or modals before they are needed.
+- Reduce unnecessary rerenders, duplicated derived-list work, duplicate data requests, and duplicate live listeners.
+- Make large components easier to maintain without splitting files solely for appearance.
+- Optimize only measured bottlenecks and preserve behavior through focused regressions.
+
+### Operation Lean UI execution order
+
+1. **Baseline authenticated screens.** Capture reproducible mobile and desktop measurements for the garage dashboard, admin dashboard, subscribers view, garage details, delegate dashboard, history, and financial calculator surfaces. Record first render, interaction latency, DOM size, network requests, active listeners, and relevant browser signals.
+2. **Rank actual bottlenecks.** Use the baseline and production-safe synthetic fixtures to identify the single worst screen or interaction. Do not optimize from source-file size alone.
+3. **Optimize the first bottleneck.** Select one bounded change, such as lazy-loading a rarely opened modal, reducing unrelated `allGarages` prop plumbing, memoizing repeated derived lists, splitting a responsibility-heavy component, or virtualizing a genuinely long list.
+4. **Verify behavior and performance.** Add focused regression coverage, repeat the same baseline, compare the before/after measurements, and confirm no listener, authorization, pagination, financial, or bilingual behavior regressed.
+5. **Repeat in small slices.** Only start another optimization after the previous one is merged and its measured benefit is documented in the canonical testing record.
+
+### Operation Lean UI guardrails
+
+- No broad UI rewrite, visual redesign, framework migration, or speculative memoization.
+- No weakening of server authority, authentication, authorization, scope checks, rate limits, idempotency, or data minimization.
+- Prefer route-level and interaction-level lazy loading over hiding active functionality.
+- Treat Firebase, vendor dependencies, CSS, and application chunks as separate measurements.
+- Preserve synthetic-fixture isolation; do not use production customer data for profiling.
+- Every slice requires focused tests, `npm run ci:check`, `npm run maintainability:check`, a production build, `git diff --check`, a focused branch and PR, and a successful hosted Production Gate before merge.
+
 ## Definition of done
 
 The application passes focused regressions, full tests, lint, build, maintainability, Firestore rules tests, CI, security/replay tests, reconciliation tests, and the ten-garage load/cost test. The deployed Worker and ruleset are verified. No active UI or service can create retired financial records. Production backup and restore are tested.
