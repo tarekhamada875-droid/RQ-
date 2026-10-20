@@ -47,6 +47,7 @@ export interface GarageRouteDeps {
   canUpdateEntityPin: GarageRouteDependency;
   validatePackageCatalogRecord: GarageRouteDependency;
   grantPaidCredits: GarageRouteDependency;
+  grantTrialCredits: GarageRouteDependency;
   awardReferralCredits: GarageRouteDependency;
   materializeCreditLedgerEntry: GarageRouteDependency;
   recordDomainEventInTransaction: GarageRouteDependency;
@@ -101,6 +102,7 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     canUpdateEntityPin,
     validatePackageCatalogRecord,
     grantPaidCredits,
+    grantTrialCredits,
     awardReferralCredits,
     materializeCreditLedgerEntry,
     recordDomainEventInTransaction,
@@ -202,6 +204,8 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       : 0;
     const now = new Date();
     const billingModel = 'prepaid_credits';
+    const isTrial = sanitized.isTrial === true || sanitized.isTrial === 'true' || sanitized.isTrial === 'on' || sanitized.isTrial === '1';
+    const trialCreditAmount = isTrial ? 100 : 0;
     const finalDailyCapacity = 0;
     const activePackageName = '';
     const balanceExpiry = null;
@@ -217,13 +221,13 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       status: (callerRole === 'delegate' || createdByDelegateId) ? 'pending' : 'approved',
       hasMonthlySubscribers: false,
       createdAt: now,
-      isTrial: false,
+      isTrial,
       dailyCapacity: finalDailyCapacity,
       activePackageName,
       packageName: activePackageName,
       balanceExpiry,
       balance: 0,
-      creditBalance: { paid: 0, referral: 0, trial: 0 },
+      creditBalance: { paid: 0, referral: 0, trial: trialCreditAmount },
       carsInside: 0,
       carsInsideCount: 0,
       todayCount: 0,
@@ -269,7 +273,8 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         durationDays: 0,
         carsCount: 0,
         revenueAmount: 0,
-        isTrial: false
+        isTrial,
+        trialCreditsGranted: trialCreditAmount
       }
     };
     const result = { success: true, id: garageId };
@@ -290,6 +295,26 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 
       await saveEntityPinInTransaction(t, 'garages', garageId, normPin);
       t.set(garageRef, garageDoc);
+      if (isTrial) {
+        const trialTransition = grantTrialCredits({
+          balance: { paid: 0, referral: 0, trial: 0 },
+          amount: trialCreditAmount,
+          garageId,
+          actorUid: callerUid,
+          actorRole: callerRole || 'system',
+          reason: 'New garage trial credit grant',
+          reference: garageId,
+          occurredAt: now.toISOString(),
+          idempotencyKey: `garage-create:${garageId}:trial`,
+        });
+        if (trialTransition.ok === false) throw new Error(trialTransition.error);
+        const trialLedger = materializeCreditLedgerEntry(trialTransition.value.entry);
+        if (trialLedger.ok === false) throw new Error(trialLedger.error);
+        t.set(getAdminDb().doc(`credit_ledger/${trialLedger.value.entryId}`), {
+          ...trialLedger.value,
+          source: 'garage_creation_trial',
+        });
+      }
       t.set(maintainedGarageSummaryRef(garageId), {
         schemaVersion: MAINTAINED_SUMMARY_VERSION,
         garageId,
@@ -299,7 +324,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         activeSubscribersCount: 0,
         expiredSubscribersCount: 0,
         balanceExpiry,
-        isTrial: false,
+        isTrial,
         dailyCapacity: finalDailyCapacity,
         hourlyRate: hourlyRateValue,
         createdAt: now,

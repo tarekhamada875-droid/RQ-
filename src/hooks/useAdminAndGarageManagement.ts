@@ -389,10 +389,6 @@ export function useAdminAndGarageManagement({
       const isTrialRaw = formData.get('isTrial') || formData.get('isTrial_hidden');
       const isTrial = isTrialRaw === 'true' || isTrialRaw === 'on' || isTrialRaw === '1';
       data.isTrial = isTrial;
-      if (isTrial) {
-        const rawTrialDays = Number(formData.get('trialDays'));
-        data.trialDays = rawTrialDays > 0 ? rawTrialDays : 15;
-      }
 
       data.hasMonthlySubscribers = false;
 

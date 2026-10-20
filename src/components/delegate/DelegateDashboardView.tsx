@@ -14,7 +14,6 @@ import {
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { generateSafePin, normalizeArabicSearch, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
-import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
 import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
@@ -41,8 +40,6 @@ export const DelegateDashboardView = memo(({
   delegateListsLoading = false,
   onLoadMoreDelegateGarages
 }: DelegateDashboardViewProps) => {
-  const config = useSystemConfig();
-  const trialDays = typeof config?.defaultTrialDays === 'number' && config.defaultTrialDays > 0 ? config.defaultTrialDays : 2;
   const [activeTab, setActiveTab] = useState<'garages' | 'performance'>('garages');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddGarage, setShowAddGarage] = useState(false);
@@ -375,7 +372,6 @@ export const DelegateDashboardView = memo(({
         onCreateGarage={onCreateGarage}
         isTrial={isTrial}
         setIsTrial={setIsTrial}
-        trialDays={trialDays}
         newGaragePin={newGaragePin}
         pinGenerationsRemaining={pinGenerationsRemaining}
         allGarages={allGarages}
