@@ -33,13 +33,6 @@ interface AdminNavigationAndViewsProps {
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
   adminListsError?: boolean;
-  adminSummary?: {
-    totalGarages: number;
-    activeGarages: number;
-    lockedGarages: number;
-    totalDelegates: number;
-    totalAdminRevenue: number;
-  } | null;
   onLoadMoreAdminGarages?: () => Promise<void>;
   onLoadMoreAdminDelegates?: () => Promise<void>;
   onRefreshAdminLists?: () => Promise<void>;
@@ -73,7 +66,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   adminDelegateHasMore = false,
   adminListsLoading = false,
   adminListsError = false,
-  adminSummary = null,
   onLoadMoreAdminGarages,
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
@@ -217,10 +209,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       {activeTab === 'overview' ? (
         <AdminOverviewView
           allGarages={approvedGarages}
-          delegates={delegates}
-          adminSummary={adminSummary}
           isSupervisor={Boolean(currentSupervisor)}
-          onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage}
         />
       ) : activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors' ? (

@@ -10,7 +10,6 @@ const serviceMocks = vi.hoisted(() => ({
   getAdminDelegatesPage: vi.fn(),
   // Anti-regression spies: the sync hook must never restore recharge-request history reads.
   getAdminRechargeRequestsPage: vi.fn(),
-  getAdminSummary: vi.fn(),
   subscribeToPackages: vi.fn(),
   subscribeToActiveVehicles: vi.fn(),
   subscribeToTodayTransactions: vi.fn(),
@@ -57,7 +56,6 @@ beforeEach(() => {
   serviceMocks.getAdminGaragesPage.mockReset();
   serviceMocks.getAdminDelegatesPage.mockReset();
   serviceMocks.getAdminRechargeRequestsPage.mockReset().mockResolvedValue({ requests: [], lastDoc: null, hasMore: false });
-  serviceMocks.getAdminSummary.mockReset();
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
@@ -230,7 +228,6 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       .mockResolvedValueOnce({ garages: [{ id: 'garage-1' }], lastDoc: 'garage-cursor', hasMore: true })
       .mockResolvedValueOnce({ garages: [{ id: 'garage-2' }], lastDoc: null, hasMore: false });
     serviceMocks.getAdminDelegatesPage.mockResolvedValue({ delegates: [{ id: 'delegate-1' }], lastDoc: null, hasMore: false });
-    serviceMocks.getAdminSummary.mockResolvedValue({ totalGarages: 2, activeGarages: 2, lockedGarages: 0, totalDelegates: 1, totalAdminRevenue: 0 });
 
     const { result, unmount } = renderHook(() => useGarageSync({
       ...createBaseProps(),
@@ -241,7 +238,6 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     await waitFor(() => expect(result.current.allGarages).toEqual([{ id: 'garage-1' }]));
     expect(serviceMocks.getAdminGaragesPage).toHaveBeenCalledWith(50, null);
     expect(serviceMocks.getAdminDelegatesPage).toHaveBeenCalledWith(50, null);
-    expect(serviceMocks.getAdminSummary).toHaveBeenCalledOnce();
     expect(serviceMocks.getAdminRechargeRequestsPage).not.toHaveBeenCalled();
     expect(serviceMocks.subscribeToPendingRechargeRequests).not.toHaveBeenCalled();
     expect(result.current.adminGarageHasMore).toBe(true);
