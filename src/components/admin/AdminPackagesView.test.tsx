@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminPackagesView } from './AdminPackagesView';
 import { firestoreService } from '../../services';
 import { ApiError } from '../../api/apiClient';
+import type { Package } from '../../types';
 
 vi.mock('../../services', () => ({
   firestoreService: {
@@ -45,25 +46,32 @@ describe('AdminPackagesView credit-bundle catalog', () => {
     }));
   });
 
-  it('shows credit bundles and preserves legacy records for review', () => {
+  it('shows valid credit bundles and hides old or mixed-format records', () => {
+    const legacyPackage = {
+      id: 'legacy-30', name: 'Legacy month', price: 300, durationDays: 30, vehiclesCount: 30, dailyCapacity: 50, isActive: true,
+    } as unknown as Package;
+    const mixedPackage = {
+      id: 'mixed-30', name: 'Mixed format', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', durationDays: 30, isActive: true,
+    } as unknown as Package;
     render(<AdminPackagesView
       {...props}
       packages={[
-        { id: 'credit-400', name: '400 credits', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', vehiclesCount: 400, isActive: true },
-        { id: 'legacy-30', name: 'Legacy month', price: 300, durationDays: 30, vehiclesCount: 30, dailyCapacity: 50, isActive: true },
+        { id: 'credit-400', name: '400 credits', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', isActive: true },
+        legacyPackage,
+        mixedPackage,
       ]}
     />);
 
     expect(screen.getByText('400 credits')).toBeInTheDocument();
     expect(screen.getByText('400 رصيد دخول غير منتهٍ')).toBeInTheDocument();
-    expect(screen.getByText('Legacy month')).toBeInTheDocument();
-    expect(screen.getByText('هذا سجل زمني قديم؛ لا يُستخدم كقالب رصيد جديد')).toBeInTheDocument();
+    expect(screen.queryByText('Legacy month')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mixed format')).not.toBeInTheDocument();
   });
 
   it('rejects a duplicate quantity and price without calling the service', async () => {
     render(<AdminPackagesView
       {...props}
-      packages={[{ id: 'credit-400', name: 'Existing', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', vehiclesCount: 400, isActive: true }]}
+      packages={[{ id: 'credit-400', name: 'Existing', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', isActive: true }]}
     />);
     openAndFillPackageForm();
     fireEvent.change(screen.getByPlaceholderText('800'), { target: { value: '400' } });

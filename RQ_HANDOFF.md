@@ -10,11 +10,11 @@ The owner’s priorities are: preserve Egyptian license-plate identity, favor fu
 
 ## Handoff trigger and current status
 
-This handoff began from the owner’s `tokens ending` continuity trigger. The read-only Garage/Admin audit is complete. ALF-01 was merged in PR #212 at `44d19571e48d5c196f4f751c54230dc98213f3fa`; its post-merge Production Gate passed and the Worker deployment was verified. No stored records, payments, or production Firebase rules were changed.
+This handoff began from the owner’s `tokens ending` continuity trigger. The read-only Garage/Admin audit is complete. ALF-01 was merged in PR #212 at `44d19571e48d5c196f4f751c54230dc98213f3fa`; its post-merge Production Gate passed and the Worker deployment was verified. Its rules were subsequently deployed and read back from production as exact approved payload SHA-256 `fe576244d299fcf86d7173ef25afc7759db51c9a4c8040e4e75d170f276f37f8` (ruleset `74404046-99eb-4c3a-993c-616ddc0c576f`). The current focused follow-up is to enforce the owner’s decision that the Admin package catalog supports credit bundles only; no stored package documents are being deleted, and monthly subscribers remain a separate product.
 
 ## Start here — do not repeat completed work
 
-Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, or change the UI. ALF-01’s checked-in rules and regressions are merged and the full release cycle is complete. The post-merge gate/deployment was run 39371738158; fresh `/api/health` and `/api/version` checks reported Worker commit `44d19571e48d5c196f4f751c54230dc98213f3fa`. Production Firebase rules were not deployed, so direct-write denial is not yet verified live. Wait for the owner’s direction about a separate authorized Firebase-rules deployment. Do not start ALF-12 or any GLF item in this task.
+Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, or change the visual design. ALF-01’s checked-in rules and regressions are merged, and the direct-balance-write rule is live in production. The post-merge Worker gate/deployment was run 39371738158; `/api/health` and `/api/version` reported Worker commit `44d19571e48d5c196f4f751c54230dc98213f3fa`. The current package-format branch must still pass its PR gate, merge, and separate Firebase rules deployment/readback before it is called live. Do not start ALF-12 or any GLF item until this bounded change is complete.
 
 Verified state at the start of ALF-01 work (re-check GitHub for current state):
 
@@ -43,18 +43,18 @@ The Business Logic Fix plan contains the confirmed Garage findings GLF-01 throug
 
 ## ALF-01 implementation result and safety boundaries
 
-- The checked-in `firestore.rules` denies direct Admin client updates to `creditBalance`; the emulator regression also confirms garage-owner clients cannot mutate it. Production Firebase rules have not been deployed, so this is not yet live protection.
+- The checked-in and live production `firestore.rules` deny direct Admin client updates to `creditBalance`; the emulator regression also confirms garage-owner clients cannot mutate it. The active production ruleset is `74404046-99eb-4c3a-993c-616ddc0c576f`, and its read-back SHA-256 is `fe576244d299fcf86d7173ef25afc7759db51c9a4c8040e4e75d170f276f37f8`.
 - The Worker grant route was not changed. Its combined regression verifies the authorized Admin grant, paid balance, referral reward, ledger entries, domain event, activity logs, and idempotent retry together.
 - Focused verification passed: `npm run test:rules` and the 13 tests in `src/__tests__/cloudflareWorkerCreditGrant.test.ts`.
 - The frontend search found no Admin UI path that writes `creditBalance` directly; credit changes come from the server response/API path. Your Admin role and ordinary Admin work remain intact; credit grants must use the existing Worker endpoint.
-- The Cloudflare workflow does not deploy Firestore rules. Production Firebase rules were not manually changed, so this repository change must not be described as live protection until a separately authorized Firebase-rules deployment is completed and verified.
+- The Cloudflare workflow does not deploy Firestore rules. ALF-01’s Firebase rules were separately deployed after owner authorization and verified against the exact active production release.
 - Do not delete stored data, migrate records, manually change production rules, or implement trial, cash-accounting, package, settlement, or later roadmap policies in ALF-01.
 
-ALF-01 is complete in source and merged, but production Firebase rules remain unchanged. The immediate next step is to wait for the owner’s direction about a separate authorized rules deployment. Only after that is resolved should the next roadmap item, ALF-12, begin.
+ALF-01 is complete in source, merged, and live. The owner has confirmed that the Admin package catalog must use credit bundles only. The in-progress change rejects old time/capacity package writes, restricts catalog reads to credit bundles, filters invalid records from both Admin screens and caches, preserves the separate garage-owned monthly-subscriber product, and does not delete stored documents. After this PR and its production rules read-back are complete, ALF-12 is next.
 
 ## Unresolved decisions and safety boundaries
 
-Before implementing policy-dependent items, record decisions about: whether trials are active or should be removed with their unreachable metrics; whether prepaid money belongs in cash/net/partner totals; whether one EGP always equals one credit; whether Admin package templates must be selectable in manual grants; whether multi-device sessions are allowed; whether delegate-created and referred garages should be combined everywhere; staff subscriber permissions; garage-owner overrides for entrant-only deletion; legacy vehicles without entrant metadata; refund clamp/reject policy; one-month duration semantics; and notification triggers.
+Before implementing policy-dependent items, record decisions about: whether trials are active or should be removed with their unreachable metrics; whether prepaid money belongs in cash/net/partner totals; whether Admin package templates must be selectable in manual grants; whether multi-device sessions are allowed; whether delegate-created and referred garages should be combined everywhere; staff subscriber permissions; garage-owner overrides for entrant-only deletion; legacy vehicles without entrant metadata; refund clamp/reject policy; one-month duration semantics; and notification triggers. The owner has decided the Admin package format must be credit bundles only; do not reinterpret that as authorization to delete existing Firestore documents or change the separate monthly-subscriber product.
 
 No stored-data deletion is authorized by this handoff. Source cleanup and data deletion are separate operations. Do not use a compatibility branch to preserve a confirmed-wrong business rule. Do not redesign the UI or change Egyptian plate identity, RTL/LTR behavior, or bilingual behavior as part of the logic fixes.
 

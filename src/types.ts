@@ -19,16 +19,10 @@ export interface Package {
   id: string;
   name: string;
   price: number;
-  catalogType?: 'legacy_time' | 'credit_bundle';
-  creditQuantity?: number;
-  vehiclesCount?: number; // historical legacy duration in days (e.g. 15 or 30)
-  dailyCapacity?: number; // daily car capacity limit (50, 100, 150, or 0/undefined for unlimited)
-  durationDays?: number; // duration in days (15 or 30)
-  description?: string;
+  catalogType: 'credit_bundle';
+  creditQuantity: number;
   isActive?: boolean;
   createdAt?: any;
-  discountType?: 'percentage' | 'fixed';
-  discountValue?: number;
 }
 
 export interface Coupon {

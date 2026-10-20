@@ -3,19 +3,13 @@ import { Coins, Plus, Trash2, X } from 'lucide-react';
 import { Package } from '../../types';
 import { firestoreService } from '../../services';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
+import { isCreditBundlePackage } from '../../utils/packageCatalog';
 
 interface AdminPackagesViewProps {
   packages: Package[];
   setConfirmDialog: React.Dispatch<React.SetStateAction<any>>;
   setPackageValidationError: React.Dispatch<React.SetStateAction<any>>;
   t: (key: string) => string;
-}
-
-function effectivePrice(pkg: Package): number {
-  if (pkg.catalogType === 'credit_bundle' || !pkg.discountValue) return pkg.price;
-  return pkg.discountType === 'percentage'
-    ? Math.round(pkg.price * (1 - pkg.discountValue / 100))
-    : Math.max(0, pkg.price - pkg.discountValue);
 }
 
 export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
@@ -47,9 +41,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
     }
 
     const duplicate = (packages || []).find((pkg) => (
-      pkg.catalogType === 'credit_bundle'
-        && pkg.creditQuantity === creditQuantity
-        && effectivePrice(pkg) === price
+      isCreditBundlePackage(pkg) && pkg.creditQuantity === creditQuantity && pkg.price === price
     ));
     if (duplicate) {
       setFormError(`يوجد قالب أرصدة مطابق بالفعل: ${duplicate.name}`);
@@ -85,7 +77,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
     }
   };
 
-  const visiblePackages = (packages || []).filter((pkg) => pkg.isActive !== false);
+  const visiblePackages = (packages || []).filter((pkg) => pkg.isActive !== false && isCreditBundlePackage(pkg));
 
   return (
     <div className="space-y-6 dir-rtl text-right font-sans max-w-6xl mx-auto">
@@ -118,15 +110,13 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
         {visiblePackages.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visiblePackages.map((pkg) => {
-              const isCreditBundle = pkg.catalogType === 'credit_bundle' && Number.isSafeInteger(pkg.creditQuantity);
-              const finalPrice = effectivePrice(pkg);
               return (
                 <div key={pkg.id} className="p-5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl hover:border-emerald-500/50 transition-all flex flex-col justify-between shadow-sm space-y-4">
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0">
                       <h4 className="font-black text-slate-900 dark:text-white text-base leading-tight truncate">{pkg.name}</h4>
                       <span className="inline-block mt-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {isCreditBundle ? t('قالب أرصدة') : t('سجل قديم حتى الترحيل')}
+                        {t('قالب أرصدة')}
                       </span>
                     </div>
                     <button
@@ -151,14 +141,12 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                   </div>
 
                   <div className="flex items-baseline gap-1.5 font-mono bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{finalPrice.toLocaleString('en-US')}</span>
+                    <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{pkg.price.toLocaleString('en-US')}</span>
                     <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-sans">ج.م</span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {isCreditBundle
-                      ? `${Number(pkg.creditQuantity).toLocaleString('en-US')} ${t('رصيد دخول غير منتهٍ')}`
-                      : t('هذا سجل زمني قديم؛ لا يُستخدم كقالب رصيد جديد')}
+                    {`${pkg.creditQuantity.toLocaleString('en-US')} ${t('رصيد دخول غير منتهٍ')}`}
                   </div>
                 </div>
               );
