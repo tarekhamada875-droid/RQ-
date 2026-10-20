@@ -6,7 +6,6 @@ interface AdminGarageFinancialsSectionProps {
   garage: Garage;
   t: (key: string) => string;
   adminLang: string;
-  subscriberFlatFee: number;
   onToggleMonthlySubscribers: () => Promise<void>;
   allGarages: Garage[];
   onReferredByChange: (refId: string) => Promise<void>;
@@ -16,7 +15,6 @@ export const AdminGarageFinancialsSection = memo(({
   garage,
   t,
   adminLang,
-  subscriberFlatFee,
   onToggleMonthlySubscribers,
   allGarages,
   onReferredByChange,
@@ -34,7 +32,7 @@ export const AdminGarageFinancialsSection = memo(({
             <span>{t('خدمة المشتركين الشهريين / الإيواء')}</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-bold">
-            {t('عند تفعيل هذا الخيار تضاف')} {subscriberFlatFee} {t('ج.م ثابتة تلقائياً على قيمة أية باقة أو اشتراك بالجراج.')}
+            {t('يتيح هذا الخيار إدارة المشتركين الشهريين دون رسوم اشتراك منفصلة؛ ويتم تطبيق قواعد الرصيد المعتمدة على دخول المركبات العادية.')}
           </p>
         </div>
         <button
@@ -57,9 +55,6 @@ export const AdminGarageFinancialsSection = memo(({
             <Gift className="w-4 h-4 text-emerald-500" />
             <span>{t('نظام مكافآت الإحالة')}</span>
           </h3>
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
-            {t('+1 يوم مجاني تلقائياً للباقات 15+ يوم')}
-          </span>
         </div>
 
         <div className="space-y-2.5 text-xs">

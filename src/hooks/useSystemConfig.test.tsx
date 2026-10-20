@@ -5,7 +5,6 @@ import { useSystemConfig } from './useSystemConfig';
 import {
   useSystemDelegateCommissions,
   useSystemReferralFee,
-  useSystemSubscribersFlatFee,
 } from './useSystemSubscribersFlatFee';
 
 const serviceMock = vi.hoisted(() => {
@@ -38,10 +37,9 @@ describe('useSystemConfig singleton', () => {
   it('shares one subscription and one snapshot update across config and fee consumers', () => {
     const { result, unmount } = renderHook(() => {
       const config = useSystemConfig();
-      const subscriberFlatFee = useSystemSubscribersFlatFee();
       const referralFee = useSystemReferralFee();
       const delegateCommissions = useSystemDelegateCommissions();
-      return { config, subscriberFlatFee, referralFee, delegateCommissions };
+      return { config, referralFee, delegateCommissions };
     });
 
     expect(serviceMock.subscribeToSystemConfig).toHaveBeenCalledTimes(1);
@@ -49,7 +47,6 @@ describe('useSystemConfig singleton', () => {
 
     const config: SystemConfig = {
       monthlySubscribersSurchargePercent: 25,
-      monthlySubscribersFlatFee: 450,
       referralFeePerRenewal: 85,
       delegatePackageCommissions: { daily: 8, weekly: 18, biweekly: 28, monthly: 48 },
     };
@@ -58,7 +55,6 @@ describe('useSystemConfig singleton', () => {
     act(() => notify?.(config));
 
     expect(result.current.config).toEqual(config);
-    expect(result.current.subscriberFlatFee).toBe(450);
     expect(result.current.referralFee).toBe(85);
     expect(result.current.delegateCommissions).toEqual({ daily: 8, weekly: 18, biweekly: 28, monthly: 48 });
 

@@ -35,7 +35,7 @@ vi.mock('../services', () => ({
     subscribeToSubscribers: vi.fn(() => () => {}),
     onAnnouncementsChange: vi.fn(() => () => {}),
     subscribeToSystemConfig: vi.fn((cb) => {
-      cb({ monthlySubscribersFlatFee: 500 });
+      cb({ adminColor: '#10b981' });
       return () => {};
     }),
   },
@@ -141,7 +141,6 @@ describe('Modularized Admin Components Integrity', () => {
         garage={mockGarage}
         t={(key) => key}
         adminLang="ar"
-        subscriberFlatFee={500}
         onToggleMonthlySubscribers={onToggleMonthly}
         allGarages={[mockGarage]}
         onReferredByChange={onRefChange}
@@ -150,6 +149,8 @@ describe('Modularized Admin Components Integrity', () => {
 
     expect(screen.getByText('خدمة المشتركين الشهريين / الإيواء')).toBeDefined();
     expect(screen.getByText('نظام مكافآت الإحالة')).toBeDefined();
+    expect(screen.queryByText(/\+1 يوم مجاني/)).toBeNull();
+    expect(screen.queryByText(/ج\.م ثابتة تلقائياً/)).toBeNull();
     expect(screen.queryByText('رصيد المحفظة الحالي')).toBeNull();
     expect(screen.queryByText('شحن الرصيد الآن')).toBeNull();
   });

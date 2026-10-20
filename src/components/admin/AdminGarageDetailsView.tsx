@@ -14,7 +14,6 @@ import { normalizeDigits, canChangeGarageRates, isHashedPin, generateSafePin } f
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { Garage, Staff, Package } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 import { useAppStore } from '../../store/appStore';
@@ -74,8 +73,6 @@ export const AdminGarageDetailsView = memo(({
   const [overnightRateInput, setOvernightRateInput] = useState<string>(String(selectedGarageForDetails.overnightRate || 0));
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isUpdatingLock, setIsUpdatingLock] = useState(false);
-  const config = useSystemConfig();
-  const subscriberFlatFee = typeof config?.monthlySubscribersFlatFee === 'number' ? config.monthlySubscribersFlatFee : 250;
 
   useEffect(() => {
     setHourlyRateInput(String(selectedGarageForDetails.hourlyRate || 0));
@@ -389,7 +386,6 @@ export const AdminGarageDetailsView = memo(({
           garage={selectedGarageForDetails}
           t={t}
           adminLang={adminLang}
-          subscriberFlatFee={subscriberFlatFee}
           onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}

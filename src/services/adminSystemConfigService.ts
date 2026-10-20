@@ -4,7 +4,6 @@ import { listenerTracker } from '../utils/listenerTracker';
 import type { SystemConfig } from '../types';
 
 const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
-  monthlySubscribersFlatFee: 250,
   adminColor: '#10b981'
 };
 

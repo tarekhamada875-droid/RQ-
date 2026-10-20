@@ -1,14 +1,5 @@
 import { useSystemConfig } from './useSystemConfig';
 
-/** Reads the Worker-projected monthly subscriber flat fee (default 250). */
-export function useSystemSubscribersFlatFee(): number {
-  const config = useSystemConfig();
-  if (config?.monthlySubscribersFlatFee !== undefined) {
-    return Number(config.monthlySubscribersFlatFee) || 250;
-  }
-  return 250;
-}
-
 /** Reads delegate commission settings when projected, otherwise uses the product defaults. */
 export function useSystemDelegateCommissions(): {
   daily: number;

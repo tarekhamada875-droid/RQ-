@@ -82,7 +82,6 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       const body = await res.json() as any;
       expect(body.success).toBe(true);
       expect(body.config).toEqual({
-        monthlySubscribersFlatFee: 250,
         adminColor: '#123456'
       });
     }
@@ -97,7 +96,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
 
     const body = await res.json() as any;
     expect(body.success).toBe(true);
-    expect(body.config.monthlySubscribersFlatFee).toBe(250);
+    expect(body.config.adminColor).toBe('#10b981');
     expect(body.config.walletNumber).toBeUndefined();
     expect(body.config.subscriptionPrices).toBeUndefined();
   });

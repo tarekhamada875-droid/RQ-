@@ -229,7 +229,6 @@ export interface SystemConfig {
   id?: string;
   supportPhone?: string;
   monthlySubscribersSurchargePercent?: number;
-  monthlySubscribersFlatFee: number; // e.g. 500
   referralFeePerRenewal?: number; // fallback e.g. 100
   delegateMonthlyCommission?: number; // Monthly delegate commission per garage (e.g. 100 EGP)
   delegatePackageCommissions?: {
