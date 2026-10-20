@@ -12,6 +12,10 @@ The owner’s priorities are: preserve Egyptian license-plate identity, favor fu
 
 This handoff was activated by the owner’s `tokens ending` continuity trigger. The bounded audit task is complete. The Garage and Admin business-logic audits were read-only: no source code, Firestore rules, stored records, payments, or production data were changed.
 
+## Start here — do not repeat completed work
+
+Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat the checkout/recharge-history fixes, clean branches or documentation, or start ALF-12/GLF work. Those items are complete and verified. Do **not** change the UI. The only implementation task authorized by this handoff is **ALF-01** below: block direct client writes to `garages.creditBalance` and add the matching Firestore emulator regression test. First re-verify the current repository state, then inspect the ALF-01 code paths; do not make a broad audit or cleanup pass.
+
 Current verified state after the handoff merge:
 
 - Local branch: `main`.
