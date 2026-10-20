@@ -38,9 +38,7 @@ const createBaseProps = () => ({
   setSelectedGarageForDetails: vi.fn(),
   setVehicles: vi.fn(),
   setTodayTransactions: vi.fn(),
-  showToast: vi.fn(),
-  garageRef: { current: null },
-  lastHealTimeRef: { current: {} }
+  showToast: vi.fn()
 });
 
 const dashboardResponse = (delegate: { id: string; name: string }) => ({

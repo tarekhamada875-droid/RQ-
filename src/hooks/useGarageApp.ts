@@ -90,12 +90,6 @@ export function useGarageApp() {
 
   const plateInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
-  const garageRef = useRef<Garage | null>(null);
-  const lastHealTimeRef = useRef<{ cars?: number; revenue?: number }>({});
-
-  useEffect(() => {
-    garageRef.current = garage;
-  }, [garage]);
 
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
@@ -188,8 +182,6 @@ export function useGarageApp() {
     setVehicles,
     setTodayTransactions,
     showToast,
-    garageRef,
-    lastHealTimeRef,
   });
 
   useEffect(() => {

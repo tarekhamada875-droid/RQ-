@@ -17,8 +17,6 @@ interface UseGarageSyncProps {
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   setTodayTransactions: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
-  garageRef: React.MutableRefObject<Garage | null>;
-  lastHealTimeRef: React.MutableRefObject<{ cars?: number; revenue?: number }>;
 }
 
 export function useGarageSync({
@@ -35,8 +33,6 @@ export function useGarageSync({
   setVehicles,
   setTodayTransactions,
   showToast,
-  garageRef,
-  lastHealTimeRef,
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
@@ -88,35 +84,15 @@ export function useGarageSync({
     if (!isSessionReady || !garage?.id) {
       return;
     }
-    let hasReceivedInitialSnapshot = false;
     const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
       setVehicles(activeVehicles);
-      const currentGarage = garageRef.current;
-      const now = Date.now();
-      const isOnline = typeof navigator === 'undefined' || navigator.onLine;
-      if (
-        hasReceivedInitialSnapshot &&
-        isOnline &&
-        view === 'garage' &&
-        currentGarage &&
-        typeof currentGarage.carsInside === 'number' &&
-        activeVehicles.length < 200 &&
-        currentGarage.carsInside !== activeVehicles.length &&
-        (!lastHealTimeRef.current.cars || now - lastHealTimeRef.current.cars > 30000)
-      ) {
-        lastHealTimeRef.current.cars = now;
-        firestoreService.updateGarage(currentGarage.id, { carsInside: activeVehicles.length }).catch((err) => {
-          console.warn('Failed to heal carsInside:', err);
-        });
-      }
-      hasReceivedInitialSnapshot = true;
     }, 100);
 
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
       throttledVehicleUpdate(activeVehicles);
     });
     return () => unsub();
-  }, [isSessionReady, garage?.id, view, setVehicles, garageRef, lastHealTimeRef]);
+  }, [isSessionReady, garage?.id, setVehicles]);
 
   // Subscribe to completed transactions
   useEffect(() => {
