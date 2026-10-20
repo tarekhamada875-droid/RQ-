@@ -4,7 +4,7 @@ For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-20):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The latest verified application release is deployed from `77a1227` (Admin credit-grant history); its live Worker identity is confirmed by `/api/health` and `/api/version`. The current `main` documentation state is `e942ead`; its main Production Gate passed as run `39369384415`, with deployment skipped because the merge was documentation-only. The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Branch previews are not an active release environment.
+> **Current status (2026-10-20):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The latest verified application release is deployed from `77a1227` (Admin credit-grant history); its live Worker identity is confirmed by `/api/health` and `/api/version`. The current `main` commit and its latest Production Gate must be verified from GitHub before editing; documentation merges intentionally change the main merge SHA. The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Branch previews are not an active release environment.
 
 ## Target production architecture
 

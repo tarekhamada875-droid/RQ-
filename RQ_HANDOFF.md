@@ -19,10 +19,10 @@ Do **not** recreate the deleted UI plan, redo the UI performance audit, repeat t
 Current verified state after the handoff merge:
 
 - Local branch: `main`.
-- Local `main` and `origin/main`: synchronized at `e942ead18df654dfb2a1e9c72c29dc92a208c226`.
+- Local `main` and `origin/main`: synchronized when this handoff was last verified; re-fetch and verify the exact SHA before editing because documentation merges change `main`.
 - Working tree: clean.
 - Open PRs: none.
-- Latest successful main Production Gate: run `39369384415`, for SHA `e942ead18df654dfb2a1e9c72c29dc92a208c226`; it passed the documentation-only validation path and skipped Worker deployment as expected.
+- Latest successful main Production Gate: verified successfully for the then-current `main`; identify the exact current run from GitHub before editing. Documentation-only merges skip Worker deployment as expected.
 - Latest deployed Worker identity: `/api/health` and `/api/version` reported commit `77a12276756c874f8fc57c4082614f1b1ac4a2c2`, version `1.0.0-production`, environment `production`, runtime `cloudflare-worker`, status `operational`. The later plan/documentation commits did not deploy a new Worker.
 - Protected decision branch: `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`.
 - Handoff PR #207 is merged; no open PRs remain. Re-verify these values again before beginning ALF-01 rather than relying on embedded documentation alone.
