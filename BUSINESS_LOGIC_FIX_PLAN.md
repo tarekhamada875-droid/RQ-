@@ -279,6 +279,8 @@ The Admin audit is now part of this plan. These are not a separate UI project: A
 
 **Proof:** Rules denial tests, config-field exposure tests, and logout/re-login correction tests for garage and staff.
 
+**Owner decision (2026-10-20):** Garage owners and staff may correct/delete only entries created under the same stable entity ID and role. The same entity retains authority after re-login with a new Firebase UID; peer accounts cannot correct one another’s entries. Legacy records without stable entrant metadata are Admin-only. No vehicle-record migration is authorized.
+
 ### ALF-13 — Complete Admin credit-history pagination
 
 **Severity:** Medium.
@@ -364,4 +366,4 @@ Until decided, do not silently change these policies. The confirmed defects abov
 
 ## Current status
 
-The Garage and Admin audits are complete. ALF-01 was merged in PR #212 and remains live. The owner-approved credit-bundle-only package catalog was merged in PR #214 as `9d6a787f17fae7b09b3dfbd1b08ffe515bf041ad`; Production Gate run `39377196821` passed and the deployed Worker reports that commit. The Firestore rules were deployed separately to the production database and read back exactly as ruleset `619f1ca8-3d09-44b0-b361-a17601f645bc`, SHA-256 `1eb5698024002f10e19df415ae4c5c0bfb2d57db7bf0755fb68ff59f3d299bb9`. Only canonical credit bundles are accepted and exposed by the Admin catalog; the monthly-subscriber product is unchanged. No legacy package documents were deleted or migrated. ALF-12 is the next planned roadmap item; verify its scope before implementation.
+The Garage and Admin audits are complete. ALF-01 was merged in PR #212 and remains live. The owner-approved credit-bundle-only package catalog was merged in PR #214 as `9d6a787f17fae7b09b3dfbd1b08ffe515bf041ad`; Production Gate run `39377196821` passed and the deployed Worker reports that commit. The Firestore rules were deployed separately to the production database and read back exactly as ruleset `619f1ca8-3d09-44b0-b361-a17601f645bc`, SHA-256 `1eb5698024002f10e19df415ae4c5c0bfb2d57db7bf0755fb68ff59f3d299bb9`. Only canonical credit bundles are accepted and exposed by the Admin catalog; the monthly-subscriber product is unchanged. No legacy package documents were deleted or migrated. ALF-12 is in progress on a focused branch with its same-entrant policy confirmed. Its Firestore rules changes require a separate authorized production deployment and live read-back; a Worker merge alone does not release those rules.

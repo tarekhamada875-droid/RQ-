@@ -24,6 +24,8 @@ const makeProps = (minutesSinceEntry = 60) => {
       isSubscriber: false,
       type: 'hourly',
       staffId: 'staff-1',
+      enteredByEntityId: 'staff-1',
+      enteredByRole: 'staff',
       staffName: 'Test Staff',
     } as any,
     garage: {
@@ -90,6 +92,31 @@ describe('CheckOutModal icon actions', () => {
     expect(screen.getAllByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' }));
     expect(props.onDelete).toHaveBeenCalledOnce();
+  });
+
+  it('allows a garage owner to delete only a vehicle they entered', () => {
+    const props = makeProps(2);
+    props.currentStaff = null;
+    props.selectedVehicle.staffId = 'garage-1';
+    props.selectedVehicle.enteredByEntityId = 'garage-1';
+    props.selectedVehicle.enteredByRole = 'garage';
+    render(<CheckOutModal {...props} />);
+
+    expect(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeInTheDocument();
+  });
+
+  it('hides delete for another staff account and for legacy records without stable entrant metadata', () => {
+    const otherStaffProps = makeProps(2);
+    otherStaffProps.selectedVehicle.enteredByEntityId = 'staff-2';
+    otherStaffProps.selectedVehicle.staffId = 'staff-2';
+    const { rerender } = render(<CheckOutModal {...otherStaffProps} />);
+    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
+
+    const legacyProps = makeProps(2);
+    delete legacyProps.selectedVehicle.enteredByEntityId;
+    delete legacyProps.selectedVehicle.enteredByRole;
+    rerender(<CheckOutModal {...legacyProps} />);
+    expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
   });
 
   it('hides the delete action after the five-minute entry-error window', () => {

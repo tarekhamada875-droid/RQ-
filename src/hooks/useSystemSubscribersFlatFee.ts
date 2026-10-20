@@ -1,6 +1,6 @@
 import { useSystemConfig } from './useSystemConfig';
 
-/** Subscribes to system_config/global.monthlySubscribersFlatFee (default 250). */
+/** Reads the Worker-projected monthly subscriber flat fee (default 250). */
 export function useSystemSubscribersFlatFee(): number {
   const config = useSystemConfig();
   if (config?.monthlySubscribersFlatFee !== undefined) {
@@ -9,7 +9,7 @@ export function useSystemSubscribersFlatFee(): number {
   return 250;
 }
 
-/** Subscribes to system_config/global.delegatePackageCommissions or fallback referralFeePerRenewal */
+/** Reads delegate commission settings when projected, otherwise uses the product defaults. */
 export function useSystemDelegateCommissions(): {
   daily: number;
   weekly: number;
@@ -33,7 +33,7 @@ export function useSystemDelegateCommissions(): {
   };
 }
 
-/** Subscribes to system_config/global.delegateMonthlyCommission or referralFeePerRenewal (default 100). */
+/** Reads the projected delegate referral fee (default 100). */
 export function useSystemReferralFee(): number {
   const config = useSystemConfig();
   if (config?.delegateMonthlyCommission !== undefined) {
@@ -46,4 +46,3 @@ export function useSystemReferralFee(): number {
   }
   return 100;
 }
-

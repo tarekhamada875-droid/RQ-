@@ -59,6 +59,10 @@ export const getOrCreateDeviceId = (): string => {
 // In-memory cache to prevent duplicate Firestore transaction collisions within the same client session
 const recentClaims = new Map<string, number>();
 
+const notifyWorkerSessionReady = (): void => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('rq-session-ready'));
+};
+
 export const _resetRecentClaimsForTesting = () => {
   recentClaims.clear();
 };
@@ -67,6 +71,7 @@ export const recordSessionAsClaimed = (role: string, entityId: string, sessionId
   if (!role || !entityId || !sessionId || !uid) return;
   const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
   recentClaims.set(claimKey, Date.now());
+  notifyWorkerSessionReady();
 };
 
 export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }: ClaimSessionParams): Promise<void> => {
@@ -86,6 +91,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     const isValidOnServer = await authService.validateOrRefreshSessionOnServer(uid, sessionId, role, entityId);
     if (isValidOnServer) {
       recentClaims.set(claimKey, Date.now());
+      notifyWorkerSessionReady();
       return;
     }
   } catch (err) {
@@ -98,6 +104,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
       const serverClaim = await authService.claimAdminSessionOnServer(uid, sessionId, pin);
       if (serverClaim.success) {
         recentClaims.set(claimKey, Date.now());
+        notifyWorkerSessionReady();
         return;
       }
       if (serverClaim.error === 'SESSION_OCCUPIED') {
@@ -123,6 +130,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
   });
 
   recentClaims.set(claimKey, Date.now());
+  notifyWorkerSessionReady();
 };
 
 export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {

@@ -34,10 +34,9 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
   const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5-minute entry-error correction window
-  const isOwner = currentStaff 
-    ? Boolean(selectedVehicle.staffId && selectedVehicle.staffId === currentStaff.id) 
-    : true; // Garage Owner can delete any active vehicle entry error in their garage
-  const canDelete = isOwner;
+  const entrantEntityId = currentStaff?.id ?? garage.id;
+  const entrantRole = currentStaff ? 'staff' : 'garage';
+  const canDelete = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
 
   const [confirmingSide, setConfirmingSide] = React.useState<'left' | 'right' | null>(null);
   const [showLargeButton, setShowLargeButton] = React.useState(false);

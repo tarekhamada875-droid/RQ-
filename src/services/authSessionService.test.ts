@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { refreshEntitySession, claimEntitySession, releaseEntitySession, _resetRecentClaimsForTesting } from './authSessionService';
+import { refreshEntitySession, claimEntitySession, releaseEntitySession, recordSessionAsClaimed, _resetRecentClaimsForTesting } from './authSessionService';
 import { authService } from './authService';
 import { runTransaction } from 'firebase/firestore';
 
@@ -50,6 +50,7 @@ describe('auth session server authority', () => {
   });
 
   it('does not start a browser transaction when an existing session is validated by the server', async () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent');
     await claimEntitySession({
       role: 'garage',
       entityId: 'garage-1',
@@ -64,6 +65,16 @@ describe('auth session server authority', () => {
       'garage-1'
     );
     expect(mockedRunTransaction).not.toHaveBeenCalled();
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'rq-session-ready' }));
+    dispatchEvent.mockRestore();
+  });
+
+  it('notifies config listeners when login already claimed the session server-side', () => {
+    const dispatchEvent = vi.spyOn(window, 'dispatchEvent');
+    recordSessionAsClaimed('admin', 'auth_pin', 'session-admin', 'firebase-admin-uid');
+
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'rq-session-ready' }));
+    dispatchEvent.mockRestore();
   });
 
   it('does not write browser session documents when the server rejects a refresh', async () => {

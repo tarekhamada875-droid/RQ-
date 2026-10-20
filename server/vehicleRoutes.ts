@@ -95,6 +95,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     if (!garageId || !plateNumber || !plateRaw) {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
+    const entrantEntityId = user?.entityId;
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
 
@@ -182,9 +183,11 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         isSubscriber: isSubscriberAuthoritative,
         entryTime: new Date(),
         status: 'inside',
-        staffId: staffId || null,
+        staffId: entrantEntityId || null,
         staffName: resolvedStaffName,
         enteredByUid: user?.uid || null,
+        enteredByEntityId: entrantEntityId || null,
+        enteredByRole: callerRole || null,
         operationId,
         operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
         ...(creditDebit ? {
@@ -251,8 +254,11 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           type: type || 'hourly',
           status: 'inside',
           entryTime: new Date().toISOString(),
-          staffId: staffId || null,
+          staffId: entrantEntityId || null,
           staffName: resolvedStaffName,
+          enteredByUid: user?.uid || null,
+          enteredByEntityId: entrantEntityId || null,
+          enteredByRole: callerRole || null,
           isSubscriber: isSubscriberAuthoritative
         },
         carsInside: Number(garageUpdate.carsInside || 0),
@@ -282,8 +288,10 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           plateNumberRaw: plateRaw,
           type: type || 'hourly',
           isSubscriber: isSubscriberAuthoritative,
-          staffId: staffId || null,
+          staffId: entrantEntityId || null,
           staffName: resolvedStaffName,
+          enteredByEntityId: entrantEntityId || null,
+          enteredByRole: callerRole || null,
           operationId,
           operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
           ...(creditDebit ? {
@@ -567,12 +575,13 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? (garageData.name || 'مدير الجراج') : 'موظف'));
 
       if (callerRole !== 'admin') {
-        const entrantUid = vehicleData.enteredByUid || vehicleData.staffUid || vehicleData.staffId;
-        const callerUid = user?.uid;
+        const entrantEntityId = vehicleData.enteredByEntityId;
+        const entrantRole = vehicleData.enteredByRole;
         const callerEntityId = user?.entityId;
 
-        if (entrantUid && entrantUid !== callerUid && entrantUid !== callerEntityId) {
-          throw new Error('CORRECTION_FORBIDDEN: Only the staff member who entered the vehicle can correct or delete it');
+        // Legacy records without stable entrant metadata are Admin-only; auth UIDs are audit-only.
+        if (!callerEntityId || entrantEntityId !== callerEntityId || entrantRole !== callerRole) {
+          throw new Error('CORRECTION_FORBIDDEN: Only the account that entered the vehicle can correct or delete it');
         }
       }
 
