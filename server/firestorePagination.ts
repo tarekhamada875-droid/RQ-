@@ -135,11 +135,14 @@ export function buildFirestorePage<T extends { id: string; data: () => Record<st
   const pageDocuments = documents.slice(0, request.pageSize);
   const lastDocument = pageDocuments[pageDocuments.length - 1];
   const nextCursor = hasMore && lastDocument
-    ? encodeFirestorePageCursor(request.scope, lastDocument.data()?.[orderField], lastDocument.id)
+    ? encodeFirestorePageCursor(request.scope, orderField === '__name__' ? lastDocument.id : lastDocument.data()?.[orderField], lastDocument.id)
     : null;
   return { documents: pageDocuments, hasMore, nextCursor };
 }
 
-export function firestorePageStartAfter(query: any, collection: any, cursor: FirestorePageCursor | null): any {
-  return cursor ? query.startAfter(cursor.orderValue, collection.doc(cursor.documentId)) : query;
+export function firestorePageStartAfter(query: any, collection: any, cursor: FirestorePageCursor | null, orderField = 'createdAt'): any {
+  if (!cursor) return query;
+  return orderField === '__name__'
+    ? query.startAfter(collection.doc(cursor.documentId))
+    : query.startAfter(cursor.orderValue, collection.doc(cursor.documentId));
 }

@@ -413,10 +413,10 @@ app.get('/api/garages', requireWorkerAuth, async (c) => {
     } catch (error: any) {
       return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
     }
-    query = query.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
-    query = firestorePageStartAfter(query, garagesCollection, pageRequest.cursor);
+    query = query.orderBy('__name__', 'desc');
+    query = firestorePageStartAfter(query, garagesCollection, pageRequest.cursor, '__name__');
     const snap = await query.limit(pageRequest.pageSize + 1).get();
-    const garagePage = buildFirestorePage(snap.docs, pageRequest, 'createdAt');
+    const garagePage = buildFirestorePage(snap.docs, pageRequest, '__name__');
     const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
 
     return c.json({ success: true, garages, items: garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });

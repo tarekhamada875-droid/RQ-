@@ -552,4 +552,23 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(fourth.nextCursor).toBeNull();
     expect(mockDb.queryResultSizes.slice(-4)).toEqual([3, 3, 3, 1]);
   });
+
+  it('includes legacy garage records that do not have createdAt', async () => {
+    mockDb.seed('garages/legacy-without-created-at-a', { name: 'Legacy Garage A', status: 'approved' });
+    mockDb.seed('garages/legacy-without-created-at-b', { name: 'Legacy Garage B', status: 'approved' });
+
+    const response = await api.fetch(new Request('http://localhost/api/garages?limit=10', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    const body = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(body.garages.map((garage: any) => garage.id)).toEqual([
+      'worker-test-garage-cf8',
+      'legacy-without-created-at-b',
+      'legacy-without-created-at-a'
+    ]);
+    expect(body.hasMore).toBe(false);
+    expect(body.nextCursor).toBeNull();
+  });
 });
