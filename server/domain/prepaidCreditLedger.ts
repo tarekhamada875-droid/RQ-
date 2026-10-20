@@ -35,6 +35,8 @@ export interface CreditLedgerEntry {
   readonly amount: number;
   readonly balanceBefore: number;
   readonly balanceAfter: number;
+  /** Total paid + referral + trial balance after this transition. */
+  readonly totalBalanceAfter?: number;
   readonly actorUid: string;
   readonly actorRole: string;
   readonly reason: string;
@@ -132,6 +134,7 @@ function transition(
         amount,
         balanceBefore,
         balanceAfter,
+        totalBalanceAfter: balance.paid + balance.referral + balance.trial,
         actorUid: command.actorUid,
         actorRole: command.actorRole,
         reason: command.reason,
