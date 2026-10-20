@@ -78,14 +78,14 @@ describe('adminService facade contract', () => {
 
   it('uses one Worker API bootstrap call and does not attach a raw Firestore listener', async () => {
     const callback = vi.fn();
-    mocks.apiFetch.mockResolvedValue({ success: true, config: { monthlySubscribersFlatFee: 250 } });
+    mocks.apiFetch.mockResolvedValue({ success: true, config: { adminColor: '#334455' } });
 
     const unsubscribe = adminService.subscribeToSystemConfig(callback);
     await waitFor(() => expect(callback).toHaveBeenCalledTimes(1));
 
     expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/system-config');
-    expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 250 });
+    expect(callback).toHaveBeenCalledWith({ adminColor: '#334455' });
     expect(mocks.onSnapshot).not.toHaveBeenCalled();
     unsubscribe();
     expect(mocks.listenerRegister).toHaveBeenCalledOnce();
@@ -96,16 +96,15 @@ describe('adminService facade contract', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mocks.apiFetch
       .mockRejectedValueOnce(new Error('session not active yet'))
-      .mockResolvedValueOnce({ success: true, config: { monthlySubscribersFlatFee: 450 } });
+      .mockResolvedValueOnce({ success: true, config: { adminColor: '#445566' } });
 
     const unsubscribe = adminService.subscribeToSystemConfig(callback);
     await waitFor(() => expect(callback).toHaveBeenCalledWith({
-      monthlySubscribersFlatFee: 250,
       adminColor: '#10b981'
     }));
 
     window.dispatchEvent(new Event('rq-session-ready'));
-    await waitFor(() => expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 450 }));
+    await waitFor(() => expect(callback).toHaveBeenCalledWith({ adminColor: '#445566' }));
     expect(mocks.apiFetch).toHaveBeenCalledTimes(2);
     expect(mocks.onSnapshot).not.toHaveBeenCalled();
     unsubscribe();

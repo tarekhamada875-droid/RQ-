@@ -402,16 +402,14 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     }
   });
 
-  it('preserves intentional zero-valued system settings and rejects invalid patches atomically', async () => {
-    const zeroSettings = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
+  it('rejects retired subscriber-pricing and legacy configuration patches atomically', async () => {
+    const retiredSubscriberFee = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ monthlySubscribersFlatFee: 0 })
     }), workerEnv);
-    expect(zeroSettings.status).toBe(200);
-    expect(mockDb.records.get('system_config/global')).toMatchObject({
-      monthlySubscribersFlatFee: 0
-    });
+    expect(retiredSubscriberFee.status).toBe(400);
+    expect(await retiredSubscriberFee.json()).toMatchObject({ success: false, code: 'RETIRED_CONFIG_FIELD', statusCode: 400 });
 
     const retiredTrialSetting = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
@@ -427,8 +425,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       body: JSON.stringify({ monthlySubscribersFlatFee: -1 })
     }), workerEnv);
     expect(negative.status).toBe(400);
-    expect(await negative.json()).toMatchObject({ success: false, code: 'MONTHLYSUBSCRIBERSFLATFEE_TOO_LOW', statusCode: 400 });
-    expect(mockDb.records.get('system_config/global')).toMatchObject({ monthlySubscribersFlatFee: 0 });
+    expect(await negative.json()).toMatchObject({ success: false, code: 'RETIRED_CONFIG_FIELD', statusCode: 400 });
 
     const malformedPrices = await api.fetch(new Request('http://localhost/api/admin/update-system-config', {
       method: 'POST',
@@ -437,6 +434,5 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     }), workerEnv);
     expect(malformedPrices.status).toBe(400);
     expect(await malformedPrices.json()).toMatchObject({ success: false, code: 'RETIRED_CONFIG_FIELD', statusCode: 400 });
-    expect(mockDb.records.get('system_config/global')).toMatchObject({ monthlySubscribersFlatFee: 0 });
   });
 });

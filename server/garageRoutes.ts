@@ -361,10 +361,10 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
 
     const updates: Record<string, any> = { updatedAt: new Date() };
     const allowedKeys = [
-      'name', 'phone', 'hourlyRate', 'overnightRate', 'monthlySubscriptionFee', 
-      'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode', 
+      'name', 'phone', 'hourlyRate', 'overnightRate',
+      'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode',
       'maintenanceMessage', 'assignedDelegateId', 'currentSessionId',
-      'hasMonthlySubscribers', 'allowMonthlySubscribers', 'subscriberFlatFee', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
+      'hasMonthlySubscribers', 'allowMonthlySubscribers', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
       'shimmerColor', 'activePackageName',
       'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
       'balance', 'balanceExpiry', 'carsInside'

@@ -18,13 +18,9 @@ export interface RouteDeps {
   maintainedSummaryVersion: number;
 }
 
-const ACTIVE_SYSTEM_CONFIG_FIELDS = [
-  'monthlySubscribersFlatFee',
-  'adminColor'
-] as const;
+const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor'] as const;
 
 const DEFAULT_SYSTEM_CONFIG = {
-  monthlySubscribersFlatFee: 250,
   adminColor: '#10b981'
 };
 
@@ -93,14 +89,8 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       updatedAt: new Date()
     };
 
-    if (body.walletNumber !== undefined || body.subscriptionPrices !== undefined || body.defaultTrialDays !== undefined) {
+    if (body.walletNumber !== undefined || body.subscriptionPrices !== undefined || body.defaultTrialDays !== undefined || body.monthlySubscribersFlatFee !== undefined || body.monthlySubscribersSurchargePercent !== undefined) {
       throw new ValidationError('Retired configuration field', 'RETIRED_CONFIG_FIELD', 400);
-    }
-    if (body.monthlySubscribersFlatFee !== undefined) {
-      updatePayload.monthlySubscribersFlatFee = validateNumber(body.monthlySubscribersFlatFee, 'monthlySubscribersFlatFee', { min: 0 });
-    }
-    if (body.monthlySubscribersSurchargePercent !== undefined) {
-      updatePayload.monthlySubscribersSurchargePercent = validateNumber(body.monthlySubscribersSurchargePercent, 'monthlySubscribersSurchargePercent', { min: 0 });
     }
     if (body.referralFeePerRenewal !== undefined) {
       updatePayload.referralFeePerRenewal = validateNumber(body.referralFeePerRenewal, 'referralFeePerRenewal', { min: 0 });

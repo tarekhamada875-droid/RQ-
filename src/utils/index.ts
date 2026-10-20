@@ -361,10 +361,6 @@ export const isLightColor = (color: string | undefined): boolean => {
 };
 
 /**
- * Applies the configured monthly-subscribers fixed fee (default 500 EGP).
- * Flat fee comes from system_config/global (monthlySubscribersFlatFee).
- */
-/**
  * Retries a Firestore/API operation with exponential backoff and network checks.
  * Immediate throw for non-retryable authorization or business rule errors.
  */
