@@ -57,6 +57,24 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     }), workerEnv);
     expect(missingPlateRes.status).toBe(400);
 
+    const writesBeforeInvalidType = mockDb.documentWriteCount;
+    const invalidTypeRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({
+        garageId: testGarageId,
+        plateNumber: 'ABC 9999',
+        plateRaw: 'ABC9999',
+        type: 'motorcycle'
+      })
+    }), workerEnv);
+    expect(invalidTypeRes.status).toBe(400);
+    expect(await invalidTypeRes.json()).toMatchObject({ success: false, error: 'INVALID_VEHICLE_TYPE' });
+    expect(mockDb.documentWriteCount).toBe(writesBeforeInvalidType);
+
     // Valid check-in
     const validCheckInRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',

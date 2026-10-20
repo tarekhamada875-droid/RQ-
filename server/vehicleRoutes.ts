@@ -35,6 +35,8 @@ export interface VehicleRouteDeps {
   writeMaintainedGarageDailyDelta: VehicleRouteDependency;
 }
 
+const SUPPORTED_VEHICLE_TYPES = new Set(['hourly', 'overnight']);
+
 export function registerVehicleRoutes(app: WorkerApp, deps: VehicleRouteDeps): void {
   const {
     getAdminDb,
@@ -74,7 +76,11 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({}));
-    const { garageId: bodyGarageId, plateNumber: rawPlateNumber, plateRaw: rawPlateRaw, type } = body;
+    const { garageId: bodyGarageId, plateNumber: rawPlateNumber, plateRaw: rawPlateRaw } = body;
+    const vehicleType = body.type === undefined ? 'hourly' : body.type;
+    if (typeof vehicleType !== 'string' || !SUPPORTED_VEHICLE_TYPES.has(vehicleType)) {
+      return c.json({ success: false, error: 'INVALID_VEHICLE_TYPE' }, 400);
+    }
     const normalizedPlate = validatePlate(rawPlateNumber || rawPlateRaw);
     const plateNumber = normalizedPlate.plateNumber;
     const plateRaw = normalizedPlate.plateRaw;
@@ -100,7 +106,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const requestFingerprint = createRequestFingerprint({ garageId, plateNumber, plateRaw, type: type || 'hourly' });
+    const requestFingerprint = createRequestFingerprint({ garageId, plateNumber, plateRaw, type: vehicleType });
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let resultData: Record<string, any> = {};
@@ -179,7 +185,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         plate: plateNumber,
         plateNumber,
         plateNumberRaw: plateRaw,
-        type: type || 'hourly',
+        type: vehicleType,
         isSubscriber: isSubscriberAuthoritative,
         entryTime: new Date(),
         status: 'inside',
@@ -251,7 +257,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           id: plateRaw,
           plateNumber,
           plateNumberRaw: plateRaw,
-          type: type || 'hourly',
+          type: vehicleType,
           status: 'inside',
           entryTime: new Date().toISOString(),
           staffId: entrantEntityId || null,
@@ -286,7 +292,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         payload: {
           plateNumber,
           plateNumberRaw: plateRaw,
-          type: type || 'hourly',
+          type: vehicleType,
           isSubscriber: isSubscriberAuthoritative,
           staffId: entrantEntityId || null,
           staffName: resolvedStaffName,
