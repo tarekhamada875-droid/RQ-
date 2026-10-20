@@ -12,16 +12,16 @@ The owner’s priorities are: preserve Egyptian license-plate identity, favor fu
 
 This handoff was activated by the owner’s `tokens ending` continuity trigger. The bounded audit task is complete. The Garage and Admin business-logic audits were read-only: no source code, Firestore rules, stored records, payments, or production data were changed.
 
-At handoff preparation:
+Current verified state after the handoff merge:
 
 - Local branch: `main`.
-- Local `main` and `origin/main`: synchronized at `9a0431462b68d5d715201a0a2b726f6f32dce3a5`.
+- Local `main` and `origin/main`: synchronized at `32a7d428d006ea9a9eb2145c0eabd368a8a6d08f`.
 - Working tree: clean.
 - Open PRs: none.
-- Latest successful main Production Gate: run `39367056464`, for SHA `9a0431462b68d5d715201a0a2b726f6f32dce3a5`; it passed the documentation-only validation path and skipped Worker deployment as expected.
+- Latest successful main Production Gate: run `39367557416`, for SHA `32a7d428d006ea9a9eb2145c0eabd368a8a6d08f`; it passed the documentation-only validation path and skipped Worker deployment as expected.
 - Latest deployed Worker identity: `/api/health` and `/api/version` reported commit `77a12276756c874f8fc57c4082614f1b1ac4a2c2`, version `1.0.0-production`, environment `production`, runtime `cloudflare-worker`, status `operational`. The later plan/documentation commits did not deploy a new Worker.
 - Protected decision branch: `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`.
-- The handoff documentation itself is being delivered through the normal PR and Production Gate flow; re-check all values after that merge because the handoff commit changes `main`.
+- Handoff PR #207 is merged; no open PRs remain. Re-verify these values again before beginning ALF-01 rather than relying on embedded documentation alone.
 
 ## Completed work
 
