@@ -175,4 +175,4 @@ Until decided, do not silently change these policies. The confirmed defects abov
 
 ## Current status
 
-The audit is complete and no source code or stored data has been changed as part of this plan. The repository is currently on synchronized `main` at `f60343320812b10bb5df578edea9322e035196d9`; the main Production Gate run `39365364634` passed, there are no open PRs, and the protected decision branch is `readiness/firestore-decision-gate` at `d2e0d2c7c904745a672734f5cbde0b7664d1efa2`. The next bounded task is GLF-01: reject unknown vehicle types at the Worker boundary.
+The audit is complete and no source code or stored data has been changed as part of this plan. The plan was merged through the normal reviewed PR and Production Gate workflow; verify the exact current `main`, live health/version, open-PR state, and protected decision branch before beginning implementation. The next bounded task is GLF-01: reject unknown vehicle types at the Worker boundary.
