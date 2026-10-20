@@ -19,7 +19,6 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { AdminGarageList } from './AdminGarageList';
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
-import { AdminPlansModal } from './AdminPlansModal';
 import { AdminAddGarageModal } from './AdminAddGarageModal';
 import { PackageValidationErrorModal } from './PackageValidationErrorModal';
 import { AdminConfirmDialog } from './AdminConfirmDialog';
@@ -90,7 +89,6 @@ export const AdminDashboard = memo(({
     }
   }, [currentSupervisor, activeTab, setActiveTab]);
 
-  const [showPlansModal, setShowPlansModal] = React.useState<boolean>(false);
   const [showOverview, setShowOverview] = React.useState<boolean>(false);
   const [pinInput, setPinInput] = React.useState<string>('');
   const [garageForm, setGarageForm] = React.useState<{
@@ -210,7 +208,7 @@ export const AdminDashboard = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useBodyScrollLock(showPlansModal || showOverview);
+  useBodyScrollLock(showOverview);
 
   const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -369,7 +367,7 @@ export const AdminDashboard = memo(({
       {/* Main Workspace Body */}
       <main 
         ref={mainScrollRef} 
-        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 flex-1 w-full ${showPlansModal || showOverview ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 flex-1 w-full ${showOverview ? 'overflow-hidden' : 'overflow-y-auto'}`}
       >
         <AdminNavigationAndViews
           activeTab={activeTab}
@@ -415,16 +413,6 @@ export const AdminDashboard = memo(({
           onLogout={onLogout}
         />
       </main>
-
-      {/* Plans Management Modal */}
-      <AdminPlansModal
-        isOpen={showPlansModal}
-        onClose={() => setShowPlansModal(false)}
-        packages={packages}
-        setConfirmDialog={setConfirmDialog}
-        adminLang={adminLang}
-        t={t}
-      />
 
       {/* Add Garage Modal */}
       <AdminAddGarageModal

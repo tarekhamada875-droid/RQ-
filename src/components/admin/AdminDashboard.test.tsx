@@ -42,7 +42,6 @@ vi.mock('./AdminNavigationAndViews', () => ({
     </>
   ),
 }));
-vi.mock('./AdminPlansModal', () => ({ AdminPlansModal: () => null }));
 vi.mock('./PackageValidationErrorModal', () => ({ PackageValidationErrorModal: () => null }));
 vi.mock('./AdminConfirmDialog', () => ({
   AdminConfirmDialog: ({ isOpen, onConfirm }: any) => isOpen
