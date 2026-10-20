@@ -41,13 +41,6 @@ interface AdminDashboardProps {
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
   adminListsError?: boolean;
-  adminSummary?: {
-    totalGarages: number;
-    activeGarages: number;
-    lockedGarages: number;
-    totalDelegates: number;
-    totalAdminRevenue: number;
-  } | null;
   onLoadMoreAdminGarages?: () => Promise<void>;
   onLoadMoreAdminDelegates?: () => Promise<void>;
   onRefreshAdminLists?: () => Promise<void>;
@@ -72,7 +65,6 @@ export const AdminDashboard = memo(({
   adminDelegateHasMore = false,
   adminListsLoading = false,
   adminListsError = false,
-  adminSummary = null,
   onLoadMoreAdminGarages,
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
@@ -409,7 +401,6 @@ export const AdminDashboard = memo(({
           adminDelegateHasMore={adminDelegateHasMore}
           adminListsLoading={adminListsLoading}
           adminListsError={adminListsError}
-          adminSummary={adminSummary}
           onLoadMoreAdminGarages={onLoadMoreAdminGarages}
           onLoadMoreAdminDelegates={onLoadMoreAdminDelegates}
           onRefreshAdminLists={onRefreshAdminLists}

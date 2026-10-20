@@ -40,13 +40,6 @@ export function useGarageSync({
   const [adminDelegateHasMore, setAdminDelegateHasMore] = useState(false);
   const [adminListsLoading, setAdminListsLoading] = useState(false);
   const [adminListsError, setAdminListsError] = useState(false);
-  const [adminSummary, setAdminSummary] = useState<{
-    totalGarages: number;
-    activeGarages: number;
-    lockedGarages: number;
-    totalDelegates: number;
-    totalAdminRevenue: number;
-  } | null>(null);
   const adminGarageCursorRef = useRef<any>(null);
   const adminDelegateCursorRef = useRef<any>(null);
   const adminGarageLoadingRef = useRef(false);
@@ -162,16 +155,6 @@ export function useGarageSync({
     }
   }, [adminDelegateHasMore]);
 
-  const loadAdminSummary = useCallback(async () => {
-    try {
-      const summary = await firestoreService.getAdminSummary();
-      setAdminSummary(summary);
-    } catch (error) {
-      console.error('Failed to load admin summary:', error);
-      setAdminListsError(true);
-    }
-  }, []);
-
   const refreshAdminLists = useCallback(async () => {
     if (adminListsLoadedRef.current && adminListsLoading) return;
     adminListsLoadedRef.current = true;
@@ -179,8 +162,8 @@ export function useGarageSync({
     adminDelegateCursorRef.current = null;
     setAdminGarageHasMore(false);
     setAdminDelegateHasMore(false);
-    await Promise.all([loadAdminGaragePage(true), loadAdminDelegatePage(true), loadAdminSummary()]);
-  }, [adminListsLoading, loadAdminDelegatePage, loadAdminGaragePage, loadAdminSummary]);
+    await Promise.all([loadAdminGaragePage(true), loadAdminDelegatePage(true)]);
+  }, [adminListsLoading, loadAdminDelegatePage, loadAdminGaragePage]);
 
   // Sync delegate dashboard garage lists
   const delegateId = delegate?.id;
@@ -325,7 +308,6 @@ export function useGarageSync({
     adminDelegateHasMore,
     adminListsLoading,
     adminListsError,
-    adminSummary,
     loadMoreAdminGarages: () => loadAdminGaragePage(false),
     loadMoreAdminDelegates: () => loadAdminDelegatePage(false),
     refreshAdminLists,
