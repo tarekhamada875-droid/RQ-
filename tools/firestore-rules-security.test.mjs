@@ -286,15 +286,29 @@ try {
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
 
-  // Any signed-in role can read full private config; anonymous clients cannot.
+  // Browser roles must use the Worker projection; nobody reads the raw private config document.
   for (const signedInDb of [adminDb, ownerDb, staffDb, delegateDb]) {
-    const config = await assertSucceeds(getDoc(doc(signedInDb, 'system_config/safe-config')));
-    assert.equal(config.data().walletNumber, 'synthetic-wallet');
-    assert.equal(config.data().syntheticSensitiveField, 'private-to-authenticated');
+    await assertFails(getDoc(doc(signedInDb, 'system_config/safe-config')));
   }
   await assertFails(getDoc(doc(unauthenticatedDb, 'system_config/safe-config')));
   await assertSucceeds(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
   await assertFails(updateDoc(doc(staffDb, 'system_config/safe-config'), { startupNotice: 'staff-update' }));
+
+  // Subscriber reads retain their existing owner/staff/Admin/delegate scope; every mutation is Worker-only.
+  const subscriberPath = 'garages/g-1/subscribers/sub-1';
+  for (const readerDb of [adminDb, ownerDb, staffDb, delegateDb]) {
+    await assertSucceeds(getDoc(doc(readerDb, subscriberPath)));
+    await assertSucceeds(getDocs(collection(readerDb, 'garages/g-1/subscribers')));
+  }
+  const deniedSubscriberMutations = [adminDb, ownerDb, staffDb, delegateDb].flatMap((clientDb, index) => [
+    setDoc(doc(clientDb, `garages/g-1/subscribers/client-created-${index}`), {
+      id: `client-created-${index}`, ownerName: 'Client Write', phone: '000', plateNumber: 'ZZZ999',
+      plateNumberRaw: 'ZZZ999', startDate: '2026-10-01', endDate: '2026-10-31', garageId: 'g-1', createdAt: new Date()
+    }),
+    updateDoc(doc(clientDb, subscriberPath), { ownerName: 'Unauthorized Client Update' }),
+    deleteDoc(doc(clientDb, subscriberPath))
+  ]);
+  await Promise.all(deniedSubscriberMutations.map(assertFails));
 
   // Delegate self-service is limited to its own record and heartbeat field.
   await assertSucceeds(updateDoc(doc(delegateDb, 'delegates/del-1'), { lastActive: new Date() }));
@@ -339,7 +353,7 @@ try {
     assert.deepEqual((await getDoc(doc(storedDb, 'supervisors/sup-1'))).data(), legacySupervisor);
   });
 
-  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff/activity-log composite indexes and ordering, protected staff and garage writes, sessions, config, cross-garage denials, and retired Supervisor access.');
+  console.log('Firestore rules emulator matrix passed: owner/admin/staff/delegate scopes, staff/activity-log composite indexes and ordering, protected staff and garage writes, raw config-read denial, Worker-only subscriber mutations, cross-garage denials, and retired Supervisor access.');
 } finally {
   await env.cleanup();
 }

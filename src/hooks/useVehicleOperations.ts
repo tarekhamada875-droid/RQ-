@@ -131,6 +131,8 @@ export function useVehicleOperations({
     // Execute Check-In optimistically and handle per-plate async lock
     const previousVehicles = [...vehicles];
     const previousGarage = garage ? { ...garage } : null;
+    const entrantEntityId = currentStaff?.id ?? garage.id;
+    const entrantRole = currentStaff ? 'staff' : 'garage';
     const optimisticVehicle: Vehicle = {
       id: raw,
       plateNumber: formatted,
@@ -139,8 +141,10 @@ export function useVehicleOperations({
       type: type,
       garageId: garage.id,
       status: 'inside',
-      staffId: currentStaff ? currentStaff.id : null,
+      staffId: entrantEntityId,
       staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
+      enteredByEntityId: entrantEntityId,
+      enteredByRole: entrantRole,
       isSubscriber: isSubscriber
     };
     
@@ -183,8 +187,11 @@ export function useVehicleOperations({
         type: serverVehicle?.type || type,
         garageId: garage.id,
         status: 'inside',
-        staffId: serverVehicle?.staffId ?? (currentStaff ? currentStaff.id : null),
+        staffId: serverVehicle?.staffId ?? entrantEntityId,
         staffName: serverVehicle?.staffName || (currentStaff ? currentStaff.name : 'مدير الجراج'),
+        enteredByEntityId: serverVehicle?.enteredByEntityId ?? entrantEntityId,
+        enteredByRole: serverVehicle?.enteredByRole ?? entrantRole,
+        enteredByUid: serverVehicle?.enteredByUid ?? null,
         isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
       };
       setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
@@ -336,10 +343,10 @@ export function useVehicleOperations({
     }
     if (!garage || !selectedVehicle) return;
 
-    const isOwner = currentStaff 
-      ? Boolean(selectedVehicle.staffId && selectedVehicle.staffId === currentStaff.id)
-      : true; // Garage Owner has full authority to delete initial entry errors
-    if (!isOwner) {
+    const entrantEntityId = currentStaff?.id ?? garage.id;
+    const entrantRole = currentStaff ? 'staff' : 'garage';
+    const isEntrant = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
+    if (!isEntrant) {
       showToast('يمكن فقط لمسجّل هذه السيارة حذفها', 'error');
       return;
     }

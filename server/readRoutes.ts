@@ -18,6 +18,28 @@ export interface RouteDeps {
   maintainedSummaryVersion: number;
 }
 
+const ACTIVE_SYSTEM_CONFIG_FIELDS = [
+  'defaultTrialDays',
+  'warningDaysThreshold',
+  'monthlySubscribersFlatFee',
+  'adminColor'
+] as const;
+
+const DEFAULT_SYSTEM_CONFIG = {
+  defaultTrialDays: 2,
+  warningDaysThreshold: 3,
+  monthlySubscribersFlatFee: 250,
+  adminColor: '#10b981'
+};
+
+function projectSystemConfig(config: Record<string, any>): Record<string, any> {
+  const projected: Record<string, any> = {};
+  for (const field of ACTIVE_SYSTEM_CONFIG_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(config, field)) projected[field] = config[field];
+  }
+  return projected;
+}
+
 export function registerReadRoutes(app: WorkerApp, deps: RouteDeps): void {
   const {
     getAdminDb,
@@ -35,7 +57,7 @@ export function registerReadRoutes(app: WorkerApp, deps: RouteDeps): void {
     maintainedSummaryVersion
   } = deps;
 
-// Private full-config route; browser Firestore reads remain governed by firestore.rules.
+// Private route returning only the active, explicitly allowlisted config fields.
 app.get('/api/system-config', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user') as WorkerUser | undefined;
@@ -48,23 +70,10 @@ app.get('/api/system-config', requireWorkerAuth, async (c) => {
     }
     const snap = await getAdminDb().doc('system_config/global').get();
     if (!snap.exists) {
-      return c.json({
-        success: true,
-        config: {
-          defaultTrialDays: 2,
-          warningDaysThreshold: 3,
-          monthlySubscribersFlatFee: 250,
-          monthlySubscribersSurchargePercent: 25,
-          referralFeePerRenewal: 100,
-          delegateMonthlyCommission: 100,
-          isMaintenanceMode: false,
-          maintenanceMessage: '',
-          adminColor: '#10b981'
-        }
-      });
+      return c.json({ success: true, config: DEFAULT_SYSTEM_CONFIG });
     }
-    const { walletNumber: _walletNumber, subscriptionPrices: _subscriptionPrices, ...activeConfig } = snap.data() || {};
-    return c.json({ success: true, config: { id: snap.id, ...activeConfig } });
+    const activeConfig = projectSystemConfig(snap.data() || {});
+    return c.json({ success: true, config: { ...DEFAULT_SYSTEM_CONFIG, ...activeConfig } });
   } catch (e: any) {
     console.error('[Worker] Error fetching system-config:', e);
     return c.json({ success: false, error: 'SERVER_ERROR' }, 500);

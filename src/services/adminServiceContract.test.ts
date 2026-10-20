@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { waitFor } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
   apiFetch: vi.fn(),
@@ -27,6 +28,10 @@ describe('adminService facade contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.currentUser = { uid: 'admin-test' };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('preserves the complete public method key set', () => {
@@ -72,46 +77,40 @@ describe('adminService facade contract', () => {
     ]);
   });
 
-  it('uses one API bootstrap call when the Firestore snapshot exists and preserves callback order', async () => {
+  it('uses one Worker API bootstrap call and does not attach a raw Firestore listener', async () => {
     const callback = vi.fn();
     mocks.apiFetch.mockResolvedValue({ success: true, config: { monthlySubscribersFlatFee: 250 } });
-    const unsubscribeSnapshot = vi.fn();
-    mocks.onSnapshot.mockImplementationOnce((_ref: unknown, onNext: (snapshot: unknown) => void) => {
-      onNext({ exists: () => true, id: 'global', data: () => ({ monthlySubscribersFlatFee: 250 }) });
-      return unsubscribeSnapshot;
-    });
 
     const unsubscribe = adminService.subscribeToSystemConfig(callback);
-    await Promise.resolve();
-    await Promise.resolve();
+    await waitFor(() => expect(callback).toHaveBeenCalledTimes(1));
 
     expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
-    expect(callback.mock.calls.map(([config]) => config)).toEqual([
-      { id: 'global', monthlySubscribersFlatFee: 250 },
-      { monthlySubscribersFlatFee: 250 }
-    ]);
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/system-config');
+    expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 250 });
+    expect(mocks.onSnapshot).not.toHaveBeenCalled();
     unsubscribe();
-    expect(unsubscribeSnapshot).toHaveBeenCalledOnce();
     expect(mocks.listenerRegister).toHaveBeenCalledOnce();
   });
 
-  it('keeps one fallback API call for an empty snapshot after the bootstrap attempt', async () => {
+  it('uses defaults until the Worker session is ready, then refreshes through the API', async () => {
     const callback = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     mocks.apiFetch
-      .mockResolvedValueOnce({ success: true, config: { monthlySubscribersFlatFee: 250 } })
+      .mockRejectedValueOnce(new Error('session not active yet'))
       .mockResolvedValueOnce({ success: true, config: { monthlySubscribersFlatFee: 450 } });
-    mocks.onSnapshot.mockImplementationOnce((_ref: unknown, onNext: (snapshot: unknown) => void) => {
-      onNext({ exists: () => false, id: 'global', data: () => undefined });
-      return vi.fn();
-    });
 
     const unsubscribe = adminService.subscribeToSystemConfig(callback);
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await waitFor(() => expect(callback).toHaveBeenCalledWith({
+      defaultTrialDays: 2,
+      warningDaysThreshold: 3,
+      monthlySubscribersFlatFee: 250,
+      adminColor: '#10b981'
+    }));
 
+    window.dispatchEvent(new Event('rq-session-ready'));
+    await waitFor(() => expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 450 }));
     expect(mocks.apiFetch).toHaveBeenCalledTimes(2);
-    expect(callback).toHaveBeenCalledWith({ monthlySubscribersFlatFee: 450 });
+    expect(mocks.onSnapshot).not.toHaveBeenCalled();
     unsubscribe();
   });
 });

@@ -315,6 +315,10 @@ export const mockAdminAuth = {
     if (token === 'valid-admin-token' || token === 'admin-token') {
       return { uid: 'admin-uid', email: 'admin@test.com', role: 'admin' };
     }
+    if (token.startsWith('valid-garage-relogin-token-')) {
+      const gId = token.substring('valid-garage-relogin-token-'.length);
+      return { uid: `garage-relogin-uid-${gId}`, email: `garage-relogin-${gId}@test.com`, role: 'garage', garageId: gId };
+    }
     if (token.startsWith('valid-garage-token-')) {
       const gId = token.substring('valid-garage-token-'.length);
       return { uid: `garage-uid-${gId}`, email: `garage-${gId}@test.com`, role: 'garage', garageId: gId };
@@ -327,6 +331,14 @@ export const mockAdminAuth = {
     }
     if (token === 'valid-supervisor-token' || token === 'supervisor-token') {
       return { uid: 'supervisor-uid', email: 'supervisor@test.com', role: 'supervisor' };
+    }
+    if (token.startsWith('valid-staff-relogin-token-')) {
+      const garageId = token.substring('valid-staff-relogin-token-'.length);
+      return { uid: `staff-relogin-uid-${garageId}`, email: `staff-relogin-${garageId}@test.com`, role: 'staff', garageId };
+    }
+    if (token.startsWith('valid-staff-peer-token-')) {
+      const garageId = token.substring('valid-staff-peer-token-'.length);
+      return { uid: `staff-peer-uid-${garageId}`, email: `staff-peer-${garageId}@test.com`, role: 'staff', garageId };
     }
     if (token.startsWith('valid-staff-token-')) {
       const garageId = token.substring('valid-staff-token-'.length);
@@ -358,9 +370,15 @@ export function installDefaultWorkerTestSessionHeaders(api: { fetch: (...args: a
     if (token === 'valid-admin-token') principal = { uid: 'admin-uid', role: 'admin', entityId: 'auth_pin', sessions: 'admin_sessions', entityCollection: 'admin_settings', sessionId: 'test-active-admin' };
     else if (token === 'valid-delegate-token' || token === 'valid-delegate-token-delegate-a') principal = { uid: 'delegate-uid', role: 'delegate', entityId: token.endsWith('-delegate-a') ? 'delegate-a' : 'delegate-uid', sessions: 'delegate_sessions', entityCollection: 'delegates', sessionId: 'test-active-delegate' };
     else {
+      const garageRelogin = token.match(/^valid-garage-relogin-token-(.+)$/);
       const garage = token.match(/^valid-garage-token-(.+)$/);
+      const staffRelogin = token.match(/^valid-staff-relogin-token-(.+)$/);
+      const staffPeer = token.match(/^valid-staff-peer-token-(.+)$/);
       const staff = token.match(/^valid-staff-token-(.+)$/);
-      if (garage) principal = { uid: `garage-uid-${garage[1]}`, role: 'garage', entityId: garage[1], garageId: garage[1], sessions: 'garage_sessions', entityCollection: 'garages', sessionId: `test-active-garage-${garage[1]}` };
+      if (garageRelogin) principal = { uid: `garage-relogin-uid-${garageRelogin[1]}`, role: 'garage', entityId: garageRelogin[1], garageId: garageRelogin[1], sessions: 'garage_sessions', entityCollection: 'garages', sessionId: `test-active-garage-relogin-${garageRelogin[1]}` };
+      else if (garage) principal = { uid: `garage-uid-${garage[1]}`, role: 'garage', entityId: garage[1], garageId: garage[1], sessions: 'garage_sessions', entityCollection: 'garages', sessionId: `test-active-garage-${garage[1]}` };
+      else if (staffRelogin) principal = { uid: `staff-relogin-uid-${staffRelogin[1]}`, role: 'staff', entityId: `staff-uid-${staffRelogin[1]}`, garageId: staffRelogin[1], sessions: 'staff_sessions', entityCollection: 'staff', sessionId: `test-active-staff-relogin-${staffRelogin[1]}` };
+      else if (staffPeer) principal = { uid: `staff-peer-uid-${staffPeer[1]}`, role: 'staff', entityId: `staff-peer-entity-${staffPeer[1]}`, garageId: staffPeer[1], sessions: 'staff_sessions', entityCollection: 'staff', sessionId: `test-active-staff-peer-${staffPeer[1]}` };
       else if (staff) principal = { uid: `staff-uid-${staff[1]}`, role: 'staff', entityId: `staff-uid-${staff[1]}`, garageId: staff[1], sessions: 'staff_sessions', entityCollection: 'staff', sessionId: `test-active-staff-${staff[1]}` };
     }
     if (!principal || input.headers.has('x-session-id')) return originalFetch(input, ...rest);

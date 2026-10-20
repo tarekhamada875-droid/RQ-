@@ -59,10 +59,12 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(body.config).toBeUndefined();
   });
 
-  it('4. Returns full system config to each active signed-in app role', async () => {
+  it('4. Returns only the active allowlisted config projection to each signed-in app role', async () => {
     const privateConfig = {
       walletNumber: 'private-wallet',
       subscriptionPrices: { weekly: 900 },
+      defaultTrialDays: 7,
+      warningDaysThreshold: 5,
       monthlySubscribersFlatFee: 250,
       adminColor: '#123456',
       syntheticSensitiveField: 'private'
@@ -81,7 +83,12 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.success).toBe(true);
-      expect(body.config).toEqual({ id: 'global', monthlySubscribersFlatFee: 250, adminColor: '#123456', syntheticSensitiveField: 'private' });
+      expect(body.config).toEqual({
+        defaultTrialDays: 7,
+        warningDaysThreshold: 5,
+        monthlySubscribersFlatFee: 250,
+        adminColor: '#123456'
+      });
     }
   });
 

@@ -345,28 +345,6 @@ service cloud.firestore {
              isValidVehicle(incoming());
     }
 
-    function isValidSubscriberCreate(garageId, subscriberId) {
-      return incoming().keys().hasOnly([
-               'id', 'plateNumber', 'plateNumberRaw', 'ownerName', 'phone',
-               'startDate', 'endDate', 'garageId', 'costUnits', 'createdAt'
-             ]) &&
-             incoming().id == subscriberId &&
-             incoming().garageId == garageId &&
-             incoming().createdAt == request.time &&
-             isValidSubscriber(incoming());
-    }
-
-    function isValidSubscriberUpdate(garageId, subscriberId) {
-      return existing().garageId == garageId &&
-             incoming().garageId == garageId &&
-             (!('id' in existing()) || incoming().id == existing().id) &&
-             incoming().diff(existing()).affectedKeys().hasOnly([
-               'plateNumber', 'plateNumberRaw', 'ownerName', 'phone',
-               'startDate', 'endDate', 'costUnits'
-             ]) &&
-             isValidSubscriber(incoming());
-    }
-
     function isAllowedStaffProfileUpdate() {
       return incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone']) &&
              (!('name' in incoming()) || (incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100)) &&
@@ -438,15 +416,6 @@ service cloud.firestore {
              data.price == data.creditQuantity &&
              (!('isActive' in data) || data.isActive is bool) &&
              (!('createdAt' in data) || data.createdAt is timestamp);
-    }
-
-    function isValidSubscriber(data) {
-      return data.keys().hasAll(['plateNumber', 'plateNumberRaw', 'ownerName', 'phone', 'startDate', 'endDate', 'garageId', 'createdAt']) &&
-             data.plateNumber is string &&
-             data.ownerName is string &&
-             data.phone is string &&
-             data.garageId is string &&
-             data.createdAt is timestamp;
     }
 
     function canRefreshOwnSession() {
@@ -619,7 +588,7 @@ service cloud.firestore {
     }
 
     match /system_config/{configId} {
-      allow read: if isSignedIn();
+      allow read: if false; // Browser clients must use the Worker field projection
       allow create, update: if isAdmin() && isValidId(configId);
       allow delete: if false;
     }
@@ -689,13 +658,7 @@ service cloud.firestore {
       match /subscribers/{subscriberId} {
         allow get: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
         allow list: if isSignedIn() && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
-        allow create: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
-                      !isGarageDeleting(garageId) &&
-                      isValidSubscriberCreate(garageId, subscriberId);
-        allow update: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
-                      !isGarageDeleting(garageId) &&
-                      isValidSubscriberUpdate(garageId, subscriberId);
-        allow delete: if isSignedIn() && isValidId(subscriberId) && (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId));
+        allow create, update, delete: if false; // All mutations must use the Worker
       }
     }
 

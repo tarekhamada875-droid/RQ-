@@ -205,8 +205,11 @@ export interface Vehicle {
   garageId: string;
   status: 'inside' | 'outside';
   totalCost?: number;
-  staffId?: string | null;
+  staffId?: string | null; // Stable entrant entity ID, not the Firebase UID
   staffName?: string;
+  enteredByEntityId?: string | null;
+  enteredByRole?: 'admin' | 'garage' | 'staff' | null;
+  enteredByUid?: string | null; // Audit metadata only; never correction authority
   isSubscriber?: boolean;
 }
 
@@ -229,7 +232,7 @@ export interface SystemConfig {
   defaultTrialDays: number; // e.g. 15
   warningDaysThreshold: number; // e.g. 3
   supportPhone?: string;
-  monthlySubscribersSurchargePercent: number;
+  monthlySubscribersSurchargePercent?: number;
   monthlySubscribersFlatFee: number; // e.g. 500
   referralFeePerRenewal?: number; // fallback e.g. 100
   delegateMonthlyCommission?: number; // Monthly delegate commission per garage (e.g. 100 EGP)
