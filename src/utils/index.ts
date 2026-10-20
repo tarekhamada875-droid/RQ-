@@ -1,4 +1,3 @@
-import { getCleanPackageInfo } from '../constants/packages';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -365,91 +364,6 @@ export const isLightColor = (color: string | undefined): boolean => {
  * Applies the configured monthly-subscribers fixed fee (default 500 EGP).
  * Flat fee comes from system_config/global (monthlySubscribersFlatFee).
  */
-export const applyMonthlySubscribersFlatFee = (price: number, hasMonthlySubscribers: boolean, flatFee: number = 500): number => {
-  const fee = Number(flatFee) || 500;
-  return hasMonthlySubscribers ? price + fee : price;
-};
-
-/**
- * Calculates the final display price for a package:
- * 1. Add referralFee for delegate-referred garage (default 30 EGP if referred, 0 otherwise)
- * 2. Apply discount (percentage or fixed) on the base price
- * 3. Apply monthly subscribers flat fee (configured flat amount, default 500 EGP)
- */
-export const calculateFinalPrice = (
-  pkg: any, 
-  hasMonthlySubscribers: boolean = false, 
-  flatFee: number = 500,
-  referralFee: number | { daily?: number; weekly?: number; biweekly?: number; monthly?: number; [key: string]: number | undefined } = 0
-): {
-  basePrice: number;
-  hasDiscount: boolean;
-  discountedPrice: number;
-  finalPrice: number;
-  totalDiscount: number;
-  displayBasePrice: number;
-  actualReferralFee: number;
-} => {
-  if (!pkg) {
-    return {
-      basePrice: 0,
-      hasDiscount: false,
-      discountedPrice: 0,
-      finalPrice: 0,
-      totalDiscount: 0,
-      displayBasePrice: 0,
-      actualReferralFee: 0,
-    };
-  }
-  const basePrice = pkg.price || 0;
-  const durationDays = typeof pkg.durationDays === 'number' ? pkg.durationDays : (packageIdToDays(pkg.id || '', pkg.name) || 30);
-  
-  let actualReferralFee = 0;
-  if (typeof referralFee === 'object' && referralFee !== null) {
-    if (durationDays <= 1) {
-      actualReferralFee = referralFee.daily !== undefined ? Number(referralFee.daily) : 5;
-    } else if (durationDays <= 7) {
-      actualReferralFee = referralFee.weekly !== undefined ? Number(referralFee.weekly) : 15;
-    } else if (durationDays <= 15) {
-      actualReferralFee = referralFee.biweekly !== undefined ? Number(referralFee.biweekly) : 25;
-    } else {
-      actualReferralFee = referralFee.monthly !== undefined ? Number(referralFee.monthly) : 50;
-    }
-  } else if (Number(referralFee) > 0) {
-    // Number passed directly
-    if (durationDays <= 1) {
-      actualReferralFee = 5;
-    } else if (durationDays <= 7) {
-      actualReferralFee = 15;
-    } else if (durationDays <= 15) {
-      actualReferralFee = 25;
-    } else {
-      actualReferralFee = Number(referralFee) >= 0 ? Number(referralFee) : 50;
-    }
-  }
-  
-  actualReferralFee = Math.max(0, actualReferralFee);
-  
-  const hasDiscount = !!(pkg.discountValue && pkg.discountValue > 0);
-  const discountedPrice = hasDiscount
-    ? (pkg.discountType === 'percentage'
-        ? Math.round(basePrice * (1 - pkg.discountValue / 100))
-        : Math.max(0, basePrice - pkg.discountValue))
-    : basePrice;
-  const finalPrice = applyMonthlySubscribersFlatFee(discountedPrice, hasMonthlySubscribers, flatFee) + actualReferralFee;
-  const displayBasePrice = applyMonthlySubscribersFlatFee(basePrice, hasMonthlySubscribers, flatFee);
-  const totalDiscount = displayBasePrice - finalPrice;
-  return { basePrice, hasDiscount, discountedPrice, finalPrice, totalDiscount, displayBasePrice, actualReferralFee };
-};
-
-/**
- * Converts a subscription package ID to duration in days.
- * Delegates to getCleanPackageInfo as the single source of truth.
- */
-export const packageIdToDays = (packageId: string, pkgName?: string): number => {
-  return getCleanPackageInfo({ id: packageId, name: pkgName }).durationDays || 30;
-};
-
 /**
  * Retries a Firestore/API operation with exponential backoff and network checks.
  * Immediate throw for non-retryable authorization or business rule errors.

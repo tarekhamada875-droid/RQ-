@@ -143,7 +143,7 @@ The Admin audit is now part of this plan. These are not a separate UI project: A
 
 **Proof:** Firestore emulator denial test for direct `creditBalance` writes and a route test proving a valid Admin grant records balance, ledger, event, activity log, referral behavior, and idempotency together.
 
-**Implementation status (2026-10-20):** Merged in PR [#212](https://github.com/tarekhamada875-droid/RQ-/pull/212), merge commit `44d19571e48d5c196f4f751c54230dc98213f3fa`. The Admin garage-update rule now rejects direct `creditBalance` changes; emulator regressions deny both active Admin and garage-owner clients. The unchanged Worker grant route remains authoritative, with a focused regression covering paid balance, referral award, both ledger records, the grant event, activity logs, and an idempotent retry. The focused rules suite and all 13 credit-grant tests passed locally; post-merge Production Gate run `39371738158` passed and deployed the verified Worker artifact. Fresh `/api/health` and `/api/version` checks reported the Worker operational at the merge commit. Firestore rules are not deployed by the Cloudflare release workflow, and production Firebase rules were not changed; the direct-write block is not live until a separately authorized Firebase-rules deployment is performed and verified.
+**Implementation status (2026-10-20):** Merged in PR [#212](https://github.com/tarekhamada875-droid/RQ-/pull/212), merge commit `44d19571e48d5c196f4f751c54230dc98213f3fa`. The Admin garage-update rule rejects direct `creditBalance` changes; emulator regressions deny both active Admin and garage-owner clients. The unchanged Worker grant route remains authoritative, with a focused regression covering paid balance, referral award, both ledger records, the grant event, activity logs, and an idempotent retry. The focused rules suite and all 13 credit-grant tests passed locally; post-merge Production Gate run `39371738158` passed and deployed the verified Worker artifact. Fresh `/api/health` and `/api/version` checks reported the Worker operational at the merge commit. The owner-authorized rules deployment was completed separately on 2026-10-20 to project `gen-lang-client-0091669619`, database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`; active release `projects/gen-lang-client-0091669619/releases/cloud.firestore/ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759` points to ruleset `74404046-99eb-4c3a-993c-616ddc0c576f`, whose read-back exactly matched SHA-256 `fe576244d299fcf86d7173ef25afc7759db51c9a4c8040e4e75d170f276f37f8`. The package-format change below is a separate, not-yet-merged source change; it must pass its PR gate before that new rules payload is deployed.
 
 ### ALF-02 — Make Admin credit retries idempotent per user intent
 
@@ -228,6 +228,8 @@ The Admin audit is now part of this plan. These are not a separate UI project: A
 **Replace with:** One Admin package workflow, Worker-side validation/uniqueness, and server-only package mutations.
 
 **Proof:** The same package cannot be created twice through any Admin surface or direct client request; invalid packages are rejected before appearing in the catalog.
+
+**Owner decision (2026-10-20):** The Admin package catalog must support the credit-bundle format only. Time/capacity package formats are not a second catalog option. Garage-owned monthly subscribers remain a separate date-based product and are not changed by this decision. The current focused source change rejects legacy or mixed-format writes, limits the catalog query/rules to credit bundles, and filters invalid cached/UI records; it does not delete stored documents. Existing one-to-one EGP/credit checks remain in place; this decision does not authorize changing stored records or introducing a conversion/discount policy.
 
 ### ALF-09 — Make Admin detail state immutable and authoritative
 
@@ -344,7 +346,7 @@ Until decided, do not silently change these policies. The confirmed defects abov
 2. GLF-01, GLF-02, GLF-03, GLF-04, ALF-03, and ALF-06: align Worker, Admin, and Garage financial/eligibility truth.
 3. GLF-05, GLF-06, ALF-09, ALF-11, and ALF-14: eliminate stale state, failed-session readiness, and cross-role contract drift.
 4. GLF-08, GLF-09, ALF-05, ALF-07, and ALF-13: make counters, refunds, settlements, reports, and history complete.
-5. Resolve the policy-dependent trial, package, and accounting decisions, then implement ALF-04 and ALF-08.
+5. The owner has decided the Admin catalog format (credit bundles only); resolve the remaining trial/accounting decisions, then continue ALF-04 and the remaining ALF-08 uniqueness/authority work.
 6. Apply the remaining secondary fixes in separate focused changes where possible.
 7. For every item, delete the bad runtime logic rather than archive it, preserve valid stored data, add a regression fixture before editing, and run the complete release workflow.
 
@@ -362,4 +364,4 @@ Until decided, do not silently change these policies. The confirmed defects abov
 
 ## Current status
 
-The Garage and Admin audits are complete. ALF-01 was merged through PR #212 at `44d19571e48d5c196f4f751c54230dc98213f3fa`; post-merge Production Gate run `39371738158` passed and the live Worker reports that commit. The focused Firestore emulator suite, all 13 Worker credit-grant tests, lint, maintainability, and `ci:check` passed. No stored records, payments, or production Firebase rules were changed. The Cloudflare release flow does not deploy Firestore rules, so ALF-01’s direct-write denial is verified in source/emulator only, not in production. Stop and obtain the owner’s direction about a separate authorized rules deployment before starting ALF-12.
+The Garage and Admin audits are complete. ALF-01 was merged through PR #212 at `44d19571e48d5c196f4f751c54230dc98213f3fa`; post-merge Production Gate run `39371738158` passed and the live Worker reports that commit. The ALF-01 Firestore rules were separately deployed and exactly read back from the production database (ruleset `74404046-99eb-4c3a-993c-616ddc0c576f`, SHA-256 `fe576244d299fcf86d7173ef25afc7759db51c9a4c8040e4e75d170f276f37f8`). The owner has chosen a credit-bundle-only Admin catalog; a focused source/PR change is underway and is not yet live. No stored package documents are being deleted. Keep the separate monthly-subscriber product unchanged, complete the package PR/release workflow, then resume ALF-12.

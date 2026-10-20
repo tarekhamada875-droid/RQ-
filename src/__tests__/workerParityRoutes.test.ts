@@ -469,6 +469,12 @@ describe('Worker Route Parity Suite', () => {
       });
       expect(legacyPkgRes.status).toBe(400);
 
+      const mixedPkgRes = await call('/api/admin/packages/create', tokens.admin, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Mixed package', price: 300, creditQuantity: 300, durationDays: 30, catalogType: 'credit_bundle' })
+      });
+      expect(mixedPkgRes.status).toBe(400);
+
       const pkgRes = await call('/api/admin/packages/create', tokens.admin, {
         method: 'POST',
         body: JSON.stringify({

@@ -430,10 +430,14 @@ service cloud.firestore {
 
     function isValidPackage(data) {
       return data.keys().hasAll(['name', 'price', 'catalogType', 'creditQuantity']) &&
+             data.keys().hasOnly(['name', 'price', 'catalogType', 'creditQuantity', 'isActive', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.price is number && data.price >= 0 &&
+             data.price is int && data.price > 0 &&
              data.catalogType == 'credit_bundle' &&
-             data.creditQuantity is number && data.creditQuantity > 0;
+             data.creditQuantity is int && data.creditQuantity > 0 && data.creditQuantity <= 1000000 &&
+             data.price == data.creditQuantity &&
+             (!('isActive' in data) || data.isActive is bool) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
     }
 
     function isValidSubscriber(data) {
@@ -501,7 +505,7 @@ service cloud.firestore {
 
     match /admin_settings/{settingId} {
       allow get: if isSignedIn() && (
-        isAdmin()
+        isAdmin() || settingId in ['wallet_number', 'subscription_prices']
       );
       allow write: if false; // Server-only Admin SDK
     }
@@ -580,8 +584,9 @@ service cloud.firestore {
     }
 
     match /packages/{packageId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isAdmin();
+      allow get: if isSignedIn() && isValidPackage(resource.data);
+      allow list: if isSignedIn() && resource.data.catalogType == 'credit_bundle';
+      allow create, update: if isAdmin() && isValidPackage(request.resource.data);
       allow delete: if isAdmin();
     }
 

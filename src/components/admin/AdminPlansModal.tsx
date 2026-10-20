@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Package } from '../../types';
 import { firestoreService } from '../../services';
+import { isCreditBundlePackage } from '../../utils/packageCatalog';
 
 interface AdminPlansModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const creditBundles = packages.filter(isCreditBundlePackage);
 
   if (!isOpen) return null;
 
@@ -125,12 +127,12 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
 
           <div className="space-y-4">
             <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 mb-3">{t('الباقات الحالية')}</h3>
-            {packages.length === 0 ? (
+            {creditBundles.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 transition-colors">
                 <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">{t('لا يوجد باقات')}</p>
               </div>
             ) : (
-              packages.map(pkg => {
+              creditBundles.map(pkg => {
                 return (
                   <div key={pkg.id} className="p-4 sm:p-5 bg-white dark:bg-slate-800/90 border-2 border-slate-100 dark:border-slate-800 rounded-2xl flex flex-col gap-3 group hover:border-emerald-500/30 transition-all shadow-sm">
                     <div className="flex items-center justify-between gap-2">
@@ -174,9 +176,7 @@ export const AdminPlansModal: React.FC<AdminPlansModalProps> = ({
                         <Coins className="w-3 h-3" />
                       </div>
                       <span>
-                        {pkg.catalogType === 'credit_bundle' && pkg.creditQuantity
-                          ? `${pkg.creditQuantity} ${t('رصيد دخول غير منتهٍ')}`
-                          : t('سجل زمني قديم حتى الترحيل')}
+                        {`${pkg.creditQuantity.toLocaleString('en-US')} ${t('رصيد دخول غير منتهٍ')}`}
                       </span>
                     </div>
                   </div>

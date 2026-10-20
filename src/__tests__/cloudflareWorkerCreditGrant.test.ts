@@ -120,6 +120,17 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(0);
   });
 
+  it('rejects a credit template that also carries a time-based format', async () => {
+    mockDb.seed('packages/mixed-time-template', {
+      name: 'Mixed format', catalogType: 'credit_bundle', creditQuantity: 50,
+      price: 50, durationDays: 30, isActive: true
+    });
+    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'mixed-time-template', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-mixed-template', reason: 'Mixed format must be rejected', idempotencyKey: 'bill07-mixed-template' }) }));
+    expect(response.status).toBe(400);
+    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 10, referral: 4 });
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(0);
+  });
+
   it('rejects an existing credit template whose price differs from the credit count', async () => {
     mockDb.seed('packages/credit-template-mismatch', { name: 'Mismatched', catalogType: 'credit_bundle', creditQuantity: 50, price: 60, isActive: true });
     const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'credit-template-mismatch', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-mismatch', reason: 'Verified transfer', idempotencyKey: 'bill07-template-mismatch' }) }));

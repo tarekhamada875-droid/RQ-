@@ -1,7 +1,8 @@
 import { db } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Package } from '../types';
+import { isCreditBundlePackage } from '../utils/packageCatalog';
 
 export const adminPackageService = {
   addPackage: async (pkg: Omit<Package, 'id' | 'createdAt' | 'isActive'>): Promise<void> => {
@@ -22,7 +23,8 @@ export const adminPackageService = {
 
   subscribeToPackages: (callback: (packages: Package[]) => void) => {
     const colRef = collection(db, 'packages');
-    return onSnapshot(colRef, async (snapshot) => {
+    const packagesQuery = query(colRef, where('catalogType', '==', 'credit_bundle'));
+    return onSnapshot(packagesQuery, async (snapshot) => {
       if (snapshot.empty) {
         try {
           localStorage.setItem('app_packages_cache', JSON.stringify([]));
@@ -34,19 +36,8 @@ export const adminPackageService = {
       }
       
       const activePkgs = snapshot.docs
-        .map(doc => {
-          const data = doc.data() as Package;
-          if (data.catalogType === 'credit_bundle') {
-            return { id: doc.id, ...data };
-          }
-          return {
-            id: doc.id,
-            ...data,
-            durationDays: data.durationDays || data.vehiclesCount || 30,
-            dailyCapacity: data.dailyCapacity !== undefined ? data.dailyCapacity : 50
-          };
-        })
-        .filter(p => p.isActive !== false);
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(isCreditBundlePackage);
       
       try {
         localStorage.setItem('app_packages_cache', JSON.stringify(activePkgs));
@@ -61,8 +52,8 @@ export const adminPackageService = {
         const cached = localStorage.getItem('app_packages_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            callback(parsed);
+          if (Array.isArray(parsed)) {
+            callback(parsed.filter(isCreditBundlePackage));
             return;
           }
         }

@@ -1,71 +1,67 @@
 import { describe, expect, it } from 'vitest';
 import { validatePackageCatalogRecord } from './packageCatalog';
 
-const basePackage = {
-  name: 'Monthly 30',
-  isActive: true,
-  durationDays: 30,
-  price: 300,
-  dailyCapacity: 30,
+const creditBundle = {
+  name: 'Starter credits',
+  price: 400,
+  creditQuantity: 400,
+  catalogType: 'credit_bundle',
 };
 
 describe('server package catalog validation', () => {
-  it('accepts a non-expiring credit bundle', () => {
-    expect(validatePackageCatalogRecord({ name: 'Starter credits', price: 400, creditQuantity: 400 }, 'credit-400'))
-      .toEqual({
-        id: 'credit-400',
-        name: 'Starter credits',
-        catalogType: 'credit_bundle',
-        creditQuantity: 400,
-        durationDays: 0,
-        basePrice: 400,
-        discountAmount: 0,
-        finalPrice: 400,
-        dailyCapacity: 0,
-        isUnlimited: false,
-      });
+  it('accepts only a correctly priced, non-expiring credit bundle', () => {
+    expect(validatePackageCatalogRecord(creditBundle, 'credit-400')).toEqual({
+      id: 'credit-400',
+      name: 'Starter credits',
+      catalogType: 'credit_bundle',
+      creditQuantity: 400,
+      basePrice: 400,
+      finalPrice: 400,
+    });
   });
 
-  it('rejects credit-bundle discounts and invalid quantities', () => {
-    expect(() => validatePackageCatalogRecord({ name: 'Discounted credits', price: 300, creditQuantity: 400, discountType: 'percentage', discountValue: 10 }, 'credit-discount')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-    expect(() => validatePackageCatalogRecord({ name: 'Mismatched price', price: 600, creditQuantity: 400 }, 'credit-price-mismatch')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-    expect(() => validatePackageCatalogRecord({ name: 'Zero credits', price: 300, creditQuantity: 0 }, 'credit-zero')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-    expect(() => validatePackageCatalogRecord({ name: 'Fractional credits', price: 300, creditQuantity: 1.5 }, 'credit-fraction')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+  it('rejects time-based and untyped package records', () => {
+    expect(() => validatePackageCatalogRecord({
+      name: 'Monthly 30', price: 300, catalogType: 'legacy_time', durationDays: 30, dailyCapacity: 50,
+    }, 'legacy-30')).toThrow('PACKAGE_NOT_CREDIT_BUNDLE');
+    expect(() => validatePackageCatalogRecord({
+      name: 'Unspecified format', price: 400, creditQuantity: 400,
+    }, 'untyped-400')).toThrow('PACKAGE_NOT_CREDIT_BUNDLE');
   });
 
-  it('keeps explicit legacy records out of the credit-bundle shape', () => {
-    expect(validatePackageCatalogRecord({ name: 'Legacy month', catalogType: 'legacy_time', price: 300, durationDays: 30, dailyCapacity: 50 }, 'legacy-30'))
-      .toMatchObject({ id: 'legacy-30', catalogType: 'legacy_time', durationDays: 30, dailyCapacity: 50 });
-    expect(validatePackageCatalogRecord({ name: 'Credit template', catalogType: 'credit_bundle', price: 400, creditQuantity: 400 }, 'credit-400'))
-      .toMatchObject({ id: 'credit-400', catalogType: 'credit_bundle', creditQuantity: 400, durationDays: 0, dailyCapacity: 0 });
+  it('rejects credit bundles mixed with duration, capacity, discount, or unknown fields', () => {
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, durationDays: 30 }, 'mixed-duration')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, vehiclesCount: 30 }, 'mixed-vehicles')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, dailyCapacity: 50 }, 'mixed-capacity')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, discountValue: 10 }, 'discounted')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, unexpected: true }, 'unknown-field')).toThrow('INVALID_PACKAGE_CONFIGURATION');
   });
 
-  it('accepts a seven-day legacy package during the pre-cutover period', () => {
-    expect(validatePackageCatalogRecord({ ...basePackage, name: 'Weekly 7', durationDays: 7 }, 'weekly-7'))
-      .toMatchObject({ id: 'weekly-7', name: 'Weekly 7', catalogType: 'legacy_time', durationDays: 7 });
+  it('rejects mismatched, fractional, zero, and out-of-range credits or prices', () => {
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, price: 600 }, 'price-mismatch')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, creditQuantity: 1.5, price: 1.5 }, 'fractional')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, creditQuantity: 0, price: 0 }, 'zero')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, creditQuantity: 1_000_001, price: 1_000_001 }, 'too-large')).toThrow('INVALID_PACKAGE_CONFIGURATION');
   });
 
-  it('normalizes a valid discounted legacy package', () => {
-    expect(validatePackageCatalogRecord({ ...basePackage, discountType: 'percentage', discountValue: 10 }, 'pkg-1'))
-      .toMatchObject({ id: 'pkg-1', catalogType: 'legacy_time', durationDays: 30, basePrice: 300, discountAmount: 30, finalPrice: 270, dailyCapacity: 30 });
+  it('rejects inactive records and names outside the catalog limits', () => {
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, isActive: false }, 'inactive')).toThrow('PACKAGE_INACTIVE');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, name: ' ' }, 'blank-name')).toThrow('INVALID_PACKAGE_CONFIGURATION');
+    expect(() => validatePackageCatalogRecord({ ...creditBundle, name: 'x'.repeat(101) }, 'long-name')).toThrow('INVALID_PACKAGE_CONFIGURATION');
   });
 
-  it('accepts cent-level legacy prices and fixed discounts', () => {
-    expect(validatePackageCatalogRecord({ ...basePackage, price: '120.50', discountType: 'fixed', discountValue: '0.25' }, 'pkg-cents'))
-      .toMatchObject({ basePrice: 120.5, discountAmount: 0.25, finalPrice: 120.25 });
-    expect(validatePackageCatalogRecord({ ...basePackage, discountType: 'fixed', discountValue: '' }, 'pkg-empty-discount'))
-      .toMatchObject({ discountAmount: 0, finalPrice: 300 });
-  });
-
-  it('rejects inactive or invalid legacy package data', () => {
-    expect(() => validatePackageCatalogRecord({ ...basePackage, isActive: false }, 'pkg')).toThrow('PACKAGE_INACTIVE');
-    expect(() => validatePackageCatalogRecord({ ...basePackage, discountType: 'percentage', discountValue: 101 }, 'pkg')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-    expect(() => validatePackageCatalogRecord({ ...basePackage, durationDays: 0 }, 'pkg')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-    expect(() => validatePackageCatalogRecord({ ...basePackage, dailyCapacity: 1001 }, 'pkg')).toThrow('INVALID_PACKAGE_CONFIGURATION');
-  });
-
-  it('accepts an explicit unlimited legacy package only with zero capacity', () => {
-    expect(validatePackageCatalogRecord({ ...basePackage, name: 'Open capacity', dailyCapacity: 0 }, 'pkg'))
-      .toMatchObject({ catalogType: 'legacy_time', dailyCapacity: 0, isUnlimited: true });
+  it('accepts a stored credit bundle with only the approved catalog metadata', () => {
+    expect(validatePackageCatalogRecord({
+      id: 'credit-400',
+      ...creditBundle,
+      isActive: true,
+      createdAt: new Date(),
+    }, 'credit-400')).toMatchObject({
+      id: 'credit-400',
+      catalogType: 'credit_bundle',
+      creditQuantity: 400,
+      basePrice: 400,
+      finalPrice: 400,
+    });
   });
 });

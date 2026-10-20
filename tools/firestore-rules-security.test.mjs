@@ -42,6 +42,7 @@ for (const [collectionGroup, equalityField] of [
 const env = await initializeTestEnvironment({
   projectId: 'demo-rq-unified-hono',
   firestore: {
+    databaseId: 'ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759',
     host: process.env.FIRESTORE_EMULATOR_HOST?.split(':')[0] || '127.0.0.1',
     port: Number(process.env.FIRESTORE_EMULATOR_HOST?.split(':')[1] || 8080),
     rules: fs.readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8')
@@ -121,6 +122,13 @@ try {
       monthlySubscribersFlatFee: 250,
       syntheticSensitiveField: 'private-to-authenticated'
     });
+    await setDoc(doc(db, 'admin_settings/wallet_number'), { value: 'synthetic-wallet' });
+    await setDoc(doc(db, 'admin_settings/subscription_prices'), { value: { monthly: 500 } });
+    await setDoc(doc(db, 'admin_settings/private_setting'), { value: 'admin-only' });
+    await setDoc(doc(db, 'packages/existing-legacy-record'), {
+      name: 'Synthetic stored monthly package', price: 300, catalogType: 'legacy_time',
+      durationDays: 30, dailyCapacity: 50
+    });
 
     await setDoc(doc(db, 'garages/g-1/subscribers/sub-1'), {
       id: 'sub-1', ownerName: 'Synthetic Owner', phone: '000', plateNumber: 'ABC123',
@@ -191,6 +199,37 @@ try {
   await assertSucceeds(getDoc(doc(delegateDb, 'delegates/del-1')));
   await assertFails(getDoc(doc(delegateDb, 'delegates/del-2')));
   await assertFails(getDoc(doc(unauthenticatedDb, 'garages/g-1')));
+
+  // Signed-in users retain the two live production settings reads, but not other Admin settings.
+  await assertSucceeds(getDoc(doc(ownerDb, 'admin_settings/wallet_number')));
+  await assertSucceeds(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
+  await assertFails(getDoc(doc(ownerDb, 'admin_settings/private_setting')));
+
+  // Every client-written package must use the exact credit-bundle catalog format.
+  await assertSucceeds(setDoc(doc(adminDb, 'packages/credit-bundle-valid'), {
+    name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
+    catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
+  }));
+  await assertFails(setDoc(doc(adminDb, 'packages/time-based-only'), {
+    name: 'Synthetic monthly package', price: 300, durationDays: 30,
+    dailyCapacity: 50, catalogType: 'legacy_time'
+  }));
+  await assertFails(setDoc(doc(adminDb, 'packages/mixed-credit-and-duration'), {
+    name: 'Synthetic mixed package', price: 400, creditQuantity: 400,
+    catalogType: 'credit_bundle', durationDays: 30
+  }));
+  await assertFails(setDoc(doc(adminDb, 'packages/mismatched-credit-price'), {
+    name: 'Synthetic mismatched bundle', price: 500, creditQuantity: 400,
+    catalogType: 'credit_bundle'
+  }));
+  await assertSucceeds(getDoc(doc(ownerDb, 'packages/credit-bundle-valid')));
+  await assertFails(getDoc(doc(ownerDb, 'packages/existing-legacy-record')));
+  await assertFails(getDocs(collection(ownerDb, 'packages')));
+  const visibleCreditBundles = await getDocs(query(
+    collection(ownerDb, 'packages'),
+    where('catalogType', '==', 'credit_bundle')
+  ));
+  assert.deepEqual(visibleCreditBundles.docs.map((packageDoc) => packageDoc.id), ['credit-bundle-valid']);
 
   // Staff may refresh only their own heartbeat; they cannot manage peer staff.
   await assertSucceeds(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
