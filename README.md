@@ -1,10 +1,10 @@
 # RQ
 
-For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document. The next planned task is [`BUSINESS_LOGIC_FIX_PLAN.md`](./BUSINESS_LOGIC_FIX_PLAN.md); begin with ALF-01 and preserve the current visual design.
+For contribution rules, read [`PROJECT_WORKING_AGREEMENT.md`](./PROJECT_WORKING_AGREEMENT.md), [`AGENTS.md`](./AGENTS.md), [`PROJECT_ENGINEERING_KNOWLEDGE.md`](./PROJECT_ENGINEERING_KNOWLEDGE.md), and [`BRANCHING_AND_RELEASES.md`](./BRANCHING_AND_RELEASES.md). The engineering guide is the single current project-knowledge document. The next planned business-logic task is ALF-12; consult the plan and confirm scope before starting. Preserve the current visual design.
 
 RQ is a bilingual Arabic/English garage-management application for vehicle check-in and check-out, subscribers, packages, balances, delegates, staff, and Admin operations. The retired Supervisor role is not an active product role.
 
-> **Current status (2026-10-20):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. The latest verified application release is deployed from `77a1227` (Admin credit-grant history); its live Worker identity is confirmed by `/api/health` and `/api/version`. The current `main` documentation state is `e942ead`; its main Production Gate passed as run `39369384415`, with deployment skipped because the merge was documentation-only. The owner last confirmed synthetic pre-production; contributors must reconfirm before relying on that status. Branch previews are not an active release environment.
+> **Current status (2026-10-20):** Hono is the production API at `https://rq.tarekhamada875.workers.dev`, and the React app is on Pages at `https://rq-acg.pages.dev`. Verify the deployed Worker commit from `/api/health` and `/api/version` before relying on a copied SHA; documentation-only merges change `main` without redeploying the app. Reconfirm production-environment assumptions before relying on them. Branch previews are not an active release environment.
 
 ## Target production architecture
 
