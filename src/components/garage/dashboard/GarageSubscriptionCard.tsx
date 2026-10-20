@@ -23,7 +23,7 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
   useEffect(() => {
     if (previousCredits.current !== null && totalCredits < previousCredits.current) {
       setShowDebitFeedback(true);
-      const timer = window.setTimeout(() => setShowDebitFeedback(false), 900);
+      const timer = window.setTimeout(() => setShowDebitFeedback(false), 1500);
       previousCredits.current = totalCredits;
       return () => window.clearTimeout(timer);
     }
@@ -37,14 +37,16 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
     <div className="flex gap-4 shrink-0 w-full select-none" id="persistent_balance_card">
       <div className={`flex-1 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 ${showDebitFeedback ? 'border-rose-400' : 'border-slate-200 dark:border-slate-800'}`}>
         <div className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 z-10">Remaining access credits</div>
-        <div className={`relative py-1 text-4xl md:text-7xl font-black font-mono transition-colors ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
+        <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono transition-colors ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
           {totalCredits.toLocaleString('en-US')}
-          {showDebitFeedback && (
-            <span id="balance_arrows_container" aria-hidden="true" className="absolute inset-x-0 top-0 flex justify-around text-rose-500 animate-credit-debit" data-testid="credit-debit-feedback">
-              <ArrowDown className="w-5 h-5" /><ArrowDown className="w-5 h-5" /><ArrowDown className="w-5 h-5" />
-            </span>
-          )}
         </div>
+        {showDebitFeedback && (
+          <span id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none text-red-600 dark:text-red-400" data-testid="credit-debit-feedback">
+            {["left", "left-mid", "left-center", "right-center", "right-mid", "right"].map((position) => (
+              <ArrowDown key={position} className={`credit-debit-arrow credit-debit-arrow-${position}`} strokeWidth={4} data-testid="credit-debit-arrow" />
+            ))}
+          </span>
+        )}
         {showBreakdown && (
           <span className="text-[10px] md:text-xs font-bold text-slate-500">Paid: {paidCredits} · Referral: {referralCredits} · Trial: {trialCredits}</span>
         )}

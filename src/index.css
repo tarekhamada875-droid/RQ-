@@ -304,25 +304,48 @@ input[type="number"]::-webkit-outer-spin-button {
   will-change: opacity;
 }
 
-@keyframes credit-debit {
-  0% { opacity: 0; transform: translateY(-0.75rem); }
-  35% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(2.5rem); }
+@keyframes credit-debit-fall {
+  0% {
+    top: -2.25rem;
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.82);
+  }
+  14% {
+    opacity: 0.95;
+  }
+  78% {
+    opacity: 0.8;
+  }
+  100% {
+    top: calc(100% + 2.25rem);
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.animate-credit-debit {
-  animation: credit-debit 0.9s ease-in-out both;
+.credit-debit-arrow {
+  position: absolute;
+  top: -2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  animation: credit-debit-fall 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
+
+.credit-debit-arrow-left { left: 10%; animation-delay: 0s; opacity: 0.95; }
+.credit-debit-arrow-left-mid { left: 25%; animation-delay: 0.1s; opacity: 0.78; }
+.credit-debit-arrow-left-center { left: 39%; animation-delay: 0.2s; opacity: 0.58; }
+.credit-debit-arrow-right-center { right: 39%; animation-delay: 0.2s; opacity: 0.58; }
+.credit-debit-arrow-right-mid { right: 25%; animation-delay: 0.1s; opacity: 0.78; }
+.credit-debit-arrow-right { right: 10%; animation-delay: 0s; opacity: 0.95; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-credit-debit { animation: none; opacity: 1; }
+  .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }
 }
 
 /* Freeze dynamic layout properties to isolate composition pipelines entirely within GPU layers */
 .animate-popup-30fps, 
 .animate-overlay-30fps,
-.brand-shimmer-text,
-#balance_arrows_container * {
+.brand-shimmer-text {
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
@@ -340,7 +363,6 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
 }
-
 
 
 
