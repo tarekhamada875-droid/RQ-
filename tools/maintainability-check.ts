@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -21,6 +21,42 @@ if (!packageJson.scripts?.['build:cloudflare']) fail('package.json must declare 
 
 for (const strayLock of ['bun.lock', 'bun.lockb', 'yarn.lock', 'pnpm-lock.yaml']) {
   if (existsSync(resolve(root, strayLock))) fail(`Secondary lockfile ${strayLock} must not exist; project is standardized on npm.`);
+}
+
+const allowedRootMarkdown = new Set(['README.md', 'AGENTS.md', 'CONTRIBUTING.md']);
+for (const entry of readdirSync(root)) {
+  if (entry.endsWith('.md') && !allowedRootMarkdown.has(entry)) {
+    fail(`Root-level Markdown is not allowed: ${entry}. Add durable guidance to the canonical docs/ files instead.`);
+  }
+}
+
+const docsRoot = resolve(root, 'docs');
+const allowedDocsMarkdown = new Set([
+  'OPERATIONS.md',
+  'PRODUCTION_PLAN.md',
+  'PROJECT.md',
+  'RELEASES.md',
+  'SECURITY.md',
+  'duplication-contract-tests.md',
+]);
+if (existsSync(docsRoot)) {
+  for (const entry of readdirSync(docsRoot)) {
+    if (entry.endsWith('.md') && !allowedDocsMarkdown.has(entry)) {
+      fail(`Unapproved docs/ Markdown is not allowed: ${entry}. Consolidate it into the canonical documents.`);
+    }
+  }
+}
+
+for (const forbiddenDoc of [
+  'PROJECT_WORKING_AGREEMENT.md',
+  'PROJECT_ENGINEERING_KNOWLEDGE.md',
+  'RQ_HANDOFF.md',
+  'BUSINESS_LOGIC_FIX_PLAN.md',
+  'BRANCHING_AND_RELEASES.md',
+  'OPERATION_TRAIL_GUIDE.md',
+  'security_spec.md',
+]) {
+  if (existsSync(resolve(root, forbiddenDoc))) fail(`Duplicate or retired documentation file must not return: ${forbiddenDoc}.`);
 }
 
 for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'docs/PROJECT.md', 'docs/SECURITY.md', 'docs/PRODUCTION_PLAN.md', 'docs/RELEASES.md', 'docs/OPERATIONS.md']) {

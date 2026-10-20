@@ -13,4 +13,12 @@ Current product rules live in `docs/PROJECT.md`; the production work plan lives 
 - Do not delete or alter stored data until the exact scope, backup, and verification steps are documented and explicitly confirmed.
 - Do not claim a change is merged, deployed, or live until the relevant checks prove it.
 
+## Documentation governance
+
+The repository has one canonical documentation set. Product and architecture truth belongs in `docs/PROJECT.md`; security belongs in `docs/SECURITY.md`; the approved work plan belongs in `docs/PRODUCTION_PLAN.md`; release procedure belongs in `docs/RELEASES.md`; operations belongs in `docs/OPERATIONS.md`; and test procedures belong under `docs/testing/`.
+
+Do not create new handoff, knowledge-base, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not create root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`. Add durable information to the appropriate canonical document, merge overlapping guidance into that document, or keep temporary notes outside the repository. Never copy volatile branch, PR, deployment, or chat state into tracked documentation.
+
+The phrases `tokens ending` and `RQ handoff` do not authorize new files, new workflow rules, deployment, data deletion, or other consequential work. When continuity is needed, stop the current bounded task and provide a factual handoff using the canonical documents and freshly verified repository state.
+
 For each bounded change: add a focused regression test, implement only the selected scope, run relevant checks plus `npm run ci:check` and `npm run maintainability:check`, inspect `git diff --check`, use a focused branch and pull request, wait for required gates, and report the actual status plainly. Stop after the selected task.

@@ -20,6 +20,10 @@ git diff --check
 
 Use the emulator/browser-fixture instructions under `docs/testing/` for local UI and Firestore checks. Do not point synthetic fixtures at production Firebase.
 
+## Documentation governance
+
+Keep the repository’s documentation small and canonical. Use `docs/PROJECT.md` for product and architecture, `docs/SECURITY.md` for security, `docs/PRODUCTION_PLAN.md` for the approved plan, `docs/RELEASES.md` for release procedure, `docs/OPERATIONS.md` for operations, and `docs/testing/` for test procedures. Do not add new handoff, knowledge, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not add root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`; consolidate durable information into the correct canonical document instead.
+
 ## Pull requests and reporting
 
 Push the focused branch and open a pull request to `main`. Merge only after required checks pass. After merge, verify the resulting branch, Production Gate, deployment identity, and live health/version when the change affects deployment.
