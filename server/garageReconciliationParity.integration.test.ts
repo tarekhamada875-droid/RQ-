@@ -690,8 +690,6 @@ describe('garage update Hono contract', () => {
       phone: null,
       hourlyRate: 0,
       overnightRate: 55,
-      billingModel: 'subscription',
-      commissionPerVehicle: 5,
       status: 'pending',
       isLocked: true,
       lockReason: null,
@@ -701,23 +699,16 @@ describe('garage update Hono contract', () => {
       assignedDelegateId: 'synthetic-delegate-id',
       currentSessionId: 'synthetic-session-id',
       hasMonthlySubscribers: true,
-      allowMonthlySubscribers: false,
       checkInSound: 'synthetic-check-in',
       checkOutSound: 'synthetic-check-out',
       ownerName: 'Synthetic Owner',
-      dailyCapacity: 0,
-      capacity: 3,
       shimmerColor: '#abcdef',
-      activePackageName: 'Synthetic Package',
       referredByGarageId: 'synthetic-referrer-id',
       referredByGarageName: 'Synthetic Referrer Garage',
       referrerId: 'synthetic-referrer-id',
       referrerName: 'Synthetic Referrer',
       createdByDelegateId: 'synthetic-delegate-id',
-      createdByDelegateName: 'Synthetic Delegate',
-      balance: 125.5,
-      balanceExpiry: '2027-01-02T00:00:00.000Z',
-      carsInside: 0
+      createdByDelegateName: 'Synthetic Delegate'
     };
     const requestBody = { id: targetId, ...allowedFields, unapprovedField: 'must-not-be-stored' };
 
@@ -735,6 +726,25 @@ describe('garage update Hono contract', () => {
     expect(persisted).not.toHaveProperty('id');
     expect(updatedAt instanceof Date).toBe(true);
 
+  });
+
+  it('rejects retired garage billing fields without writing', async () => {
+    const initial = { name: 'Legacy Field Garage', billingModel: 'prepaid_credits', balance: 25 };
+    mockDb.clear();
+    mockDb.seed(`garages/${targetId}`, structuredClone(initial));
+    const before = [...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]);
+    const writesBefore = mockDb.documentWriteCount;
+    const hono = await callHonoGarageUpdate('valid-admin-token', {
+      id: targetId,
+      billingModel: 'subscription',
+      balance: 999,
+      activePackageName: 'Legacy monthly'
+    });
+
+    expect(hono.status).toBe(400);
+    expect(await hono.json()).toEqual({ success: false, error: 'RETIRED_GARAGE_FIELD', field: 'billingModel' });
+    expect(mockDb.documentWriteCount).toBe(writesBefore);
+    expect([...mockDb.records.entries()]).toEqual(before);
   });
 
   it('denies every non-Admin role without changing financial, access, or session fields', async () => {
@@ -777,7 +787,7 @@ describe('garage update Hono contract', () => {
     expect(honoNullBody.status).toBe(400);
     expect(await honoNullBody.json()).toEqual({ success: false, error: 'INVALID_REQUEST' });
 
-    const honoMissingGarage = await callHonoGarageUpdate('valid-admin-token', { id: 'missing-update-target', balance: 0 });
+    const honoMissingGarage = await callHonoGarageUpdate('valid-admin-token', { id: 'missing-update-target', name: 'Missing target' });
     expect(honoMissingGarage.status).toBe(500);
     expect((await honoMissingGarage.json()).error).toContain('Document not found');
 

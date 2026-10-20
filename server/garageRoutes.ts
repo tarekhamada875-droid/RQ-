@@ -123,7 +123,10 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'billingModel', 'isTrial', 'dailyCapacity', 'initialPackageId', 'packages', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
+    const retiredCreationFields = ['billingModel', 'dailyCapacity', 'initialPackageId', 'packages'];
+    const retiredCreationField = retiredCreationFields.find((field) => body && typeof body === 'object' && body[field] !== undefined);
+    if (retiredCreationField) return c.json({ success: false, error: 'RETIRED_GARAGE_FIELD', field: retiredCreationField }, 400);
+    const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'isTrial', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
     const { phone: rawPhone, hourlyRate: rawHourlyRate, overnightRate: rawOvernightRate, createdByDelegateId, createdByDelegateName, referrerId, referrerName, referredByGarageId, referredByGarageName } = sanitized;
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(sanitized.pin);
@@ -359,15 +362,23 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     const { id, ...data } = body || {};
     if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
+    const retiredUpdateFields = new Set([
+      'billingModel', 'commissionPerVehicle', 'monthlySubscriptionFee', 'dailyCapacity', 'capacity', 'allowMonthlySubscribers',
+      'activePackageName', 'packageName', 'balance', 'balanceExpiry', 'balanceDays', 'carsInside',
+      'lastBalanceDeduction', 'lastPaidFriday', 'lastRechargeAmount', 'lastRechargeDate', 'lastRechargePackageName',
+      'totalRechargedCars', 'referralBonusBalance', 'referralRewardClaimed', 'referralRewardAwardedAt'
+    ]);
+    const retiredUpdateField = Object.keys(data).find((field) => retiredUpdateFields.has(field) && data[field] !== undefined);
+    if (retiredUpdateField) return c.json({ success: false, error: 'RETIRED_GARAGE_FIELD', field: retiredUpdateField }, 400);
+
     const updates: Record<string, any> = { updatedAt: new Date() };
     const allowedKeys = [
       'name', 'phone', 'hourlyRate', 'overnightRate',
-      'billingModel', 'commissionPerVehicle', 'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode',
+      'status', 'isLocked', 'lockReason', 'isSuspended', 'isMaintenanceMode',
       'maintenanceMessage', 'assignedDelegateId', 'currentSessionId',
-      'hasMonthlySubscribers', 'allowMonthlySubscribers', 'checkInSound', 'checkOutSound', 'ownerName', 'dailyCapacity', 'capacity',
-      'shimmerColor', 'activePackageName',
-      'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName',
-      'balance', 'balanceExpiry', 'carsInside'
+      'hasMonthlySubscribers', 'checkInSound', 'checkOutSound', 'ownerName',
+      'shimmerColor',
+      'referredByGarageId', 'referredByGarageName', 'referrerId', 'referrerName', 'createdByDelegateId', 'createdByDelegateName'
     ];
     for (const key of allowedKeys) {
       if (key in data && data[key] !== undefined) {
