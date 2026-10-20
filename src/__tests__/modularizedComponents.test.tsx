@@ -254,6 +254,19 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.getByText(/Paid: 12/)).toBeDefined();
   });
 
+  it('shows staggered falling arrows across the credit card after a deduction', () => {
+    const initialGarage = { ...mockGarage, billingModel: 'prepaid_credits', creditBalance: { paid: 12, referral: 3, trial: 0 } } as any;
+    const deductedGarage = { ...initialGarage, creditBalance: { paid: 10, referral: 3, trial: 0 } };
+    const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={initialGarage} />);
+
+    rerender(<ThemeProvider><GarageSubscriptionCard garage={deductedGarage} /></ThemeProvider>);
+
+    expect(screen.getByTestId('credit-debit-feedback')).toBeDefined();
+    const arrows = screen.getAllByTestId('credit-debit-arrow');
+    expect(arrows).toHaveLength(6);
+    expect(arrows[0]).toHaveClass('credit-debit-arrow-left');
+  });
+
   it('renders GarageActiveVehiclesList and handles empty state', () => {
     const onClose = vi.fn();
     const onRegister = vi.fn();
