@@ -43,6 +43,57 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(1);
   });
 
+  it('keeps a valid grant, referral award, audit records, and retry idempotency together', async () => {
+    const referrerGarageId = 'bill06-referrer';
+    mockDb.seed(`garages/${garageId}`, {
+      name: 'Prepaid test',
+      billingModel: 'prepaid_credits',
+      referredByGarageId: referrerGarageId,
+      creditBalance: { paid: 10, referral: 4 }
+    });
+    mockDb.seed(`garages/${referrerGarageId}`, {
+      name: 'Referrer',
+      billingModel: 'prepaid_credits',
+      creditBalance: { paid: 2, referral: 1 }
+    });
+    const postGrant = () => api.fetch(new Request(endpoint, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(grantBody)
+    }));
+
+    const firstResponse = await postGrant();
+    const firstBody = await firstResponse.json() as any;
+    expect(firstResponse.status).toBe(200);
+    expect(firstBody.data).toMatchObject({
+      balance: { paid: 40, referral: 4, trial: 0 },
+      referralAward: { garageId: referrerGarageId, amount: 20, bucket: 'referral' }
+    });
+    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 40, referral: 4, trial: 0 });
+    expect(mockDb.records.get(`garages/${referrerGarageId}`)?.creditBalance).toEqual({ paid: 2, referral: 21, trial: 0 });
+
+    const ledgerEntries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('credit_ledger/'));
+    expect(ledgerEntries).toHaveLength(2);
+    expect(ledgerEntries.map(([, value]: [string, any]) => value.kind).sort()).toEqual(['paid_grant', 'referral_award']);
+    expect([...mockDb.records.entries()].filter(([path, value]: [string, any]) =>
+      path.startsWith(`garages/${garageId}/events/`) && value.eventType === 'prepaid_credit_grant_paid'
+    )).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(2);
+    expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({
+      referredGarageId: garageId,
+      referrerGarageId,
+      amount: 20,
+      status: 'awarded'
+    });
+
+    const retryResponse = await postGrant();
+    expect(retryResponse.status).toBe(200);
+    expect(await retryResponse.json()).toEqual(firstBody);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(2);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith(`garages/${garageId}/events/`))).toHaveLength(1);
+    expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(2);
+  });
+
   it('rejects mismatched EGP and credit amounts before any balance or audit write', async () => {
     const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, paymentAmountEgp: 31, idempotencyKey: 'bill07-mismatch' }) }));
     expect(response.status).toBe(400);
