@@ -1,56 +1,29 @@
 # Contributing to RQ
 
-## Before changing code
+Read `docs/PROJECT.md`, `docs/SECURITY.md`, the selected work in `docs/PRODUCTION_PLAN.md`, and `docs/RELEASES.md` before making a substantial change.
 
-Read `PROJECT_WORKING_AGREEMENT.md`, `AGENTS.md`, `PROJECT_ENGINEERING_KNOWLEDGE.md`, `README.md`, and `BRANCHING_AND_RELEASES.md`. Then start from the latest `main` and confirm the working tree is clean:
+Start from synchronized `main` with a clean working tree. Create one short-lived branch for one bounded change. Add or update a focused regression test before changing sensitive behavior. Preserve current UI/UX unless the task explicitly approves a UI change.
 
-For each finished improvement, report the problem, the change in user-visible terms, a practical example, the benefit, the checks that actually passed, and whether it is awaiting review, merged, or live. Keep the main explanation simple; retain implementation details in the PR and handoff.
+Keep financial and authorization logic in focused Worker/domain modules. Keep React screens focused on composition and move reusable behavior into hooks or services. Preserve API response shapes and error codes unless the task includes a deliberate contract change.
 
-```bash
-git status --short
-git pull --ff-only origin main
-```
-
-## Branches and pull requests
-
-Create one short-lived branch from `main` for each focused change. Run the local validation gate, push the branch, and open a pull request into `main`. After the PR is merged, delete the remote branch. `main` is the only permanent development and production branch.
-
-A branch shown with GitHub's **Compare & pull request** card is not automatically an open PR. It only means the branch has commits GitHub can compare with `main` and GitHub is offering to create a review request.
-
-## Feature boundaries
-
-Keep business rules in domain modules or focused server route modules. Keep `server/app.ts` focused on application assembly and shared middleware. Keep React screens focused on composition and move reusable behavior into hooks or child components.
-
-Authentication, authorization, session lifecycle, balance operations, vehicle operations, and Firestore writes are sensitive areas. Add or update tests before changing behavior. Preserve response shapes and error codes unless the change explicitly requires a contract migration.
-
-## Cloudflare deployment
-
-The production frontend runs on Cloudflare Pages and the production backend runs on the Cloudflare Worker at `https://rq.tarekhamada875.workers.dev`. Do not add Vercel/serverless routing files or generated provider bundles. Worker deployment is performed by the guarded GitHub Actions workflow:
+## Local validation
 
 ```bash
 npm ci
-npm run build:cloudflare
-npx wrangler@4.147.0 deploy --config wrangler.deploy.toml --env="" --minify
-```
-
-The Cloudflare Pages frontend calls the Worker through `VITE_BACKEND_API_URL` or the safe default in `src/api/apiClient.ts`.
-
-## Validation before review
-
-```bash
 npm test
+npm run test:rules
 npm run lint
 npm run build
 npm run maintainability:check
 git diff --check
 ```
 
-For deployment-related changes, also run the live Cloudflare smoke checks documented in `README.md` and `.github/workflows/production-gate.yml`.
+Use the emulator/browser-fixture instructions under `docs/testing/` for local UI and Firestore checks. Do not point synthetic fixtures at production Firebase.
 
-## Security rules
+## Pull requests and reporting
 
-Never commit `.env` files, service-account files, private keys, tokens, or real user credentials. Do not add temporary administrative endpoints without an explicit expiry and removal plan. Do not perform destructive Firestore actions without written scope and confirmation.
+Push the focused branch and open a pull request to `main`. Merge only after required checks pass. After merge, verify the resulting branch, Production Gate, deployment identity, and live health/version when the change affects deployment.
 
-## Commit guidance
+Report what was wrong, what changed for the user, what was tested, and whether the work is local, in a PR, merged, deployed, or live. Do not describe copied or historical status as current.
 
-Use a commit message that explains the behavior change. Update `PROJECT_ENGINEERING_KNOWLEDGE.md` only when durable current-model engineering guidance changes; keep release facts in the commit and PR records.
+Never commit secrets. Never perform destructive Firestore operations without exact collection/predicate scope, a backup or rollback plan, verification evidence, and explicit confirmation.
