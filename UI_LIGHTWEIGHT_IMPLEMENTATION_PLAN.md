@@ -120,6 +120,6 @@ The production build provides a measurable result: the main `GarageDashboardView
 
 Recharge notification freshness no longer depends on those parent clock renders. When an unacknowledged recharge is active, the dashboard schedules one targeted expiry timer for the remaining fifteen-minute window; the existing server-clock value is still used when Staff Statistics is open, and the listener ownership/cleanup remains unchanged. Focused listener tests cover both the shared subscription lifecycle and timer expiry.
 
-## Next single task
+## Completion
 
-Review the completed lightweight plan against the original protected-behavior checklist and stop implementation work unless a new user-reported bug or measured bottleneck is provided.
+This lightweight UI plan is complete. The next workstream is the separate business-logic audit and repair plan: [`GARAGE_LOGIC_FIX_PLAN.md`](GARAGE_LOGIC_FIX_PLAN.md). That plan is not a visual redesign and requires confirmed bad logic to be deleted rather than archived or retained as a runtime compatibility path.
