@@ -2,7 +2,7 @@
 
 ## Current state
 
-`main` is the only permanent branch. It represents the source deployed to Cloudflare Pages and the Cloudflare Worker. The production URLs are:
+`main` is the only permanent source branch and contains application code plus project documentation. It is not proof that every commit has been deployed to every service: docs-only merges can advance `main` while the Worker deployment is skipped. Use the Production Gate and live `/api/health` and `/api/version` endpoints to identify the actual deployed Worker release. The production URLs are:
 
 - Frontend: `https://rq-acg.pages.dev`
 - Backend: `https://rq.tarekhamada875.workers.dev`
@@ -30,6 +30,16 @@ As of 2026-10-17, the active repository ruleset [Protect main: pull request and 
 - The full Production Gate runs for pull requests targeting `main` and pushes to `main`. A feature-branch push alone does not start a second gate; open or update its PR to get the required check.
 - When a PR is updated, a newer PR check may cancel the older check for that same PR. A push to `main` is never canceled; its verification, deployment, and smoke must finish normally.
 - Documentation-only changes continue to use the existing fast validation path; the Worker deployment job remains skipped for docs-only changes.
+
+## Main SHA versus deployed Worker SHA
+
+These identifiers answer different questions:
+
+- `main` HEAD is the latest merged repository commit. It changes on every merge, including documentation-only PRs.
+- The deployed Worker SHA is the application code currently running in production. Confirm it from live `/api/health` and `/api/version` responses and the successful Production Gate that deployed it.
+- A docs-only PR may advance `main` while the Worker remains on an earlier code SHA. This is expected if the intervening changes are documentation-only, the gate passes, and Worker deployment is skipped.
+
+Durable notes should record application release commits, deployment evidence, project decisions, tests, risks, and next work—not a supposedly current `main` SHA, worktree, or open-PR list. At handoff, fetch those values and put the exact snapshot in the final message. A docs-only PR cannot reliably record its own resulting merge SHA; after merging one, verify and report that SHA in the handoff message and do not open a second PR solely to record it. If a code PR's deployment fails or the live Worker differs from the intended code release, troubleshoot the release instead of editing documentation to make the SHAs appear equal.
 
 ## Manual Worker rollback
 
