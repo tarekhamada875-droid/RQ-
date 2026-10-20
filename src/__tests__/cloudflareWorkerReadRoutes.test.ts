@@ -30,19 +30,33 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     });
   });
 
-  it('1. POST /api/check-subscriber handles subscriber lookup and validations', async () => {
+  it('1. POST /api/check-subscriber requires auth, enforces garage scope, and handles lookup validation', async () => {
+    const unauthenticated = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ garageId: 'test-garage', plateNumber: '123-abc' })
+    }));
+    expect(unauthenticated.status).toBe(401);
+
     // Missing garage ID
     const missingGarageRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ plateNumber: '123-abc' })
     }));
     expect(missingGarageRes.status).toBe(400);
 
+    const crossGarageRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-garage-token-other-garage' },
+      body: JSON.stringify({ garageId: 'test-garage', plateNumber: '123-abc' })
+    }));
+    expect(crossGarageRes.status).toBe(403);
+
     // Non-existent subscriber lookup returns empty match gracefully
     const notFoundRes = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({
         garageId: 'test-garage-non-existent',
         plateNumber: '9999-xyz'
@@ -69,14 +83,16 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     mockDb.resetDocumentCounts();
     const canonicalResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
     }));
     const canonicalBody = await canonicalResponse.json() as any;
 
     expect(canonicalResponse.status).toBe(200);
     expect(canonicalBody.subscriber.id).toBe(`plate_${Buffer.from(plateRaw).toString('base64url')}`);
-    expect(mockDb.documentReadCount).toBe(1);
+    expect(canonicalBody.subscriber).not.toHaveProperty('phone');
+    expect(canonicalBody.subscriber).not.toHaveProperty('notes');
+    expect(mockDb.documentReadCount).toBe(5); // four session-resolution reads plus one canonical lookup
 
     mockDb.clear();
     mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
@@ -88,13 +104,13 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     mockDb.resetDocumentCounts();
     const fallbackResponse = await api.fetch(new Request('http://localhost/api/check-subscriber', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ garageId, plateNumber: 'ABC 123', plateRaw, phone: '01000000002' })
     }));
     const fallbackBody = await fallbackResponse.json() as any;
 
     expect(fallbackBody.subscriber.id).toBe('legacy-raw');
-    expect(mockDb.documentReadCount).toBe(4); // canonical miss plus raw, formatted, and phone fallbacks
+    expect(mockDb.documentReadCount).toBe(8); // four session-resolution reads plus canonical, raw, formatted, and phone fallbacks
   });
 
   it('2. GET /api/garage-summary requires auth and returns garage summary', async () => {

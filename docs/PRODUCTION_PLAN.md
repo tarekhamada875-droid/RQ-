@@ -14,6 +14,10 @@ Launch a real production application with one simple financial model, no active 
 - Old subscription/recharge/package data: delete after inventory, backup, exact-scope confirmation, and bounded verification.
 - No UI redesign. Remove only obsolete approved UI actions.
 
+## Completed production slices
+
+- **Ledger collision prevention — merged in `main` (`49e9fe6`, PR #225):** credit ledger IDs are scoped by garage, operation kind, and idempotency key, with regression coverage proving grants and restores cannot overwrite one another.
+
 ## Execution order
 
 ### 1. Documentation and model freeze

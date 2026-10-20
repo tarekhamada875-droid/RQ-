@@ -148,14 +148,15 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
   }
 });
 
-// 6. Public and Read-Heavy Business Routes (CF4)
+// 6. Authenticated and Read-Heavy Business Routes (CF4)
 
 // Route 1: POST /api/check-subscriber
-app.post('/api/check-subscriber', async (c) => {
+app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
   try {
     if (!getAdminDb()) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
+    const user = c.get('user') as WorkerUser | undefined;
     const body = await c.req.json().catch(() => ({}));
     const garageId = body.garageId ? String(body.garageId).trim() : '';
     const plateNumber = body.plateNumber || body.plate || '';
@@ -165,6 +166,12 @@ app.post('/api/check-subscriber', async (c) => {
 
     if (!garageId) {
       return c.json({ success: false, error: 'GARAGE_ID_REQUIRED' }, 400);
+    }
+    const isAdmin = user?.role === 'admin';
+    const isGarageScoped = (user?.role === 'garage' || user?.role === 'staff')
+      && (user.garageId === garageId || user.entityId === garageId);
+    if (!isAdmin && !isGarageScoped) {
+      return c.json({ success: false, error: 'FORBIDDEN: Subscriber lookup scope required' }, 403);
     }
 
     const subCollection = getAdminDb().collection(`garages/${garageId}/subscribers`);
@@ -184,12 +191,19 @@ app.post('/api/check-subscriber', async (c) => {
     const endMillis = safeDateMillis(foundDoc.endDate);
     const startMillis = safeDateMillis(foundDoc.startDate);
     const isActive = (endMillis === 0 || endMillis >= now) && (startMillis === 0 || startMillis <= now);
+    const subscriber = {
+      id: foundDoc.id,
+      plateNumber: foundDoc.plateNumber || null,
+      plateNumberRaw: foundDoc.plateNumberRaw || null,
+      startDate: foundDoc.startDate || null,
+      endDate: foundDoc.endDate || null
+    };
 
     return c.json({
       success: true,
       isSubscriber: true,
       isActive,
-      subscriber: foundDoc
+      subscriber
     });
   } catch (err: any) {
     console.error('[Worker] Error in check-subscriber:', err);
