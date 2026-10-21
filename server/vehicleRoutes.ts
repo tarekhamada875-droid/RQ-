@@ -1,6 +1,7 @@
 import type { WorkerApp } from './cloudflareWorker';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
 import type { ProjectionDelta } from './deltaProjection';
+import { applyCheckoutReportDelta, emptyDailyReportAggregate } from './reportAggregate';
 
 export type VehicleRouteDependency = (...args: any[]) => any;
 
@@ -223,6 +224,8 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           count: 1,
           limit: 0,
           revenue: 0,
+          reportAggregateVersion: 1,
+          report: emptyDailyReportAggregate(),
           createdAt: new Date()
         });
       } else {
@@ -423,10 +426,30 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
           dateId: today,
           count: 0,
           revenue: finalDecisionCost,
+          reportAggregateVersion: 1,
+          report: applyCheckoutReportDelta(undefined, {
+            type: vehicleData.type || 'hourly',
+            amount: finalDecisionCost,
+            staffName: resolvedStaffName
+          }),
           createdAt: new Date()
         });
       } else {
-        t.set(dailyStatsRef, { revenue: (dailyStatsSnap.data()?.revenue || 0) + finalDecisionCost }, { merge: true });
+        const dailyStatsData = dailyStatsSnap.data() || {};
+        const reportUpdate = dailyStatsData.reportAggregateVersion === 1
+          ? {
+              reportAggregateVersion: 1,
+              report: applyCheckoutReportDelta(dailyStatsData.report, {
+                type: vehicleData.type || 'hourly',
+                amount: finalDecisionCost,
+                staffName: resolvedStaffName
+              })
+            }
+          : {};
+        t.set(dailyStatsRef, {
+          revenue: (dailyStatsData.revenue || 0) + finalDecisionCost,
+          ...reportUpdate
+        }, { merge: true });
       }
 
       writeMaintainedGarageDelta(t, garageId, { carsInside: -1 }, {

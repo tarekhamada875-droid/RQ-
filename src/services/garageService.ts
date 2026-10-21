@@ -29,6 +29,13 @@ export interface GarageDashboardSummary {
   dateId?: string;
   rebuiltAt?: string;
   source?: 'live_projection_buckets' | 'rebuild';
+  report?: {
+    totalExited: number;
+    hourlyExited: number;
+    overnightExited: number;
+    grossRevenue: number;
+    staffPerformance: Record<string, { name: string; count: number; revenue: number }>;
+  };
 }
 
 export type GaragePageCursor = string;

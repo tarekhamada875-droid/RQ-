@@ -610,11 +610,16 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
     if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const [bucketSnap, garageSnap] = await Promise.all([
+    const [bucketSnap, garageSnap, dailyStatsSnap] = await Promise.all([
       getAdminDb().collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', today).get(),
-      getAdminDb().doc(`garages/${garageId}`).get()
+      getAdminDb().doc(`garages/${garageId}`).get(),
+      getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get()
     ]);
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+    const dailyStatsData = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
+    const report = dailyStatsData.reportAggregateVersion === 1 && dailyStatsData.report
+      ? dailyStatsData.report
+      : undefined;
     c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
     if (bucketSnap.empty) {
       const summarySnap = await getAdminDb().doc(`garages/${garageId}/dashboard_summary/current`).get();
@@ -624,7 +629,7 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
       const normalizedMoney = normalizeStoredDashboardMoney(storedSummary);
       if (!normalizedMoney) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
       c.header('X-Summary-Source', 'stored_rebuild');
-      return c.json({ success: true, data: { garageId, summary: { ...storedSummary, ...normalizedMoney } } });
+      return c.json({ success: true, data: { garageId, summary: { ...storedSummary, ...normalizedMoney, ...(report ? { report } : {}) } } });
     }
     const summary = {
       ...aggregateProjectionBuckets(bucketSnap.docs.map((doc: any) => doc.data() || {})),
@@ -632,7 +637,8 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
       garageId,
       dateId: today,
       rebuiltAt: new Date().toISOString(),
-      source: 'live_projection_buckets'
+      source: 'live_projection_buckets',
+      ...(report ? { report } : {})
     };
     c.header('X-Summary-Source', 'live_projection_buckets');
     c.header('X-Summary-Bucket-Count', String(bucketSnap.size));

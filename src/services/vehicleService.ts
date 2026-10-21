@@ -6,6 +6,7 @@ import { listenerTracker } from '../utils/listenerTracker';
 
 const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.docs
   .map((doc: any) => ({ id: doc.id, ...doc.data() }))
+  .filter((log: any) => log.actionType === TODAY_REPORT_ACTION)
   .filter((log: any) => log.timestamp && getCairoDateKey(safeDate(log.timestamp)) === today)
   .sort((a: any, b: any) => {
     const byTimestamp = safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime();
@@ -17,6 +18,7 @@ import { safeDate } from '../utils';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 const TODAY_ACTIVITY_LOG_LIMIT = 200;
+const TODAY_REPORT_ACTION = 'check_out';
 
 type TodayActivityLogSource = 'live' | 'one-shot';
 type TodayActivityLogCallback = (logs: any[], error?: Error) => void;
@@ -170,6 +172,7 @@ export const vehicleService = {
     const q = query(
       collection(db, 'activity_logs'),
       where('garageId', '==', garageId),
+      where('actionType', '==', TODAY_REPORT_ACTION),
       where('timestamp', '>=', firestoreTimestamp),
       orderBy('timestamp', 'desc'),
       limit(TODAY_ACTIVITY_LOG_LIMIT)
@@ -191,6 +194,7 @@ export const vehicleService = {
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
+        where('actionType', '==', TODAY_REPORT_ACTION),
         orderBy('timestamp', 'desc'),
         limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
@@ -233,6 +237,7 @@ export const vehicleService = {
       const q = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
+        where('actionType', '==', TODAY_REPORT_ACTION),
         where('timestamp', '>=', firestoreTimestamp),
         orderBy('timestamp', 'desc'),
         limit(TODAY_ACTIVITY_LOG_LIMIT)
@@ -248,6 +253,7 @@ export const vehicleService = {
       const fallbackQ = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
+        where('actionType', '==', TODAY_REPORT_ACTION),
         orderBy('timestamp', 'desc'),
         limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
