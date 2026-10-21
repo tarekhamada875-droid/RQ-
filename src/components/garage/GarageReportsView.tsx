@@ -8,14 +8,80 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { Garage, Vehicle, Staff } from '../../types';
+import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
 import { firestoreService, garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
+
+export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
+
+export interface GarageReportStats {
+  totalExited: number;
+  hourlyExited: number;
+  overnightExited: number;
+  actualCalculatedTodayRevenue: number;
+  staffPerformance: Array<{ name: string; count: number; revenue: number }>;
+}
+
+export function buildGarageReportStats(
+  records: GarageReportRecord[],
+  staffList: Staff[],
+  localGarage: Garage | null | undefined,
+): GarageReportStats {
+  let hourlyExited = 0;
+  let overnightExited = 0;
+  let actualCalculatedTodayRevenue = 0;
+
+  const staffPerformance: Record<string, { count: number; revenue: number }> = {
+    'مدير الجراج': { count: 0, revenue: 0 }
+  };
+  const knownStaffNames = new Set<string>();
+  for (const staff of staffList || []) {
+    const name = staff?.name?.trim();
+    if (name) {
+      staffPerformance[name] = { count: 0, revenue: 0 };
+      knownStaffNames.add(name);
+    }
+  }
+
+  // todayTransactions is an activity-log feed, not a vehicle feed. Only a
+  // checkout represents a departure; check-ins and recharge logs must not be counted.
+  const checkoutRecords = (records || []).filter((record) => record?.actionType === 'check_out');
+  for (const record of checkoutRecords) {
+    if (record.type === 'hourly') hourlyExited++;
+    else if (record.type === 'overnight') overnightExited++;
+
+    // Checkout activity logs persist the charge as `amount`; `totalCost` is only
+    // present on the historical vehicle document.
+    const fee = typeof record.amount === 'number'
+      ? record.amount
+      : (typeof record.totalCost === 'number' ? record.totalCost : 0);
+    actualCalculatedTodayRevenue += fee;
+
+    const rawName = (record.staffName || '').trim();
+    const isGarageManager = !rawName || record.staffName === 'مدير الجراج' ||
+      rawName === localGarage?.name || rawName === (localGarage as any)?.ownerName ||
+      !knownStaffNames.has(rawName);
+    const handler = isGarageManager ? 'مدير الجراج' : rawName;
+    if (!staffPerformance[handler]) staffPerformance[handler] = { count: 0, revenue: 0 };
+    staffPerformance[handler].count++;
+    staffPerformance[handler].revenue += fee;
+  }
+
+  return {
+    totalExited: checkoutRecords.length,
+    hourlyExited,
+    overnightExited,
+    actualCalculatedTodayRevenue,
+    staffPerformance: Object.entries(staffPerformance)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+  };
+}
 
 interface GarageReportsViewProps {
   garage: Garage;
   vehiclesInside?: Vehicle[];
-  todayExitedVehicles: Vehicle[];
+  todayExitedVehicles: GarageReportRecord[];
   staffList: Staff[];
   onClose: () => void;
   onToggleMenu?: () => void;
@@ -28,7 +94,7 @@ export const GarageReportsView = memo(({
   onClose,
 }: GarageReportsViewProps) => {
   // Manual toggle state
-  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<Vehicle[]>(() => todayExitedVehicles || []);
+  const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<GarageReportRecord[]>(() => todayExitedVehicles || []);
   const [localGarage, setLocalGarage] = useState<Garage>(() => garage);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
@@ -85,71 +151,25 @@ export const GarageReportsView = memo(({
     return `${displayHours}:${displayMinutes} ${ampm}`;
   };
 
-  // Calculations based on local state
-  // Single-pass statistical and financial calculation
+  // Calculations based on the activity-log feed and the server summary.
   const stats = useMemo(() => {
-    let hourlyExited = 0;
-    let overnightExited = 0;
-    let actualCalculatedTodayRevenue = 0;
-
-    // Staff Performance (Grouped by completed exits today)
-    const staffPerformance: Record<string, { count: number; revenue: number }> = {
-      'مدير الجراج': { count: 0, revenue: 0 }
-    };
-    
-    const knownStaffNames = new Set<string>();
-    for (let i = 0; i < (staffList || []).length; i++) {
-      const sName = staffList[i]?.name?.trim();
-      if (sName) {
-        staffPerformance[sName] = { count: 0, revenue: 0 };
-        knownStaffNames.add(sName);
-      }
-    }
-
-    const totalExited = localTodayExitedVehicles.length;
-    for (let i = 0; i < totalExited; i++) {
-      const v = localTodayExitedVehicles[i];
-      if (!v) continue;
-
-      if (v.type === 'hourly') hourlyExited++;
-      else if (v.type === 'overnight') overnightExited++;
-
-      const fee = typeof v.totalCost === 'number' ? v.totalCost : 0;
-      actualCalculatedTodayRevenue += fee;
-
-      const rawName = (v.staffName || '').trim();
-      const isGarageManager = 
-        !rawName || 
-        rawName === 'مدير الجراج' || 
-        rawName === localGarage?.name || 
-        rawName === (localGarage as any)?.ownerName ||
-        !knownStaffNames.has(rawName);
-
-      const handler = isGarageManager ? 'مدير الجراج' : rawName;
-      if (!staffPerformance[handler]) {
-        staffPerformance[handler] = { count: 0, revenue: 0 };
-      }
-      staffPerformance[handler].count++;
-      staffPerformance[handler].revenue += fee;
-    }
+    const localStats = buildGarageReportStats(localTodayExitedVehicles, staffList, localGarage);
 
     // Financial calculations
     const today = getCairoDateKey();
     const isTodayValid = localGarage.lastTransactionDate === today;
     const freshSummaryIsUsable = isFreshGarageDashboardSummary(dashboardSummary);
-    const effectiveTotalExited = freshSummaryIsUsable ? dashboardSummary.exitsToday : totalExited;
+    const effectiveTotalExited = freshSummaryIsUsable ? dashboardSummary.exitsToday : localStats.totalExited;
     const todayRevenue = freshSummaryIsUsable
       ? dashboardSummary.netRevenue
-      : (totalExited > 0 ? actualCalculatedTodayRevenue : (isTodayValid ? (localGarage.todayRevenue || 0) : 0));
+      : (localStats.totalExited > 0 ? localStats.actualCalculatedTodayRevenue : (isTodayValid ? (localGarage.todayRevenue || 0) : 0));
 
     return {
       totalExited: effectiveTotalExited,
-      hourlyExited,
-      overnightExited,
+      hourlyExited: localStats.hourlyExited,
+      overnightExited: localStats.overnightExited,
       todayRevenue,
-      staffPerformance: Object.entries(staffPerformance)
-        .map(([name, data]) => ({ name, ...data }))
-        .sort((a, b) => b.revenue - a.revenue)
+      staffPerformance: localStats.staffPerformance
     };
   }, [dashboardSummary, localTodayExitedVehicles, localGarage, staffList]);
 
