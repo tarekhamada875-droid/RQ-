@@ -45,7 +45,7 @@ describe('GarageDashboardHeaderAndDrawer icon actions', () => {
     const props = makeProps();
     render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'سجل شحن الباقات' }));
+    fireEvent.click(screen.getByRole('button', { name: 'تاريخ الشحن' }));
     expect(props.onNavigateOverlay).toHaveBeenCalledWith('history');
   });
 });
