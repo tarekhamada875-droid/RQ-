@@ -26,9 +26,9 @@ Launch a real production application with one simple financial model, no active 
 
 The security, financial-model, UI-removal, and legacy-write-path work completed so far is merged in `main`. By owner direction, **legacy-data inventory and cleanup are skipped and are not a current launch task**; do not spend time regenerating the missing `/home/ubuntu/firestore_legacy_inventory_2026-10-20.json`, and do not infer that legacy records are absent. No production data may be deleted or altered under this disposition. Reopen this work only if concrete evidence shows a material operational or reporting risk and the owner approves a new bounded scope. If data work is later authorized, exact-scope documentation, a verified backup, explicit owner confirmation, bounded resumable execution, and post-operation verification remain mandatory.
 
-The next planned slice is **Reliability and Scale**: complete the remaining deployment/index and ten-garage staging load/cost evidence described below. This is separate from, and does not authorize, a production deployment or production-data change.
+By owner direction, **Reliability and Scale is also skipped as a planned workstream**. The required-index/deployment work and ten-garage staging load/cost test below have not been completed; skipping them is not evidence that they passed or that scale readiness was demonstrated. Do not represent these items as verified. No production deployment or production-data change is authorized by this disposition. With the skipped workstreams excluded from the active plan, the next separate program is Operation Lean UI below.
 
-After the current production plan is completed, the next separate program is **Operation Lean UI**, defined below; do not start it early because of UI file size or visual preference alone.
+With legacy-data cleanup and Reliability and Scale skipped by owner, **Operation Lean UI** is the next planned program; do not start it early because of UI file size or visual preference alone.
 
 ## Execution order
 
@@ -56,15 +56,13 @@ Remove old garage subscription controls, duration/capacity package controls, old
 
 This slice is not currently needed and is not a launch prerequisite. Do not inventory or delete legacy records unless concrete evidence establishes a material operational or reporting risk and the owner explicitly reopens the work. The missing historical inventory must not be reconstructed just to satisfy this plan. If reopened, inventory garages, balances, ledgers, packages, recharge/wallet records, events, activity logs, trials, subscribers, and delegate records; document exact counts and predicates; verify a backup; and delete only explicitly approved legacy records in bounded resumable batches. Never delete active subscriber records, current prepaid balances, current ledger entries, current canonical events, or current commissions. Verify scope and residue after any approved operation.
 
-### 7. Reliability and scale
+### 7. Reliability and scale — skipped by owner
 
-Deploy required indexes. Remove unbounded live-listener fallbacks. Add bounded pagination and maintained aggregates. Add route/read/write/latency/transaction/listener/fallback metrics, budget alerts, rollback, restore, and incident runbooks. Load-test ten garages against the actual deployment.
-
-**Current slice status:** bounded checkout-only report reads, a transaction-maintained daily report aggregate, and legacy-day fallback behavior are implemented and validated with synthetic concurrency/idempotency tests plus the 10,000-operation model. Evidence is recorded in `docs/testing/RELIABILITY-SCALE-01-REPORT-AGGREGATE.md`. Deployment and the final ten-garage load/cost test remain open.
+This workstream is not currently planned. The intended scope was to deploy required indexes; remove unbounded live-listener fallbacks; add bounded pagination, maintained aggregates, operational metrics, budget alerts, rollback/restore and incident runbooks; and load-test ten garages against the deployment. The report aggregate portion is implemented and has synthetic validation recorded in `docs/testing/RELIABILITY-SCALE-01-REPORT-AGGREGATE.md`. Required-index/deployment verification and the ten-garage staging load/cost test remain unperformed; the staging test contract is in `docs/testing/RELIABILITY-SCALE-02-STAGING-LOAD-TEST.md`. This owner-directed skip does not satisfy those checks, prove production readiness or authorize a deployment. Reopen the work only if the owner directs it.
 
 ## Successor plan: Operation Lean UI
 
-**Operation Lean UI** begins only after the current production plan is complete, including the reliability work and ten-garage load/cost test. The owner-skipped legacy-data cleanup is not a prerequisite unless it is explicitly reopened. Operation Lean UI is a measurement-led UI performance and maintainability program, not a redesign.
+**Operation Lean UI** is the next planned program after the active production-plan work. The owner-skipped legacy-data cleanup and Reliability and Scale workstreams are not prerequisites unless explicitly reopened. Their skipped status does not mean their associated cleanup, deployment, backup, restore, or load-test evidence exists. Operation Lean UI is a measurement-led UI performance and maintainability program, not a redesign.
 
 ### Operation Lean UI goals
 
@@ -93,4 +91,4 @@ Deploy required indexes. Remove unbounded live-listener fallbacks. Add bounded p
 
 ## Definition of done
 
-The application passes focused regressions, full tests, lint, build, maintainability, Firestore rules tests, CI, security/replay tests, reconciliation tests, and the ten-garage load/cost test. The deployed Worker and ruleset are verified. No active UI or service can create retired financial records. Production backup and restore are tested.
+The intended production-readiness criteria include focused regressions, full tests, lint, build, maintainability, Firestore rules tests, CI, security/replay tests, reconciliation tests, ten-garage load/cost evidence, and verification of the deployed Worker and ruleset. The owner has skipped the Reliability and Scale workstream; its deployment and ten-garage test evidence remain absent and must not be described as passed. This plan change alone does not certify production readiness or authorize a production deployment. No active UI or service should create retired financial records, and production backup and restore should be tested before destructive data work or launch.
