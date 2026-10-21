@@ -24,7 +24,9 @@ Launch a real production application with one simple financial model, no active 
 
 ## Current position and immediate next slice
 
-The security, financial-model, UI-removal, and legacy-write-path work completed so far is merged in `main`. The next bounded slice is **read-only data-cleanup preparation**: locate or regenerate a sanitized inventory, produce exact collection-level counts and predicates, and verify the backup/export plan. The previously referenced `/home/ubuntu/firestore_legacy_inventory_2026-10-20.json` is not present in the repository or current execution environment, so its counts must not be assumed. Do not delete or alter production data during that slice. Any destructive cleanup requires exact-scope documentation, a verified backup, explicit owner confirmation, bounded resumable execution, and post-operation verification.
+The security, financial-model, UI-removal, and legacy-write-path work completed so far is merged in `main`. By owner direction, **legacy-data inventory and cleanup are skipped and are not a current launch task**; do not spend time regenerating the missing `/home/ubuntu/firestore_legacy_inventory_2026-10-20.json`, and do not infer that legacy records are absent. No production data may be deleted or altered under this disposition. Reopen this work only if concrete evidence shows a material operational or reporting risk and the owner approves a new bounded scope. If data work is later authorized, exact-scope documentation, a verified backup, explicit owner confirmation, bounded resumable execution, and post-operation verification remain mandatory.
+
+The next planned slice is **Reliability and Scale**: complete the remaining deployment/index and ten-garage staging load/cost evidence described below. This is separate from, and does not authorize, a production deployment or production-data change.
 
 After the current production plan is completed, the next separate program is **Operation Lean UI**, defined below; do not start it early because of UI file size or visual preference alone.
 
@@ -50,9 +52,9 @@ Reject retired fields and routes for new writes. Make 100 trial credits server-o
 
 Remove old garage subscription controls, duration/capacity package controls, old recharge/request/wallet/top-up screens, obsolete commission paths, and two-day trial UI. Preserve active subscriber screens and existing visual behavior. Verify every remaining button has a supported route.
 
-### 6. Data inventory and deletion
+### 6. Legacy data inventory and deletion — skipped by owner
 
-Inventory garages, balances, ledgers, packages, recharge/wallet records, events, activity logs, trials, subscribers, and delegate records. Show exact counts and predicates. Export a backup. Delete only approved legacy records in bounded resumable batches. Never delete active subscriber records, current prepaid balances, current ledger entries, current canonical events, or current commissions. Run a zero-residue scan afterward.
+This slice is not currently needed and is not a launch prerequisite. Do not inventory or delete legacy records unless concrete evidence establishes a material operational or reporting risk and the owner explicitly reopens the work. The missing historical inventory must not be reconstructed just to satisfy this plan. If reopened, inventory garages, balances, ledgers, packages, recharge/wallet records, events, activity logs, trials, subscribers, and delegate records; document exact counts and predicates; verify a backup; and delete only explicitly approved legacy records in bounded resumable batches. Never delete active subscriber records, current prepaid balances, current ledger entries, current canonical events, or current commissions. Verify scope and residue after any approved operation.
 
 ### 7. Reliability and scale
 
@@ -62,7 +64,7 @@ Deploy required indexes. Remove unbounded live-listener fallbacks. Add bounded p
 
 ## Successor plan: Operation Lean UI
 
-**Operation Lean UI** begins only after the current production plan is complete, including the approved data inventory, backup, deletion, zero-residue scan, reliability work, and the ten-garage load/cost test. It is a measurement-led UI performance and maintainability program, not a redesign.
+**Operation Lean UI** begins only after the current production plan is complete, including the reliability work and ten-garage load/cost test. The owner-skipped legacy-data cleanup is not a prerequisite unless it is explicitly reopened. Operation Lean UI is a measurement-led UI performance and maintainability program, not a redesign.
 
 ### Operation Lean UI goals
 
