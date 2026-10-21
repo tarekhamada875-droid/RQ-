@@ -328,7 +328,7 @@ input[type="number"]::-webkit-outer-spin-button {
   top: -2.25rem;
   width: 2.5rem;
   height: 2.5rem;
-  animation: credit-debit-fall 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: credit-debit-fall 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 .credit-debit-arrow-left { left: 10%; animation-delay: 0s; opacity: 0.95; }
@@ -363,7 +363,6 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
 }
-
 
 
 
