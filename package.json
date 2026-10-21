@@ -20,6 +20,7 @@
     "financial-report:benchmark": "tsx tools/financial-report-benchmark.ts",
     "firestore-pagination:benchmark": "tsx tools/firestore-pagination-benchmark.ts",
     "ten-garage:readiness": "tsx tools/ten-garage-load-readiness.ts",
+    "ten-garage:load-test": "node tools/ten-garage-load-test.mjs",
     "release:smoke": "tsx tools/release-smoke.ts",
     "smoke:worker-artifact": "node tools/worker-artifact-smoke.mjs",
     "maintainability:check": "tsx tools/maintainability-check.ts",
