@@ -185,12 +185,14 @@ export const vehicleService = {
 
     const startFallback = (indexError: unknown) => {
       recordActivityLogIndexFallback('live', indexError);
-      // This compatibility query deliberately reads all logs for this garage so
-      // local Cairo-day filtering can select the true newest 200 without the index.
-      // Keep the declared composite index deployed to avoid this higher-read path.
+      // Keep the compatibility path bounded even when the composite day index is unavailable.
+      // The single-field timestamp ordering preserves newest-first selection before local
+      // Cairo-day filtering, while avoiding an unbounded live listener.
       const fallbackQ = query(
         collection(db, 'activity_logs'),
-        where('garageId', '==', garageId)
+        where('garageId', '==', garageId),
+        orderBy('timestamp', 'desc'),
+        limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       fallbackUnsub = onSnapshot(fallbackQ, handleSnapshot, (fallbackError) => {
         if (isClosed) return;
@@ -242,11 +244,12 @@ export const vehicleService = {
         throw makeActivityLogUnavailableError(primaryError);
       }
       recordActivityLogIndexFallback('one-shot', primaryError);
-      // Match the live fallback: never cap an unordered Firestore result before
-      // sorting, or it may omit the newest records entirely.
+      // Match the live fallback with a bounded newest-first compatibility query.
       const fallbackQ = query(
         collection(db, 'activity_logs'),
-        where('garageId', '==', garageId)
+        where('garageId', '==', garageId),
+        orderBy('timestamp', 'desc'),
+        limit(TODAY_ACTIVITY_LOG_LIMIT)
       );
       try {
         return mapTodayTransactions(await getDocs(fallbackQ), today);
