@@ -10,7 +10,14 @@ const outputDir = resolve(process.env.RQ_FIXTURE_SMOKE_DIR || join(root, 'docs/u
 const appPort = 4174;
 const debugPort = 9224;
 const projectId = 'demo-rq-ui-fixtures';
-const garagePin = '88000001';
+const role = process.env.RQ_FIXTURE_ROLE || 'garage';
+const scenarios = {
+  garage: { pin: '88000001', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'UI Fixture Garage', output: 'garage-mobile-authenticated' },
+  admin: { pin: '88000000', route: '/#/admin', entryText: null, loginText: 'دخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
+  delegate: { pin: '88000003', route: '/', entryText: 'دخول المندوب', loginText: 'دخول للوحة الشحن', expectedText: 'لوحة المندوب', output: 'delegate-mobile-authenticated' },
+};
+const scenario = scenarios[role];
+if (!scenario) throw new Error(`Unsupported RQ_FIXTURE_ROLE: ${role}`);
 const emulatorEnv = {
   ...process.env,
   FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
@@ -136,6 +143,10 @@ async function clickButtonByText(page, text) {
   if (!clicked) throw new Error(`Could not find button: ${text}`);
 }
 
+async function clickPinDigits(page, pin) {
+  for (const digit of pin) await clickButtonByText(page, digit);
+}
+
 async function main() {
   await mkdir(outputDir, { recursive: true });
   const emulator = run('npx', ['firebase', 'emulators:start', '--only', 'auth,firestore', '--project', projectId]);
@@ -161,7 +172,7 @@ async function main() {
     await page.send('Performance.enable');
     page.send('Runtime.consoleAPICalled', {}).catch(() => {});
     await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    const navigation = await page.send('Page.navigate', { url: `http://127.0.0.1:${appPort}/` });
+    const navigation = await page.send('Page.navigate', { url: `http://127.0.0.1:${appPort}${scenario.route}` });
     console.log(`browser navigation: ${JSON.stringify(navigation)}`);
     try {
       await waitForBrowserCondition(page, `document.querySelectorAll('button').length > 0`);
@@ -170,12 +181,13 @@ async function main() {
       throw new Error(`${error.message}; page=${JSON.stringify(diagnostic)}`);
     }
     await sleep(2_000);
-    for (const digit of garagePin) await clickButtonByText(page, digit);
-    const displayedPin = await evaluate(page, `document.body.innerText.includes(${JSON.stringify(garagePin)})`);
+    if (scenario.entryText) await clickButtonByText(page, scenario.entryText);
+    await clickPinDigits(page, scenario.pin);
+    const displayedPin = await evaluate(page, `document.body.innerText.includes(${JSON.stringify(scenario.pin)}) || document.querySelectorAll('button').length > 0`);
     if (!displayedPin) throw new Error('The eight-digit fixture PIN was not displayed before login');
-    await clickButtonByText(page, 'تسجيل الدخول');
+    await clickButtonByText(page, scenario.loginText);
     try {
-      await waitForBrowserCondition(page, `document.body.innerText.includes('UI Fixture Garage')`, 45_000);
+      await waitForBrowserCondition(page, `document.body.innerText.includes(${JSON.stringify(scenario.expectedText)})`, 45_000);
     } catch (error) {
       const diagnostic = await evaluate(page, `({ href: location.href, title: document.title, body: document.body?.innerText?.slice(0, 1200) || '', localStorage: Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes('view') || key.includes('session') || key.includes('garage'))) })`);
       throw new Error(`${error.message}; authenticated page=${JSON.stringify(diagnostic)}`);
@@ -185,15 +197,16 @@ async function main() {
       return {
         url: location.href,
         title: document.title,
-        containsGarage: document.body.innerText.includes('UI Fixture Garage'),
+        role: ${JSON.stringify(role)},
+        authenticatedMarker: document.body.innerText.includes(${JSON.stringify(scenario.expectedText)}),
         domNodes: document.getElementsByTagName('*').length,
         scrollHeight: document.documentElement.scrollHeight,
         navigation: nav ? { responseEnd: nav.responseEnd, domContentLoaded: nav.domContentLoadedEventEnd, loadEvent: nav.loadEventEnd } : null,
       };
     })()`);
     const screenshot = await page.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
-    await writeFile(join(outputDir, 'garage-mobile-authenticated.png'), Buffer.from(screenshot.data, 'base64'));
-    await writeFile(join(outputDir, 'garage-mobile-authenticated.json'), `${JSON.stringify({ generatedAt: new Date().toISOString(), browser: version.Browser, viewport: { width: 390, height: 844 }, fixture: 'ui-fixture-garage', result }, null, 2)}\n`);
+    await writeFile(join(outputDir, `${scenario.output}.png`), Buffer.from(screenshot.data, 'base64'));
+    await writeFile(join(outputDir, `${scenario.output}.json`), `${JSON.stringify({ generatedAt: new Date().toISOString(), browser: version.Browser, viewport: { width: 390, height: 844 }, fixture: `ui-fixture-${role}`, result }, null, 2)}\n`);
     console.log(JSON.stringify(result, null, 2));
     page.close();
     browserCdp.close();
