@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { ArrowDown } from 'lucide-react';
+import { AlertTriangle, ArrowDown } from 'lucide-react';
 import { Garage } from '../../../types';
 
 interface GarageSubscriptionCardProps {
@@ -17,6 +17,8 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
   const referralCredits = Math.max(0, Number(garage.creditBalance?.referral || 0));
   const trialCredits = Math.max(0, Number(garage.creditBalance?.trial || 0));
   const totalCredits = paidCredits + referralCredits + trialCredits;
+  const isLowCredit = totalCredits <= 50;
+  const isCriticalCredit = totalCredits <= 10;
   const previousCredits = useRef<number | null>(null);
   const [showDebitFeedback, setShowDebitFeedback] = useState(false);
 
@@ -35,8 +37,17 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
 
   return (
     <div className="flex gap-4 shrink-0 w-full select-none" id="persistent_balance_card">
-      <div className={`flex-1 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 ${showDebitFeedback ? 'border-rose-400' : 'border-slate-200 dark:border-slate-800'}`}>
-        <div className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 z-10">Remaining access credits</div>
+      <div className={`flex-1 rounded-[1.75rem] border flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden bg-[#faf9f6] dark:bg-slate-900 ${showDebitFeedback ? 'border-rose-400' : isCriticalCredit ? 'border-rose-500 dark:border-rose-400' : isLowCredit ? 'border-amber-400 dark:border-amber-500' : 'border-slate-200 dark:border-slate-800'}`}>
+        {isLowCredit && (
+          <div
+            role="status"
+            data-testid="low-credit-indicator"
+            className={`absolute top-3 left-4 z-10 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${isCriticalCredit ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'}`}
+          >
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+            {isCriticalCredit ? 'Critical credits' : 'Low credits'}
+          </div>
+        )}
         <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono transition-colors ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
           {totalCredits.toLocaleString('en-US')}
         </div>
