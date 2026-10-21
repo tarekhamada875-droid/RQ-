@@ -24,9 +24,9 @@ Launch a real production application with one simple financial model, no active 
 
 ## Current position and immediate next slice
 
-The security, financial-model, UI-removal, and legacy-write-path work completed so far is merged in `main`. The next bounded slice is **read-only data-cleanup preparation**: inspect the sanitized inventory, produce exact collection-level counts and predicates, and verify the backup/export plan. Do not delete or alter production data during that slice. Any destructive cleanup requires exact-scope documentation, a verified backup, explicit owner confirmation, bounded resumable execution, and post-operation verification.
+The security, financial-model, UI-removal, and legacy-write-path work completed so far is merged in `main`. The next bounded slice is **read-only data-cleanup preparation**: locate or regenerate a sanitized inventory, produce exact collection-level counts and predicates, and verify the backup/export plan. The previously referenced `/home/ubuntu/firestore_legacy_inventory_2026-10-20.json` is not present in the repository or current execution environment, so its counts must not be assumed. Do not delete or alter production data during that slice. Any destructive cleanup requires exact-scope documentation, a verified backup, explicit owner confirmation, bounded resumable execution, and post-operation verification.
 
-The existing aggregate-only inventory artifact is `/home/ubuntu/firestore_legacy_inventory_2026-10-20.json`. After the current production plan is completed, the next separate program is **Operation Lean UI**, defined below; do not start it early because of UI file size or visual preference alone.
+After the current production plan is completed, the next separate program is **Operation Lean UI**, defined below; do not start it early because of UI file size or visual preference alone.
 
 ## Execution order
 
