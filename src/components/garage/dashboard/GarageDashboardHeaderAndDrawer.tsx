@@ -201,7 +201,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                         <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
                           <PieChart className="w-4 h-4 text-amber-400 dark:text-slate-950" />
                         </div>
-                        <span className="font-bold text-sm">التقارير الذكية</span>
+                        <span className="font-bold text-sm">التقارير</span>
                       </div>
                     </button>
                   )}
@@ -214,7 +214,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                       <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
                         <History className="w-4 h-4 text-amber-400 dark:text-slate-950" />
                       </div>
-                      <span className="font-bold text-sm">سجل شحن الباقات</span>
+                      <span className="font-bold text-sm">تاريخ الشحن</span>
                     </div>
                     {hasNewRecharge && (
                       <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-xs font-black">جديد</span>
