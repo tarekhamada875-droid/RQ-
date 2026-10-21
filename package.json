@@ -19,6 +19,7 @@
     "ui-fixtures:browser-smoke": "node tools/ui-fixture-browser-smoke.mjs",
     "financial-report:benchmark": "tsx tools/financial-report-benchmark.ts",
     "firestore-pagination:benchmark": "tsx tools/firestore-pagination-benchmark.ts",
+    "ten-garage:readiness": "tsx tools/ten-garage-load-readiness.ts",
     "release:smoke": "tsx tools/release-smoke.ts",
     "smoke:worker-artifact": "node tools/worker-artifact-smoke.mjs",
     "maintainability:check": "tsx tools/maintainability-check.ts",
