@@ -32,6 +32,7 @@ import { vehicleService } from './vehicleService';
 
 const hasLimit = (parts: unknown[]) => parts.some((part: any) => part?.kind === 'limit');
 const hasDayStartFilter = (parts: unknown[]) => parts.some((part: any) => part?.kind === 'where' && part.field === 'timestamp');
+const hasCheckoutFilter = (parts: unknown[]) => parts.some((part: any) => part?.kind === 'where' && part.field === 'actionType' && part.value === 'check_out');
 const newestActivityDocs = () => [...firestoreMocks.logs]
   .sort((a, b) => {
     const byTimestamp = (b.data().timestamp as Date).getTime() - (a.data().timestamp as Date).getTime();
@@ -44,7 +45,7 @@ const makeActivityDoc = (index: number, now: number) => ({
   data: () => ({
     garageId: 'garage-activity-limit-test',
     timestamp: new Date(now - index * 1000),
-    actionType: 'vehicle_exit',
+    actionType: 'check_out',
     totalCost: index
   })
 });
@@ -96,6 +97,7 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     });
 
     expect(firestoreMocks.limit).toHaveBeenCalledWith(200);
+    expect(hasCheckoutFilter(queryPartsFrom(firestoreMocks.onSnapshot.mock.calls[0]))).toBe(true);
     expect(liveResults).toHaveLength(1);
     expect(liveResults[0]).toHaveLength(200);
     expect(liveResults[0][0].id).toBe('activity-0000');
@@ -134,7 +136,7 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     const timestamp = new Date();
     const tiedLogs = ['z-log', 'a-log'].map((id) => ({
       id,
-      data: () => ({ garageId: 'garage-activity-limit-test', timestamp, actionType: 'vehicle_exit' })
+      data: () => ({ garageId: 'garage-activity-limit-test', timestamp, actionType: 'check_out' })
     }));
     firestoreMocks.logs = tiedLogs;
     const liveResults: any[][] = [];
@@ -159,6 +161,7 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(firestoreMocks.onSnapshot).toHaveBeenCalledTimes(2);
     const fallbackParts = queryPartsFrom(firestoreMocks.onSnapshot.mock.calls[1]);
     expect(hasLimit(fallbackParts)).toBe(true);
+    expect(hasCheckoutFilter(fallbackParts)).toBe(true);
     expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
     expect(deliveries).toHaveLength(1);
     expect(deliveries[0].error).toBeUndefined();
@@ -182,6 +185,7 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(firestoreMocks.getDocs).toHaveBeenCalledTimes(2);
     const fallbackParts = queryPartsFrom(firestoreMocks.getDocs.mock.calls[1]);
     expect(hasLimit(fallbackParts)).toBe(true);
+    expect(hasCheckoutFilter(fallbackParts)).toBe(true);
     expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
     expect(logs).toHaveLength(200);
     expect(logs[0].id).toBe('activity-0000');

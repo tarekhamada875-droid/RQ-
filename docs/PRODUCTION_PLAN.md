@@ -58,6 +58,8 @@ Inventory garages, balances, ledgers, packages, recharge/wallet records, events,
 
 Deploy required indexes. Remove unbounded live-listener fallbacks. Add bounded pagination and maintained aggregates. Add route/read/write/latency/transaction/listener/fallback metrics, budget alerts, rollback, restore, and incident runbooks. Load-test ten garages against the actual deployment.
 
+**Current slice status:** bounded checkout-only report reads, a transaction-maintained daily report aggregate, and legacy-day fallback behavior are implemented and validated with synthetic concurrency/idempotency tests plus the 10,000-operation model. Evidence is recorded in `docs/testing/RELIABILITY-SCALE-01-REPORT-AGGREGATE.md`. Deployment and the final ten-garage load/cost test remain open.
+
 ## Successor plan: Operation Lean UI
 
 **Operation Lean UI** begins only after the current production plan is complete, including the approved data inventory, backup, deletion, zero-residue scan, reliability work, and the ten-garage load/cost test. It is a measurement-led UI performance and maintainability program, not a redesign.
