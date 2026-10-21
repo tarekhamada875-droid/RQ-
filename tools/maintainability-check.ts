@@ -34,6 +34,7 @@ const docsRoot = resolve(root, 'docs');
 const allowedDocsMarkdown = new Set([
   'OPERATIONS.md',
   'PROJECT.md',
+  'UI_PERFORMANCE_PLAN.md',
   'RELEASES.md',
   'SECURITY.md',
   'duplication-contract-tests.md',
@@ -58,7 +59,7 @@ for (const forbiddenDoc of [
   if (existsSync(resolve(root, forbiddenDoc))) fail(`Duplicate or retired documentation file must not return: ${forbiddenDoc}.`);
 }
 
-for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'docs/PROJECT.md', 'docs/SECURITY.md', 'docs/RELEASES.md', 'docs/OPERATIONS.md']) {
+for (const requiredDoc of ['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'docs/PROJECT.md', 'docs/UI_PERFORMANCE_PLAN.md', 'docs/SECURITY.md', 'docs/RELEASES.md', 'docs/OPERATIONS.md']) {
   if (!existsSync(resolve(root, requiredDoc))) fail(`Required canonical document is missing: ${requiredDoc}.`);
 }
 
