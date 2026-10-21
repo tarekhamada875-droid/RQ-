@@ -11,6 +11,13 @@ const appPort = 4174;
 const debugPort = 9224;
 const projectId = 'demo-rq-ui-fixtures';
 const role = process.env.RQ_FIXTURE_ROLE || 'garage';
+const viewportName = process.env.RQ_FIXTURE_VIEWPORT || 'mobile';
+const viewportProfiles = {
+  mobile: { width: 390, height: 844, deviceScaleFactor: 1, mobile: true },
+  desktop: { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false },
+};
+const viewport = viewportProfiles[viewportName];
+if (!viewport) throw new Error(`Unsupported RQ_FIXTURE_VIEWPORT: ${viewportName}`);
 const scenarios = {
   garage: { pin: '88000001', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'UI Fixture Garage', output: 'garage-mobile-authenticated' },
   admin: { pin: '88000000', route: '/#/admin', entryText: null, loginText: 'دخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
@@ -124,11 +131,11 @@ async function evaluate(page, expression, awaitPromise = true) {
   return result.result?.value;
 }
 
-async function waitForBrowserCondition(page, expression, timeoutMs = 30_000) {
+async function waitForBrowserCondition(page, expression, timeoutMs = 30_000, pollIntervalMs = 200) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     if (await evaluate(page, expression)) return;
-    await sleep(200);
+    await sleep(pollIntervalMs);
   }
   throw new Error(`Timed out waiting for browser condition: ${expression}`);
 }
@@ -171,7 +178,7 @@ async function main() {
     await page.send('Network.enable');
     await page.send('Performance.enable');
     page.send('Runtime.consoleAPICalled', {}).catch(() => {});
-    await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await page.send('Emulation.setDeviceMetricsOverride', viewport);
     const navigation = await page.send('Page.navigate', { url: `http://127.0.0.1:${appPort}${scenario.route}` });
     console.log(`browser navigation: ${JSON.stringify(navigation)}`);
     try {
@@ -185,15 +192,23 @@ async function main() {
     await clickPinDigits(page, scenario.pin);
     const displayedPin = await evaluate(page, `document.body.innerText.includes(${JSON.stringify(scenario.pin)}) || document.querySelectorAll('button').length > 0`);
     if (!displayedPin) throw new Error('The eight-digit fixture PIN was not displayed before login');
+    const loginInteractionStartedAt = await evaluate(page, 'performance.now()');
     await clickButtonByText(page, scenario.loginText);
     try {
-      await waitForBrowserCondition(page, `document.body.innerText.includes(${JSON.stringify(scenario.expectedText)})`, 45_000);
+      await waitForBrowserCondition(page, `document.body.innerText.includes(${JSON.stringify(scenario.expectedText)})`, 45_000, 50);
     } catch (error) {
       const diagnostic = await evaluate(page, `({ href: location.href, title: document.title, body: document.body?.innerText?.slice(0, 1200) || '', localStorage: Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes('view') || key.includes('session') || key.includes('garage'))) })`);
       throw new Error(`${error.message}; authenticated page=${JSON.stringify(diagnostic)}`);
     }
     const result = await evaluate(page, `(() => {
       const nav = performance.getEntriesByType('navigation')[0];
+      const resources = performance.getEntriesByType('resource');
+      const apiResources = resources.filter((resource) => {
+        try { return new URL(resource.name).pathname.startsWith('/api/'); } catch { return false; }
+      });
+      const pathOf = (resource) => {
+        try { return new URL(resource.name).pathname; } catch { return resource.name; }
+      };
       return {
         url: location.href,
         title: document.title,
@@ -202,11 +217,21 @@ async function main() {
         domNodes: document.getElementsByTagName('*').length,
         scrollHeight: document.documentElement.scrollHeight,
         navigation: nav ? { responseEnd: nav.responseEnd, domContentLoaded: nav.domContentLoadedEventEnd, loadEvent: nav.loadEventEnd } : null,
+        network: {
+          completedResourceCount: resources.length,
+          completedApiRequestCount: apiResources.length,
+          completedApiRequests: apiResources.map((resource) => ({ path: pathOf(resource), durationMs: resource.duration, transferSize: resource.transferSize })),
+          totalTransferSize: resources.reduce((total, resource) => total + (resource.transferSize || 0), 0),
+        },
+        firestoreListenerCount: null,
+        firestoreListenerCountNote: 'The smoke harness does not expose an exact active onSnapshot listener counter; no count is inferred from network requests.',
       };
     })()`);
+    result.loginToDashboardMs = await evaluate(page, `performance.now() - ${JSON.stringify(loginInteractionStartedAt)}`);
     const screenshot = await page.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
-    await writeFile(join(outputDir, `${scenario.output}.png`), Buffer.from(screenshot.data, 'base64'));
-    await writeFile(join(outputDir, `${scenario.output}.json`), `${JSON.stringify({ generatedAt: new Date().toISOString(), browser: version.Browser, viewport: { width: 390, height: 844 }, fixture: `ui-fixture-${role}`, result }, null, 2)}\n`);
+    const outputName = scenario.output.replace('mobile', viewportName);
+    await writeFile(join(outputDir, `${outputName}.png`), Buffer.from(screenshot.data, 'base64'));
+    await writeFile(join(outputDir, `${outputName}.json`), `${JSON.stringify({ generatedAt: new Date().toISOString(), browser: version.Browser, viewport: { width: viewport.width, height: viewport.height }, fixture: `ui-fixture-${role}`, result }, null, 2)}\n`);
     console.log(JSON.stringify(result, null, 2));
     page.close();
     browserCdp.close();

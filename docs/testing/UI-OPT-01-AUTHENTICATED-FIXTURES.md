@@ -14,6 +14,12 @@ npm run ui-fixtures:browser-smoke:admin
 npm run ui-fixtures:browser-smoke:delegate
 ```
 
+The garage harness defaults to mobile. To run the same authenticated fixture at desktop size, use:
+
+```bash
+RQ_FIXTURE_VIEWPORT=desktop npm run ui-fixtures:browser-smoke:garage
+```
+
 The command starts isolated Auth and Firestore emulators for the `demo-rq-ui-fixtures` project, seeds synthetic records, starts the existing Node/Vite server with emulator bindings, launches headless Chromium, enters the synthetic eight-digit garage PIN through the real keypad, clicks the real login button, waits for the authenticated garage dashboard, and writes:
 
 - `docs/ui-opt-01-fixture-smoke/garage-mobile-authenticated.png`
@@ -25,7 +31,7 @@ No production Worker, production Firebase project, or production records are use
 
 ## Browser assumptions
 
-- Chromium headless with device metrics 390×844 and device scale factor 1.
+- Chromium headless with device scale factor 1; mobile is 390×844 and desktop is 1440×900.
 - Auth emulator on `127.0.0.1:9099`.
 - Firestore emulator on `127.0.0.1:8080`, using the `(default)` database.
 - App server on `127.0.0.1:4174`.
@@ -36,6 +42,6 @@ The harness entered the garage fixture PIN through keypad button clicks, submitt
 
 The frontend explicitly selects the emulator `(default)` Firestore database in emulator mode only. Production continues to use the configured production database ID.
 
-The JSON artifact records the browser identity, fixture identity, viewport, URL, DOM node count, scroll height, and navigation timing values for this authenticated capture.
+The JSON artifact records the browser identity, fixture identity, viewport, URL, DOM node count, scroll height, navigation timing, login-button-to-dashboard-marker latency, completed resource count, completed API request paths/timings, and transfer-size totals. The harness does not currently expose an exact active Firestore `onSnapshot` listener count; it records that metric as `null` rather than inferring listener counts from network traffic.
 
 The admin and delegate captures were also validated on 2026-10-21. The admin dashboard can still log a non-fatal local-emulator query warning for the garage list (`descending key scans`); authentication and dashboard rendering remain successful. The delegate fixture returns to its dashboard after login and exposes the stable `لوحة المندوب` heading.
