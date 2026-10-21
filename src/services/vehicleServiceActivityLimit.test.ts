@@ -31,6 +31,7 @@ vi.mock('../utils/listenerTracker', () => ({ listenerTracker: { register: vi.fn(
 import { vehicleService } from './vehicleService';
 
 const hasLimit = (parts: unknown[]) => parts.some((part: any) => part?.kind === 'limit');
+const hasDayStartFilter = (parts: unknown[]) => parts.some((part: any) => part?.kind === 'where' && part.field === 'timestamp');
 const newestActivityDocs = () => [...firestoreMocks.logs]
   .sort((a, b) => {
     const byTimestamp = (b.data().timestamp as Date).getTime() - (a.data().timestamp as Date).getTime();
@@ -64,11 +65,12 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     firestoreMocks.fallbackError = null;
 
     firestoreMocks.onSnapshot.mockImplementation((parts: unknown[], onNext: (snapshot: any) => void, onError?: (error: unknown) => void) => {
-      if (hasLimit(parts) && firestoreMocks.primaryError) {
+      const isPrimaryQuery = hasDayStartFilter(parts);
+      if (isPrimaryQuery && firestoreMocks.primaryError) {
         onError?.(firestoreMocks.primaryError);
         return vi.fn();
       }
-      if (!hasLimit(parts) && firestoreMocks.fallbackError) {
+      if (!isPrimaryQuery && firestoreMocks.fallbackError) {
         onError?.(firestoreMocks.fallbackError);
         return vi.fn();
       }
@@ -76,8 +78,9 @@ describe('daily activity ordering, fallback, and visible cap', () => {
       return vi.fn();
     });
     firestoreMocks.getDocs.mockImplementation(async (parts: unknown[]) => {
-      if (hasLimit(parts) && firestoreMocks.primaryError) throw firestoreMocks.primaryError;
-      if (!hasLimit(parts) && firestoreMocks.fallbackError) throw firestoreMocks.fallbackError;
+      const isPrimaryQuery = hasDayStartFilter(parts);
+      if (isPrimaryQuery && firestoreMocks.primaryError) throw firestoreMocks.primaryError;
+      if (!isPrimaryQuery && firestoreMocks.fallbackError) throw firestoreMocks.fallbackError;
       return { docs: hasLimit(parts) ? newestActivityDocs() : firestoreMocks.logs };
     });
   });
@@ -144,7 +147,7 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     unsubscribe();
   });
 
-  it('falls back only for a missing index and selects the newest 200 from unordered history', () => {
+  it('falls back only for a missing index and keeps the live compatibility query bounded', () => {
     firestoreMocks.primaryError = missingIndexError();
     const consoleWarning = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const deliveries: Array<{ logs: any[]; error?: Error }> = [];
@@ -155,8 +158,8 @@ describe('daily activity ordering, fallback, and visible cap', () => {
 
     expect(firestoreMocks.onSnapshot).toHaveBeenCalledTimes(2);
     const fallbackParts = queryPartsFrom(firestoreMocks.onSnapshot.mock.calls[1]);
-    expect(hasLimit(fallbackParts)).toBe(false);
-    expect(fallbackParts.some((part: any) => part?.kind === 'orderBy')).toBe(false);
+    expect(hasLimit(fallbackParts)).toBe(true);
+    expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
     expect(deliveries).toHaveLength(1);
     expect(deliveries[0].error).toBeUndefined();
     expect(deliveries[0].logs).toHaveLength(200);
@@ -170,14 +173,16 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     unsubscribe();
   });
 
-  it('uses the deterministic newest-200 fallback for a one-time missing-index query', async () => {
+  it('uses a bounded newest-first fallback for a one-time missing-index query', async () => {
     firestoreMocks.primaryError = missingIndexError();
     const consoleWarning = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const logs = await vehicleService.getTodayTransactionsOnce('garage-activity-limit-test');
 
     expect(firestoreMocks.getDocs).toHaveBeenCalledTimes(2);
-    expect(hasLimit(queryPartsFrom(firestoreMocks.getDocs.mock.calls[1]))).toBe(false);
+    const fallbackParts = queryPartsFrom(firestoreMocks.getDocs.mock.calls[1]);
+    expect(hasLimit(fallbackParts)).toBe(true);
+    expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
     expect(logs).toHaveLength(200);
     expect(logs[0].id).toBe('activity-0000');
     expect(logs[199].id).toBe('activity-0199');
