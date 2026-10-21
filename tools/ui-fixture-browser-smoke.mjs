@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { tmpdir } from 'node:os';
+import { spawnProcessTree, stopProcessTree } from './process-tree.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const outputDir = resolve(process.env.RQ_FIXTURE_SMOKE_DIR || join(root, 'docs/ui-opt-01-fixture-smoke'));
@@ -34,7 +34,7 @@ const emulatorEnv = {
 };
 
 function run(command, args, env = emulatorEnv) {
-  return spawn(command, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  return spawnProcessTree(command, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
 async function waitFor(url, timeoutMs = 60_000) {
@@ -211,7 +211,7 @@ async function main() {
     page.close();
     browserCdp.close();
   } finally {
-    for (const child of [browser, server, emulator]) child?.kill('SIGTERM');
+    await Promise.all([browser, server, emulator].map(child => stopProcessTree(child)));
     await rm(userDataDir, { recursive: true, force: true }).catch(() => {});
   }
 }
