@@ -10,12 +10,16 @@ From a clean checkout with dependencies installed:
 
 ```bash
 npm run ui-fixtures:browser-smoke
+npm run ui-fixtures:browser-smoke:admin
+npm run ui-fixtures:browser-smoke:delegate
 ```
 
 The command starts isolated Auth and Firestore emulators for the `demo-rq-ui-fixtures` project, seeds synthetic records, starts the existing Node/Vite server with emulator bindings, launches headless Chromium, enters the synthetic eight-digit garage PIN through the real keypad, clicks the real login button, waits for the authenticated garage dashboard, and writes:
 
 - `docs/ui-opt-01-fixture-smoke/garage-mobile-authenticated.png`
 - `docs/ui-opt-01-fixture-smoke/garage-mobile-authenticated.json`
+
+The same harness accepts `RQ_FIXTURE_ROLE=admin` or `RQ_FIXTURE_ROLE=delegate` and captures the corresponding authenticated dashboard to `admin-mobile-authenticated.*` or `delegate-mobile-authenticated.*`. The explicit package scripts above are the preferred commands for those roles.
 
 No production Worker, production Firebase project, or production records are used. The emulator process is terminated by the harness after capture.
 
@@ -33,3 +37,5 @@ The harness entered the garage fixture PIN through keypad button clicks, submitt
 The frontend explicitly selects the emulator `(default)` Firestore database in emulator mode only. Production continues to use the configured production database ID.
 
 The JSON artifact records the browser identity, fixture identity, viewport, URL, DOM node count, scroll height, and navigation timing values for this authenticated capture.
+
+The admin and delegate captures were also validated on 2026-10-21. The admin dashboard can still log a non-fatal local-emulator query warning for the garage list (`descending key scans`); authentication and dashboard rendering remain successful. The delegate fixture returns to its dashboard after login and exposes the stable `لوحة المندوب` heading.
