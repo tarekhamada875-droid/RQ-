@@ -174,6 +174,96 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(setDelegate).not.toHaveBeenCalled();
   });
 
+  it('does not overlap dashboard polls while an earlier request is still pending', async () => {
+    let resolveInitial!: (value: ReturnType<typeof dashboardResponse>) => void;
+    serviceMocks.getDashboardData
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveInitial = resolve;
+      }))
+      .mockResolvedValue(dashboardResponse({ id: 'delegate-1', name: 'Latest delegate' }));
+
+    const { unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: { id: 'delegate-1', name: 'Initial delegate' }
+    }));
+
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45_000);
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveInitial(dashboardResponse({ id: 'delegate-1', name: 'Initial response' }));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it('ignores a pagination response from an earlier dashboard generation after switching away and back', async () => {
+    const firstDelegateResponse = {
+      ...dashboardResponse({ id: 'delegate-1', name: 'First delegate' }),
+      garages: [{ id: 'first-delegate-garage' }],
+      pagination: {
+        createdGarages: { hasMore: true, nextCursor: 'created-cursor' },
+        referredGarages: { hasMore: false, nextCursor: null }
+      }
+    };
+    serviceMocks.getDashboardData.mockImplementation(async (delegateId: string) =>
+      delegateId === 'delegate-1'
+        ? firstDelegateResponse
+        : dashboardResponse({ id: delegateId, name: 'Other delegate' })
+    );
+
+    let resolveOldPage!: (value: { items: any[]; hasMore: boolean; nextCursor: string | null }) => void;
+    serviceMocks.getDashboardDataPage.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveOldPage = resolve;
+    }));
+
+    const baseProps = createBaseProps();
+    const { result, unmount } = renderHook(() => {
+      const [delegate, setDelegate] = useState({ id: 'delegate-1', name: 'First delegate' });
+      const sync = useGarageSync({ ...baseProps, delegate, setDelegate });
+      return { delegate, setDelegate, sync };
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    let loadingPromise!: Promise<void>;
+    act(() => {
+      loadingPromise = result.current.sync.loadMoreDelegateGarages();
+    });
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.setDelegate({ id: 'delegate-2', name: 'Other delegate' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => result.current.setDelegate({ id: 'delegate-1', name: 'First delegate again' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveOldPage({
+        items: [{ id: 'stale-page-garage' }],
+        hasMore: false,
+        nextCursor: null
+      });
+      await loadingPromise;
+    });
+
+    expect(result.current.sync.allGarages.map((garage: any) => garage.id)).toEqual(['first-delegate-garage']);
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
   it('loads only created and referred garage continuations when requested', async () => {
     vi.useRealTimers();
     const initial = {
