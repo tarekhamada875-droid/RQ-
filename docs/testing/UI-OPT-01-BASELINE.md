@@ -52,6 +52,6 @@ The PNG files are the baseline artifacts. The per-case JSON files preserve the e
 
 A fresh `--compare` run is expected to be reviewed in the same browser environment. In this first run, 6 screenshot hashes differed in protected/fallback cases because asynchronous session guarding and local API fallback changed the rendered shell between captures; this is evidence that authenticated deterministic fixtures are still needed before using those protected screenshots as a hard gate. The public login cases are the stable first visual gate. No optimization was implemented from this result.
 
-## Result and next step
+## Historical result and current status
 
-This ticket establishes the reusable measurement and screenshot harness only. It does not prove a performance improvement, and it does not authorize a redesign. The next bounded investigation should make authenticated synthetic fixtures deterministic for the garage, admin, delegate, history, and financial-report surfaces, then repeat this baseline and inspect the largest relevant browser signal before making one small change.
+This initial baseline identified that protected screenshots needed authenticated synthetic fixtures. That follow-up was completed: see `UI-OPT-01-AUTHENTICATED-FIXTURES.md` and the later listener-instrumented report `UI-OPT-01-GARAGE-BASELINE-2026-10-21.md`. The later authenticated baseline did not demonstrate a meaningful, reproducible user-facing bottleneck. **Do not treat this document’s former “next step” as active work; do not start optimization from this evidence alone.** Current implementation work is governed only by `../UI_PERFORMANCE_PLAN.md`.

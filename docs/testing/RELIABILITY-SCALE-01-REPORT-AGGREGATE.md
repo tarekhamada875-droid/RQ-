@@ -34,6 +34,6 @@ The 10,000-operation model used 949 report queries. Modeled report reads decreas
 - Rollback can remove aggregate consumption from the reports UI while retaining the existing bounded fallback; no destructive data operation is required.
 - Any future backfill requires an exact predicate, verified backup, explicit owner approval, bounded resumable execution, and zero-residue verification.
 
-## Remaining production-gate work
+## Current status: historical evidence only
 
-This slice is ready for PR review. Deployment and the final ten-garage load/cost test against the actual deployment remain separate owner-approved steps.
+This report preserves the completed implementation and synthetic validation above. At the time it was written, deployment and a ten-garage load/cost test were listed as possible separate follow-ups. The owner later marked the Reliability and Scale workstream skipped. **Do not run that load/cost test or resume the skipped workstream from this report.** Current implementation work is governed only by `docs/UI_PERFORMANCE_PLAN.md`.
