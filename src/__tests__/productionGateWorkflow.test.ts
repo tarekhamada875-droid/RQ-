@@ -6,6 +6,10 @@ const workflow = readFileSync(
   resolve(process.cwd(), '.github/workflows/production-gate.yml'),
   'utf8'
 );
+const postMergeWorkflow = readFileSync(
+  resolve(process.cwd(), '.github/workflows/deploy-after-merge.yml'),
+  'utf8'
+);
 const workerBuildScript = readFileSync(resolve(process.cwd(), 'tools/build-cloudflare.mjs'), 'utf8');
 const smokeScript = readFileSync(resolve(process.cwd(), 'tools/release-smoke.ts'), 'utf8');
 const artifactSmokeScript = readFileSync(resolve(process.cwd(), 'tools/worker-artifact-smoke.mjs'), 'utf8');
@@ -14,13 +18,17 @@ const ciCheckRunnerScript = readFileSync(resolve(process.cwd(), 'tools/ci-check-
 
 const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] ?? '';
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
+const explicitDeploySha = '${{ inputs.deploy_sha || github.sha }}';
 
 describe('production release workflow', () => {
-  it('runs full validation on pull requests and main pushes, not feature-branch pushes', () => {
+  it('validates pull requests and main pushes, and permits explicit main-commit dispatches', () => {
     expect(workflow).toMatch(/^  push:\n    branches: \[main\]$/m);
     expect(workflow).toMatch(/^  pull_request:\n    branches: \[main\]$/m);
+    expect(workflow).toMatch(/^  workflow_dispatch:$/m);
+    expect(workflow).toContain('deploy_sha:');
     expect(workflow).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
-    expect(deployJob).toContain("if: github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    expect(deployJob).toContain("if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'");
+    expect(verifyJob).toContain('git merge-base --is-ancestor "$DEPLOY_SHA" origin/main');
   });
 
   it('installs once and runs the full test suite once without a duplicate subscriber rerun', () => {
@@ -30,20 +38,29 @@ describe('production release workflow', () => {
     expect(workflow).not.toContain('npm test -- --run server/subscriberLifecycle.test.ts');
   });
 
-  it('uploads the verified commit artifact and deploys that artifact only after verification passes', () => {
+  it('uploads and deploys the artifact for the exact verified commit', () => {
     expect(workflow).toContain('group: production-gate-${{ github.ref }}');
     expect(verifyJob).toContain('uses: actions/upload-artifact@v4');
-    expect(verifyJob).toContain('name: rq-production-${{ github.sha }}');
-    expect(verifyJob).toContain('git rev-parse HEAD)" = "$GITHUB_SHA"');
+    expect(verifyJob).toContain(`name: rq-production-${explicitDeploySha}`);
+    expect(verifyJob).toContain(`DEPLOY_SHA: ${explicitDeploySha}`);
 
     expect(deployJob).toContain('needs: verify');
     expect(deployJob).toContain('uses: actions/download-artifact@v4');
-    expect(deployJob).toContain('name: rq-production-${{ github.sha }}');
-    expect(deployJob).toContain('git rev-parse HEAD)" = "$GITHUB_SHA"');
+    expect(deployJob).toContain(`name: rq-production-${explicitDeploySha}`);
+    expect(deployJob).toContain(`DEPLOY_SHA: ${explicitDeploySha}`);
     expect(deployJob).toContain('--no-bundle');
-    expect(deployJob).toContain('--var WORKER_COMMIT_SHA:$GITHUB_SHA');
-    expect(deployJob).toContain('SMOKE_EXPECTED_COMMIT_SHA: ${{ github.sha }}');
+    expect(deployJob).toContain('--var WORKER_COMMIT_SHA:$SMOKE_EXPECTED_COMMIT_SHA');
+    expect(deployJob).toContain(`SMOKE_EXPECTED_COMMIT_SHA: ${explicitDeploySha}`);
     expect(workerBuildScript).toContain('minify: true');
+  });
+
+  it('dispatches post-merge only after successful PR verification and avoids duplicate push deployments', () => {
+    expect(postMergeWorkflow).toContain('workflows: [Production Gate]');
+    expect(postMergeWorkflow).toContain("github.event.workflow_run.event == 'pull_request'");
+    expect(postMergeWorkflow).toContain('listPullRequestsAssociatedWithCommit');
+    expect(postMergeWorkflow).toContain("run.event === 'push' && run.head_branch === 'main'");
+    expect(postMergeWorkflow).toContain('createWorkflowDispatch');
+    expect(postMergeWorkflow).toContain("inputs: { deploy_sha: process.env.DEPLOY_SHA }");
   });
 
   it('imports and smoke-tests the built artifact in local CI, verification, and before deployment', () => {

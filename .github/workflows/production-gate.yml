@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA on main to verify and deploy
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,10 +31,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.deploy_sha || github.sha }}
           fetch-depth: 0
 
       - name: Confirm event commit
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+
+      - name: Confirm manual target is on main
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch origin main
+          git cat-file -e "${DEPLOY_SHA}^{commit}"
+          git merge-base --is-ancestor "$DEPLOY_SHA" origin/main
 
       - name: Detect Markdown-only change
         id: scope
@@ -138,15 +158,18 @@ jobs:
         if: steps.scope.outputs.docs_only != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rq-production-${{ github.sha }}
+          name: rq-production-${{ inputs.deploy_sha || github.sha }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
 
   deploy:
     name: Deploy verified Worker and smoke test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.verify.outputs.docs_only != 'true'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.verify.outputs.docs_only != 'true'
     needs: verify
+    concurrency:
+      group: rq-cloudflare-production
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -156,9 +179,13 @@ jobs:
     steps:
       - name: Checkout verified commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deploy_sha || github.sha }}
 
       - name: Confirm event commit
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -168,7 +195,7 @@ jobs:
       - name: Download artifact built by verification
         uses: actions/download-artifact@v4
         with:
-          name: rq-production-${{ github.sha }}
+          name: rq-production-${{ inputs.deploy_sha || github.sha }}
           path: dist/
 
       - name: Confirm downloaded production artifact
@@ -186,11 +213,11 @@ jobs:
           SMOKE_BASE_URL: https://rq.tarekhamada875.workers.dev
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
           SMOKE_EXPECTED_VERSION: 1.0.0-production
-          SMOKE_EXPECTED_COMMIT_SHA: ${{ github.sha }}
+          SMOKE_EXPECTED_COMMIT_SHA: ${{ inputs.deploy_sha || github.sha }}
           SMOKE_MAX_ATTEMPTS: 60
           SMOKE_RETRY_DELAY_MS: 10000
         run: >-
           npx --yes
           --package=wrangler@4.147.0
           --package=tsx@4.23.13
-          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle --var WORKER_COMMIT_SHA:$GITHUB_SHA && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts'
+          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle --var WORKER_COMMIT_SHA:$SMOKE_EXPECTED_COMMIT_SHA && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts'
