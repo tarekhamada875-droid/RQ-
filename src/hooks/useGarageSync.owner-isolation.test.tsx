@@ -94,9 +94,7 @@ describe('useGarageSync owner data isolation', () => {
 
     rerender({ garage: null, view: 'login' });
 
-    await waitFor(() => {
-      expect(result.current.vehicles).toEqual([]);
-      expect(result.current.transactions).toEqual([]);
-    });
+    expect(result.current.vehicles).toEqual([]);
+    expect(result.current.transactions).toEqual([]);
   });
 });
