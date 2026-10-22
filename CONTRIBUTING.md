@@ -2,7 +2,7 @@
 
 Read `docs/PROJECT.md`, `docs/SECURITY.md`, and `docs/RELEASES.md` before making a substantial change.
 
-For UI performance work, follow the bounded sequence and stop conditions in `docs/UI_PERFORMANCE_PLAN.md`.
+For implementation work before production, follow only `docs/UI_PERFORMANCE_PLAN.md`, which now contains the Final Pre-Production Workflow Plan. Do not resume the skipped Reliability and Scale or legacy-data-cleanup workstreams, and do not start speculative UI optimization.
 
 Start from synchronized `main` with a clean working tree. Create one short-lived branch for one bounded change. Add or update a focused regression test before changing sensitive behavior. Preserve current UI/UX unless the task explicitly approves a UI change.
 
@@ -24,7 +24,7 @@ Use the emulator/browser-fixture instructions under `docs/testing/` for local UI
 
 ## Documentation governance
 
-Keep the repository’s documentation small and canonical. Use `docs/PROJECT.md` for product and architecture, `docs/UI_PERFORMANCE_PLAN.md` for the scoped UI performance program, `docs/SECURITY.md` for security, `docs/RELEASES.md` for release procedure, `docs/OPERATIONS.md` for operations, and `docs/testing/` for test procedures. Do not add new handoff, knowledge, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not add root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`; consolidate durable information into the correct canonical document instead.
+Keep the repository’s documentation small and canonical. Use `docs/PROJECT.md` for product and architecture, `docs/UI_PERFORMANCE_PLAN.md` as the only active implementation plan, `docs/SECURITY.md` for security, `docs/RELEASES.md` for release procedure, `docs/OPERATIONS.md` for operations, and `docs/testing/` for test procedures and historical evidence. Do not treat reports or baselines as independent task plans. Do not add new handoff, knowledge, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not add root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`; consolidate durable information into the correct canonical document instead.
 
 ## Pull requests and reporting
 
