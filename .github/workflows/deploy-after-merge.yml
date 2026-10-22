@@ -125,6 +125,10 @@ jobs:
               repo: context.repo.repo,
               workflow_id: 'production-gate.yml',
               ref: 'main',
-              inputs: { deploy_sha: process.env.DEPLOY_SHA },
+              inputs: {
+                deploy_sha: process.env.DEPLOY_SHA,
+                source_run_id: String(context.payload.workflow_run.id),
+                source_sha: context.payload.workflow_run.head_sha,
+              },
             });
-            core.info(`Production Gate dispatched for ${process.env.DEPLOY_SHA}.`);
+            core.info(`Production Gate dispatched for ${process.env.DEPLOY_SHA} using the verified PR artifact from run ${context.payload.workflow_run.id}.`);

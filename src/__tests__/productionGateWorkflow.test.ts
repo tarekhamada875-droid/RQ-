@@ -18,6 +18,7 @@ const ciCheckRunnerScript = readFileSync(resolve(process.cwd(), 'tools/ci-check-
 
 const verifyJob = workflow.split('\n  verify:\n')[1]?.split('\n  deploy:\n')[0] ?? '';
 const deployJob = workflow.split('\n  deploy:\n')[1] ?? '';
+const reusedDeployJob = workflow.split('\n  deploy-reused-artifact:\n')[1] ?? '';
 const explicitDeploySha = '${{ inputs.deploy_sha || github.sha }}';
 
 describe('production release workflow', () => {
@@ -27,21 +28,21 @@ describe('production release workflow', () => {
     expect(workflow).toMatch(/^  workflow_dispatch:$/m);
     expect(workflow).toContain('deploy_sha:');
     expect(workflow).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
-    expect(deployJob).toContain("if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'");
+    expect(deployJob).toContain("if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && inputs.source_run_id == '' && github.ref == 'refs/heads/main'");
     expect(verifyJob).toContain('git merge-base --is-ancestor "$DEPLOY_SHA" origin/main');
   });
 
-  it('installs once and runs the full test suite once without a duplicate subscriber rerun', () => {
+  it('runs the full verification suite once without a duplicate subscriber rerun', () => {
     expect(workflow.match(/^\s+run: npm ci\b/gm)).toHaveLength(1);
     expect(workflow.match(/^\s+run: npm run test$/gm)).toHaveLength(1);
-    expect(workflow.match(/\bnpx --yes\b/g)).toHaveLength(1);
+    expect(workflow.match(/\bnpx --yes\b/g)).toHaveLength(2);
     expect(workflow).not.toContain('npm test -- --run server/subscriberLifecycle.test.ts');
   });
 
   it('uploads and deploys the artifact for the exact verified commit', () => {
     expect(workflow).toContain('group: production-gate-${{ github.ref }}');
     expect(verifyJob).toContain('uses: actions/upload-artifact@v4');
-    expect(verifyJob).toContain(`name: rq-production-${explicitDeploySha}`);
+    expect(verifyJob).toContain('name: rq-production-${{ github.event.pull_request.head.sha || inputs.deploy_sha || github.sha }}');
     expect(verifyJob).toContain(`DEPLOY_SHA: ${explicitDeploySha}`);
 
     expect(deployJob).toContain('needs: verify');
@@ -54,13 +55,27 @@ describe('production release workflow', () => {
     expect(workerBuildScript).toContain('minify: true');
   });
 
+  it('reuses the successful PR artifact for post-merge deployment without rerunning verification', () => {
+    expect(workflow).toContain("if: github.event_name != 'workflow_dispatch' || inputs.source_run_id == ''");
+    expect(workflow).toContain('source_run_id:');
+    expect(workflow).toContain('source_sha:');
+    expect(reusedDeployJob).toContain('getWorkflowRun');
+    expect(reusedDeployJob).toContain("run.event !== 'pull_request'");
+    expect(reusedDeployJob).toContain('sourceCommit.commit.tree.sha !== mergedCommit.commit.tree.sha');
+    expect(reusedDeployJob).toContain('run-id: ${{ inputs.source_run_id }}');
+    expect(reusedDeployJob).toContain('name: rq-production-${{ inputs.source_sha }}');
+    expect(reusedDeployJob).toContain('SMOKE_EXPECTED_COMMIT_SHA: ${{ inputs.deploy_sha }}');
+    expect(reusedDeployJob).not.toContain('npm run test');
+  });
+
   it('dispatches post-merge only after successful PR verification and avoids duplicate push deployments', () => {
     expect(postMergeWorkflow).toContain('workflows: [Production Gate]');
     expect(postMergeWorkflow).toContain("github.event.workflow_run.event == 'pull_request'");
     expect(postMergeWorkflow).toContain('listPullRequestsAssociatedWithCommit');
     expect(postMergeWorkflow).toContain("run.event === 'push' && run.head_branch === 'main'");
     expect(postMergeWorkflow).toContain('createWorkflowDispatch');
-    expect(postMergeWorkflow).toContain("inputs: { deploy_sha: process.env.DEPLOY_SHA }");
+    expect(postMergeWorkflow).toContain('source_run_id: String(context.payload.workflow_run.id)');
+    expect(postMergeWorkflow).toContain('source_sha: context.payload.workflow_run.head_sha');
   });
 
   it('does not dispatch a Worker deployment for Markdown-only merged pull requests', () => {
