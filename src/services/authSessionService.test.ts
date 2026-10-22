@@ -132,6 +132,42 @@ describe('auth session server authority', () => {
     expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
+  it('retries a failed release before allowing the same session to be claimed', async () => {
+    mockedRelease.mockRejectedValueOnce(new Error('release unavailable'));
+    const params = {
+      role: 'garage' as const,
+      entityId: 'garage-release-retry',
+      sessionId: 'session-release-retry',
+      uid: 'firebase-uid-release-retry',
+    };
+
+    await expect(releaseEntitySession(params)).rejects.toThrow('release unavailable');
+    await expect(claimEntitySession(params)).resolves.toBeUndefined();
+
+    expect(mockedRelease).toHaveBeenCalledTimes(2);
+    expect(mockedRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps claims blocked when release retries fail, then recovers on a later successful retry', async () => {
+    mockedRelease
+      .mockRejectedValueOnce(new Error('initial release failed'))
+      .mockRejectedValueOnce(new Error('retry release failed'));
+    const params = {
+      role: 'garage' as const,
+      entityId: 'garage-release-retry-recovery',
+      sessionId: 'session-release-retry-recovery',
+      uid: 'firebase-uid-release-retry-recovery',
+    };
+
+    await expect(releaseEntitySession(params)).rejects.toThrow('initial release failed');
+    await expect(claimEntitySession(params)).rejects.toThrow('retry release failed');
+    expect(mockedRefresh).not.toHaveBeenCalled();
+
+    await expect(claimEntitySession(params)).resolves.toBeUndefined();
+    expect(mockedRelease).toHaveBeenCalledTimes(3);
+    expect(mockedRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it('waits for an in-flight release before reclaiming the same session', async () => {
     let finishRelease!: () => void;
     mockedRelease.mockReturnValueOnce(new Promise<void>((resolve) => {
