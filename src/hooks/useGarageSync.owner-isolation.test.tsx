@@ -66,10 +66,8 @@ describe('useGarageSync owner data isolation', () => {
 
     rerender({ garage: { id: 'garage-b' } });
 
-    await waitFor(() => {
-      expect(result.current.vehicles).toEqual([]);
-      expect(result.current.transactions).toEqual([]);
-    });
+    expect(result.current.vehicles).toEqual([]);
+    expect(result.current.transactions).toEqual([]);
   });
 
   it('clears garage-scoped records when logging out of the garage view', async () => {

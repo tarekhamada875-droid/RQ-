@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { Garage, Vehicle, Package, Staff } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
@@ -74,7 +74,7 @@ export function useGarageSync({
 
   // Clear garage-scoped data before a different owner or role can render it.
   // The active owner's subscriptions repopulate these lists after the reset.
-  useEffect(() => {
+  useLayoutEffect(() => {
     setVehicles([]);
     setTodayTransactions([]);
     setStaffList([]);
