@@ -35,6 +35,7 @@ interface AdminGarageDetailsViewProps {
   setIsLoading: (loading: boolean) => void;
   packages?: Package[];
   allGarages?: Garage[];
+  onRefreshAdminLists?: () => Promise<void>;
 }
 
 export const AdminGarageDetailsView = memo(({
@@ -48,7 +49,8 @@ export const AdminGarageDetailsView = memo(({
   isLoading,
   setIsLoading,
   packages = [],
-  allGarages = []
+  allGarages = [],
+  onRefreshAdminLists
 }: AdminGarageDetailsViewProps) => {
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
@@ -56,6 +58,14 @@ export const AdminGarageDetailsView = memo(({
   const [showMenu, setShowMenu] = useState(false);
   const { adminLang } = useTheme();
   const t = useAdminTranslation(adminLang);
+
+  const refreshAdminListsAfterMutation = async () => {
+    try {
+      await onRefreshAdminLists?.();
+    } catch (error) {
+      console.error('Failed to refresh Admin lists after garage update:', error);
+    }
+  };
 
   // Accordion state for Zone 3
   const [isZone3Open, setIsZone3Open] = useState(false);
@@ -105,6 +115,7 @@ export const AdminGarageDetailsView = memo(({
         overnightRate: overnight,
         lastRateChangeDate: now,
       });
+      await refreshAdminListsAfterMutation();
       selectedGarageForDetails.hourlyRate = hourly;
       selectedGarageForDetails.overnightRate = overnight;
       selectedGarageForDetails.lastRateChangeDate = now;
@@ -136,6 +147,7 @@ export const AdminGarageDetailsView = memo(({
         isLocked: newLocked,
         isSuspended: newLocked
       });
+      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({
         ...selectedGarageForDetails,
         isLocked: newLocked,
@@ -152,6 +164,7 @@ export const AdminGarageDetailsView = memo(({
     const newState = !selectedGarageForDetails.hasMonthlySubscribers;
     try {
       await firestoreService.updateGarage(selectedGarageForDetails.id, { hasMonthlySubscribers: newState });
+      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({ ...selectedGarageForDetails, hasMonthlySubscribers: newState });
     } catch (e) {
       console.error(e);
@@ -167,6 +180,7 @@ export const AdminGarageDetailsView = memo(({
         referredByGarageId: refId || null,
         referredByGarageName: refGarage ? refGarage.name : null
       });
+      await refreshAdminListsAfterMutation();
       const updated: Garage = {
         ...selectedGarageForDetails,
         referredByGarageId: refId || undefined,
@@ -262,6 +276,7 @@ export const AdminGarageDetailsView = memo(({
         return;
       }
       await firestoreService.updateGarage(selectedGarageForDetails.id, { pin: garagePinInput, ownerPin: garagePinInput });
+      await refreshAdminListsAfterMutation();
       selectedGarageForDetails.pin = garagePinInput;
       selectedGarageForDetails.ownerPin = garagePinInput;
       if (typeof setSelectedGarageForDetails === 'function') {
