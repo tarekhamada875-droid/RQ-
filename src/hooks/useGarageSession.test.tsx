@@ -90,6 +90,7 @@ beforeEach(() => {
   });
   sessionMocks.doc.mockReturnValue({ path: 'garages/garage-1' });
   sessionMocks.claimEntitySession.mockResolvedValue(undefined);
+  sessionMocks.releaseEntitySession.mockResolvedValue(undefined);
   sessionMocks.validateOrRefreshSessionOnServer.mockResolvedValue(true);
   sessionMocks.onSnapshot.mockImplementation((_ref: unknown, callback: SnapshotCallback) => {
     snapshotCallbacks.push(callback);
