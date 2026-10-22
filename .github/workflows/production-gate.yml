@@ -11,6 +11,14 @@ on:
         description: Full commit SHA on main to verify and deploy
         required: true
         type: string
+      source_run_id:
+        description: Successful PR Production Gate run whose artifact should be reused
+        required: false
+        type: string
+      source_sha:
+        description: PR head SHA that produced the reusable verified artifact
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +30,7 @@ concurrency:
 
 jobs:
   verify:
+    if: github.event_name != 'workflow_dispatch' || inputs.source_run_id == ''
     runs-on: ubuntu-latest
     timeout-minutes: 25
     outputs:
@@ -158,14 +167,14 @@ jobs:
         if: steps.scope.outputs.docs_only != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rq-production-${{ inputs.deploy_sha || github.sha }}
+          name: rq-production-${{ github.event.pull_request.head.sha || inputs.deploy_sha || github.sha }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
 
   deploy:
     name: Deploy verified Worker and smoke test
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.verify.outputs.docs_only != 'true'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && inputs.source_run_id == '' && github.ref == 'refs/heads/main' && needs.verify.outputs.docs_only != 'true'
     needs: verify
     concurrency:
       group: rq-cloudflare-production
@@ -214,6 +223,97 @@ jobs:
           SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
           SMOKE_EXPECTED_VERSION: 1.0.0-production
           SMOKE_EXPECTED_COMMIT_SHA: ${{ inputs.deploy_sha || github.sha }}
+          SMOKE_MAX_ATTEMPTS: 60
+          SMOKE_RETRY_DELAY_MS: 10000
+        run: >-
+          npx --yes
+          --package=wrangler@4.147.0
+          --package=tsx@4.23.13
+          --call 'wrangler deploy --config wrangler.deploy.toml --env="" --no-bundle --var WORKER_COMMIT_SHA:$SMOKE_EXPECTED_COMMIT_SHA && env -u CLOUDFLARE_API_TOKEN -u CLOUDFLARE_ACCOUNT_ID tsx tools/release-smoke.ts'
+
+  deploy-reused-artifact:
+    name: Deploy reused PR artifact and smoke test
+    if: github.event_name == 'workflow_dispatch' && inputs.source_run_id != '' && inputs.source_sha != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: cloudflare-production
+      url: https://rq.tarekhamada875.workers.dev
+
+    steps:
+      - name: Validate source gate and identical merged tree
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sourceRunId = Number(process.env.SOURCE_RUN_ID);
+            if (!Number.isSafeInteger(sourceRunId) || sourceRunId <= 0) {
+              throw new Error('source_run_id must be a positive workflow run ID.');
+            }
+            if (!/^[0-9a-f]{40}$/.test(process.env.DEPLOY_SHA) || !/^[0-9a-f]{40}$/.test(process.env.SOURCE_SHA)) {
+              throw new Error('deploy_sha and source_sha must be full lowercase commit SHAs.');
+            }
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: sourceRunId });
+            if (run.name !== 'Production Gate' || run.event !== 'pull_request' || run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== process.env.SOURCE_SHA) {
+              throw new Error('The source run is not the successful PR Production Gate for source_sha.');
+            }
+            const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: process.env.SOURCE_SHA,
+              per_page: 100,
+            });
+            const matches = associated.filter(pr => pr.base.ref === 'main' && pr.head.sha === process.env.SOURCE_SHA && pr.merged_at && pr.merge_commit_sha === process.env.DEPLOY_SHA);
+            if (matches.length !== 1) {
+              throw new Error('The source PR does not uniquely identify the requested merged commit.');
+            }
+            const [{ data: sourceCommit }, { data: mergedCommit }] = await Promise.all([
+              github.rest.repos.getCommit({ owner, repo, ref: process.env.SOURCE_SHA }),
+              github.rest.repos.getCommit({ owner, repo, ref: process.env.DEPLOY_SHA }),
+            ]);
+            if (sourceCommit.commit.tree.sha !== mergedCommit.commit.tree.sha) {
+              throw new Error('The merged commit tree differs from the source commit tested by the PR gate.');
+            }
+            core.info(`Reusing verified PR artifact from run ${sourceRunId}; source and merged trees are identical.`);
+
+      - name: Checkout merged commit configuration
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deploy_sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download artifact from successful PR gate
+        uses: actions/download-artifact@v4
+        with:
+          name: rq-production-${{ inputs.source_sha }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: dist/
+
+      - name: Confirm reused production artifact
+        run: |
+          test -f dist/index.html
+          test -s dist/worker.js
+
+      - name: Smoke reused Worker artifact
+        run: npm run smoke:worker-artifact
+
+      - name: Deploy and live-smoke reused Worker artifact
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SMOKE_BASE_URL: https://rq.tarekhamada875.workers.dev
+          SMOKE_FRONTEND_URL: https://rq-acg.pages.dev
+          SMOKE_EXPECTED_VERSION: 1.0.0-production
+          SMOKE_EXPECTED_COMMIT_SHA: ${{ inputs.deploy_sha }}
           SMOKE_MAX_ATTEMPTS: 60
           SMOKE_RETRY_DELAY_MS: 10000
         run: >-
