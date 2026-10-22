@@ -17,9 +17,9 @@ Use emulator and synthetic fixture workflows for local tests. Review the diff fo
 
 ## Merge and deployment
 
-Merge only after required PR checks pass. A merge to `main` may publish Pages and trigger the guarded Worker deployment. Verify the Production Gate, deployed artifact identity, live `/api/health`, and live `/api/version` when code or deployment configuration changes.
+Merge only after required PR checks pass. A merge to `main` may publish Pages; non-Markdown-only changes may trigger the guarded Worker deployment. Verify the Production Gate, deployed artifact identity, live `/api/health`, and live `/api/version` when application code or deployment configuration changes.
 
-A documentation-only merge may advance `main` without changing the deployed Worker. Do not confuse repository `main` with the live Worker version.
+Markdown-only merges run the lightweight documentation validation and do not dispatch a Worker deployment from the post-merge fallback. The fallback checks the merged PR’s changed paths and suppresses deployment when every changed file ends in `.md`. Do not confuse repository `main` with the live Worker version.
 
 ## Rollback
 

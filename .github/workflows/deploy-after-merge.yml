@@ -56,6 +56,20 @@ jobs:
                   throw new Error(`PR #${number} merged without a main merge commit SHA.`);
                 }
                 core.info(`PR #${number} merged as ${pr.merge_commit_sha}.`);
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: number,
+                  per_page: 100,
+                });
+                const docsOnly = files.length > 0 &&
+                  files.length === pr.changed_files &&
+                  files.every(file => file.filename.endsWith('.md'));
+                if (docsOnly) {
+                  core.info(`PR #${number} changes only Markdown; no Worker deployment will be dispatched.`);
+                  core.setOutput('deploy_sha', '');
+                  return;
+                }
                 core.setOutput('deploy_sha', pr.merge_commit_sha);
                 return;
               }
