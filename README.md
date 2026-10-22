@@ -21,14 +21,10 @@ npm ci
 npm run dev
 ```
 
-Validation:
+Full local validation (clean install, tests, rules, typecheck, production build, artifact smoke, and maintainability):
 
 ```bash
-npm test
-npm run test:rules
-npm run lint
-npm run build
-npm run maintainability:check
+npm run ci:check
 git diff --check
 ```
 
@@ -44,5 +40,6 @@ Use synthetic emulator data locally. Never commit `.env` files, service-account 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution rules
 - [`AGENTS.md`](AGENTS.md) — engineering safeguards
 - [`docs/testing/`](docs/testing/) — emulator, browser-fixture, and contract-test guidance
+- [`docs/testing/CONTRACT-TEST-GUIDANCE.md`](docs/testing/CONTRACT-TEST-GUIDANCE.md) — regression contracts for shared behavior
 
 Do not rely on old handoff notes, dated release narratives, or generated build output as project instructions.
