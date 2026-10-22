@@ -14,7 +14,7 @@ Start with the garage dashboard and the existing authenticated synthetic fixture
 
 Capture only decision-relevant signals: initial render/load time, latency for one representative interaction, network requests, and active listeners. Record the browser, viewport, fixture role, and run conditions so a repeat can be compared. Begin with mobile and desktop for this one screen; expand the matrix only if the measurements are reliable and the suspected issue warrants it.
 
-The earlier authenticated-baseline experiment was stopped and reverted because garage login was unreliable in that harness. Do not treat its attempted results as a valid baseline. Existing role smoke coverage is useful for fixture verification, but a successful smoke capture alone is not performance evidence.
+An earlier pre-fix baseline attempt was stopped and reverted because garage login was unreliable. It is superseded by the successful authenticated baseline recorded below; do not treat the earlier attempt as valid evidence. Existing role smoke coverage is useful for fixture verification, but a successful smoke capture alone is not performance evidence.
 
 ### 2. Decide whether optimization is justified
 
@@ -43,6 +43,8 @@ Start another optimization only when the previous change is merged and its measu
 - Do not deploy or alter production data as part of this program.
 - Stop when measurement is unreliable or no meaningful bottleneck is established; fix the measurement setup only if the owner still wants the investigation.
 
-## First task when implementation is authorized
+## Current execution status — 2026-10-22
 
-Validate the existing authenticated fixture workflow for the garage dashboard, then capture a small repeatable mobile/desktop baseline using the signals above. This plan update does not itself authorize or start that task.
+The first task is complete: the authenticated garage fixture passed twice on mobile and twice on desktop, including the active Firestore listener count. The repeated runs showed seven active Firestore subscription registrations with the same inventory at both viewports and no duplicate registrations. The method, full listener inventory, timing ranges, and limitations are recorded in `docs/testing/UI-OPT-01-GARAGE-BASELINE-2026-10-21.md`.
+
+**Decision after step 2:** these synthetic local measurements do not demonstrate a meaningful, reproducible user-facing bottleneck. Do not start an optimization task; stop here. Resume only if the owner identifies a concrete performance symptom that warrants targeted measurement or explicitly approves a production-like test environment.
