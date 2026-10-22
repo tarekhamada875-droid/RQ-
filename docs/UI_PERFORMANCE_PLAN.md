@@ -28,7 +28,9 @@ Each numbered item is a work area, not a requirement to combine all its bullets 
 ### Keep the implementation simple and maintainable
 
 - Before fixing an audit item, reproduce it with a focused test or a clear, repeatable code-path demonstration. Treat findings explicitly labeled as risks as hypotheses until verified; if they cannot be reproduced, document the result and do not add speculative code to the app.
-- Fix the smallest underlying cause using existing project patterns. Prefer direct, readable code over new frameworks, dependencies, generic abstractions, duplicated state paths, or broad refactors. Add a shared helper only when multiple real call sites need the same behavior.
+- Trace each reproduced failure to its cause before editing. If several failures come from the same ownership or responsibility boundary, fix that shared cause instead of adding separate symptom-level guards.
+- Choose the smallest coherent root-cause fix, not necessarily the fewest changed lines. Local restructuring is appropriate when evidence shows the existing structure causes repeated defects; keep it within the affected boundary and add regression tests for the behavior it clarifies.
+- Prefer direct, readable code and existing project patterns. Do not add frameworks, dependencies, generic abstractions, or duplicate state paths unless the demonstrated fix genuinely requires them. If the root cause requires a broader architectural change, stop and present the evidence, options, risks, and expected maintenance benefit to the owner before expanding scope.
 - Keep tests focused on the user-visible failure and the relevant neighboring role/session case. Avoid test scaffolding that is harder to understand than the behavior it protects.
 - Each change should leave code easier to understand: use clear names, remove obsolete code only when in scope, and explain non-obvious constraints briefly. Do not create a separate roadmap or turn deferred observations into extra work.
 
