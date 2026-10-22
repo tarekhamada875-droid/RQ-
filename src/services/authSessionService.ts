@@ -59,6 +59,12 @@ export const getOrCreateDeviceId = (): string => {
 // In-memory cache to prevent duplicate Firestore transaction collisions within the same client session
 const recentClaims = new Map<string, number>();
 
+// A logout release and a new login can overlap in the same tab. Serialize them
+// for the same role/entity/session so an older release cannot erase a newer claim.
+const pendingSessionReleases = new Map<string, Promise<void>>();
+const getSessionOperationKey = (role: string, entityId: string, sessionId: string): string =>
+  JSON.stringify([role, entityId, sessionId]);
+
 const notifyWorkerSessionReady = (): void => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('rq-session-ready'));
 };
@@ -77,6 +83,14 @@ export const recordSessionAsClaimed = (role: string, entityId: string, sessionId
 export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }: ClaimSessionParams): Promise<void> => {
   if (!role || !entityId || !sessionId || !uid) {
     throw new Error('INVALID_SESSION_PARAMS');
+  }
+
+  const operationKey = getSessionOperationKey(role, entityId, sessionId);
+  const pendingRelease = pendingSessionReleases.get(operationKey);
+  if (pendingRelease) {
+    // If release failed, keep this claim blocked until a later release succeeds.
+    // This fails closed rather than allowing a late server release to revoke it.
+    await pendingRelease;
   }
 
   const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
@@ -139,9 +153,22 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
   recentClaims.delete(claimKey);
 
-  // The server owns the security documents. Await its owner/session-checked
-  // release before Firebase sign-out; never write session docs from the client.
-  await authService.releaseSessionOnServer(uid, sessionId, role, entityId);
+  // The server owns the security documents. Serialize this release against any
+  // new claim for the same role/entity/session. Never write session docs here.
+  const operationKey = getSessionOperationKey(role, entityId, sessionId);
+  const releasePromise = authService.releaseSessionOnServer(uid, sessionId, role, entityId);
+  pendingSessionReleases.set(operationKey, releasePromise);
+
+  try {
+    await releasePromise;
+    if (pendingSessionReleases.get(operationKey) === releasePromise) {
+      pendingSessionReleases.delete(operationKey);
+    }
+  } catch (error) {
+    // Keep the rejected promise so subsequent claims fail closed. A later
+    // successful release replaces and clears it.
+    throw error;
+  }
 };
 
 export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {
