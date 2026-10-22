@@ -206,8 +206,10 @@ export function useGarageSession({
       if (!currentUser) {
         try {
           currentUser = await signInAnonymouslyOnce();
+          if (!isMounted) return;
           if (isMounted) setUser(currentUser);
         } catch (authErr: any) {
+          if (!isMounted) return;
           console.error("Anonymous authentication failed:", authErr);
           const errMsg = authErr?.message || String(authErr);
           if (errMsg.includes('permission') || errMsg.includes('Permission')) {
@@ -286,8 +288,10 @@ export function useGarageSession({
           sessionId,
           uid
         });
+        if (!isMounted) return;
         if (isMounted) setIsSessionReady(true);
       } catch (err: any) {
+        if (!isMounted) return;
         console.warn('Session claim error in coordinator:', err);
         const errMsg = err?.message || String(err);
         if (
@@ -324,6 +328,7 @@ export function useGarageSession({
           });
           lastHeartbeatTime = Date.now();
         } catch (hbErr: any) {
+          if (!isMounted) return;
           console.warn('Heartbeat refresh failed:', hbErr);
           const hbMsg = hbErr?.message || String(hbErr);
           if (
@@ -359,7 +364,7 @@ export function useGarageSession({
         let isEvicting = false;
 
         const unsubscribeEntitySnapshot = onSnapshot(entityDocRef, async (snapshot) => {
-          if (isDeliberateLogoutRef.current || isEvicting) return;
+          if (!isMounted || isDeliberateLogoutRef.current || isEvicting) return;
           // Ignore offline cached snapshots - they can be stale and cause false evictions
           if (snapshot.metadata.fromCache) return;
 
@@ -394,6 +399,15 @@ export function useGarageSession({
               activeRole,
               activeEntityId
             );
+            if (!isMounted) {
+              isEvicting = false;
+              return;
+            }
+            if (isStillValid === null) {
+              // A transport/server failure is not evidence that the session was revoked.
+              isEvicting = false;
+              return;
+            }
             if (isStillValid) {
               // Server confirmed session is still valid; client snapshot was transiently out of sync
               isEvicting = false;
