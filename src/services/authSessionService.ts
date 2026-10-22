@@ -171,8 +171,8 @@ export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: C
   }
 };
 
-export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {
-  if (!role || !entityId || !sessionId || !uid) return;
+export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<boolean | null> => {
+  if (!role || !entityId || !sessionId || !uid) return null;
   try {
     // Session freshness and entity heartbeat are server-authoritative. The
     // browser may request a refresh, but it must not write security or entity
@@ -186,9 +186,14 @@ export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: C
     );
     if (!valid) {
       console.warn('[AuthSessionService] Server rejected session refresh', { role, entityId });
+      return false;
     }
+    return true;
   } catch (err) {
+    // A transport/server failure is not proof of revocation. Let the caller
+    // preserve the current session while retrying on the next heartbeat.
     console.warn('refreshEntitySession failed:', err);
+    return null;
   }
 };
 
