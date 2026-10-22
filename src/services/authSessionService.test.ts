@@ -80,12 +80,12 @@ describe('auth session server authority', () => {
   it('does not write browser session documents when the server rejects a refresh', async () => {
     mockedRefresh.mockResolvedValue(false);
 
-    await refreshEntitySession({
+    await expect(refreshEntitySession({
       role: 'staff',
       entityId: 'staff-1',
       sessionId: 'session-2',
       uid: 'firebase-uid-2',
-    });
+    })).resolves.toBe(false);
 
     expect(mockedRefresh).toHaveBeenCalledWith(
       'firebase-uid-2',
@@ -104,7 +104,7 @@ describe('auth session server authority', () => {
       entityId: 'garage-1',
       sessionId: 'session-outage',
       uid: 'firebase-uid-outage',
-    })).resolves.toBeUndefined();
+    })).resolves.toBeNull();
 
     expect(mockedRefresh).toHaveBeenCalledWith(
       'firebase-uid-outage',
