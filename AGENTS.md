@@ -15,7 +15,7 @@ Current product rules live in `docs/PROJECT.md`.
 
 ## Documentation governance
 
-The repository has one canonical documentation set. Product and architecture truth belongs in `docs/PROJECT.md`; the only active implementation plan is `docs/UI_PERFORMANCE_PLAN.md` (its contents are the Final Pre-Production Workflow Plan; the former UI-only plan has been replaced); security belongs in `docs/SECURITY.md`; release procedure belongs in `docs/RELEASES.md`; operations belongs in `docs/OPERATIONS.md`; and test procedures belong under `docs/testing/`.
+The repository has one canonical documentation set. Product and architecture truth belongs in `docs/PROJECT.md`; the only active implementation and launch-readiness plan is `docs/UI_PERFORMANCE_PLAN.md` (the former UI-only plan has been replaced); security belongs in `docs/SECURITY.md`; release procedure belongs in `docs/RELEASES.md`; operations belongs in `docs/OPERATIONS.md`; and test procedures belong under `docs/testing/`.
 
 Follow only the active implementation plan. Treat audit files, baselines, and completed test reports under `docs/testing/` as evidence, not as instructions to start additional work. The Reliability and Scale workstream and legacy-data cleanup were explicitly skipped; do not resume them, including any load-test contract. The Garage UI performance baseline is complete and showed no meaningful bottleneck; do not start speculative optimization. If a newly discovered task is outside the active plan, stop and ask the owner before expanding scope.
 

@@ -1,12 +1,12 @@
-# RQ Final Pre-Production Workflow Plan
+# RQ Pre-Production and Pilot Readiness Plan
 
-**Status:** Proposed execution plan. This document is the repository’s only active implementation plan. It supersedes the former UI performance plan. The app-wide audit is evidence, not a second plan.
+**Status:** Active readiness plan. This is the repository’s only active implementation and launch-readiness plan. It supersedes the former UI performance plan. The app-wide audit is evidence, not a second plan.
 
 **Starting revision:** `690907b` (`main` matched `origin/main` at audit time). The audit found defects in shared session/state handling and in role workflows. No application-code changes are included in this plan file.
 
 ## Purpose
 
-Before the next production release, make the existing Admin, Garage owner, Delegate, and Staff journeys behave consistently: the right person and garage data should be shown; a request from an old screen must not update a new one; actions should complete or show an understandable error; and the app should preserve Arabic/English and RTL/LTR behavior.
+Before inviting real garages to rely on RQ, fix confirmed defects, verify the deployed service and recovery procedures, and gather enough customer and cost evidence to make an informed pilot decision. A passing test suite alone does not mean RQ is ready to earn revenue or support a living.
 
 This plan does **not** promise that software can have no possible failures. It defines the important role scenarios that must be tested and the order that avoids fixing one screen while breaking another.
 
@@ -18,6 +18,7 @@ This plan does **not** promise that software can have no possible failures. It d
 - The owner has skipped the broad Reliability and Scale workstream and legacy-data cleanup. Do not run the staging load test, create a replacement load-test program, or delete/backfill customer data under this plan.
 - The Garage Dashboard performance baseline did not show a meaningful, repeatable bottleneck. Do not start general performance optimization or repeat broad profiling unless the owner identifies a concrete symptom.
 - Use synthetic emulator data only for development and tests. No production customer records, production data cleanup, or production load test is part of this plan.
+- Real customer data may be used only in an explicitly approved, limited pilot after the technical, privacy, access, and recovery gates below pass. Do not use real records for development, test fixtures, profiling, or broad load tests.
 - One Admin operator may use multiple devices. Do not add a one-device-only lock or reject the owner’s second device.
 - Preserve the Worker/API as the authority for identity, role, garage scope, money, eligibility, counters, and reports. Preserve active monthly vehicle subscribers; they are distinct from retired garage-level packages.
 
@@ -107,15 +108,34 @@ Keep existing authorization boundaries. Refresh or reconcile data only after a s
 
 Do not turn these deferred questions into speculative cleanup or a new roadmap.
 
-## Final preproduction acceptance gate
-
-Before the release candidate is considered ready:
+## Engineering and operations go/no-go gate
+Do not invite a garage to depend on RQ for live operations until each item has evidence recorded in the normal release/operations records:
 
 1. Run focused tests for every changed slice and cross-role session/authorization regressions.
 2. Run the repository checks required by `AGENTS.md` and `docs/RELEASES.md`: `npm test`, `npm run test:rules`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
 3. Run emulator-backed browser smoke journeys for Admin, Garage owner, Delegate, and Staff. Include Arabic/RTL and English/LTR where the role has language selection, mobile and desktop viewports, reload/session restore, logout/re-login, network failure, and switching roles while requests/listeners are pending.
 4. Confirm each role’s happy path and one meaningful failure/retry path. Verify the Worker remains authoritative and existing cross-role authorization tests still reject out-of-scope requests.
-5. Merge only through the protected `main` branch after required checks pass. The existing Production Gate governs deployment; do not manually deploy or use production customer records for validation. When code/configuration is deployed, verify the deployed commit/version and health endpoints separately from the fact that `main` advanced.
+5. Verify the actual production Pages/Worker commit and version, Firebase project/database, deployed rules and indexes, required secrets, allowed origins, and authentication configuration. `main` advancing is not proof that production has the matching release.
+6. Complete a real restore rehearsal with synthetic or otherwise safely isolated data. Confirm who can perform it, what records are restored, how long it takes, and how to validate correctness. A written backup intention is not a tested recovery process.
+7. Confirm monitoring and alerts are configured in the provider accounts: request/error signals, Firestore reads/writes and storage, Worker usage, abuse/rate limits, and retention. Understand what alerts do and do not prevent; do not assume a budget alert is a spending cap.
+8. Document a simple operator runbook for onboarding a garage, handling a failed check-in/out or uncertain credit grant, reconciling a manually confirmed payment, support contact, incident escalation, rollback, and safe service interruption. Preserve the existing rule that an Admin confirms payment and grants credits.
+9. Resolve applicable privacy, customer-data, terms, and tax/payment obligations for the places where RQ will operate. The owner must obtain qualified local advice for legal/tax questions; this plan is not a legal determination.
+
+## Business evidence and limited pilot gate
+The project documents a 100-credit trial, prepaid paid credits, and Admin-confirmed credit grants. It does not establish customer demand, final prices, conversion, operating costs, or a sustainable income level. Do not present any of those as proven until measured.
+
+Before the first live pilot, the owner should choose a small, explicit pilot size and duration, identify the type of garage and problem being tested, and agree with each participant on what the pilot includes, how support works, how data is handled, and how the pilot can end. Begin with a few willing garages, not a broad public launch. Do not charge or promise a service level that has not been agreed and tested.
+
+During the pilot, record simple evidence: whether each garage completes onboarding; whether the core entry/exit and subscriber workflows are used in real work; failed or corrected operations; support requests and time spent; repeat usage; and whether the operator can reconcile payment and credit-ledger effects. Ask customers directly whether they would continue at a clearly stated price and why. Compliments or sign-ups without continued use or payment are not proof of willingness to pay.
+
+Build a conservative monthly unit-economics estimate before expanding: revenue per paying garage minus actual Firebase/Cloudflare usage, payment costs, the documented 100 EGP delegate commission where applicable, support and onboarding time, and other known operating expenses. Compare break-even garage count with the owner’s chosen monthly income target. The owner still needs to set that target; the repository cannot infer what “decent living” means. Measure actual pilot usage and verify the current Firebase billing plan, quotas, and over-limit behavior in the project console. Do not enable a paid plan or incur a new charge without the owner’s explicit decision.
+
+## Launch decision
+Choose **GO for a limited pilot** only when the engineering/operations gate passes, participants understand the pilot and data handling, there is a workable support and recovery procedure, and costs are monitored. Keep access and scope small, review results at the agreed end date, and stop or pause if data integrity, security, reliability, customer value, or cost control is uncertain.
+
+Choose **GO for a broader paid launch** only after pilot evidence shows repeated use of the core workflow, at least some customers actually accept and pay the stated price, the measured economics have a credible path to the owner’s income target, and support/recovery/cost controls remain workable at the expected scale. Otherwise, do not call the business production-ready: fix the blocking issue or run another narrowly defined validation test.
+
+No checklist can guarantee a profitable business. The owner makes the final go/no-go decision based on recorded evidence; technical readiness and business viability are separate requirements.
 
 **Stop condition:** no unresolved confirmed high-priority session/data-isolation defect; source-confirmed role-specific defects in the active product are fixed or explicitly removed because the feature is retired; relevant tests pass; risk-only findings have been tested and either reproduced or documented without speculative code changes; no unapproved scope expansion. If a new issue appears outside this plan, stop and ask the owner rather than opening another workstream.
 
