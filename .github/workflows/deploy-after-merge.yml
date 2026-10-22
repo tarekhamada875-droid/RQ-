@@ -1,0 +1,116 @@
+name: Deploy after verified auto-merge
+
+on:
+  workflow_run:
+    workflows: [Production Gate]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: deploy-after-merge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  dispatch-deployment:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Wait for the checked pull request to merge
+        id: target
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+            const headSha = run.head_sha;
+            const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: headSha,
+              per_page: 100,
+            });
+            const matches = associated.filter(pr =>
+              pr.base.ref === 'main' && pr.head.sha === headSha
+            );
+            if (matches.length !== 1) {
+              core.notice(`Expected one main pull request for ${headSha}; found ${matches.length}. No deployment was dispatched.`);
+              core.setOutput('deploy_sha', '');
+              return;
+            }
+
+            const number = matches[0].number;
+            for (let attempt = 0; attempt < 40; attempt++) {
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              if (pr.head.sha !== headSha) {
+                core.notice(`PR #${number} advanced beyond the checked commit; a newer Production Gate run must handle deployment.`);
+                core.setOutput('deploy_sha', '');
+                return;
+              }
+              if (pr.merged_at) {
+                if (pr.base.ref !== 'main' || !pr.merge_commit_sha) {
+                  throw new Error(`PR #${number} merged without a main merge commit SHA.`);
+                }
+                core.info(`PR #${number} merged as ${pr.merge_commit_sha}.`);
+                core.setOutput('deploy_sha', pr.merge_commit_sha);
+                return;
+              }
+              if (pr.state === 'closed') {
+                core.notice(`PR #${number} closed without merging; no deployment was dispatched.`);
+                core.setOutput('deploy_sha', '');
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.notice(`PR #${number} is still open after waiting; no deployment was dispatched.`);
+            core.setOutput('deploy_sha', '');
+
+      - name: Check for the normal main-push deployment
+        id: push_run
+        if: steps.target.outputs.deploy_sha != ''
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_SHA: ${{ steps.target.outputs.deploy_sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            for (let attempt = 0; attempt < 12; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: 'production-gate.yml',
+                head_sha: process.env.DEPLOY_SHA,
+                per_page: 100,
+              });
+              const pushRun = data.workflow_runs.find(run =>
+                run.event === 'push' && run.head_branch === 'main'
+              );
+              if (pushRun) {
+                core.info(`Production Gate push run ${pushRun.id} exists (${pushRun.status}/${pushRun.conclusion || 'running'}); avoiding a duplicate deployment.`);
+                core.setOutput('exists', 'true');
+                return;
+              }
+              if (attempt < 11) await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+            core.info('No Production Gate push run appeared; dispatching the verified merge commit explicitly.');
+            core.setOutput('exists', 'false');
+
+      - name: Dispatch verified merge commit through Production Gate
+        if: steps.target.outputs.deploy_sha != '' && steps.push_run.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_SHA: ${{ steps.target.outputs.deploy_sha }}
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'production-gate.yml',
+              ref: 'main',
+              inputs: { deploy_sha: process.env.DEPLOY_SHA },
+            });
+            core.info(`Production Gate dispatched for ${process.env.DEPLOY_SHA}.`);
