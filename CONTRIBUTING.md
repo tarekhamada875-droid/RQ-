@@ -2,7 +2,7 @@
 
 Read `docs/PROJECT.md`, `docs/SECURITY.md`, and `docs/RELEASES.md` before making a substantial change.
 
-For implementation work before production, follow only `docs/UI_PERFORMANCE_PLAN.md`, which now contains the Final Pre-Production Workflow Plan. Do not resume the skipped Reliability and Scale or legacy-data-cleanup workstreams, and do not start speculative UI optimization.
+For implementation and launch-readiness work before production, follow only `docs/UI_PERFORMANCE_PLAN.md`, the Pre-Production and Pilot Readiness Plan. Do not resume the skipped Reliability and Scale or legacy-data-cleanup workstreams, and do not start speculative UI optimization.
 
 Start from synchronized `main` with a clean working tree. Create one short-lived branch for one bounded change. Add or update a focused regression test before changing sensitive behavior. Preserve current UI/UX unless the task explicitly approves a UI change.
 
