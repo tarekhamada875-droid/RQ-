@@ -8,6 +8,8 @@ const serviceMocks = vi.hoisted(() => ({
   getDashboardDataPage: vi.fn(),
   getAdminGaragesPage: vi.fn(),
   getAdminDelegatesPage: vi.fn(),
+  getStaffByGarageOnce: vi.fn(),
+  getGarageById: vi.fn(),
   // Anti-regression spies: the sync hook must never restore recharge-request history reads.
   getAdminRechargeRequestsPage: vi.fn(),
   subscribeToPackages: vi.fn(),
@@ -60,8 +62,10 @@ beforeEach(() => {
   vi.useFakeTimers();
   serviceMocks.getDashboardData.mockReset();
   serviceMocks.getDashboardDataPage.mockReset();
-  serviceMocks.getAdminGaragesPage.mockReset();
-  serviceMocks.getAdminDelegatesPage.mockReset();
+  serviceMocks.getAdminGaragesPage.mockReset().mockResolvedValue({ garages: [], lastDoc: null, hasMore: false });
+  serviceMocks.getAdminDelegatesPage.mockReset().mockResolvedValue({ delegates: [], lastDoc: null, hasMore: false });
+  serviceMocks.getStaffByGarageOnce.mockReset().mockResolvedValue([]);
+  serviceMocks.getGarageById.mockReset().mockResolvedValue(null);
   serviceMocks.getAdminRechargeRequestsPage.mockReset().mockResolvedValue({ requests: [], lastDoc: null, hasMore: false });
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
@@ -312,5 +316,47 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(serviceMocks.throttleCancels).toHaveLength(1);
     unmount();
     expect(serviceMocks.throttleCancels[0]).toHaveBeenCalledOnce();
+  });
+
+  it('ignores a garage-detail response for the previously selected garage', async () => {
+    vi.useRealTimers();
+    let resolveGarageA: (garage: any) => void = () => {};
+    let resolveGarageB: (garage: any) => void = () => {};
+    serviceMocks.getGarageById
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageA = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageB = resolve; }));
+
+    const baseProps = createBaseProps();
+    const setSelectedGarageForDetails = vi.fn();
+    const { rerender, unmount } = renderHook(
+      ({ selectedGarageForDetails }) => useGarageSync({
+        ...baseProps,
+        isSessionReady: true,
+        view: 'admin_garage_details',
+        selectedGarageForDetails,
+        setSelectedGarageForDetails,
+      }),
+      { initialProps: { selectedGarageForDetails: { id: 'garage-a' } as any } }
+    );
+
+    await act(async () => {
+      rerender({ selectedGarageForDetails: { id: 'garage-b' } as any });
+      await Promise.resolve();
+    });
+    expect(serviceMocks.getGarageById).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      resolveGarageB({ id: 'garage-b', name: 'Garage B' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      resolveGarageA({ id: 'garage-a', name: 'Garage A' });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(setSelectedGarageForDetails).toHaveBeenCalledTimes(1);
+    expect(setSelectedGarageForDetails).toHaveBeenCalledWith({ id: 'garage-b', name: 'Garage B' });
+    unmount();
   });
 });

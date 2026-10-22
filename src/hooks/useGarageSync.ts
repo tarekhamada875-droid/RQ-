@@ -276,12 +276,14 @@ export function useGarageSync({
     if (!isAuthReady || !user || view !== 'admin_garage_details' || !selectedGarageForDetails?.id) return;
 
     const garageId = selectedGarageForDetails.id;
+    let cancelled = false;
     const fetchSpecificData = async () => {
       try {
         const [staffData, garageData] = await Promise.all([
           firestoreService.getStaffByGarageOnce(garageId),
           firestoreService.getGarageById(garageId)
         ]);
+        if (cancelled) return;
         setStaffList(staffData);
         if (garageData) setSelectedGarageForDetails(garageData);
       } catch (err) {
@@ -290,6 +292,9 @@ export function useGarageSync({
     };
 
     fetchSpecificData();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthReady, user, view, selectedGarageForDetails?.id, setSelectedGarageForDetails]);
 
   const delegateGarages = useMemo(() => {
