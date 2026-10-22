@@ -63,6 +63,18 @@ describe('production release workflow', () => {
     expect(postMergeWorkflow).toContain("inputs: { deploy_sha: process.env.DEPLOY_SHA }");
   });
 
+  it('does not dispatch a Worker deployment for Markdown-only merged pull requests', () => {
+    const docsOnlyCheck = postMergeWorkflow.indexOf('if (docsOnly) {');
+    const deploymentTarget = postMergeWorkflow.indexOf("core.setOutput('deploy_sha', pr.merge_commit_sha)");
+
+    expect(postMergeWorkflow).toContain('github.paginate(github.rest.pulls.listFiles');
+    expect(postMergeWorkflow).toContain("file.filename.endsWith('.md')");
+    expect(postMergeWorkflow).toContain('files.length === pr.changed_files');
+    expect(docsOnlyCheck).toBeGreaterThanOrEqual(0);
+    expect(deploymentTarget).toBeGreaterThan(docsOnlyCheck);
+    expect(postMergeWorkflow).toContain("if: steps.target.outputs.deploy_sha != ''");
+  });
+
   it('imports and smoke-tests the built artifact in local CI, verification, and before deployment', () => {
     const buildCommand = verifyJob.indexOf('run: npm run build');
     const verifySmokeCommand = verifyJob.indexOf('run: npm run smoke:worker-artifact');
