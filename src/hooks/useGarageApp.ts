@@ -175,6 +175,8 @@ export function useGarageApp() {
     garage,
     setGarage,
     delegate,
+    currentStaff,
+    currentSupervisor,
     setDelegate,
     selectedGarageForDetails,
     setSelectedGarageForDetails,
