@@ -1,0 +1,55 @@
+name: Enable auto-merge for main PRs
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enable native squash auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const eventPull = context.payload.pull_request;
+            if (!eventPull || eventPull.base.ref !== 'main' || eventPull.draft || eventPull.state !== 'open') {
+              core.info('Not an open, non-draft pull request targeting main; nothing to do.');
+              return;
+            }
+
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: eventPull.number,
+            });
+            if (pull.state !== 'open' || pull.draft || pull.base.ref !== 'main') {
+              core.info('Pull request state changed before auto-merge could be enabled; nothing to do.');
+              return;
+            }
+
+            const mutation = `
+              mutation EnableAutoMerge($pullRequestId: ID!) {
+                enablePullRequestAutoMerge(input: {
+                  pullRequestId: $pullRequestId,
+                  mergeMethod: SQUASH
+                }) {
+                  pullRequest {
+                    number
+                    autoMergeRequest {
+                      enabledAt
+                      mergeMethod
+                    }
+                  }
+                }
+              }
+            `;
+            const result = await github.graphql(mutation, { pullRequestId: pull.node_id });
+            core.info(`Native squash auto-merge enabled for PR #${result.enablePullRequestAutoMerge.pullRequest.number}; GitHub will merge only when the main ruleset's required approval and Production Gate check are satisfied.`);
