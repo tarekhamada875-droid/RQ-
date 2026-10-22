@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Vehicle, Package, Staff } from '../types';
+import { Garage, Vehicle, Package, Staff, Supervisor } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
 
@@ -11,6 +11,8 @@ interface UseGarageSyncProps {
   garage: Garage | null;
   setGarage: (g: Garage | null) => void;
   delegate: any | null;
+  currentStaff: Staff | null;
+  currentSupervisor: Supervisor | null;
   setDelegate: (d: any | null) => void;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
@@ -27,6 +29,8 @@ export function useGarageSync({
   garage,
   setGarage,
   delegate,
+  currentStaff,
+  currentSupervisor,
   setDelegate,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
@@ -72,13 +76,25 @@ export function useGarageSync({
     return [];
   });
 
-  // Clear garage-scoped data before a different owner or role can render it.
-  // The active owner's subscriptions repopulate these lists after the reset.
+  // Keep transient garage data tied to the active role/entity, not just the shared garage ID.
+  const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
+  const dataOwnerKey = view === 'garage'
+    ? `garage:${garage?.id ?? ''}:staff:${currentStaff?.id ?? 'owner'}:user:${user?.uid ?? ''}`
+    : view === 'delegate_dashboard'
+      ? `delegate:${delegate?.id ?? ''}:user:${user?.uid ?? ''}`
+      : isAdminView
+        ? `admin:${currentSupervisor?.id ?? 'admin'}:user:${user?.uid ?? ''}`
+        : `view:${view}:user:${user?.uid ?? ''}`;
+  const previousDataOwnerKeyRef = useRef(dataOwnerKey);
+
+  // Clear before paint when ownership changes; do not wipe retained data on initial mount.
   useLayoutEffect(() => {
+    if (previousDataOwnerKeyRef.current === dataOwnerKey) return;
+    previousDataOwnerKeyRef.current = dataOwnerKey;
     setVehicles([]);
     setTodayTransactions([]);
     setStaffList([]);
-  }, [view, garage?.id, user?.uid, isSessionReady]);
+  }, [dataOwnerKey]);
 
   // Subscribe to Active Vehicles
   useEffect(() => {

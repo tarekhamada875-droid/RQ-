@@ -33,6 +33,8 @@ const baseProps = {
   user: { uid: 'user-1' },
   setGarage: vi.fn(),
   delegate: null,
+  currentStaff: null,
+  currentSupervisor: null,
   setDelegate: vi.fn(),
   selectedGarageForDetails: null,
   setSelectedGarageForDetails: vi.fn(),
