@@ -3,6 +3,7 @@ import { apiFetch } from '../api/apiClient';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Package } from '../types';
 import { isCreditBundlePackage } from '../utils/packageCatalog';
+import { listenerTracker } from '../utils/listenerTracker';
 
 export const adminPackageService = {
   addPackage: async (pkg: Omit<Package, 'id' | 'createdAt' | 'isActive'>): Promise<void> => {
@@ -22,9 +23,10 @@ export const adminPackageService = {
 
 
   subscribeToPackages: (callback: (packages: Package[]) => void) => {
+    const trackerUnsubscribe = listenerTracker.register('packages');
     const colRef = collection(db, 'packages');
     const packagesQuery = query(colRef, where('catalogType', '==', 'credit_bundle'));
-    return onSnapshot(packagesQuery, async (snapshot) => {
+    const unsubscribe = onSnapshot(packagesQuery, async (snapshot) => {
       if (snapshot.empty) {
         try {
           localStorage.setItem('app_packages_cache', JSON.stringify([]));
@@ -62,6 +64,13 @@ export const adminPackageService = {
       }
       callback([]);
     });
+    return () => {
+      try {
+        unsubscribe();
+      } finally {
+        trackerUnsubscribe();
+      }
+    };
   },
 
   // Subscribers
