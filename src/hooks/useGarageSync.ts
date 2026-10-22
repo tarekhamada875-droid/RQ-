@@ -72,6 +72,14 @@ export function useGarageSync({
     return [];
   });
 
+  // Clear garage-scoped data before a different owner or role can render it.
+  // The active owner's subscriptions repopulate these lists after the reset.
+  useEffect(() => {
+    setVehicles([]);
+    setTodayTransactions([]);
+    setStaffList([]);
+  }, [view, garage?.id, user?.uid, isSessionReady, setVehicles, setTodayTransactions]);
+
   // Subscribe to Active Vehicles
   useEffect(() => {
     if (!isSessionReady || !garage?.id) {
