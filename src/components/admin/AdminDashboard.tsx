@@ -147,9 +147,20 @@ export const AdminDashboard = memo(({
     }
   }, [activeTab]);
 
+  const refreshAdminListsAfterMutation = async () => {
+    try {
+      await onRefreshAdminLists?.();
+    } catch (error) {
+      // The mutation succeeded; report refresh failures separately rather than
+      // implying that the saved change itself failed.
+      console.error('Failed to refresh Admin lists after mutation:', error);
+    }
+  };
+
   const handleApproveGarage = async (garage: Garage) => {
     try {
       await firestoreService.updateGarage(garage.id, { status: 'approved' });
+      await refreshAdminListsAfterMutation();
       soundManager.play('checkIn');
       showToast?.(`تم قبول وتفعيل جراج "${garage.name}" بنجاح 🚀`, 'success');
     } catch (error) {
@@ -177,6 +188,7 @@ export const AdminDashboard = memo(({
               reject(new Error(result.errorCode));
               return;
             }
+            await refreshAdminListsAfterMutation();
             soundManager.play('error');
             showToast?.(adminLang === 'en'
               ? `Garage request for "${garage.name}" was rejected and its data was deleted.`
@@ -219,6 +231,7 @@ export const AdminDashboard = memo(({
     try {
       const created = await createNewGarage(e);
       if (!created) return false;
+      await refreshAdminListsAfterMutation();
       setShowOverview(false);
       return true;
     } catch (err) {

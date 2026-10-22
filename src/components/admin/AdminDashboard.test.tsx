@@ -31,10 +31,13 @@ vi.mock('../../utils/adminTranslations', () => ({
 
 vi.mock('./AdminHeader', () => ({ AdminHeader: () => null }));
 vi.mock('./AdminNavigationAndViews', () => ({
-  AdminNavigationAndViews: ({ setActiveTab, displayedGarages, handleRejectGarage, onOpenAddGarage }: any) => (
+  AdminNavigationAndViews: ({ setActiveTab, displayedGarages, handleApproveGarage, handleRejectGarage, onOpenAddGarage }: any) => (
     <>
       <button onClick={() => setActiveTab('garages')}>Open garages</button>
       <button onClick={() => onOpenAddGarage?.()}>Open add garage</button>
+      <button onClick={() => void handleApproveGarage({ id: 'pending-1', name: 'Pending Garage' }).catch(() => {})}>
+        Approve pending garage
+      </button>
       <button onClick={() => void handleRejectGarage({ id: 'pending-1', name: 'Pending Garage' }).catch(() => {})}>
         Reject pending garage
       </button>
@@ -70,6 +73,7 @@ afterEach(() => {
 const renderDashboardForGarageCreation = (
   createNewGarage: (event: FormEvent<HTMLFormElement>) => Promise<boolean>,
   showToast = vi.fn(),
+  onRefreshAdminLists = vi.fn().mockResolvedValue(undefined),
 ) => {
   render(
     <AdminDashboard
@@ -84,6 +88,7 @@ const renderDashboardForGarageCreation = (
       onLogout={vi.fn()}
       currentAdminPin=""
       showToast={showToast}
+      onRefreshAdminLists={onRefreshAdminLists}
     />,
   );
   return showToast;
@@ -146,7 +151,8 @@ describe('AdminDashboard garage actions', () => {
 
   it('closes and clears the add-garage draft only after successful creation', async () => {
     const createNewGarage = vi.fn().mockResolvedValue(true);
-    renderDashboardForGarageCreation(createNewGarage);
+    const onRefreshAdminLists = vi.fn().mockResolvedValue(undefined);
+    renderDashboardForGarageCreation(createNewGarage, vi.fn(), onRefreshAdminLists);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
     fillAddGarageDraft();
@@ -154,6 +160,7 @@ describe('AdminDashboard garage actions', () => {
 
     await waitFor(() => expect(screen.queryByPlaceholderText('اسم الجراج...')).not.toBeInTheDocument());
     expect(createNewGarage).toHaveBeenCalledTimes(1);
+    expect(onRefreshAdminLists).toHaveBeenCalledOnce();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
     expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('');
@@ -181,6 +188,56 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
     expect(screen.getByPlaceholderText('12345678')).toHaveValue('12345678');
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('refreshes paginated Admin lists after a successful garage approval', async () => {
+    const onRefreshAdminLists = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AdminDashboard
+        allGarages={[{ id: 'pending-1', name: 'Pending Garage', status: 'pending' } as any]}
+        isLoading={false}
+        createNewGarage={vi.fn().mockResolvedValue(true)}
+        setView={vi.fn()}
+        setSelectedGarageForDetails={vi.fn()}
+        setSelectedDelegateForDetails={vi.fn()}
+        delegates={[]}
+        packages={[]}
+        onLogout={vi.fn()}
+        currentAdminPin=""
+        onRefreshAdminLists={onRefreshAdminLists}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve pending garage' }));
+
+    await waitFor(() => expect(onRefreshAdminLists).toHaveBeenCalledOnce());
+    expect(firestoreService.updateGarage).toHaveBeenCalledWith('pending-1', { status: 'approved' });
+  });
+
+  it('refreshes paginated Admin lists after a successful pending-garage rejection', async () => {
+    deleteGarageWithRecoveryMock.mockResolvedValue({ ok: true });
+    const onRefreshAdminLists = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AdminDashboard
+        allGarages={[{ id: 'pending-1', name: 'Pending Garage', status: 'pending' } as any]}
+        isLoading={false}
+        createNewGarage={vi.fn().mockResolvedValue(true)}
+        setView={vi.fn()}
+        setSelectedGarageForDetails={vi.fn()}
+        setSelectedDelegateForDetails={vi.fn()}
+        delegates={[]}
+        packages={[]}
+        onLogout={vi.fn()}
+        currentAdminPin=""
+        onRefreshAdminLists={onRefreshAdminLists}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject pending garage' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm dialog action' }));
+
+    await waitFor(() => expect(onRefreshAdminLists).toHaveBeenCalledOnce());
+    expect(deleteGarageWithRecoveryMock).toHaveBeenCalledWith('pending-1');
   });
 
   it('routes pending-garage rejection through shared deletion handling and reports a real failure', async () => {

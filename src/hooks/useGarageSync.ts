@@ -48,6 +48,8 @@ export function useGarageSync({
   const adminDelegateCursorRef = useRef<any>(null);
   const adminGarageLoadingRef = useRef(false);
   const adminDelegateLoadingRef = useRef(false);
+  const adminGarageRequestVersionRef = useRef(0);
+  const adminDelegateRequestVersionRef = useRef(0);
   const adminListsLoadedRef = useRef(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [delegatePagination, setDelegatePagination] = useState({
@@ -139,12 +141,16 @@ export function useGarageSync({
   }, [setStaffList]);
 
   const loadAdminGaragePage = useCallback(async (reset = false) => {
-    if (adminGarageLoadingRef.current || (!reset && !adminGarageHasMore)) return;
+    if ((!reset && adminGarageLoadingRef.current) || (!reset && !adminGarageHasMore)) return;
+    const requestVersion = reset
+      ? ++adminGarageRequestVersionRef.current
+      : adminGarageRequestVersionRef.current;
     adminGarageLoadingRef.current = true;
     setAdminListsLoading(true);
-    setAdminListsError(false);
+    if (reset) setAdminListsError(false);
     try {
       const page = await firestoreService.getAdminGaragesPage(50, reset ? null : adminGarageCursorRef.current);
+      if (requestVersion !== adminGarageRequestVersionRef.current) return;
       setAllGarages((previous) => {
         const rows = reset ? page.garages : [...previous, ...page.garages];
         return Array.from(new Map(rows.map((garage) => [garage.id, garage])).values());
@@ -152,21 +158,28 @@ export function useGarageSync({
       adminGarageCursorRef.current = page.lastDoc;
       setAdminGarageHasMore(page.hasMore);
     } catch (error) {
+      if (requestVersion !== adminGarageRequestVersionRef.current) return;
       console.error('Failed to load admin garage page:', error);
       setAdminListsError(true);
     } finally {
-      adminGarageLoadingRef.current = false;
-      setAdminListsLoading(false);
+      if (requestVersion === adminGarageRequestVersionRef.current) {
+        adminGarageLoadingRef.current = false;
+        setAdminListsLoading(adminDelegateLoadingRef.current);
+      }
     }
   }, [adminGarageHasMore]);
 
   const loadAdminDelegatePage = useCallback(async (reset = false) => {
-    if (adminDelegateLoadingRef.current || (!reset && !adminDelegateHasMore)) return;
+    if ((!reset && adminDelegateLoadingRef.current) || (!reset && !adminDelegateHasMore)) return;
+    const requestVersion = reset
+      ? ++adminDelegateRequestVersionRef.current
+      : adminDelegateRequestVersionRef.current;
     adminDelegateLoadingRef.current = true;
     setAdminListsLoading(true);
-    setAdminListsError(false);
+    if (reset) setAdminListsError(false);
     try {
       const page = await firestoreService.getAdminDelegatesPage(50, reset ? null : adminDelegateCursorRef.current);
+      if (requestVersion !== adminDelegateRequestVersionRef.current) return;
       setDelegates((previous) => {
         const rows = reset ? page.delegates : [...previous, ...page.delegates];
         return Array.from(new Map(rows.map((delegate) => [delegate.id, delegate])).values());
@@ -174,23 +187,28 @@ export function useGarageSync({
       adminDelegateCursorRef.current = page.lastDoc;
       setAdminDelegateHasMore(page.hasMore);
     } catch (error) {
+      if (requestVersion !== adminDelegateRequestVersionRef.current) return;
       console.error('Failed to load admin delegate page:', error);
       setAdminListsError(true);
     } finally {
-      adminDelegateLoadingRef.current = false;
-      setAdminListsLoading(false);
+      if (requestVersion === adminDelegateRequestVersionRef.current) {
+        adminDelegateLoadingRef.current = false;
+        setAdminListsLoading(adminGarageLoadingRef.current);
+      }
     }
   }, [adminDelegateHasMore]);
 
   const refreshAdminLists = useCallback(async () => {
-    if (adminListsLoadedRef.current && adminListsLoading) return;
+    // A reset must supersede any older page request, even when that request
+    // is still in flight. The request-version guards prevent late pages from
+    // restoring stale rows or cursors after a successful mutation.
     adminListsLoadedRef.current = true;
     adminGarageCursorRef.current = null;
     adminDelegateCursorRef.current = null;
     setAdminGarageHasMore(false);
     setAdminDelegateHasMore(false);
     await Promise.all([loadAdminGaragePage(true), loadAdminDelegatePage(true)]);
-  }, [adminListsLoading, loadAdminDelegatePage, loadAdminGaragePage]);
+  }, [loadAdminDelegatePage, loadAdminGaragePage]);
 
   // Sync delegate dashboard garage lists
   const delegateId = delegate?.id;
