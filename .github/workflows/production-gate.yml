@@ -257,23 +257,48 @@ jobs:
             if (!/^[0-9a-f]{40}$/.test(process.env.DEPLOY_SHA) || !/^[0-9a-f]{40}$/.test(process.env.SOURCE_SHA)) {
               throw new Error('deploy_sha and source_sha must be full lowercase commit SHAs.');
             }
-            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: sourceRunId });
+
+            // GitHub's API can occasionally return a truncated response body. Retry only
+            // transient transport/server errors; validation failures must still fail closed.
+            const requestWithRetry = async (label, request, attempts = 4) => {
+              for (let attempt = 1; attempt <= attempts; attempt++) {
+                try {
+                  return await request();
+                } catch (error) {
+                  const message = error?.message || String(error);
+                  const status = error?.status || error?.response?.status;
+                  const transient = status === 408 || status === 429 || status >= 500 ||
+                    message.includes('Unexpected end of JSON input') ||
+                    message.includes('ECONNRESET') || message.includes('ETIMEDOUT');
+                  if (!transient || attempt === attempts) throw error;
+                  core.warning(`${label} failed on attempt ${attempt}/${attempts}; retrying a transient GitHub API error.`);
+                  await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+                }
+              }
+              throw new Error(`${label} failed after retries.`);
+            };
+
+            const { data: run } = await requestWithRetry('Source workflow run lookup', () =>
+              github.rest.actions.getWorkflowRun({ owner, repo, run_id: sourceRunId })
+            );
             if (run.name !== 'Production Gate' || run.event !== 'pull_request' || run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== process.env.SOURCE_SHA) {
               throw new Error('The source run is not the successful PR Production Gate for source_sha.');
             }
-            const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner,
-              repo,
-              commit_sha: process.env.SOURCE_SHA,
-              per_page: 100,
-            });
+            const { data: associated } = await requestWithRetry('Associated pull request lookup', () =>
+              github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: process.env.SOURCE_SHA,
+                per_page: 100,
+              })
+            );
             const matches = associated.filter(pr => pr.base.ref === 'main' && pr.head.sha === process.env.SOURCE_SHA && pr.merged_at && pr.merge_commit_sha === process.env.DEPLOY_SHA);
             if (matches.length !== 1) {
               throw new Error('The source PR does not uniquely identify the requested merged commit.');
             }
             const [{ data: sourceCommit }, { data: mergedCommit }] = await Promise.all([
-              github.rest.repos.getCommit({ owner, repo, ref: process.env.SOURCE_SHA }),
-              github.rest.repos.getCommit({ owner, repo, ref: process.env.DEPLOY_SHA }),
+              requestWithRetry('Source commit lookup', () => github.rest.repos.getCommit({ owner, repo, ref: process.env.SOURCE_SHA })),
+              requestWithRetry('Merged commit lookup', () => github.rest.repos.getCommit({ owner, repo, ref: process.env.DEPLOY_SHA })),
             ]);
             if (sourceCommit.commit.tree.sha !== mergedCommit.commit.tree.sha) {
               throw new Error('The merged commit tree differs from the source commit tested by the PR gate.');
