@@ -156,7 +156,7 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     expect(props.setView).not.toHaveBeenCalled();
   });
 
-  it('preserves the missing-garage behavior without performing a second read', async () => {
+  it('releases the claimed Staff session and refuses login when the linked garage is missing', async () => {
     mocks.getDoc.mockResolvedValue(createSnapshot(false));
     const props = createProps();
     const { result } = renderHook(() => useAdminAndGarageManagement(props));
@@ -166,12 +166,35 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     });
 
     expect(mocks.getDoc).toHaveBeenCalledTimes(1);
-    expect(props.setGarage).not.toHaveBeenCalled();
-    expect(props.setCurrentStaff).toHaveBeenCalledWith({
-      id: 'staff-1',
-      garageId: 'garage-1',
-      name: 'Test Staff'
+    expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
+      role: 'staff',
+      entityId: 'staff-1',
+      sessionId: 'session-1',
+      uid: 'staff-login-user'
     });
-    expect(props.setView).toHaveBeenCalledWith('garage');
+    expect(props.setGarage).not.toHaveBeenCalled();
+    expect(props.setCurrentStaff).not.toHaveBeenCalled();
+    expect(props.setView).not.toHaveBeenCalled();
+    expect(props.showToast).toHaveBeenCalledWith('الورشة المرتبطة بهذا الحساب غير موجودة', 'error');
+  });
+
+  it('releases the claimed Staff session if reading the linked garage fails', async () => {
+    mocks.getDoc.mockRejectedValue(new Error('network unavailable'));
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    await act(async () => {
+      await result.current.handleGarageLogin();
+    });
+
+    expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
+      role: 'staff',
+      entityId: 'staff-1',
+      sessionId: 'session-1',
+      uid: 'staff-login-user'
+    });
+    expect(props.setGarage).not.toHaveBeenCalled();
+    expect(props.setCurrentStaff).not.toHaveBeenCalled();
+    expect(props.setView).not.toHaveBeenCalled();
   });
 });
