@@ -131,4 +131,40 @@ describe('auth session server authority', () => {
     );
     expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
+
+  it('waits for an in-flight release before reclaiming the same session', async () => {
+    let finishRelease!: () => void;
+    mockedRelease.mockReturnValueOnce(new Promise<void>((resolve) => {
+      finishRelease = resolve;
+    }));
+
+    const params = {
+      role: 'garage' as const,
+      entityId: 'garage-1',
+      sessionId: 'session-race',
+      uid: 'firebase-uid-race',
+    };
+
+    const releasing = releaseEntitySession(params);
+    const claiming = claimEntitySession(params);
+
+    await Promise.resolve();
+    expect(mockedRefresh).not.toHaveBeenCalled();
+
+    finishRelease();
+    await Promise.all([releasing, claiming]);
+
+    expect(mockedRelease).toHaveBeenCalledWith(
+      'firebase-uid-race',
+      'session-race',
+      'garage',
+      'garage-1'
+    );
+    expect(mockedRefresh).toHaveBeenCalledWith(
+      'firebase-uid-race',
+      'session-race',
+      'garage',
+      'garage-1'
+    );
+  });
 });
