@@ -14,7 +14,8 @@ const serviceMocks = vi.hoisted(() => ({
   subscribeToActiveVehicles: vi.fn(),
   subscribeToTodayTransactions: vi.fn(),
   subscribeToGarage: vi.fn(),
-  subscribeToPendingRechargeRequests: vi.fn()
+  subscribeToPendingRechargeRequests: vi.fn(),
+  throttleCancels: [] as ReturnType<typeof vi.fn>[]
 }));
 
 vi.mock('../services', () => ({
@@ -22,7 +23,12 @@ vi.mock('../services', () => ({
 }));
 
 vi.mock('../utils', () => ({
-  throttleSnapshot: (callback: (...args: any[]) => void) => callback
+  throttleSnapshot: (callback: (...args: any[]) => void) => {
+    const throttled = callback as typeof callback & { cancel: ReturnType<typeof vi.fn> };
+    throttled.cancel = vi.fn();
+    serviceMocks.throttleCancels.push(throttled.cancel);
+    return throttled;
+  }
 }));
 
 const createBaseProps = () => ({
@@ -62,6 +68,7 @@ beforeEach(() => {
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToGarage.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToPendingRechargeRequests.mockReset().mockReturnValue(() => {});
+  serviceMocks.throttleCancels.length = 0;
 });
 
 afterEach(() => {
@@ -292,5 +299,18 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(activeSubscriptions()).toHaveLength(0);
     secondSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
     expect(subscriptions).toHaveLength(8);
+  });
+
+  it('cancels the active-vehicle trailing update when the garage listener is removed', () => {
+    const { unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      isSessionReady: true,
+      view: 'garage',
+      garage: { id: 'garage-1' } as any,
+    }));
+
+    expect(serviceMocks.throttleCancels).toHaveLength(1);
+    unmount();
+    expect(serviceMocks.throttleCancels[0]).toHaveBeenCalledOnce();
   });
 });
