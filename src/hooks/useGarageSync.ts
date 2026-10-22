@@ -60,6 +60,7 @@ export function useGarageSync({
   const delegatePageLoadingRef = useRef<Record<'createdGarages' | 'referredGarages', boolean>>({ createdGarages: false, referredGarages: false });
   const delegateDashboardOwnerRef = useRef<string | undefined>(undefined);
   const delegateDashboardLoadedOwnerRef = useRef<string | undefined>(undefined);
+  const delegateDashboardGenerationRef = useRef(0);
   const [packages, setPackages] = useState<Package[]>(() => {
     try {
       const cached = localStorage.getItem('app_packages_cache');
@@ -212,8 +213,9 @@ export function useGarageSync({
 
   // Sync delegate dashboard garage lists
   const delegateId = delegate?.id;
+  const delegateUserId = user?.uid;
   useEffect(() => {
-    if (!isAuthReady || !user || !delegateId || view !== 'delegate_dashboard') return;
+    if (!isAuthReady || !delegateUserId || !delegateId || view !== 'delegate_dashboard') return;
 
     const isNewDelegate = delegateDashboardOwnerRef.current !== delegateId;
     if (isNewDelegate) {
@@ -227,10 +229,28 @@ export function useGarageSync({
     }
 
     let cancelled = false;
+    let dashboardRequestInFlight = false;
+    const requestGeneration = ++delegateDashboardGenerationRef.current;
+
+    // A previous delegate's pagination request must not leave the new dashboard
+    // permanently marked as loading after a role/account switch. Avoid a redundant
+    // state update on initial load; it can restart effects whose caller props are unstable.
+    const hadPendingDelegatePage = Object.values(delegatePageLoadingRef.current).some(Boolean);
+    delegatePageLoadingRef.current = { createdGarages: false, referredGarages: false };
+    if (hadPendingDelegatePage) setDelegateListsLoading(false);
+
     const loadDashboard = async () => {
+      // Polls are best-effort refreshes. Never let a slow request overlap the next
+      // interval and then apply its older snapshot after a newer one.
+      if (dashboardRequestInFlight) return;
+      dashboardRequestInFlight = true;
       try {
         const data = await firestoreService.getDashboardData(delegateId);
-        if (cancelled || delegateDashboardOwnerRef.current !== delegateId) return;
+        if (
+          cancelled ||
+          delegateDashboardGenerationRef.current !== requestGeneration ||
+          delegateDashboardOwnerRef.current !== delegateId
+        ) return;
         setDelegate(data.delegate);
         if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
           delegateDashboardLoadedOwnerRef.current = delegateId;
@@ -238,12 +258,16 @@ export function useGarageSync({
           setDelegatePagination(data.pagination || {
             createdGarages: { hasMore: false, nextCursor: null },
             referredGarages: { hasMore: false, nextCursor: null },
-              });
+          });
         } else {
           setAllGarages((previous) => Array.from(new Map([...previous, ...(data.garages as Garage[])].map((garage) => [garage.id, garage])).values()));
         }
       } catch (err) {
-        console.error('[useGarageSync] Failed to load delegate dashboard:', err);
+        if (!cancelled && delegateDashboardGenerationRef.current === requestGeneration) {
+          console.error('[useGarageSync] Failed to load delegate dashboard:', err);
+        }
+      } finally {
+        dashboardRequestInFlight = false;
       }
     };
 
@@ -251,31 +275,52 @@ export function useGarageSync({
     const refresh = window.setInterval(loadDashboard, 15000);
     return () => {
       cancelled = true;
+      if (delegateDashboardGenerationRef.current === requestGeneration) {
+        delegateDashboardGenerationRef.current += 1;
+      }
       window.clearInterval(refresh);
     };
-  }, [isAuthReady, user, delegateId, view]);
+  }, [isAuthReady, delegateUserId, delegateId, view]);
 
-  const loadMoreDelegateSection = useCallback(async (section: 'createdGarages' | 'referredGarages') => {
+  const loadMoreDelegateSection = useCallback(async (
+    section: 'createdGarages' | 'referredGarages',
+    requestGeneration: number
+  ) => {
     const page = delegatePagination[section];
-    if (!delegateId || !page.hasMore || !page.nextCursor || delegatePageLoadingRef.current[section]) return;
+    if (
+      !delegateId ||
+      requestGeneration !== delegateDashboardGenerationRef.current ||
+      delegateDashboardOwnerRef.current !== delegateId ||
+      !page.hasMore ||
+      !page.nextCursor ||
+      delegatePageLoadingRef.current[section]
+    ) return;
     delegatePageLoadingRef.current[section] = true;
     setDelegateListsLoading(true);
     try {
       const nextPage = await firestoreService.getDashboardDataPage(delegateId, section, page.nextCursor);
-      if (delegateDashboardOwnerRef.current !== delegateId) return;
+      if (
+        requestGeneration !== delegateDashboardGenerationRef.current ||
+        delegateDashboardOwnerRef.current !== delegateId
+      ) return;
       setAllGarages((previous) => Array.from(new Map([...previous, ...nextPage.items].map((garage) => [garage.id, garage])).values()));
       setDelegatePagination((previous) => ({ ...previous, [section]: { hasMore: nextPage.hasMore, nextCursor: nextPage.nextCursor } }));
     } catch (error) {
-      console.error(`[useGarageSync] Failed to load delegate ${section} page:`, error);
+      if (requestGeneration === delegateDashboardGenerationRef.current) {
+        console.error(`[useGarageSync] Failed to load delegate ${section} page:`, error);
+      }
     } finally {
-      delegatePageLoadingRef.current[section] = false;
-      setDelegateListsLoading(Object.values(delegatePageLoadingRef.current).some(Boolean));
+      if (requestGeneration === delegateDashboardGenerationRef.current) {
+        delegatePageLoadingRef.current[section] = false;
+        setDelegateListsLoading(Object.values(delegatePageLoadingRef.current).some(Boolean));
+      }
     }
   }, [delegateId, delegatePagination]);
 
   const loadMoreDelegateGarages = useCallback(async () => {
-    await loadMoreDelegateSection('createdGarages');
-    await loadMoreDelegateSection('referredGarages');
+    const requestGeneration = delegateDashboardGenerationRef.current;
+    await loadMoreDelegateSection('createdGarages', requestGeneration);
+    await loadMoreDelegateSection('referredGarages', requestGeneration);
   }, [loadMoreDelegateSection]);
 
   // Sync packages independently (prevents redundant re-subscribing on view changes)
