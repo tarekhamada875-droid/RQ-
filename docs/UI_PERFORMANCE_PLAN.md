@@ -108,36 +108,34 @@ Keep existing authorization boundaries. Refresh or reconcile data only after a s
 
 Do not turn these deferred questions into speculative cleanup or a new roadmap.
 
-## Engineering and operations go/no-go gate
-Do not invite a garage to depend on RQ for live operations until each item has evidence recorded in the normal release/operations records:
+## Stage 1: minimum safe limited pilot
+Do only this stage before asking a few garages to try RQ in real work. The owner chooses which roles and language(s) the pilot will actually use; do not delay the pilot to polish unused screens.
 
-1. Run focused tests for every changed slice and cross-role session/authorization regressions.
-2. Run the repository checks required by `AGENTS.md` and `docs/RELEASES.md`: `npm test`, `npm run test:rules`, `npm run lint`, `npm run build`, `npm run ci:check`, `npm run maintainability:check`, and `git diff --check`.
-3. Run emulator-backed browser smoke journeys for Admin, Garage owner, Delegate, and Staff. Include Arabic/RTL and English/LTR where the role has language selection, mobile and desktop viewports, reload/session restore, logout/re-login, network failure, and switching roles while requests/listeners are pending.
-4. Confirm each role’s happy path and one meaningful failure/retry path. Verify the Worker remains authoritative and existing cross-role authorization tests still reject out-of-scope requests.
-5. Verify the actual production Pages/Worker commit and version, Firebase project/database, deployed rules and indexes, required secrets, allowed origins, and authentication configuration. `main` advancing is not proof that production has the matching release.
-6. Complete a real restore rehearsal with synthetic or otherwise safely isolated data. Confirm who can perform it, what records are restored, how long it takes, and how to validate correctness. A written backup intention is not a tested recovery process.
-7. Confirm monitoring and alerts are configured in the provider accounts: request/error signals, Firestore reads/writes and storage, Worker usage, abuse/rate limits, and retention. Understand what alerts do and do not prevent; do not assume a budget alert is a spending cap.
-8. Document a simple operator runbook for onboarding a garage, handling a failed check-in/out or uncertain credit grant, reconciling a manually confirmed payment, support contact, incident escalation, rollback, and safe service interruption. Preserve the existing rule that an Admin confirms payment and grants credits.
-9. Resolve applicable privacy, customer-data, terms, and tax/payment obligations for the places where RQ will operate. The owner must obtain qualified local advice for legal/tax questions; this plan is not a legal determination.
+1. Fix confirmed defects that could show one garage’s data to another, make an active session unreliable, corrupt or misstate vehicle/credit records, or prevent safe recovery. Test the shared session boundaries across roles even if the pilot uses only one role.
+2. Test the pilot’s actual happy path and one meaningful failure/retry path in an emulator/browser fixture. Run the repository’s required Production Gate; it already runs the full automated test, rules, lint, and build checks for application changes. Do not create another broad test program just for the plan.
+3. Before live use, verify the deployed Pages/Worker version, Firebase project/database, rules and indexes, authentication, allowed origins, and secrets. Check current Firebase billing plan, quotas, and over-limit behavior; configure available usage alerts and Cloudflare abuse limits. Do not assume alerts are spending caps or enable paid billing without the owner’s explicit decision.
+4. Complete one restore rehearsal using isolated synthetic data. Write down who can perform it and how to tell it worked.
+5. Prepare a one-page operator procedure for onboarding/offboarding, support contact, failed vehicle check-in/out, uncertain credit grants, manual payment confirmation, incident response, and rollback. Resolve applicable privacy, customer-data, consent, terms, and tax/payment requirements with qualified local advice before collecting real customer data. This plan is not a legal determination.
+
+Do not require all roles, all languages, every device size, broad load testing, a codebase rewrite, or unrelated role polish for the limited pilot. If a pilot garage needs one of those flows, it becomes part of that pilot’s tested scope.
 
 ## Business evidence and limited pilot gate
 The project documents a 100-credit trial, prepaid paid credits, and Admin-confirmed credit grants. It does not establish customer demand, final prices, conversion, operating costs, or a sustainable income level. Do not present any of those as proven until measured.
 
-Before the first live pilot, the owner should choose a small, explicit pilot size and duration, identify the type of garage and problem being tested, and agree with each participant on what the pilot includes, how support works, how data is handled, and how the pilot can end. Begin with a few willing garages, not a broad public launch. Do not charge or promise a service level that has not been agreed and tested.
+Before the first live pilot, the owner should choose a small, explicit pilot size and duration, identify the type of garage and problem being tested, and agree with each participant on what the pilot includes, how support works, how data is handled, and how the pilot can end. Begin with a few willing garages, not a broad public launch. Do not charge or promise a service level that has not been agreed and tested. A free trial is fine for learning usage, but it does not by itself validate willingness to pay.
 
 During the pilot, record simple evidence: whether each garage completes onboarding; whether the core entry/exit and subscriber workflows are used in real work; failed or corrected operations; support requests and time spent; repeat usage; and whether the operator can reconcile payment and credit-ledger effects. Ask customers directly whether they would continue at a clearly stated price and why. Compliments or sign-ups without continued use or payment are not proof of willingness to pay.
 
 Build a conservative monthly unit-economics estimate before expanding: revenue per paying garage minus actual Firebase/Cloudflare usage, payment costs, the documented 100 EGP delegate commission where applicable, support and onboarding time, and other known operating expenses. Compare break-even garage count with the owner’s chosen monthly income target. The owner still needs to set that target; the repository cannot infer what “decent living” means. Measure actual pilot usage and verify the current Firebase billing plan, quotas, and over-limit behavior in the project console. Do not enable a paid plan or incur a new charge without the owner’s explicit decision.
 
-## Launch decision
-Choose **GO for a limited pilot** only when the engineering/operations gate passes, participants understand the pilot and data handling, there is a workable support and recovery procedure, and costs are monitored. Keep access and scope small, review results at the agreed end date, and stop or pause if data integrity, security, reliability, customer value, or cost control is uncertain.
+## Stage 2: wider paid launch
+Do these checks only after the limited pilot shows customers use the core workflow and want to continue. Before a broad launch, test all active roles and promised languages on supported mobile/desktop layouts, complete the full role/failure/retry browser matrix, fix all confirmed defects in the active product, and verify accessibility and customer-facing instructions. Use pilot measurements to set honest usage limits and forecast provider costs. Broad load testing remains out of scope unless the owner separately authorizes an isolated test.
 
-Choose **GO for a broader paid launch** only after pilot evidence shows repeated use of the core workflow, at least some customers actually accept and pay the stated price, the measured economics have a credible path to the owner’s income target, and support/recovery/cost controls remain workable at the expected scale. Otherwise, do not call the business production-ready: fix the blocking issue or run another narrowly defined validation test.
+Choose **GO for a broader paid launch** only when pilot evidence shows repeated use of the core workflow, at least some customers actually accept and pay the stated price, measured costs and support effort have a credible path to the owner’s chosen income target, and recovery/security/cost controls remain workable at expected usage. Otherwise, fix the specific blocker or run another small validation test; do not start unrelated cleanup.
 
-No checklist can guarantee a profitable business. The owner makes the final go/no-go decision based on recorded evidence; technical readiness and business viability are separate requirements.
+No checklist can guarantee a profitable business. The owner makes the final go/no-go decision based on recorded evidence; technical readiness and business viability are separate requirements. Each stage should end with a simple written decision: **go**, **pause to fix a named issue**, or **stop because evidence does not support continuing**.
 
-**Stop condition:** no unresolved confirmed high-priority session/data-isolation defect; source-confirmed role-specific defects in the active product are fixed or explicitly removed because the feature is retired; relevant tests pass; risk-only findings have been tested and either reproduced or documented without speculative code changes; no unapproved scope expansion. If a new issue appears outside this plan, stop and ask the owner rather than opening another workstream.
+**Stop condition:** before the limited pilot, no unresolved high-priority shared session/data-isolation defect or confirmed defect in the pilot’s chosen workflows; the relevant tests pass; risks affecting those workflows are reproduced or documented without speculative changes. Before a broader launch, all confirmed defects in active promised workflows are fixed or the retired feature is removed. No stage permits unapproved scope expansion; if a new issue appears outside the plan, stop and ask the owner.
 
 ## Evidence and known limits
 
