@@ -78,7 +78,7 @@ export function useGarageSync({
     setVehicles([]);
     setTodayTransactions([]);
     setStaffList([]);
-  }, [view, garage?.id, user?.uid, isSessionReady, setVehicles, setTodayTransactions]);
+  }, [view, garage?.id, user?.uid, isSessionReady]);
 
   // Subscribe to Active Vehicles
   useEffect(() => {
