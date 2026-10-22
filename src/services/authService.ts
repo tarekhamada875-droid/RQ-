@@ -112,6 +112,7 @@ export const authService = {
       });
     } catch (e) {
       console.error('[AuthService] Error releasing session on server:', e);
+      throw e;
     }
   },
 
