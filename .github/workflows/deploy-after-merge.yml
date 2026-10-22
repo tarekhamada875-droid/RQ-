@@ -118,6 +118,24 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
+            const requestWithRetry = async (label, request, attempts = 4) => {
+              for (let attempt = 1; attempt <= attempts; attempt++) {
+                try {
+                  return await request();
+                } catch (error) {
+                  const message = error?.message || String(error);
+                  const status = error?.status || error?.response?.status;
+                  const transient = status === 408 || status === 429 || status >= 500 ||
+                    message.includes('Unexpected end of JSON input') ||
+                    message.includes('ECONNRESET') || message.includes('ETIMEDOUT');
+                  if (!transient || attempt === attempts) throw error;
+                  core.warning(`${label} failed on attempt ${attempt}/${attempts}; retrying a transient GitHub API error.`);
+                  await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+                }
+              }
+              throw new Error(`${label} failed after retries.`);
+            };
+
             for (let attempt = 0; attempt < 12; attempt++) {
               const { data } = await requestWithRetry('Production Gate push-run lookup', () =>
                 github.rest.actions.listWorkflowRuns({
@@ -148,6 +166,24 @@ jobs:
           DEPLOY_SHA: ${{ steps.target.outputs.deploy_sha }}
         with:
           script: |
+            const requestWithRetry = async (label, request, attempts = 4) => {
+              for (let attempt = 1; attempt <= attempts; attempt++) {
+                try {
+                  return await request();
+                } catch (error) {
+                  const message = error?.message || String(error);
+                  const status = error?.status || error?.response?.status;
+                  const transient = status === 408 || status === 429 || status >= 500 ||
+                    message.includes('Unexpected end of JSON input') ||
+                    message.includes('ECONNRESET') || message.includes('ETIMEDOUT');
+                  if (!transient || attempt === attempts) throw error;
+                  core.warning(`${label} failed on attempt ${attempt}/${attempts}; retrying a transient GitHub API error.`);
+                  await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+                }
+              }
+              throw new Error(`${label} failed after retries.`);
+            };
+
             await requestWithRetry('Production Gate workflow dispatch', () =>
               github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
