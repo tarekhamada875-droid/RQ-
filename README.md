@@ -37,8 +37,8 @@ Use synthetic emulator data locally. Never commit `.env` files, service-account 
 ## Canonical documents
 
 - [`docs/PROJECT.md`](docs/PROJECT.md) — current product model and architecture
+- [`docs/UI_PERFORMANCE_PLAN.md`](docs/UI_PERFORMANCE_PLAN.md) — focused, measurement-led UI performance program
 - [`docs/SECURITY.md`](docs/SECURITY.md) — security and authorization invariants
-- [`docs/PRODUCTION_PLAN.md`](docs/PRODUCTION_PLAN.md) — approved production remediation plan
 - [`docs/RELEASES.md`](docs/RELEASES.md) — branch, PR, validation, and deployment workflow
 - [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — monitoring, traces, backup, restore, and rollback
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution rules

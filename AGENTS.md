@@ -1,6 +1,6 @@
 # RQ engineering safeguards
 
-Current product rules live in `docs/PROJECT.md`; the production work plan lives in `docs/PRODUCTION_PLAN.md`.
+Current product rules live in `docs/PROJECT.md`.
 
 - Preserve the current UI/UX, bilingual behavior, Egyptian license-plate identity, RTL/LTR layout, and responsive behavior unless explicitly approved otherwise.
 - The Worker/API is authoritative for authentication, authorization, garage scope, money, subscriber eligibility, counters, and financial reports.
@@ -15,7 +15,7 @@ Current product rules live in `docs/PROJECT.md`; the production work plan lives 
 
 ## Documentation governance
 
-The repository has one canonical documentation set. Product and architecture truth belongs in `docs/PROJECT.md`; security belongs in `docs/SECURITY.md`; the approved work plan belongs in `docs/PRODUCTION_PLAN.md`; release procedure belongs in `docs/RELEASES.md`; operations belongs in `docs/OPERATIONS.md`; and test procedures belong under `docs/testing/`.
+The repository has one canonical documentation set. Product and architecture truth belongs in `docs/PROJECT.md`; the scoped UI performance program belongs in `docs/UI_PERFORMANCE_PLAN.md`; security belongs in `docs/SECURITY.md`; release procedure belongs in `docs/RELEASES.md`; operations belongs in `docs/OPERATIONS.md`; and test procedures belong under `docs/testing/`.
 
 Do not create new handoff, knowledge-base, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not create root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`. Add durable information to the appropriate canonical document, merge overlapping guidance into that document, or keep temporary notes outside the repository. Never copy volatile branch, PR, deployment, or chat state into tracked documentation.
 
