@@ -1,6 +1,6 @@
 # Contract-test guidance
 
-These contracts protect behavior while repeated implementations are consolidated. Current product rules are in `docs/PROJECT.md`.
+These contracts protect behavior while repeated implementations are consolidated. Current product rules are in `../PROJECT.md`.
 
 ## Session claims
 

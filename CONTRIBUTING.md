@@ -10,17 +10,14 @@ Keep financial and authorization logic in focused Worker/domain modules. Keep Re
 
 ## Local validation
 
+Run focused tests for the changed behavior, then the full local gate:
+
 ```bash
-npm ci
-npm test
-npm run test:rules
-npm run lint
-npm run build
-npm run maintainability:check
+npm run ci:check
 git diff --check
 ```
 
-Use the emulator/browser-fixture instructions under `docs/testing/` for local UI and Firestore checks. Do not point synthetic fixtures at production Firebase.
+`npm run ci:check` performs a clean install and runs typechecking, the full Vitest suite, Firestore rules tests, production build, Worker-artifact smoke test, maintainability checks, and production artifact checks. Do not repeat those commands individually unless diagnosing a failure. Use the emulator/browser-fixture instructions under `docs/testing/` for local UI and Firestore checks. Do not point synthetic fixtures at production Firebase.
 
 ## Documentation governance
 

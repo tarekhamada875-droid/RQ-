@@ -4,16 +4,14 @@
 
 ## Before a pull request
 
-Synchronize `main`, confirm a clean working tree, add focused tests, and run:
+Synchronize `main`, confirm a clean working tree, add focused tests, and run the full local gate once:
 
 ```bash
-npm test
-npm run test:rules
-npm run lint
-npm run build
-npm run maintainability:check
+npm run ci:check
 git diff --check
 ```
+
+`npm run ci:check` performs the clean install, typecheck, full test suite, Firestore rules emulator tests, production build, Worker-artifact smoke test, maintainability checks, and artifact verification. Do not rerun those steps individually unless diagnosing a failure. GitHub’s required Production Gate remains the final merge gate.
 
 Use emulator and synthetic fixture workflows for local tests. Review the diff for unintended UI, data, rules, or deployment changes.
 
