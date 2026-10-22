@@ -23,7 +23,14 @@ This plan does **not** promise that software can have no possible failures. It d
 
 ## Work order
 
-Each numbered item is a bounded change or closely related test slice. Work in order; every slice gets focused regression tests and a pull request. Do not start the next slice while a required check is failing.
+Each numbered item is a work area, not a requirement to combine all its bullets into one change. Work in order, but make each pull request small enough to explain and review as one behavior or one tightly related cause. Split independent behaviors into separate changes; add focused regression tests and run the relevant checks for each. Do not start the next change while a required check is failing.
+
+### Keep the implementation simple and maintainable
+
+- Before fixing an audit item, reproduce it with a focused test or a clear, repeatable code-path demonstration. Treat findings explicitly labeled as risks as hypotheses until verified; if they cannot be reproduced, document the result and do not add speculative code to the app.
+- Fix the smallest underlying cause using existing project patterns. Prefer direct, readable code over new frameworks, dependencies, generic abstractions, duplicated state paths, or broad refactors. Add a shared helper only when multiple real call sites need the same behavior.
+- Keep tests focused on the user-visible failure and the relevant neighboring role/session case. Avoid test scaffolding that is harder to understand than the behavior it protects.
+- Each change should leave code easier to understand: use clear names, remove obsolete code only when in scope, and explain non-obvious constraints briefly. Do not create a separate roadmap or turn deferred observations into extra work.
 
 ### 1. Keep data and asynchronous work attached to the correct role/session
 
@@ -62,7 +69,7 @@ Each numbered item is a bounded change or closely related test slice. Work in or
 Keep existing authorization boundaries. Refresh or reconcile data only after a successful action; a failed action must not make the row disappear or falsely appear successful.
 
 - **Admin:** reconcile paged Garage/Delegate lists after approve, reject/delete, create, and detail edits. Reset only the affected list/cursor and avoid duplicates. Make the `trial_leads` saved-tab fallback land on Overview. Ensure search and pending counts cannot silently imply full coverage when only one page is loaded; prefer a bounded Worker search/count if the UI promises all records, otherwise make the limited scope clear.
-- **Garage owner:** the product model says garage-level duration/capacity/weekly/monthly packages are retired. Remove the dead Packages menu/view wiring rather than resurrecting retired package sales. Do not delete package documents or alter historical records. Do not remove the separate active monthly vehicle-subscriber workflow. Load the current garage’s staff for Staff Statistics/Reports, refresh on garage change, clear on logout, and never expose staff PINs.
+- **Garage owner:** first confirm the Packages menu points only to retired garage-level duration/capacity/weekly/monthly packages. If so, remove only the dead menu/view wiring; do not delete package documents or alter historical records. If the menu represents another active product capability, stop and ask the owner before changing it. Do not remove the separate active monthly vehicle-subscriber workflow. Load the current garage’s staff for Staff Statistics/Reports, refresh on garage change, clear on logout, and never expose staff PINs.
 - **Delegate:** distinguish loading, true empty results, refresh failure, and retry. Keep last-known rows visible during a transient refresh failure. Prevent overlapping/out-of-order polls from overwriting newer data; reconcile page metadata and removals to the actual Worker response contract. Garage cards must match their behavior: keep them as non-interactive cards if there is no approved detail workflow; do not invent Admin-like powers or a new feature without product approval.
 - **Staff:** preserve existing server-side garage scope and owner/Admin-only staff/PIN controls. Do not broaden permissions to solve a display or loading issue.
 
