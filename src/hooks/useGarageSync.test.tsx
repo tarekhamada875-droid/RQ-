@@ -13,6 +13,7 @@ const serviceMocks = vi.hoisted(() => ({
   subscribeToPackages: vi.fn(),
   subscribeToActiveVehicles: vi.fn(),
   subscribeToTodayTransactions: vi.fn(),
+  subscribeToGarage: vi.fn(),
   subscribeToPendingRechargeRequests: vi.fn()
 }));
 
@@ -59,6 +60,7 @@ beforeEach(() => {
   serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
+  serviceMocks.subscribeToGarage.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToPendingRechargeRequests.mockReset().mockReturnValue(() => {});
 });
 
@@ -248,5 +250,47 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(result.current.allGarages).toEqual([{ id: 'garage-1' }, { id: 'garage-2' }]);
     expect(result.current.adminGarageHasMore).toBe(false);
     unmount();
+  });
+
+  it('unsubscribes all garage-sync Firestore listeners on unmount and does not accumulate them after remount', () => {
+    const subscriptions: Array<{ key: string; active: boolean; unsubscribe: ReturnType<typeof vi.fn> }> = [];
+    const register = (key: string) => {
+      const subscription = { key, active: true, unsubscribe: vi.fn() };
+      subscription.unsubscribe.mockImplementation(() => { subscription.active = false; });
+      subscriptions.push(subscription);
+      return subscription.unsubscribe;
+    };
+    serviceMocks.subscribeToPackages.mockImplementation(() => register('packages'));
+    serviceMocks.subscribeToActiveVehicles.mockImplementation(() => register('active-vehicles'));
+    serviceMocks.subscribeToTodayTransactions.mockImplementation(() => register('today-transactions'));
+    serviceMocks.subscribeToGarage.mockImplementation(() => register('current-garage'));
+
+    const props = {
+      ...createBaseProps(),
+      isSessionReady: true,
+      view: 'garage',
+      garage: { id: 'garage-1' } as any,
+      user: { uid: 'garage-user' },
+    };
+    const activeSubscriptions = () => subscriptions.filter(({ active }) => active);
+
+    const firstMount = renderHook(() => useGarageSync(props));
+    expect(activeSubscriptions().map(({ key }) => key).sort()).toEqual([
+      'active-vehicles', 'current-garage', 'packages', 'today-transactions',
+    ]);
+    const firstSubscriptions = subscriptions.slice();
+
+    firstMount.unmount();
+    expect(activeSubscriptions()).toHaveLength(0);
+    firstSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
+
+    const secondMount = renderHook(() => useGarageSync(props));
+    expect(activeSubscriptions()).toHaveLength(4);
+    const secondSubscriptions = subscriptions.slice(firstSubscriptions.length);
+
+    secondMount.unmount();
+    expect(activeSubscriptions()).toHaveLength(0);
+    secondSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
+    expect(subscriptions).toHaveLength(8);
   });
 });
