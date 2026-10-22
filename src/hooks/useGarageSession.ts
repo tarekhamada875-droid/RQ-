@@ -333,13 +333,23 @@ export function useGarageSession({
         // Skip heartbeat when tab is inactive/minimized to save Firebase Spark write quota
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
         try {
-          await refreshEntitySession({
+          const refreshResult = await refreshEntitySession({
             role: activeRole,
             entityId: activeEntityId,
             sessionId,
             uid: auth.currentUser.uid
           });
-          lastHeartbeatTime = Date.now();
+          if (!isMounted) return;
+          if (refreshResult === false) {
+            // The server explicitly confirmed revocation. Do not leave a
+            // protected screen active until a later Firestore request fails.
+            showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
+            handleLogout(true);
+            return;
+          }
+          if (refreshResult === true) {
+            lastHeartbeatTime = Date.now();
+          }
         } catch (hbErr: any) {
           if (!isMounted) return;
           console.warn('Heartbeat refresh failed:', hbErr);
