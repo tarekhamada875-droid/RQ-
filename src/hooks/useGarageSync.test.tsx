@@ -41,6 +41,8 @@ const createBaseProps = () => ({
   garage: null,
   setGarage: vi.fn(),
   delegate: null,
+  currentStaff: null,
+  currentSupervisor: null,
   setDelegate: vi.fn(),
   selectedGarageForDetails: null,
   setSelectedGarageForDetails: vi.fn(),

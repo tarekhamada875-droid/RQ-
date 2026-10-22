@@ -61,6 +61,8 @@ export default defineConfig(() => {
       setupFiles: './src/test/setup.ts',
       include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.{ts,tsx}'],
       exclude: ['**/node_modules/**', '**/dist/**'],
+      // Keep CI memory use predictable on GitHub-hosted runners.
+      maxWorkers: 2,
     },
     css: {
       postcss: {
