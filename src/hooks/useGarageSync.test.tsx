@@ -265,6 +265,57 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
+  it('ignores an older admin page when a refresh resets pagination during an in-flight request', async () => {
+    let resolveOldPage!: (page: { garages: any[]; lastDoc: string; hasMore: boolean }) => void;
+    const oldPage = new Promise<{ garages: any[]; lastDoc: string; hasMore: boolean }>((resolve) => {
+      resolveOldPage = resolve;
+    });
+    let firstPageCall = 0;
+    serviceMocks.getAdminGaragesPage.mockImplementation((_limit: number, cursor: unknown) => {
+      if (cursor === null) {
+        firstPageCall += 1;
+        return Promise.resolve(firstPageCall === 1
+          ? { garages: [{ id: 'garage-before-refresh' }], lastDoc: 'cursor-before-refresh', hasMore: true }
+          : { garages: [{ id: 'garage-after-refresh' }], lastDoc: 'cursor-after-refresh', hasMore: true });
+      }
+      if (cursor === 'cursor-before-refresh') return oldPage;
+      if (cursor === 'cursor-after-refresh') {
+        return Promise.resolve({ garages: [{ id: 'garage-next-page' }], lastDoc: null, hasMore: false });
+      }
+      return Promise.resolve({ garages: [], lastDoc: null, hasMore: false });
+    });
+    serviceMocks.getAdminDelegatesPage.mockResolvedValue({ delegates: [], lastDoc: null, hasMore: false });
+
+    const { result, unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      isSessionReady: true,
+      view: 'admin_dashboard',
+    }));
+
+    await waitFor(() => expect(result.current.allGarages).toEqual([{ id: 'garage-before-refresh' }]));
+    act(() => { void result.current.loadMoreAdminGarages(); });
+    await waitFor(() => expect(serviceMocks.getAdminGaragesPage).toHaveBeenCalledWith(50, 'cursor-before-refresh'));
+
+    await act(async () => {
+      await result.current.refreshAdminLists();
+    });
+    expect(result.current.allGarages).toEqual([{ id: 'garage-after-refresh' }]);
+
+    await act(async () => {
+      resolveOldPage({ garages: [{ id: 'garage-stale-page' }], lastDoc: 'stale-cursor', hasMore: true });
+      await oldPage;
+    });
+    expect(result.current.allGarages).toEqual([{ id: 'garage-after-refresh' }]);
+
+    act(() => { void result.current.loadMoreAdminGarages(); });
+    await waitFor(() => expect(serviceMocks.getAdminGaragesPage).toHaveBeenCalledWith(50, 'cursor-after-refresh'));
+    await waitFor(() => expect(result.current.allGarages).toEqual([
+      { id: 'garage-after-refresh' },
+      { id: 'garage-next-page' },
+    ]));
+    unmount();
+  });
+
   it('unsubscribes all garage-sync Firestore listeners on unmount and does not accumulate them after remount', () => {
     const subscriptions: Array<{ key: string; active: boolean; unsubscribe: ReturnType<typeof vi.fn> }> = [];
     const register = (key: string) => {
