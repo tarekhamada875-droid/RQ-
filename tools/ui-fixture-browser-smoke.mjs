@@ -200,6 +200,8 @@ async function main() {
       const diagnostic = await evaluate(page, `({ href: location.href, title: document.title, body: document.body?.innerText?.slice(0, 1200) || '', localStorage: Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes('view') || key.includes('session') || key.includes('garage'))) })`);
       throw new Error(`${error.message}; authenticated page=${JSON.stringify(diagnostic)}`);
     }
+    const loginToDashboardMs = await evaluate(page, `performance.now() - ${JSON.stringify(loginInteractionStartedAt)}`);
+    await sleep(500);
     const result = await evaluate(page, `(() => {
       const nav = performance.getEntriesByType('navigation')[0];
       const resources = performance.getEntriesByType('resource');
@@ -209,6 +211,16 @@ async function main() {
       const pathOf = (resource) => {
         try { return new URL(resource.name).pathname; } catch { return resource.name; }
       };
+      const diagnostics = typeof window.__RQ_FIRESTORE_LISTENER_DIAGNOSTICS__ === 'function'
+        ? window.__RQ_FIRESTORE_LISTENER_DIAGNOSTICS__()
+        : null;
+      const activeListenersByKey = diagnostics?.activeListenersByKey ?? null;
+      const firestoreListenerKeys = activeListenersByKey
+        ? Object.fromEntries(Object.entries(activeListenersByKey).filter(([key]) => key !== 'system_config_worker_api'))
+        : null;
+      const firestoreListenerCount = firestoreListenerKeys
+        ? Object.values(firestoreListenerKeys).reduce((total, count) => total + count, 0)
+        : null;
       return {
         url: location.href,
         title: document.title,
@@ -223,11 +235,16 @@ async function main() {
           completedApiRequests: apiResources.map((resource) => ({ path: pathOf(resource), durationMs: resource.duration, transferSize: resource.transferSize })),
           totalTransferSize: resources.reduce((total, resource) => total + (resource.transferSize || 0), 0),
         },
-        firestoreListenerCount: null,
-        firestoreListenerCountNote: 'The smoke harness does not expose an exact active onSnapshot listener counter; no count is inferred from network requests.',
+        firestoreListenerCount,
+        firestoreListenerKeys,
+        nonFirestoreTrackedSubscriptions: activeListenersByKey?.system_config_worker_api ?? null,
+        listenerTrackerTelemetry: diagnostics?.telemetry ?? null,
       };
     })()`);
-    result.loginToDashboardMs = await evaluate(page, `performance.now() - ${JSON.stringify(loginInteractionStartedAt)}`);
+    result.loginToDashboardMs = loginToDashboardMs;
+    if (role === 'garage' && result.firestoreListenerCount === null) {
+      throw new Error('Garage fixture listener diagnostics are unavailable; refusing to record an incomplete baseline');
+    }
     const screenshot = await page.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
     const outputName = scenario.output.replace('mobile', viewportName);
     await writeFile(join(outputDir, `${outputName}.png`), Buffer.from(screenshot.data, 'base64'));

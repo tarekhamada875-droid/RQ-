@@ -13,6 +13,7 @@ import {
 } from '../services/authSessionService';
 import { authService } from '../services/authService';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
+import { listenerTracker } from '../utils/listenerTracker';
 import { signOut } from 'firebase/auth';
 
 interface UseGarageSessionProps {
@@ -357,7 +358,7 @@ export function useGarageSession({
         let hasEverBeenActive = false;
         let isEvicting = false;
 
-        unsubSnapshot = onSnapshot(entityDocRef, async (snapshot) => {
+        const unsubscribeEntitySnapshot = onSnapshot(entityDocRef, async (snapshot) => {
           if (isDeliberateLogoutRef.current || isEvicting) return;
           // Ignore offline cached snapshots - they can be stale and cause false evictions
           if (snapshot.metadata.fromCache) return;
@@ -410,6 +411,14 @@ export function useGarageSession({
         }, (err) => {
           console.warn('Entity lock snapshot warning:', err);
         });
+        const unregisterSessionSnapshot = listenerTracker.register(`session_guard/${docCollection}/${activeEntityId}`);
+        unsubSnapshot = () => {
+          try {
+            unsubscribeEntitySnapshot();
+          } finally {
+            unregisterSessionSnapshot();
+          }
+        };
       }
     };
 
