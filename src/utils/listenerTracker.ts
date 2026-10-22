@@ -71,3 +71,16 @@ class ListenerTracker {
 }
 
 export const listenerTracker = new ListenerTracker();
+
+if (import.meta.env.VITE_RQ_USE_EMULATORS === 'true' && typeof window !== 'undefined') {
+  const diagnosticWindow = window as Window & {
+    __RQ_FIRESTORE_LISTENER_DIAGNOSTICS__?: () => {
+      telemetry: ReturnType<ListenerTracker['getTelemetrySnapshot']>;
+      activeListenersByKey: Record<string, number>;
+    };
+  };
+  diagnosticWindow.__RQ_FIRESTORE_LISTENER_DIAGNOSTICS__ = () => ({
+    telemetry: listenerTracker.getTelemetrySnapshot(),
+    activeListenersByKey: listenerTracker.getActiveListenersMap(),
+  });
+}
