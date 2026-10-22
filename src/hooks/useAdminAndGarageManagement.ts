@@ -207,8 +207,14 @@ export function useAdminAndGarageManagement({
           return;
         }
       } else if (role === 'staff' && account) {
-        const gSnap = await getDoc(doc(db, 'garages', account.garageId));
-        if (gSnap.exists()) {
+        try {
+          const gSnap = await getDoc(doc(db, 'garages', account.garageId));
+          if (!gSnap.exists()) {
+            showToast('الورشة المرتبطة بهذا الحساب غير موجودة', 'error');
+            await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch(() => {});
+            return;
+          }
+
           const linkedGarage = { id: gSnap.id, ...gSnap.data() } as Garage;
           linkedStaffGarage = linkedGarage;
           if (linkedGarage.status === 'pending' || linkedGarage.status === 'rejected') {
@@ -216,6 +222,12 @@ export function useAdminAndGarageManagement({
             await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch(() => {});
             return;
           }
+        } catch (garageReadError) {
+          // The Staff session was already claimed; release this exact claim before returning to login.
+          await releaseEntitySession({ role: 'staff', entityId, sessionId, uid }).catch((releaseError) => {
+            console.warn('Failed to release Staff session after garage validation error:', releaseError);
+          });
+          throw garageReadError;
         }
       }
 
