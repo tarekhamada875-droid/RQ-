@@ -28,12 +28,34 @@ jobs:
             const run = context.payload.workflow_run;
             const { owner, repo } = context.repo;
             const headSha = run.head_sha;
-            const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner,
-              repo,
-              commit_sha: headSha,
-              per_page: 100,
-            });
+
+            // GitHub's API occasionally returns a truncated JSON body. Retry transient
+            // server/transport failures, but let permission and validation errors fail closed.
+            const requestWithRetry = async (label, request, attempts = 4) => {
+              for (let attempt = 1; attempt <= attempts; attempt++) {
+                try {
+                  return await request();
+                } catch (error) {
+                  const message = error?.message || String(error);
+                  const status = error?.status || error?.response?.status;
+                  const transient = status === 408 || status === 429 || status >= 500 ||
+                    message.includes('Unexpected end of JSON input') ||
+                    message.includes('ECONNRESET') || message.includes('ETIMEDOUT');
+                  if (!transient || attempt === attempts) throw error;
+                  core.warning(`${label} failed on attempt ${attempt}/${attempts}; retrying a transient GitHub API error.`);
+                  await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+                }
+              }
+              throw new Error(`${label} failed after retries.`);
+            };
+            const { data: associated } = await requestWithRetry('Associated pull request lookup', () =>
+              github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: headSha,
+                per_page: 100,
+              })
+            );
             const matches = associated.filter(pr =>
               pr.base.ref === 'main' && pr.head.sha === headSha
             );
@@ -45,7 +67,9 @@ jobs:
 
             const number = matches[0].number;
             for (let attempt = 0; attempt < 40; attempt++) {
-              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              const { data: pr } = await requestWithRetry(`Pull request #${number} lookup`, () =>
+                github.rest.pulls.get({ owner, repo, pull_number: number })
+              );
               if (pr.head.sha !== headSha) {
                 core.notice(`PR #${number} advanced beyond the checked commit; a newer Production Gate run must handle deployment.`);
                 core.setOutput('deploy_sha', '');
@@ -56,12 +80,14 @@ jobs:
                   throw new Error(`PR #${number} merged without a main merge commit SHA.`);
                 }
                 core.info(`PR #${number} merged as ${pr.merge_commit_sha}.`);
-                const files = await github.paginate(github.rest.pulls.listFiles, {
-                  owner,
-                  repo,
-                  pull_number: number,
-                  per_page: 100,
-                });
+                const files = await requestWithRetry(`Pull request #${number} changed-file lookup`, () =>
+                  github.paginate(github.rest.pulls.listFiles, {
+                    owner,
+                    repo,
+                    pull_number: number,
+                    per_page: 100,
+                  })
+                );
                 const docsOnly = files.length > 0 &&
                   files.length === pr.changed_files &&
                   files.every(file => file.filename.endsWith('.md'));
@@ -93,13 +119,15 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             for (let attempt = 0; attempt < 12; attempt++) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner,
-                repo,
-                workflow_id: 'production-gate.yml',
-                head_sha: process.env.DEPLOY_SHA,
-                per_page: 100,
-              });
+              const { data } = await requestWithRetry('Production Gate push-run lookup', () =>
+                github.rest.actions.listWorkflowRuns({
+                  owner,
+                  repo,
+                  workflow_id: 'production-gate.yml',
+                  head_sha: process.env.DEPLOY_SHA,
+                  per_page: 100,
+                })
+              );
               const pushRun = data.workflow_runs.find(run =>
                 run.event === 'push' && run.head_branch === 'main'
               );
@@ -120,15 +148,17 @@ jobs:
           DEPLOY_SHA: ${{ steps.target.outputs.deploy_sha }}
         with:
           script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'production-gate.yml',
-              ref: 'main',
-              inputs: {
-                deploy_sha: process.env.DEPLOY_SHA,
-                source_run_id: String(context.payload.workflow_run.id),
-                source_sha: context.payload.workflow_run.head_sha,
-              },
-            });
+            await requestWithRetry('Production Gate workflow dispatch', () =>
+              github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'production-gate.yml',
+                ref: 'main',
+                inputs: {
+                  deploy_sha: process.env.DEPLOY_SHA,
+                  source_run_id: String(context.payload.workflow_run.id),
+                  source_sha: context.payload.workflow_run.head_sha,
+                },
+              })
+            );
             core.info(`Production Gate dispatched for ${process.env.DEPLOY_SHA} using the verified PR artifact from run ${context.payload.workflow_run.id}.`);
