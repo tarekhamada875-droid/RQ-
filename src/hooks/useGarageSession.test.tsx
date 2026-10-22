@@ -156,6 +156,30 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     expect(listenerTracker.getActiveListenerCount()).toBe(0);
   });
 
+  it('logs out promptly when the heartbeat confirms the session was revoked', async () => {
+    const props = createProps();
+    sessionMocks.refreshEntitySession.mockResolvedValue(false);
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval');
+
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    const heartbeat = intervalSpy.mock.calls.find(([, delay]) => delay === 300000)?.[0] as
+      (() => Promise<void>) | undefined;
+    expect(heartbeat).toBeDefined();
+
+    await act(async () => {
+      await heartbeat?.();
+    });
+
+    await waitFor(() => expect(props.setView).toHaveBeenCalledWith('login'));
+    expect(props.showToast).toHaveBeenCalledWith('تم تسجيل خروجك من جهاز آخر', 'error');
+    expect(sessionMocks.signOut).toHaveBeenCalled();
+
+    hook.unmount();
+    intervalSpy.mockRestore();
+  });
+
   it('does not log out when authoritative session validation is unavailable', async () => {
     const props = createProps();
     sessionMocks.validateOrRefreshSessionOnServer.mockRejectedValueOnce(
