@@ -266,6 +266,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
   });
 
   it('ignores an older admin page when a refresh resets pagination during an in-flight request', async () => {
+    vi.useRealTimers();
     let resolveOldPage!: (page: { garages: any[]; lastDoc: string; hasMore: boolean }) => void;
     const oldPage = new Promise<{ garages: any[]; lastDoc: string; hasMore: boolean }>((resolve) => {
       resolveOldPage = resolve;
