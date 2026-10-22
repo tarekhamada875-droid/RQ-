@@ -80,6 +80,46 @@ export const recordSessionAsClaimed = (role: string, entityId: string, sessionId
   notifyWorkerSessionReady();
 };
 
+const waitForPendingSessionRelease = async (
+  params: ClaimSessionParams,
+  operationKey: string,
+  pendingRelease: Promise<void>
+): Promise<void> => {
+  try {
+    await pendingRelease;
+    return;
+  } catch {
+    // A failed release must not permanently block this session, but a claim
+    // must never race ahead of a retry that could revoke it on the server.
+    const latestRelease = pendingSessionReleases.get(operationKey);
+    if (!latestRelease) {
+      // Another release completed successfully and cleared the entry.
+      return;
+    }
+    if (latestRelease !== pendingRelease) {
+      // Another claimant already started the shared retry. Wait for it rather
+      // than issuing overlapping releases for the same session.
+      await latestRelease;
+      return;
+    }
+
+    const retryPromise = authService.releaseSessionOnServer(
+      params.uid,
+      params.sessionId,
+      params.role,
+      params.entityId
+    );
+    pendingSessionReleases.set(operationKey, retryPromise);
+
+    // On failure, deliberately retain the rejected promise so a future claim
+    // retries again instead of proceeding while server revocation is uncertain.
+    await retryPromise;
+    if (pendingSessionReleases.get(operationKey) === retryPromise) {
+      pendingSessionReleases.delete(operationKey);
+    }
+  }
+};
+
 export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }: ClaimSessionParams): Promise<void> => {
   if (!role || !entityId || !sessionId || !uid) {
     throw new Error('INVALID_SESSION_PARAMS');
@@ -88,9 +128,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
   const operationKey = getSessionOperationKey(role, entityId, sessionId);
   const pendingRelease = pendingSessionReleases.get(operationKey);
   if (pendingRelease) {
-    // If release failed, keep this claim blocked until a later release succeeds.
-    // This fails closed rather than allowing a late server release to revoke it.
-    await pendingRelease;
+    await waitForPendingSessionRelease({ role, entityId, sessionId, uid, pin }, operationKey, pendingRelease);
   }
 
   const claimKey = `${role}_${entityId}_${sessionId}_${uid}`;
