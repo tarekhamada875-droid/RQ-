@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   normalizeDigits,
   normalizeLetters,
@@ -16,6 +16,7 @@ import {
   generateSafePin,
   resolveShimmerColor,
   isLightColor,
+  throttleSnapshot,
 } from './index';
 
 describe('Normalization & String Utilities Edge Cases', () => {
@@ -147,5 +148,25 @@ describe('Security & Helper Utils', () => {
     // Fixed Amber Gold accent color across all modes and inputs
     expect(resolveShimmerColor('#ef4444', 'dark')).toBe('#f59e0b');
     expect(resolveShimmerColor(undefined, 'dark')).toBe('#f59e0b');
+  });
+});
+
+describe('Snapshot throttle lifecycle', () => {
+  it('cancels a pending trailing snapshot', () => {
+    vi.useFakeTimers();
+    try {
+      const callback = vi.fn();
+      const throttled = throttleSnapshot(callback, 100);
+
+      throttled('garage-a');
+      throttled('garage-b');
+      throttled.cancel();
+      vi.advanceTimersByTime(100);
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledWith('garage-a');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

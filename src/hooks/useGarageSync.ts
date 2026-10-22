@@ -84,7 +84,10 @@ export function useGarageSync({
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
       throttledVehicleUpdate(activeVehicles);
     });
-    return () => unsub();
+    return () => {
+      throttledVehicleUpdate.cancel();
+      unsub();
+    };
   }, [isSessionReady, garage?.id, setVehicles]);
 
   // Subscribe to completed transactions

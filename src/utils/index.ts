@@ -426,7 +426,7 @@ export function throttleSnapshot<T>(callback: (data: T) => void, limitMs = 4000)
   let storedData: T | null = null;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  return (incomingData: T) => {
+  const throttled = (incomingData: T) => {
     storedData = incomingData;
     const now = Date.now();
 
@@ -447,6 +447,16 @@ export function throttleSnapshot<T>(callback: (data: T) => void, limitMs = 4000)
       }, limitMs - (now - lastRan));
     }
   };
+
+  throttled.cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    storedData = null;
+  };
+
+  return throttled;
 }
 
 
