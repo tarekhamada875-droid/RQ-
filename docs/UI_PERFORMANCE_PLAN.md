@@ -2,7 +2,7 @@
 
 **Status:** Active readiness plan. This is the repository’s only active implementation and launch-readiness plan. It supersedes the former UI performance plan. The app-wide audit is evidence, not a second plan.
 
-**Starting revision:** `690907b` (`main` matched `origin/main` at audit time). The audit found defects in shared session/state handling and in role workflows. No application-code changes are included in this plan file.
+The audit found defects in shared session/state handling and role workflows. This document is a plan, not proof that any defect remains unfixed; every agent must verify current `main` and reproduce the selected behavior before changing code.
 
 ## Purpose
 
@@ -25,6 +25,8 @@ This plan does **not** promise that software can have no possible failures. It d
 ## Work order
 
 Each numbered item is a work area, not a requirement to combine all its bullets into one change. Work in order, but make each pull request small enough to explain and review as one behavior or one tightly related cause. Split independent behaviors into separate changes; add focused regression tests and run the relevant checks for each. Do not start the next change while a required check is failing.
+
+**First starting slice:** begin with Work Order 1 and investigate one reproducible case where a garage/role/session owner changes while previous data or asynchronous work is still present. Demonstrate the stale-data or late-update behavior with a focused test before editing. Fix only that behavior and its demonstrated shared cause in the first PR. If current `main` already prevents the exact behavior, keep it fixed, record the test/source evidence, and move to the next confirmed Work Order 1 behavior. Do not treat this paragraph as permission to batch every session, role, or race finding together.
 
 ### Keep the implementation simple and maintainable
 
