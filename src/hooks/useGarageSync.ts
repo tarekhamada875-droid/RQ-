@@ -232,9 +232,11 @@ export function useGarageSync({
     const requestGeneration = ++delegateDashboardGenerationRef.current;
 
     // A previous delegate's pagination request must not leave the new dashboard
-    // permanently marked as loading after a role/account switch.
+    // permanently marked as loading after a role/account switch. Avoid a redundant
+    // state update on initial load; it can restart effects whose caller props are unstable.
+    const hadPendingDelegatePage = Object.values(delegatePageLoadingRef.current).some(Boolean);
     delegatePageLoadingRef.current = { createdGarages: false, referredGarages: false };
-    setDelegateListsLoading(false);
+    if (hadPendingDelegatePage) setDelegateListsLoading(false);
 
     const loadDashboard = async () => {
       // Polls are best-effort refreshes. Never let a slow request overlap the next
