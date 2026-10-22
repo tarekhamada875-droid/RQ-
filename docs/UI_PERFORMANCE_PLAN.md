@@ -35,9 +35,11 @@ Each numbered item is a work area, not a requirement to combine all its bullets 
 - Keep tests focused on the user-visible failure and the relevant neighboring role/session case. Avoid test scaffolding that is harder to understand than the behavior it protects.
 - Each change should leave code easier to understand: use clear names, remove obsolete code only when in scope, and explain non-obvious constraints briefly. Do not create a separate roadmap or turn deferred observations into extra work.
 
-### Owner test checkpoint
+### Automated quality gate and owner updates
 
-After one bounded change is implemented and its automated checks pass, stop and give the owner a simple test card before starting the next plan item. Explain what changed, provide the exact preview/test link and say whether it is an emulator, preview, or live pilot, then give numbered click-by-click steps and the expected result. Do not ask the owner to run terminal commands or interpret logs. Wait for the owner’s observations; if something fails, reproduce and fix that same item, then give updated test steps. Continue only after the owner confirms the test or explicitly asks to proceed without it. Include a privacy-safe bug-report format and follow the handoff rules in `AGENTS.md`.
+The owner is not required to test or approve each change. The agent runs focused tests and repository-required checks, opens a focused PR, and relies on the existing required `verify`/Production Gate and protected auto-merge process. Never remove or bypass automated checks to avoid waiting. After checks and merge reach a final state, give the owner a short plain-language summary. A preview link and click-by-click test steps may be offered as optional, but must not block merging or the next bounded task. Follow the feedback and `tokens ending` handoff rules in `AGENTS.md`.
+
+Do not send a completion response while checks or merge are pending. Refresh the actual PR and check state until it reaches a final outcome, then report verified facts only. If a check fails, the agent—not the owner—investigates and fixes it. If the platform remains genuinely blocked, report the exact blocker and avoid claiming the task is complete or merged.
 
 ### Source-review status: fix confirmed defects; verify risks before changing code
 
