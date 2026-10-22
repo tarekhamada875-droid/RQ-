@@ -308,8 +308,21 @@ export function useGarageSession({
           handleLogout(true);
           return;
         } else {
-          showToast('تعذر تهيئة الجلسة. يرجى المحاولة مرة أخرى', 'error');
-          if (isMounted) setIsSessionReady(true);
+          showToast('تعذر تهيئة الجلسة. يرجى تسجيل الدخول مرة أخرى', 'error');
+
+          // The claim may have reached the server even if its response was lost.
+          // Release only this exact role/entity/session, then return to login.
+          await releaseEntitySession({
+            role: activeRole,
+            entityId: activeEntityId,
+            sessionId,
+            uid,
+          }).catch((releaseErr) => {
+            console.warn('Failed to release uncertain session claim:', releaseErr);
+          });
+
+          if (!isMounted) return;
+          handleLogout(true);
           return;
         }
       }

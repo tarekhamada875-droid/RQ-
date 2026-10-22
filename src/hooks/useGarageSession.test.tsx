@@ -107,6 +107,32 @@ afterEach(() => {
 });
 
 describe('useGarageSession Firestore listener lifecycle', () => {
+  it('does not unlock a protected view when the initial session claim fails', async () => {
+    const props = createProps();
+    sessionMocks.claimEntitySession.mockRejectedValueOnce(
+      Object.assign(new Error('SERVER_UNAVAILABLE'), { code: 'SERVER_UNAVAILABLE' })
+    );
+
+    const hook = renderHook(() => useGarageSession(props));
+
+    await waitFor(() => expect(props.setView).toHaveBeenCalledWith('login'));
+    expect(hook.result.current.isSessionReady).toBe(false);
+    expect(props.showToast).toHaveBeenCalledWith(
+      'تعذر تهيئة الجلسة. يرجى تسجيل الدخول مرة أخرى',
+      'error'
+    );
+    expect(sessionMocks.releaseEntitySession).toHaveBeenCalledWith({
+      role: 'garage',
+      entityId: 'garage-1',
+      sessionId: 'session-lifecycle-test',
+      uid: 'garage-owner'
+    });
+    expect(sessionMocks.onSnapshot).not.toHaveBeenCalled();
+    expect(sessionMocks.refreshEntitySession).not.toHaveBeenCalled();
+
+    hook.unmount();
+  });
+
   it('closes the session-guard snapshot on unmount and starts cleanly after remount', async () => {
     const firstMount = renderHook(() => useGarageSession(createProps()));
     await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
