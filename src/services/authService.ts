@@ -98,8 +98,8 @@ export const authService = {
       } else {
         console.warn('[AuthService] Error validating session on server:', e?.message || e);
       }
+      throw e;
     }
-    return false;
   },
 
   releaseSessionOnServer: async (uid: string, sessionId: string, role: string, entityId: string): Promise<void> => {

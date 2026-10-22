@@ -1,4 +1,4 @@
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listenerTracker } from '../utils/listenerTracker';
 
@@ -48,7 +48,14 @@ vi.mock('../services/anonymousAuth', () => ({ signInAnonymouslyOnce: sessionMock
 
 import { useGarageSession } from './useGarageSession';
 
+type SnapshotCallback = (snapshot: {
+  metadata: { fromCache: boolean };
+  exists: () => boolean;
+  data: () => Record<string, unknown>;
+}) => void;
+
 let snapshotUnsubscribes: ReturnType<typeof vi.fn>[];
+let snapshotCallbacks: SnapshotCallback[];
 
 const createProps = () => ({
   view: 'garage',
@@ -64,10 +71,17 @@ const createProps = () => ({
   showToast: vi.fn(),
 });
 
+const entitySnapshot = (activeSessionIds: string[], currentSessionId?: string) => ({
+  metadata: { fromCache: false },
+  exists: () => true,
+  data: () => ({ activeSessionIds, currentSessionId }),
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   listenerTracker.reset();
   snapshotUnsubscribes = [];
+  snapshotCallbacks = [];
   sessionMocks.auth.currentUser = { uid: 'garage-owner' };
   sessionMocks.getCanonicalSessionId.mockReturnValue('session-lifecycle-test');
   sessionMocks.onAuthStateChanged.mockImplementation((_auth: unknown, callback: (user: unknown) => void) => {
@@ -76,7 +90,9 @@ beforeEach(() => {
   });
   sessionMocks.doc.mockReturnValue({ path: 'garages/garage-1' });
   sessionMocks.claimEntitySession.mockResolvedValue(undefined);
-  sessionMocks.onSnapshot.mockImplementation(() => {
+  sessionMocks.validateOrRefreshSessionOnServer.mockResolvedValue(true);
+  sessionMocks.onSnapshot.mockImplementation((_ref: unknown, callback: SnapshotCallback) => {
+    snapshotCallbacks.push(callback);
     const unsubscribe = vi.fn();
     snapshotUnsubscribes.push(unsubscribe);
     return unsubscribe;
@@ -110,6 +126,56 @@ describe('useGarageSession Firestore listener lifecycle', () => {
 
     secondMount.unmount();
     expect(snapshotUnsubscribes[1]).toHaveBeenCalledOnce();
+    expect(listenerTracker.getActiveListenerCount()).toBe(0);
+  });
+
+  it('does not log out when authoritative session validation is unavailable', async () => {
+    const props = createProps();
+    sessionMocks.validateOrRefreshSessionOnServer.mockRejectedValueOnce(
+      Object.assign(new Error('offline'), { code: 'NETWORK_ERROR' })
+    );
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(snapshotCallbacks).toHaveLength(1));
+
+    await act(async () => {
+      snapshotCallbacks[0](entitySnapshot(['session-lifecycle-test']));
+      snapshotCallbacks[0](entitySnapshot([], 'session-on-another-device'));
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(sessionMocks.validateOrRefreshSessionOnServer).toHaveBeenCalledOnce());
+
+    expect(props.setView).not.toHaveBeenCalled();
+    expect(props.showToast).not.toHaveBeenCalled();
+    expect(sessionMocks.releaseEntitySession).not.toHaveBeenCalled();
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
+    expect(listenerTracker.getActiveListenerCount()).toBe(1);
+
+    hook.unmount();
+    expect(listenerTracker.getActiveListenerCount()).toBe(0);
+  });
+
+  it('does not install timers or listeners if unmounted while the session claim is pending', async () => {
+    let resolveClaim!: () => void;
+    const pendingClaim = new Promise<void>((resolve) => {
+      resolveClaim = resolve;
+    });
+    sessionMocks.claimEntitySession.mockReturnValue(pendingClaim);
+
+    const hook = renderHook(() => useGarageSession(createProps()));
+    await waitFor(() => expect(sessionMocks.claimEntitySession).toHaveBeenCalledOnce());
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+    const documentListenerSpy = vi.spyOn(document, 'addEventListener');
+    hook.unmount();
+
+    await act(async () => {
+      resolveClaim();
+      await pendingClaim;
+    });
+
+    expect(setIntervalSpy).not.toHaveBeenCalled();
+    expect(documentListenerSpy.mock.calls.some(([eventName]) => eventName === 'visibilitychange')).toBe(false);
+    expect(sessionMocks.onSnapshot).not.toHaveBeenCalled();
+    expect(sessionMocks.refreshEntitySession).not.toHaveBeenCalled();
     expect(listenerTracker.getActiveListenerCount()).toBe(0);
   });
 });
