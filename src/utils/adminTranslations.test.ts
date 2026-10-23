@@ -16,6 +16,14 @@ describe('Admin Translations Hook Helper', () => {
     expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');
     expect(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBe('Could not reach the server. Check your internet connection.');
     expect(t('حدث خطأ في الخادم أثناء حفظ الخطة.')).toBe('A server error prevented the plan from being saved.');
+    expect(t('أدخل رمز الدخول الحالي للمتابعة.')).toBe('Enter the current PIN to continue.');
+    expect(t('رمز الدخول الحالي غير صحيح.')).toBe('The current PIN is incorrect.');
+    expect(t('رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.')).toBe('The new PIN must be exactly 8 digits.');
+    expect(t('رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.')).toBe('The new PIN must differ from the current PIN.');
+    expect(t('هذا الرمز السري مستخدم بالفعل في حساب آخر:')).toBe('This PIN is already in use by another account:');
+    expect(t('تم تغيير رمز الدخول بنجاح.')).toBe('Admin PIN updated successfully.');
+    expect(t('أدخل رمز دخول جديداً (8 أرقام)')).toBe('Enter a new PIN (8 digits)');
+    expect(t('جارٍ الحفظ...')).toBe('Saving...');
   });
 
   it('falls back to the provided string if English dictionary key is missing', () => {
