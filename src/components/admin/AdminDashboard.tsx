@@ -80,6 +80,7 @@ export const AdminDashboard = memo(({
   React.useEffect(() => {
     if (activeTab === 'supervisors') setActiveTab('people');
     else if (activeTab === 'trial_leads') setActiveTab('overview');
+    else if (activeTab === 'announcements') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
 
   // Keep any stale legacy Supervisor state on the Delegates-only People view.
