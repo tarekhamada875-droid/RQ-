@@ -18,6 +18,13 @@ function renderLogin(overrides: Partial<React.ComponentProps<typeof LoginView>> 
 }
 
 describe('LoginView safe interaction contract', () => {
+  it('shows the company footer in Arabic only', () => {
+    renderLogin();
+    expect(screen.getByText('آر كيو لتطوير البرمجيات')).toBeInTheDocument();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).not.toBeInTheDocument();
+  });
+
+
   it('builds a numeric PIN through keypad clicks and respects the ten-digit limit', () => {
     const setLoginPhone = vi.fn();
     renderLogin({ setLoginPhone });
