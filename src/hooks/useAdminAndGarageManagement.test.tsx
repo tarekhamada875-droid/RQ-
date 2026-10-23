@@ -59,7 +59,20 @@ const createSnapshot = (exists: boolean, garageData: Record<string, unknown> = {
   exists: vi.fn(() => exists),
   id: 'garage-1',
   data: vi.fn(() => garageData)
+  it('keeps the retired account role out of Admin', async () => {
+    mocks.authenticateUserCredentials.mockResolvedValue({
+      success: true,
+      role: 'supervisor',
+      sessionClaimed: true,
+      account: { id: 'supervisor-1' }
+    } as any);
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+    await act(async () => { await result.current.handleGarageLogin(); });
+    expect(props.setView).not.toHaveBeenCalledWith('admin_dashboard');
+  });
 });
+
 
 const createProps = () => ({
   allGarages: [],
