@@ -87,16 +87,16 @@ describe('AdminActiveSessionsView', () => {
 });
 
 
-describe('AdminActiveSessionsView English localization', () => {
-  it('renders English copy and left-to-right layout when English is selected', async () => {
+describe('AdminActiveSessionsView Arabic-only interface', () => {
+  it('keeps Arabic copy and right-to-left layout when a legacy English preference exists', async () => {
     themeMock.adminLang = 'en';
     render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} t={(key) => key} />);
 
-    expect(await screen.findByText('This device')).toBeInTheDocument();
-    expect(screen.getByText('Registered device')).toBeInTheDocument();
-    expect(screen.getByText('2 sessions')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Revoke session' })).toBeInTheDocument();
-    expect(screen.getByText('Active devices and sessions').closest('[dir]')).toHaveAttribute('dir', 'ltr');
-    expect(screen.getAllByText(/Last active:/)).toHaveLength(2);
+    expect(await screen.findByText('هذا الجهاز')).toBeInTheDocument();
+    expect(screen.getByText('جهاز مسجّل')).toBeInTheDocument();
+    expect(screen.getByText('2 جلسة')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'إلغاء الجلسة' })).toBeInTheDocument();
+    expect(screen.getByText('الأجهزة والجلسات النشطة').closest('[dir]')).toHaveAttribute('dir', 'rtl');
+    expect(screen.getAllByText(/آخر نشاط:/)).toHaveLength(2);
   });
 });
