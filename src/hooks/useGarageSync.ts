@@ -267,7 +267,7 @@ export function useGarageSync({
   const delegateId = delegate?.id;
   const delegateUserId = user?.uid;
   useEffect(() => {
-    if (!isAuthReady || !delegateUserId || !delegateId || view !== 'delegate_dashboard') return;
+    if (!isSessionReady || !isAuthReady || !delegateUserId || !delegateId || view !== 'delegate_dashboard') return;
 
     const isNewDelegate = delegateDashboardOwnerRef.current !== delegateId;
     if (isNewDelegate) {
@@ -332,7 +332,7 @@ export function useGarageSync({
       }
       window.clearInterval(refresh);
     };
-  }, [isAuthReady, delegateUserId, delegateId, view]);
+  }, [isSessionReady, isAuthReady, delegateUserId, delegateId, view]);
 
   const loadMoreDelegateSection = useCallback(async (
     section: 'createdGarages' | 'referredGarages',
