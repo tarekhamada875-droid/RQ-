@@ -79,9 +79,10 @@ const staff = (name, garageId) => ({
 });
 
 // Mirrors claimSessionInTransaction's browser fallback writes. The Worker is
-// authoritative; these writes must remain blocked when server validation fails.
-const attemptBrowserSessionClaimFallback = (db, uid, sessionId) => runTransaction(db, async (transaction) => {
-  const entityRef = doc(db, 'garages/g-1');
+// authoritative; tests cover denied changes and the heartbeat-only edge case
+// where matching legacy session state can still permit the fallback transaction.
+const attemptBrowserSessionClaimFallback = (db, uid, sessionId, garageId = 'g-1') => runTransaction(db, async (transaction) => {
+  const entityRef = doc(db, `garages/${garageId}`);
   const securitySessionRef = doc(db, `garage_sessions/${uid}`);
   const [entitySnap, securitySessionSnap] = await Promise.all([
     transaction.get(entityRef),
@@ -136,6 +137,11 @@ try {
     });
     await setDoc(doc(db, 'garages/g-1'), garage('Synthetic Garage', { createdByDelegateId: 'del-1' }));
     await setDoc(doc(db, 'garages/g-2'), garage('Other Synthetic Garage'));
+    await setDoc(doc(db, 'garages/g-fallback-match'), garage('Synthetic Matching Session Garage', {
+      currentSessionId: 'fallback-match-uid-session',
+      activeSessionIds: ['fallback-match-uid-session']
+    }));
+    await setDoc(doc(db, 'garage_sessions/fallback-match-uid'), session('fallback-match-uid', 'garage', 'g-fallback-match'));
     await setDoc(doc(db, 'staff/staff-1'), staff('Synthetic Staff', 'g-1'));
     await setDoc(doc(db, 'staff/staff-peer'), staff('Synthetic Peer', 'g-1'));
     await setDoc(doc(db, 'staff/staff-g-2'), staff('Other Garage Staff', 'g-2'));
@@ -200,6 +206,7 @@ try {
   const adminDb = env.authenticatedContext('admin-uid').firestore();
   const ownerDb = env.authenticatedContext('owner-uid').firestore();
   const fallbackOwnerDb = env.authenticatedContext('fallback-owner-uid').firestore();
+  const fallbackMatchDb = env.authenticatedContext('fallback-match-uid').firestore();
   const inactiveOwnerDb = env.authenticatedContext('inactive-owner-uid').firestore();
   const staffDb = env.authenticatedContext('staff-uid').firestore();
   const otherGarageStaffDb = env.authenticatedContext('other-garage-staff-uid').firestore();
@@ -319,10 +326,20 @@ try {
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
 
-  // If the Worker validation/claim path fails, the legacy client transaction
-  // must not be able to claim an existing session or create a new one.
+  // A legacy client transaction cannot replace a different session ID or create
+  // a new session record after the Worker validation/claim path fails.
   await assertFails(attemptBrowserSessionClaimFallback(ownerDb, 'owner-uid', 'browser-fallback-session'));
   await assertFails(attemptBrowserSessionClaimFallback(fallbackOwnerDb, 'fallback-owner-uid', 'browser-fallback-new-session'));
+  // When all session identifiers already match, the same fallback-shaped
+  // transaction reduces to heartbeat-only updates and is permitted by rules.
+  // The coordinator must therefore honor an explicit Worker rejection before
+  // considering any client-side fallback.
+  await assertSucceeds(attemptBrowserSessionClaimFallback(
+    fallbackMatchDb,
+    'fallback-match-uid',
+    'fallback-match-uid-session',
+    'g-fallback-match'
+  ));
   await assertSucceeds(getDoc(doc(ownerDb, 'garage_sessions/owner-uid')));
 
   // Browser roles must use the Worker projection; nobody reads the raw private config document.

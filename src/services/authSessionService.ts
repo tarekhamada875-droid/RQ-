@@ -138,7 +138,11 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     return;
   }
 
-  // 1. Authoritative Server Validation / Heartbeat Refresh (works for all roles, bypassing client-side creation locks)
+  // 1. Authoritative Server Validation / Heartbeat Refresh.
+  // A confirmed invalid result must never fall through to browser writes: a
+  // matching legacy session document can still permit heartbeat-only Firestore
+  // updates even though the Worker has explicitly rejected the session.
+  let serverConfirmedInvalid = false;
   try {
     const isValidOnServer = await authService.validateOrRefreshSessionOnServer(uid, sessionId, role, entityId);
     if (isValidOnServer) {
@@ -146,8 +150,11 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
       notifyWorkerSessionReady();
       return;
     }
+    serverConfirmedInvalid = true;
   } catch (err) {
-    console.warn('Server session validation fallback:', err);
+    // A transport/server error is not proof of revocation. The existing
+    // rules-limited fallback below remains available for this transient case.
+    console.warn('Server session validation unavailable; considering restricted fallback:', err);
   }
 
   // 2. For Admin role: Use authoritative Server API with PIN or existing token
@@ -166,8 +173,12 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
       if (err?.message === 'SESSION_OCCUPIED') {
         throw err;
       }
-      console.warn('Server admin session claim fallback to client transaction:', err);
+      console.warn('Server admin session claim failed:', err);
     }
+  }
+
+  if (serverConfirmedInvalid) {
+    throw new Error('SESSION_INVALID');
   }
 
   const entityColl = ENTITY_COLLECTIONS[role];
