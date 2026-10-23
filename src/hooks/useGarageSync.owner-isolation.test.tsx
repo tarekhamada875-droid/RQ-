@@ -5,7 +5,7 @@ import { useGarageSync } from './useGarageSync';
 
 const serviceMocks = vi.hoisted(() => ({
   subscribeToPackages: vi.fn(() => () => {}),
-  subscribeToActiveVehicles: vi.fn(() => () => {}),
+  subscribeToActiveVehicles: vi.fn((_garageId: string, _callback: (vehicles: any[]) => void) => () => {}),
   subscribeToTodayTransactions: vi.fn(() => () => {}),
   subscribeToGarage: vi.fn(() => () => {}),
   getStaffByGarageOnce: vi.fn(async () => []),
