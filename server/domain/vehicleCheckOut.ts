@@ -37,7 +37,9 @@ export function decideVehicleCheckOut(
 ): VehicleCheckOutResult<VehicleCheckOutDecision> {
   if (!garage.exists) return { ok: false, error: 'GARAGE_NOT_FOUND' };
   if (!vehicle.exists) return { ok: false, error: 'VEHICLE_NOT_FOUND' };
-  if (vehicle.status === 'outside') return { ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' };
+  // Only a known active vehicle may exit. Missing or corrupt statuses must not
+  // create revenue, exit counts, or reporting events.
+  if (vehicle.status !== 'inside') return { ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' };
   const cost = parseMoneyAmount(command.cost);
   if (cost === null) return { ok: false, error: 'INVALID_MONEY_AMOUNT' };
   return {

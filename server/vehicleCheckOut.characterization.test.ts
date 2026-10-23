@@ -20,10 +20,14 @@ describe('vehicle check-out characterization', () => {
     expect(decideVehicleCheckOut(command, garageDocumentToCheckOutState({ lastTransactionDate: '2026-09-23' }), vehicleDocumentToCheckOutState({ status: 'inside' }))).toMatchObject({ ok: true, value: { isNewDay: true } });
   });
 
-  it('preserves missing-record and already-outside contracts', () => {
+  it('rejects missing, outside, and unknown vehicle states before accounting writes', () => {
+    const garage = garageDocumentToCheckOutState({});
     expect(decideVehicleCheckOut(command, garageDocumentToCheckOutState(null), vehicleDocumentToCheckOutState({ status: 'inside' }))).toEqual({ ok: false, error: 'GARAGE_NOT_FOUND' });
-    expect(decideVehicleCheckOut(command, garageDocumentToCheckOutState({}), vehicleDocumentToCheckOutState(null))).toEqual({ ok: false, error: 'VEHICLE_NOT_FOUND' });
-    expect(decideVehicleCheckOut(command, garageDocumentToCheckOutState({}), vehicleDocumentToCheckOutState({ status: 'outside' }))).toEqual({ ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' });
+    expect(decideVehicleCheckOut(command, garage, vehicleDocumentToCheckOutState(null))).toEqual({ ok: false, error: 'VEHICLE_NOT_FOUND' });
+    for (const vehicle of [{ status: 'outside' }, {}, { status: 'pending' }, { status: 'corrupt' }]) {
+      expect(decideVehicleCheckOut(command, garage, vehicleDocumentToCheckOutState(vehicle))).toEqual({ ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' });
+    }
+    expect(decideVehicleCheckOut(command, garage, { exists: true })).toEqual({ ok: false, error: 'VEHICLE_ALREADY_OUTSIDE' });
   });
 
   it('rejects malformed checkout money before returning a write decision', () => {
