@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Delegate } from '../../types';
 import { ThemeProvider } from '../../utils/ThemeContext';
 
@@ -69,4 +69,56 @@ describe('AdminDelegateDetailsView Component', () => {
     expect(screen.getAllByText('150').length).toBeGreaterThan(0);
     expect(serviceMocks.getDelegateRecharges).toHaveBeenCalledWith('del-123');
   });
+  it('ignores late history responses from the previously selected delegate', async () => {
+    let resolveOld!: (value: any[]) => void;
+    let resolveNew!: (value: any[]) => void;
+    const oldHistory = new Promise<any[]>(resolve => { resolveOld = resolve; });
+    const newHistory = new Promise<any[]>(resolve => { resolveNew = resolve; });
+    serviceMocks.getDelegateRecharges.mockImplementation((id: string) =>
+      id === 'del-123' ? oldHistory : newHistory
+    );
+
+    const { rerender } = renderDetails(mockDelegate);
+    const nextDelegate = { ...mockDelegate, id: 'del-456', name: 'New Delegate' };
+    rerender(
+      <ThemeProvider>
+        <AdminDelegateDetailsView
+          delegate={nextDelegate}
+          setView={vi.fn()}
+          setSelectedDelegate={vi.fn()}
+          removeDelegate={vi.fn().mockResolvedValue(undefined)}
+        />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(await screen.findByText('سجل الشحن'));
+    resolveNew([{
+      id: 'new-history',
+      garageId: 'garage-history',
+      staffId: 'del-456',
+      actionType: 'recharge',
+      amount: 250,
+      commission: 25,
+      plateNumber: 'NEW-HISTORY',
+      timestamp: new Date()
+    }]);
+    expect(await screen.findByText('NEW-HISTORY')).toBeInTheDocument();
+
+    resolveOld([{
+      id: 'old-history',
+      garageId: 'garage-history',
+      staffId: 'del-123',
+      actionType: 'recharge',
+      amount: 900,
+      commission: 90,
+      plateNumber: 'OLD-HISTORY',
+      timestamp: new Date()
+    }]);
+
+    await waitFor(() => {
+      expect(screen.queryByText('OLD-HISTORY')).not.toBeInTheDocument();
+      expect(screen.getByText('NEW-HISTORY')).toBeInTheDocument();
+    });
+  });
+
 });
