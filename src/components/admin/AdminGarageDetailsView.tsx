@@ -405,7 +405,7 @@ export const AdminGarageDetailsView = memo(({
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}
         />
-        <AdminCreditGrantPanel garage={selectedGarageForDetails} packages={packages} adminLang={adminLang} />
+        <AdminCreditGrantPanel garage={selectedGarageForDetails} />
 
         {/* Zone 3: Operations & Staff Management */}
         <AdminGarageSettingsSection
