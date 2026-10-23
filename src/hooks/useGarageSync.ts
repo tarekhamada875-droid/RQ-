@@ -401,13 +401,22 @@ export function useGarageSync({
       void refreshAdminLists();
     }
 
-    const unsubCurrentGarage = (view === 'garage' && garage?.id)
-      ? firestoreService.subscribeToGarage(garage.id, setGarage)
+    let garageSubscriptionCurrent = true;
+    const subscribedGarageId = view === 'garage' ? garage?.id : undefined;
+    const unsubCurrentGarage = subscribedGarageId
+      ? firestoreService.subscribeToGarage(subscribedGarageId, (updatedGarage) => {
+          // A callback already queued by the old listener must not replace the
+          // active garage after a switch or logout.
+          if (garageSubscriptionCurrent && updatedGarage?.id === subscribedGarageId) {
+            setGarage(updatedGarage);
+          }
+        })
       : () => {};
 
     const unsubCurrentDelegate = () => {};
 
     return () => {
+      garageSubscriptionCurrent = false;
       unsubCurrentGarage();
       unsubCurrentDelegate();
     };
