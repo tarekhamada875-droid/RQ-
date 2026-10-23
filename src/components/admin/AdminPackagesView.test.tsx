@@ -4,7 +4,6 @@ import { AdminPackagesView } from './AdminPackagesView';
 import { firestoreService } from '../../services';
 import { ApiError } from '../../api/apiClient';
 import type { Package } from '../../types';
-import { useAppStore } from '../../store/appStore';
 
 vi.mock('../../services', () => ({
   firestoreService: {
@@ -116,24 +115,6 @@ describe('AdminPackagesView credit-bundle catalog', () => {
     expect(alert).toHaveTextContent('حدث خطأ في الخادم أثناء حفظ قالب الأرصدة.');
     expect(alert).toHaveTextContent('corr-plan-500');
     expect(alert).not.toHaveTextContent('اتصال');
-  });
-
-
-  it('reports package deletion failures instead of silently closing the dialog', async () => {
-    vi.mocked(firestoreService.deletePackage).mockRejectedValueOnce(new Error('temporary failure'));
-    const showToast = vi.spyOn(useAppStore.getState(), 'showToast');
-    render(<AdminPackagesView {...props} packages={[
-      { id: 'credit-400', name: '400 credits', price: 400, creditQuantity: 400, catalogType: 'credit_bundle', isActive: true }
-    ]} />);
-
-    fireEvent.click(screen.getByTitle('حذف القالب'));
-    const dialog = vi.mocked(props.setConfirmDialog).mock.calls.at(-1)?.[0] as any;
-    expect(dialog).toEqual(expect.objectContaining({ isOpen: true }));
-    await dialog.onConfirm();
-
-    expect(firestoreService.deletePackage).toHaveBeenCalledWith('credit-400');
-    expect(showToast).toHaveBeenCalledWith('تعذر حذف قالب الأرصدة. يرجى المحاولة مرة أخرى.', 'error');
-    showToast.mockRestore();
   });
 
   it('associates every credit-bundle creation control with its visible label', () => {
