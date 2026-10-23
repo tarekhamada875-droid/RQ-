@@ -81,13 +81,13 @@ export function useGarageSync({
 
   // Keep transient garage data tied to the active role/entity, not just the shared garage ID.
   const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
-  const dataOwnerKey = view === 'garage'
+  const dataOwnerKey = `${isSessionReady ? 'ready' : 'unready'}:` + (view === 'garage'
     ? `garage:${garage?.id ?? ''}:staff:${currentStaff?.id ?? 'owner'}:user:${user?.uid ?? ''}`
     : view === 'delegate_dashboard'
       ? `delegate:${delegate?.id ?? ''}:user:${user?.uid ?? ''}`
       : isAdminView
         ? `admin:${currentSupervisor?.id ?? 'admin'}:user:${user?.uid ?? ''}`
-        : `view:${view}:user:${user?.uid ?? ''}`;
+        : `view:${view}:user:${user?.uid ?? ''}`);
   const previousDataOwnerKeyRef = useRef(dataOwnerKey);
 
   // Clear before paint when ownership changes; do not wipe retained data on initial mount.
@@ -430,7 +430,7 @@ export function useGarageSync({
 
   // Load Admin specific garage details once
   useEffect(() => {
-    if (!isAuthReady || !user || view !== 'admin_garage_details' || !selectedGarageForDetails?.id) return;
+    if (!isSessionReady || !isAuthReady || !user || view !== 'admin_garage_details' || !selectedGarageForDetails?.id) return;
 
     const garageId = selectedGarageForDetails.id;
     // Never show the previous garage's staff while this selection is loading.
@@ -454,7 +454,7 @@ export function useGarageSync({
     return () => {
       cancelled = true;
     };
-  }, [isAuthReady, user, view, selectedGarageForDetails?.id, setSelectedGarageForDetails]);
+  }, [isSessionReady, isAuthReady, user, view, selectedGarageForDetails?.id, setSelectedGarageForDetails]);
 
   const delegateGarages = useMemo(() => {
     if (!delegate) return [];
