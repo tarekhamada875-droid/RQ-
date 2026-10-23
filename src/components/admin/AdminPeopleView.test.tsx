@@ -90,8 +90,8 @@ describe('AdminPeopleView delegate creation', () => {
 });
 
 
-describe('AdminPeopleView English localization', () => {
-  it('uses English labels and left-to-right layout when English is selected', () => {
+describe('AdminPeopleView Arabic-only interface', () => {
+  it('keeps Arabic labels and right-to-left layout even when a legacy English preference exists', () => {
     themeMock.adminLang = 'en';
 
     render(
@@ -103,15 +103,15 @@ describe('AdminPeopleView English localization', () => {
       />,
     );
 
-    expect(screen.getByText('Delegates')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Delegate' })).toBeInTheDocument();
-    expect(screen.getByText('No delegates registered yet')).toBeInTheDocument();
-    expect(screen.getByText('Delegates').closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('المناديب المعينون')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'إضافة مندوب جديد' })).toBeInTheDocument();
+    expect(screen.getByText('لا يوجد مناديب مسجلين حالياً')).toBeInTheDocument();
+    expect(screen.getByText('المناديب المعينون').closest('[dir]')).toHaveAttribute('dir', 'rtl');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add Delegate' }));
-    expect(screen.getByText('Add a new system delegate')).toBeInTheDocument();
-    expect(screen.getByText('Full name')).toBeInTheDocument();
-    expect(screen.getByText('Phone number')).toBeInTheDocument();
-    expect(screen.getByText('Access PIN (exactly 8 digits)')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
+    expect(screen.getByText('إضافة مندوب جديد للنظام')).toBeInTheDocument();
+    expect(screen.getByText('الاسم بالكامل')).toBeInTheDocument();
+    expect(screen.getByText('رقم الهاتف')).toBeInTheDocument();
+    expect(screen.getByText('رمز الدخول (8 أرقام بالضبط)')).toBeInTheDocument();
   });
 });
