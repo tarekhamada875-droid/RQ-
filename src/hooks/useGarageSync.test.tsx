@@ -473,6 +473,45 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(result.current.delegates).toEqual([]);
   });
 
+  it('loads staff for the active garage after session readiness and ignores a previous garage response', async () => {
+    vi.useRealTimers();
+    let resolveGarageA!: (staff: any[]) => void;
+    let resolveGarageB!: (staff: any[]) => void;
+    serviceMocks.getStaffByGarageOnce
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageA = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveGarageB = resolve; }));
+
+    const baseProps = createBaseProps();
+    const { result, rerender, unmount } = renderHook(
+      ({ garage }) => useGarageSync({
+        ...baseProps,
+        isSessionReady: true,
+        view: 'garage',
+        garage,
+      }),
+      { initialProps: { garage: { id: 'garage-a' } as any } }
+    );
+
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledWith('garage-a');
+    rerender({ garage: { id: 'garage-b' } as any });
+    expect(serviceMocks.getStaffByGarageOnce).toHaveBeenCalledWith('garage-b');
+
+    await act(async () => {
+      resolveGarageB([{ id: 'staff-b', name: 'Garage B staff' }]);
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(result.current.staffList.map((staff) => staff.id)).toEqual(['staff-b']);
+    });
+
+    await act(async () => {
+      resolveGarageA([{ id: 'staff-a', name: 'Garage A staff' }]);
+      await Promise.resolve();
+    });
+    expect(result.current.staffList.map((staff) => staff.id)).toEqual(['staff-b']);
+    unmount();
+  });
+
   it('cancels the active-vehicle trailing update when the garage listener is removed', () => {
     const { unmount } = renderHook(() => useGarageSync({
       ...createBaseProps(),
