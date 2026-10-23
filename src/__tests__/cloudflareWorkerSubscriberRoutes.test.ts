@@ -253,6 +253,37 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect([...mockDb.records.values()].filter((record: any) => record.eventType === 'subscriber_renewed')).toHaveLength(1);
   });
 
+  it('does not double-debit a prepaid renewal retried without an idempotency key', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 10, referral: 0 } });
+    const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberData: {
+        name: 'Retry Without Key', plateNumber: 'س ص ع 6767', plateNumberRaw: 'سصع6767',
+        startDate: '2026-10-01', endDate: '2026-10-31'
+      } })
+    }), workerEnv);
+    const subscriberId = (await addRes.json() as any).id;
+    const request = () => api.fetch(new Request('http://localhost/api/subscribers/renew', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
+    }), workerEnv);
+
+    const first = await request();
+    expect(first.status).toBe(200);
+    expect((await first.json() as any).creditBalance).toMatchObject({ paid: 5, referral: 0, trial: 0 });
+    const writesAfterFirst = mockDb.documentWriteCount;
+    const replay = await request();
+
+    expect(replay.status).toBe(200);
+    expect((await replay.json() as any).creditBalance).toMatchObject({ paid: 5, referral: 0, trial: 0 });
+    expect(mockDb.documentWriteCount).toBe(writesAfterFirst);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 5, referral: 0, trial: 0 });
+    expect([...mockDb.records.values()].filter((record: any) => record.kind === 'subscriber_renewal_debit')).toHaveLength(1);
+    expect([...mockDb.records.values()].filter((record: any) => record.eventType === 'subscriber_renewed')).toHaveLength(1);
+  });
+
   it('3. POST /api/subscribers/update updates subscriber metadata', async () => {
     // Add subscriber
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
