@@ -18,8 +18,16 @@ interface AppOverlaysProps {
 export function AppOverlays({ app }: AppOverlaysProps) {
   const { navigationUi, vehicleOperations, session, adminManagement } = app;
   const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress, now } = navigationUi;
-  const { garage } = app.garageData;
-  const { currentStaff, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
+  const { garage, delegate } = app.garageData;
+  const { currentStaff, currentSupervisor, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
+  const activeIdentity = view === 'garage'
+    ? (currentStaff?.id ? `staff:${currentStaff.id}` : garage?.id ? `garage:${garage.id}` : 'garage:pending')
+    : view === 'delegate_dashboard'
+      ? (delegate?.id ? `delegate:${delegate.id}` : 'delegate:pending')
+      : (view === 'admin_dashboard' || view.startsWith('admin_'))
+        ? (currentSupervisor?.id ? `supervisor:${currentSupervisor.id}` : 'admin:auth-pin')
+        : `view:${view}`;
+  const logoutAttemptScope = `${activeIdentity}:session:${sessionId}`;
   const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = vehicleOperations;
   const { deleteGarage } = adminManagement;
 
@@ -30,6 +38,6 @@ export function AppOverlays({ app }: AppOverlaysProps) {
     {showDeleteConfirm && selectedVehicle && <DeleteVehicleConfirmModal vehicle={selectedVehicle} isLoading={isLoading} onConfirm={handleDeleteVehicle} onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }} />}
     {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} now={now} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); handleCheckIn(pendingCheckInType); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); setNewPlateNumber(''); }} />}
     {showSubscriberWarning && subscriberWarningPlate && <SubscriberWarningModal plateNumber={subscriberWarningPlate} onConfirm={() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); }} />}
-    {showLogoutConfirm && <LogoutConfirmModal onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={firestoreService.verifyAdminPinForLogout} />}
+    {showLogoutConfirm && <LogoutConfirmModal key={logoutAttemptScope} attemptScope={logoutAttemptScope} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={firestoreService.verifyAdminPinForLogout} />}
   </Suspense>;
 }
