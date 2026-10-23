@@ -110,8 +110,8 @@ describe('AdminPeopleView English localization', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Delegate' }));
     expect(screen.getByText('Add a new system delegate')).toBeInTheDocument();
-    expect(screen.getByLabelText('Full name')).toBeInTheDocument();
-    expect(screen.getByLabelText('Phone number')).toBeInTheDocument();
-    expect(screen.getByLabelText('Access PIN (exactly 8 digits)')).toBeInTheDocument();
+    expect(screen.getByText('Full name')).toBeInTheDocument();
+    expect(screen.getByText('Phone number')).toBeInTheDocument();
+    expect(screen.getByText('Access PIN (exactly 8 digits)')).toBeInTheDocument();
   });
 });
