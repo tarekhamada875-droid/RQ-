@@ -12,7 +12,6 @@ import {
 import { Garage } from '../../types';
 import { PlateLookupModal } from '../modals/PlateLookupModal';
 import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
-import { useTheme } from '../../utils/ThemeContext';
 
 interface AdminOverviewViewProps {
   allGarages: Garage[];
