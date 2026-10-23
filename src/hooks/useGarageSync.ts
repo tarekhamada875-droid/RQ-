@@ -158,14 +158,40 @@ export function useGarageSync({
     return () => unsub();
   }, [isSessionReady, garage?.id, setTodayTransactions, showToast]);
 
+  const staffLoadGenerationRef = useRef(0);
   const loadGarageData = useCallback(async (garageId: string) => {
+    const requestGeneration = ++staffLoadGenerationRef.current;
+    const ownerKey = dataOwnerKey;
     try {
       const staff = await firestoreService.getStaffByGarageOnce(garageId);
+      if (
+        requestGeneration !== staffLoadGenerationRef.current ||
+        previousDataOwnerKeyRef.current !== ownerKey
+      ) return;
       setStaffList(staff);
     } catch (err) {
-      console.error('Failed to load garage data:', err);
+      if (
+        requestGeneration === staffLoadGenerationRef.current &&
+        previousDataOwnerKeyRef.current === ownerKey
+      ) {
+        console.error('Failed to load garage data:', err);
+      }
     }
-  }, [setStaffList]);
+  }, [dataOwnerKey, setStaffList]);
+
+  // Staff reports depend on the current garage's staff roster. Hydrate it only
+  // after the protected garage session is ready, and discard responses on switch/logout.
+  useEffect(() => {
+    if (!isSessionReady || view !== 'garage' || !garage?.id) {
+      staffLoadGenerationRef.current += 1;
+      return;
+    }
+
+    void loadGarageData(garage.id);
+    return () => {
+      staffLoadGenerationRef.current += 1;
+    };
+  }, [isSessionReady, view, garage?.id, loadGarageData]);
 
   const loadAdminGaragePage = useCallback(async (reset = false) => {
     if ((!reset && adminGarageLoadingRef.current) || (!reset && !adminGarageHasMore)) return;
