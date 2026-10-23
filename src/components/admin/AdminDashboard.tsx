@@ -74,12 +74,13 @@ export const AdminDashboard = memo(({
   // Localized states to encapsulate admin view and prevent global App re-renders
   const systemConfig = useSystemConfig();
   const [adminSearch, setAdminSearch] = React.useState<string>('');
-  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'announcements' | 'catalog_settings' | 'active_sessions' | 'partners_calculator'>('app_admin_tab', 'overview');
+  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'partners_calculator'>('app_admin_tab', 'overview');
 
   // Older browser storage may point at retired tabs. Normalize these saved values without touching user data.
   React.useEffect(() => {
     if (activeTab === 'supervisors') setActiveTab('people');
     else if (activeTab === 'trial_leads') setActiveTab('overview');
+    else if (activeTab === 'announcements') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
 
   // Keep any stale legacy Supervisor state on the Delegates-only People view.
