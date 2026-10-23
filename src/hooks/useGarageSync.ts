@@ -427,6 +427,8 @@ export function useGarageSync({
     if (!isAuthReady || !user || view !== 'admin_garage_details' || !selectedGarageForDetails?.id) return;
 
     const garageId = selectedGarageForDetails.id;
+    // Never show the previous garage's staff while this selection is loading.
+    setStaffList([]);
     let cancelled = false;
     const fetchSpecificData = async () => {
       try {

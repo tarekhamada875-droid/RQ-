@@ -591,7 +591,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     const baseProps = createBaseProps();
     const setSelectedGarageForDetails = vi.fn();
-    const { rerender, unmount } = renderHook(
+    const { result, rerender, unmount } = renderHook(
       ({ selectedGarageForDetails }) => useGarageSync({
         ...baseProps,
         isSessionReady: true,
@@ -602,10 +602,16 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       { initialProps: { selectedGarageForDetails: { id: 'garage-a' } as any } }
     );
 
+    act(() => {
+      result.current.setStaffList([{ id: 'staff-a', name: 'Garage A staff' } as any]);
+    });
+    expect(result.current.staffList).toHaveLength(1);
+
     await act(async () => {
       rerender({ selectedGarageForDetails: { id: 'garage-b' } as any });
       await Promise.resolve();
     });
+    expect(result.current.staffList).toEqual([]);
     expect(serviceMocks.getGarageById).toHaveBeenCalledTimes(2);
     await act(async () => {
       resolveGarageB({ id: 'garage-b', name: 'Garage B' });
