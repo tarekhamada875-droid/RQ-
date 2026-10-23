@@ -41,7 +41,6 @@ interface AdminNavigationAndViewsProps {
   onOpenAddGarage?: () => void;
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
-  setConfirmDialog: any;
   currentAdminPin: string;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
@@ -71,7 +70,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   onOpenAddGarage,
   handleApproveGarage,
   handleRejectGarage,
-  setConfirmDialog,
   currentAdminPin,
   adminLang,
   t,
