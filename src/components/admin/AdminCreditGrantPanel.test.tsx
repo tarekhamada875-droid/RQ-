@@ -14,13 +14,13 @@ const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'pr
 
 describe('AdminCreditGrantPanel', () => {
   it('does not expose a credit input for a legacy garage', () => {
-    render(<AdminCreditGrantPanel garage={legacyGarage} packages={[]} adminLang="en" />);
+    render(<AdminCreditGrantPanel garage={legacyGarage} />);
     expect(screen.queryByLabelText(/الرصيد المراد إضافته/i)).toBeNull();
     expect(screen.getByText(/إضافة الرصيد متاحة للجراجات/i)).toBeTruthy();
   });
 
   it('shows the Arabic-only amount form', () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="ar" />);
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
 
     expect(screen.getByLabelText(/الرصيد المراد إضافته/i)).toBeTruthy();
     expect(screen.getByPlaceholderText(/أدخل قيمة الرصيد/i)).toBeTruthy();
@@ -32,7 +32,7 @@ describe('AdminCreditGrantPanel', () => {
   });
 
   it('requires a valid whole-number credit amount', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="en" />);
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 1 إلى 1,000,000/);
@@ -40,7 +40,7 @@ describe('AdminCreditGrantPanel', () => {
   });
 
   it('requires a real payment reference and explicit payment confirmation', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="ar" />);
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
@@ -54,7 +54,7 @@ describe('AdminCreditGrantPanel', () => {
   });
 
   it('submits the entered payment reference only after confirmation', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="ar" />);
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
     fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
     fireEvent.click(screen.getByRole('checkbox'));
