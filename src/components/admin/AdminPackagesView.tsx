@@ -4,6 +4,8 @@ import { Package } from '../../types';
 import { firestoreService } from '../../services';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { isCreditBundlePackage } from '../../utils/packageCatalog';
+import { useAppStore } from '../../store/appStore';
+import { useTheme } from '../../utils/ThemeContext';
 
 interface AdminPackagesViewProps {
   packages: Package[];
@@ -19,6 +21,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const { adminLang } = useTheme();
 
   const handleSubmitNewPackage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -127,8 +130,19 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                         cancelText: t('تراجع'),
                         type: 'danger',
                         onConfirm: async () => {
-                          try { await firestoreService.deletePackage(pkg.id); } catch (err) { console.error(err); }
-                          finally { setConfirmDialog((prev: any) => ({ ...prev, isOpen: false })); }
+                          try {
+                            await firestoreService.deletePackage(pkg.id);
+                          } catch (err) {
+                            console.error('Failed to delete credit-bundle package:', err);
+                            useAppStore.getState().showToast(
+                              adminLang === 'en'
+                                ? 'Unable to delete the credit bundle. Please try again.'
+                                : 'تعذر حذف قالب الأرصدة. يرجى المحاولة مرة أخرى.',
+                              'error',
+                            );
+                          } finally {
+                            setConfirmDialog((prev: any) => ({ ...prev, isOpen: false }));
+                          }
                         },
                       })}
                       className="w-8 h-8 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 border border-rose-200/60 dark:border-rose-900/40"
