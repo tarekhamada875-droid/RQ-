@@ -79,6 +79,7 @@ const entitySnapshot = (activeSessionIds: string[], currentSessionId?: string) =
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   listenerTracker.reset();
   snapshotUnsubscribes = [];
   snapshotCallbacks = [];
@@ -109,6 +110,25 @@ afterEach(() => {
 });
 
 describe('useGarageSession Firestore listener lifecycle', () => {
+  it.each([
+    ['malformed JSON', '{invalid-json'],
+    ['an object without an ID', JSON.stringify({ name: 'stale garage' })],
+    ['a JSON primitive', JSON.stringify('stale garage')],
+  ])('returns to login instead of waiting for %s in persisted garage data', async (_label, savedValue) => {
+    localStorage.setItem('app_garage', savedValue);
+    const props = { ...createProps(), garage: null };
+
+    const hook = renderHook(() => useGarageSession(props));
+
+    await waitFor(() => expect(props.setView).toHaveBeenCalledWith('login'));
+    await waitFor(() => expect(hook.result.current.isSessionReady).toBe(true));
+    expect(localStorage.getItem('app_garage')).toBeNull();
+    expect(sessionMocks.claimEntitySession).not.toHaveBeenCalled();
+
+    hook.unmount();
+  });
+
+
   it('does not unlock a protected view when the initial session claim fails', async () => {
     const props = createProps();
     sessionMocks.claimEntitySession.mockRejectedValueOnce(
