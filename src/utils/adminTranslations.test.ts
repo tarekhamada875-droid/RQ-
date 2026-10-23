@@ -16,6 +16,8 @@ describe('Admin Translations Hook Helper', () => {
     expect(t('إعادة المحاولة')).toBe('Retry');
     expect(t('جاري تحميل المزيد...')).toBe('Loading more...');
     expect(t('تحميل المزيد من الجراجات')).toBe('Load more garages');
+    expect(t('رمز الدخول يجب أن يكون 8 أرقام')).toBe('The PIN must be 8 digits.');
+    expect(t('يجب إدخال سعر الساعة أو سعر المبيت على الأقل')).toBe('Enter at least an hourly rate or an overnight rate.');
     expect(t('سعر الساعة')).toBe('Hourly price');
     expect(t('تم حذف الإعلان بنجاح')).toBe('Announcement deleted successfully');
     expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');

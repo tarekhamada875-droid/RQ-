@@ -125,11 +125,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 const hourlyNum = Number(localForm.hourlyRate) || 0;
                 const overnightNum = Number(localForm.overnightRate) || 0;
                 if (!/^\d{8}$/.test(localPin)) {
-                  setErrorMessage('رمز الدخول يجب أن يكون 8 أرقام');
+                  setErrorMessage(t('رمز الدخول يجب أن يكون 8 أرقام'));
                   return;
                 }
                 if (hourlyNum <= 0 && overnightNum <= 0) {
-                  setErrorMessage('يجب إدخال سعر الساعة أو سعر المبيت على الأقل');
+                  setErrorMessage(t('يجب إدخال سعر الساعة أو سعر المبيت على الأقل'));
                   return;
                 }
                 setGarageForm(localForm);

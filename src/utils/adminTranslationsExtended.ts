@@ -370,4 +370,8 @@ export const adminTranslationsExtended: Record<string, string> = {
   'إعادة المحاولة': 'Retry',
   'جاري تحميل المزيد...': 'Loading more...',
   'تحميل المزيد من الجراجات': 'Load more garages',
+
+  // Add-garage validation feedback
+  'رمز الدخول يجب أن يكون 8 أرقام': 'The PIN must be 8 digits.',
+  'يجب إدخال سعر الساعة أو سعر المبيت على الأقل': 'Enter at least an hourly rate or an overnight rate.',
 };
