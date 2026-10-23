@@ -46,7 +46,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
     } finally {
       setIsLoading(false);
     }
-  }, [];
+  }, []);
 
   React.useEffect(() => {
     void loadSessions();
@@ -54,7 +54,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
 
   const revokeSession = async (session: ActiveSession) => {
     if (!session.id || busySession) return;
-    if (!window.confirm(session.isCurrent ? ('هل تريد تسجيل الخروج من هذا الجهاز؟') : ('هل تريد إلغاء جلسة هذا الجهاز؟'))) return;
+    if (!window.confirm(session.isCurrent ? 'هل تريد تسجيل الخروج من هذا الجهاز؟' : 'هل تريد إلغاء جلسة هذا الجهاز؟')) return;
     setBusySession(session.id);
     setError(null);
     try {
@@ -69,7 +69,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
       const message = errorMessage(revokeError);
       setError(message);
       showToast?.(message, 'error');
-      if (message.includes('انتهت الجلسة') || false) onLogout();
+      if (message.includes('انتهت الجلسة')) onLogout();
     } finally {
       setBusySession(null);
     }
