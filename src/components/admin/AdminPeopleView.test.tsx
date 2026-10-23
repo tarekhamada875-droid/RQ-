@@ -11,11 +11,14 @@ vi.mock('../../services', () => ({
   },
 }));
 
+const themeMock = vi.hoisted(() => ({ adminLang: 'ar' as 'ar' | 'en' }));
+
 vi.mock('../../utils/ThemeContext', () => ({
-  useTheme: () => ({ adminLang: 'ar' }),
+  useTheme: () => themeMock,
 }));
 
 beforeEach(() => {
+  themeMock.adminLang = 'ar';
   vi.clearAllMocks();
   vi.mocked(firestoreService.isPinTaken).mockResolvedValue({ taken: false });
 });
@@ -83,5 +86,32 @@ describe('AdminPeopleView delegate creation', () => {
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();
     expect(firestoreService.addDelegate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('AdminPeopleView English localization', () => {
+  it('uses English labels and left-to-right layout when English is selected', () => {
+    themeMock.adminLang = 'en';
+
+    render(
+      <AdminPeopleView
+        delegates={[]}
+        currentSupervisor={null}
+        allGarages={[]}
+        onSelectDelegate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Delegates')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Delegate' })).toBeInTheDocument();
+    expect(screen.getByText('No delegates registered yet')).toBeInTheDocument();
+    expect(screen.getByText('Delegates').closest('[dir]')).toHaveAttribute('dir', 'ltr');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Delegate' }));
+    expect(screen.getByText('Add a new system delegate')).toBeInTheDocument();
+    expect(screen.getByText('Full name')).toBeInTheDocument();
+    expect(screen.getByText('Phone number')).toBeInTheDocument();
+    expect(screen.getByText('Access PIN (exactly 8 digits)')).toBeInTheDocument();
   });
 });
