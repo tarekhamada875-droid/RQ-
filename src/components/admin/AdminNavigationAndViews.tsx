@@ -302,8 +302,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           pendingGarages={pendingGarages}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-          adminLang={adminLang}
-          t={t}
         />
       ) : activeTab === 'packages' ? (
         <AdminPackagesView
