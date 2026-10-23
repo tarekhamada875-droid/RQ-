@@ -8,14 +8,12 @@ import { isCreditBundlePackage } from '../../utils/packageCatalog';
 interface AdminPackagesViewProps {
   packages: Package[];
   setConfirmDialog: React.Dispatch<React.SetStateAction<any>>;
-  setPackageValidationError: React.Dispatch<React.SetStateAction<any>>;
   t: (key: string) => string;
 }
 
 export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
   packages,
   setConfirmDialog,
-  setPackageValidationError: _setPackageValidationError,
   t,
 }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
