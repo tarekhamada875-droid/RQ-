@@ -127,7 +127,7 @@ export const AdminDashboard = memo(({
     message: '',
     onConfirm: () => {},
   });
-  const { theme, adminLang, setAdminLang } = useTheme();
+  const { theme, adminLang } = useTheme();
   const resolvedAdminColor = resolveShimmerColor(adminColor, theme);
   const t = useAdminTranslation(adminLang);
 
@@ -363,7 +363,6 @@ export const AdminDashboard = memo(({
         setShowMenu={setShowMenu}
         currentSupervisor={currentSupervisor}
         adminLang={adminLang}
-        setAdminLang={setAdminLang}
         onOpenAppearanceSettings={() => setShowAppearanceSettings(true)}
         onLogout={onLogout}
         menuRef={menuRef}
