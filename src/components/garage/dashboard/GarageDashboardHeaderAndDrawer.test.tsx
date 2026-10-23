@@ -41,6 +41,25 @@ describe('GarageDashboardHeaderAndDrawer icon actions', () => {
     expect(props.setIsMenuOpen).toHaveBeenCalledWith(false);
   });
 
+  it('exposes Packages and Staff Stats actions for garage owners', () => {
+    const props = makeProps();
+    render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'الباقات' }));
+    expect(props.onNavigateOverlay).toHaveBeenCalledWith('packages');
+
+    fireEvent.click(screen.getByRole('button', { name: 'إحصائيات الموظفين' }));
+    expect(props.onNavigateOverlay).toHaveBeenCalledWith('staff');
+  });
+
+  it('keeps owner-only Packages and Staff Stats actions hidden for staff accounts', () => {
+    const props = { ...makeProps(), currentStaff: { id: 'staff-1', name: 'Test Staff' } as any };
+    render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
+
+    expect(screen.queryByRole('button', { name: 'الباقات' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'إحصائيات الموظفين' })).not.toBeInTheDocument();
+  });
+
   it('exposes charging history in the side panel', () => {
     const props = makeProps();
     render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
