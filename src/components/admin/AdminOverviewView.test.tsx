@@ -28,7 +28,7 @@ describe('AdminOverviewView', () => {
     expect(onOpenAddGarage).toHaveBeenCalledOnce();
   });
 
-  it('localizes quick actions and switches to left-to-right layout in English', () => {
+  it('keeps the Admin interface Arabic even if a legacy English preference exists', () => {
     localStorage.setItem('admin_lang', 'en');
 
     render(
@@ -37,11 +37,11 @@ describe('AdminOverviewView', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByText('System Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Quick system actions')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Plate Lookup' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Garage' })).toBeInTheDocument();
-    expect(screen.getByText('System Dashboard').closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('لوحة قيادة النظام')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'استعلام عن لوحة' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'تصدير CSV' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'إضافة جراج جديد' })).toBeInTheDocument();
+    expect(screen.getByText('لوحة قيادة النظام').closest('[dir]')).toHaveAttribute('dir', 'rtl');
   });
+
 });
