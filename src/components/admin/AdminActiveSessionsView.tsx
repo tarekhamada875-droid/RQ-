@@ -103,7 +103,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
       <div className="flex items-center justify-between">
         <span className="text-xs font-black text-slate-500 dark:text-slate-400">{sessions.length} {isEnglish ? 'sessions' : 'جلسة'}</span>
         <button type="button" onClick={() => void loadSessions()} disabled={isLoading} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 text-xs font-black disabled:opacity-50">
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> تحديث
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {isEnglish ? 'Refresh' : 'تحديث'}
         </button>
       </div>
 
