@@ -76,9 +76,10 @@ export const AdminDashboard = memo(({
   const [adminSearch, setAdminSearch] = React.useState<string>('');
   const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'announcements' | 'catalog_settings' | 'active_sessions' | 'partners_calculator'>('app_admin_tab', 'overview');
 
-  // Older browser storage may point at the retired Supervisor tab.
+  // Older browser storage may point at retired tabs. Normalize these saved values without touching user data.
   React.useEffect(() => {
     if (activeTab === 'supervisors') setActiveTab('people');
+    else if (activeTab === 'trial_leads') setActiveTab('overview');
   }, [activeTab, setActiveTab]);
 
   // Keep any stale legacy Supervisor state on the Delegates-only People view.
