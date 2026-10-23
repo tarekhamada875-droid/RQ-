@@ -33,7 +33,6 @@ interface AdminDashboardProps {
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
   delegates: Delegate[];
   addDelegate?: (data: Omit<Delegate, 'id'>) => Promise<any>;
-  packages: Package[];
   onLogout: () => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
@@ -57,7 +56,6 @@ export const AdminDashboard = memo(({
   setSelectedDelegateForDetails,
   delegates,
   addDelegate: _addDelegate,
-  packages,
   onLogout,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
@@ -406,7 +404,6 @@ export const AdminDashboard = memo(({
           onRefreshAdminLists={onRefreshAdminLists}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-          setConfirmDialog={setConfirmDialog}
           currentAdminPin={currentAdminPin}
           adminLang={adminLang}
           t={t}
