@@ -91,7 +91,7 @@ export const AdminPeopleView = memo(({
       } else if (failure === 'timeout') {
         setDelegatePinError('انتهت مهلة الطلب. تحقق من إضافة المندوب قبل إعادة المحاولة.');
       } else if (failure === 'server') {
-        const suffix = reference ? ` (${'رقم التتبع'}: ${reference})` : '';
+        const suffix = reference ? ` ($رقم التتبع: ${reference})` : '';
         setDelegatePinError(`تعذر على الخادم إضافة المندوب${suffix}.`);
       } else {
         setDelegatePinError('تعذر إضافة المندوب. يرجى المحاولة مرة أخرى.');
@@ -113,7 +113,7 @@ export const AdminPeopleView = memo(({
               className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer bg-emerald-600 text-white shadow-md"
             >
               <Briefcase className="w-4 h-4 shrink-0" />
-              <span>{'المناديب المعينون'}</span>
+              <span>المناديب المعينون</span>
               <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-700/60 text-white">
                 {delegates.length}
               </span>
@@ -122,7 +122,7 @@ export const AdminPeopleView = memo(({
         ) : (
           <div className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
             <Briefcase className="w-5 h-5 text-emerald-500" />
-            <span>{'قائمة المناديب التابعين لك'}</span>
+            <span>قائمة المناديب التابعين لك</span>
           </div>
         )}
 
@@ -137,7 +137,7 @@ export const AdminPeopleView = memo(({
             }`}
           >
             <Plus className={`w-4 h-4 stroke-[3] transition-transform duration-200 ${showAddForm ? 'rotate-45' : ''}`} />
-            <span>{showAddForm ? ('إلغاء النافذة') : ('إضافة مندوب جديد')}</span>
+            <span>{showAddForm ? 'إلغاء النافذة' : 'إضافة مندوب جديد'}</span>
           </button>
         )}
       </div>
@@ -149,24 +149,24 @@ export const AdminPeopleView = memo(({
             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-500/10 text-emerald-600">
               <Plus className="w-4 h-4 stroke-[3]" />
             </div>
-            <span>{'إضافة مندوب جديد للنظام'}</span>
+            <span>إضافة مندوب جديد للنظام</span>
           </h3>
 
           <form onSubmit={handleCreateDelegate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{'الاسم بالكامل'}</label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">الاسم بالكامل</label>
                 <input
                   value={delegateForm.name}
                   onChange={(e) => setDelegateForm({ ...delegateForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                  placeholder={'مثال: أحمد محمد...'}
+                  placeholder=مثال: أحمد محمد...
                   required
                   className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{'رقم الهاتف'}</label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رقم الهاتف</label>
                 <input
                   value={delegateForm.phone}
                   onChange={(e) => setDelegateForm({ ...delegateForm, phone: e.target.value.replace(/\D/g, '') })}
@@ -178,7 +178,7 @@ export const AdminPeopleView = memo(({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{'رمز الدخول (8 أرقام بالضبط)'}</label>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رمز الدخول (8 أرقام بالضبط)</label>
               <div className="relative">
                 <input
                   type="tel"
@@ -201,7 +201,7 @@ export const AdminPeopleView = memo(({
                     setDelegateForm({ ...delegateForm, pin: safePin });
                   }}
                   className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
-                  title={'توليد رقم سري عشوائي'}
+                  title=توليد رقم سري عشوائي
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
@@ -223,7 +223,7 @@ export const AdminPeopleView = memo(({
               ) : (
                 <>
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>{'تأكيد إضافة المندوب'}</span>
+                  <span>تأكيد إضافة المندوب</span>
                 </>
               )}
             </button>
@@ -233,8 +233,8 @@ export const AdminPeopleView = memo(({
 
       {hasError && (
         <div className="flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
-          <span>{'تعذر تحميل قائمة المناديب.'}</span>
-          {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> {'إعادة المحاولة'}</button>}
+          <span>تعذر تحميل قائمة المناديب.</span>
+          {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
         </div>
       )}
 
@@ -269,16 +269,16 @@ export const AdminPeopleView = memo(({
                 {/* Stats & PIN Info */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold">
                   <div className="flex items-center gap-1.5 font-mono">
-                    <span className="text-slate-400 font-sans text-[11px]">{'الرمز:'}</span>
+                    <span className="text-slate-400 font-sans text-[11px]">الرمز:</span>
                     <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 font-black text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-700">
                       {formatDisplayPin(d.pin)}
                     </span>
                   </div>
 
                   <div className="text-left font-mono">
-                    <span className="block text-[10px] text-slate-400 font-sans">{'الجراجات / المبيعات'}</span>
+                    <span className="block text-[10px] text-slate-400 font-sans">الجراجات / المبيعات</span>
                     <span className="text-xs font-black text-slate-900 dark:text-white">
-                      {assignedGaragesCount} {'جراج'} • +{(d.totalRechargedAmount || 0).toLocaleString()} {'ج.م'}
+                      {assignedGaragesCount} جراج • +{(d.totalRechargedAmount || 0).toLocaleString()} ج.م
                     </span>
                   </div>
                 </div>
@@ -289,7 +289,7 @@ export const AdminPeopleView = memo(({
           {delegates.length === 0 && (
             <div className="col-span-full py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 space-y-2">
               <Users className="w-8 h-8 text-slate-400 mx-auto" />
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-200">{'لا يوجد مناديب مسجلين حالياً'}</h3>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-200">لا يوجد مناديب مسجلين حالياً</h3>
             </div>
           )}
       </div>
@@ -297,7 +297,7 @@ export const AdminPeopleView = memo(({
       {hasMore && onLoadMore && (
         <button type="button" disabled={isLoading} onClick={() => void onLoadMore()} className="w-full min-h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {isLoading ? ('جاري تحميل المزيد...') : ('تحميل المزيد من المناديب')}
+          {isLoading ? 'جاري تحميل المزيد...' : 'تحميل المزيد من المناديب'}
         </button>
       )}
 
