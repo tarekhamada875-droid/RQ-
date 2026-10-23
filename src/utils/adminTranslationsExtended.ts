@@ -352,4 +352,15 @@ export const adminTranslationsExtended: Record<string, string> = {
   'سقف': 'Cap',
   'مرات التمديد التلقائي': 'Auto-Extensions Count',
   'تمديد استثنائي': 'Extend Allowance',
+
+  // Admin PIN settings validation and status copy
+  'أدخل رمز الدخول الحالي للمتابعة': 'Enter the current PIN to continue',
+  'أدخل رمز الدخول الحالي للمتابعة.': 'Enter the current PIN to continue.',
+  'رمز الدخول الحالي غير صحيح.': 'The current PIN is incorrect.',
+  'رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.': 'The new PIN must be exactly 8 digits.',
+  'رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.': 'The new PIN must differ from the current PIN.',
+  'هذا الرمز السري مستخدم بالفعل في حساب آخر:': 'This PIN is already in use by another account:',
+  'تم تغيير رمز الدخول بنجاح.': 'Admin PIN updated successfully.',
+  'أدخل رمز دخول جديداً (8 أرقام)': 'Enter a new PIN (8 digits)',
+  'جارٍ الحفظ...': 'Saving...',
 };
