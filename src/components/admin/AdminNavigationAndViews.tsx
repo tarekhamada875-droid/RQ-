@@ -191,7 +191,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
               <span>{t('الإعدادات')}</span>
             </button>
           </div>
