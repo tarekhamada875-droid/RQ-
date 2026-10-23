@@ -68,8 +68,8 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
           </div>
           {hasError && (
             <div className="px-4 pb-3 flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
-              <span>تعذر تحميل قائمة الجراجات.</span>
-              {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
+              <span>{t('تعذر تحميل قائمة الجراجات.')}</span>
+              {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> {t('إعادة المحاولة')}</button>}
             </div>
           )}
           <div className="p-3 sm:p-4 flex flex-col gap-2 min-h-[160px]">
@@ -122,7 +122,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
             {hasMore && onLoadMore && (
               <button type="button" disabled={isLoading} onClick={() => void onLoadMore()} className="w-full min-h-11 mt-2 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {isLoading ? 'جاري تحميل المزيد...' : 'تحميل المزيد من الجراجات'}
+                {isLoading ? t('جاري تحميل المزيد...') : t('تحميل المزيد من الجراجات')}
               </button>
             )}
           </div>

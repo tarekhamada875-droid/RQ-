@@ -12,6 +12,10 @@ describe('Admin Translations Hook Helper', () => {
     const t = useAdminTranslation('en');
     expect(t('الجراجات')).toBe('Garages');
     expect(t('بدون هاتف')).toBe('No phone');
+    expect(t('تعذر تحميل قائمة الجراجات.')).toBe('Could not load the garage list.');
+    expect(t('إعادة المحاولة')).toBe('Retry');
+    expect(t('جاري تحميل المزيد...')).toBe('Loading more...');
+    expect(t('تحميل المزيد من الجراجات')).toBe('Load more garages');
     expect(t('سعر الساعة')).toBe('Hourly price');
     expect(t('تم حذف الإعلان بنجاح')).toBe('Announcement deleted successfully');
     expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');
