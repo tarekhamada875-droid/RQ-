@@ -364,4 +364,10 @@ export const adminTranslationsExtended: Record<string, string> = {
   'أدخل رمز دخول جديداً (8 أرقام)': 'Enter a new PIN (8 digits)',
   'جارٍ الحفظ...': 'Saving...',
   'بدون هاتف': 'No phone',
+
+  // Admin garage list loading and retry states
+  'تعذر تحميل قائمة الجراجات.': 'Could not load the garage list.',
+  'إعادة المحاولة': 'Retry',
+  'جاري تحميل المزيد...': 'Loading more...',
+  'تحميل المزيد من الجراجات': 'Load more garages',
 };
