@@ -9,7 +9,9 @@ import {
   Moon,
   MoreVertical,
   BarChart3,
-  FileText
+  FileText,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
@@ -27,6 +29,10 @@ interface DelegateDashboardViewProps {
   isLoading: boolean;
   delegatePagination?: Record<'createdGarages' | 'referredGarages', { hasMore: boolean; nextCursor: string | null }>;
   delegateListsLoading?: boolean;
+  delegateListsError?: boolean;
+  delegateDashboardLoading?: boolean;
+  delegateDashboardError?: boolean;
+  onRetryDelegateDashboard?: () => void;
   onLoadMoreDelegateGarages?: () => void;
 }
 
@@ -38,6 +44,10 @@ export const DelegateDashboardView = memo(({
   isLoading,
   delegatePagination,
   delegateListsLoading = false,
+  delegateListsError = false,
+  delegateDashboardLoading = false,
+  delegateDashboardError = false,
+  onRetryDelegateDashboard,
   onLoadMoreDelegateGarages
 }: DelegateDashboardViewProps) => {
   const [activeTab, setActiveTab] = useState<'garages' | 'performance'>('garages');
@@ -332,10 +342,36 @@ export const DelegateDashboardView = memo(({
               })}
             </div>
 
-            {filteredGarages.length === 0 && (
+            {delegateDashboardLoading && allGarages.length === 0 && (
+              <div role="status" aria-live="polite" className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">جارٍ تحميل بيانات الجراجات...</p>
+              </div>
+            )}
+            {delegateDashboardError && allGarages.length === 0 && (
+              <div role="alert" className="text-center py-8 px-4 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60">
+                <p className="text-rose-600 dark:text-rose-400 font-bold text-sm mb-4">تعذر تحميل بيانات الجراجات. تحقق من الاتصال وحاول مرة أخرى.</p>
+                {onRetryDelegateDashboard && (
+                  <button
+                    type="button"
+                    onClick={onRetryDelegateDashboard}
+                    className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-bold text-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    إعادة المحاولة
+                  </button>
+                )}
+              </div>
+            )}
+            {filteredGarages.length === 0 && !delegateDashboardLoading && !delegateDashboardError && (
               <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                 <Building2 className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
                 <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">لا توجد جراجات مطابقة للبحث</p>
+              </div>
+            )}
+            {delegateListsError && (
+              <div role="alert" className="text-center text-rose-600 dark:text-rose-400 text-xs font-bold px-3 py-2">
+                تعذر تحميل المزيد من الجراجات. يمكنك المحاولة مرة أخرى.
               </div>
             )}
             {(delegatePagination?.createdGarages.hasMore || delegatePagination?.referredGarages.hasMore) && onLoadMoreDelegateGarages && (
