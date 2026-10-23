@@ -165,14 +165,20 @@ export function useGarageSync({
     if (!isSessionReady || !garage?.id) {
       return;
     }
+    let active = true;
     const unsub = firestoreService.subscribeToTodayTransactions(garage.id, (completedTransactions, error) => {
+      // Unsubscription cannot retract a callback that is already queued.
+      if (!active) return;
       if (error) {
         showToast?.('تعذر تحديث سجل حركة اليوم. قد تكون البيانات المعروضة قديمة.', 'error');
         return;
       }
       setTodayTransactions(completedTransactions);
     });
-    return () => unsub();
+    return () => {
+      active = false;
+      unsub();
+    };
   }, [isSessionReady, garage?.id, setTodayTransactions, showToast]);
 
   const staffLoadGenerationRef = useRef(0);
