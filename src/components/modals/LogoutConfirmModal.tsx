@@ -6,19 +6,28 @@ interface LogoutConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   onVerifyPin: (pin: string) => Promise<boolean>;
+  attemptScope: string;
 }
 
 export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
   onConfirm,
   onCancel,
-  onVerifyPin
+  onVerifyPin,
+  attemptScope
 }) => {
+  const attemptsStorageKey = `logout_attempts:${encodeURIComponent(attemptScope)}`;
+  const readAttempts = () => {
+    try {
+      const stored = Number.parseInt(localStorage.getItem(attemptsStorageKey) || '0', 10);
+      return Number.isFinite(stored) && stored >= 0 ? Math.min(stored, 3) : 0;
+    } catch {
+      return 0;
+    }
+  };
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [attempts, setAttempts] = useState(() => {
-    return parseInt(localStorage.getItem('logout_attempts') || '0', 10);
-  });
+  const [attempts, setAttempts] = useState(readAttempts);
 
   const displayLength = Math.max(4, pin.length);
 
@@ -47,13 +56,13 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
     try {
       const valid = await onVerifyPin(pin);
       if (valid) {
-        localStorage.setItem('logout_attempts', '0');
+        localStorage.setItem(attemptsStorageKey, '0');
         setAttempts(0);
         onConfirm();
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
-        localStorage.setItem('logout_attempts', newAttempts.toString());
+        localStorage.setItem(attemptsStorageKey, newAttempts.toString());
         setError(true);
         setIsLoggingOut(false);
         
