@@ -178,7 +178,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
         ? mergeSubscriberPages(current, subscriberPage.subscribers)
         : subscriberPage.subscribers);
       hasReceivedSubscriberSnapshotRef.current = true;
-      setSubscriberCursor((current) => current || subscriberPage.lastDoc);
+      setSubscriberCursor(subscriberPage.lastDoc);
       setHasMoreSubscribers(subscriberPage.hasMore);
       return;
     }
@@ -192,7 +192,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
         ? mergeSubscriberPages(current, data)
         : data);
       hasReceivedSubscriberSnapshotRef.current = true;
-      setSubscriberCursor((current) => current || page.lastDoc);
+      setSubscriberCursor(page.lastDoc);
       setHasMoreSubscribers(page.hasMore);
     });
 
