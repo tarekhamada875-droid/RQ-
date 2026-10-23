@@ -35,7 +35,6 @@ interface AdminNavigationAndViewsProps {
   pendingGarages: Garage[];
   packages: Package[];
   approvedGarages: Garage[];
-  allGarages: Garage[];
   displayedGarages: Garage[];
   adminSearch: string;
   setAdminSearch: (s: string) => void;
@@ -67,7 +66,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   pendingGarages,
   packages,
   approvedGarages,
-  allGarages,
   displayedGarages,
   adminSearch,
   setAdminSearch,
