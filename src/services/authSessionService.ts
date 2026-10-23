@@ -173,7 +173,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
       if (err?.message === 'SESSION_OCCUPIED') {
         throw err;
       }
-      console.warn('Server admin session claim fallback to client transaction:', err);
+      console.warn('Server admin session claim failed:', err);
     }
   }
 
