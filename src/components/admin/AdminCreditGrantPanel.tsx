@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { Coins } from 'lucide-react';
-import { Garage, Package } from '../../types';
+import { Garage } from '../../types';
 import { firestoreService } from '../../services';
 
 interface Props {
   garage: Garage;
-  packages: Package[];
-  adminLang: string;
 }
 
 export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
