@@ -47,7 +47,6 @@ interface AdminNavigationAndViewsProps {
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
   setConfirmDialog: any;
-  setPackageValidationError: any;
   currentAdminPin: string;
   adminLang: 'ar' | 'en';
   t: (key: string) => string;
@@ -80,7 +79,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   handleApproveGarage,
   handleRejectGarage,
   setConfirmDialog,
-  setPackageValidationError,
   currentAdminPin,
   adminLang,
   t,
@@ -311,7 +309,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminPackagesView
           packages={packages}
           setConfirmDialog={setConfirmDialog}
-          setPackageValidationError={setPackageValidationError}
           t={t}
         />
       ) : activeTab === 'announcements' ? (
