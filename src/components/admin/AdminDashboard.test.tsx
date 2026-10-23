@@ -85,7 +85,6 @@ const renderDashboardForGarageCreation = (
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      packages={[]}
       onLogout={vi.fn()}
       currentAdminPin=""
       showToast={showToast}
@@ -120,7 +119,6 @@ it('keeps the Admin interface right-to-left regardless of language preference', 
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      packages={[]}
       onLogout={vi.fn()}
       currentAdminPin=""
     />,
@@ -142,7 +140,6 @@ it('resets a saved retired trial leads tab to Overview without touching other sa
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      packages={[]}
       onLogout={vi.fn()}
       currentAdminPin=""
     />,
@@ -166,7 +163,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        packages={[]}
         onLogout={vi.fn()}
           currentAdminPin=""
       />,
@@ -247,7 +243,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        packages={[]}
         onLogout={vi.fn()}
         currentAdminPin=""
         onRefreshAdminLists={onRefreshAdminLists}
@@ -272,7 +267,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        packages={[]}
         onLogout={vi.fn()}
         currentAdminPin=""
         onRefreshAdminLists={onRefreshAdminLists}
@@ -303,7 +297,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        packages={[]}
         onLogout={vi.fn()}
           currentAdminPin=""
         showToast={showToast}
