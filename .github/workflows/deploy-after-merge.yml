@@ -48,17 +48,25 @@ jobs:
               }
               throw new Error(`${label} failed after retries.`);
             };
-            const { data: associated } = await requestWithRetry('Associated pull request lookup', () =>
-              github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner,
-                repo,
-                commit_sha: headSha,
-                per_page: 100,
-              })
+            // Prefer the pull requests captured in the completed workflow-run event.
+            // The commit-association endpoint can return no results after a PR has already
+            // merged and its head branch was deleted, which would silently skip deployment.
+            let matches = (run.pull_requests || []).filter(pr =>
+              pr.base?.ref === 'main' && pr.head?.sha === headSha
             );
-            const matches = associated.filter(pr =>
-              pr.base.ref === 'main' && pr.head.sha === headSha
-            );
+            if (matches.length === 0) {
+              const allPullRequests = await requestWithRetry('Open and closed pull request lookup', () =>
+                github.paginate(github.rest.pulls.list, {
+                  owner,
+                  repo,
+                  state: 'all',
+                  per_page: 100,
+                })
+              );
+              matches = allPullRequests.filter(pr =>
+                pr.base.ref === 'main' && pr.head.sha === headSha
+              );
+            }
             if (matches.length !== 1) {
               core.notice(`Expected one main pull request for ${headSha}; found ${matches.length}. No deployment was dispatched.`);
               core.setOutput('deploy_sha', '');
