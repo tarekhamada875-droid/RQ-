@@ -112,6 +112,7 @@ describe('SubscribersView pagination and accessible names', () => {
     const refreshedPage = {
       ...sharedPage,
       subscribers: [{ ...firstSubscriber, ownerName: 'Updated Subscriber 1' }],
+      lastDoc: { id: 'refreshed-cursor-50' } as any,
     };
     rerender(
       <SubscribersView garage={makeGarage()} onClose={vi.fn()} showToast={vi.fn()} subscriberPage={refreshedPage} />,
@@ -120,7 +121,7 @@ describe('SubscribersView pagination and accessible names', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'تحميل 50 مشتركاً أقدم' }));
     expect(await screen.findByText('Older Subscriber Search Target')).toBeTruthy();
-    expect(mocks.getMore).toHaveBeenCalledWith('garage-subscriber-page-test', { id: 'shared-cursor-50' });
+    expect(mocks.getMore).toHaveBeenCalledWith('garage-subscriber-page-test', { id: 'refreshed-cursor-50' });
     expect(mocks.subscribe).not.toHaveBeenCalled();
   });
 
