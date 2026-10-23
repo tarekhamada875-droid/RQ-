@@ -91,7 +91,7 @@ export const AdminPeopleView = memo(({
       } else if (failure === 'timeout') {
         setDelegatePinError('انتهت مهلة الطلب. تحقق من إضافة المندوب قبل إعادة المحاولة.');
       } else if (failure === 'server') {
-        const suffix = reference ? ` ($رقم التتبع: ${reference})` : '';
+        const suffix = reference ? ` (رقم التتبع: ${reference})` : '';
         setDelegatePinError(`تعذر على الخادم إضافة المندوب${suffix}.`);
       } else {
         setDelegatePinError('تعذر إضافة المندوب. يرجى المحاولة مرة أخرى.');
