@@ -97,6 +97,6 @@ describe('AdminActiveSessionsView English localization', () => {
     expect(screen.getByText('2 sessions')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Revoke session' })).toBeInTheDocument();
     expect(screen.getByText('Active devices and sessions').closest('[dir]')).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByText(/Last active:/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Last active:/)).toHaveLength(2);
   });
 });
