@@ -15,7 +15,6 @@ vi.mock('../../services', () => ({
 const props = {
   packages: [],
   setConfirmDialog: vi.fn(),
-  setPackageValidationError: vi.fn(),
   t: (key: string) => key,
 };
 
