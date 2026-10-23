@@ -130,14 +130,20 @@ export function useGarageSync({
     if (!isSessionReady || !garage?.id) {
       return;
     }
+    let active = true;
     const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
+      if (!active) return;
       setVehicles(activeVehicles);
     }, 100);
 
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
+      // Unsubscribe normally stops future snapshots, but an already queued callback
+      // can still arrive after the garage/session changes. Never forward it.
+      if (!active) return;
       throttledVehicleUpdate(activeVehicles);
     });
     return () => {
+      active = false;
       throttledVehicleUpdate.cancel();
       unsub();
     };
