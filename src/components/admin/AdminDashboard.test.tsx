@@ -31,8 +31,9 @@ vi.mock('../../utils/adminTranslations', () => ({
 
 vi.mock('./AdminHeader', () => ({ AdminHeader: () => null }));
 vi.mock('./AdminNavigationAndViews', () => ({
-  AdminNavigationAndViews: ({ setActiveTab, displayedGarages, handleApproveGarage, handleRejectGarage, onOpenAddGarage }: any) => (
+  AdminNavigationAndViews: ({ activeTab, setActiveTab, displayedGarages, handleApproveGarage, handleRejectGarage, onOpenAddGarage }: any) => (
     <>
+      <span data-testid="active-admin-tab">{activeTab}</span>
       <button onClick={() => setActiveTab('garages')}>Open garages</button>
       <button onClick={() => onOpenAddGarage?.()}>Open add garage</button>
       <button onClick={() => void handleApproveGarage({ id: 'pending-1', name: 'Pending Garage' }).catch(() => {})}>
@@ -108,6 +109,32 @@ const submitAddGarageDraft = () => {
   if (!form) throw new Error('Add garage form was not rendered');
   fireEvent.submit(form);
 };
+
+it('resets a saved retired trial leads tab to Overview without touching other saved data', async () => {
+  localStorage.setItem('app_admin_tab', 'trial_leads');
+  localStorage.setItem('unrelated-setting', 'keep-me');
+
+  render(
+    <AdminDashboard
+      allGarages={[]}
+      isLoading={false}
+      createNewGarage={vi.fn().mockResolvedValue(true)}
+      setView={vi.fn()}
+      setSelectedGarageForDetails={vi.fn()}
+      setSelectedDelegateForDetails={vi.fn()}
+      delegates={[]}
+      packages={[]}
+      onLogout={vi.fn()}
+      currentAdminPin=""
+    />,
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('active-admin-tab')).toHaveTextContent('overview');
+    expect(localStorage.getItem('app_admin_tab')).toBe('overview');
+  });
+  expect(localStorage.getItem('unrelated-setting')).toBe('keep-me');
+});
 
 describe('AdminDashboard garage actions', () => {
   it('does not fetch a second garage page when opening the garage tab', async () => {
