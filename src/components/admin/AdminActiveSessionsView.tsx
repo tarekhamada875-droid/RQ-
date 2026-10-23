@@ -28,7 +28,7 @@ function errorMessage(error: unknown, isEnglish: boolean): string {
   if (message.includes('401') || message.includes('UNAUTHORIZED')) return isEnglish ? 'Your session expired. Please sign in again.' : 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً';
   if (message.includes('403') || message.includes('FORBIDDEN')) return isEnglish ? 'You are not allowed to manage this account’s sessions.' : 'لا تملك صلاحية إدارة جلسات هذا الحساب';
   if (message.includes('404') || message.includes('SESSION_NOT_FOUND')) return isEnglish ? 'This session no longer exists. Refresh the list.' : 'لم تعد هذه الجلسة موجودة، حدّث القائمة';
-  return isEnglish ? 'Could not load or update device sessions.' : 'تعذر تحميل جلسات الأجهزة أو {isEnglish ? 'Refresh' : 'تحديث'}ها';
+  return isEnglish ? 'Could not load or update device sessions.' : 'تعذر تحميل جلسات الأجهزة أو تحديثها';
 }
 
 export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, showToast }) => {
