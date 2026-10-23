@@ -381,7 +381,6 @@ export const AdminDashboard = memo(({
           pendingGarages={pendingGarages}
           packages={packages}
           approvedGarages={approvedGarages}
-          allGarages={allGarages}
           displayedGarages={displayedGarages}
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
