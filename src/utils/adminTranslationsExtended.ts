@@ -363,4 +363,5 @@ export const adminTranslationsExtended: Record<string, string> = {
   'تم تغيير رمز الدخول بنجاح.': 'Admin PIN updated successfully.',
   'أدخل رمز دخول جديداً (8 أرقام)': 'Enter a new PIN (8 digits)',
   'جارٍ الحفظ...': 'Saving...',
+  'بدون هاتف': 'No phone',
 };

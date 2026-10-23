@@ -11,6 +11,7 @@ describe('Admin Translations Hook Helper', () => {
   it('translates Arabic strings to English when language is en', () => {
     const t = useAdminTranslation('en');
     expect(t('الجراجات')).toBe('Garages');
+    expect(t('بدون هاتف')).toBe('No phone');
     expect(t('سعر الساعة')).toBe('Hourly price');
     expect(t('تم حذف الإعلان بنجاح')).toBe('Announcement deleted successfully');
     expect(t('يرجى إدخال اسم وسعر صالحين لخطة الاشتراك')).toBe('Please enter a valid subscription plan name and price');

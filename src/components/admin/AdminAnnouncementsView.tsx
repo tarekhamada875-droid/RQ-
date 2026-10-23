@@ -216,7 +216,7 @@ export const AdminAnnouncementsView: React.FC<AdminAnnouncementsViewProps> = ({
                     <option value="">{t('اختر الجراج...')}</option>
                     {allGarages.map((g) => (
                       <option key={g.id} value={g.id}>
-                        {g.name} ({g.phone || 'بدون هاتف'})
+                        {g.name} ({g.phone || t('بدون هاتف')})
                       </option>
                     ))}
                   </select>
