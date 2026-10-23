@@ -48,7 +48,9 @@ export function decideVehicleCheckIn(
   if (garage.isDeleting) return { ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' };
   if (garage.isLocked || garage.isSuspended) return { ok: false, error: 'GARAGE_CHECK_IN_LOCKED' };
   if (garage.isSubscriberAuthoritative) return { ok: false, error: 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN' };
-  if (vehicle.exists && vehicle.status === 'inside') {
+  // Existing records must explicitly be outside before another entry is accepted.
+  // Missing or unexpected statuses are ambiguous and must not trigger another credit debit.
+  if (vehicle.exists && vehicle.status !== 'outside') {
     return { ok: false, error: 'VEHICLE_ALREADY_INSIDE' };
   }
 
