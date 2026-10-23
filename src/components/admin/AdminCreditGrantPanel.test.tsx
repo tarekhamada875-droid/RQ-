@@ -26,7 +26,8 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.getByPlaceholderText(/أدخل قيمة الرصيد/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /إضافة رصيد/i })).toBeTruthy();
     expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.queryByLabelText(/reference|reason|confirm/i)).toBeNull();
+    expect(screen.getByLabelText(/مرجع الدفع الفعلي/i)).toBeTruthy();
+    expect(screen.getByText(/أؤكد أن الدفع الفعلي قد تم استلامه والتحقق منه/i)).toBeTruthy();
     expect(screen.getByRole('region', { name: /إضافة رصيد يدوي/ })).toBeTruthy();
   });
 
@@ -38,14 +39,31 @@ describe('AdminCreditGrantPanel', () => {
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
-  it('submits only the entered credit amount and generated audit metadata', async () => {
-    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="en" />);
+  it('requires a real payment reference and explicit payment confirmation', async () => {
+    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="ar" />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/مرجع الدفع الفعلي/i);
+    expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/تأكيد استلام الدفع والتحقق منه/i);
+    expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
+  });
+
+  it('submits the entered payment reference only after confirmation', async () => {
+    render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="ar" />);
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
+    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 20,
       paymentAmountEgp: 20,
+      paymentReference: 'receipt-123',
       reason: 'إضافة رصيد يدوي',
       paymentConfirmed: true,
     })));
