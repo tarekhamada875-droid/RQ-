@@ -171,10 +171,9 @@ export function useAdminAndGarageManagement({
         return;
       }
       const entityId = role === 'admin' ? 'auth_pin'
-        : (role === 'supervisor' ? account?.id
         : (role === 'delegate' ? account?.id
         : (role === 'staff' ? account?.id
-        : (role === 'garage' ? account?.id : null))));
+        : (role === 'garage' ? account?.id : null)));
 
       logDiagnostic('LOGIN_CREDENTIALS_AUTHENTICATED', { role, entityId, uid });
 
@@ -262,9 +261,6 @@ export function useAdminAndGarageManagement({
 
       if (role === 'admin') {
         setActiveAdminPin(cleanInput);
-        setView('admin_dashboard');
-      } else if (role === 'supervisor') {
-        setCurrentSupervisor(cleanAccount);
         setView('admin_dashboard');
       } else if (role === 'delegate') {
         setDelegate(cleanAccount);
