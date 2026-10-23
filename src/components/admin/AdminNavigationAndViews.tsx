@@ -10,12 +10,11 @@ import {
   ShieldCheck,
   Calculator
 } from 'lucide-react';
-import { Garage, Delegate, Package, Supervisor } from '../../types';
+import { Garage, Delegate, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
 import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
-import { AdminPackagesView } from './AdminPackagesView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
@@ -33,7 +32,6 @@ interface AdminNavigationAndViewsProps {
   onLoadMoreAdminDelegates?: () => Promise<void>;
   onRefreshAdminLists?: () => Promise<void>;
   pendingGarages: Garage[];
-  packages: Package[];
   approvedGarages: Garage[];
   displayedGarages: Garage[];
   adminSearch: string;
@@ -64,7 +62,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
   pendingGarages,
-  packages,
   approvedGarages,
   displayedGarages,
   adminSearch,
@@ -137,20 +134,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   {pendingGarages.length}
                 </span>
               )}
-            </button>
-
-            {/* Tab 4: Credit Templates */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('packages')}
-              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'packages'
-                  ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Zap className={`w-4 h-4 ${activeTab === 'packages' ? 'text-current' : 'text-purple-500'}`} />
-              <span>{t('قوالب أرصدة الدخول')}</span>
             </button>
 
             {/* Tab 5: People (Delegates) */}
@@ -281,12 +264,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           pendingGarages={pendingGarages}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-        />
-      ) : activeTab === 'packages' ? (
-        <AdminPackagesView
-          packages={packages}
-          setConfirmDialog={setConfirmDialog}
-          t={t}
         />
       ) : activeTab === 'active_sessions' ? (
         <AdminActiveSessionsView onLogout={onLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
