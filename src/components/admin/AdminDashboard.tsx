@@ -183,9 +183,7 @@ export const AdminDashboard = memo(({
             }
             await refreshAdminListsAfterMutation();
             soundManager.play('error');
-            showToast?.(adminLang === 'en'
-              ? `Garage request for "${garage.name}" was rejected and its data was deleted.`
-              : `تم رفض طلب إنشاء جراج "${garage.name}" وحذف البيانات`, 'success');
+            showToast?.(`تم رفض طلب إنشاء جراج "${garage.name}" وحذف البيانات`, 'success');
             resolve();
           } catch (error) {
             console.error('Failed to reject garage:', error);
@@ -271,7 +269,7 @@ export const AdminDashboard = memo(({
   }, [effectiveGarages, allGarages, adminSearch]);
 
   return (
-    <div className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`} dir={adminLang === 'en' ? 'ltr' : 'rtl'}>
+    <div className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`} dir="rtl">
       <style>{`
         .admin-custom-theme .text-emerald-500,
         .admin-custom-theme .text-emerald-500,
