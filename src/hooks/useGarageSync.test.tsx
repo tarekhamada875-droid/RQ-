@@ -478,6 +478,33 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(subscriptions).toHaveLength(8);
   });
 
+  it('ignores a queued garage subscription callback after switching garages', () => {
+    const callbacks = new Map<string, (garage: any) => void>();
+    serviceMocks.subscribeToGarage.mockImplementation((garageId: string, callback: (garage: any) => void) => {
+      callbacks.set(garageId, callback);
+      return vi.fn();
+    });
+    const baseProps = createBaseProps();
+    const { rerender, unmount } = renderHook(
+      ({ garage }) => useGarageSync({
+        ...baseProps,
+        isSessionReady: true,
+        view: 'garage',
+        garage,
+      }),
+      { initialProps: { garage: { id: 'garage-a' } as any } }
+    );
+
+    rerender({ garage: { id: 'garage-b' } as any });
+
+    act(() => callbacks.get('garage-a')?.({ id: 'garage-a', name: 'Stale garage A' }));
+    expect(baseProps.setGarage).not.toHaveBeenCalled();
+
+    act(() => callbacks.get('garage-b')?.({ id: 'garage-b', name: 'Current garage B' }));
+    expect(baseProps.setGarage).toHaveBeenCalledWith({ id: 'garage-b', name: 'Current garage B' });
+    unmount();
+  });
+
   it('clears prior owner Admin and Delegate lists before the next owner renders', () => {
     const baseProps = createBaseProps();
     const { result, rerender } = renderHook(
