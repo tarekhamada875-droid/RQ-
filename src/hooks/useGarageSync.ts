@@ -94,9 +94,35 @@ export function useGarageSync({
   useLayoutEffect(() => {
     if (previousDataOwnerKeyRef.current === dataOwnerKey) return;
     previousDataOwnerKeyRef.current = dataOwnerKey;
+
+    // Invalidate old-owner page requests before clearing their visible data. A late
+    // response must not repopulate lists or restore cursors for the next protected view.
+    adminGarageRequestVersionRef.current += 1;
+    adminDelegateRequestVersionRef.current += 1;
+    adminGarageCursorRef.current = null;
+    adminDelegateCursorRef.current = null;
+    adminGarageLoadingRef.current = false;
+    adminDelegateLoadingRef.current = false;
+    adminListsLoadedRef.current = false;
+    delegateDashboardGenerationRef.current += 1;
+    delegateDashboardOwnerRef.current = undefined;
+    delegateDashboardLoadedOwnerRef.current = undefined;
+    delegatePageLoadingRef.current = { createdGarages: false, referredGarages: false };
+
     setVehicles([]);
     setTodayTransactions([]);
     setStaffList([]);
+    setAllGarages([]);
+    setDelegates([]);
+    setAdminGarageHasMore(false);
+    setAdminDelegateHasMore(false);
+    setAdminListsLoading(false);
+    setAdminListsError(false);
+    setDelegatePagination({
+      createdGarages: { hasMore: false, nextCursor: null },
+      referredGarages: { hasMore: false, nextCursor: null },
+    });
+    setDelegateListsLoading(false);
   }, [dataOwnerKey]);
 
   // Subscribe to Active Vehicles
