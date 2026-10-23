@@ -7,7 +7,6 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   adminLang: AdminLang;
-  setAdminLang: (lang: AdminLang) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -23,23 +22,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
-  const [adminLang, setAdminLangState] = useState<AdminLang>(() => {
-    try {
-      const saved = localStorage.getItem('admin_lang');
-      return (saved === 'ar' || saved === 'en') ? saved : 'ar';
-    } catch {
-      return 'ar';
-    }
-  });
+  const adminLang: AdminLang = 'ar';
 
-  const setAdminLang = (lang: AdminLang) => {
-    setAdminLangState(lang);
+  useEffect(() => {
     try {
-      localStorage.setItem('admin_lang', lang);
-    } catch (e) {
-      console.warn('Failed to save admin_lang to localStorage', e);
+      localStorage.removeItem('admin_lang');
+    } catch {
+      // Ignore unavailable storage; Arabic is the only supported admin language.
     }
-  };
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -77,7 +68,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, adminLang, setAdminLang }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, adminLang }}>
       {children}
     </ThemeContext.Provider>
   );
