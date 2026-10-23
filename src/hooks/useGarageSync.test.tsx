@@ -34,7 +34,7 @@ vi.mock('../utils', () => ({
 }));
 
 const createBaseProps = () => ({
-  isSessionReady: false,
+  isSessionReady: true,
   isAuthReady: true,
   user: { uid: 'delegate-user' },
   view: 'delegate_dashboard',
@@ -84,6 +84,35 @@ afterEach(() => {
 });
 
 describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
+  it('waits for the server session claim before loading or polling delegate data', async () => {
+    serviceMocks.getDashboardData.mockResolvedValue(
+      dashboardResponse({ id: 'delegate-1', name: 'Ready delegate' })
+    );
+    const baseProps = { ...createBaseProps(), isSessionReady: false };
+    const { rerender, unmount } = renderHook(
+      ({ isSessionReady }: { isSessionReady: boolean }) => useGarageSync({
+        ...baseProps,
+        isSessionReady,
+        delegate: { id: 'delegate-1', name: 'Initial delegate' }
+      }),
+      { initialProps: { isSessionReady: false } }
+    );
+
+    expect(serviceMocks.getDashboardData).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(serviceMocks.getDashboardData).not.toHaveBeenCalled();
+
+    rerender({ isSessionReady: true });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledWith('delegate-1');
+    unmount();
+  });
+
   it('does not reload when a response replaces the delegate object but keeps the same ID', async () => {
     const refreshedDelegate = { id: 'delegate-1', name: 'Refreshed delegate' };
     serviceMocks.getDashboardData
