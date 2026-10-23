@@ -196,20 +196,6 @@ export const GarageDashboardHeaderAndDrawer = memo(({
 
                   {!currentStaff && (
                     <button
-                      onClick={() => onNavigateOverlay('packages')}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                          <Package className="w-4 h-4 text-amber-400 dark:text-slate-950" />
-                        </div>
-                        <span className="font-bold text-sm">الباقات</span>
-                      </div>
-                    </button>
-                  )}
-
-                  {!currentStaff && (
-                    <button
                       onClick={() => onNavigateOverlay('staff')}
                       className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none"
                     >
