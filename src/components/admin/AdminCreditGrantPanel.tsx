@@ -95,7 +95,6 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           id="credit-payment-reference"
           type="text"
           maxLength={120}
-          required
           value={paymentReference}
           onChange={(event) => setPaymentReference(event.target.value)}
           placeholder="أدخل رقم الإيصال أو مرجع التحويل"
