@@ -79,7 +79,8 @@ const staff = (name, garageId) => ({
 });
 
 // Mirrors claimSessionInTransaction's browser fallback writes. The Worker is
-// authoritative; these writes must remain blocked when server validation fails.
+// authoritative; tests cover denied changes and the heartbeat-only edge case
+// where matching legacy session state can still permit the fallback transaction.
 const attemptBrowserSessionClaimFallback = (db, uid, sessionId, garageId = 'g-1') => runTransaction(db, async (transaction) => {
   const entityRef = doc(db, `garages/${garageId}`);
   const securitySessionRef = doc(db, `garage_sessions/${uid}`);
