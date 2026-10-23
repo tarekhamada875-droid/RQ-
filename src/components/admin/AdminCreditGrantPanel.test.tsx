@@ -27,21 +27,21 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.getByRole('button', { name: /إضافة رصيد/i })).toBeTruthy();
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByLabelText(/reference|reason|confirm/i)).toBeNull();
-    expect(screen.getByText(/أرصدة مسبقة الدفع/)).toBeTruthy();
+    expect(screen.getByRole('region', { name: /إضافة رصيد يدوي/ })).toBeTruthy();
   });
 
   it('requires a valid whole-number credit amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="en" />);
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/عدد صحيح بين 1 و1,000,000/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/whole number between 1 and 1,000,000/i);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
   it('submits only the entered credit amount and generated audit metadata', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="en" />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
-    fireEvent.click(screen.getByRole('button', { name: /add credits/i }));
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 20,
