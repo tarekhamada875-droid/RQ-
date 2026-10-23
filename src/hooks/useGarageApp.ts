@@ -280,6 +280,7 @@ export function useGarageApp() {
     isLoading,
     closeKeyboard,
     showToast,
+    refreshAdminLists,
   });
 
   const session = {

@@ -1,6 +1,8 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
+import { deleteGarageWithRecovery } from '../services/garageDeletionService';
+import { firestoreService } from '../services';
 
 const mocks = vi.hoisted(() => ({
   authenticateUserCredentials: vi.fn(),
@@ -18,7 +20,11 @@ const mocks = vi.hoisted(() => ({
   logDiagnostic: vi.fn()
 }));
 
-vi.mock('../services', () => ({ firestoreService: {} }));
+vi.mock('../services', () => ({ firestoreService: {
+  updateGarage: vi.fn().mockResolvedValue(undefined),
+  addDelegate: vi.fn().mockResolvedValue({ id: 'delegate-1' }),
+  removeDelegate: vi.fn().mockResolvedValue(undefined)
+} }));
 vi.mock('../services/garageDeletionService', () => ({
   deleteGarageWithRecovery: vi.fn(),
   garageDeletionFailureMessage: vi.fn()
@@ -76,7 +82,8 @@ const createProps = () => ({
   isOnline: true,
   isLoading: false,
   closeKeyboard: vi.fn(),
-  showToast: vi.fn()
+  showToast: vi.fn(),
+  refreshAdminLists: vi.fn().mockResolvedValue(undefined)
 });
 
 const staffAuthResult = {
@@ -101,6 +108,10 @@ beforeEach(() => {
   mocks.claimEntitySession.mockReset();
   mocks.signInAnonymously.mockReset();
   mocks.logDiagnostic.mockReset();
+  vi.mocked(firestoreService.updateGarage).mockReset().mockResolvedValue(undefined);
+  vi.mocked(firestoreService.addDelegate).mockReset().mockResolvedValue({ id: 'delegate-1' });
+  vi.mocked(firestoreService.removeDelegate).mockReset().mockResolvedValue(undefined);
+  vi.mocked(deleteGarageWithRecovery).mockReset().mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -109,6 +120,67 @@ afterEach(() => {
 });
 
 describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
+  it('refreshes Admin lists after a successful garage deletion', async () => {
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    await act(async () => {
+      await result.current.deleteGarage({ id: 'garage-1' } as any);
+    });
+
+    expect(deleteGarageWithRecovery).toHaveBeenCalledWith('garage-1', expect.any(Function));
+    expect(props.refreshAdminLists).toHaveBeenCalledOnce();
+    expect(props.setView).toHaveBeenCalledWith('admin_dashboard');
+  });
+
+  it('does not refresh Admin lists when garage deletion fails', async () => {
+    vi.mocked(deleteGarageWithRecovery).mockResolvedValue({
+      ok: false,
+      errorCode: 'DENIED',
+      status: null,
+      error: new Error('DENIED')
+    });
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    await act(async () => {
+      await result.current.deleteGarage({ id: 'garage-1' } as any);
+    });
+
+    expect(props.refreshAdminLists).not.toHaveBeenCalled();
+    expect(props.setView).not.toHaveBeenCalled();
+  });
+
+  it('refreshes Admin lists after successful garage-rate updates', async () => {
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    await act(async () => {
+      await result.current.updateGarageRate({ id: 'garage-1' } as any, 'hourlyRate', 25);
+    });
+
+    expect(firestoreService.updateGarage).toHaveBeenCalledWith('garage-1', { hourlyRate: 25 });
+    expect(props.refreshAdminLists).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes Admin lists after successful delegate create and delete', async () => {
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    let created: unknown;
+    await act(async () => {
+      created = await result.current.addDelegate({ name: 'Delegate' } as any);
+    });
+    expect(created).toEqual({ id: 'delegate-1' });
+    expect(props.refreshAdminLists).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await result.current.removeDelegate('delegate-1');
+    });
+    expect(firestoreService.removeDelegate).toHaveBeenCalledWith('delegate-1');
+    expect(props.refreshAdminLists).toHaveBeenCalledTimes(2);
+  });
+
   it('reuses the status-check snapshot on successful login and scrubs garage PIN', async () => {
     mocks.getDoc.mockResolvedValue(createSnapshot(true, {
       name: 'Test Garage',
