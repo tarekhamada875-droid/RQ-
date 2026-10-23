@@ -100,13 +100,14 @@ Keep existing authorization boundaries. Refresh or reconcile data only after a s
 
 **Pass checks:** any reproduced create-retry or page-boundary defect has a focused regression test and a minimal fix; otherwise existing create, pagination, and settlement behavior remains unchanged. Confirmed old garage-detail responses cannot overwrite the current selection; only add Delegate race guards if a delayed-response test reproduces the issue.
 
-### 6. Make language and direction consistent across active screens
+### 6. Make Arabic the only application language
 
-- Preserve the existing Arabic/English product behavior and Egyptian plate identity. Add English translations and correct direction for the inspected Admin views with missing strings; carry selected language/direction through shared loading/error feedback, logout confirmation, and overlays. Apply the existing bilingual requirement to role screens without changing stored user-authored Arabic text.
-- Remove hard-coded RTL from English UI chrome; keep PINs, plates, IDs, and numeric entry explicitly LTR when that is the correct reading direction.
-- Do not redesign the visual system or add performance-driven UI changes.
+- Arabic is the sole supported user-facing application language across Admin, Garage, Delegate, Staff, login, shared loading/error feedback, confirmations, overlays, and navigation. Remove language switching and English-only UI branches rather than preserving a bilingual mode.
+- Set the document language to Arabic and the default document direction to RTL. Keep PINs, Egyptian plates, IDs, URLs, and numeric entry readable in their appropriate direction; do not alter stored user-authored data or backend identifiers.
+- Replace remaining user-visible English copy with clear Arabic in bounded, role-focused changes and add regression tests for each changed flow. Do not translate code identifiers, API contracts, logs, dependency names, or third-party brand names merely because they contain English.
+- Preserve the existing visual design and role permissions; do not redesign screens as part of language removal.
 
-**Pass checks:** key login, dashboard, list, mutation, error, confirmation, and logout flows are usable in Arabic/RTL and English/LTR on mobile and desktop. Language changes do not leak incorrectly between roles or change user data.
+**Pass checks:** active login, dashboard, list, mutation, error, confirmation, and logout flows are Arabic/RTL across all roles on mobile and desktop; no language switch can re-enable English; plate, PIN, ID, and numeric entry remain usable. No backend behavior or stored user data changes.
 
 ### 7. Resolve only the two deferred product/service boundaries if they block the above work
 
