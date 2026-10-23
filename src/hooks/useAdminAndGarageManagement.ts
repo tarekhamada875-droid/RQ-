@@ -153,6 +153,23 @@ export function useAdminAndGarageManagement({
 
       const { role, account } = authRes;
       const uid = currentUser.uid;
+
+      // Supervisor access is retired by the Worker contract. Never route a legacy
+      // supervisor credential into the Admin dashboard from the client.
+      if (role === 'supervisor') {
+        if (authRes.sessionClaimed && account?.id) {
+          await releaseEntitySession({
+            role: 'supervisor',
+            entityId: account.id,
+            sessionId,
+            uid,
+          }).catch((releaseError) => {
+            console.warn('Failed to release retired Supervisor session:', releaseError);
+          });
+        }
+        showToast('لم يعد تسجيل دخول المشرف متاحاً', 'error');
+        return;
+      }
       const entityId = role === 'admin' ? 'auth_pin'
         : (role === 'supervisor' ? account?.id
         : (role === 'delegate' ? account?.id
