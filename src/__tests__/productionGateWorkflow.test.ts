@@ -71,7 +71,8 @@ describe('production release workflow', () => {
   it('dispatches post-merge only after successful PR verification and avoids duplicate push deployments', () => {
     expect(postMergeWorkflow).toContain('workflows: [Production Gate]');
     expect(postMergeWorkflow).toContain("github.event.workflow_run.event == 'pull_request'");
-    expect(postMergeWorkflow).toContain('listPullRequestsAssociatedWithCommit');
+    expect(postMergeWorkflow).toContain('run.pull_requests');
+    expect(postMergeWorkflow).toContain("state: 'all'");
     expect(postMergeWorkflow).toContain("run.event === 'push' && run.head_branch === 'main'");
     expect(postMergeWorkflow).toContain('createWorkflowDispatch');
     expect(postMergeWorkflow).toContain('source_run_id: String(context.payload.workflow_run.id)');
