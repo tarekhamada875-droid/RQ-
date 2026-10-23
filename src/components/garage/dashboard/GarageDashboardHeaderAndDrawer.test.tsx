@@ -41,12 +41,11 @@ describe('GarageDashboardHeaderAndDrawer icon actions', () => {
     expect(props.setIsMenuOpen).toHaveBeenCalledWith(false);
   });
 
-  it('exposes Packages and Staff Stats actions for garage owners', () => {
+  it('exposes Staff Stats and hides retired Packages action for garage owners', () => {
     const props = makeProps();
     render(<GarageDashboardHeaderAndDrawer {...props} isMenuOpen />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'الباقات' }));
-    expect(props.onNavigateOverlay).toHaveBeenCalledWith('packages');
+    expect(screen.queryByRole('button', { name: 'الباقات' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'إحصائيات الموظفين' }));
     expect(props.onNavigateOverlay).toHaveBeenCalledWith('staff');
