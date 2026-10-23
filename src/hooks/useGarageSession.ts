@@ -16,6 +16,33 @@ import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 import { listenerTracker } from '../utils/listenerTracker';
 import { signOut } from 'firebase/auth';
 
+// A malformed persisted entity must not be mistaken for a session still hydrating.
+const hasValidStoredEntity = (key: string): boolean => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const value: unknown = JSON.parse(raw);
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      typeof (value as { id?: unknown }).id !== 'string' ||
+      !(value as { id: string }).id.trim()
+    ) {
+      localStorage.removeItem(key);
+      return false;
+    }
+    return true;
+  } catch {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage can be unavailable; fall through to the safe login path.
+    }
+    return false;
+  }
+};
+
 interface UseGarageSessionProps {
   view: string;
   setView: (view: any) => void;
@@ -255,21 +282,19 @@ export function useGarageSession({
       }
 
       if (!activeRole || !activeEntityId) {
-        // Prevent kicking to login if localStorage data is still hydrating
-        try {
-          const storedGarage = localStorage.getItem('app_garage');
-          const storedDelegate = localStorage.getItem('app_delegate');
-          const storedStaff = localStorage.getItem('app_staff');
-          const storedSupervisor = localStorage.getItem('app_supervisor');
-          if (
-            (view === 'garage' && (storedGarage || storedStaff)) ||
-            (view === 'delegate_dashboard' && storedDelegate) ||
-            (view.startsWith('admin_') && storedSupervisor)
-          ) {
-            return;
-          }
-        } catch {
-          // Invalid or unavailable storage should fall through to the login state.
+        // Only wait for a stored entity when it is a valid persisted record.
+        // Malformed JSON or an object without an ID must not keep protected views
+        // spinning forever while the session coordinator waits for hydration.
+        const hasStoredGarage = hasValidStoredEntity('app_garage');
+        const hasStoredStaff = hasValidStoredEntity('app_staff');
+        const hasStoredDelegate = hasValidStoredEntity('app_delegate');
+        const hasStoredSupervisor = hasValidStoredEntity('app_supervisor');
+        if (
+          (view === 'garage' && (hasStoredGarage || hasStoredStaff)) ||
+          (view === 'delegate_dashboard' && hasStoredDelegate) ||
+          (view.startsWith('admin_') && hasStoredSupervisor)
+        ) {
+          return;
         }
 
         if (isMounted) {
