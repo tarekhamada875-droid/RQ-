@@ -12,7 +12,7 @@ import {
 import { firestoreService } from '../../services';
 import { normalizeDigits, canChangeGarageRates, isHashedPin, generateSafePin } from '../../utils';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
-import { Garage, Staff, Package } from '../../types';
+import { Garage, Staff } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
@@ -33,7 +33,6 @@ interface AdminGarageDetailsViewProps {
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  packages?: Package[];
   allGarages?: Garage[];
   onRefreshAdminLists?: () => Promise<void>;
 }
@@ -48,7 +47,6 @@ export const AdminGarageDetailsView = memo(({
   setStaffList,
   isLoading,
   setIsLoading,
-  packages = [],
   allGarages = [],
   onRefreshAdminLists
 }: AdminGarageDetailsViewProps) => {
