@@ -21,7 +21,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
 
     const creditAmount = Number(amount.trim());
     if (!Number.isSafeInteger(creditAmount) || creditAmount < 1 || creditAmount > 1_000_000) {
-      setError('Enter a whole number between 1 and 1,000,000.');
+      setError('أدخل عددًا صحيحًا من 1 إلى 1,000,000.');
       setSuccess('');
       return;
     }
