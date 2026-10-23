@@ -6,7 +6,6 @@ import {
   Zap,
   Settings as SettingsIcon,
   Key,
-  ClipboardList,
   ChevronRight,
   ShieldCheck,
   Calculator
@@ -17,7 +16,6 @@ import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
 import { AdminRequestsView } from './AdminRequestsView';
 import { AdminPackagesView } from './AdminPackagesView';
-import { AdminAnnouncementsView } from './AdminAnnouncementsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
@@ -37,7 +35,6 @@ interface AdminNavigationAndViewsProps {
   pendingGarages: Garage[];
   packages: Package[];
   approvedGarages: Garage[];
-  allGarages: Garage[];
   displayedGarages: Garage[];
   adminSearch: string;
   setAdminSearch: (s: string) => void;
@@ -69,7 +66,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   pendingGarages,
   packages,
   approvedGarages,
-  allGarages,
   displayedGarages,
   adminSearch,
   setAdminSearch,
@@ -190,12 +186,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
               className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'active_sessions'
+                  activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'announcements' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
               <span>{t('الإعدادات')}</span>
             </button>
           </div>
@@ -246,23 +242,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
             </div>
 
-            {/* Announcements */}
-            <div 
-              onClick={() => setActiveTab('announcements')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{t('إعلانات المنصة')}</h3>
-                <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
-                  <ClipboardList className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>{t('نشر وتعديل الإعلانات العامة')}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
-              </div>
-            </div>
-
             {/* Active Devices */}
             <div
               onClick={() => setActiveTab('active_sessions')}
@@ -309,8 +288,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           setConfirmDialog={setConfirmDialog}
           t={t}
         />
-      ) : activeTab === 'announcements' ? (
-        <AdminAnnouncementsView allGarages={allGarages} />
       ) : activeTab === 'active_sessions' ? (
         <AdminActiveSessionsView onLogout={onLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
       ) : activeTab === 'admin-pin' ? (
