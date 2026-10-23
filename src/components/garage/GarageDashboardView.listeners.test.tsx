@@ -113,10 +113,7 @@ const DashboardHarness = ({ now = new Date(), garage = makeGarage() }: { now?: D
       inputRef={useRef(null)}
       onLogout={vi.fn()}
       showToast={vi.fn()}
-      packages={[]}
       staffList={[]}
-      showPackages={false}
-      setShowPackages={vi.fn()}
       showStaffStats={false}
       setShowStaffStats={vi.fn()}
       showSubscribers={showSubscribers}
