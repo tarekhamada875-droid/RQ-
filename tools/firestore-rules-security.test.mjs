@@ -326,8 +326,8 @@ try {
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
 
-  // If the Worker validation/claim path fails, the legacy client transaction
-  // must not be able to claim an existing session or create a new one.
+  // A legacy client transaction cannot replace a different session ID or create
+  // a new session record after the Worker validation/claim path fails.
   await assertFails(attemptBrowserSessionClaimFallback(ownerDb, 'owner-uid', 'browser-fallback-session'));
   await assertFails(attemptBrowserSessionClaimFallback(fallbackOwnerDb, 'fallback-owner-uid', 'browser-fallback-new-session'));
   // When all session identifiers already match, the same fallback-shaped
