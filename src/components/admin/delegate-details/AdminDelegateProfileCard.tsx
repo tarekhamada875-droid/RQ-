@@ -21,7 +21,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
 
   const handleUpdatePin = async () => {
     if (!/^\d{8}$/.test(pinInput)) {
-      alert(adminLang === 'en' ? 'PIN must be exactly 8 digits' : 'يجب أن يكون الرمز 8 أرقام بالضبط');
+      alert('يجب أن يكون الرمز 8 أرقام بالضبط');
       return;
     }
     setIsUpdatingPin(true);
@@ -29,9 +29,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       const cleanPin = pinInput.trim();
       const pinCheck = await firestoreService.isPinTaken(cleanPin, delegate.id);
       if (pinCheck.taken) {
-        alert(adminLang === 'en' 
-          ? `This PIN is already used by another account (${pinCheck.name} - ${pinCheck.role})`
-          : `هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
+        alert(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
         setIsUpdatingPin(false);
         return;
       }
@@ -40,7 +38,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       delegate.pin = cleanPin;
       setIsEditingPin(false);
     } catch {
-      alert(adminLang === 'en' ? 'Failed to update PIN' : 'فشل تحديث الرمز');
+      alert('فشل تحديث الرمز');
     } finally {
       setIsUpdatingPin(false);
     }
@@ -100,7 +98,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
           </div>
           <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 transition-colors">
             <Calendar className="w-4 h-4" />
-            <span>{t('تاريخ الانضمام:')} {delegate.createdAt ? (adminLang === 'en' ? safeDate(delegate.createdAt).toLocaleDateString('en-US') : safeDate(delegate.createdAt).toLocaleDateString('ar-EG')) : t('غير معروف')}</span>
+            <span>{t('تاريخ الانضمام:')} {delegate.createdAt ? safeDate(delegate.createdAt).toLocaleDateString('ar-EG') : t('غير معروف')}</span>
           </div>
         </div>
       </div>
