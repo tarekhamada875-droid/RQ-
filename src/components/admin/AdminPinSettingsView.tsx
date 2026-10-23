@@ -33,7 +33,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (attempt.length < 4) {
-      setAdminPinError('أدخل رمز الدخول الحالي للمتابعة.');
+      setAdminPinError(t('أدخل رمز الدخول الحالي للمتابعة.'));
       return;
     }
 
@@ -46,7 +46,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       if (data && data.valid) {
         setIsAdminPinVerified(true);
       } else {
-        setAdminPinError('رمز الدخول الحالي غير صحيح.');
+        setAdminPinError(t('رمز الدخول الحالي غير صحيح.'));
       }
     } catch (error) {
       const failure = classifyApiFailure(error);
@@ -71,12 +71,12 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (!/^\d{8}$/.test(newPin)) {
-      setAdminPinError('رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.');
+      setAdminPinError(t('رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.'));
       return;
     }
 
     if (newPin === attempt) {
-      setAdminPinError('رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.');
+      setAdminPinError(t('رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.'));
       return;
     }
 
@@ -84,13 +84,13 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     try {
       const pinCheck = await firestoreService.isPinTaken(newPin);
       if (pinCheck.taken) {
-        setAdminPinError(`هذا الرمز السري مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
+        setAdminPinError(`${t('هذا الرمز السري مستخدم بالفعل في حساب آخر:')} (${pinCheck.name} - ${pinCheck.role})`);
         setIsSavingAdminPin(false);
         return;
       }
 
       await firestoreService.updateAdminPin(newPin, attempt);
-      setAdminPinSuccess('تم تغيير رمز الدخول بنجاح.');
+      setAdminPinSuccess(t('تم تغيير رمز الدخول بنجاح.'));
       setCurrentPinAttempt('');
       setNewAdminPinValue('');
       setIsAdminPinVerified(false);
@@ -148,7 +148,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     setCurrentPinAttempt(val);
                   }}
                   maxLength={10}
-                  aria-label="رمز الدخول الحالي"
+                  aria-label={t("رمز الدخول الحالي")}
                   required
                   placeholder="••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-red-500 dark:focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.5em] font-mono"
@@ -219,7 +219,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   }}
                   maxLength={8}
                   minLength={8}
-                  aria-label="رمز الدخول الجديد"
+                  aria-label={t("رمز الدخول الجديد")}
                   required
                   placeholder="••••••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.5em] font-mono"
@@ -236,7 +236,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   {isSavingAdminPin ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>جارٍ الحفظ...</span>
+                      <span>{t('جارٍ الحفظ...')}</span>
                     </>
                   ) : (
                     <>
