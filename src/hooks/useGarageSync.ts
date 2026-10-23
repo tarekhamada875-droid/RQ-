@@ -313,6 +313,9 @@ export function useGarageSync({
           });
         } else {
           setAllGarages((previous) => Array.from(new Map([...previous, ...(data.garages as Garage[])].map((garage) => [garage.id, garage])).values()));
+          // Polling refreshes the first-page snapshot, so its cursors must advance
+          // with that snapshot rather than leaving pagination anchored to old data.
+          if (data.pagination) setDelegatePagination(data.pagination);
         }
       } catch (err) {
         if (!cancelled && delegateDashboardGenerationRef.current === requestGeneration) {

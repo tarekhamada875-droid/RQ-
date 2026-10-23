@@ -595,4 +595,55 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(setSelectedGarageForDetails).toHaveBeenCalledWith({ id: 'garage-b', name: 'Garage B' });
     unmount();
   });
+  it('uses refreshed first-page cursors after a delegate dashboard poll', async () => {
+    const firstResponse = {
+      ...dashboardResponse({ id: 'delegate-1', name: 'Delegate' }),
+      pagination: {
+        createdGarages: { hasMore: true, nextCursor: 'created-cursor-old' },
+        referredGarages: { hasMore: false, nextCursor: null },
+      },
+      garages: [{ id: 'garage-1' }],
+    };
+    const refreshedResponse = {
+      ...firstResponse,
+      pagination: {
+        createdGarages: { hasMore: true, nextCursor: 'created-cursor-new' },
+        referredGarages: { hasMore: false, nextCursor: null },
+      },
+      garages: [{ id: 'garage-1' }, { id: 'garage-2' }],
+    };
+    serviceMocks.getDashboardData
+      .mockResolvedValueOnce(firstResponse)
+      .mockResolvedValueOnce(refreshedResponse);
+    serviceMocks.getDashboardDataPage.mockResolvedValue({
+      items: [{ id: 'garage-3' }],
+      hasMore: false,
+      nextCursor: null,
+    });
+
+    const { result, unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: { id: 'delegate-1', name: 'Delegate' },
+    }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.allGarages).toHaveLength(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(result.current.allGarages).toHaveLength(2);
+
+    await act(async () => {
+      await result.current.loadMoreDelegateGarages();
+    });
+    expect(serviceMocks.getDashboardDataPage).toHaveBeenCalledWith(
+      'delegate-1',
+      'createdGarages',
+      'created-cursor-new',
+    );
+    unmount();
+  });
+
 });
