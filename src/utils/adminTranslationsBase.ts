@@ -432,4 +432,5 @@ export const adminTranslationsBase: Record<string, string> = {
   'مثال: 100': 'e.g. 100',
   'تفعيل الهدية': 'Enable Gift',
 
+  'تعذر حذف قالب الأرصدة. يرجى المحاولة مرة أخرى.': 'Unable to delete the credit bundle. Please try again.',
 };
