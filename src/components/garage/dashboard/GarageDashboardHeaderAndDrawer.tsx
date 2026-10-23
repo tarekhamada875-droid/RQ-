@@ -15,7 +15,6 @@ import {
   Megaphone,
   FileText,
   History,
-  Package,
   BarChart3,
 } from 'lucide-react';
 import { Garage, Staff, Announcement } from '../../../types';
