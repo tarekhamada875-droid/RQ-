@@ -20,6 +20,7 @@ function renderDelegateDashboard(
     delegateDashboardError?: boolean;
     delegateListsError?: boolean;
     onRetryDelegateDashboard?: () => void;
+    onLoadMoreDelegateGarages?: () => void;
     delegatePagination?: {
       createdGarages: { hasMore: boolean; nextCursor: string | null };
       referredGarages: { hasMore: boolean; nextCursor: string | null };
