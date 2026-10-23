@@ -5,7 +5,6 @@ import { firestoreService } from '../../services';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { isCreditBundlePackage } from '../../utils/packageCatalog';
 import { useAppStore } from '../../store/appStore';
-import { useTheme } from '../../utils/ThemeContext';
 
 interface AdminPackagesViewProps {
   packages: Package[];
@@ -21,7 +20,6 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const { adminLang } = useTheme();
 
   const handleSubmitNewPackage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -135,9 +133,7 @@ export const AdminPackagesView: React.FC<AdminPackagesViewProps> = ({
                           } catch (err) {
                             console.error('Failed to delete credit-bundle package:', err);
                             useAppStore.getState().showToast(
-                              adminLang === 'en'
-                                ? 'Unable to delete the credit bundle. Please try again.'
-                                : 'تعذر حذف قالب الأرصدة. يرجى المحاولة مرة أخرى.',
+                              t('تعذر حذف قالب الأرصدة. يرجى المحاولة مرة أخرى.'),
                               'error',
                             );
                           } finally {
