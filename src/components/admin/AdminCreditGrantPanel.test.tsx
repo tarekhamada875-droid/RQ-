@@ -34,7 +34,7 @@ describe('AdminCreditGrantPanel', () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} packages={[]} adminLang="en" />);
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/whole number between 1 and 1,000,000/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 1 إلى 1,000,000/);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
