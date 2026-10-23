@@ -64,6 +64,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   const [isAuthResolved, setIsAuthResolved] = useState(!!auth.currentUser);
   const hasReceivedSubscriberSnapshotRef = React.useRef(false);
   const activeGarageIdRef = React.useRef<string | null>(null);
+  const subscriberRequestGenerationRef = React.useRef(0);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -166,10 +167,12 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
     if (!isAuthResolved) return;
     if (activeGarageIdRef.current !== garage.id) {
       activeGarageIdRef.current = garage.id;
+      subscriberRequestGenerationRef.current += 1;
       hasReceivedSubscriberSnapshotRef.current = false;
       setSubscribers([]);
       setSubscriberCursor(null);
       setHasMoreSubscribers(false);
+      setIsLoadingMoreSubscribers(false);
     }
 
     if (subscriberPage) {
@@ -205,17 +208,30 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
 
   const handleLoadMoreSubscribers = async () => {
     if (!subscriberCursor || !hasMoreSubscribers || isLoadingMoreSubscribers) return;
+    const requestedGarageId = garage.id;
+    const requestGeneration = subscriberRequestGenerationRef.current;
+    const requestedCursor = subscriberCursor;
     setIsLoadingMoreSubscribers(true);
     try {
-      const page = await firestoreService.getMoreSubscribers(garage.id, subscriberCursor);
+      const page = await firestoreService.getMoreSubscribers(requestedGarageId, requestedCursor);
+      if (
+        requestGeneration !== subscriberRequestGenerationRef.current ||
+        activeGarageIdRef.current !== requestedGarageId
+      ) return;
       setSubscribers((current) => mergeSubscriberPages(current, page.subscribers));
       setSubscriberCursor(page.lastDoc);
       setHasMoreSubscribers(page.hasMore);
     } catch (error) {
+      if (
+        requestGeneration !== subscriberRequestGenerationRef.current ||
+        activeGarageIdRef.current !== requestedGarageId
+      ) return;
       console.error('Failed to load another subscriber page:', error);
       showToast('تعذر تحميل المزيد من المشتركين. يرجى المحاولة مرة أخرى.', 'error');
     } finally {
-      setIsLoadingMoreSubscribers(false);
+      if (requestGeneration === subscriberRequestGenerationRef.current) {
+        setIsLoadingMoreSubscribers(false);
+      }
     }
   };
 

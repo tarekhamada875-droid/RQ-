@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
   firstPage: [] as any[],
@@ -91,6 +91,43 @@ describe('SubscribersView pagination and accessible names', () => {
     });
     await waitFor(() => expect(screen.getByText('Older Subscriber Search Target')).toBeTruthy());
     expect(screen.queryByRole('button', { name: 'تحميل 50 مشتركاً أقدم' })).toBeNull();
+  });
+
+  it('ignores an older garage page response after switching garages', async () => {
+    let resolveOlderPage!: (page: { subscribers: any[]; lastDoc: any; hasMore: boolean }) => void;
+    mocks.getMore.mockReturnValue(new Promise((resolve) => {
+      resolveOlderPage = resolve;
+    }));
+    mocks.subscribe.mockImplementation((garageId, callback) => {
+      const rows = garageId === 'garage-b'
+        ? [{ ...makeSubscriber(90, 'Garage B Subscriber'), id: 'garage-b-subscriber', garageId }]
+        : mocks.firstPage;
+      callback(rows, { lastDoc: { id: `${garageId}-cursor` }, hasMore: true });
+      return vi.fn();
+    });
+
+    const { rerender } = render(
+      <SubscribersView garage={makeGarage('garage-a')} onClose={vi.fn()} showToast={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'تحميل 50 مشتركاً أقدم' }));
+    expect(mocks.getMore).toHaveBeenCalledWith('garage-a', { id: 'garage-a-cursor' });
+
+    rerender(
+      <SubscribersView garage={makeGarage('garage-b')} onClose={vi.fn()} showToast={vi.fn()} />,
+    );
+    expect(screen.getByText('Garage B Subscriber')).toBeTruthy();
+
+    await act(async () => {
+      resolveOlderPage({
+        subscribers: [{ ...makeSubscriber(51, 'Old Garage Subscriber'), garageId: 'garage-a' }],
+        lastDoc: { id: 'old-garage-next-cursor' },
+        hasMore: false,
+      });
+    });
+
+    expect(screen.getByText('Garage B Subscriber')).toBeTruthy();
+    expect(screen.queryByText('Old Garage Subscriber')).toBeNull();
+    expect(screen.getByRole('button', { name: 'تحميل 50 مشتركاً أقدم' })).toBeTruthy();
   });
 
   it('uses a shared live first page without opening a duplicate listener and retains cursor pagination', async () => {
