@@ -20,7 +20,6 @@ import { AdminGarageList } from './AdminGarageList';
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
 import { AdminAddGarageModal } from './AdminAddGarageModal';
-import { PackageValidationErrorModal } from './PackageValidationErrorModal';
 import { AdminConfirmDialog } from './AdminConfirmDialog';
 
 export { AdminGarageList };
@@ -111,13 +110,6 @@ export const AdminDashboard = memo(({
   const [showAppearanceSettings, setShowAppearanceSettings] = React.useState(false);
   const [localAdminColor, setLocalAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
-
-  const [packageValidationError, setPackageValidationError] = React.useState<{
-    isOpen: boolean;
-    conflictingPackageName: string;
-    message: string;
-    suggestions: string[];
-  } | null>(null);
 
   const [confirmDialog, setConfirmDialog] = React.useState<{
     isOpen: boolean;
@@ -418,7 +410,6 @@ export const AdminDashboard = memo(({
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           setConfirmDialog={setConfirmDialog}
-          setPackageValidationError={setPackageValidationError}
           currentAdminPin={currentAdminPin}
           adminLang={adminLang}
           t={t}
@@ -439,14 +430,6 @@ export const AdminDashboard = memo(({
         isLoading={isLoading}
         onSubmit={handleAddGarage}
         t={t}
-      />
-
-      {/* Package Validation Modal */}
-      <PackageValidationErrorModal
-        isOpen={Boolean(packageValidationError?.isOpen)}
-        message={packageValidationError?.message || ''}
-        suggestions={packageValidationError?.suggestions || []}
-        onClose={() => setPackageValidationError(null)}
       />
 
       {/* Custom Confirmation Dialog */}
