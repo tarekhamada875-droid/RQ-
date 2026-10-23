@@ -159,7 +159,7 @@ export const AdminPeopleView = memo(({
                 <input
                   value={delegateForm.name}
                   onChange={(e) => setDelegateForm({ ...delegateForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                  placeholder=مثال: أحمد محمد...
+                  placeholder="مثال: أحمد محمد..."
                   required
                   className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
                 />
@@ -201,7 +201,7 @@ export const AdminPeopleView = memo(({
                     setDelegateForm({ ...delegateForm, pin: safePin });
                   }}
                   className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
-                  title=توليد رقم سري عشوائي
+                  title="توليد رقم سري عشوائي"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
