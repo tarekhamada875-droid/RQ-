@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../services', () => ({ firestoreService: {
   updateGarage: vi.fn().mockResolvedValue(undefined),
+  createGarage: vi.fn().mockResolvedValue({ success: true, id: 'garage-created' }),
+  isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
   addDelegate: vi.fn().mockResolvedValue({ id: 'delegate-1' }),
   removeDelegate: vi.fn().mockResolvedValue(undefined)
 } }));
@@ -109,6 +111,8 @@ beforeEach(() => {
   mocks.signInAnonymously.mockReset();
   mocks.logDiagnostic.mockReset();
   vi.mocked(firestoreService.updateGarage).mockReset().mockResolvedValue(undefined);
+  vi.mocked(firestoreService.createGarage).mockReset().mockResolvedValue({ success: true, id: 'garage-created' });
+  vi.mocked(firestoreService.isPinTaken).mockReset().mockResolvedValue({ taken: false } as any);
   vi.mocked(firestoreService.addDelegate).mockReset().mockResolvedValue({ id: 'delegate-1' });
   vi.mocked(firestoreService.removeDelegate).mockReset().mockResolvedValue(undefined);
   vi.mocked(deleteGarageWithRecovery).mockReset().mockResolvedValue({ ok: true });
@@ -120,6 +124,44 @@ afterEach(() => {
 });
 
 describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
+  it('reuses the same idempotency key when retrying an ambiguous garage creation result', async () => {
+    vi.mocked(firestoreService.createGarage)
+      .mockResolvedValueOnce({ success: false, error: 'NETWORK_TIMEOUT' })
+      .mockResolvedValueOnce({ success: true, id: 'garage-created' });
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+    const form = document.createElement('form');
+    for (const [name, value] of Object.entries({
+      name: 'Test Garage',
+      phone: '01012345678',
+      hourlyRate: '10',
+      overnightRate: '20',
+      pin: '1234',
+      isTrial: 'false'
+    })) {
+      const input = document.createElement('input');
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+    const event = { preventDefault: vi.fn(), currentTarget: form } as unknown as React.FormEvent<HTMLFormElement>;
+
+    await act(async () => {
+      await result.current.createNewGarage(event);
+    });
+    await act(async () => {
+      await result.current.createNewGarage(event);
+    });
+
+    expect(firestoreService.createGarage).toHaveBeenCalledTimes(2);
+    const firstKey = vi.mocked(firestoreService.createGarage).mock.calls[0][1];
+    const secondKey = vi.mocked(firestoreService.createGarage).mock.calls[1][1];
+    expect(firstKey).toEqual(expect.any(String));
+    expect(secondKey).toBe(firstKey);
+    expect(firestoreService.isPinTaken).toHaveBeenCalledTimes(1);
+    expect(props.refreshAdminLists).toHaveBeenCalledOnce();
+  });
+
   it('refreshes Admin lists after a successful garage deletion', async () => {
     const props = createProps();
     const { result } = renderHook(() => useAdminAndGarageManagement(props));
