@@ -503,13 +503,22 @@ export function useAdminAndGarageManagement({
   const updateGarageRate = useCallback(async (g: Garage, field: 'hourlyRate' | 'overnightRate', value: number) => {
     try {
       await firestoreService.updateGarage(g.id, { [field]: value });
+      await refreshAdminLists();
     } catch {
       // The caller has no recovery UI for this background rate update.
     }
-  }, []);
+  }, [refreshAdminLists]);
 
-  const addDelegate = useCallback((data: any) => firestoreService.addDelegate(data), []);
-  const removeDelegate = useCallback((id: string) => firestoreService.removeDelegate(id), []);
+  const addDelegate = useCallback(async (data: any) => {
+    const result = await firestoreService.addDelegate(data);
+    await refreshAdminLists();
+    return result;
+  }, [refreshAdminLists]);
+
+  const removeDelegate = useCallback(async (id: string) => {
+    await firestoreService.removeDelegate(id);
+    await refreshAdminLists();
+  }, [refreshAdminLists]);
 
   return {
     handleGarageLogin,
