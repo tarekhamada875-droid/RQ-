@@ -29,6 +29,7 @@ describe('prepaid credit ledger', () => {
     });
     expect(grantPaidCredits({ ...base, balance: { trial: 0, paid: 0, referral: 0 }, amount: 1.5 })).toEqual({ ok: false, error: 'INVALID_CREDIT_AMOUNT' });
     expect(grantPaidCredits({ ...base, balance: { trial: 0, paid: Number.MAX_SAFE_INTEGER, referral: 0 }, amount: 1 })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
+    expect(grantPaidCredits({ ...base, balance: { paid: Number.MAX_SAFE_INTEGER - 1, referral: 1, trial: 0 }, amount: 1 })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
   it('awards exactly 20 referral credits only after the first paid grant', () => {
@@ -79,11 +80,12 @@ describe('prepaid credit ledger', () => {
     expect(debitSubscriberRenewal({ ...base, balance: { trial: 0, paid: 0, referral: 20 }, amount: 5 })).toEqual({ ok: false, error: 'INSUFFICIENT_PAID_CREDITS' });
   });
 
-  it('restores the original bucket for an authorized correction', () => {
+  it('restores the original bucket for an authorized correction and rejects unsafe total balances', () => {
     expect(restoreCredits({ ...base, balance: { trial: 0, paid: 0, referral: 4 }, amount: 1, bucket: 'referral' })).toMatchObject({
       ok: true,
       value: { balance: { trial: 0, paid: 0, referral: 5 }, entry: { kind: 'correction_restore', bucket: 'referral', amount: 1 } },
     });
+    expect(restoreCredits({ ...base, balance: { paid: Number.MAX_SAFE_INTEGER - 1, referral: 1, trial: 0 }, amount: 1, bucket: 'paid' })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
   it('materializes a deterministic auditable entry id from garage and idempotency key', () => {
