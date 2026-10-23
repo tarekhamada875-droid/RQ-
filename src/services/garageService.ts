@@ -152,7 +152,7 @@ export const garageService = {
     };
   },
 
-  createGarage: async (data: any): Promise<{ success: boolean; id?: string; error?: string }> => {
+  createGarage: async (data: any, idempotencyKey?: string): Promise<{ success: boolean; id?: string; error?: string }> => {
     const validation = validateGarageCreation(data);
     if (!validation.valid) {
       return { success: false, error: validation.errors.join(' — ') };
@@ -161,7 +161,7 @@ export const garageService = {
     try {
       const json = await apiFetch('/api/garages/create', {
         method: 'POST',
-        body: data,
+        body: idempotencyKey ? { ...data, idempotencyKey } : data,
         timeoutMs: 60_000
       });
 

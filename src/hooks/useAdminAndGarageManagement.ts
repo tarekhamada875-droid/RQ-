@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Garage, Package, Supervisor } from '../types';
 import { firestoreService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
@@ -65,6 +65,8 @@ export function useAdminAndGarageManagement({
   showToast,
   refreshAdminLists,
 }: UseAdminAndGarageManagementProps) {
+  // Keep one key for an ambiguous create result so a same-form retry cannot create duplicates.
+  const garageCreationAttemptRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
 
   // Login via single PIN / Phone credentials
   const handleGarageLogin = useCallback(async (overrideInput?: string) => {
@@ -406,7 +408,18 @@ export function useAdminAndGarageManagement({
 
       data.hasMonthlySubscribers = false;
 
-      if (delegate && delegate.id) {
+      const isDelegateCreation = Boolean(delegate && delegate.id);
+      if (isDelegateCreation && delegate) {
+        data.createdByDelegateId = delegate.id;
+        data.createdByDelegateName = delegate.name;
+        data.isPending = true;
+      }
+
+      const requestFingerprint = JSON.stringify(data);
+      const previousAttempt = garageCreationAttemptRef.current;
+      const isRetry = previousAttempt?.fingerprint === requestFingerprint;
+
+      if (isDelegateCreation && delegate && !isRetry) {
         const today = new Date();
         const delegateGaragesCreatedToday = allGarages.filter(g => {
           if (g.createdByDelegateId !== delegate.id) return false;
@@ -422,32 +435,38 @@ export function useAdminAndGarageManagement({
           setIsLoading(false);
           return false;
         }
-
-        data.createdByDelegateId = delegate.id;
-        data.createdByDelegateName = delegate.name;
-        data.isPending = true;
       }
 
-      const pin = ((data.pin as string) || '').trim();
-      const pinCheck = await firestoreService.isPinTaken(pin);
-      if (pinCheck.taken) {
-        showToast(`هذا الرمز السري (PIN) مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
-        setIsLoading(false);
-        return false;
+      // A retry with the exact same payload must reach the Worker first: its
+      // idempotency lookup runs before PIN uniqueness checks, which may now see
+      // the garage created by the original request.
+      if (!isRetry) {
+        const pin = ((data.pin as string) || '').trim();
+        const pinCheck = await firestoreService.isPinTaken(pin);
+        if (pinCheck.taken) {
+          showToast(`هذا الرمز السري (PIN) مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
+          setIsLoading(false);
+          return false;
+        }
+
+        const name = ((data.name as string) || '').trim();
+        const phone = normalizePhone((data.phone as string) || '');
+        const existing = allGarages.find(g => (phone && g.phone === phone) || g.name === name);
+        if (existing) {
+          showToast(APP_TEXT.ADMIN.DUPLICATE_ERROR, 'error');
+          setIsLoading(false);
+          return false;
+        }
       }
 
-      const name = ((data.name as string) || '').trim();
-      const phone = normalizePhone((data.phone as string) || '');
-      const existing = allGarages.find(g => (phone && g.phone === phone) || g.name === name);
-      if (existing) {
-        showToast(APP_TEXT.ADMIN.DUPLICATE_ERROR, 'error');
-        setIsLoading(false);
-        return false;
-      }
-
-      const result = await firestoreService.createGarage(data);
+      const idempotencyKey = isRetry && previousAttempt
+        ? previousAttempt.idempotencyKey
+        : (globalThis.crypto?.randomUUID?.() || `garage-create-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      garageCreationAttemptRef.current = { fingerprint: requestFingerprint, idempotencyKey };
+      const result = await firestoreService.createGarage(data, idempotencyKey);
 
       if (result.success) {
+        if (garageCreationAttemptRef.current?.idempotencyKey === idempotencyKey) garageCreationAttemptRef.current = null;
         showToast(delegate ? 'تم إرسال طلب إنشاء الجراج بنجاح بانتظار موافقة الإدارة' : APP_TEXT.ADMIN.ADD_SUCCESS);
         form.reset();
         closeKeyboard();
