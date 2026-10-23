@@ -36,6 +36,7 @@ interface UseAdminAndGarageManagementProps {
   isLoading: boolean;
   closeKeyboard: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  refreshAdminLists: () => Promise<void>;
 }
 
 export function useAdminAndGarageManagement({
@@ -62,6 +63,7 @@ export function useAdminAndGarageManagement({
   isLoading,
   closeKeyboard,
   showToast,
+  refreshAdminLists,
 }: UseAdminAndGarageManagementProps) {
 
   // Login via single PIN / Phone credentials
@@ -449,6 +451,7 @@ export function useAdminAndGarageManagement({
         showToast(delegate ? 'تم إرسال طلب إنشاء الجراج بنجاح بانتظار موافقة الإدارة' : APP_TEXT.ADMIN.ADD_SUCCESS);
         form.reset();
         closeKeyboard();
+        if (!delegate) await refreshAdminLists();
         return true;
       } else {
         showToast(result.error || 'حدث خطأ أثناء إنشاء الجراج', 'error');
@@ -461,7 +464,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, currentSupervisor, delegate, allGarages, showToast, closeKeyboard, setIsLoading]);
+  }, [isOnline, currentSupervisor, delegate, allGarages, showToast, closeKeyboard, setIsLoading, refreshAdminLists]);
 
   // Delete garage
   const deleteGarage = useCallback(async (g: Garage | null) => {
@@ -485,6 +488,7 @@ export function useAdminAndGarageManagement({
         showToast(garageDeletionFailureMessage(result), 'error');
         return;
       }
+      await refreshAdminLists();
       setShowDeleteConfirm(false);
       setSelectedGarageForDetails(null);
       setView('admin_dashboard');
@@ -493,7 +497,7 @@ export function useAdminAndGarageManagement({
       setIsLoading(false);
       setGarageDeletionProgress(null);
     }
-  }, [isLoading, isOnline, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress]);
+  }, [isLoading, isOnline, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress, refreshAdminLists]);
 
   // Update garage hourly/overnight rate
   const updateGarageRate = useCallback(async (g: Garage, field: 'hourlyRate' | 'overnightRate', value: number) => {
