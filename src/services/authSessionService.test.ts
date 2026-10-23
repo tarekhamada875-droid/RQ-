@@ -69,6 +69,32 @@ describe('auth session server authority', () => {
     dispatchEvent.mockRestore();
   });
 
+  it('does not fall back to browser writes after the server confirms the session is invalid', async () => {
+    mockedRefresh.mockResolvedValue(false);
+
+    await expect(claimEntitySession({
+      role: 'garage',
+      entityId: 'garage-invalid',
+      sessionId: 'session-invalid',
+      uid: 'firebase-uid-invalid',
+    })).rejects.toThrow('SESSION_INVALID');
+
+    expect(mockedRunTransaction).not.toHaveBeenCalled();
+  });
+
+  it('keeps the rules-limited fallback available for a temporary validation outage', async () => {
+    mockedRefresh.mockRejectedValue(new Error('SERVER_UNAVAILABLE'));
+
+    await expect(claimEntitySession({
+      role: 'garage',
+      entityId: 'garage-offline',
+      sessionId: 'session-offline',
+      uid: 'firebase-uid-offline',
+    })).resolves.toBeUndefined();
+
+    expect(mockedRunTransaction).toHaveBeenCalledOnce();
+  });
+
   it('notifies config listeners when login already claimed the session server-side', () => {
     const dispatchEvent = vi.spyOn(window, 'dispatchEvent');
     recordSessionAsClaimed('admin', 'auth_pin', 'session-admin', 'firebase-admin-uid');
