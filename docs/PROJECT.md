@@ -24,4 +24,4 @@ Multi-document business changes use Firestore transactions. Retried intents use 
 
 ## UX boundary
 
-Preserve the existing visual design, Egyptian license-plate identity, bilingual Arabic/English behavior, RTL/LTR layout, mobile/desktop layout, and role flows. Remove obsolete UI actions only when explicitly authorized; do not redesign active screens.
+Arabic is the sole supported application language. Keep user-facing interface copy Arabic-only and use RTL layout across active roles, screens, dialogs, and shared feedback. Preserve the existing visual design, Egyptian license-plate identity, mobile/desktop layout, and role flows. Keep plate identifiers, PINs, IDs, and numeric entry readable in their appropriate direction. Remove obsolete UI actions only when explicitly authorized; do not redesign active screens.
