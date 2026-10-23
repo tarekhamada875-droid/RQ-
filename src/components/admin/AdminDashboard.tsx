@@ -4,7 +4,7 @@
  */
 
 import React, { memo } from 'react';
-import { Garage, Delegate, Package, Supervisor } from '../../types';
+import { Garage, Delegate, Supervisor } from '../../types';
 import { firestoreService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
@@ -33,7 +33,6 @@ interface AdminDashboardProps {
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
   delegates: Delegate[];
   addDelegate?: (data: Omit<Delegate, 'id'>) => Promise<any>;
-  packages: Package[];
   onLogout: () => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
@@ -57,7 +56,6 @@ export const AdminDashboard = memo(({
   setSelectedDelegateForDetails,
   delegates,
   addDelegate: _addDelegate,
-  packages,
   onLogout,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
@@ -80,7 +78,7 @@ export const AdminDashboard = memo(({
   React.useEffect(() => {
     if (activeTab === 'supervisors') setActiveTab('people');
     else if (activeTab === 'trial_leads') setActiveTab('overview');
-    else if (activeTab === 'announcements') setActiveTab('catalog_settings');
+    else if (activeTab === 'announcements' || activeTab === 'packages') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
 
   // Keep any stale legacy Supervisor state on the Delegates-only People view.
@@ -379,7 +377,6 @@ export const AdminDashboard = memo(({
           currentSupervisor={currentSupervisor}
           delegates={delegates}
           pendingGarages={pendingGarages}
-          packages={packages}
           approvedGarages={approvedGarages}
           displayedGarages={displayedGarages}
           adminSearch={adminSearch}
@@ -407,7 +404,6 @@ export const AdminDashboard = memo(({
           onRefreshAdminLists={onRefreshAdminLists}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-          setConfirmDialog={setConfirmDialog}
           currentAdminPin={currentAdminPin}
           adminLang={adminLang}
           t={t}
