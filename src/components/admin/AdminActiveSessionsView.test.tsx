@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { sessionService } from '../../services/sessionService';
 
+const themeMock = vi.hoisted(() => ({ adminLang: 'ar' as 'ar' | 'en' }));
+
+vi.mock('../../utils/ThemeContext', () => ({ useTheme: () => themeMock }));
+
 vi.mock('../../services/sessionService', () => ({
   sessionService: {
     listActiveSessions: vi.fn(),
@@ -32,6 +36,7 @@ const sessions = [
 ];
 
 beforeEach(() => {
+  themeMock.adminLang = 'ar';
   mockedSessionService.listActiveSessions.mockReset();
   mockedSessionService.revokeActiveSession.mockReset();
   mockedSessionService.listActiveSessions.mockResolvedValue(sessions);
@@ -78,5 +83,20 @@ describe('AdminActiveSessionsView', () => {
 
     await waitFor(() => expect(onLogout).toHaveBeenCalledTimes(1));
     expect(mockedSessionService.revokeActiveSession).toHaveBeenCalledWith(currentSessionId);
+  });
+});
+
+
+describe('AdminActiveSessionsView English localization', () => {
+  it('renders English copy and left-to-right layout when English is selected', async () => {
+    themeMock.adminLang = 'en';
+    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} t={(key) => key} />);
+
+    expect(await screen.findByText('This device')).toBeInTheDocument();
+    expect(screen.getByText('Registered device')).toBeInTheDocument();
+    expect(screen.getByText('2 sessions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Revoke session' })).toBeInTheDocument();
+    expect(screen.getByText('Active devices and sessions').closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText(/Last active:/)).toBeInTheDocument();
   });
 });
