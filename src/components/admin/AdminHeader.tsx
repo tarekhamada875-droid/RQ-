@@ -16,7 +16,6 @@ interface AdminHeaderProps {
   setShowMenu: (show: boolean) => void;
   currentSupervisor: Supervisor | null;
   adminLang: 'ar' | 'en';
-  setAdminLang: (lang: 'ar' | 'en') => void;
   onOpenAppearanceSettings: () => void;
   onLogout: () => void;
   menuRef: React.RefObject<HTMLDivElement>;
@@ -30,7 +29,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   setShowMenu,
   currentSupervisor,
   adminLang,
-  setAdminLang,
   onOpenAppearanceSettings,
   onLogout,
   menuRef,
@@ -124,46 +122,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
                   {/* Drawer Content Area */}
                   <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 custom-scrollbar-slate font-sans">
-
-                    {/* Display Language Selection */}
-                    <div className="space-y-2">
-                      <span className="font-bold text-xs text-slate-400 dark:text-slate-500 pr-1 select-none block">
-                        {currentSupervisor ? t('لغة العرض:') : t('لغة العرض (الآدمن فقط):')}
-                      </span>
-                      <div className="flex gap-2">
-                        {/* Arabic Button */}
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setAdminLang('ar');
-                            setShowMenu(false);
-                          }}
-                          className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 transition-all outline-none font-bold text-sm cursor-pointer ${
-                            adminLang === 'ar'
-                              ? 'bg-amber-400 border-amber-400 text-slate-950 shadow-sm'
-                              : 'bg-[#faf9f6] dark:bg-slate-900 border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          <span>{t('العربية')}</span>
-                        </button>
-
-                        {/* English Button */}
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setAdminLang('en');
-                            setShowMenu(false);
-                          }}
-                          className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-xl border-2 transition-all outline-none font-bold text-sm cursor-pointer ${
-                            adminLang === 'en'
-                              ? 'bg-amber-400 border-amber-400 text-slate-950 shadow-sm'
-                              : 'bg-[#faf9f6] dark:bg-slate-900 border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          <span>{t('English')}</span>
-                        </button>
-                      </div>
-                    </div>
 
                     {/* Appearance Settings Button */}
                     <button 
