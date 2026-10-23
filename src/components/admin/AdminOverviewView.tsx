@@ -31,7 +31,7 @@ export const AdminOverviewView = memo(({
   const isEnglish = adminLang === 'en';
 
   return (
-    <div dir={isEnglish ? 'ltr' : 'rtl'} className={`space-y-6 text-${isEnglish ? 'left' : 'right'} font-sans max-w-6xl mx-auto px-2 sm:px-4 pb-12`}>
+    <div dir={isEnglish ? 'ltr' : 'rtl'} className={`space-y-6 ${isEnglish ? 'text-left' : 'text-right'} font-sans max-w-6xl mx-auto px-2 sm:px-4 pb-12`}>
       {!isSupervisor && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
           <div>
