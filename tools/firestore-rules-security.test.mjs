@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, writeBatch, runTransaction } from 'firebase/firestore';
 
 const firestoreIndexes = JSON.parse(fs.readFileSync(new URL('../firestore.indexes.json', import.meta.url), 'utf8'));
 const staffCompositeIndex = firestoreIndexes.indexes.find((index) =>
@@ -76,6 +76,38 @@ const staff = (name, garageId) => ({
   garageId,
   role: 'staff',
   pin: '1234'
+});
+
+// Mirrors claimSessionInTransaction's browser fallback writes. The Worker is
+// authoritative; these writes must remain blocked when server validation fails.
+const attemptBrowserSessionClaimFallback = (db, uid, sessionId) => runTransaction(db, async (transaction) => {
+  const entityRef = doc(db, 'garages/g-1');
+  const securitySessionRef = doc(db, `garage_sessions/${uid}`);
+  const [entitySnap, securitySessionSnap] = await Promise.all([
+    transaction.get(entityRef),
+    transaction.get(securitySessionRef)
+  ]);
+
+  const data = entitySnap.exists() ? entitySnap.data() : {};
+  const existing = Array.isArray(data.activeSessionIds)
+    ? data.activeSessionIds.filter((id) => typeof id === 'string' && id.length > 0)
+    : (data.currentSessionId ? [data.currentSessionId] : []);
+  const activeSessionIds = [...new Set([...existing, sessionId])].slice(-100);
+
+  if (entitySnap.exists()) {
+    transaction.update(entityRef, {
+      currentSessionId: sessionId,
+      activeSessionIds,
+      lastActive: new Date()
+    });
+  }
+  if (securitySessionSnap.exists()) {
+    transaction.update(securitySessionRef, {
+      isActive: true,
+      sessionId,
+      lastActive: new Date()
+    });
+  }
 });
 
 try {
@@ -167,6 +199,7 @@ try {
   // file is actually loaded by the emulator rather than relying on JS policy mocks.
   const adminDb = env.authenticatedContext('admin-uid').firestore();
   const ownerDb = env.authenticatedContext('owner-uid').firestore();
+  const fallbackOwnerDb = env.authenticatedContext('fallback-owner-uid').firestore();
   const inactiveOwnerDb = env.authenticatedContext('inactive-owner-uid').firestore();
   const staffDb = env.authenticatedContext('staff-uid').firestore();
   const otherGarageStaffDb = env.authenticatedContext('other-garage-staff-uid').firestore();
@@ -285,6 +318,12 @@ try {
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/owner-uid'), { isActive: false }));
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
+
+  // If the Worker validation/claim path fails, the legacy client transaction
+  // must not be able to claim an existing session or create a new one.
+  await assertFails(attemptBrowserSessionClaimFallback(ownerDb, 'owner-uid', 'browser-fallback-session'));
+  await assertFails(attemptBrowserSessionClaimFallback(fallbackOwnerDb, 'fallback-owner-uid', 'browser-fallback-new-session'));
+  await assertSucceeds(getDoc(doc(ownerDb, 'garage_sessions/owner-uid')));
 
   // Browser roles must use the Worker projection; nobody reads the raw private config document.
   for (const signedInDb of [adminDb, ownerDb, staffDb, delegateDb]) {
