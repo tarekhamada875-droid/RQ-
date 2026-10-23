@@ -55,11 +55,18 @@ export const AdminDelegateDetailsView = memo(({
   const t = useAdminTranslation(adminLang);
 
   useEffect(() => {
+    let isCurrent = true;
+    setIsLoading(true);
+    setRecharges([]);
+    setHistoryTotal(0);
+
     const fetchHistory = async () => {
       try {
         const logsData = await firestoreService.getDelegateRecharges(delegate.id);
+        if (!isCurrent) return;
+
         setRecharges(logsData || []);
-        
+
         // Calculate sum from history for initial display if totalRechargedAmount is missing or 0
         const items = (logsData || []).filter(log => log.actionType === 'recharge');
         const sum = items.reduce((acc, log) => {
@@ -68,12 +75,16 @@ export const AdminDelegateDetailsView = memo(({
         }, 0);
         setHistoryTotal(sum);
       } catch (error) {
-        console.error('Failed to fetch delegate recharges:', error);
+        if (isCurrent) console.error('Failed to fetch delegate recharges:', error);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) setIsLoading(false);
       }
     };
-    fetchHistory();
+    void fetchHistory();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [delegate.id]);
 
   const handleDelete = async () => {
