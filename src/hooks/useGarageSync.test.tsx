@@ -449,6 +449,30 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(subscriptions).toHaveLength(8);
   });
 
+  it('clears prior owner Admin and Delegate lists before the next owner renders', () => {
+    const baseProps = createBaseProps();
+    const { result, rerender } = renderHook(
+      ({ user, view }) => useGarageSync({
+        ...baseProps,
+        user,
+        view,
+      }),
+      { initialProps: { user: { uid: 'first-user' }, view: 'admin_dashboard' } }
+    );
+
+    act(() => {
+      result.current.setAllGarages([{ id: 'garage-from-first-owner' }] as any);
+      result.current.setDelegates([{ id: 'delegate-from-first-owner' }] as any);
+    });
+    expect(result.current.allGarages.map((garage: any) => garage.id)).toEqual(['garage-from-first-owner']);
+    expect(result.current.delegates.map((delegate: any) => delegate.id)).toEqual(['delegate-from-first-owner']);
+
+    rerender({ user: { uid: 'second-user' }, view: 'admin_dashboard' });
+
+    expect(result.current.allGarages).toEqual([]);
+    expect(result.current.delegates).toEqual([]);
+  });
+
   it('cancels the active-vehicle trailing update when the garage listener is removed', () => {
     const { unmount } = renderHook(() => useGarageSync({
       ...createBaseProps(),
