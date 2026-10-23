@@ -50,10 +50,7 @@ export const GarageDashboardView = memo((props: any) => {
     inputRef,
     onLogout,
     showToast,
-    packages,
     staffList,
-    showPackages,
-    setShowPackages,
     showStaffStats,
     setShowStaffStats,
     showSubscribers,
@@ -251,7 +248,6 @@ export const GarageDashboardView = memo((props: any) => {
     setIsMenuOpen(false);
     setShowSubscribers(target === "subscribers");
     setIsReportsOpen(target === "reports");
-    setShowPackages(target === "packages");
     setIsRechargeHistoryOpen(target === "history");
     setShowStaffStats(target === "staff");
     setIsAppearanceOpen(target === "appearance");
@@ -413,7 +409,6 @@ export const GarageDashboardView = memo((props: any) => {
         rechargeLogs={rechargeLogs}
         isRechargeLogsLoading={isRechargeLoading}
         subscriberPage={subscriberPage}
-        isPackagesOpen={showPackages}
         isStaffStatsOpen={showStaffStats}
         isReportsOpen={isReportsOpen}
         isAppearanceOpen={isAppearanceOpen}
@@ -425,14 +420,10 @@ export const GarageDashboardView = memo((props: any) => {
           setIsRechargeHistoryOpen(false);
           setHasNewRecharge(false);
         }}
-        onClosePackages={() => {
-          setShowPackages(false);
-        }}
         onCloseStaffStats={() => setShowStaffStats(false)}
         onCloseReports={() => setIsReportsOpen(false)}
         onCloseAppearance={() => setIsAppearanceOpen(false)}
         onCloseTerms={() => setShowTermsModal(false)}
-        packages={packages}
         currentStaff={currentStaff}
         staffList={staffList}
         vehiclesInside={vehicles}
