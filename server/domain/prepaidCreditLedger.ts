@@ -157,7 +157,10 @@ function addCredits(
   const before = command.balance[bucket];
   const after = before + amount;
   if (!Number.isSafeInteger(after) || after > MAX_CREDITS) return { ok: false, error: 'CREDIT_BALANCE_OVERFLOW' };
-  return transition(command, kind, bucket, amount, before, after, { ...command.balance, [bucket]: after });
+  const balance = { ...command.balance, [bucket]: after };
+  const totalAfter = balance.paid + balance.referral + balance.trial;
+  if (!Number.isSafeInteger(totalAfter)) return { ok: false, error: 'CREDIT_BALANCE_OVERFLOW' };
+  return transition(command, kind, bucket, amount, before, after, balance);
 }
 
 export function grantPaidCredits(command: CreditGrantCommand): PrepaidCreditResult<CreditTransition> {
@@ -228,7 +231,10 @@ export function restoreCredits(command: CreditRestoreCommand): PrepaidCreditResu
   const before = command.balance[command.bucket];
   const after = before + command.amount;
   if (!Number.isSafeInteger(after) || after > MAX_CREDITS) return { ok: false, error: 'CREDIT_BALANCE_OVERFLOW' };
-  return transition(command, 'correction_restore', command.bucket, command.amount, before, after, { ...command.balance, [command.bucket]: after });
+  const balance = { ...command.balance, [command.bucket]: after };
+  const totalAfter = balance.paid + balance.referral + balance.trial;
+  if (!Number.isSafeInteger(totalAfter)) return { ok: false, error: 'CREDIT_BALANCE_OVERFLOW' };
+  return transition(command, 'correction_restore', command.bucket, command.amount, before, after, balance);
 }
 
 export function materializeCreditLedgerEntry(entry: Omit<CreditLedgerEntry, 'entryId'>): PrepaidCreditResult<CreditLedgerEntry> {
