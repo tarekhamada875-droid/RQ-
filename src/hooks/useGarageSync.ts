@@ -57,6 +57,12 @@ export function useGarageSync({
     referredGarages: { hasMore: false, nextCursor: null as string | null },
   });
   const [delegateListsLoading, setDelegateListsLoading] = useState(false);
+  const [delegateListsError, setDelegateListsError] = useState(false);
+  const [delegateDashboardLoading, setDelegateDashboardLoading] = useState(
+    isSessionReady && isAuthReady && view === 'delegate_dashboard' && Boolean(delegate?.id && user?.uid)
+  );
+  const [delegateDashboardError, setDelegateDashboardError] = useState(false);
+  const [delegateDashboardRetryVersion, setDelegateDashboardRetryVersion] = useState(0);
   const delegatePageLoadingRef = useRef<Record<'createdGarages' | 'referredGarages', boolean>>({ createdGarages: false, referredGarages: false });
   const delegateDashboardOwnerRef = useRef<string | undefined>(undefined);
   const delegateDashboardLoadedOwnerRef = useRef<string | undefined>(undefined);
@@ -123,6 +129,11 @@ export function useGarageSync({
       referredGarages: { hasMore: false, nextCursor: null },
     });
     setDelegateListsLoading(false);
+    setDelegateListsError(false);
+    setDelegateDashboardLoading(
+      isSessionReady && isAuthReady && view === 'delegate_dashboard' && Boolean(delegate?.id && user?.uid)
+    );
+    setDelegateDashboardError(false);
   }, [dataOwnerKey]);
 
   // Subscribe to Active Vehicles
@@ -272,6 +283,9 @@ export function useGarageSync({
   // Sync delegate dashboard garage lists
   const delegateId = delegate?.id;
   const delegateUserId = user?.uid;
+  const retryDelegateDashboard = useCallback(() => {
+    setDelegateDashboardRetryVersion((version) => version + 1);
+  }, []);
   useEffect(() => {
     if (!isSessionReady || !isAuthReady || !delegateUserId || !delegateId || view !== 'delegate_dashboard') return;
 
@@ -284,6 +298,11 @@ export function useGarageSync({
         createdGarages: { hasMore: false, nextCursor: null },
         referredGarages: { hasMore: false, nextCursor: null },
       });
+    }
+
+    if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
+      setDelegateDashboardLoading(true);
+      setDelegateDashboardError(false);
     }
 
     let cancelled = false;
@@ -310,6 +329,8 @@ export function useGarageSync({
           delegateDashboardOwnerRef.current !== delegateId
         ) return;
         setDelegate(data.delegate);
+        setDelegateDashboardLoading(false);
+        setDelegateDashboardError(false);
         if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
           delegateDashboardLoadedOwnerRef.current = delegateId;
           setAllGarages(data.garages as Garage[]);
@@ -326,8 +347,18 @@ export function useGarageSync({
       } catch (err) {
         if (!cancelled && delegateDashboardGenerationRef.current === requestGeneration) {
           console.error('[useGarageSync] Failed to load delegate dashboard:', err);
+          if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
+            setDelegateDashboardError(true);
+          }
         }
       } finally {
+        if (
+          !cancelled &&
+          delegateDashboardGenerationRef.current === requestGeneration &&
+          delegateDashboardLoadedOwnerRef.current !== delegateId
+        ) {
+          setDelegateDashboardLoading(false);
+        }
         dashboardRequestInFlight = false;
       }
     };
@@ -341,7 +372,7 @@ export function useGarageSync({
       }
       window.clearInterval(refresh);
     };
-  }, [isSessionReady, isAuthReady, delegateUserId, delegateId, view]);
+  }, [isSessionReady, isAuthReady, delegateUserId, delegateId, view, delegateDashboardRetryVersion]);
 
   const loadMoreDelegateSection = useCallback(async (
     section: 'createdGarages' | 'referredGarages',
@@ -369,6 +400,7 @@ export function useGarageSync({
     } catch (error) {
       if (requestGeneration === delegateDashboardGenerationRef.current) {
         console.error(`[useGarageSync] Failed to load delegate ${section} page:`, error);
+        setDelegateListsError(true);
       }
     } finally {
       if (requestGeneration === delegateDashboardGenerationRef.current) {
@@ -380,6 +412,7 @@ export function useGarageSync({
 
   const loadMoreDelegateGarages = useCallback(async () => {
     const requestGeneration = delegateDashboardGenerationRef.current;
+    setDelegateListsError(false);
     await loadMoreDelegateSection('createdGarages', requestGeneration);
     await loadMoreDelegateSection('referredGarages', requestGeneration);
   }, [loadMoreDelegateSection]);
@@ -482,6 +515,10 @@ export function useGarageSync({
     setStaffList,
     delegatePagination,
     delegateListsLoading,
+    delegateListsError,
+    delegateDashboardLoading,
+    delegateDashboardError,
+    retryDelegateDashboard,
     loadMoreDelegateGarages,
     packages,
     setPackages,

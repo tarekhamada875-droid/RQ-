@@ -12,7 +12,21 @@ vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: (
 
 afterEach(() => cleanup());
 
-function renderDelegateDashboard(canCreateGarage?: boolean, createGarageResult = true) {
+function renderDelegateDashboard(
+  canCreateGarage?: boolean,
+  createGarageResult = true,
+  dashboardState: {
+    delegateDashboardLoading?: boolean;
+    delegateDashboardError?: boolean;
+    delegateListsError?: boolean;
+    onRetryDelegateDashboard?: () => void;
+    onLoadMoreDelegateGarages?: () => void;
+    delegatePagination?: {
+      createdGarages: { hasMore: boolean; nextCursor: string | null };
+      referredGarages: { hasMore: boolean; nextCursor: string | null };
+    };
+  } = {}
+) {
   const delegate: Delegate = {
     id: 'delegate_1',
     name: 'Test Delegate',
@@ -31,6 +45,7 @@ function renderDelegateDashboard(canCreateGarage?: boolean, createGarageResult =
       onLogout={vi.fn()}
       onCreateGarage={onCreateGarage}
       isLoading={false}
+      {...dashboardState}
     />
   );
 
@@ -38,6 +53,40 @@ function renderDelegateDashboard(canCreateGarage?: boolean, createGarageResult =
 }
 
 describe('DelegateDashboardView garage application access', () => {
+  it('shows loading state instead of an empty result while the dashboard loads', () => {
+    renderDelegateDashboard(undefined, true, { delegateDashboardLoading: true });
+
+    expect(screen.getByRole('status')).toHaveTextContent('جارٍ تحميل بيانات الجراجات');
+    expect(screen.queryByText('لا توجد جراجات مطابقة للبحث')).not.toBeInTheDocument();
+  });
+
+  it('shows a retryable error when the initial dashboard load fails', () => {
+    const onRetryDelegateDashboard = vi.fn();
+    renderDelegateDashboard(undefined, true, {
+      delegateDashboardError: true,
+      onRetryDelegateDashboard
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('تعذر تحميل بيانات الجراجات');
+    fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
+    expect(onRetryDelegateDashboard).toHaveBeenCalledOnce();
+    expect(screen.queryByText('لا توجد جراجات مطابقة للبحث')).not.toBeInTheDocument();
+  });
+
+  it('surfaces pagination errors while keeping the load-more action available', () => {
+    renderDelegateDashboard(undefined, true, {
+      delegateListsError: true,
+      delegatePagination: {
+        createdGarages: { hasMore: true, nextCursor: 'created-cursor' },
+        referredGarages: { hasMore: false, nextCursor: null }
+      },
+      onLoadMoreDelegateGarages: vi.fn()
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('تعذر تحميل المزيد من الجراجات');
+    expect(screen.getByRole('button', { name: 'عرض المزيد من الجراجات' })).toBeInTheDocument();
+  });
+
   it.each([undefined, false, true])('shows and opens the application form when legacy canCreateGarage is %s', (legacyPermission) => {
     renderDelegateDashboard(legacyPermission);
     fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
