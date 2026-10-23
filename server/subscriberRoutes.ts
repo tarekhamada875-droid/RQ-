@@ -208,6 +208,26 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
       const garageData = garageSnap.exists ? (garageSnap.data() || {}) : {};
       const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
+
+      // A retried renewal may arrive without an idempotency key. Once the requested
+      // date range is already persisted, treat it as a no-op rather than debiting
+      // the same five paid credits again (and overwriting the deterministic ledger ID).
+      if (
+        prepaidCreditsEnabled
+        && currentState.startDate === dates.startDate
+        && currentState.endDate === dates.endDate
+      ) {
+        resultData = {
+          success: true,
+          creditBalance: {
+            paid: Number(garageData.creditBalance?.paid || 0),
+            referral: Number(garageData.creditBalance?.referral || 0),
+            trial: Number(garageData.creditBalance?.trial || 0),
+          },
+        };
+        return;
+      }
+
       let creditDebit: any = null;
       if (prepaidCreditsEnabled) {
         const renewalReference = `${subscriberId}:${dates.startDate}:${dates.endDate}`;
