@@ -72,6 +72,44 @@ describe('useGarageSync owner data isolation', () => {
     expect(result.current.transactions).toEqual([]);
   });
 
+  it('ignores a queued vehicle snapshot from the previous garage after switching garages', () => {
+    const callbacks: Record<string, (vehicles: any[]) => void> = {};
+    serviceMocks.subscribeToActiveVehicles.mockImplementation((garageId: string, callback: (vehicles: any[]) => void) => {
+      callbacks[garageId] = callback;
+      return vi.fn();
+    });
+
+    const { result, rerender } = renderHook(
+      ({ garage }: { garage: { id: string } | null }) => {
+        const [vehicles, setVehicles] = useState<any[]>([]);
+        const [transactions, setTransactions] = useState<any[]>([]);
+        useGarageSync({
+          ...baseProps,
+          view: 'garage',
+          garage: garage as any,
+          setVehicles,
+          setTodayTransactions: setTransactions
+        });
+        return { vehicles, transactions };
+      },
+      { initialProps: { garage: { id: 'garage-a' } as { id: string } | null } }
+    );
+
+    act(() => callbacks['garage-a']([{ id: 'vehicle-from-garage-a' }]));
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-from-garage-a' }]);
+
+    rerender({ garage: { id: 'garage-b' } });
+    expect(result.current.vehicles).toEqual([]);
+
+    // Simulate a Firestore callback that was queued before unsubscribe but delivered
+    // after the new garage became active.
+    act(() => callbacks['garage-a']([{ id: 'late-vehicle-from-garage-a' }]));
+    expect(result.current.vehicles).toEqual([]);
+
+    act(() => callbacks['garage-b']([{ id: 'vehicle-from-garage-b' }]));
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-from-garage-b' }]);
+  });
+
   it('clears garage-scoped records when logging out of the garage view', async () => {
     const { result, rerender } = renderHook(
       ({ garage, view }: { garage: { id: string } | null; view: string }) => {
