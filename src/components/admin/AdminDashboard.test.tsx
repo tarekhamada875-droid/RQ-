@@ -110,6 +110,25 @@ const submitAddGarageDraft = () => {
   fireEvent.submit(form);
 };
 
+it('keeps the Admin interface right-to-left regardless of language preference', () => {
+  render(
+    <AdminDashboard
+      allGarages={[]}
+      isLoading={false}
+      createNewGarage={vi.fn().mockResolvedValue(true)}
+      setView={vi.fn()}
+      setSelectedGarageForDetails={vi.fn()}
+      setSelectedDelegateForDetails={vi.fn()}
+      delegates={[]}
+      packages={[]}
+      onLogout={vi.fn()}
+      currentAdminPin=""
+    />,
+  );
+
+  expect(document.querySelector('.admin-custom-theme')).toHaveAttribute('dir', 'rtl');
+});
+
 it('resets a saved retired trial leads tab to Overview without touching other saved data', async () => {
   localStorage.setItem('app_admin_tab', 'trial_leads');
   localStorage.setItem('unrelated-setting', 'keep-me');
