@@ -137,4 +137,45 @@ describe('useGarageSync owner data isolation', () => {
     expect(result.current.vehicles).toEqual([]);
     expect(result.current.transactions).toEqual([]);
   });
+
+  it('clears owner data and rejects queued snapshots when session readiness is lost', () => {
+    let activeVehiclesCallback: ((vehicles: any[]) => void) | undefined;
+    serviceMocks.subscribeToActiveVehicles.mockImplementation((_garageId: string, callback: (vehicles: any[]) => void) => {
+      activeVehiclesCallback = callback;
+      return vi.fn();
+    });
+
+    const { result, rerender } = renderHook(
+      ({ isSessionReady }: { isSessionReady: boolean }) => {
+        const [vehicles, setVehicles] = useState<any[]>([]);
+        const [transactions, setTransactions] = useState<any[]>([]);
+        useGarageSync({
+          ...baseProps,
+          isSessionReady,
+          view: 'garage',
+          garage: { id: 'garage-a' } as any,
+          setVehicles,
+          setTodayTransactions: setTransactions
+        });
+        return { vehicles, transactions, setVehicles, setTransactions };
+      },
+      { initialProps: { isSessionReady: true } }
+    );
+
+    act(() => {
+      activeVehiclesCallback?.([{ id: 'vehicle-before-session-loss' }]);
+      result.current.setTransactions([{ id: 'transaction-before-session-loss' }]);
+    });
+    expect(result.current.vehicles).toEqual([{ id: 'vehicle-before-session-loss' }]);
+    expect(result.current.transactions).toEqual([{ id: 'transaction-before-session-loss' }]);
+
+    rerender({ isSessionReady: false });
+
+    expect(result.current.vehicles).toEqual([]);
+    expect(result.current.transactions).toEqual([]);
+
+    act(() => activeVehiclesCallback?.([{ id: 'late-vehicle-after-session-loss' }]));
+    expect(result.current.vehicles).toEqual([]);
+  });
+
 });
