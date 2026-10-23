@@ -627,14 +627,11 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     }));
 
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0);
     });
     expect(result.current.allGarages).toHaveLength(1);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15_000);
-      await Promise.resolve();
-      await Promise.resolve();
     });
     expect(result.current.allGarages).toHaveLength(2);
 
