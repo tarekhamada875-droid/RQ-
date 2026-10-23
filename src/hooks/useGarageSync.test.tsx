@@ -626,11 +626,17 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       delegate: { id: 'delegate-1', name: 'Delegate' },
     }));
 
-    await waitFor(() => expect(result.current.allGarages).toHaveLength(1));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.allGarages).toHaveLength(1);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15_000);
+      await Promise.resolve();
+      await Promise.resolve();
     });
-    await waitFor(() => expect(result.current.allGarages).toHaveLength(2));
+    expect(result.current.allGarages).toHaveLength(2);
 
     await act(async () => {
       await result.current.loadMoreDelegateGarages();
