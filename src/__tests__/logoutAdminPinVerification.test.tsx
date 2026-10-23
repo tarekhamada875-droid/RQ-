@@ -72,6 +72,7 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
 
     render(
       <LogoutConfirmModal
+        attemptScope="garage:garage-user-123:session-1"
         onConfirm={onConfirmMock}
         onCancel={onCancelMock}
         onVerifyPin={firestoreService.verifyAdminPinForLogout}
@@ -92,7 +93,7 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
       expect(onConfirmMock).toHaveBeenCalledTimes(1);
     });
     expect(onCancelMock).not.toHaveBeenCalled();
-    expect(localStorage.getItem('logout_attempts')).toBe('0');
+    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent('garage:garage-user-123:session-1')}`)).toBe('0');
   });
 
   it('2. Rejects logout and displays error message when wrong PIN is entered', async () => {
@@ -107,6 +108,7 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
 
     render(
       <LogoutConfirmModal
+        attemptScope="garage:garage-user-123:session-1"
         onConfirm={onConfirmMock}
         onCancel={onCancelMock}
         onVerifyPin={firestoreService.verifyAdminPinForLogout}
@@ -126,7 +128,27 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
       expect(screen.getByText('الرمز السري غير صحيح')).toBeInTheDocument();
     });
     expect(onConfirmMock).not.toHaveBeenCalled();
-    expect(localStorage.getItem('logout_attempts')).toBe('1');
+    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent('garage:garage-user-123:session-1')}`)).toBe('1');
+  });
+
+  it('keeps failed attempts separate for different role/account/session scopes', async () => {
+    const scopeA = 'staff:staff-a:session-a';
+    const scopeB = 'garage:garage-b:session-b';
+    localStorage.setItem(`logout_attempts:${encodeURIComponent(scopeA)}`, '2');
+
+    const { unmount } = render(
+      <LogoutConfirmModal
+        attemptScope={scopeB}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+        onVerifyPin={vi.fn().mockResolvedValue(false)}
+      />
+    );
+
+    expect(screen.getByText('(متبقي لك 3 محاولات)')).toBeInTheDocument();
+    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent(scopeA)}`)).toBe('2');
+    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent(scopeB)}`)).toBeNull();
+    unmount();
   });
 
   it('3. LogoutConfirmModal does not accept or store admin PIN in props or localStorage', () => {
@@ -141,6 +163,7 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
 
     render(
       <LogoutConfirmModal
+        attemptScope="garage:garage-user-123:session-1"
         onConfirm={props.onConfirm}
         onCancel={props.onCancel}
         onVerifyPin={props.onVerifyPin}
@@ -168,6 +191,7 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
 
     render(
       <LogoutConfirmModal
+        attemptScope="garage:garage-user-123:session-1"
         onConfirm={onConfirmMock}
         onCancel={onCancelMock}
         onVerifyPin={onVerifyPinMock}
