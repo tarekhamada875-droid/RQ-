@@ -16,16 +16,21 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
 }) => {
   const [processingGarageId, setProcessingGarageId] = useState<string | null>(null);
   const [processingGarageAction, setProcessingGarageAction] = useState<'approve' | 'reject' | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const processGarage = async (garage: Garage, action: 'approve' | 'reject') => {
     if (processingGarageId) return;
     setProcessingGarageId(garage.id);
     setProcessingGarageAction(action);
+    setActionError(null);
     try {
       if (action === 'approve') await handleApproveGarage(garage);
       else await handleRejectGarage(garage);
     } catch (error) {
       console.error(`Failed to ${action} garage application:`, error);
+      setActionError(action === 'approve'
+        ? 'تعذر تفعيل الجراج. يرجى المحاولة مرة أخرى.'
+        : 'تعذر رفض طلب الجراج. يرجى المحاولة مرة أخرى.');
     } finally {
       setProcessingGarageId(null);
       setProcessingGarageAction(null);
@@ -48,6 +53,12 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
           {pendingGarages.length}
         </span>
       </div>
+
+      {actionError && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          {actionError}
+        </div>
+      )}
 
       {pendingGarages.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
