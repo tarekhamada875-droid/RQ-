@@ -70,10 +70,11 @@ export default function App() {
     setSubscriberWarningPlate,
   });
 
+  if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري إنهاء الجلسة...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
-  if (isLoggingOut || !isAuthReady || shouldWaitForSessionReady(view, isSessionReady)) {
-    logDiagnostic(isLoggingOut ? 'APP_WAITING_FOR_LOGOUT_CLEANUP' : (!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, isLoggingOut, view });
+  if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady)) {
+    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : 'APP_WAITING_FOR_SESSION_READY', { isAuthReady, isSessionReady, view });
     return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري تحميل البيانات...</p></div>;
   }
 
