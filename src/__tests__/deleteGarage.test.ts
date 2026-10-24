@@ -102,7 +102,7 @@ describe('v167 - Garage Deletion', () => {
     expect(result).toMatchObject({ ok: false, errorCode: 'RATE_LIMIT_EXCEEDED', status: null });
     expect(apiFetchMock).toHaveBeenCalledTimes(1);
     if (result.ok === false) {
-      expect(garageDeletionFailureMessage(result, 'en')).toContain('37 seconds');
+      expect(garageDeletionFailureMessage(result)).toContain('37 ثانية');
     }
   });
 
@@ -138,7 +138,7 @@ describe('v167 - Garage Deletion', () => {
     expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/garages/delete-status?garageId=test_garage');
     expect(apiFetchMock).toHaveBeenCalledTimes(2);
     if (result.ok === false) {
-      expect(garageDeletionFailureMessage(result, 'en')).toContain('stopped before it finished');
+      expect(garageDeletionFailureMessage(result, 'en')).toContain('توقفت عملية الحذف قبل اكتمالها');
     }
   });
 });
