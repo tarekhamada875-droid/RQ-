@@ -428,7 +428,6 @@ export const AdminGarageDetailsView = memo(({
       <AdminGarageModals
         garage={selectedGarageForDetails}
         t={t}
-        adminLang={adminLang}
         isLoading={isLoading}
         showAddStaffModal={showAddStaffModal}
         setShowAddStaffModal={setShowAddStaffModal}
