@@ -21,7 +21,7 @@ function createHarness(options: { delegateExists?: boolean; events?: any[] } = {
         get: async () => ({ exists: name === 'delegates' && id === 'delegate-1' && options.delegateExists !== false })
       })
     }),
-    collectionGroup: (name: string) => {
+    collectionGroup: (_name: string) => {
       const filters: Array<{ field: string; value: unknown }> = [];
       const query: any = {
         where: (field: string, _operator: string, value: unknown) => {
