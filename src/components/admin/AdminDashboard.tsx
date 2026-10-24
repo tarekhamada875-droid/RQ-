@@ -176,7 +176,7 @@ export const AdminDashboard = memo(({
           try {
             const result = await deleteGarageWithRecovery(garage.id);
             if (result.ok === false) {
-              showToast?.(garageDeletionFailureMessage(result, adminLang), 'error');
+              showToast?.(garageDeletionFailureMessage(result), 'error');
               reject(new Error(result.errorCode));
               return;
             }
@@ -359,7 +359,6 @@ export const AdminDashboard = memo(({
         showMenu={showMenu}
         setShowMenu={setShowMenu}
         currentSupervisor={currentSupervisor}
-        adminLang={adminLang}
         onOpenAppearanceSettings={() => setShowAppearanceSettings(true)}
         onLogout={onLogout}
         menuRef={menuRef}
