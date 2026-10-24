@@ -39,7 +39,7 @@ export const AdminDelegateHeader: React.FC<AdminDelegateHeaderProps> = memo(({
             className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
             title={t('رجوع')}
           >
-            <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] ${adminLang === 'en' ? 'rotate-180' : ''}`} />
+            <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
           </button>
           <div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-white">{t('بيانات المندوب')}</h1>
@@ -63,9 +63,9 @@ export const AdminDelegateHeader: React.FC<AdminDelegateHeaderProps> = memo(({
                 onClick={() => setShowMenu(false)}
               />
               
-              <div className={`absolute top-14 ${adminLang === 'en' ? 'right-0' : 'left-0'} w-64 bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-500/40 shadow-2xl shadow-slate-300 dark:shadow-slate-950/80 rounded-[2rem] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200`}>
+              <div className={`absolute top-14 left-0 w-64 bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-500/40 shadow-2xl shadow-slate-300 dark:shadow-slate-950/80 rounded-[2rem] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200`}>
                 <div className="p-4 flex flex-col gap-2">
-                  <span className={`font-bold text-xs text-slate-400 dark:text-slate-500 pr-1 select-none ${adminLang === 'en' ? 'text-left' : 'text-right'}`}>{t('وضع الشاشة:')}</span>
+                  <span className={`font-bold text-xs text-slate-400 dark:text-slate-500 pr-1 select-none text-right`}>{t('وضع الشاشة:')}</span>
                   <div className="flex gap-2">
                     {/* Light Mode Button */}
                     <button 
