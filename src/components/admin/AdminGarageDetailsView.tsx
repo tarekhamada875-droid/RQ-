@@ -330,7 +330,7 @@ export const AdminGarageDetailsView = memo(({
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-white leading-tight">{selectedGarageForDetails.name}</h1>
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                {t('تفاصيل وإدارة الجراج')} • <span className="font-mono text-[10px]">ID: {selectedGarageForDetails.id}</span>
+                {t('تفاصيل وإدارة الجراج')} • <span className="font-mono text-[10px]">المعرّف: {selectedGarageForDetails.id}</span>
               </p>
             </div>
           </div>
