@@ -51,7 +51,8 @@ function createDelegateRoutesHarness() {
     create: routes.get('POST /api/delegates/create')!,
     update: routes.get('POST /api/delegates/update')!,
     writes,
-    transaction
+    transaction,
+    runTransaction: db.runTransaction
   };
 }
 
@@ -95,7 +96,7 @@ describe('retired delegate commission configuration', () => {
       expect(response.status).toBe(400);
       expect(response.body).toMatchObject({ success: false, error: 'RETIRED_DELEGATE_FIELD', field });
       expect(harness.writes).toHaveLength(0);
-      expect(harness.transaction).not.toHaveBeenCalled();
+      expect(harness.runTransaction).not.toHaveBeenCalled();
     }
   );
 
@@ -111,7 +112,7 @@ describe('retired delegate commission configuration', () => {
       expect(response.status).toBe(400);
       expect(response.body).toMatchObject({ success: false, error: 'RETIRED_DELEGATE_FIELD', field });
       expect(harness.writes).toHaveLength(0);
-      expect(harness.transaction).not.toHaveBeenCalled();
+      expect(harness.runTransaction).not.toHaveBeenCalled();
     }
   );
 });
