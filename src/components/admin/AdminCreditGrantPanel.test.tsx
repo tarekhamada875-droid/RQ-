@@ -58,7 +58,8 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.click(screen.getByRole('checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('NETWORK_ERROR');
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذرت إضافة الرصيد. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
+    expect(screen.queryByText('NETWORK_ERROR')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
@@ -67,6 +68,18 @@ describe('AdminCreditGrantPanel', () => {
     const retryCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[1][1];
     expect(retryCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
     expect(await screen.findByRole('status')).toHaveTextContent('20 رصيد تمت إضافته.');
+  });
+
+  it('shows Arabic guidance when the server returns an English error code', async () => {
+    vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('إضافة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.');
+    expect(screen.queryByText('GARAGE_NOT_PREPAID')).toBeNull();
   });
 
   it('requires a valid whole-number credit amount', async () => {
