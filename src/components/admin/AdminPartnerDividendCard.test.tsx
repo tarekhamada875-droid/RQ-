@@ -32,18 +32,20 @@ describe('AdminPartnerDividendCard dynamic investment projections', () => {
   it('keeps optional assumptions advanced and the monthly table collapsed by default', () => {
     render(<AdminPartnerDividendCard currentActiveGarages={5} />);
 
-    expect(screen.queryByRole('spinbutton', { name: 'عمولة المندوبين' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'رسوم الدفع والتحويل' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'مصاريف شهرية أخرى' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const advancedSettings = screen.getByText('إعدادات متقدمة').closest('details');
+    expect(advancedSettings).not.toHaveAttribute('open');
+    expect(advancedSettings).toContainElement(screen.getByRole('spinbutton', { name: 'عمولة المندوبين' }));
+    expect(advancedSettings).toContainElement(screen.getByRole('spinbutton', { name: 'رسوم الدفع والتحويل' }));
+    expect(advancedSettings).toContainElement(screen.getByRole('spinbutton', { name: 'مصاريف شهرية أخرى' }));
+
+    const monthlyForecast = screen.getByText('3. الجدول الشهري').closest('details');
+    expect(monthlyForecast).not.toHaveAttribute('open');
 
     fireEvent.click(screen.getByText('إعدادات متقدمة'));
-    expect(screen.getByRole('spinbutton', { name: 'عمولة المندوبين' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'رسوم الدفع والتحويل' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'مصاريف شهرية أخرى' })).toBeInTheDocument();
+    expect(advancedSettings).toHaveAttribute('open');
 
     fireEvent.click(screen.getByText('3. الجدول الشهري'));
-    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(monthlyForecast).toHaveAttribute('open');
   });
 
   it('preserves forecast totals when only presentation details are collapsed', () => {
