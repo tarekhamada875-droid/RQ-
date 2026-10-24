@@ -138,7 +138,7 @@ describe('v167 - Garage Deletion', () => {
     expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/garages/delete-status?garageId=test_garage');
     expect(apiFetchMock).toHaveBeenCalledTimes(2);
     if (result.ok === false) {
-      expect(garageDeletionFailureMessage(result, 'en')).toContain('توقفت عملية الحذف قبل اكتمالها');
+      expect(garageDeletionFailureMessage(result)).toContain('توقفت عملية الحذف قبل اكتمالها');
     }
   });
 });
