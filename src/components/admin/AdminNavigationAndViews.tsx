@@ -234,7 +234,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>مراجعة الأجهزة وإلغاء الجلسات</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
           </div>
