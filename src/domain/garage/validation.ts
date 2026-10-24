@@ -11,7 +11,7 @@ export const validateGarageCreation = (data: any): ValidationResult => {
   }
   
   if (typeof data.pin !== 'string' || !/^\d{8}$/.test(data.pin)) {
-    errors.push('رمز الدخول يجب أن يكون 8 أرقام');
+    errors.push('رمز الدخول يجب أن يكون 5 أرقام');
   }
   
   const hourly = data.hourlyRate !== undefined && data.hourlyRate !== null && data.hourlyRate !== '' ? Number(data.hourlyRate) : 0;
