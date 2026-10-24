@@ -104,7 +104,7 @@
         { "fieldPath": "garageId", "order": "ASCENDING" },
         { "fieldPath": "occurredAt", "order": "DESCENDING" }
       ]
-    }
+    },
     {
       "collectionGroup": "events",
       "queryScope": "COLLECTION_GROUP",
