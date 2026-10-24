@@ -179,7 +179,7 @@ export function addFinancialReportEvent(accumulator: FinancialReportAccumulator,
   if (event.eventType === 'commission_earned') {
     accumulator.commissionTotal = addMoney(accumulator.commissionTotal, payload.commissionAmount);
     const delegateId = String(payload.delegateId || '');
-    if (delegateId) {
+    if (delegateId && typeof payload.sourceCreditGrantId === 'string' && payload.sourceCreditGrantId) {
       if (accumulator.currentUnsettledByDelegate[delegateId] === undefined) {
         accumulator.currentUnsettledByDelegate[delegateId] = 0;
       }
@@ -195,6 +195,21 @@ export function addFinancialReportEvent(accumulator: FinancialReportAccumulator,
   }
   if (event.eventType === 'vehicle_refunded') {
     accumulator.refundTotal = addMoney(accumulator.refundTotal, payload.refundAmount);
+  }
+  // Keep pre-existing legacy unsettled balances visible for settlement, but do
+  // not treat a legacy recharge as a new fixed 100 EGP commission.
+  if (event.eventType === 'recharge_approved' && event.aggregateId) {
+    const delegateId = String(payload.delegateId || '');
+    if (delegateId) {
+      const occurredAt = asDate(event.occurredAt);
+      const cutoff = accumulator.latestSettlementByDelegate[delegateId];
+      if (!cutoff || (occurredAt && occurredAt > cutoff)) {
+        accumulator.currentUnsettledByDelegate[delegateId] = addMoney(
+          accumulator.currentUnsettledByDelegate[delegateId] || 0,
+          payload.amount
+        );
+      }
+    }
   }
 
 }
