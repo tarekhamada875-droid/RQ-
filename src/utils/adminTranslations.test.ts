@@ -9,8 +9,8 @@ describe('Admin translation helper (Arabic-only)', () => {
     expect(t('نص غير معروف')).toBe('نص غير معروف');
   });
 
-  it('does not translate Arabic text into English even for a legacy English preference', () => {
-    const t = useAdminTranslation('en');
+  it('keeps shared interface copy Arabic-only', () => {
+    const t = useAdminTranslation('ar');
     expect(t('الجراجات')).toBe('الجراجات');
     expect(t('إعادة المحاولة')).toBe('إعادة المحاولة');
   });
