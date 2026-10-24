@@ -38,6 +38,70 @@ export interface VehicleRouteDeps {
 
 const SUPPORTED_VEHICLE_TYPES = new Set(['hourly', 'overnight']);
 
+const CAIRO_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Africa/Cairo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23'
+});
+
+function cairoMidnightUtc(dateId: string): Date | null {
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateId);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    year < 1000 ||
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month - 1 ||
+    calendarDate.getUTCDate() !== day
+  ) return null;
+
+  const targetLocalAsUtc = Date.UTC(year, month - 1, day);
+  let candidate = targetLocalAsUtc;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = Object.fromEntries(
+      CAIRO_DATE_TIME_FORMATTER.formatToParts(new Date(candidate))
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, Number(part.value)])
+    );
+    const displayedLocalAsUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      parts.second
+    );
+    const correction = targetLocalAsUtc - displayedLocalAsUtc;
+    candidate += correction;
+    if (correction === 0) break;
+  }
+  return new Date(candidate);
+}
+
+function cairoDateRange(dateId: string): { start: Date; end: Date } | null {
+  const start = cairoMidnightUtc(dateId);
+  if (!start) return null;
+  const [year, month, day] = dateId.split('-').map(Number);
+  const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextDateId = [
+    nextDate.getUTCFullYear().toString().padStart(4, '0'),
+    (nextDate.getUTCMonth() + 1).toString().padStart(2, '0'),
+    nextDate.getUTCDate().toString().padStart(2, '0')
+  ].join('-');
+  const end = cairoMidnightUtc(nextDateId);
+  return end && end.getTime() > start.getTime() ? { start, end } : null;
+}
+
+
 export function registerVehicleRoutes(app: WorkerApp, deps: VehicleRouteDeps): void {
   const {
     getAdminDb,
@@ -834,22 +898,19 @@ app.get('/api/vehicles/history', requireWorkerAuth, async (c) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const dateQuery = c.req.query('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const dateRange = cairoDateRange(dateQuery);
+    if (!dateRange) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
     const limitQuery = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
 
     const snap = await getAdminDb().collection('activity_logs')
       .where('garageId', '==', garageId)
+      .where('timestamp', '>=', dateRange.start)
+      .where('timestamp', '<', dateRange.end)
+      .orderBy('timestamp', 'desc')
       .limit(limitQuery)
       .get();
 
-    const logs = snap.docs
-      .map((doc: any) => ({ id: doc.id, ...doc.data() }))
-      .filter((log: any) => {
-        if (!log.timestamp) return false;
-        const d = new Date(safeDateMillis(log.timestamp));
-        const cairoDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-        return cairoDate === dateQuery;
-      })
-      .sort((a: any, b: any) => safeDateMillis(b.timestamp) - safeDateMillis(a.timestamp));
+    const logs = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return c.json({
       success: true,
