@@ -138,6 +138,7 @@ export interface Delegate {
   canCreateGarage?: boolean;
   /** Legacy read-only field retained for old documents; Worker rejects writes. */
   commissionRate?: number;
+  /** Legacy-named Worker balance for unsettled delegate commission; not gross recharge sales. */
   totalRechargedAmount?: number;
   totalCommissionEarned?: number;
   lastSettledAt?: any; // Timestamp
