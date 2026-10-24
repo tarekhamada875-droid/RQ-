@@ -121,7 +121,7 @@
         { "fieldPath": "actionType", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
-    },
+    }
   ],
   "fieldOverrides": []
 }
