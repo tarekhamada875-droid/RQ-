@@ -44,7 +44,7 @@ export const filterApprovedRequests = <T extends CommissionRequestLike>(requests
       return r.status === 'approved';
     }
     if (r.actionType) {
-      return r.actionType === 'recharge';
+      return r.actionType === 'recharge' || r.actionType === 'commission_earned';
     }
     return false;
   });
@@ -94,7 +94,7 @@ export const calculateCommissionFinancialSummary = (
     const r = requests[i];
     if (!r) continue;
 
-    const status = r.status || (r.actionType === 'recharge' ? 'approved' : '');
+    const status = r.status || (r.actionType === 'recharge' || r.actionType === 'commission_earned' ? 'approved' : '');
     if (status === 'pending') {
       pendingCount++;
       continue;
