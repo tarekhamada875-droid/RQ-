@@ -41,6 +41,21 @@
     user-select: text !important;
   }
 
+  /* Arabic-first editing: keep text entry and the caret on the RTL side. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="number"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    direction: rtl !important;
+    text-align: right !important;
+  }
+
+  /* Numbers retain natural digit order; only their visual alignment is RTL. */
+  input[type="number"] {
+    direction: ltr !important;
+    text-align: right !important;
+  }
+
   :root {
     --bg-main: #faf9f6; /* alabaster */
     --text-main: #0f172a; /* slate-900 */
