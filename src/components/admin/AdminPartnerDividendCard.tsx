@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Calculator, RotateCcw, TrendingUp, WalletCards } from 'lucide-react';
+import { Calculator, RotateCcw, TrendingUp } from 'lucide-react';
 
 interface AdminPartnerDividendCardProps {
   currentActiveGarages: number;
