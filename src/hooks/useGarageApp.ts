@@ -33,7 +33,7 @@ export function useGarageApp() {
   }, []);
 
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
-  const [view, setView] = useLocalStorageState<'login' | 'garage' | 'admin_login' | 'admin_dashboard' | 'admin_garage_details' | 'admin_delegate_details' | 'delegate_login' | 'delegate_dashboard' | 'packages' | 'staff_stats'>('app_view', 'login');
+  const [view, setView] = useLocalStorageState<'login' | 'garage' | 'admin_login' | 'admin_dashboard' | 'admin_garage_details' | 'admin_delegate_details' | 'delegate_login' | 'delegate_dashboard' | 'staff_stats'>('app_view', 'login');
 
   // Hash Navigation Support
   useEffect(() => {
