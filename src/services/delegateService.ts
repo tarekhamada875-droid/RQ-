@@ -205,6 +205,7 @@ export const delegateService = {
         collection(db, 'activity_logs'),
         where('staffId', '==', delegateId),
         where('actionType', '==', 'recharge'),
+        orderBy('timestamp', 'desc'),
         limit(50)
       );
       const snapshot = await getDocs(q);
