@@ -244,7 +244,6 @@ export const AdminDelegateDetailsView = memo(({
           {/* Profile Card */}
           <AdminDelegateProfileCard 
             delegate={delegate}
-            adminLang={adminLang}
           />
 
           {/* Stats Grid & Monthly Filter */}
