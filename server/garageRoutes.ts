@@ -728,6 +728,16 @@ app.post('/api/staff/update', requireWorkerAuth, async (c) => {
     const { id, name, phone, role, permissions, pin } = body;
     if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const staffId = validateId(id, 'id', true);
+    const staffRef = getAdminDb().collection('staff').doc(staffId);
+
+    // Authorize the target before checking global PIN uniqueness, which otherwise
+    // lets callers probe whether a PIN is already assigned outside their garage.
+    const initialStaffSnap = await staffRef.get();
+    if (!initialStaffSnap.exists) throw new Error('STAFF_NOT_FOUND');
+    if (!canManageStaffForGarage(user, initialStaffSnap.data()?.garageId)) {
+      throw new Error('FORBIDDEN: Cannot update staff outside your garage');
+    }
+
     const normalizedPin = pin ? validateNewPin(pin, 'newPin') : null;
     if (normalizedPin) {
       const pinCheck = await checkPinAvailabilityAcrossAll(normalizedPin, staffId);
@@ -740,7 +750,6 @@ app.post('/api/staff/update', requireWorkerAuth, async (c) => {
     if (role) updates.role = role;
     if (permissions) updates.permissions = permissions;
 
-    const staffRef = getAdminDb().collection('staff').doc(staffId);
     await getAdminDb().runTransaction(async (t: any) => {
       const targetStaffSnap = await t.get(staffRef);
       if (!targetStaffSnap.exists) throw new Error('STAFF_NOT_FOUND');
