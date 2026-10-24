@@ -144,19 +144,28 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40" aria-labelledby="projection-assumptions">
         <div className="mb-4 flex items-center gap-2"><WalletCards className="h-4 w-4 text-emerald-600" /><h3 id="projection-assumptions" className="text-sm font-black text-slate-900 dark:text-white">1. الافتراضات</h3></div>
+        <p className="mb-4 text-xs leading-6 text-slate-500 dark:text-slate-400">غيّر الأرقام الأساسية فقط؛ ستُحدَّث النتائج تلقائيًا. القيم الإضافية موجودة في الإعدادات المتقدمة.</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <InputField label="الجراجات الحالية" value={inputs.currentGarages} onChange={(value) => update('currentGarages', Math.max(0, Math.floor(value)))} suffix="جراج" />
           <InputField label="جراجات جديدة كل شهر" value={inputs.newGaragesPerMonth} onChange={(value) => update('newGaragesPerMonth', Math.max(0, Math.floor(value)))} suffix="جراج" />
           <InputField label="الأرصدة المدفوعة لكل جراج شهريًا" value={inputs.paidCreditsPerGarage} onChange={(value) => update('paidCreditsPerGarage', Math.max(0, Math.floor(value)))} suffix="رصيد" />
           <InputField label="سعر الرصيد" value={inputs.pricePerCredit} onChange={(value) => update('pricePerCredit', Math.max(0, value))} step={0.01} suffix="ج.م" />
           <InputField label="المصاريف التشغيلية الشهرية" value={inputs.monthlyOperatingCosts} onChange={(value) => update('monthlyOperatingCosts', Math.max(0, value))} suffix="ج.م" />
-          <InputField label="عمولة المندوبين" value={inputs.delegateCommissionRate} onChange={(value) => update('delegateCommissionRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
-          <InputField label="رسوم الدفع والتحويل" value={inputs.paymentFeeRate} onChange={(value) => update('paymentFeeRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
-          <InputField label="مصاريف شهرية أخرى" value={inputs.otherMonthlyCosts} onChange={(value) => update('otherMonthlyCosts', Math.max(0, value))} suffix="ج.م" />
           <InputField label="نسبة المستثمرين من الربح التشغيلي" value={inputs.investorOwnership} onChange={(value) => update('investorOwnership', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
           <InputField label="عدد المستثمرين" value={inputs.investorCount} onChange={(value) => update('investorCount', Math.max(1, Math.floor(value)))} suffix="مستثمر" />
-          <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">مدة التوقع</span><select value={inputs.projectionMonths} onChange={(event) => update('projectionMonths', numberValue(event.target.value, 12))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"><option value={6}>6 أشهر</option><option value={12}>12 شهرًا</option><option value={24}>24 شهرًا</option></select></label>
+          <label className="block space-y-1.5"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">مدة التوقع</span><select aria-label="مدة التوقع" value={inputs.projectionMonths} onChange={(event) => update('projectionMonths', numberValue(event.target.value, 12))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-black text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"><option value={6}>6 أشهر</option><option value={12}>12 شهرًا</option><option value={24}>24 شهرًا</option></select></label>
         </div>
+        <details className="mt-4 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-black text-slate-700 marker:hidden dark:text-slate-200">
+            <span className="flex items-center justify-between gap-3"><span>إعدادات متقدمة</span><span className="text-xs font-bold text-slate-400">اختيارية</span></span>
+          </summary>
+          <p className="px-4 pb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">اترك القيم صفرًا إذا لم تكن لديك تقديرات لهذه التكاليف. لا تتغير طريقة الحساب عند إخفاء هذه الإعدادات.</p>
+          <div className="grid gap-4 border-t border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-800">
+            <InputField label="عمولة المندوبين" value={inputs.delegateCommissionRate} onChange={(value) => update('delegateCommissionRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
+            <InputField label="رسوم الدفع والتحويل" value={inputs.paymentFeeRate} onChange={(value) => update('paymentFeeRate', Math.min(100, Math.max(0, value)))} max={100} step={0.1} suffix="%" />
+            <InputField label="مصاريف شهرية أخرى" value={inputs.otherMonthlyCosts} onChange={(value) => update('otherMonthlyCosts', Math.max(0, value))} suffix="ج.م" />
+          </div>
+        </details>
       </section>
 
       <section aria-labelledby="projection-results">
@@ -172,12 +181,17 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
         <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs font-bold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">إجمالي حصة المستثمرين خلال فترة التوقع: {money(projection.totals.investorShare)} — حصة المؤسس: {100 - inputs.investorOwnership}%</div>
       </section>
 
-      <section aria-labelledby="projection-table">
-        <div className="mb-3 flex items-center gap-2"><Calculator className="h-4 w-4 text-emerald-600" /><h3 id="projection-table" className="text-sm font-black text-slate-900 dark:text-white">3. الجدول الشهري</h3></div>
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+      <details className="rounded-2xl border border-slate-200 dark:border-slate-800" aria-labelledby="projection-table">
+        <summary className="cursor-pointer list-none rounded-2xl bg-slate-50 px-4 py-4 dark:bg-slate-950/50">
+          <span className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2"><Calculator className="h-4 w-4 text-emerald-600" /><h3 id="projection-table" className="text-sm font-black text-slate-900 dark:text-white">3. الجدول الشهري</h3></span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">عرض التفاصيل</span>
+          </span>
+        </summary>
+        <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-800">
           <table className="min-w-full text-right text-xs"><thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400"><tr><th className="px-3 py-3 font-black">الشهر</th><th className="px-3 py-3 font-black">الجراجات</th><th className="px-3 py-3 font-black">الأرصدة</th><th className="px-3 py-3 font-black">الإيرادات</th><th className="px-3 py-3 font-black">المصروفات</th><th className="px-3 py-3 font-black">صافي التشغيل</th></tr></thead><tbody>{projection.rows.map((row) => <tr key={row.month} className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-3 font-black text-slate-900 dark:text-white">{row.month}</td><td className="px-3 py-3 text-slate-600 dark:text-slate-300">{row.garages.toLocaleString('en-US')}</td><td className="px-3 py-3 text-slate-600 dark:text-slate-300">{row.credits.toLocaleString('en-US')}</td><td className="px-3 py-3 font-bold text-slate-900 dark:text-white">{money(row.revenue)}</td><td className="px-3 py-3 font-bold text-amber-600 dark:text-amber-400">{money(row.totalCosts)}</td><td className={`px-3 py-3 font-black ${row.operatingProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{money(row.operatingProfit)}</td></tr>)}</tbody></table>
         </div>
-      </section>
+      </details>
     </section>
   );
 };
