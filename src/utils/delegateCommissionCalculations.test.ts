@@ -106,3 +106,31 @@ describe('Delegate Fixed Commission Calculations', () => {
     expect(calculateApprovedRechargeTotal(logs, '2026-08')).toBe(830);
   });
 });
+
+
+describe('canonical first-paid-grant commission events', () => {
+  it('counts fixed commission by event month without inflating recharge sales', () => {
+    const events: CommissionRequestLike[] = [
+      {
+        id: 'commission-1',
+        actionType: 'commission_earned',
+        commission: 100,
+        amount: 0,
+        timestamp: '2026-10-12T08:00:00.000Z'
+      },
+      {
+        id: 'commission-2',
+        actionType: 'commission_earned',
+        commission: 100,
+        amount: 0,
+        timestamp: '2026-09-30T22:30:00.000Z'
+      }
+    ];
+
+    expect(calculateApprovedCommission(events, '2026-10')).toBe(100);
+    expect(calculateApprovedCommission(events, '2026-09')).toBe(100);
+    expect(calculateApprovedCommission(events, 'all')).toBe(200);
+    expect(calculateApprovedRechargeTotal(events, 'all')).toBe(0);
+    expect(filterApprovedRequests(events)).toHaveLength(2);
+  });
+});
