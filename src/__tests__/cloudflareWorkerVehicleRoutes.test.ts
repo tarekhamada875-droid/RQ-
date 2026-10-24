@@ -475,4 +475,47 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(historyBody.success).toBe(true);
     expect(Array.isArray(historyBody.logs)).toBe(true);
   });
+
+  it('filters vehicle history by Cairo date before applying the result limit', async () => {
+    for (let index = 0; index < 55; index += 1) {
+      mockDb.seed(`activity_logs/previous-day-${index}`, {
+        garageId: testGarageId,
+        actionType: 'check_out',
+        timestamp: new Date(`2026-10-23T12:${String(index % 60).padStart(2, '0')}:00.000Z`)
+      });
+    }
+    mockDb.seed('activity_logs/current-day-oldest', {
+      garageId: testGarageId,
+      actionType: 'check_in',
+      timestamp: new Date('2026-10-24T06:00:00.000Z')
+    });
+    mockDb.seed('activity_logs/current-day-newest', {
+      garageId: testGarageId,
+      actionType: 'check_out',
+      timestamp: new Date('2026-10-24T18:00:00.000Z')
+    });
+
+    const response = await api.fetch(new Request(
+      `http://localhost/api/vehicles/history?garageId=${testGarageId}&date=2026-10-24&limit=2`,
+      { headers: { Authorization: 'Bearer valid-admin-token' } }
+    ), workerEnv);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      count: 2,
+      logs: [
+        { id: 'current-day-newest' },
+        { id: 'current-day-oldest' }
+      ]
+    });
+
+    const invalidDateResponse = await api.fetch(new Request(
+      `http://localhost/api/vehicles/history?garageId=${testGarageId}&date=2026-02-31`,
+      { headers: { Authorization: 'Bearer valid-admin-token' } }
+    ), workerEnv);
+    expect(invalidDateResponse.status).toBe(400);
+    expect(await invalidDateResponse.json()).toMatchObject({ success: false, error: 'INVALID_DATE' });
+  });
+
 });
