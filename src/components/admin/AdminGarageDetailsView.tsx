@@ -42,7 +42,7 @@ export function getGaragePinUpdateErrorMessage(error: unknown): string {
   if (message === 'PIN_ALREADY_TAKEN' || message === 'الرمز مستخدم بالفعل') {
     return 'الرمز مستخدم بالفعل';
   }
-  if (message && /[\\u0600-\\u06FF]/.test(message)) return message;
+  if (message && /[\u0600-\u06FF]/.test(message)) return message;
   return 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.';
 }
 
