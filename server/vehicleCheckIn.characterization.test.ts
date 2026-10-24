@@ -18,7 +18,7 @@ const garage = () => garageDocumentToCheckInState(baseGarage, false);
 
 describe('credit-only vehicle check-in authorization', () => {
   it('converts garage and vehicle documents into explicit states', () => {
-    expect(garage()).toMatchObject({ exists: true, prepaidCreditsEnabled: true });
+    expect(garage()).toMatchObject({ exists: true, isSubscriberAuthoritative: false });
     expect(vehicleDocumentToCheckInState({ status: 'outside' })).toEqual({ exists: true, status: 'outside' });
     expect(vehicleDocumentToCheckInState({})).toEqual({ exists: true });
     expect(vehicleDocumentToCheckInState(null)).toEqual({ exists: false });
@@ -26,14 +26,14 @@ describe('credit-only vehicle check-in authorization', () => {
 
   it('allows a new vehicle and a previously checked-out vehicle', () => {
     const expected = { ok: true, value: { isUnlimited: true, isNewDay: false, used: 0, capacity: 0 } };
-    expect(decideVehicleCheckIn(command, garage(), { exists: false }, null)).toEqual(expected);
-    expect(decideVehicleCheckIn(command, garage(), { exists: true, status: 'outside' }, null)).toEqual(expected);
+    expect(decideVehicleCheckIn(garage(), { exists: false })).toEqual(expected);
+    expect(decideVehicleCheckIn(garage(), { exists: true, status: 'outside' })).toEqual(expected);
   });
 
   it('retains operational locks and subscriber authority protections', () => {
-    expect(decideVehicleCheckIn(command, garageDocumentToCheckInState({ ...baseGarage, isDeleting: true }, false), { exists: false }, null)).toEqual({ ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' });
-    expect(decideVehicleCheckIn(command, garageDocumentToCheckInState({ ...baseGarage, isLocked: true }, false), { exists: false }, null)).toEqual({ ok: false, error: 'GARAGE_CHECK_IN_LOCKED' });
-    expect(decideVehicleCheckIn(command, garageDocumentToCheckInState(baseGarage, true), { exists: false }, null)).toEqual({ ok: false, error: 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN' });
+    expect(decideVehicleCheckIn(garageDocumentToCheckInState({ ...baseGarage, isDeleting: true }, false), { exists: false })).toEqual({ ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' });
+    expect(decideVehicleCheckIn(garageDocumentToCheckInState({ ...baseGarage, isLocked: true }, false), { exists: false })).toEqual({ ok: false, error: 'GARAGE_CHECK_IN_LOCKED' });
+    expect(decideVehicleCheckIn(garageDocumentToCheckInState(baseGarage, true), { exists: false })).toEqual({ ok: false, error: 'MONTHLY_SUBSCRIBER_NOT_CHECKED_IN' });
   });
 
   it.each([
@@ -42,6 +42,6 @@ describe('credit-only vehicle check-in authorization', () => {
     ['pending status', { exists: true, status: 'pending' }],
     ['corrupt status', { exists: true, status: 'corrupt' }],
   ])('rejects an existing vehicle with %s', (_label, vehicleState) => {
-    expect(decideVehicleCheckIn(command, garage(), vehicleState, null)).toEqual({ ok: false, error: 'VEHICLE_ALREADY_INSIDE' });
+    expect(decideVehicleCheckIn(garage(), vehicleState)).toEqual({ ok: false, error: 'VEHICLE_ALREADY_INSIDE' });
   });
 });
