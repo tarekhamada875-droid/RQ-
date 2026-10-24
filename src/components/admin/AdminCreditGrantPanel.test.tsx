@@ -58,7 +58,8 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.click(screen.getByRole('checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('NETWORK_ERROR');
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذرت إضافة الرصيد. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
+    expect(screen.queryByText('NETWORK_ERROR')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
