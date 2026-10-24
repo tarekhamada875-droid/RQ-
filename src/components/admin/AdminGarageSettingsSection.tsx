@@ -183,7 +183,10 @@ export const AdminGarageSettingsSection = (props: any) => {
                                 />
                                 <button
                                   onClick={async () => {
-                                    if (!/^\d{8}$/.test(editingStaffPinValue)) return;
+                                    if (!/^\d{8}$/.test(editingStaffPinValue)) {
+                                      useAppStore.getState().showToast(t('رمز دخول الموظف يجب أن يتكون من 8 أرقام بالضبط.'), 'error');
+                                      return;
+                                    }
                                     setIsUpdatingStaffPin(true);
                                     try {
                                       const pinCheck = await firestoreService.isPinTaken(editingStaffPinValue, s.id);
