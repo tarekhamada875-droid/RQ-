@@ -57,7 +57,7 @@ export function validateNewPin(val: any, fieldName = 'PIN'): string {
 
 export function isNewPinFormat(val: string): boolean {
   // Accept existing eight-digit credentials during login; new/change flows use validateNewPin.
-  return /^\\d{5}$/.test(val) || /^\\d{8}$/.test(val);
+  return /^\d{5}$/.test(val) || /^\d{8}$/.test(val);
 }
 
 /**
