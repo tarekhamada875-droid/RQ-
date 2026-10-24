@@ -26,6 +26,12 @@ interface ActivityLogExportModalProps {
 
 type ExportPeriod = 'hour' | 'today' | 'week';
 
+const exportPeriodFileLabel: Record<ExportPeriod, string> = {
+  hour: 'آخر-ساعة',
+  today: 'اليوم',
+  week: 'آخر-7-أيام',
+};
+
 function formatCairoArabicDate(dateObj: any): string {
   const d = safeDate(dateObj);
   if (!d || isNaN(d.getTime())) return '';
@@ -62,13 +68,28 @@ function getActionLabel(action?: string): string {
     case 'check_out':
       return 'تسجيل خروج سيارة';
     case 'recharge':
-      return 'شحن اشتراك';
+      return 'شحن رصيد';
     case 'delete_refund':
       return 'حذف سيارة مع استرداد';
     case 'commission_payment':
-      return 'دفع عمولة';
+    case 'commission_earned':
+      return 'استحقاق عمولة';
+    case 'prepaid_credit_grant_paid':
+      return 'منح رصيد مدفوع';
+    case 'trial_grant':
+      return 'منح رصيد تجريبي';
+    case 'referral_award':
+      return 'مكافأة إحالة';
+    case 'regular_entry_debit':
+      return 'خصم رصيد لدخول سيارة';
+    case 'subscriber_renewal_debit':
+      return 'خصم رصيد لتجديد مشترك';
+    case 'correction_restore':
+      return 'استعادة رصيد';
+    case 'vehicle_refunded':
+      return 'استرداد مبلغ';
     default:
-      return action || '';
+      return action ? 'عملية أخرى' : '';
   }
 }
 
@@ -180,7 +201,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
       const dateStr = now.toISOString().split('T')[0];
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `activity-log-${dateStr}-${period}.csv`);
+      link.setAttribute('download', `سجل-العمليات-${dateStr}-${exportPeriodFileLabel[period]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -192,7 +213,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
       }, 1500);
     } catch (err) {
       console.error('CSV Export Error:', err);
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setErrorMessage('تعذر تصدير سجل العمليات. تحقق من الاتصال ثم حاول مرة أخرى.');
     } finally {
       setIsExporting(false);
     }
@@ -201,7 +222,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans animate-overlay-30fps"
-      dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+      dir="rtl"
     >
       <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-all animate-popup-30fps">
         {/* Header */}

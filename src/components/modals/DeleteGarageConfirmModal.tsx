@@ -33,7 +33,7 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
         </div>
         <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">حذف الجراج؟</h3>
         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 leading-relaxed">
-          سيتم حذف جراج <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-lg text-xs font-mono">{garage.name}</span> وكامل بياناته نهائياً من السيستم.
+          سيتم حذف جراج <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-lg text-xs font-mono">{garage.name}</span> وكامل بياناته نهائياً من النظام.
         </p>
 
         {isLoading ? (
@@ -48,9 +48,9 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
             </div>
             <div
               role="progressbar"
-              aria-label="Garage deletion progress"
+              aria-label="تقدم حذف الجراج"
               aria-valuemin={0}
-              aria-valuetext={`${progress?.processed ?? 0} records processed`}
+              aria-valuetext={`${progress?.processed ?? 0} سجل تمت معالجته`}
               className="h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
             >
               <div

@@ -203,7 +203,7 @@ export const AdminGarageDetailsView = memo(({
       if (pinCheck.taken) {
         const { showToast } = useAppStore.getState();
         showToast?.(
-          adminLang === 'en' ? 'This PIN is already in use.' : 'الرمز مستخدم بالفعل',
+          'الرمز مستخدم بالفعل',
           'error'
         );
         return;
@@ -227,9 +227,7 @@ export const AdminGarageDetailsView = memo(({
       const message = error instanceof Error ? error.message : '';
       const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN';
       showToast?.(
-        adminLang === 'en'
-          ? (pinAlreadyTaken ? 'This PIN is already in use.' : 'Unable to add Staff. Please try again.')
-          : (pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.'),
+        pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.',
         'error'
       );
     } finally {
@@ -248,7 +246,7 @@ export const AdminGarageDetailsView = memo(({
       console.error('Failed to delete Staff.');
       const { showToast } = useAppStore.getState();
       showToast?.(
-        adminLang === 'en' ? 'Unable to delete Staff. Please try again.' : 'تعذر حذف الموظف. يرجى المحاولة مرة أخرى.',
+        'تعذر حذف الموظف. يرجى المحاولة مرة أخرى.',
         'error'
       );
     } finally {
@@ -259,7 +257,7 @@ export const AdminGarageDetailsView = memo(({
   const handleSaveGaragePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{8}$/.test(garagePinInput)) {
-      setPinError(adminLang === 'en' ? 'PIN must be exactly 8 digits' : 'يجب أن يكون الرمز 8 أرقام بالضبط');
+      setPinError('يجب أن يكون الرمز 8 أرقام بالضبط');
       return;
     }
     setIsUpdatingGaragePin(true);
@@ -267,9 +265,7 @@ export const AdminGarageDetailsView = memo(({
     try {
       const pinCheck = await firestoreService.isPinTaken(garagePinInput, selectedGarageForDetails.id);
       if (pinCheck.taken) {
-        setPinError(adminLang === 'en'
-          ? `PIN used by ${pinCheck.name}`
-          : `الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
+        setPinError(`الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
         setIsUpdatingGaragePin(false);
         return;
       }
@@ -313,8 +309,8 @@ export const AdminGarageDetailsView = memo(({
 
   return (
     <div
-      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-slate-900 dark:text-slate-100 transition-colors ${adminLang === 'en' ? 'text-left' : 'text-right'} ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
-      dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+      className={`h-screen bg-[#faf9f6] dark:bg-slate-950 font-sans pb-32 custom-scrollbar-slate text-right text-slate-900 dark:text-slate-100 transition-colors ${showAddStaffModal || staffToDelete ? 'overflow-hidden' : 'overflow-y-auto'}`}
+      dir="rtl"
     >
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 mb-8 shadow-sm">
@@ -329,12 +325,12 @@ export const AdminGarageDetailsView = memo(({
               className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
               title={t('رجوع')}
             >
-              <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] ${adminLang === 'en' ? 'rotate-180' : ''}`} />
+              <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
             </button>
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-white leading-tight">{selectedGarageForDetails.name}</h1>
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                {t('تفاصيل وإدارة الجراج')} • <span className="font-mono text-[10px]">ID: {selectedGarageForDetails.id}</span>
+                {t('تفاصيل وإدارة الجراج')} • <span className="font-mono text-[10px]">المعرّف: {selectedGarageForDetails.id}</span>
               </p>
             </div>
           </div>
@@ -355,7 +351,7 @@ export const AdminGarageDetailsView = memo(({
                   onClick={() => setShowMenu(false)}
                 />
 
-                <div className={`absolute top-12 ${adminLang === 'en' ? 'right-0' : 'left-0'} w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl p-2`}>
+                <div className={`absolute top-12 left-0 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden shadow-xl p-2`}>
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(true);
@@ -378,7 +374,6 @@ export const AdminGarageDetailsView = memo(({
         <AdminGarageHeroAndStats
           garage={selectedGarageForDetails}
           t={t}
-          adminLang={adminLang}
           carsInside={carsInside}
           dailyCount={dailyCount}
           dailyRevenue={dailyRevenue}
@@ -398,8 +393,7 @@ export const AdminGarageDetailsView = memo(({
         <AdminGarageFinancialsSection
           garage={selectedGarageForDetails}
           t={t}
-          adminLang={adminLang}
-          onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
+            onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}
         />
@@ -434,7 +428,6 @@ export const AdminGarageDetailsView = memo(({
       <AdminGarageModals
         garage={selectedGarageForDetails}
         t={t}
-        adminLang={adminLang}
         isLoading={isLoading}
         showAddStaffModal={showAddStaffModal}
         setShowAddStaffModal={setShowAddStaffModal}

@@ -42,7 +42,6 @@ interface AdminNavigationAndViewsProps {
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
   currentAdminPin: string;
-  adminLang: 'ar' | 'en';
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
@@ -71,7 +70,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   handleApproveGarage,
   handleRejectGarage,
   currentAdminPin,
-  adminLang,
   t,
   showToast,
   onLogout
@@ -219,7 +217,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>{t('تحديث رمز الحماية السري')}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
 
@@ -236,7 +234,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
                 <span>مراجعة الأجهزة وإلغاء الجلسات</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 ${adminLang === 'en' ? '' : 'rotate-180'}`} />
+                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
           </div>
@@ -254,7 +252,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           currentSupervisor={currentSupervisor}
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage || (() => {})}
-          adminLang={adminLang}
           t={t}
         />
       ) : activeTab === 'requests' ? (

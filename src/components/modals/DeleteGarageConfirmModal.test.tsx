@@ -36,7 +36,7 @@ describe('DeleteGarageConfirmModal', () => {
 
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveAttribute('aria-valuetext', '214 records processed');
+    expect(progressBar).toHaveAttribute('aria-valuetext', '214 سجل تمت معالجته');
     expect(progressBar).not.toHaveAttribute('aria-valuenow');
 
     expect(screen.queryByText('نعم، حذف الجراج')).not.toBeInTheDocument();

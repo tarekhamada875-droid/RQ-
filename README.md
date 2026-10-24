@@ -1,6 +1,6 @@
 # RQ
 
-RQ is a bilingual Arabic/English garage-management PWA for vehicle entry/exit, garage customer subscribers, prepaid credits, staff, delegates, and Admin operations.
+RQ is an Arabic-only garage-management PWA for vehicle entry/exit, garage customer subscribers, prepaid credits, staff, delegates, and Admin operations.
 
 ## Architecture
 

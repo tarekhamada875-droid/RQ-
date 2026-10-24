@@ -16,7 +16,7 @@ interface AdminDelegateStatsGridProps {
   unsettledCycleTotal: number;
   effectiveLastSettledAt: Date | null;
   onSettleAccount: () => void;
-  adminLang: 'ar' | 'en';
+  adminLang: 'ar';
 }
 
 export const AdminDelegateStatsGrid: React.FC<AdminDelegateStatsGridProps> = memo(({

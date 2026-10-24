@@ -65,6 +65,8 @@ describe('AdminDelegateDetailsView Component', () => {
     fireEvent.click(await screen.findByText('سجل الشحن'));
 
     expect(await screen.findByText('HISTORIC-RECHARGE-1')).toBeInTheDocument();
+    expect(screen.getByText('عرض آخر 50 معاملة')).toBeInTheDocument();
+    expect(screen.getByText('ناجح')).toBeInTheDocument();
     expect(screen.getAllByText('1,500').length).toBeGreaterThan(0);
     expect(screen.getAllByText('150').length).toBeGreaterThan(0);
     expect(serviceMocks.getDelegateRecharges).toHaveBeenCalledWith('del-123');

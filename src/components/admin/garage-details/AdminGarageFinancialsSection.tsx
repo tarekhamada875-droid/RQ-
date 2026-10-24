@@ -5,7 +5,6 @@ import { Garage } from '../../../types';
 interface AdminGarageFinancialsSectionProps {
   garage: Garage;
   t: (key: string) => string;
-  adminLang: string;
   onToggleMonthlySubscribers: () => Promise<void>;
   allGarages: Garage[];
   onReferredByChange: (refId: string) => Promise<void>;
@@ -14,7 +13,6 @@ interface AdminGarageFinancialsSectionProps {
 export const AdminGarageFinancialsSection = memo(({
   garage,
   t,
-  adminLang,
   onToggleMonthlySubscribers,
   allGarages,
   onReferredByChange,
@@ -44,7 +42,7 @@ export const AdminGarageFinancialsSection = memo(({
           aria-label={garage.hasMonthlySubscribers ? 'تعطيل المشتركين الشهريين' : 'تفعيل المشتركين الشهريين'}
         >
           <div className={`w-6 h-6 bg-white rounded-full transition-all duration-300 transform ${
-            garage.hasMonthlySubscribers ? (adminLang === 'en' ? 'translate-x-6' : '-translate-x-6') : 'translate-x-0'
+            garage.hasMonthlySubscribers ? '-translate-x-6' : 'translate-x-0'
           }`} />
         </button>
       </div>

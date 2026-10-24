@@ -9,7 +9,7 @@ import { useAdminTranslation } from '../../../utils/adminTranslations';
 interface AdminDelegateHistorySectionProps {
   recharges: ActivityLog[];
   isLoading: boolean;
-  adminLang: 'ar' | 'en';
+  adminLang: 'ar';
 }
 
 export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionProps> = memo(({
@@ -30,9 +30,9 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
           <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
             <History className="w-5 h-5" />
           </div>
-          <div className={adminLang === 'en' ? 'text-left' : 'text-right'}>
+          <div className="text-right">
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('سجل الشحن')}</h3>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">View Last 50 Transactions</p>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">عرض آخر 50 معاملة</p>
           </div>
         </div>
         <div className={`w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 transition-all ${showHistory ? 'rotate-180' : ''}`}>
@@ -76,11 +76,11 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
                           </p>
                           <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 transition-colors">
                             <Calendar className="w-3 h-3" />
-                            <span>{adminLang === 'en' ? safeDate(log.timestamp).toLocaleString('en-US') : safeDate(log.timestamp).toLocaleString('ar-EG')}</span>
+                            <span>{safeDate(log.timestamp).toLocaleString('ar-EG')}</span>
                           </div>
                         </div>
                         <div className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black transition-colors uppercase tracking-widest">
-                          SUCCESS
+                          ناجح
                         </div>
                       </div>
                     </div>

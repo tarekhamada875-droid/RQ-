@@ -144,13 +144,13 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
   });
 
   it('Stress Test 5: High-Frequency Admin Translation Lookups (100,000 Calls)', () => {
-    const tEn = useAdminTranslation('en');
+    const tAr = useAdminTranslation('ar');
     const keys = ['المدير العام', 'الجراجات', 'سعر الساعة', 'المشتركين', 'إضافة جراج جديد', 'تسجيل خروج'];
 
     const startTime = performance.now();
     for (let i = 0; i < 100000; i++) {
       const key = keys[i % keys.length];
-      tEn(key);
+      tAr(key);
     }
     const duration = performance.now() - startTime;
 

@@ -20,7 +20,6 @@ import { Garage } from '../../../types';
 interface AdminGarageHeroAndStatsProps {
   garage: Garage;
   t: (key: string) => string;
-  adminLang: string;
   carsInside: number;
   dailyCount: number;
   dailyRevenue: number;
@@ -34,7 +33,6 @@ interface AdminGarageHeroAndStatsProps {
 export const AdminGarageHeroAndStats = memo(({
   garage,
   t,
-  adminLang: _adminLang,
   carsInside,
   dailyCount,
   dailyRevenue,

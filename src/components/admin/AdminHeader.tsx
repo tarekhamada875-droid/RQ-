@@ -15,7 +15,6 @@ interface AdminHeaderProps {
   showMenu: boolean;
   setShowMenu: (show: boolean) => void;
   currentSupervisor: Supervisor | null;
-  adminLang: 'ar' | 'en';
   onOpenAppearanceSettings: () => void;
   onLogout: () => void;
   menuRef: React.RefObject<HTMLDivElement>;
@@ -28,7 +27,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   showMenu,
   setShowMenu,
   currentSupervisor,
-  adminLang,
   onOpenAppearanceSettings,
   onLogout,
   menuRef,
@@ -63,7 +61,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
                 title={t('رجوع')}
               >
-                <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] ${adminLang === 'en' ? 'rotate-180' : ''}`} />
+                <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
               </button>
             )}
             <div className="hidden sm:flex w-10 h-10 bg-slate-900 dark:bg-slate-800 rounded-xl items-center justify-center text-white">
@@ -93,8 +91,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 />
                 
                 <div 
-                  className={`fixed top-4 bottom-3 ${adminLang === 'en' ? 'right-3' : 'left-3'} w-[290px] xs:w-[330px] max-w-[calc(100vw-24px)] bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 z-50 flex flex-col overflow-hidden pointer-events-auto`}
-                  dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+                  className="fixed top-4 bottom-3 left-3 w-[290px] xs:w-[330px] max-w-[calc(100vw-24px)] bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 z-50 flex flex-col overflow-hidden pointer-events-auto"
+                  dir="rtl"
                 >
                   {/* Drawer Header - Clean Profile Box matching Garage Sidebar */}
                   <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800/60 font-sans">
@@ -103,7 +101,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         <div className="w-12 h-12 rounded-2xl bg-amber-400 dark:bg-amber-400 flex items-center justify-center text-slate-950 font-extrabold shadow-sm shrink-0">
                           <Shield className="w-6 h-6 stroke-[2.5]" />
                         </div>
-                        <div className={`flex flex-col ${adminLang === 'en' ? 'text-left' : 'text-right'}`}>
+                        <div className="flex flex-col text-right">
                           <span className="text-mobile-wrap text-sm font-black text-slate-900 dark:text-slate-100 max-w-[150px] leading-snug">
                             {currentSupervisor ? currentSupervisor.name : t('مالك النظام')}
                           </span>

@@ -64,7 +64,7 @@ beforeEach(() => {
     hasMore: false,
   } as any);
   deleteGarageWithRecoveryMock.mockReset();
-  garageDeletionFailureMessageMock.mockReset().mockReturnValue('Too many delete requests; wait before retrying.');
+  garageDeletionFailureMessageMock.mockReset().mockReturnValue('تم إرسال طلبات حذف كثيرة. انتظر دقيقة قبل المحاولة مجدداً.');
 });
 
 afterEach(() => {
@@ -109,7 +109,7 @@ const submitAddGarageDraft = () => {
   fireEvent.submit(form);
 };
 
-it('keeps the Admin interface right-to-left regardless of language preference', () => {
+it('keeps the Admin interface right-to-left', () => {
   render(
     <AdminDashboard
       allGarages={[]}
@@ -306,7 +306,7 @@ describe('AdminDashboard garage actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reject pending garage' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm dialog action' }));
 
-    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Too many delete requests; wait before retrying.', 'error'));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('تم إرسال طلبات حذف كثيرة. انتظر دقيقة قبل المحاولة مجدداً.', 'error'));
     expect(deleteGarageWithRecoveryMock).toHaveBeenCalledWith('pending-1');
     expect(firestoreService.deleteGarage).not.toHaveBeenCalled();
   });
