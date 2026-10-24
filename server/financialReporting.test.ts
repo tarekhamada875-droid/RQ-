@@ -45,18 +45,18 @@ describe('financial reporting projections', () => {
       refundTotal: 50,
       companyNetRevenue: 1350,
       historicalSettledTotal: 0,
-      currentUnsettledByDelegate: { 'del-1': 1000, 'del-2': 500 },
+      currentUnsettledByDelegate: { 'del-1': 100 },
       creditActivity: emptyCreditActivity,
     });
   });
 
-  it('excludes settled delegate recharge events from the current cycle', () => {
+  it('excludes settled commission events from the current cycle and ignores legacy recharge amounts', () => {
     const report = calculateFinancialReport(events, [
       { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 1000 }
     ]);
     expect(report.historicalSettledTotal).toBe(1000);
     expect(report.currentUnsettledByDelegate['del-1']).toBe(0);
-    expect(report.currentUnsettledByDelegate['del-2']).toBe(500);
+    expect(report.currentUnsettledByDelegate['del-2']).toBeUndefined();
   });
 
   it('is deterministic for the same event and settlement history', () => {
@@ -67,7 +67,7 @@ describe('financial reporting projections', () => {
   it('supports delegate-scoped totals without exposing all-garage credit metrics', () => {
     const report = calculateFinancialReport(events, [], { delegateId: 'del-1' });
     expect(report.grossRechargeTotal).toBe(1999);
-    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 1999 });
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 100 });
     expect(report.commissionTotal).toBe(100);
     expect(report.prepaidCreditPaymentsEgp).toBeNull();
     expect(report.creditActivity).toBeNull();
@@ -184,5 +184,36 @@ describe('financial reporting projections', () => {
       ...Object.values(report.currentUnsettledByDelegate),
       ...Object.values(report.creditActivity || {}),
     ].every(Number.isFinite)).toBe(true);
+  });
+});
+
+
+describe('canonical delegate commission settlement reporting', () => {
+  it('counts only commission events after the latest settlement as currently unsettled', () => {
+    const report = calculateFinancialReport([
+      {
+        eventType: 'commission_earned',
+        aggregateId: 'del-1',
+        occurredAt: '2026-09-18T08:00:00.000Z',
+        payload: { delegateId: 'del-1', commissionAmount: 100, sourceCreditGrantId: 'grant-before', earnedAt: '2026-09-18T08:00:00.000Z' }
+      },
+      {
+        eventType: 'commission_earned',
+        aggregateId: 'del-1',
+        occurredAt: '2026-09-18T09:00:00.000Z',
+        payload: { delegateId: 'del-1', commissionAmount: 100, sourceCreditGrantId: 'grant-after', earnedAt: '2026-09-18T09:00:00.000Z' }
+      },
+      {
+        eventType: 'recharge_approved',
+        aggregateId: 'legacy-request',
+        occurredAt: '2026-09-18T09:30:00.000Z',
+        payload: { delegateId: 'del-1', amount: 5000 }
+      }
+    ], [
+      { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 100 }
+    ]);
+
+    expect(report.commissionTotal).toBe(200);
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 100 });
   });
 });
