@@ -257,6 +257,7 @@ app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorke
 
     const snapshot = await getAdminDb().collectionGroup('events')
       .where('payload.delegateId', '==', delegateId)
+      .where('eventType', 'in', ['commission_earned', 'delegate_settled'])
       .get();
     const items = snapshot.docs
       .map((document: any) => document.data() || {})
