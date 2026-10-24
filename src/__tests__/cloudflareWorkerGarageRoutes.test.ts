@@ -162,7 +162,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     }));
     expect(unauthRes.status).toBe(401);
 
-    const testPin = String(Math.floor(10000000 + Math.random() * 90000000));
+    const testPin = String(Math.floor(10000 + Math.random() * 90000));
     const createRes = await api.fetch(new Request('http://localhost/api/garages/create', {
       method: 'POST',
       headers: {
@@ -189,7 +189,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const response = await api.fetch(new Request('http://localhost/api/garages/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: JSON.stringify({ name: 'Legacy Field Garage', pin: '12345678', billingModel: 'subscription' })
+      body: JSON.stringify({ name: 'Legacy Field Garage', pin: '12345', billingModel: 'subscription' })
     }), workerEnv);
 
     expect(response.status).toBe(400);
