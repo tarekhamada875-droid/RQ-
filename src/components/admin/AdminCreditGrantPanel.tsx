@@ -81,7 +81,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           inputMode="numeric"
           pattern="[0-9]*"
           value={amount}
-          onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
+          onChange={(event) => setAmount(event.target.value.replace(/[٠-٩۰-۹]/g, (digit) => String(digit.charCodeAt(0) >= 0x06f0 ? digit.charCodeAt(0) - 0x06f0 : digit.charCodeAt(0) - 0x0660)).replace(/\D/g, ''))}
           placeholder="أدخل قيمة الرصيد"
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
           className="w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
