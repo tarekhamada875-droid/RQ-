@@ -41,6 +41,21 @@
     user-select: text !important;
   }
 
+  /* Keep editable controls aligned with the Arabic RTL interface. Numeric
+     controls use LTR digit ordering but stay visually right-aligned. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    direction: rtl;
+    text-align: right;
+  }
+
+  input[type="number"] {
+    direction: ltr;
+    text-align: right;
+  }
+
   :root {
     --bg-main: #faf9f6; /* alabaster */
     --text-main: #0f172a; /* slate-900 */
