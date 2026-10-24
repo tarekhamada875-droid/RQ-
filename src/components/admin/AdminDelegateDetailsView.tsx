@@ -191,7 +191,7 @@ export const AdminDelegateDetailsView = memo(({
 
   const allTimeTotal = React.useMemo(() => {
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-    return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
+    return Math.max(calculated, historyTotal);
   }, [activeDataset, historyTotal]);
 
   const commissionValue = React.useMemo(() => {
