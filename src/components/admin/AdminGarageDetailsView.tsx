@@ -37,6 +37,15 @@ interface AdminGarageDetailsViewProps {
   onRefreshAdminLists?: () => Promise<void>;
 }
 
+export function getGaragePinUpdateErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : '';
+  if (message === 'PIN_ALREADY_TAKEN' || message === 'الرمز مستخدم بالفعل') {
+    return 'الرمز مستخدم بالفعل';
+  }
+  if (message && /[\u0600-\u06FF]/.test(message)) return message;
+  return 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.';
+}
+
 export const AdminGarageDetailsView = memo(({
   selectedGarageForDetails,
   setView,
@@ -277,8 +286,8 @@ export const AdminGarageDetailsView = memo(({
         setSelectedGarageForDetails({ ...selectedGarageForDetails, pin: garagePinInput, ownerPin: garagePinInput });
       }
       setShowEditGaragePinModal(false);
-    } catch (err: any) {
-      setPinError(err?.message || 'فشل تحديث الرمز');
+    } catch (err: unknown) {
+      setPinError(getGaragePinUpdateErrorMessage(err));
     } finally {
       setIsUpdatingGaragePin(false);
     }
