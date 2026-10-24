@@ -37,7 +37,10 @@ export interface VehicleRefundedPayload extends EventPayload {
 export interface CommissionEarnedPayload extends EventPayload {
   delegateId: string;
   commissionAmount: number;
-  sourceRechargeId: string;
+  /** Legacy source retained for reading old event payloads. */
+  sourceRechargeId?: string;
+  /** New commissions are earned from a garage's first paid credit grant. */
+  sourceCreditGrantId?: string;
   earnedAt: string;
 }
 
@@ -135,7 +138,7 @@ function validateEventParams(params: CreateEventParams): void {
   }
   if (params.eventType === 'commission_earned') {
     const p = params.payload as Partial<CommissionEarnedPayload>;
-    if (!p.delegateId || typeof p.commissionAmount !== 'number' || !p.sourceRechargeId || !p.earnedAt) throw new Error('INVALID_COMMISSION_PAYLOAD');
+    if (!p.delegateId || typeof p.commissionAmount !== 'number' || !(p.sourceCreditGrantId || p.sourceRechargeId) || !p.earnedAt) throw new Error('INVALID_COMMISSION_PAYLOAD');
   }
   if (params.eventType === 'prepaid_credit_grant_paid') {
     const amount = params.payload.amount;

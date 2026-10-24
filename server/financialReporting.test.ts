@@ -50,7 +50,7 @@ describe('financial reporting projections', () => {
     });
   });
 
-  it('excludes settled delegate recharge events from the current cycle', () => {
+  it('excludes settled legacy recharge amounts from the current cycle', () => {
     const report = calculateFinancialReport(events, [
       { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 1000 }
     ]);
@@ -184,5 +184,30 @@ describe('financial reporting projections', () => {
       ...Object.values(report.currentUnsettledByDelegate),
       ...Object.values(report.creditActivity || {}),
     ].every(Number.isFinite)).toBe(true);
+  });
+});
+
+
+describe('canonical delegate commission settlement reporting', () => {
+  it('counts only commission events after the latest settlement as currently unsettled', () => {
+    const report = calculateFinancialReport([
+      {
+        eventType: 'commission_earned',
+        aggregateId: 'del-1',
+        occurredAt: '2026-09-18T08:00:00.000Z',
+        payload: { delegateId: 'del-1', commissionAmount: 100, sourceCreditGrantId: 'grant-before', earnedAt: '2026-09-18T08:00:00.000Z' }
+      },
+      {
+        eventType: 'commission_earned',
+        aggregateId: 'del-1',
+        occurredAt: '2026-09-18T09:00:00.000Z',
+        payload: { delegateId: 'del-1', commissionAmount: 100, sourceCreditGrantId: 'grant-after', earnedAt: '2026-09-18T09:00:00.000Z' }
+      },
+    ], [
+      { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 100 }
+    ]);
+
+    expect(report.commissionTotal).toBe(200);
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 100 });
   });
 });
