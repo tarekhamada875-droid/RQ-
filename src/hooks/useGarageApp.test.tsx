@@ -30,7 +30,6 @@ vi.mock('./useLocalStorage', () => ({
       app_supervisor: null,
       app_selected_garage_details: null,
       app_selected_delegate_details: null,
-      app_show_packages: false,
       app_show_staff_stats: false,
       app_show_subscribers: false
     };
