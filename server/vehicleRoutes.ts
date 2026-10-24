@@ -148,12 +148,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
       const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
-      const decision = decideVehicleCheckIn(
-        { today, nowMs: Date.now(), plateNumber, plateNumberRaw: plateRaw },
-        checkInGarage,
-        checkInVehicle,
-        null
-      );
+      const decision = decideVehicleCheckIn(checkInGarage, checkInVehicle);
       if (decision.ok === false) throw new Error(decision.error);
       const { isNewDay, used } = decision.value;
       const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;

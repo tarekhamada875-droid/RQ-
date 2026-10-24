@@ -13,7 +13,6 @@ export function garageDocumentToCheckInState(
       isLocked: false,
       isSuspended: false,
       isSubscriberAuthoritative,
-      prepaidCreditsEnabled: false,
     };
   }
   return {
@@ -22,8 +21,6 @@ export function garageDocumentToCheckInState(
     isLocked: document.isLocked === true,
     isSuspended: document.isSuspended === true,
     isSubscriberAuthoritative,
-    // Garage access is credit-only after the legacy time-based model retirement.
-    prepaidCreditsEnabled: true,
   };
 }
 

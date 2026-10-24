@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 
-const commandIn = {
-  today: '2026-09-25',
-  nowMs: Date.parse('2026-09-25T12:00:00.000Z'),
-  plateNumber: 'ABC 123',
-  plateNumberRaw: 'ABC123',
-};
-
 const garageIn = {
   exists: true,
   isDeleting: false,
@@ -37,7 +30,7 @@ describe('vehicle authorization policy', () => {
     ['suspended', { ...garageIn, isSuspended: true }],
     ['locked and suspended', { ...garageIn, isLocked: true, isSuspended: true }],
   ])('blocks check-in for a %s garage at the decision boundary', (_label, garage) => {
-    expect(decideVehicleCheckIn(commandIn, garage, { exists: false }, null)).toEqual({
+    expect(decideVehicleCheckIn(garage, { exists: false })).toEqual({
       ok: false,
       error: 'GARAGE_CHECK_IN_LOCKED',
     });
@@ -52,7 +45,7 @@ describe('vehicle authorization policy', () => {
   });
 
   it('rejects invalid vehicle transitions before any route adapter can write', () => {
-    expect(decideVehicleCheckIn(commandIn, garageIn, { exists: true, status: 'inside' }, null)).toEqual({
+    expect(decideVehicleCheckIn(garageIn, { exists: true, status: 'inside' })).toEqual({
       ok: false,
       error: 'VEHICLE_ALREADY_INSIDE',
     });

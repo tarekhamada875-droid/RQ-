@@ -9,20 +9,12 @@ export type VehicleCheckInResult<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: VehicleCheckInError };
 
-export interface VehicleCheckInCommand {
-  readonly today: string;
-  readonly nowMs: number;
-  readonly plateNumber: string;
-  readonly plateNumberRaw: string;
-}
-
 export interface VehicleCheckInGarageState {
   readonly exists: boolean;
   readonly isDeleting: boolean;
   readonly isLocked: boolean;
   readonly isSuspended: boolean;
   readonly isSubscriberAuthoritative: boolean;
-  readonly prepaidCreditsEnabled?: boolean;
 }
 
 export interface VehicleCheckInVehicleState {
@@ -38,12 +30,9 @@ export interface VehicleCheckInDecision {
 }
 
 export function decideVehicleCheckIn(
-  command: VehicleCheckInCommand,
   garage: VehicleCheckInGarageState,
   vehicle: VehicleCheckInVehicleState,
-  _legacyClassifier: null,
 ): VehicleCheckInResult<VehicleCheckInDecision> {
-  void command;
   if (!garage.exists) return { ok: false, error: 'GARAGE_NOT_FOUND' };
   if (garage.isDeleting) return { ok: false, error: 'GARAGE_DELETION_IN_PROGRESS' };
   if (garage.isLocked || garage.isSuspended) return { ok: false, error: 'GARAGE_CHECK_IN_LOCKED' };
