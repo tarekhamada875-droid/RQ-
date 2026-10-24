@@ -123,8 +123,23 @@ export const AdminDelegateDetailsView = memo(({
     });
   };
 
-  // Preserve the audited activity-log history used by delegate settlement calculations.
-  const activeDataset = recharges;
+  // Recharge logs remain the sales source; fixed commissions come from Worker-owned
+  // domain events so monthly stats and settlement history use the canonical ledger.
+  const commissionActivityLogs: ActivityLog[] = commissionEvents
+    .filter((event) => event.eventType === 'commission_earned')
+    .map((event) => ({
+      id: event.eventId,
+      garageId: event.garageId || '',
+      staffId: delegate.id,
+      staffName: delegate.name,
+      actionType: 'commission_earned',
+      plateNumber: 'عمولة أول شحن مدفوع',
+      timestamp: event.occurredAt,
+      amount: 0,
+      commission: event.commissionAmount || 0
+    }));
+  const activeDataset: ActivityLog[] = [...recharges, ...commissionActivityLogs]
+    .sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
 
   // Monthly calculations logic
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');
