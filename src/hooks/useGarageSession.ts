@@ -75,6 +75,8 @@ export function useGarageSession({
   const [sessionId] = useState(() => getCanonicalSessionId());
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const logoutInProgressRef = useRef(false);
 
   // Auth state listener
   useEffect(() => {
@@ -103,6 +105,9 @@ export function useGarageSession({
 
   // Logout handler
   const handleLogout = useCallback(async (isRemoteKicked: boolean = false) => {
+    if (logoutInProgressRef.current) return;
+    logoutInProgressRef.current = true;
+    setIsLoggingOut(true);
     if (!isRemoteKicked) {
       isDeliberateLogoutRef.current = true;
     }
@@ -133,14 +138,21 @@ export function useGarageSession({
       }
     }
 
-    // 1. Optimistic UI & Storage Reset (Instant <10ms transition)
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id') {
-        localStorage.removeItem(key);
+    // Storage may be disabled or quota/security-restricted. Never let it interrupt
+    // clearing in-memory owner state or the authoritative session cleanup.
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id') {
+          try { localStorage.removeItem(key); } catch { /* Continue clearing other keys. */ }
+        }
+      });
+      for (const key of ['app_admin_pin', 'app_login_phone']) {
+        try { localStorage.removeItem(key); } catch { /* Best-effort browser cleanup. */ }
       }
-    });
-    localStorage.removeItem('app_admin_pin');
-    localStorage.removeItem('app_login_phone');
+    } catch (storageError) {
+      console.warn('تعذر مسح بعض بيانات الجلسة المحفوظة.', storageError);
+    }
+
     setGarage(null);
     setDelegate(null);
     setCurrentStaff(null);
@@ -148,20 +160,39 @@ export function useGarageSession({
     setView('login');
     setShowLogoutConfirm(false);
 
-    // 2. Background Server & Auth Cleanup (Fire-and-forget without blocking UI)
-    if (!isRemoteKicked && currentUser && activeRole && activeEntityId) {
-      releaseEntitySession({
-        role: activeRole,
-        entityId: activeEntityId,
-        sessionId,
-        uid: currentUser.uid
-      })
-        .catch(err => console.warn('Background release entity session failed:', err))
-        .finally(() => {
-          signOut(auth).catch(err => console.warn('Background sign-out failed:', err));
+    // Keep login UI blocked until release/sign-out finishes. Otherwise a fast
+    // re-login can race the previous session's asynchronous cleanup.
+    let releaseTimeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      if (!isRemoteKicked && currentUser && activeRole && activeEntityId) {
+        const release = releaseEntitySession({
+          role: activeRole,
+          entityId: activeEntityId,
+          sessionId,
+          uid: currentUser.uid
         });
-    } else {
-      signOut(auth).catch(err => console.warn('Background sign-out failed:', err));
+        await Promise.race([
+          release,
+          new Promise<void>((_, reject) => {
+            releaseTimeout = setTimeout(() => reject(new Error('SESSION_RELEASE_TIMEOUT')), 8000);
+          })
+        ]);
+      }
+    } catch (error) {
+      console.warn('تعذر إكمال تحرير الجلسة قبل انتهاء المهلة.', error);
+    } finally {
+      if (releaseTimeout) clearTimeout(releaseTimeout);
+      // Do not sign out a different Firebase identity if auth changed while
+      // the previous session was being released.
+      if (currentUser && auth.currentUser?.uid === currentUser.uid) {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.warn('تعذر إنهاء جلسة Firebase.', error);
+        }
+      }
+      logoutInProgressRef.current = false;
+      setIsLoggingOut(false);
     }
   }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
 
@@ -504,6 +535,7 @@ export function useGarageSession({
     isSessionReady,
     showLogoutConfirm,
     setShowLogoutConfirm,
+    isLoggingOut,
     handleLogout,
     handleInitiateLogout,
   };
