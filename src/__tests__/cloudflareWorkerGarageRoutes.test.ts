@@ -183,6 +183,23 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.id).toBeDefined();
   });
 
+  it('prevents delegates from self-assigning trial credits during garage creation', async () => {
+    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
+    const response = await api.fetch(new Request('http://localhost/api/garages/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-delegate-token' },
+      body: JSON.stringify({ name: 'Delegate Trial Garage', pin: '81726354', isTrial: true })
+    }), workerEnv);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Trial credits require Admin approval' });
+    const businessRecords = (records: Map<string, any>) => [...records.entries()].filter(([path]) =>
+      !path.startsWith('rate_limits/') && !path.startsWith('rate_limits_')
+    );
+    expect(businessRecords(mockDb.records)).toEqual(businessRecords(recordsBefore));
+    expect([...mockDb.records.keys()].some((path) => path.startsWith('credit_ledger/'))).toBe(false);
+  });
+
   it('rejects legacy garage creation fields before any write', async () => {
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
     const writesBefore = mockDb.documentWriteCount;
