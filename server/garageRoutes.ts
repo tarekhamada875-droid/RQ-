@@ -1185,6 +1185,33 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const garage = garageSnap.data() || {};
       if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
       const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
+      const commissionDelegateId = isFirstPaidGrant && typeof garage.createdByDelegateId === 'string'
+        ? garage.createdByDelegateId.trim()
+        : '';
+      const commissionDelegateRef = commissionDelegateId
+        ? getAdminDb().collection('delegates').doc(commissionDelegateId)
+        : null;
+      const commissionDelegateSnap = commissionDelegateRef ? await t.get(commissionDelegateRef) : null;
+      if (commissionDelegateRef && !commissionDelegateSnap?.exists) throw new Error('DELEGATE_NOT_FOUND');
+      const commissionDelegateData = commissionDelegateSnap?.data() || {};
+      const currentLifetimeCommission = commissionDelegateRef
+        ? parseMoneyAmount(commissionDelegateData.totalCommissionEarned ?? 0)
+        : null;
+      const currentUnsettledCommission = commissionDelegateRef
+        ? parseMoneyAmount(commissionDelegateData.totalRechargedAmount ?? 0)
+        : null;
+      if (commissionDelegateRef && (currentLifetimeCommission === null || currentUnsettledCommission === null)) {
+        throw new Error('INVALID_DELEGATE_COMMISSION_BALANCE');
+      }
+      const nextLifetimeCommission = commissionDelegateRef
+        ? parseMoneyAmount(currentLifetimeCommission! + 100)
+        : null;
+      const nextUnsettledCommission = commissionDelegateRef
+        ? parseMoneyAmount(currentUnsettledCommission! + 100)
+        : null;
+      if (commissionDelegateRef && (nextLifetimeCommission === null || nextUnsettledCommission === null)) {
+        throw new Error('INVALID_DELEGATE_COMMISSION_BALANCE');
+      }
       const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
       const referralMarkerRef = isFirstPaidGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
       const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
@@ -1253,6 +1280,28 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         idempotencyKey,
         payload: { amount: paymentAmountEgp, creditAmount: amount, creditLedgerEntryId: entry.value.entryId }
       });
+      if (commissionDelegateRef && commissionDelegateId) {
+        t.update(commissionDelegateRef, {
+          totalCommissionEarned: nextLifetimeCommission,
+          totalRechargedAmount: nextUnsettledCommission,
+          updatedAt: now
+        });
+        recordDomainEventInTransaction(t, getAdminDb(), {
+          garageId,
+          aggregateType: 'delegate',
+          aggregateId: commissionDelegateId,
+          eventType: 'commission_earned',
+          actorUid: callerUid,
+          actorRole: 'admin',
+          idempotencyKey: `first_paid_grant_commission:${garageId}`,
+          payload: {
+            delegateId: commissionDelegateId,
+            commissionAmount: 100,
+            sourceCreditGrantId: entry.value.entryId,
+            earnedAt: now.toISOString()
+          }
+        });
+      }
       t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, packageId, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { creditBalance: referralTransition.value.balance }, { merge: true });
@@ -1275,6 +1324,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     });
     return c.json({ success: true, data: granted });
   } catch (error: any) {
+    if (error?.message === 'DELEGATE_NOT_FOUND' || error?.message === 'INVALID_DELEGATE_COMMISSION_BALANCE') {
+      return c.json({ success: false, error: error.message }, 409);
+    }
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
