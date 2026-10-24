@@ -50,7 +50,7 @@ const CAIRO_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 });
 
 function cairoMidnightUtc(dateId: string): Date | null {
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateId);
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(dateId);
   if (!match) return null;
 
   const year = Number(match[1]);
