@@ -49,15 +49,15 @@ describe('AdminPartnerDividendCard dynamic investment projections', () => {
   it('preserves forecast totals when only presentation details are collapsed', () => {
     render(<AdminPartnerDividendCard currentActiveGarages={5} />);
 
-    expect(screen.getByText('72,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('76,800 ج.م')).toBeInTheDocument();
     expect(screen.getByText('60,000 ج.م')).toBeInTheDocument();
-    expect(screen.getByText('12,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('16,800 ج.م')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('3. الجدول الشهري'));
 
-    expect(screen.getByText('72,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('76,800 ج.م')).toBeInTheDocument();
     expect(screen.getByText('60,000 ج.م')).toBeInTheDocument();
-    expect(screen.getByText('12,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('16,800 ج.م')).toBeInTheDocument();
   });
 
 });
