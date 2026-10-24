@@ -6,12 +6,12 @@ describe('AdminPartnerDividendCard dynamic investment projections', () => {
   it('renders the three projection sections and derives results from editable inputs', () => {
     render(<AdminPartnerDividendCard currentActiveGarages={5} />);
 
-    expect(screen.getByRole('heading', { name: 'ابدأ من هنا: بيانات الاستثمار' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'حجم النشاط والإيرادات' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'المصاريف وحصة المستثمرين' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '2. النتائج المتوقعة' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '3. الجدول الشهري' })).toBeInTheDocument();
-    expect(screen.getByText('حاسبة الاستثمار والتوقعات')).toBeInTheDocument();
+    expect(screen.queryByText('حاسبة الاستثمار والتوقعات')).not.toBeInTheDocument();
+    expect(screen.queryByText('ابدأ من هنا: بيانات الاستثمار')).not.toBeInTheDocument();
     expect(screen.queryByText(/الباقة الشهرية/)).not.toBeInTheDocument();
     expect(screen.queryByText(/حصة المؤسس 52/)).not.toBeInTheDocument();
 

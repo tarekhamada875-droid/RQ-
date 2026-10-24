@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Calculator, RotateCcw, TrendingUp, WalletCards } from 'lucide-react';
+import { Calculator, RotateCcw, TrendingUp } from 'lucide-react';
 
 interface AdminPartnerDividendCardProps {
   currentActiveGarages: number;
@@ -129,28 +129,13 @@ export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> =
 
   return (
     <section className="mx-auto max-w-6xl space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6" aria-label="حاسبة الاستثمار">
-      <header className="flex flex-col gap-4 rounded-2xl bg-slate-950 p-5 text-white dark:bg-black sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-slate-950"><Calculator className="h-5 w-5" /></div>
-          <div>
-            <h2 className="text-lg font-black text-white">حاسبة الاستثمار والتوقعات</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-300">غيّر الافتراضات وشاهد أثرها على الإيرادات والربح المتوقع فورًا.</p>
-          </div>
-        </div>
-        <button type="button" onClick={reset} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-xs font-black text-white transition hover:bg-white/10" aria-label="إعادة القيم الافتراضية">
+      <div className="flex justify-end">
+        <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="إعادة القيم الافتراضية">
           <RotateCcw className="h-3.5 w-3.5" /> إعادة الافتراضيات
         </button>
-      </header>
+      </div>
 
       <section className="space-y-4" aria-labelledby="projection-assumptions">
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/70 dark:bg-amber-950/30">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white"><WalletCards className="h-4 w-4" /></div>
-          <div>
-            <h3 id="projection-assumptions" className="text-sm font-black text-slate-900 dark:text-white">ابدأ من هنا: بيانات الاستثمار</h3>
-            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">أدخل الأرقام التي تعرفها فقط. النتائج تتحدث تلقائيًا، ويمكنك ترك الإعدادات الاختيارية كما هي.</p>
-          </div>
-        </div>
-
         <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="activity-inputs">
           <div className="mb-4 flex items-center gap-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white dark:bg-slate-100 dark:text-slate-900">1</span>
