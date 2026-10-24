@@ -619,7 +619,7 @@ describe('garage creation Hono contract', () => {
   it('rejects an already-reserved PIN without creating a garage or activity log', async () => {
     mockDb.clear();
     mockDb.seed('garages/existing-pin-owner', { name: 'Existing PIN Owner' });
-    await saveEntityPin('garages', 'existing-pin-owner', '')28248;
+    await saveEntityPin('garages', 'existing-pin-owner', '91427');
     const before = snapshotRecords();
     const response = await callHonoCreate('valid-admin-token', { name: 'Duplicate PIN Garage', pin: '91427' });
     expect(response.status).toBe(400);
