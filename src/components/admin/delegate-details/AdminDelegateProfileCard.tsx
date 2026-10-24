@@ -7,7 +7,7 @@ import { useAdminTranslation } from '../../../utils/adminTranslations';
 
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
-  adminLang: 'ar' | 'en';
+  adminLang: 'ar';
 }
 
 export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> = memo(({
