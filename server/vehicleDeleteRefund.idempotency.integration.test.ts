@@ -188,4 +188,45 @@ describe('vehicle delete/refund idempotency (Worker route transactions)', () => 
       expect(recordSnapshot(), String(refundAmount)).toEqual(before);
     }
   });
+
+  it('restores prepaid credits once when a refunded vehicle operation is replayed', async () => {
+    seedVehicleFixture(['vehicle-1']);
+    const garagePath = `garages/${garageId}`;
+    const vehiclePath = `garages/${garageId}/vehicles/vehicle-1`;
+    mockDb.seed(garagePath, {
+      ...mockDb.records.get(garagePath),
+      creditBalance: { paid: 5, referral: 0, trial: 0 }
+    });
+    mockDb.seed(vehiclePath, {
+      ...mockDb.records.get(vehiclePath),
+      creditDebit: { amount: 1, bucket: 'paid', ledgerEntryId: 'original-credit-entry' }
+    });
+
+    const refund = { path: '/api/vehicles/delete', vehicleId: 'vehicle-1', refundAmount: 12 } as const;
+    const firstResponse = await callVehicleOperation(refund);
+    expect(firstResponse.status).toBe(200);
+    expect(await firstResponse.json()).toMatchObject({ success: true });
+    expect(mockDb.records.get(garagePath).creditBalance).toEqual({ paid: 6, referral: 0, trial: 0 });
+
+    const creditEntries = [...mockDb.records.entries()]
+      .filter(([path]) => path.startsWith('credit_ledger/'))
+      .map(([, value]) => value);
+    expect(creditEntries).toHaveLength(1);
+    expect(creditEntries[0]).toMatchObject({
+      kind: 'correction_restore',
+      bucket: 'paid',
+      amount: 1,
+      balanceBefore: 5,
+      balanceAfter: 6
+    });
+
+    const afterFirst = recordSnapshot();
+    const writesAfterFirst = mockDb.documentWriteCount;
+    const retryResponse = await callVehicleOperation({ ...refund, path: '/api/vehicles/refund', refundAmount: '12.00' });
+    expect(retryResponse.status).toBe(200);
+    expect(await retryResponse.json()).toMatchObject({ success: true });
+    expect(mockDb.documentWriteCount).toBe(writesAfterFirst);
+    expect(recordSnapshot()).toEqual(afterFirst);
+    expect(mockDb.records.get(garagePath).creditBalance).toEqual({ paid: 6, referral: 0, trial: 0 });
+  });
 });
