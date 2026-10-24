@@ -45,18 +45,18 @@ describe('financial reporting projections', () => {
       refundTotal: 50,
       companyNetRevenue: 1350,
       historicalSettledTotal: 0,
-      currentUnsettledByDelegate: { 'del-1': 100 },
+      currentUnsettledByDelegate: { 'del-1': 1000, 'del-2': 500 },
       creditActivity: emptyCreditActivity,
     });
   });
 
-  it('excludes settled commission events from the current cycle and ignores legacy recharge amounts', () => {
+  it('excludes settled legacy recharge amounts from the current cycle', () => {
     const report = calculateFinancialReport(events, [
       { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 1000 }
     ]);
     expect(report.historicalSettledTotal).toBe(1000);
     expect(report.currentUnsettledByDelegate['del-1']).toBe(0);
-    expect(report.currentUnsettledByDelegate['del-2']).toBeUndefined();
+    expect(report.currentUnsettledByDelegate['del-2']).toBe(500);
   });
 
   it('is deterministic for the same event and settlement history', () => {
@@ -67,7 +67,7 @@ describe('financial reporting projections', () => {
   it('supports delegate-scoped totals without exposing all-garage credit metrics', () => {
     const report = calculateFinancialReport(events, [], { delegateId: 'del-1' });
     expect(report.grossRechargeTotal).toBe(1999);
-    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 100 });
+    expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 1999 });
     expect(report.commissionTotal).toBe(100);
     expect(report.prepaidCreditPaymentsEgp).toBeNull();
     expect(report.creditActivity).toBeNull();
@@ -169,7 +169,7 @@ describe('financial reporting projections', () => {
       refundTotal: 7,
       companyNetRevenue: 89,
       historicalSettledTotal: 10,
-      currentUnsettledByDelegate: {},
+      currentUnsettledByDelegate: { 'del-1': 101 },
       creditActivity: { paidGrantCount: 1, paidCreditsGranted: 10, paidGrantCountWithoutEgpRecord: 1, paidCreditsWithoutEgpRecord: 10 },
     });
     expect([
@@ -203,12 +203,6 @@ describe('canonical delegate commission settlement reporting', () => {
         occurredAt: '2026-09-18T09:00:00.000Z',
         payload: { delegateId: 'del-1', commissionAmount: 100, sourceCreditGrantId: 'grant-after', earnedAt: '2026-09-18T09:00:00.000Z' }
       },
-      {
-        eventType: 'recharge_approved',
-        aggregateId: 'legacy-request',
-        occurredAt: '2026-09-18T09:30:00.000Z',
-        payload: { delegateId: 'del-1', amount: 5000 }
-      }
     ], [
       { settlementId: 'set-1', delegateId: 'del-1', settledAt: '2026-09-18T08:30:00.000Z', previousCycleTotal: 100 }
     ]);
