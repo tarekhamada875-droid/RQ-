@@ -214,14 +214,21 @@ export function debitSubscriberRenewal(command: CreditDebitCommand): PrepaidCred
   if (!validBalance(command.balance)) return { ok: false, error: 'INVALID_CREDIT_BALANCE' };
   if (!isValidPositiveInteger(command.amount)) return { ok: false, error: 'INVALID_CREDIT_AMOUNT' };
   if (command.balance.paid < command.amount) return { ok: false, error: 'INSUFFICIENT_PAID_CREDITS' };
+  const balance = {
+    paid: command.balance.paid - command.amount,
+    referral: command.balance.referral,
+    trial: command.balance.trial,
+  };
+  const totalAfter = balance.paid + balance.referral + balance.trial;
+  if (!Number.isSafeInteger(totalAfter)) return { ok: false, error: 'CREDIT_BALANCE_OVERFLOW' };
   return transition(
     command,
     'subscriber_renewal_debit',
     'paid',
     command.amount,
     command.balance.paid,
-    command.balance.paid - command.amount,
-    { paid: command.balance.paid - command.amount, referral: command.balance.referral, trial: command.balance.trial },
+    balance.paid,
+    balance,
   );
 }
 

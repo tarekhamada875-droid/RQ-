@@ -78,6 +78,11 @@ describe('prepaid credit ledger', () => {
       value: { balance: { trial: 0, paid: 0, referral: 20 }, entry: { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5 } },
     });
     expect(debitSubscriberRenewal({ ...base, balance: { trial: 0, paid: 0, referral: 20 }, amount: 5 })).toEqual({ ok: false, error: 'INSUFFICIENT_PAID_CREDITS' });
+    expect(debitSubscriberRenewal({
+      ...base,
+      balance: { paid: 5, referral: Number.MAX_SAFE_INTEGER, trial: 1 },
+      amount: 1,
+    })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
   it('restores the original bucket for an authorized correction and rejects unsafe total balances', () => {
