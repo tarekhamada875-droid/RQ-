@@ -446,8 +446,6 @@ export function useGarageApp() {
     garageDeletionProgress,
     showLogoutConfirm,
     setShowLogoutConfirm,
-    showPackages,
-    setShowPackages,
     showStaffStats,
     setShowStaffStats,
     showSubscribers,
