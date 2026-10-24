@@ -215,6 +215,24 @@ export function useAdminAndGarageManagement({
           } else {
             showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
           }
+
+          // A failed claim can have committed remotely even when its response was lost.
+          // Release only this exact attempted session; never touch an occupied session.
+          const sessionOccupied =
+            errMsg === 'SESSION_OCCUPIED' ||
+            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
+            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
+            errMsg.includes('مستخدم على جهاز آخر');
+          if (!sessionOccupied) {
+            await releaseEntitySession({
+              role: role as EntityRole,
+              entityId,
+              sessionId,
+              uid,
+            }).catch((releaseError) => {
+              console.warn('Failed to release uncertain login claim:', releaseError);
+            });
+          }
           return;
         }
       }
