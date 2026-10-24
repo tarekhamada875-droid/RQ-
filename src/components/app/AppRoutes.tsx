@@ -21,7 +21,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
   const { session, navigationUi, garageData, vehicleOperations, adminManagement } = app;
   const { view, setView, selectedGarageForDetails, selectedDelegateForDetails } = navigationUi;
   const { isAuthReady, currentStaff, currentSupervisor, handleInitiateLogout } = session;
-  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, sortedPackages, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
+  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
   const { isLoading, setIsLoading, newPlateNumber, setNewPlateNumber, setSelectedVehicle, handleCheckIn, setShowCheckOutModal } = vehicleOperations;
   const { activeAdminPin, handleGarageLogin, handleDelegateLogin, createNewGarage, updateGarageRate, addDelegate, removeDelegate } = adminManagement;
   const { loginPhone, setLoginPhone, showToast, closeKeyboard, isInputFocused, setIsInputFocused, plateInputRef, inputRef, now, showStaffStats, setShowStaffStats, showSubscribers, setShowSubscribers } = navigationUi;
