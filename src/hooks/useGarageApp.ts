@@ -82,7 +82,6 @@ export function useGarageApp() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [garageDeletionProgress, setGarageDeletionProgress] = useState<GarageDeletionProgress | null>(null);
 
-  const [showPackages, setShowPackages] = useLocalStorageState<boolean>('app_show_packages', false);
   const [showStaffStats, setShowStaffStats] = useLocalStorageState<boolean>('app_show_staff_stats', false);
   const [showSubscribers, setShowSubscribers] = useLocalStorageState<boolean>('app_show_subscribers', false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -314,8 +313,6 @@ export function useGarageApp() {
     showDeleteConfirm,
     setShowDeleteConfirm,
     garageDeletionProgress,
-    showPackages,
-    setShowPackages,
     showStaffStats,
     setShowStaffStats,
     showSubscribers,
@@ -449,8 +446,6 @@ export function useGarageApp() {
     garageDeletionProgress,
     showLogoutConfirm,
     setShowLogoutConfirm,
-    showPackages,
-    setShowPackages,
     showStaffStats,
     setShowStaffStats,
     showSubscribers,
