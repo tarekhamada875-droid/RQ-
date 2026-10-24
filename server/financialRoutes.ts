@@ -241,6 +241,53 @@ const handleSettleDelegateAccount = async (c: any) => {
 app.post('/api/delegate/withdraw-commission', requireWorkerAuth, handleSettleDelegateAccount);
 app.post('/api/delegates/settle-account', requireWorkerAuth, handleSettleDelegateAccount);
 
+// Admin-only commission history for the delegate detail screen. Commission events
+// are the canonical source for fixed first-paid-grant commissions; legacy recharge
+// activity logs remain available separately for historical sales.
+app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorkerFinancialRateLimit, async (c: any) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const delegateId = validateId(c.req.param('id'), 'id', true);
+    const delegateSnap = await getAdminDb().collection('delegates').doc(delegateId).get();
+    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+
+    const snapshot = await getAdminDb().collectionGroup('events')
+      .where('payload.delegateId', '==', delegateId)
+      .get();
+    const items = snapshot.docs
+      .map((document: any) => document.data() || {})
+      .filter((event: any) => event.eventType === 'commission_earned' || event.eventType === 'delegate_settled')
+      .map((event: any) => ({
+        eventId: String(event.eventId || ''),
+        eventType: event.eventType,
+        occurredAt: String(event.occurredAt || ''),
+        garageId: typeof event.garageId === 'string' ? event.garageId : undefined,
+        commissionAmount: event.eventType === 'commission_earned' && Number.isFinite(event.payload?.commissionAmount)
+          ? Number(event.payload.commissionAmount)
+          : undefined,
+        previousRechargedAmount: event.eventType === 'delegate_settled' && Number.isFinite(event.payload?.previousRechargedAmount)
+          ? Number(event.payload.previousRechargedAmount)
+          : undefined,
+        settlementId: event.eventType === 'delegate_settled' && typeof event.payload?.settlementId === 'string'
+          ? event.payload.settlementId
+          : undefined,
+        sourceCreditGrantId: event.eventType === 'commission_earned' && typeof event.payload?.sourceCreditGrantId === 'string'
+          ? event.payload.sourceCreditGrantId
+          : undefined
+      }))
+      .sort((a: any, b: any) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+
+    return c.json({ success: true, items });
+  } catch (error: any) {
+    console.error('[Worker Delegate] Error loading commission history:', error);
+    return c.json({ success: false, error: error?.message || 'COMMISSION_HISTORY_FAILED' }, 500);
+  }
+});
+
 // Handler 9: Financial Summary Report (GET /api/financial-summary & GET /api/reports/financial)
 const handleFinancialSummaryReport = async (c: any) => {
   try {
