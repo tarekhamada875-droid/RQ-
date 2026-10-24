@@ -31,6 +31,21 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.getByRole('region', { name: /إضافة رصيد يدوي/ })).toBeTruthy();
   });
 
+  it('accepts Arabic-Indic and Persian digits in the credit amount', async () => {
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '٢٠' } });
+    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-arabic-123' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+
+    await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+      amount: 20,
+      paymentAmountEgp: 20,
+      paymentReference: 'receipt-arabic-123',
+      paymentConfirmed: true,
+    })));
+  });
+
   it('requires a valid whole-number credit amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
