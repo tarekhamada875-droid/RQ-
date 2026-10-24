@@ -138,6 +138,7 @@ export interface Delegate {
   canCreateGarage?: boolean;
   /** Legacy read-only field retained for old documents; Worker rejects writes. */
   commissionRate?: number;
+  /** Legacy-named Worker balance for unsettled delegate commission; not gross recharge sales. */
   totalRechargedAmount?: number;
   totalCommissionEarned?: number;
   lastSettledAt?: any; // Timestamp
@@ -159,10 +160,11 @@ export interface ActivityLog {
   garageId: string;
   staffId: string | null;
   staffName: string;
-  actionType: 'check_in' | 'check_out' | 'recharge' | 'delete_refund' | 'commission_payment' | 'balance_topup' | 'self_subscribe';
+  actionType: 'check_in' | 'check_out' | 'recharge' | 'delete_refund' | 'commission_payment' | 'commission_earned' | 'balance_topup' | 'self_subscribe';
   plateNumber: string;
   timestamp: any;
   amount?: number;
+  commission?: number;
   packageId?: string;
   garageName?: string;
   operatorId?: string;

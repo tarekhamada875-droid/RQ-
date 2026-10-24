@@ -6,6 +6,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { Trash2, History, Check } from 'lucide-react';
 import { Delegate, ActivityLog } from '../../types';
+import type { DelegateCommissionHistoryItem } from '../../services/delegateService';
 import { firestoreService } from '../../services';
 import { safeDate } from '../../utils';
 import { 
@@ -34,6 +35,7 @@ export const AdminDelegateDetailsView = memo(({
   removeDelegate
 }: AdminDelegateDetailsViewProps) => {
   const [recharges, setRecharges] = useState<ActivityLog[]>([]);
+  const [commissionEvents, setCommissionEvents] = useState<DelegateCommissionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
@@ -58,27 +60,33 @@ export const AdminDelegateDetailsView = memo(({
     let isCurrent = true;
     setIsLoading(true);
     setRecharges([]);
+    setCommissionEvents([]);
     setHistoryTotal(0);
 
     const fetchHistory = async () => {
-      try {
-        const logsData = await firestoreService.getDelegateRecharges(delegate.id);
-        if (!isCurrent) return;
+      const [rechargeResult, commissionResult] = await Promise.allSettled([
+        firestoreService.getDelegateRecharges(delegate.id),
+        firestoreService.getDelegateCommissionHistory(delegate.id)
+      ]);
+      if (!isCurrent) return;
 
-        setRecharges(logsData || []);
-
-        // Calculate sum from history for initial display if totalRechargedAmount is missing or 0
-        const items = (logsData || []).filter(log => log.actionType === 'recharge');
-        const sum = items.reduce((acc, log) => {
-          if (typeof log.amount === 'number' && !isNaN(log.amount)) return acc + log.amount;
-          return acc;
-        }, 0);
+      if (rechargeResult.status === 'fulfilled') {
+        const logsData = rechargeResult.value || [];
+        setRecharges(logsData);
+        const sum = logsData
+          .filter(log => log.actionType === 'recharge')
+          .reduce((acc, log) => typeof log.amount === 'number' && Number.isFinite(log.amount) ? acc + log.amount : acc, 0);
         setHistoryTotal(sum);
-      } catch (error) {
-        if (isCurrent) console.error('Failed to fetch delegate recharges:', error);
-      } finally {
-        if (isCurrent) setIsLoading(false);
+      } else {
+        console.error('Failed to fetch delegate recharges:', rechargeResult.reason);
       }
+
+      if (commissionResult.status === 'fulfilled') {
+        setCommissionEvents(commissionResult.value || []);
+      } else {
+        console.error('Failed to fetch canonical delegate commission history:', commissionResult.reason);
+      }
+      setIsLoading(false);
     };
     void fetchHistory();
 
@@ -115,8 +123,23 @@ export const AdminDelegateDetailsView = memo(({
     });
   };
 
-  // Preserve the audited activity-log history used by delegate settlement calculations.
-  const activeDataset = recharges;
+  // Recharge logs remain the sales source; fixed commissions come from Worker-owned
+  // domain events so monthly stats and settlement history use the canonical ledger.
+  const commissionActivityLogs: ActivityLog[] = commissionEvents
+    .filter((event) => event.eventType === 'commission_earned')
+    .map((event) => ({
+      id: event.eventId,
+      garageId: event.garageId || '',
+      staffId: delegate.id,
+      staffName: delegate.name,
+      actionType: 'commission_earned',
+      plateNumber: 'عمولة أول شحن مدفوع',
+      timestamp: event.occurredAt,
+      amount: 0,
+      commission: event.commissionAmount || 0
+    }));
+  const activeDataset: ActivityLog[] = [...recharges, ...commissionActivityLogs]
+    .sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
 
   // Monthly calculations logic
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');
@@ -141,7 +164,7 @@ export const AdminDelegateDetailsView = memo(({
     return d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
   };
 
-  // Unique list of months with recharge activity
+  // Include months with either recharge activity or canonical commission events
   const availableMonths = React.useMemo(() => {
     return getAvailableRequestMonths(activeDataset, currentMonthKey);
   }, [activeDataset, currentMonthKey]);
@@ -161,36 +184,34 @@ export const AdminDelegateDetailsView = memo(({
   const totalRecharged = React.useMemo(() => {
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-      return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
+      return Math.max(calculated, historyTotal);
     }
     return calculateApprovedRechargeTotal(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, delegate.totalRechargedAmount, historyTotal, selectedPeriodDataset]);
+  }, [activeDataset, activeMonthKey, historyTotal, selectedPeriodDataset]);
 
   const allTimeTotal = React.useMemo(() => {
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-    return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
-  }, [activeDataset, delegate.totalRechargedAmount, historyTotal]);
+    return Math.max(calculated, historyTotal);
+  }, [activeDataset, historyTotal]);
 
   const commissionValue = React.useMemo(() => {
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedCommission(activeDataset, 'all');
-      return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
+      return Math.max(calculated, delegate.totalCommissionEarned || 0);
     }
     return calculateApprovedCommission(selectedPeriodDataset, activeMonthKey);
   }, [activeDataset, activeMonthKey, delegate.totalCommissionEarned, selectedPeriodDataset]);
 
   const allTimeCommission = React.useMemo(() => {
     const calculated = calculateApprovedCommission(activeDataset, 'all');
-    return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
+    return Math.max(calculated, delegate.totalCommissionEarned || 0);
   }, [activeDataset, delegate.totalCommissionEarned]);
 
-  // Unsettled total since last manual settlement
-  const unsettledCycleTotal = (() => {
-    if (!effectiveLastSettledAt) {
-      return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : historyTotal;
-    }
-    return calculateApprovedRechargeTotal(currentCycleDataset, 'all');
-  })();
+  // This legacy-named field is the Worker-maintained unsettled commission balance,
+  // not gross recharge sales. Fall back to the canonical commission events only when absent.
+  const unsettledCycleTotal = typeof delegate.totalRechargedAmount === 'number'
+    ? delegate.totalRechargedAmount
+    : calculateApprovedCommission(currentCycleDataset, 'all');
 
   const handleSettleAccount = () => {
     setConfirmDialog({
@@ -267,7 +288,7 @@ export const AdminDelegateDetailsView = memo(({
 
           {/* History Section */}
           <AdminDelegateHistorySection 
-            recharges={recharges}
+            recharges={activeDataset}
             isLoading={isLoading}
             adminLang={adminLang}
           />

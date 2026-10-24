@@ -31,8 +31,8 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
             <History className="w-5 h-5" />
           </div>
           <div className="text-right">
-            <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('سجل الشحن')}</h3>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">عرض آخر 50 معاملة</p>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">{t('سجل الشحن والعمولات')}</h3>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">عرض آخر معاملات الشحن والعمولات</p>
           </div>
         </div>
         <div className={`w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 transition-all ${showHistory ? 'rotate-180' : ''}`}>
@@ -61,8 +61,8 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
                     <History className="w-8 h-8" />
                   </div>
                   <div>
-                    <h4 className="text-slate-900 dark:text-white font-bold">{t('لا يوجد سجلات شحن')}</h4>
-                    <p className="text-slate-400 text-xs mt-1">{t('لم يقم المندوب بأي عمليات شحن بعد')}</p>
+                    <h4 className="text-slate-900 dark:text-white font-bold">{t('لا توجد سجلات شحن أو عمولات')}</h4>
+                    <p className="text-slate-400 text-xs mt-1">{t('لم يتم تسجيل عمليات شحن أو عمولات لهذا المندوب بعد')}</p>
                   </div>
                 </div>
               ) : (
@@ -72,7 +72,7 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">
-                            {log.plateNumber}
+                            {log.actionType === 'commission_earned' ? 'عمولة أول شحن مدفوع' : log.plateNumber}
                           </p>
                           <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 transition-colors">
                             <Calendar className="w-3 h-3" />
@@ -80,7 +80,7 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
                           </div>
                         </div>
                         <div className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black transition-colors uppercase tracking-widest">
-                          ناجح
+                          {log.actionType === 'commission_earned' ? `عمولة ${new Intl.NumberFormat('ar-EG').format(log.commission || 0)} ج.م` : 'ناجح'}
                         </div>
                       </div>
                     </div>

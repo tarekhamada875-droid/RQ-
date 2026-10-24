@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../utils/ThemeContext';
 
 const serviceMocks = vi.hoisted(() => ({
   getDelegateRecharges: vi.fn().mockResolvedValue([]),
+  getDelegateCommissionHistory: vi.fn().mockResolvedValue([]),
   settleDelegateAccount: vi.fn().mockResolvedValue(undefined),
   updateDelegate: vi.fn().mockResolvedValue(undefined),
   isPinTaken: vi.fn().mockResolvedValue({ taken: false })
@@ -39,6 +40,7 @@ const renderDetails = (delegate: Delegate = mockDelegate) => render(
 describe('AdminDelegateDetailsView Component', () => {
   beforeEach(() => {
     serviceMocks.getDelegateRecharges.mockReset().mockResolvedValue([]);
+    serviceMocks.getDelegateCommissionHistory.mockReset().mockResolvedValue([]);
   });
 
   it('renders delegate profile details and stats cards', async () => {
@@ -46,7 +48,7 @@ describe('AdminDelegateDetailsView Component', () => {
 
     expect((await screen.findAllByText('Ahmed Delegate')).length).toBeGreaterThan(0);
     expect(screen.getByText('01012345678')).toBeInTheDocument();
-    expect(screen.getByText('سجل الشحن')).toBeInTheDocument();
+    expect(screen.getByText('سجل الشحن والعمولات')).toBeInTheDocument();
   });
 
   it('renders retained historical activity logs and includes them in totals and commission', async () => {
@@ -62,10 +64,10 @@ describe('AdminDelegateDetailsView Component', () => {
     }]);
 
     renderDetails({ ...mockDelegate, totalRechargedAmount: 0, totalCommissionEarned: 0 });
-    fireEvent.click(await screen.findByText('سجل الشحن'));
+    fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
 
     expect(await screen.findByText('HISTORIC-RECHARGE-1')).toBeInTheDocument();
-    expect(screen.getByText('عرض آخر 50 معاملة')).toBeInTheDocument();
+    expect(screen.getByText('عرض آخر معاملات الشحن والعمولات')).toBeInTheDocument();
     expect(screen.getByText('ناجح')).toBeInTheDocument();
     expect(screen.getAllByText('1,500').length).toBeGreaterThan(0);
     expect(screen.getAllByText('150').length).toBeGreaterThan(0);
@@ -93,7 +95,7 @@ describe('AdminDelegateDetailsView Component', () => {
       </ThemeProvider>
     );
 
-    fireEvent.click(await screen.findByText('سجل الشحن'));
+    fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
     resolveNew([{
       id: 'new-history',
       garageId: 'garage-history',
@@ -121,6 +123,40 @@ describe('AdminDelegateDetailsView Component', () => {
       expect(screen.queryByText('OLD-HISTORY')).not.toBeInTheDocument();
       expect(screen.getByText('NEW-HISTORY')).toBeInTheDocument();
     });
+  });
+
+  it('shows first-grant commission events in monthly stats without counting them as sales', async () => {
+    serviceMocks.getDelegateRecharges.mockResolvedValue([{
+      id: 'small-recharge',
+      garageId: 'garage-1',
+      staffId: 'del-123',
+      staffName: 'Ahmed Delegate',
+      actionType: 'recharge',
+      amount: 20,
+      commission: 0,
+      plateNumber: 'SMALL-RECHARGE',
+      timestamp: new Date()
+    }]);
+    serviceMocks.getDelegateCommissionHistory.mockResolvedValue([{
+      eventId: 'commission-event-1',
+      eventType: 'commission_earned',
+      occurredAt: new Date().toISOString(),
+      garageId: 'garage-1',
+      commissionAmount: 100,
+      sourceCreditGrantId: 'credit-entry-1'
+    }]);
+
+    renderDetails({ ...mockDelegate, totalRechargedAmount: 100, totalCommissionEarned: 100 });
+    fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
+    await screen.findByText('SMALL-RECHARGE');
+
+    // Gross sales come from recharge activity, not the unsettled commission balance.
+    expect(screen.getAllByText('20').length).toBeGreaterThan(0);
+    // The canonical Worker commission event is reflected in the current-month card.
+    expect(screen.getAllByText('100').length).toBeGreaterThan(0);
+    expect(serviceMocks.getDelegateCommissionHistory).toHaveBeenCalledWith('del-123');
+
+    expect(await screen.findByText('عمولة أول شحن مدفوع')).toBeInTheDocument();
   });
 
 });

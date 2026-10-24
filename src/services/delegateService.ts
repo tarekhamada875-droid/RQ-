@@ -21,6 +21,17 @@ export interface DelegateDashboardData {
 }
 
 export type DelegateDashboardSection = 'createdGarages' | 'referredGarages';
+export interface DelegateCommissionHistoryItem {
+  eventId: string;
+  eventType: 'commission_earned' | 'delegate_settled';
+  occurredAt: string;
+  garageId?: string;
+  commissionAmount?: number;
+  previousRechargedAmount?: number;
+  settlementId?: string;
+  sourceCreditGrantId?: string;
+}
+
 export interface DelegateDashboardPage {
   items: Garage[];
   hasMore: boolean;
@@ -176,12 +187,25 @@ export const delegateService = {
     }
   },
 
+  getDelegateCommissionHistory: async (delegateId: string): Promise<DelegateCommissionHistoryItem[]> => {
+    try {
+      const response = await apiFetch<{ items: DelegateCommissionHistoryItem[] }>(
+        `/api/delegates/${encodeURIComponent(delegateId)}/commission-history`
+      );
+      return Array.isArray(response.items) ? response.items : [];
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, `delegates/${delegateId}/commission-history`);
+      throw error;
+    }
+  },
+
   getDelegateRecharges: async (delegateId: string) => {
     try {
       const q = query(
         collection(db, 'activity_logs'),
         where('staffId', '==', delegateId),
         where('actionType', '==', 'recharge'),
+        orderBy('timestamp', 'desc'),
         limit(50)
       );
       const snapshot = await getDocs(q);
