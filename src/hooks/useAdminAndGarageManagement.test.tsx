@@ -224,6 +224,35 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     expect(props.refreshAdminLists).toHaveBeenCalledTimes(2);
   });
 
+  it('releases the exact attempted session when a login claim fails ambiguously', async () => {
+    mocks.authenticateUserCredentials.mockResolvedValue({
+      ...staffAuthResult,
+      sessionClaimed: false
+    });
+    mocks.claimEntitySession.mockRejectedValue(new Error('network timeout'));
+    const props = createProps();
+    const { result } = renderHook(() => useAdminAndGarageManagement(props));
+
+    await act(async () => {
+      await result.current.handleGarageLogin();
+    });
+
+    expect(mocks.claimEntitySession).toHaveBeenCalledWith({
+      role: 'staff',
+      entityId: 'staff-1',
+      sessionId: 'session-1',
+      uid: 'staff-login-user',
+      pin: '12345678'
+    });
+    expect(mocks.releaseEntitySession).toHaveBeenCalledWith({
+      role: 'staff',
+      entityId: 'staff-1',
+      sessionId: 'session-1',
+      uid: 'staff-login-user'
+    });
+    expect(props.setView).not.toHaveBeenCalledWith('garage');
+  });
+
   it('reuses the status-check snapshot on successful login and scrubs garage PIN', async () => {
     mocks.getDoc.mockResolvedValue(createSnapshot(true, {
       name: 'Test Garage',
