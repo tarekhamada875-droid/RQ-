@@ -40,8 +40,8 @@ describe('AdminPeopleView delegate creation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
     fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: '12345678' } });
+    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
+    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر على الخادم إضافة المندوب (رقم التتبع: delegate-ref-500).')).toBeInTheDocument();
@@ -60,8 +60,8 @@ describe('AdminPeopleView delegate creation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
     fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: '12345678' } });
+    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
+    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();
@@ -80,8 +80,8 @@ describe('AdminPeopleView delegate creation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
     fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: '12345678' } });
+    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
+    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();
@@ -112,6 +112,6 @@ describe('AdminPeopleView Arabic-only interface', () => {
     expect(screen.getByText('إضافة مندوب جديد للنظام')).toBeInTheDocument();
     expect(screen.getByText('الاسم بالكامل')).toBeInTheDocument();
     expect(screen.getByText('رقم الهاتف')).toBeInTheDocument();
-    expect(screen.getByText('رمز الدخول (8 أرقام بالضبط)')).toBeInTheDocument();
+    expect(screen.getByText('رمز الدخول (5 أرقام بالضبط)')).toBeInTheDocument();
   });
 });

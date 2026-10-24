@@ -55,8 +55,8 @@ export const AdminPeopleView = memo(({
     const cleanPhone = normalizeDigits(delegateForm.phone || '').trim();
     const cleanPin = normalizeDigits(delegateForm.pin || '').replace(/\D/g, '');
     if (!cleanName || !cleanPhone) return;
-    if (!/^\d{8}$/.test(cleanPin)) {
-      setDelegatePinError('رمز الدخول يجب أن يكون 8 أرقام بالضبط.');
+    if (!/^\d{5}$/.test(cleanPin)) {
+      setDelegatePinError('رمز الدخول يجب أن يكون 5 أرقام بالضبط.');
       return;
     }
 
@@ -178,19 +178,19 @@ export const AdminPeopleView = memo(({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رمز الدخول (8 أرقام بالضبط)</label>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رمز الدخول (5 أرقام بالضبط)</label>
               <div className="relative">
                 <input
                   type="tel"
                   inputMode="numeric"
                   value={delegateForm.pin}
                   onChange={(e) => {
-                    const cleanPin = normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8);
+                    const cleanPin = normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5);
                     setDelegateForm({ ...delegateForm, pin: cleanPin });
                   }}
-                  placeholder="••••••••"
-                  minLength={8}
-                  maxLength={8}
+                  placeholder="•••••"
+                  minLength={5}
+                  maxLength={5}
                   required
                   className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center tracking-[0.3em] transition-all px-10"
                 />

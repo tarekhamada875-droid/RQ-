@@ -265,8 +265,8 @@ export const AdminGarageDetailsView = memo(({
 
   const handleSaveGaragePin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{8}$/.test(garagePinInput)) {
-      setPinError('يجب أن يكون الرمز 8 أرقام بالضبط');
+    if (!/^\d{5}$/.test(garagePinInput)) {
+      setPinError('يجب أن يكون الرمز 5 أرقام بالضبط');
       return;
     }
     setIsUpdatingGaragePin(true);
