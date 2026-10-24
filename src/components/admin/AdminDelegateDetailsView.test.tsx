@@ -95,7 +95,7 @@ describe('AdminDelegateDetailsView Component', () => {
       </ThemeProvider>
     );
 
-    fireEvent.click(await screen.findByText('سجل الشحن'));
+    fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
     resolveNew([{
       id: 'new-history',
       garageId: 'garage-history',
