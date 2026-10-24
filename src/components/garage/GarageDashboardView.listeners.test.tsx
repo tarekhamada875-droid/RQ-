@@ -228,6 +228,21 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     expect(announcementUnsubscribe).toHaveBeenCalledOnce();
   });
 
+  it('counts only subscribers expiring today through three days from now using the Cairo business day', async () => {
+    const now = new Date('2026-10-24T12:00:00.000Z');
+    render(<DashboardHarness now={now} />);
+
+    await waitFor(() => expect(subscriberListeners).toHaveLength(1));
+    act(() => subscriberListeners[0].callback([
+      { id: 'expired-yesterday', endDate: '2026-10-23' },
+      { id: 'expires-today', endDate: '2026-10-24' },
+      { id: 'expires-in-three-days', endDate: '2026-10-27' },
+      { id: 'expires-in-four-days', endDate: '2026-10-28' },
+    ], { lastDoc: null, hasMore: false }));
+
+    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('2');
+  });
+
   it('expires an unacknowledged recharge notification with a targeted timer', () => {
     vi.useFakeTimers();
     try {
