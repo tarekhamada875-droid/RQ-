@@ -810,7 +810,12 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { name, phone, pin, commissionRate, commissions } = body;
+    const retiredField = ['commissionRate', 'commissions', 'balance', 'totalEarned']
+      .find((field) => body[field] !== undefined);
+    if (retiredField) {
+      return c.json({ success: false, error: 'RETIRED_DELEGATE_FIELD', field: retiredField }, 400);
+    }
+    const { name, phone, pin } = body;
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPhone = phone ? String(phone).trim() : '';
     const normPin = validateNewPin(pin);
@@ -834,10 +839,8 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
       t.set(delRef, {
         name: normName.trim(),
         phone: normPhone,
-        commissionRate: commissionRate !== undefined ? Number(commissionRate) : 10,
-        commissions: commissions || { daily: 5, weekly: 15, biweekly: 25, monthly: 50 },
-        balance: 0,
-        totalEarned: 0,
+        totalCommissionEarned: 0,
+        totalRechargedAmount: 0,
         createdAt: new Date()
       });
       writeMaintainedAdminDelta(t, { totalDelegates: 1 });
@@ -861,11 +864,16 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id, name, phone, commissionRate, commissions, pin } = body;
+    const { id, name, phone, pin } = body;
     if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const delegateId = validateId(id, 'id', true);
+    const retiredField = ['commissionRate', 'commissions', 'balance', 'totalEarned']
+      .find((field) => body[field] !== undefined);
+    if (retiredField) {
+      return c.json({ success: false, error: 'RETIRED_DELEGATE_FIELD', field: retiredField }, 400);
+    }
     const unsupportedFields = Object.keys(body).filter((field) =>
-      !['id', 'name', 'phone', 'commissionRate', 'commissions', 'pin'].includes(field)
+      !['id', 'name', 'phone', 'pin'].includes(field)
     );
     if (unsupportedFields.length > 0) {
       return c.json({ success: false, error: `UNSUPPORTED_FIELDS: ${unsupportedFields.join(',')}` }, 400);
@@ -880,8 +888,6 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
     const updates: Record<string, any> = { updatedAt: new Date() };
     if (name) updates.name = String(name).trim();
     if (phone !== undefined) updates.phone = String(phone).trim();
-    if (commissionRate !== undefined) updates.commissionRate = Number(commissionRate);
-    if (commissions) updates.commissions = commissions;
 
     const delegateRef = getAdminDb().collection('delegates').doc(delegateId);
     await getAdminDb().runTransaction(async (t: any) => {
