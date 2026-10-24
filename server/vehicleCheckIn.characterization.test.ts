@@ -13,7 +13,6 @@ const baseGarage = {
   activePackageName: 'Legacy package',
   billingModel: 'subscription',
 };
-const command = { today: '2026-09-24', nowMs: Date.parse('2026-09-24T12:00:00.000Z'), plateNumber: 'ABC 123', plateNumberRaw: 'ABC123' };
 const garage = () => garageDocumentToCheckInState(baseGarage, false);
 
 describe('credit-only vehicle check-in authorization', () => {
