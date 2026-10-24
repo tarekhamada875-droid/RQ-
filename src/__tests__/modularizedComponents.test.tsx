@@ -9,6 +9,8 @@ import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
+import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
+import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
@@ -329,5 +331,37 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.getByText('جراج النصر النموذجي')).toBeDefined();
     // Brand footer
     expect(screen.getByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeDefined();
+  });
+});
+
+
+describe('Arabic-only shared interface', () => {
+  it('renders landscape tariff labels and currency only in Arabic', () => {
+    render(<LandscapeMobileView garage={mockGarage} />);
+
+    expect(screen.getByText('تعريفة الساعة')).toBeDefined();
+    expect(screen.getByText('المبيت')).toBeDefined();
+    expect(screen.getAllByText('جنيه مصري')).toHaveLength(2);
+    expect(screen.queryByText('TARIFF PER HOUR')).toBeNull();
+    expect(screen.queryByText('OVERNIGHT STAY')).toBeNull();
+    expect(screen.queryByText('EGP / جنيه')).toBeNull();
+  });
+
+  it('does not expose internal exception details in the error recovery screen', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const BrokenChild = () => {
+      throw new Error('sensitive_internal_error_detail');
+    };
+
+    render(
+      <ErrorBoundary>
+        <BrokenChild />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('عفواً، حدث خطأ مفاجئ')).toBeDefined();
+    expect(screen.getByText('تنشيط الصفحة الآن')).toBeDefined();
+    expect(screen.queryByText('sensitive_internal_error_detail')).toBeNull();
+    consoleError.mockRestore();
   });
 });
