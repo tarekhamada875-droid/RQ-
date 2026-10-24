@@ -404,7 +404,6 @@ export const AdminDashboard = memo(({
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           currentAdminPin={currentAdminPin}
-          adminLang={adminLang}
           t={t}
           showToast={showToast}
           onLogout={onLogout}
