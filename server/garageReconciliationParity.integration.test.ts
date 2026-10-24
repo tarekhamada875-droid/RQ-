@@ -594,7 +594,7 @@ describe('garage creation Hono contract', () => {
     mockDb.clear();
     seedDelegateGarages(2);
     const response = await callHonoCreate('valid-delegate-token-delegate-a', {
-      name: 'Synthetic Delegate Garage', pin: '73916', isTrial: true,
+      name: 'Synthetic Delegate Garage', pin: '73916',
       createdByDelegateName: 'Delegate A', referrerName: 'Delegate A'
     });
     const result = await response.json() as any;
