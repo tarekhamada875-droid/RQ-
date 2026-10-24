@@ -19,7 +19,7 @@ export class ValidationError extends Error {
   }
 }
 
-export const NEW_PIN_LENGTH = 8;
+export const NEW_PIN_LENGTH = 5;
 
 /**
  * Validates PINs written by current create/change flows. Login intentionally
