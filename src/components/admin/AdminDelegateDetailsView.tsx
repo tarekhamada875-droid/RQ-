@@ -207,13 +207,11 @@ export const AdminDelegateDetailsView = memo(({
     return Math.max(calculated, delegate.totalCommissionEarned || 0);
   }, [activeDataset, delegate.totalCommissionEarned]);
 
-  // Unsettled total since last manual settlement
-  const unsettledCycleTotal = (() => {
-    if (!effectiveLastSettledAt) {
-      return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : calculateApprovedCommission(currentCycleDataset, 'all');
-    }
-    return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : calculateApprovedCommission(currentCycleDataset, 'all');
-  })();
+  // This legacy-named field is the Worker-maintained unsettled commission balance,
+  // not gross recharge sales. Fall back to the canonical commission events only when absent.
+  const unsettledCycleTotal = typeof delegate.totalRechargedAmount === 'number'
+    ? delegate.totalRechargedAmount
+    : calculateApprovedCommission(currentCycleDataset, 'all');
 
   const handleSettleAccount = () => {
     setConfirmDialog({
