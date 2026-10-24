@@ -70,4 +70,10 @@ describe('LoginView safe interaction contract', () => {
     expect(setLoginPhone).not.toHaveBeenCalled();
     expect(handleGarageLogin).not.toHaveBeenCalled();
   });
+  
+  it('renders Arabic brand footer without English brand copy', () => {
+    renderLogin();
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeInTheDocument();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).not.toBeInTheDocument();
+  });
 });
