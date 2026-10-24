@@ -164,7 +164,7 @@ export const AdminDelegateDetailsView = memo(({
     return d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
   };
 
-  // Unique list of months with recharge activity
+  // Include months with either recharge activity or canonical commission events
   const availableMonths = React.useMemo(() => {
     return getAvailableRequestMonths(activeDataset, currentMonthKey);
   }, [activeDataset, currentMonthKey]);
@@ -184,20 +184,20 @@ export const AdminDelegateDetailsView = memo(({
   const totalRecharged = React.useMemo(() => {
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-      return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
+      return Math.max(calculated, historyTotal);
     }
     return calculateApprovedRechargeTotal(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, delegate.totalRechargedAmount, historyTotal, selectedPeriodDataset]);
+  }, [activeDataset, activeMonthKey, historyTotal, selectedPeriodDataset]);
 
   const allTimeTotal = React.useMemo(() => {
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
     return Math.max(calculated, delegate.totalRechargedAmount || 0, historyTotal);
-  }, [activeDataset, delegate.totalRechargedAmount, historyTotal]);
+  }, [activeDataset, historyTotal]);
 
   const commissionValue = React.useMemo(() => {
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedCommission(activeDataset, 'all');
-      return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
+      return Math.max(calculated, delegate.totalCommissionEarned || 0);
     }
     return calculateApprovedCommission(selectedPeriodDataset, activeMonthKey);
   }, [activeDataset, activeMonthKey, delegate.totalCommissionEarned, selectedPeriodDataset]);
@@ -210,9 +210,9 @@ export const AdminDelegateDetailsView = memo(({
   // Unsettled total since last manual settlement
   const unsettledCycleTotal = (() => {
     if (!effectiveLastSettledAt) {
-      return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : historyTotal;
+      return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : calculateApprovedCommission(currentCycleDataset, 'all');
     }
-    return calculateApprovedRechargeTotal(currentCycleDataset, 'all');
+    return typeof delegate.totalRechargedAmount === 'number' ? delegate.totalRechargedAmount : calculateApprovedCommission(currentCycleDataset, 'all');
   })();
 
   const handleSettleAccount = () => {
