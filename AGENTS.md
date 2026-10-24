@@ -2,7 +2,7 @@
 
 Current product rules live in `docs/PROJECT.md`.
 
-- Preserve the current UI/UX, bilingual behavior, Egyptian license-plate identity, RTL/LTR layout, and responsive behavior unless explicitly approved otherwise.
+- Preserve the current UI/UX, Arabic-only behavior, Egyptian license-plate identity, RTL layout, and responsive behavior unless explicitly approved otherwise.
 - The Worker/API is authoritative for authentication, authorization, garage scope, money, subscriber eligibility, counters, and financial reports.
 - Use atomic Firestore transactions for multi-document business mutations and idempotency for retried user intents.
 - Never trust role, garage, amount, credit, or financial fields supplied by the browser without server validation.
