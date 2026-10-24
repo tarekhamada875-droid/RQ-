@@ -250,4 +250,79 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     expect(sessionMocks.refreshEntitySession).not.toHaveBeenCalled();
     expect(listenerTracker.getActiveListenerCount()).toBe(0);
   });
+
+  it('keeps the app locked until the previous entity session is released', async () => {
+    let resolveRelease!: () => void;
+    sessionMocks.releaseEntitySession.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolveRelease = resolve;
+    }));
+    const props = createProps();
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    act(() => {
+      void hook.result.current.handleLogout();
+    });
+
+    await waitFor(() => expect(hook.result.current.isLoggingOut).toBe(true));
+    expect(props.setView).toHaveBeenCalledWith('login');
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRelease();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(hook.result.current.isLoggingOut).toBe(false));
+    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+    hook.unmount();
+  });
+
+  it('does not sign out a different Firebase identity after delayed release', async () => {
+    let resolveRelease!: () => void;
+    sessionMocks.releaseEntitySession.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolveRelease = resolve;
+    }));
+    const hook = renderHook(() => useGarageSession(createProps()));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    act(() => {
+      void hook.result.current.handleLogout();
+    });
+    await waitFor(() => expect(hook.result.current.isLoggingOut).toBe(true));
+    sessionMocks.auth.currentUser = { uid: 'new-firebase-user' };
+
+    await act(async () => {
+      resolveRelease();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(hook.result.current.isLoggingOut).toBe(false));
+    expect(sessionMocks.signOut).not.toHaveBeenCalled();
+    hook.unmount();
+  });
+
+  it('finishes in-memory logout when browser storage removal throws', async () => {
+    const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    const props = createProps();
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      await hook.result.current.handleLogout();
+    });
+
+    expect(props.setGarage).toHaveBeenCalledWith(null);
+    expect(props.setDelegate).toHaveBeenCalledWith(null);
+    expect(props.setCurrentStaff).toHaveBeenCalledWith(null);
+    expect(props.setCurrentSupervisor).toHaveBeenCalledWith(null);
+    expect(props.setView).toHaveBeenCalledWith('login');
+    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+    expect(hook.result.current.isLoggingOut).toBe(false);
+
+    removeItemSpy.mockRestore();
+    hook.unmount();
+  });
 });
