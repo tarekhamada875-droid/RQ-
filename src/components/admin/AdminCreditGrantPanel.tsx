@@ -3,6 +3,37 @@ import { Coins } from 'lucide-react';
 import { Garage } from '../../types';
 import { firestoreService } from '../../services';
 
+const CREDIT_GRANT_ERROR_MESSAGES: Record<string, string> = {
+  ADMIN_ONLY: 'ليس لديك صلاحية لإضافة الرصيد.',
+  ADMIN_SDK_NOT_INITIALIZED: 'خدمة الإدارة غير متاحة حاليًا. يرجى المحاولة لاحقًا.',
+  PAYMENT_CONFIRMATION_REQUIRED: 'يجب تأكيد استلام الدفع والتحقق منه قبل إضافة الرصيد.',
+  IDEMPOTENCY_KEY_REQUIRED: 'تعذر التحقق من طلب الإضافة. يرجى المحاولة مرة أخرى.',
+  CREDIT_AMOUNT_REQUIRED: 'أدخل قيمة الرصيد المراد إضافته.',
+  CHOOSE_TEMPLATE_OR_AMOUNT: 'اختر باقة رصيد أو أدخل قيمة يدوية، وليس كليهما.',
+  PAYMENT_AMOUNT_MUST_MATCH_CREDITS: 'يجب أن يساوي مبلغ الدفع قيمة الرصيد المراد إضافته.',
+  GARAGE_NOT_FOUND: 'الجراج المطلوب غير موجود.',
+  GARAGE_NOT_PREPAID: 'إضافة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.',
+  PACKAGE_NOT_FOUND: 'باقة الرصيد المطلوبة غير موجودة.',
+  PACKAGE_NOT_CREDIT_BUNDLE: 'الباقة المحددة ليست باقة رصيد نشطة.',
+  CREDIT_TEMPLATE_PRICE_MISMATCH: 'سعر باقة الرصيد لا يطابق إعداداتها. يرجى مراجعة إعدادات الباقة.',
+  INVALID_CREDIT_AMOUNT: 'قيمة الرصيد غير صالحة.',
+  INVALID_CREDIT_BALANCE: 'رصيد الجراج غير صالح. يرجى مراجعة البيانات.',
+  CREDIT_BALANCE_OVERFLOW: 'لا يمكن إضافة الرصيد لأن الإجمالي سيتجاوز الحد المسموح.',
+  INSUFFICIENT_PAID_CREDITS: 'الرصيد المدفوع غير كافٍ.',
+  INSUFFICIENT_ELIGIBLE_CREDITS: 'الرصيد المتاح غير كافٍ.',
+  IDEMPOTENCY_KEY_REUSE: 'اكتُشف اختلاف في بيانات طلب سابق. راجع سجل الرصيد قبل إعادة المحاولة.',
+};
+
+function getCreditGrantErrorMessage(cause: unknown): string {
+  const error = cause as { message?: unknown; code?: unknown } | null;
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const knownMessage = CREDIT_GRANT_ERROR_MESSAGES[message] || CREDIT_GRANT_ERROR_MESSAGES[code];
+  if (knownMessage) return knownMessage;
+  if (/[\u0600-\u06FF]/.test(message)) return message;
+  return 'تعذرت إضافة الرصيد. يرجى مراجعة البيانات والمحاولة مرة أخرى.';
+}
+
 interface Props {
   garage: Garage;
 }
@@ -62,7 +93,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       idempotencyIntentRef.current = null;
       setSuccess(`${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`);
     } catch (cause: any) {
-      setError(cause?.message || 'فشلت إضافة الرصيد.');
+      setError(getCreditGrantErrorMessage(cause));
     } finally {
       setSubmitting(false);
     }
