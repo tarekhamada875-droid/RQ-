@@ -330,7 +330,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     // Garage name is in header
     expect(screen.getByText('جراج النصر النموذجي')).toBeDefined();
     // Brand footer
-    expect(screen.getByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeDefined();
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
   });
 });
 
