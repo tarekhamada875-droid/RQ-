@@ -91,9 +91,7 @@ export const AdminDelegateDetailsView = memo(({
     setConfirmDialog({
       isOpen: true,
       title: t('سحب الصلاحية'),
-      message: adminLang === 'en' 
-        ? `Are you sure you want to revoke delegate "${delegate.name}"'s permissions? They will not be able to log in or recharge balances.`
-        : `هل أنت متأكد من سحب صلاحية المندوب "${delegate.name}"؟ لن يتمكن من تسجيل الدخول أو شحن الأرصدة مرة أخرى.`,
+      message: `هل أنت متأكد من سحب صلاحية المندوب "${delegate.name}"؟ لن يتمكن من تسجيل الدخول أو شحن الأرصدة مرة أخرى.`,
       confirmText: t('تأكيد السحب'),
       cancelText: t('تراجع'),
       type: 'danger',
@@ -133,14 +131,14 @@ export const AdminDelegateDetailsView = memo(({
   const currentMonthKey = getCurrentMonthKey();
 
   const formatMonthName = (key: string) => {
-    if (key === 'all') return adminLang === 'en' ? 'All Time' : 'جميع الأوقات';
+    if (key === 'all') return 'جميع الأوقات';
     if (!key) return '';
     const [yearStr, monthStr] = key.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10) - 1;
     const d = new Date(year, month, 1);
     if (isNaN(d.getTime())) return key;
-    return d.toLocaleDateString(adminLang === 'en' ? 'en-US' : 'ar-EG', { month: 'long', year: 'numeric' });
+    return d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
   };
 
   // Unique list of months with recharge activity
@@ -198,9 +196,7 @@ export const AdminDelegateDetailsView = memo(({
     setConfirmDialog({
       isOpen: true,
       title: t('تصفية الحساب يدويًا'),
-      message: adminLang === 'en'
-        ? `Are you sure you want to mark current accounts of delegate "${delegate.name}" as settled? This will record a manual settlement timestamp.`
-        : `هل أنت متأكد من تصفية الحساب الحالي للمندوب "${delegate.name}"؟ سيتم تسجيل تاريخ التسوية اليدوية مع حفظ كافة السجلات التاريخية.`,
+      message: `هل أنت متأكد من تصفية الحساب الحالي للمندوب "${delegate.name}"؟ سيتم تسجيل تاريخ التسوية اليدوية مع حفظ كافة السجلات التاريخية.`,
       confirmText: t('تصفية وتسوية الآن'),
       cancelText: t('تراجع'),
       type: 'warning',
@@ -232,7 +228,7 @@ export const AdminDelegateDetailsView = memo(({
   };
 
   return (
-    <div className={`h-screen w-full bg-[#faf9f6] dark:bg-slate-950 flex flex-col font-sans ${adminLang === 'en' ? 'text-left' : 'text-right'}`} dir={adminLang === 'en' ? 'ltr' : 'rtl'}>
+    <div className="h-screen w-full bg-[#faf9f6] dark:bg-slate-950 flex flex-col font-sans text-right" dir="rtl">
       {/* Header */}
       <AdminDelegateHeader 
         delegate={delegate}
@@ -280,7 +276,7 @@ export const AdminDelegateDetailsView = memo(({
 
       {/* Confirmation Dialog */}
       {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" dir={adminLang === 'en' ? 'ltr' : 'rtl'}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" dir="rtl">
           <div 
             className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-popup-30fps"
             onClick={e => e.stopPropagation()}
