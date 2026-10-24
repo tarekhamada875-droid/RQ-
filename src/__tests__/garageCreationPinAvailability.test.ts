@@ -111,7 +111,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
   test('rejects garage creation when PIN is already taken', async () => {
     const result = await firestoreService.createGarage({
       name: 'جراج مكرر',
-      phone: '0108888888',
+      phone: '0108888888888',
       hourlyRate: 15,
       overnightRate: 50,
       pin: '11223',
