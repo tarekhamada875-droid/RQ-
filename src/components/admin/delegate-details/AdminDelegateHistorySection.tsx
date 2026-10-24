@@ -61,8 +61,8 @@ export const AdminDelegateHistorySection: React.FC<AdminDelegateHistorySectionPr
                     <History className="w-8 h-8" />
                   </div>
                   <div>
-                    <h4 className="text-slate-900 dark:text-white font-bold">{t('لا يوجد سجلات شحن')}</h4>
-                    <p className="text-slate-400 text-xs mt-1">{t('لم يقم المندوب بأي عمليات شحن بعد')}</p>
+                    <h4 className="text-slate-900 dark:text-white font-bold">{t('لا توجد سجلات شحن أو عمولات')}</h4>
+                    <p className="text-slate-400 text-xs mt-1">{t('لم يتم تسجيل عمليات شحن أو عمولات لهذا المندوب بعد')}</p>
                   </div>
                 </div>
               ) : (
