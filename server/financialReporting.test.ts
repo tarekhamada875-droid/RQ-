@@ -169,7 +169,7 @@ describe('financial reporting projections', () => {
       refundTotal: 7,
       companyNetRevenue: 89,
       historicalSettledTotal: 10,
-      currentUnsettledByDelegate: { 'del-1': 101 },
+      currentUnsettledByDelegate: {},
       creditActivity: { paidGrantCount: 1, paidCreditsGranted: 10, paidGrantCountWithoutEgpRecord: 1, paidCreditsWithoutEgpRecord: 10 },
     });
     expect([
