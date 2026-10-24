@@ -201,7 +201,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans animate-overlay-30fps"
-      dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+      dir="rtl"
     >
       <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-all animate-popup-30fps">
         {/* Header */}
