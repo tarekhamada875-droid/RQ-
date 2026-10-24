@@ -109,7 +109,7 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({
           name: 'علي حسن',
           phone: '01012345678',
-          pin: '87654321',
+          pin: '87654',
           garageId: 'garage-a',
           role: 'worker'
         })
@@ -125,12 +125,12 @@ describe('Worker Route Parity Suite', () => {
 
       const pinOwnerRes = await call('/api/staff/create', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ name: 'PIN Owner', pin: '12344321', garageId: 'garage-b', role: 'worker' })
+        body: JSON.stringify({ name: 'PIN Owner', pin: '12344', garageId: 'garage-b', role: 'worker' })
       });
       expect(pinOwnerRes.status).toBe(200);
       const rejectedCombinedUpdate = await call('/api/staff/update', tokens.garage, {
         method: 'POST',
-        body: JSON.stringify({ id: staffId, name: 'Must Not Partially Change', pin: '12344321' })
+        body: JSON.stringify({ id: staffId, name: 'Must Not Partially Change', pin: '12344' })
       });
       expect(rejectedCombinedUpdate.status).toBe(409);
       expect(mockDb.records.get(`staff/${staffId}`)?.name).toBe('علي حسن');
@@ -141,7 +141,7 @@ describe('Worker Route Parity Suite', () => {
         method: 'POST',
         body: JSON.stringify({
           name: 'محمود',
-          pin: '11223344',
+          pin: '11223',
           garageId: 'garage-b'
         })
       });
@@ -167,7 +167,7 @@ describe('Worker Route Parity Suite', () => {
           id: staffId,
           name: 'علي حسن المعدل',
           phone: '01099999999',
-          pin: '87654322'
+          pin: '87655'
         })
       });
       expect(updateRes.status).toBe(200);
@@ -197,7 +197,7 @@ describe('Worker Route Parity Suite', () => {
       const before = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
 
       const create = await call('/api/staff/create', tokens.staff, {
-        method: 'POST', body: JSON.stringify({ name: 'Unauthorized', phone: '01000000000', pin: '88776655', garageId: 'garage-a' })
+        method: 'POST', body: JSON.stringify({ name: 'Unauthorized', phone: '01000000000', pin: '88776', garageId: 'garage-a' })
       });
       const update = await call('/api/staff/update', tokens.staff, {
         method: 'POST', body: JSON.stringify({ id: 'staff-peer', name: 'Must Not Change' })
@@ -217,7 +217,7 @@ describe('Worker Route Parity Suite', () => {
       mockDb.seed('supervisors/legacy-supervisor', legacyRecord);
 
       const create = await call('/api/supervisors/create', tokens.admin, {
-        method: 'POST', body: JSON.stringify({ name: 'No new record', pin: '55667788' })
+        method: 'POST', body: JSON.stringify({ name: 'No new record', pin: '55667' })
       });
       const update = await call('/api/supervisors/update', tokens.admin, {
         method: 'POST', body: JSON.stringify({ id: 'legacy-supervisor', name: 'Must not change' })
@@ -226,7 +226,7 @@ describe('Worker Route Parity Suite', () => {
         method: 'POST', body: JSON.stringify({ id: 'legacy-supervisor' })
       });
       const pinRotation = await call('/api/people/update-pin', tokens.admin, {
-        method: 'POST', body: JSON.stringify({ entityType: 'supervisors', entityId: 'legacy-supervisor', newPin: '88997766' })
+        method: 'POST', body: JSON.stringify({ entityType: 'supervisors', entityId: 'legacy-supervisor', newPin: '88997' })
       });
 
       for (const response of [create, update, remove]) {
@@ -274,7 +274,7 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({
           name: 'مندوب القاهرة',
           phone: '01234567890',
-          pin: '99887766',
+          pin: '99887',
           commissionRate: 15
         })
       });
@@ -285,12 +285,12 @@ describe('Worker Route Parity Suite', () => {
 
       const pinOwnerRes = await call('/api/staff/create', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ name: 'Other PIN Owner', pin: '99887768', garageId: 'garage-a', role: 'worker' })
+        body: JSON.stringify({ name: 'Other PIN Owner', pin: '88776', garageId: 'garage-a', role: 'worker' })
       });
       expect(pinOwnerRes.status).toBe(200);
       const rejectedCombinedUpdate = await call('/api/delegates/update', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ id: delId, commissionRate: 99, pin: '99887768' })
+        body: JSON.stringify({ id: delId, commissionRate: 99, pin: '88776' })
       });
       expect(rejectedCombinedUpdate.status).toBe(409);
       expect(mockDb.records.get(`delegates/${delId}`)?.commissionRate).toBe(15);
@@ -298,7 +298,7 @@ describe('Worker Route Parity Suite', () => {
 
       const updateRes = await call('/api/delegates/update', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ id: delId, commissionRate: 20, pin: '99887767' })
+        body: JSON.stringify({ id: delId, commissionRate: 20, pin: '77665' })
       });
       expect(updateRes.status).toBe(200);
       const updatedLookupHash = mockDb.records.get(`private_pins/${delId}`)?.pinLookupHash;
@@ -367,7 +367,7 @@ describe('Worker Route Parity Suite', () => {
       // Garage owner updating own staff PIN succeeds
       const ownStaffRes = await call('/api/people/update-pin', tokens.garage, {
         method: 'POST',
-        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-1', newPin: '12341234' })
+        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-1', newPin: '12341' })
       });
       expect(ownStaffRes.status).toBe(200);
       expect(await ownStaffRes.json()).toEqual({ success: true });
@@ -375,7 +375,7 @@ describe('Worker Route Parity Suite', () => {
       // Garage owner updating other garage staff PIN fails
       const crossStaffRes = await call('/api/people/update-pin', tokens.garage, {
         method: 'POST',
-        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-2', newPin: '43214321' })
+        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-2', newPin: '43214' })
       });
       expect(crossStaffRes.status).toBe(403);
     });
@@ -386,11 +386,11 @@ describe('Worker Route Parity Suite', () => {
 
       const garagePin = await call('/api/people/update-pin', tokens.staff, {
         method: 'POST',
-        body: JSON.stringify({ entityType: 'garages', entityId: 'garage-a', newPin: '12344321' })
+        body: JSON.stringify({ entityType: 'garages', entityId: 'garage-a', newPin: '12344' })
       });
       const peerPin = await call('/api/people/update-pin', tokens.staff, {
         method: 'POST',
-        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-peer', newPin: '43211234' })
+        body: JSON.stringify({ entityType: 'staff', entityId: 'staff-peer', newPin: '43211' })
       });
 
       expect(garagePin.status).toBe(403);

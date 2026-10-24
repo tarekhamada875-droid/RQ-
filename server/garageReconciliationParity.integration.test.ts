@@ -500,7 +500,7 @@ describe('garage creation Hono contract', () => {
     mockDb.seed(rateLimitPath, { count: 29, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
 
     const allowed = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Limit Boundary Garage', pin: '41827536'
+      name: 'Synthetic Limit Boundary Garage', pin: '41827'
     });
     const allowedBody = await allowed.json() as any;
     expect(allowed.status).toBe(200);
@@ -509,7 +509,7 @@ describe('garage creation Hono contract', () => {
 
     const beforeBlockedRequest = snapshotRecords();
     const blocked = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Over-Limit Garage', pin: '52618473'
+      name: 'Synthetic Over-Limit Garage', pin: '52618'
     });
     expect(blocked.status).toBe(429);
     expect(await blocked.json()).toMatchObject({
@@ -525,7 +525,7 @@ describe('garage creation Hono contract', () => {
     const expiredAt = Date.now() - 1;
     mockDb.seed(rateLimitPath, { count: 30, resetAt: expiredAt, expiresAt: new Date(expiredAt) });
     const afterExpiry = await callHonoCreate('valid-admin-token', {
-      name: 'Synthetic Expired-Window Garage', pin: '63729481'
+      name: 'Synthetic Expired-Window Garage', pin: '63729'
     });
     expect(afterExpiry.status).toBe(200);
     expect(mockDb.records.get(rateLimitPath)).toMatchObject({ count: 1 });
@@ -537,9 +537,9 @@ describe('garage creation Hono contract', () => {
     const now = Date.now();
     mockDb.seed(rateLimitPath, { count: 28, resetAt: now + 60_000, expiresAt: new Date(now + 60_000) });
     const requests = [
-      { name: 'Synthetic Concurrent Limit Garage A', pin: '41827537' },
-      { name: 'Synthetic Concurrent Limit Garage B', pin: '52618474' },
-      { name: 'Synthetic Concurrent Limit Garage C', pin: '63729482' }
+      { name: 'Synthetic Concurrent Limit Garage A', pin: '41827' },
+      { name: 'Synthetic Concurrent Limit Garage B', pin: '52618' },
+      { name: 'Synthetic Concurrent Limit Garage C', pin: '63729' }
     ];
     const responses = await Promise.all(requests.map((body) => callHonoCreate('valid-admin-token', body)));
     const bodies = await Promise.all(responses.map((response) => response.json() as Promise<any>));
@@ -556,7 +556,7 @@ describe('garage creation Hono contract', () => {
     let response: Response;
     try {
       response = await callHonoCreate('valid-admin-token', {
-        name: 'Synthetic Limiter Outage Garage', pin: '74831592'
+        name: 'Synthetic Limiter Outage Garage', pin: '74831'
       });
     } finally {
       (mockDb as any).runTransaction = originalRunTransaction;
@@ -569,7 +569,7 @@ describe('garage creation Hono contract', () => {
   it('creates an Admin garage with the prepaid-credit defaults and complete activity-log details', async () => {
     mockDb.clear();
     const response = await callHonoCreate('valid-admin-token', {
-      name: '  Synthetic Trial Garage  ', pin: '62841357', isTrial: true
+      name: '  Synthetic Trial Garage  ', pin: '62841', isTrial: true
     });
     const result = await response.json() as any;
     const garage = structuredClone(mockDb.records.get(`garages/${result.id}`));
@@ -594,7 +594,7 @@ describe('garage creation Hono contract', () => {
     mockDb.clear();
     seedDelegateGarages(2);
     const response = await callHonoCreate('valid-delegate-token-delegate-a', {
-      name: 'Synthetic Delegate Garage', pin: '73916428', isTrial: true,
+      name: 'Synthetic Delegate Garage', pin: '73916', isTrial: true,
       createdByDelegateName: 'Delegate A', referrerName: 'Delegate A'
     });
     const result = await response.json() as any;
@@ -610,7 +610,7 @@ describe('garage creation Hono contract', () => {
     mockDb.clear();
     seedDelegateGarages(3);
     const before = snapshotRecords();
-    const response = await callHonoCreate('valid-delegate-token-delegate-a', { name: 'Quota Limit Garage', pin: '82517364' });
+    const response = await callHonoCreate('valid-delegate-token-delegate-a', { name: 'Quota Limit Garage', pin: '82517' });
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' });
     expect(snapshotRecords()).toEqual(before);
@@ -619,9 +619,9 @@ describe('garage creation Hono contract', () => {
   it('rejects an already-reserved PIN without creating a garage or activity log', async () => {
     mockDb.clear();
     mockDb.seed('garages/existing-pin-owner', { name: 'Existing PIN Owner' });
-    await saveEntityPin('garages', 'existing-pin-owner', '91427538');
+    await saveEntityPin('garages', 'existing-pin-owner', '91427');
     const before = snapshotRecords();
-    const response = await callHonoCreate('valid-admin-token', { name: 'Duplicate PIN Garage', pin: '91427538' });
+    const response = await callHonoCreate('valid-admin-token', { name: 'Duplicate PIN Garage', pin: '91427' });
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ success: false, error: 'PIN_ALREADY_TAKEN' });
     expect(snapshotRecords()).toEqual(before);
@@ -629,7 +629,7 @@ describe('garage creation Hono contract', () => {
 
   it('validates, replays, rejects key reuse, and serializes concurrent idempotent creates', async () => {
     mockDb.clear();
-    const invalidBody = { name: 'Invalid Key Garage', pin: '41927536', idempotencyKey: 'bad!key-1234' };
+    const invalidBody = { name: 'Invalid Key Garage', pin: '41927', idempotencyKey: 'bad!key-1234' };
     const invalidBefore = snapshotRecords();
     const invalid = await callHonoCreate('valid-admin-token', invalidBody);
     expect(invalid.status).toBe(400);
@@ -637,7 +637,7 @@ describe('garage creation Hono contract', () => {
     expect(snapshotRecords()).toEqual(invalidBefore);
 
     mockDb.clear();
-    const body = { name: 'Keyed Garage', pin: '59182736', isTrial: true, idempotencyKey: 'garage-create-key-20261010' };
+    const body = { name: 'Keyed Garage', pin: '59182', isTrial: true, idempotencyKey: 'garage-create-key-20261010' };
     const first = await callHonoCreate('valid-admin-token', body);
     const firstBody = await first.json();
     const replay = await callHonoCreate('valid-admin-token', body);
@@ -651,16 +651,16 @@ describe('garage creation Hono contract', () => {
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('idempotency_records/'))).toHaveLength(1);
 
     mockDb.clear();
-    const firstConflict = await callHonoCreate('valid-admin-token', { name: 'Original keyed garage', pin: '59182736', idempotencyKey: 'garage-create-conflict-20261010' });
+    const firstConflict = await callHonoCreate('valid-admin-token', { name: 'Original keyed garage', pin: '59182', idempotencyKey: 'garage-create-conflict-20261010' });
     await firstConflict.json();
-    const changed = await callHonoCreate('valid-admin-token', { name: 'Changed keyed garage', pin: '59182737', idempotencyKey: 'garage-create-conflict-20261010' });
+    const changed = await callHonoCreate('valid-admin-token', { name: 'Changed keyed garage', pin: '59182', idempotencyKey: 'garage-create-conflict-20261010' });
     expect(firstConflict.status).toBe(200);
     expect(changed.status).toBe(409);
     expect(await changed.json()).toMatchObject({ success: false });
     expect([...mockDb.records.keys()].filter((path) => /^garages\/[^/]+$/.test(path))).toHaveLength(1);
 
     mockDb.clear();
-    const concurrentBody = { name: 'Concurrent Keyed Garage', pin: '75319486', idempotencyKey: 'garage-create-concurrent-20261010' };
+    const concurrentBody = { name: 'Concurrent Keyed Garage', pin: '75319', idempotencyKey: 'garage-create-concurrent-20261010' };
     const concurrent = await Promise.all([
       callHonoCreate('valid-admin-token', concurrentBody),
       callHonoCreate('valid-admin-token', concurrentBody)

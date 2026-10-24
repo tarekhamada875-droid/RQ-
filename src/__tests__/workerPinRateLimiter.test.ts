@@ -312,11 +312,11 @@ describe('Worker PIN rate limiter', () => {
       expect(availability.status).toBe(200);
       expect(await availability.json()).toEqual({ taken: true });
 
-      const incorrect = await postAuth('/api/admin/update-pin', { currentPin: '00000000', newPin: '87654321' });
+      const incorrect = await postAuth('/api/admin/update-pin', { currentPin: '00000000', newPin: '87654' });
       expect(incorrect.status).toBe(400);
       expect(await incorrect.json()).toMatchObject({ success: false, error: 'CURRENT_PIN_INCORRECT' });
 
-      const rotated = await postAuth('/api/admin/update-pin', { currentPin: '12345678', newPin: '87654321' });
+      const rotated = await postAuth('/api/admin/update-pin', { currentPin: '12345678', newPin: '87654' });
       expect(rotated.status).toBe(200);
       expect(await rotated.json()).toEqual({ success: true });
     });

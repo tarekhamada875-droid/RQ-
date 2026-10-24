@@ -19,7 +19,7 @@ export class ValidationError extends Error {
   }
 }
 
-export const NEW_PIN_LENGTH = 8;
+export const NEW_PIN_LENGTH = 5;
 
 /**
  * Validates PINs written by current create/change flows. Login intentionally
@@ -56,7 +56,8 @@ export function validateNewPin(val: any, fieldName = 'PIN'): string {
 }
 
 export function isNewPinFormat(val: string): boolean {
-  return new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(val);
+  // Accept existing eight-digit credentials during login; new/change flows use validateNewPin.
+  return /^\d{5}$/.test(val) || /^\d{8}$/.test(val);
 }
 
 /**
