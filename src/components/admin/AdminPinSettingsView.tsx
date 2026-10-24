@@ -202,7 +202,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 {t('رمز دخول الآدمن')}
               </h2>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-                {t('أدخل رمز دخول جديداً (8 أرقام)')}
+                {t('أدخل رمز دخول جديداً (5 أرقام)')}
               </p>
             </div>
 
@@ -217,11 +217,11 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     const val = e.target.value.replace(/\D/g, '');
                     setNewAdminPinValue(val);
                   }}
-                  maxLength={8}
-                  minLength={8}
+                  maxLength={5}
+                  minLength={5}
                   aria-label={t("رمز الدخول الجديد")}
                   required
-                  placeholder="••••••••"
+                  placeholder="•••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.5em] font-mono"
                   autoFocus
                 />
