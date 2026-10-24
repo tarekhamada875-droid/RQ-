@@ -251,7 +251,12 @@ app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorke
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-    const delegateId = validateId(c.req.param('id'), 'id', true);
+    let delegateId: string;
+    try {
+      delegateId = validateId(c.req.param('id'), 'id', true);
+    } catch {
+      return c.json({ success: false, error: 'INVALID_DELEGATE_ID' }, 400);
+    }
     const delegateSnap = await getAdminDb().collection('delegates').doc(delegateId).get();
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
