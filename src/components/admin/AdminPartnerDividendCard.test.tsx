@@ -22,6 +22,17 @@ describe('AdminPartnerDividendCard dynamic investment projections', () => {
     expect(screen.getAllByText('38,400 ج.م').length).toBeGreaterThan(0);
   });
 
+  it('allows a numeric field to be cleared before entering a replacement value', () => {
+    render(<AdminPartnerDividendCard currentActiveGarages={5} />);
+    const price = screen.getByRole('spinbutton', { name: 'سعر الرصيد' });
+
+    fireEvent.change(price, { target: { value: '' } });
+    expect(price).toHaveValue(null);
+
+    fireEvent.change(price, { target: { value: '2' } });
+    expect(price).toHaveValue(2);
+  });
+
   it('resets edited assumptions to the current garage defaults', () => {
     render(<AdminPartnerDividendCard currentActiveGarages={7} />);
     const garages = screen.getByRole('spinbutton', { name: 'الجراجات الحالية' });
