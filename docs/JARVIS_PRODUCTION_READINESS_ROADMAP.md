@@ -84,6 +84,24 @@ Test complete journeys for:
 
 **Exit criteria:** A documented browser/manual test matrix is completed for each role, including negative permission tests and regression tests for defects found.
 
+## Human-assisted real-role testing (used in Phases 1–5)
+
+**Owner participation rule:** If a workflow needs a real person to operate the app in a browser or on a phone, ChatGPT must give the owner one clear, exact test instruction at a time. The owner is not expected to understand technical terminology.
+
+### How each live test works
+1. Explain in plain English what we are checking and why.
+2. Give the exact role to use (Admin, garage owner, staff, or delegate), the screen/menu to open, and the precise actions to perform in order.
+3. State what the owner should expect to see, what information to report back, and when to stop if the result differs or an error appears.
+4. Ask the owner to report the result or share a screenshot. Never ask for passwords, PINs, access tokens, or other secrets.
+5. Record the observed result in this roadmap: PASS, FAIL, BLOCKED, or NOT RUN, with date, tested role/workflow, relevant PR or issue, and next action.
+6. If it fails, document the evidence and root-cause hypothesis, then return to the audit/fix/test process. Do not claim success from an unobserved result.
+7. Keep each instruction small and unambiguous; wait for the owner’s result before giving the next manual test step.
+
+### Test log
+| Date | Phase | Role / workflow | Status | Evidence / next action |
+|---|---|---|---|---|
+| — | — | No owner-assisted live tests recorded yet | NOT RUN | Start only when a specific test is needed; provide exact steps in English. |
+
 ## Phase 4 — Code quality, performance, and maintainability
 
 **Goal:** Remove genuine dead weight and reduce avoidable complexity without risky cosmetic rewrites.
@@ -104,6 +122,7 @@ Checklist:
 - [ ] Confirm the live frontend and Worker correspond to the intended release/commit.
 - [ ] Run the Production Gate and required build, unit, integration, security-rules, and release-smoke checks.
 - [ ] Exercise key workflows in a production-like environment with safe test data.
+- [ ] For workflows requiring owner-operated real-role testing, use the Human-assisted real-role testing procedure above and record the observed result.
 - [ ] Verify Firestore rules/indexes and production configuration without exposing secrets.
 - [ ] Confirm backups and perform a safe restore/recovery rehearsal.
 - [ ] Verify monitoring, error alerts, provider quotas, rate limits, and cost controls.
