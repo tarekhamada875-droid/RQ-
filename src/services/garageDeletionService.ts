@@ -158,27 +158,25 @@ export async function deleteGarageWithRecovery(
 }
 
 export function garageDeletionFailureMessage(
-  attempt: Extract<GarageDeletionAttempt, { ok: false }>,
-  language: 'ar' | 'en' = 'ar'
+  attempt: Extract<GarageDeletionAttempt, { ok: false }>
 ): string {
   const code = attempt.errorCode;
   const status = attempt.status?.status;
   const retryAfter = Number((attempt.error as any)?.envelope?.retryAfterSeconds);
 
   if (code === 'RATE_LIMIT_EXCEEDED') {
-    if (language === 'en') return `Too many delete attempts. Please wait ${retryAfter > 0 ? `${retryAfter} seconds` : 'a minute'} before trying again.`;
     return `تم إرسال طلبات حذف كثيرة. انتظر ${retryAfter > 0 ? `${retryAfter} ثانية` : 'دقيقة'} قبل المحاولة مجدداً.`;
   }
-  if (code === 'FORBIDDEN') return language === 'en' ? 'You do not have permission to delete this garage.' : 'ليس لديك صلاحية حذف هذا الجراج.';
-  if (code === 'GARAGE_NOT_FOUND') return language === 'en' ? 'This garage no longer exists.' : 'لم يعد هذا الجراج موجوداً.';
-  if (code === 'GARAGE_DELETION_TARGET_CHANGED') return language === 'en' ? 'The garage changed during deletion, so the operation stopped to protect its data.' : 'تغيرت حالة الجراج أثناء الحذف، فأوقفنا العملية لحماية البيانات.';
-  if (code === 'SESSION_REVOKED' || code === 'SESSION_EXPIRED' || code === 'UNAUTHORIZED') return language === 'en' ? 'Your Admin session ended. Sign in again before retrying.' : 'انتهت جلسة الإدارة. سجّل الدخول مجدداً قبل المحاولة.';
-  if (status === 'running' || code === 'GARAGE_DELETION_STILL_RUNNING') return language === 'en' ? 'Garage deletion is still running. Wait before trying again.' : 'ما زال حذف الجراج جارياً. انتظر قبل المحاولة مرة أخرى.';
-  if (status === 'not_started') return language === 'en' ? 'Deletion did not start; the garage is still present. Check your connection before retrying.' : 'لم يبدأ الحذف، والجراج ما زال موجوداً. تحقق من الاتصال قبل المحاولة مرة أخرى.';
-  if (status === 'failed' || status === 'stale' || code === 'GARAGE_DELETION_STALE') return language === 'en' ? 'Deletion stopped before it finished. You can retry to continue removing the remaining data.' : 'توقفت عملية الحذف قبل اكتمالها. يمكنك إعادة المحاولة لاستكمال البيانات المتبقية.';
-  if (code === 'GARAGE_DELETION_QUERY_FAILED') return language === 'en' ? 'The server could not read one part of the garage data. Deletion is not confirmed; retry later to resume.' : 'تعذرت قراءة جزء من بيانات الجراج. لم يتم تأكيد اكتمال الحذف؛ أعد المحاولة لاحقاً لاستكماله.';
-  if (code === 'GARAGE_DELETION_WRITE_FAILED' || code === 'GARAGE_DELETION_TRANSACTION_FAILED') return language === 'en' ? 'The server could not save a deletion step. Completion is not confirmed; retry later to resume.' : 'تعذر حفظ خطوة من الحذف. لم يتم تأكيد اكتماله؛ أعد المحاولة لاحقاً لاستكماله.';
-  if (code === 'ADMIN_SDK_NOT_INITIALIZED') return language === 'en' ? 'The deletion service is temporarily unavailable. Please try again later.' : 'خدمة الحذف غير جاهزة حالياً. حاول مرة أخرى لاحقاً.';
-  if (code === 'NETWORK_ERROR' || code === 'API_TIMEOUT' || code === 'REQUEST_TIMEOUT' || code === 'INVALID_RESPONSE') return language === 'en' ? 'The connection ended before the result was confirmed. Check the deletion status before retrying.' : 'انقطع الاتصال قبل تأكيد النتيجة. تحقق من حالة الحذف قبل المحاولة مجدداً.';
-  return language === 'en' ? 'The garage could not be deleted. Please try again later or contact support if the problem continues.' : 'تعذر إكمال حذف الجراج. حاول مرة أخرى لاحقاً، وإذا استمرت المشكلة فتواصل مع الدعم.';
+  if (code === 'FORBIDDEN') return 'ليس لديك صلاحية حذف هذا الجراج.';
+  if (code === 'GARAGE_NOT_FOUND') return 'لم يعد هذا الجراج موجوداً.';
+  if (code === 'GARAGE_DELETION_TARGET_CHANGED') return 'تغيرت حالة الجراج أثناء الحذف، فأوقفنا العملية لحماية البيانات.';
+  if (code === 'SESSION_REVOKED' || code === 'SESSION_EXPIRED' || code === 'UNAUTHORIZED') return 'انتهت جلسة الإدارة. سجّل الدخول مجدداً قبل المحاولة.';
+  if (status === 'running' || code === 'GARAGE_DELETION_STILL_RUNNING') return 'ما زال حذف الجراج جارياً. انتظر قبل المحاولة مرة أخرى.';
+  if (status === 'not_started') return 'لم يبدأ الحذف، والجراج ما زال موجوداً. تحقق من الاتصال قبل المحاولة مرة أخرى.';
+  if (status === 'failed' || status === 'stale' || code === 'GARAGE_DELETION_STALE') return 'توقفت عملية الحذف قبل اكتمالها. يمكنك إعادة المحاولة لاستكمال البيانات المتبقية.';
+  if (code === 'GARAGE_DELETION_QUERY_FAILED') return 'تعذرت قراءة جزء من بيانات الجراج. لم يتم تأكيد اكتمال الحذف؛ أعد المحاولة لاحقاً لاستكماله.';
+  if (code === 'GARAGE_DELETION_WRITE_FAILED' || code === 'GARAGE_DELETION_TRANSACTION_FAILED') return 'تعذر حفظ خطوة من الحذف. لم يتم تأكيد اكتماله؛ أعد المحاولة لاحقاً لاستكماله.';
+  if (code === 'ADMIN_SDK_NOT_INITIALIZED') return 'خدمة الحذف غير جاهزة حالياً. حاول مرة أخرى لاحقاً.';
+  if (code === 'NETWORK_ERROR' || code === 'API_TIMEOUT' || code === 'REQUEST_TIMEOUT' || code === 'INVALID_RESPONSE') return 'انقطع الاتصال قبل تأكيد النتيجة. تحقق من حالة الحذف قبل المحاولة مجدداً.';
+  return 'تعذر إكمال حذف الجراج. حاول مرة أخرى لاحقاً، وإذا استمرت المشكلة فتواصل مع الدعم.';
 }
