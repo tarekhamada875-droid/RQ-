@@ -60,24 +60,45 @@ const InputField: React.FC<{
   max?: number;
   step?: number;
   suffix?: string;
-}> = ({ label, value, onChange, min = 0, max, step = 1, suffix }) => (
-  <label className="block space-y-1.5">
-    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
-    <span className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        aria-label={label}
-        onChange={(event) => onChange(numberValue(event.target.value, value))}
-        className="min-w-0 flex-1 bg-transparent text-sm font-black text-slate-900 outline-none dark:text-white"
-      />
-      {suffix && <span className="text-xs font-bold text-slate-400">{suffix}</span>}
-    </span>
-  </label>
-);
+}> = ({ label, value, onChange, min = 0, max, step = 1, suffix }) => {
+  // Keep an editable string so the user can clear the field before entering a replacement.
+  const [draft, setDraft] = useState(String(value));
+
+  React.useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = () => {
+    const parsed = draft.trim() === '' ? min : numberValue(draft, min);
+    const bounded = Math.max(min, max === undefined ? parsed : Math.min(max, parsed));
+    setDraft(String(bounded));
+    onChange(bounded);
+  };
+
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={draft}
+          aria-label={label}
+          onChange={(event) => {
+            const next = event.target.value;
+            setDraft(next);
+            if (next.trim() !== '' && Number.isFinite(Number(next))) onChange(Number(next));
+          }}
+          onBlur={commitDraft}
+          className="min-w-0 flex-1 bg-transparent text-sm font-black text-slate-900 outline-none dark:text-white"
+        />
+        {suffix && <span className="text-xs font-bold text-slate-400">{suffix}</span>}
+      </span>
+    </label>
+  );
+};
 
 export const AdminPartnerDividendCard: React.FC<AdminPartnerDividendCardProps> = ({ currentActiveGarages }) => {
   const defaults = useMemo(() => makeDefaults(currentActiveGarages), [currentActiveGarages]);
