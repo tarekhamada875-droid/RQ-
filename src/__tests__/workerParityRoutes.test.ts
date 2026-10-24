@@ -167,7 +167,7 @@ describe('Worker Route Parity Suite', () => {
           id: staffId,
           name: 'علي حسن المعدل',
           phone: '01099999999',
-          pin: '87654'
+          pin: '87655'
         })
       });
       expect(updateRes.status).toBe(200);
@@ -285,12 +285,12 @@ describe('Worker Route Parity Suite', () => {
 
       const pinOwnerRes = await call('/api/staff/create', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ name: 'Other PIN Owner', pin: '99887', garageId: 'garage-a', role: 'worker' })
+        body: JSON.stringify({ name: 'Other PIN Owner', pin: '88776', garageId: 'garage-a', role: 'worker' })
       });
       expect(pinOwnerRes.status).toBe(200);
       const rejectedCombinedUpdate = await call('/api/delegates/update', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ id: delId, commissionRate: 99, pin: '99887' })
+        body: JSON.stringify({ id: delId, commissionRate: 99, pin: '88776' })
       });
       expect(rejectedCombinedUpdate.status).toBe(409);
       expect(mockDb.records.get(`delegates/${delId}`)?.commissionRate).toBe(15);
@@ -298,7 +298,7 @@ describe('Worker Route Parity Suite', () => {
 
       const updateRes = await call('/api/delegates/update', tokens.admin, {
         method: 'POST',
-        body: JSON.stringify({ id: delId, commissionRate: 20, pin: '99887' })
+        body: JSON.stringify({ id: delId, commissionRate: 20, pin: '77665' })
       });
       expect(updateRes.status).toBe(200);
       const updatedLookupHash = mockDb.records.get(`private_pins/${delId}`)?.pinLookupHash;
