@@ -15,7 +15,6 @@ import { Garage, Staff } from '../../../types';
 interface AdminGarageModalsProps {
   garage: Garage;
   t: (key: string) => string;
-  adminLang: string;
   isLoading: boolean;
   // Add Staff Modal
   showAddStaffModal: boolean;
@@ -41,7 +40,6 @@ interface AdminGarageModalsProps {
 export const AdminGarageModals = memo(({
   garage,
   t,
-  adminLang,
   isLoading,
   showAddStaffModal,
   setShowAddStaffModal,
@@ -169,7 +167,7 @@ export const AdminGarageModals = memo(({
           <div
             className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl p-6 sm:p-8 text-right animate-popup-30fps"
             onClick={(e) => e.stopPropagation()}
-            dir={adminLang === 'en' ? 'ltr' : 'rtl'}
+            dir="rtl"
           >
             <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 dark:border-emerald-900/60">
               <Key className="w-6 h-6 stroke-[2.5]" />
