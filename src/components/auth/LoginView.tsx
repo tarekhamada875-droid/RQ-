@@ -177,7 +177,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
       {/* Brand Footer */}
       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3 select-none text-slate-400 dark:text-slate-500 font-bold text-[10px] tracking-wider uppercase">
         <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
-        <span className="brand-shimmer-text">ARQ FOR SOFTWARE DEVELOPMENT</span>
+        <span className="brand-shimmer-text">أرق لتطوير البرمجيات</span>
         <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
       </div>
     </div>

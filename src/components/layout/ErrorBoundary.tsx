@@ -37,17 +37,25 @@ export class ErrorBoundary extends Component<Props, State> {
       error?.message?.includes('Importing a module script failed');
 
     if (isChunkError) {
-      const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || '0');
-      const now = Date.now();
-      if (now - lastReload > 15000) {
-        sessionStorage.setItem('last_chunk_reload', String(now));
-        window.location.reload();
+      try {
+        const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || '0');
+        const now = Date.now();
+        if (now - lastReload > 15000) {
+          sessionStorage.setItem('last_chunk_reload', String(now));
+          window.location.reload();
+        }
+      } catch (storageError) {
+        console.warn('تعذر قراءة حالة تحديث الصفحة.', storageError);
       }
     }
   }
 
   private handleReset = () => {
-    localStorage.removeItem('app_view'); // Clear state that might be causing loop
+    try {
+      localStorage.removeItem('app_view');
+    } catch (storageError) {
+      console.warn('تعذر مسح حالة العرض المحفوظة.', storageError);
+    }
     window.location.href = '/';
   };
 
@@ -86,11 +94,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <RefreshCw className="w-4 h-4" />
               تنشيط الصفحة الآن
             </button>
-            {this.state.error?.message && (
-              <div className="mt-6 text-left p-4 bg-slate-950 rounded-lg overflow-auto max-h-32 text-[10px] font-mono text-red-400 opacity-70 dir-ltr">
-                {this.state.error.message}
-              </div>
-            )}
+
           </div>
         </div>
       );

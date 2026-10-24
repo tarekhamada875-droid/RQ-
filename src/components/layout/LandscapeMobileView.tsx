@@ -16,7 +16,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
           <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
             <div className="w-full flex flex-col items-center max-w-xs">
               <h3 className="flex flex-col items-center gap-0.5 select-none text-slate-950 dark:text-[#ffd43b]">
-                <span className="font-sans font-black tracking-wider text-sm sm:text-base md:text-lg">TARIFF PER HOUR</span>
+                <span className="font-sans font-black tracking-wider text-sm sm:text-base md:text-lg">تعريفة الساعة</span>
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base opacity-90">حساب الساعة</span>
               </h3>
               
@@ -26,7 +26,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
                   {garage.hourlyRate}
                 </span>
                 <span className="font-mono font-black text-xs sm:text-sm uppercase tracking-widest text-slate-950 dark:text-[#ffd43b] opacity-80 mt-1">
-                  EGP / جنيه
+                  جنيه مصري
                 </span>
               </div>
             </div>
@@ -36,7 +36,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
           <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden border-r-[4px] md:border-r-[6px] border-slate-950 dark:border-[#ffd43b]">
             <div className="w-full flex flex-col items-center max-w-xs">
               <h3 className="flex flex-col items-center gap-0.5 select-none text-slate-950 dark:text-[#ffd43b]">
-                <span className="font-sans font-black tracking-wider text-sm sm:text-base md:text-lg">OVERNIGHT STAY</span>
+                <span className="font-sans font-black tracking-wider text-sm sm:text-base md:text-lg">المبيت</span>
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base opacity-90">المبيت / اليوم</span>
               </h3>
               
@@ -45,7 +45,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
                   {garage.overnightRate}
                 </span>
                 <span className="font-mono font-black text-xs sm:text-sm uppercase tracking-widest text-slate-950 dark:text-[#ffd43b] opacity-80 mt-1">
-                  EGP / جنيه
+                  جنيه مصري
                 </span>
               </div>
             </div>

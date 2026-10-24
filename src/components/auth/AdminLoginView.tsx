@@ -53,7 +53,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = memo(({
         await onLogin(entered);
       }
     } catch (e: any) {
-      showToast(e?.message || 'حدث خطأ أثناء الدخول', 'error');
+      showToast('تعذر تسجيل الدخول. تحقق من الرمز وحاول مرة أخرى.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -168,7 +168,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = memo(({
       {/* Brand Footer */}
       <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center gap-3 select-none text-slate-400 dark:text-slate-500 font-bold text-[10px] tracking-wider uppercase">
         <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-300 dark:to-slate-700" />
-        <span className="brand-shimmer-text">ARQ FOR SOFTWARE DEVELOPMENT</span>
+        <span className="brand-shimmer-text">أرق لتطوير البرمجيات</span>
         <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-300 dark:to-slate-700" />
       </div>
     </div>

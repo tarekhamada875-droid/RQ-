@@ -9,6 +9,10 @@ import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
+import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
+import { ErrorBoundary } from '../components/layout/ErrorBoundary';
+import { AdminLoginView } from '../components/auth/AdminLoginView';
+import { DelegateLoginView } from '../components/auth/DelegateLoginView';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
@@ -328,6 +332,69 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     // Garage name is in header
     expect(screen.getByText('جراج النصر النموذجي')).toBeDefined();
     // Brand footer
-    expect(screen.getByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeDefined();
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+  });
+});
+
+
+describe('Arabic-only shared interface', () => {
+  it('renders landscape tariff labels and currency only in Arabic', () => {
+    render(<LandscapeMobileView garage={mockGarage} />);
+
+    expect(screen.getByText('تعريفة الساعة')).toBeDefined();
+    expect(screen.getByText('المبيت')).toBeDefined();
+    expect(screen.getAllByText('جنيه مصري')).toHaveLength(2);
+    expect(screen.queryByText('TARIFF PER HOUR')).toBeNull();
+    expect(screen.queryByText('OVERNIGHT STAY')).toBeNull();
+    expect(screen.queryByText('EGP / جنيه')).toBeNull();
+  });
+
+  it('does not expose internal exception details in the error recovery screen', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const BrokenChild = () => {
+      throw new Error('sensitive_internal_error_detail');
+    };
+
+    render(
+      <ErrorBoundary>
+        <BrokenChild />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('عفواً، حدث خطأ مفاجئ')).toBeDefined();
+    expect(screen.getByText('تنشيط الصفحة الآن')).toBeDefined();
+    expect(screen.queryByText('sensitive_internal_error_detail')).toBeNull();
+    consoleError.mockRestore();
+  });
+});
+
+
+describe('Arabic-only login branding', () => {
+  it('uses Arabic brand text on Admin login', () => {
+    render(
+      <AdminLoginView
+        adminPin=""
+        setAdminPin={vi.fn()}
+        setView={vi.fn()}
+        showToast={vi.fn()}
+        closeKeyboard={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeNull();
+  });
+
+  it('uses Arabic brand text on Delegate login', () => {
+    render(
+      <DelegateLoginView
+        onLogin={vi.fn()}
+        isLoading={false}
+        onBack={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeNull();
   });
 });
