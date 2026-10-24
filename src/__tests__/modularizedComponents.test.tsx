@@ -139,7 +139,6 @@ describe('Modularized Admin Components Integrity', () => {
       <AdminGarageFinancialsSection
         garage={mockGarage}
         t={(key) => key}
-        adminLang="ar"
         onToggleMonthlySubscribers={onToggleMonthly}
         allGarages={[mockGarage]}
         onReferredByChange={onRefChange}
