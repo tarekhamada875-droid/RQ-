@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
-import { AdminLoginView } from '../auth/AdminLoginView';
 import { LoginView } from '../auth/LoginView';
-import { DelegateLoginView } from '../auth/DelegateLoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import type { GarageAppState } from '../../hooks/useGarageApp';
@@ -23,7 +21,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
   const { isAuthReady, currentStaff, currentSupervisor, handleInitiateLogout } = session;
   const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
   const { isLoading, setIsLoading, newPlateNumber, setNewPlateNumber, setSelectedVehicle, handleCheckIn, setShowCheckOutModal } = vehicleOperations;
-  const { activeAdminPin, handleGarageLogin, handleDelegateLogin, createNewGarage, updateGarageRate, addDelegate, removeDelegate } = adminManagement;
+  const { activeAdminPin, handleGarageLogin, createNewGarage, updateGarageRate, addDelegate, removeDelegate } = adminManagement;
   const { loginPhone, setLoginPhone, showToast, closeKeyboard, isInputFocused, setIsInputFocused, plateInputRef, inputRef, now, showStaffStats, setShowStaffStats, showSubscribers, setShowSubscribers } = navigationUi;
 
   logDiagnostic('RENDER_VIEW_EVALUATED', { view, isAuthReady, isLoading });
@@ -44,9 +42,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
     }
   }, [view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
 
-  if (view === 'login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} onDelegateLogin={() => setView('delegate_login')} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
-  if (view === 'admin_login') return <AdminLoginView adminPin={adminManagement.adminPin} setAdminPin={adminManagement.setAdminPin} setView={setView} showToast={showToast} closeKeyboard={closeKeyboard} correctAdminPin={activeAdminPin} onLogin={handleGarageLogin} />;
-  if (view === 'delegate_login') return <DelegateLoginView onLogin={handleDelegateLogin} isLoading={isLoading} onBack={() => setView('login')} />;
+  if (view === 'login' || view === 'admin_login' || view === 'delegate_login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 
   if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} addDelegate={addDelegate} onLogout={handleInitiateLogout} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} currentSupervisor={currentSupervisor} currentAdminPin={activeAdminPin} showToast={showToast} /></ErrorBoundary>;
 
@@ -61,5 +57,5 @@ export function AppRoutes({ app }: AppRoutesProps) {
 
   if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} isInputFocused={isInputFocused} now={showStaffStats ? now : undefined} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} setSelectedVehicle={setSelectedVehicle} setShowCheckOutModal={setShowCheckOutModal} closeKeyboard={closeKeyboard} newPlateNumber={newPlateNumber} setNewPlateNumber={setNewPlateNumber} setIsInputFocused={setIsInputFocused} plateInputRef={plateInputRef} handleCheckIn={handleCheckIn} inputRef={inputRef} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showStaffStats={showStaffStats} setShowStaffStats={setShowStaffStats} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} isLoading={isLoading} /></ErrorBoundary>;
 
-  return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} onDelegateLogin={() => setView('delegate_login')} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
+  return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }

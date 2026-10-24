@@ -9,7 +9,6 @@ function renderLogin(overrides: Partial<React.ComponentProps<typeof LoginView>> 
     loginPhone: '',
     setLoginPhone: vi.fn(),
     handleGarageLogin: vi.fn(),
-    onDelegateLogin: vi.fn(),
     isLoading: false,
     closeKeyboard: vi.fn(),
     ...overrides,
@@ -51,14 +50,11 @@ describe('LoginView safe interaction contract', () => {
 
   it('keeps login and delegate navigation actions separate', () => {
     const handleGarageLogin = vi.fn();
-    const onDelegateLogin = vi.fn();
-    renderLogin({ loginPhone: '1234567890', handleGarageLogin, onDelegateLogin });
+    renderLogin({ loginPhone: '1234567890', handleGarageLogin });
 
     fireEvent.click(screen.getByRole('button', { name: /تسجيل الدخول/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'دخول المندوب' }));
 
     expect(handleGarageLogin).toHaveBeenCalledTimes(1);
-    expect(onDelegateLogin).toHaveBeenCalledTimes(1);
   });
 
   it('does not submit or mutate the PIN while loading', () => {
@@ -69,7 +65,7 @@ describe('LoginView safe interaction contract', () => {
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[12]);
-    fireEvent.click(buttons[13]);
+    fireEvent.click(buttons[12]);
 
     expect(setLoginPhone).not.toHaveBeenCalled();
     expect(handleGarageLogin).not.toHaveBeenCalled();
