@@ -204,7 +204,7 @@ export const AdminDelegateDetailsView = memo(({
 
   const allTimeCommission = React.useMemo(() => {
     const calculated = calculateApprovedCommission(activeDataset, 'all');
-    return calculated > 0 ? calculated : (delegate.totalCommissionEarned || 0);
+    return Math.max(calculated, delegate.totalCommissionEarned || 0);
   }, [activeDataset, delegate.totalCommissionEarned]);
 
   // Unsettled total since last manual settlement
