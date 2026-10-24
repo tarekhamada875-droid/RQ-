@@ -29,4 +29,35 @@ describe('AdminPartnerDividendCard dynamic investment projections', () => {
     fireEvent.click(screen.getByRole('button', { name: 'إعادة القيم الافتراضية' }));
     expect(garages).toHaveValue(7);
   });
+  it('keeps optional assumptions advanced and the monthly table collapsed by default', () => {
+    render(<AdminPartnerDividendCard currentActiveGarages={5} />);
+
+    expect(screen.queryByRole('spinbutton', { name: 'عمولة المندوبين' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'رسوم الدفع والتحويل' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'مصاريف شهرية أخرى' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('إعدادات متقدمة'));
+    expect(screen.getByRole('spinbutton', { name: 'عمولة المندوبين' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'رسوم الدفع والتحويل' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'مصاريف شهرية أخرى' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('3. الجدول الشهري'));
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('preserves forecast totals when only presentation details are collapsed', () => {
+    render(<AdminPartnerDividendCard currentActiveGarages={5} />);
+
+    expect(screen.getByText('72,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('60,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('12,000 ج.م')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('3. الجدول الشهري'));
+
+    expect(screen.getByText('72,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('60,000 ج.م')).toBeInTheDocument();
+    expect(screen.getByText('12,000 ج.م')).toBeInTheDocument();
+  });
+
 });
