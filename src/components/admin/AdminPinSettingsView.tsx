@@ -71,7 +71,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (!/^\d{8}$/.test(newPin)) {
-      setAdminPinError(t('رمز الدخول الجديد يجب أن يتكون من 8 أرقام بالضبط.'));
+      setAdminPinError(t('رمز الدخول الجديد يجب أن يتكون من 5 أرقام بالضبط.'));
       return;
     }
 
