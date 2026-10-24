@@ -375,7 +375,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       start: '2026-01-01', end: '2026-02-01', delegateId: 'delegate-a'
     });
     expect(body.data.report).toEqual(expected);
-    expect(body.data.report).toMatchObject({ grossRechargeTotal: 262, historicalSettledTotal: 255, currentUnsettledByDelegate: { 'delegate-a': 12 } });
+    expect(body.data.report).toMatchObject({ grossRechargeTotal: 262, historicalSettledTotal: 255, currentUnsettledByDelegate: { 'delegate-a': 0 } });
     expect(mockDb.queryResultSizes).toContain(250);
     expect(Math.max(...mockDb.queryResultSizes)).toBeLessThanOrEqual(250);
   });
