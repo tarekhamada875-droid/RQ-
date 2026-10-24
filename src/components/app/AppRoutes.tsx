@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
-import { AdminLoginView } from '../auth/AdminLoginView';
 import { LoginView } from '../auth/LoginView';
-import { DelegateLoginView } from '../auth/DelegateLoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import type { GarageAppState } from '../../hooks/useGarageApp';
@@ -44,9 +42,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
     }
   }, [view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
 
-  if (view === 'login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} onDelegateLogin={() => setView('delegate_login')} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
-  if (view === 'admin_login') return <AdminLoginView adminPin={adminManagement.adminPin} setAdminPin={adminManagement.setAdminPin} setView={setView} showToast={showToast} closeKeyboard={closeKeyboard} correctAdminPin={activeAdminPin} onLogin={handleGarageLogin} />;
-  if (view === 'delegate_login') return <DelegateLoginView onLogin={handleDelegateLogin} isLoading={isLoading} onBack={() => setView('login')} />;
+  if (view === 'login' || view === 'admin_login' || view === 'delegate_login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 
   if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} addDelegate={addDelegate} onLogout={handleInitiateLogout} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} currentSupervisor={currentSupervisor} currentAdminPin={activeAdminPin} showToast={showToast} /></ErrorBoundary>;
 
