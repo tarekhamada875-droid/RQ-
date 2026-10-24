@@ -148,3 +148,30 @@ describe('approved business rules', () => {
     });
   });
 });
+
+
+describe('credit-grant commission event contract', () => {
+  it('accepts a commission sourced from a paid credit grant', () => {
+    const event = recordDomainEventInTransaction({ set: () => undefined }, { doc: (path: string) => ({ path }) }, {
+      garageId: 'garage-1',
+      aggregateType: 'delegate',
+      aggregateId: 'delegate-1',
+      eventType: 'commission_earned',
+      actorUid: 'admin-1',
+      actorRole: 'admin',
+      idempotencyKey: 'first_paid_grant_commission:garage-1',
+      payload: {
+        delegateId: 'delegate-1',
+        commissionAmount: 100,
+        sourceCreditGrantId: 'credit-ledger-1',
+        earnedAt: '2026-10-24T08:00:00.000Z'
+      }
+    });
+
+    expect(event.payload).toMatchObject({
+      delegateId: 'delegate-1',
+      commissionAmount: 100,
+      sourceCreditGrantId: 'credit-ledger-1'
+    });
+  });
+});
