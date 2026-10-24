@@ -70,7 +70,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const newPin = normalizeDigits(newAdminPinValue).replace(/\D/g, '');
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
-    if (!/^\d{8}$/.test(newPin)) {
+    if (!/^\d{5}$/.test(newPin)) {
       setAdminPinError(t('رمز الدخول الجديد يجب أن يتكون من 5 أرقام بالضبط.'));
       return;
     }
