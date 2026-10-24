@@ -192,7 +192,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     }), workerEnv);
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ success: false, error: 'FORBIDDEN: Trial credits require Admin approval' });
+    expect(await response.json()).toMatchObject({ success: false, code: 'FORBIDDEN', error: 'FORBIDDEN: Trial credits require Admin approval', statusCode: 403 });
     const businessRecords = (records: Map<string, any>) => [...records.entries()].filter(([path]) =>
       !path.startsWith('rate_limits/') && !path.startsWith('rate_limits_')
     );
