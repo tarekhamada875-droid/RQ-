@@ -4,7 +4,7 @@ import { formatDisplayPin, normalizeDigits } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useAppStore } from '../../store/appStore';
 
-export const isValidStaffPin = (pin: string): boolean => /^\d{8}$/.test(pin);
+export const isValidStaffPin = (pin: string): boolean => /^\d{5}$/.test(pin);
 
 export const AdminGarageSettingsSection = (props: any) => {
   const {
@@ -175,10 +175,10 @@ export const AdminGarageSettingsSection = (props: any) => {
                                   type="tel"
                                   inputMode="numeric"
                                   value={editingStaffPinValue}
-                                  minLength={8}
-                                  maxLength={8}
-                                  pattern="[0-9]{8}"
-                                  onChange={(e) => setEditingStaffPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8))}
+                                  minLength={5}
+                                  maxLength={5}
+                                  pattern="[0-9]{5}"
+                                  onChange={(e) => setEditingStaffPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
                                   className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black"
                                   placeholder="••••"
                                   autoFocus
@@ -186,7 +186,7 @@ export const AdminGarageSettingsSection = (props: any) => {
                                 <button
                                   onClick={async () => {
                                     if (!isValidStaffPin(editingStaffPinValue)) {
-                                      useAppStore.getState().showToast(t('رمز دخول الموظف يجب أن يتكون من 8 أرقام بالضبط.'), 'error');
+                                      useAppStore.getState().showToast(t('رمز دخول الموظف يجب أن يتكون من 5 أرقام بالضبط.'), 'error');
                                       return;
                                     }
                                     setIsUpdatingStaffPin(true);
