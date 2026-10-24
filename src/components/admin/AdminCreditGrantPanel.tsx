@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Coins } from 'lucide-react';
 import { Garage } from '../../types';
 import { firestoreService } from '../../services';
@@ -14,6 +14,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const idempotencyIntentRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -37,6 +38,12 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       return;
     }
 
+    const intentFingerprint = JSON.stringify([garage.id, creditAmount, paymentReference.trim(), 'إضافة رصيد يدوي']);
+    const idempotencyKey = idempotencyIntentRef.current?.fingerprint === intentFingerprint
+      ? idempotencyIntentRef.current.key
+      : (globalThis.crypto?.randomUUID?.() || `grant-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    idempotencyIntentRef.current = { fingerprint: intentFingerprint, key: idempotencyKey };
+
     setSubmitting(true);
     setError('');
     setSuccess('');
@@ -47,11 +54,12 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         paymentReference: paymentReference.trim(),
         reason: 'إضافة رصيد يدوي',
         paymentConfirmed,
-        idempotencyKey: globalThis.crypto?.randomUUID?.() || `grant-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        idempotencyKey
       });
       setAmount('');
       setPaymentReference('');
       setPaymentConfirmed(false);
+      idempotencyIntentRef.current = null;
       setSuccess(`${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`);
     } catch (cause: any) {
       setError(cause?.message || 'فشلت إضافة الرصيد.');
