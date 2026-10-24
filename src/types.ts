@@ -136,6 +136,7 @@ export interface Delegate {
   createdAt: any;
   /** Legacy field on existing records; every delegate may now submit applications. */
   canCreateGarage?: boolean;
+  /** Legacy read-only field retained for old documents; Worker rejects writes. */
   commissionRate?: number;
   totalRechargedAmount?: number;
   totalCommissionEarned?: number;
