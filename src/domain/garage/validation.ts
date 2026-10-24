@@ -10,7 +10,7 @@ export const validateGarageCreation = (data: any): ValidationResult => {
     errors.push('اسم الجراج مطلوب (حرفين على الأقل)');
   }
   
-  if (typeof data.pin !== 'string' || !/^\d{8}$/.test(data.pin)) {
+  if (typeof data.pin !== 'string' || !/^\d{5}$/.test(data.pin)) {
     errors.push('رمز الدخول يجب أن يكون 5 أرقام');
   }
   
