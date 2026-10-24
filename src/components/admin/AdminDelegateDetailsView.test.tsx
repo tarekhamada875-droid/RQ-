@@ -147,6 +147,7 @@ describe('AdminDelegateDetailsView Component', () => {
     }]);
 
     renderDetails({ ...mockDelegate, totalRechargedAmount: 100, totalCommissionEarned: 100 });
+    fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
     await screen.findByText('SMALL-RECHARGE');
 
     // Gross sales come from recharge activity, not the unsettled commission balance.
@@ -155,7 +156,6 @@ describe('AdminDelegateDetailsView Component', () => {
     expect(screen.getAllByText('100').length).toBeGreaterThan(0);
     expect(serviceMocks.getDelegateCommissionHistory).toHaveBeenCalledWith('del-123');
 
-    fireEvent.click(screen.getByText('سجل الشحن والعمولات'));
     expect(await screen.findByText('عمولة أول شحن مدفوع')).toBeInTheDocument();
   });
 
