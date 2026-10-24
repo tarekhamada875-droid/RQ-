@@ -588,4 +588,27 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     expect(body.hasMore).toBe(false);
     expect(body.nextCursor).toBeNull();
   });
+
+  it('checks staff garage scope before revealing whether a requested PIN is already assigned', async () => {
+    mockDb.seed('staff/foreign-staff', {
+      name: 'Foreign staff',
+      garageId: 'garage-not-owned-by-caller',
+      pin: '123456'
+    });
+
+    const response = await api.fetch(new Request('http://localhost/api/staff/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer valid-garage-token-garage-a'
+      },
+      body: JSON.stringify({ id: 'foreign-staff', pin: '123456' })
+    }), workerEnv);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      success: false,
+      error: 'FORBIDDEN: Cannot update staff outside your garage'
+    });
+  });
 });
