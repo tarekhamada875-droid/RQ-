@@ -6,6 +6,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { Trash2, History, Check } from 'lucide-react';
 import { Delegate, ActivityLog } from '../../types';
+import type { DelegateCommissionHistoryItem } from '../../services/delegateService';
 import { firestoreService } from '../../services';
 import { safeDate } from '../../utils';
 import { 
@@ -34,6 +35,7 @@ export const AdminDelegateDetailsView = memo(({
   removeDelegate
 }: AdminDelegateDetailsViewProps) => {
   const [recharges, setRecharges] = useState<ActivityLog[]>([]);
+  const [commissionEvents, setCommissionEvents] = useState<DelegateCommissionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
@@ -58,27 +60,33 @@ export const AdminDelegateDetailsView = memo(({
     let isCurrent = true;
     setIsLoading(true);
     setRecharges([]);
+    setCommissionEvents([]);
     setHistoryTotal(0);
 
     const fetchHistory = async () => {
-      try {
-        const logsData = await firestoreService.getDelegateRecharges(delegate.id);
-        if (!isCurrent) return;
+      const [rechargeResult, commissionResult] = await Promise.allSettled([
+        firestoreService.getDelegateRecharges(delegate.id),
+        firestoreService.getDelegateCommissionHistory(delegate.id)
+      ]);
+      if (!isCurrent) return;
 
-        setRecharges(logsData || []);
-
-        // Calculate sum from history for initial display if totalRechargedAmount is missing or 0
-        const items = (logsData || []).filter(log => log.actionType === 'recharge');
-        const sum = items.reduce((acc, log) => {
-          if (typeof log.amount === 'number' && !isNaN(log.amount)) return acc + log.amount;
-          return acc;
-        }, 0);
+      if (rechargeResult.status === 'fulfilled') {
+        const logsData = rechargeResult.value || [];
+        setRecharges(logsData);
+        const sum = logsData
+          .filter(log => log.actionType === 'recharge')
+          .reduce((acc, log) => typeof log.amount === 'number' && Number.isFinite(log.amount) ? acc + log.amount : acc, 0);
         setHistoryTotal(sum);
-      } catch (error) {
-        if (isCurrent) console.error('Failed to fetch delegate recharges:', error);
-      } finally {
-        if (isCurrent) setIsLoading(false);
+      } else {
+        console.error('Failed to fetch delegate recharges:', rechargeResult.reason);
       }
+
+      if (commissionResult.status === 'fulfilled') {
+        setCommissionEvents(commissionResult.value || []);
+      } else {
+        console.error('Failed to fetch canonical delegate commission history:', commissionResult.reason);
+      }
+      setIsLoading(false);
     };
     void fetchHistory();
 
