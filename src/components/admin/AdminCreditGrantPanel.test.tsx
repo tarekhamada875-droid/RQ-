@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
 import { firestoreService } from '../../services';
@@ -13,6 +13,10 @@ const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subsc
 const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits' };
 
 describe('AdminCreditGrantPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('does not expose a credit input for a legacy garage', () => {
     render(<AdminCreditGrantPanel garage={legacyGarage} />);
     expect(screen.queryByLabelText(/الرصيد المراد إضافته/i)).toBeNull();
@@ -29,6 +33,21 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.getByLabelText(/مرجع الدفع الفعلي/i)).toBeTruthy();
     expect(screen.getByText(/أؤكد أن الدفع الفعلي قد تم استلامه والتحقق منه/i)).toBeTruthy();
     expect(screen.getByRole('region', { name: /إضافة رصيد يدوي/ })).toBeTruthy();
+  });
+
+  it('accepts Arabic-Indic and Persian digits in the credit amount', async () => {
+    render(<AdminCreditGrantPanel garage={prepaidGarage} />);
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '٢٠' } });
+    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-arabic-123' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+
+    await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+      amount: 20,
+      paymentAmountEgp: 20,
+      paymentReference: 'receipt-arabic-123',
+      paymentConfirmed: true,
+    })));
   });
 
   it('requires a valid whole-number credit amount', async () => {
