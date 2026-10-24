@@ -1,6 +1,6 @@
 # RQ project model
 
-RQ is a bilingual Arabic/English garage-management PWA. Production architecture is Cloudflare Pages → Cloudflare Worker using Hono → Firebase Authentication and Firestore.
+RQ is an Arabic-only garage-management PWA. Production architecture is Cloudflare Pages → Cloudflare Worker using Hono → Firebase Authentication and Firestore.
 
 ## Active product model
 
