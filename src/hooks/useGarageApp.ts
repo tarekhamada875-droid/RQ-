@@ -298,6 +298,7 @@ export function useGarageApp() {
     currentSupervisor,
     showLogoutConfirm,
     setShowLogoutConfirm,
+    isLoggingOut,
     handleLogout,
     handleInitiateLogout,
   };
