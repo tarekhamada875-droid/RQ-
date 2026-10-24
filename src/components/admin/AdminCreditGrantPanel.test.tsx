@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
 import { firestoreService } from '../../services';
@@ -13,6 +13,10 @@ const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subsc
 const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits' };
 
 describe('AdminCreditGrantPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('does not expose a credit input for a legacy garage', () => {
     render(<AdminCreditGrantPanel garage={legacyGarage} />);
     expect(screen.queryByLabelText(/الرصيد المراد إضافته/i)).toBeNull();
