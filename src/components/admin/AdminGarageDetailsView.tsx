@@ -393,8 +393,7 @@ export const AdminGarageDetailsView = memo(({
         <AdminGarageFinancialsSection
           garage={selectedGarageForDetails}
           t={t}
-          adminLang={adminLang}
-          onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
+            onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
           allGarages={allGarages}
           onReferredByChange={handleReferredByChange}
         />
