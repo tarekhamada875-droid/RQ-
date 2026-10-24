@@ -171,6 +171,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const initialDuplicate = await readExistingResult();
     if (initialDuplicate.isDuplicate) return c.json(initialDuplicate.cachedResult);
 
+    let delegateQuotaDateKey: string | undefined;
     if (callerRole === 'delegate') {
       const cairoParts = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Africa/Cairo',
@@ -180,6 +181,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         return acc;
       }, {});
       const cairoDateKey = `${cairoParts.year}-${cairoParts.month}-${cairoParts.day}`;
+      delegateQuotaDateKey = cairoDateKey;
       const { start: cairoDayStart, end: cairoNextDayStart } = getCairoDayBounds(cairoDateKey);
       const delegateGaragesToday = await getAdminDb().collection('garages')
         .where('createdByDelegateId', '==', delegateEntityId)
@@ -290,6 +292,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const result = { success: true, id: garageId };
     let replayedResult: any;
     let isReplay = false;
+    let delegateQuotaExceeded = false;
 
     await getAdminDb().runTransaction(async (t: any) => {
       if (idempotencyKey) {
@@ -303,8 +306,34 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         }
       }
 
+      let delegateQuotaLockRef: any;
+      if (callerRole === 'delegate' && delegateEntityId && delegateQuotaDateKey) {
+        delegateQuotaLockRef = getAdminDb().collection('delegate_garage_creation_quota_locks')
+          .doc(`${encodeURIComponent(delegateEntityId)}_${delegateQuotaDateKey}`);
+        // Same-day creations by this delegate share one transactional lock.
+        // Firestore retries conflicts, re-running the quota query after a concurrent commit.
+        await t.get(delegateQuotaLockRef);
+        const { start: cairoDayStart, end: cairoNextDayStart } = getCairoDayBounds(delegateQuotaDateKey);
+        const delegateGaragesToday = await t.get(getAdminDb().collection('garages')
+          .where('createdByDelegateId', '==', delegateEntityId)
+          .where('createdAt', '>=', cairoDayStart)
+          .where('createdAt', '<', cairoNextDayStart)
+          .limit(3));
+        if (delegateGaragesToday.size >= 3) {
+          delegateQuotaExceeded = true;
+          return;
+        }
+      }
+
       await saveEntityPinInTransaction(t, 'garages', garageId, normPin);
       t.set(garageRef, garageDoc);
+      if (delegateQuotaLockRef) {
+        t.set(delegateQuotaLockRef, {
+          delegateId: delegateEntityId,
+          dateKey: delegateQuotaDateKey,
+          updatedAt: now
+        }, { merge: true });
+      }
       if (isTrial) {
         const trialTransition = grantTrialCredits({
           balance: { paid: 0, referral: 0, trial: 0 },
@@ -351,6 +380,12 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         );
       }
     });
+
+    if (delegateQuotaExceeded) {
+      const duplicate = await readExistingResult();
+      if (duplicate.isDuplicate) return c.json(duplicate.cachedResult);
+      return c.json({ success: false, error: 'DELEGATE_DAILY_GARAGE_LIMIT_REACHED' }, 409);
+    }
 
     return c.json(isReplay ? replayedResult : result);
   } catch (err: any) {
