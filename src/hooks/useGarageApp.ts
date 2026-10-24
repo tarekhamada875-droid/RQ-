@@ -131,6 +131,7 @@ export function useGarageApp() {
     isSessionReady,
     showLogoutConfirm,
     setShowLogoutConfirm,
+    isLoggingOut,
     handleLogout,
     handleInitiateLogout,
   } = useGarageSession({
@@ -297,6 +298,7 @@ export function useGarageApp() {
     currentSupervisor,
     showLogoutConfirm,
     setShowLogoutConfirm,
+    isLoggingOut,
     handleLogout,
     handleInitiateLogout,
   };
