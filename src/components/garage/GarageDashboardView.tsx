@@ -30,6 +30,7 @@ import { GarageDashboardHeaderAndDrawer } from "./dashboard/GarageDashboardHeade
 import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveVehiclesList } from "./dashboard/GarageActiveVehiclesList";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
+import { getCairoDateKey } from "../../domain/garage/businessDay";
 
 export const GarageDashboardView = memo((props: any) => {
   const {
@@ -92,13 +93,18 @@ export const GarageDashboardView = memo((props: any) => {
     shouldSubscribeToSubscribers,
   });
   const expiringSubscribersCount = useMemo(() => {
-    const todayZero = new Date();
-    todayZero.setHours(0, 0, 0, 0);
+    const today = getCairoDateKey(now ?? new Date());
+    const todayUtc = Date.parse(`${today}T00:00:00Z`);
     return subscriberPage.subscribers.filter((subscriber) => {
       const endDate = new Date(subscriber.endDate);
-      return Math.ceil((endDate.getTime() - todayZero.getTime()) / (1000 * 60 * 60 * 24)) <= 3;
+      if (!Number.isFinite(endDate.getTime())) return false;
+
+      const endDateKey = getCairoDateKey(endDate);
+      const endDateUtc = Date.parse(`${endDateKey}T00:00:00Z`);
+      const daysUntilExpiry = (endDateUtc - todayUtc) / (1000 * 60 * 60 * 24);
+      return daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
     }).length;
-  }, [subscriberPage.subscribers]);
+  }, [now, subscriberPage.subscribers]);
 
   useEffect(() => {
     const unsub = firestoreService.onAnnouncementsChange((list) => {
