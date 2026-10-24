@@ -41,18 +41,23 @@
     user-select: text !important;
   }
 
-  /* Arabic-first editing: keep text entry and the caret on the RTL side. */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="number"]),
+  /* English numeric entry must remain strictly left-to-right. */
+  input[type="number"],
+  input[inputmode="numeric"],
+  input[inputmode="decimal"],
+  input[inputmode="tel"],
+  input[data-numeric="true"],
+  .numeric-input {
+    direction: ltr !important;
+    text-align: left !important;
+  }
+
+  /* Arabic prose fields use RTL; numeric fields are explicitly excluded. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="number"]):not([inputmode="numeric"]):not([inputmode="decimal"]):not([inputmode="tel"]):not([data-numeric="true"]):not(.numeric-input),
   textarea,
   select,
   [contenteditable="true"] {
     direction: rtl !important;
-    text-align: right !important;
-  }
-
-  /* Numbers retain natural digit order; only their visual alignment is RTL. */
-  input[type="number"] {
-    direction: ltr !important;
     text-align: right !important;
   }
 
