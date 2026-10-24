@@ -394,7 +394,7 @@ export const GarageDashboardView = memo((props: any) => {
         >
           <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
           <span className="brand-shimmer-text">
-            ARQ FOR SOFTWARE DEVELOPMENT
+            أرق لتطوير البرمجيات
           </span>
           <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
         </div>
