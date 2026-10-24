@@ -15,6 +15,25 @@ const pendingGarage: Garage = {
 };
 
 describe('AdminRequestsView Arabic-only interface', () => {
+  it('shows an Arabic error when approving a garage request fails', async () => {
+    const handleApproveGarage = vi.fn().mockRejectedValue(new Error('INTERNAL_SERVER_ERROR'));
+
+    render(
+      <AdminRequestsView
+        pendingGarages={[pendingGarage]}
+        handleApproveGarage={handleApproveGarage}
+        handleRejectGarage={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    screen.getByRole('button', { name: 'تأكيد وتفعيل الجراج' }).click();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'تعذر تفعيل الجراج. يرجى المحاولة مرة أخرى.',
+    );
+    expect(screen.queryByText('INTERNAL_SERVER_ERROR')).not.toBeInTheDocument();
+  });
+
   it('keeps Arabic copy and RTL layout when a legacy English preference exists', () => {
     localStorage.setItem('admin_lang', 'en');
 
