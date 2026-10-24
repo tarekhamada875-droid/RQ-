@@ -11,6 +11,8 @@ import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsVi
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
 import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
+import { AdminLoginView } from '../components/auth/AdminLoginView';
+import { DelegateLoginView } from '../components/auth/DelegateLoginView';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
@@ -363,5 +365,36 @@ describe('Arabic-only shared interface', () => {
     expect(screen.getByText('تنشيط الصفحة الآن')).toBeDefined();
     expect(screen.queryByText('sensitive_internal_error_detail')).toBeNull();
     consoleError.mockRestore();
+  });
+});
+
+
+describe('Arabic-only login branding', () => {
+  it('uses Arabic brand text on Admin login', () => {
+    render(
+      <AdminLoginView
+        adminPin=""
+        setAdminPin={vi.fn()}
+        setView={vi.fn()}
+        showToast={vi.fn()}
+        closeKeyboard={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeNull();
+  });
+
+  it('uses Arabic brand text on Delegate login', () => {
+    render(
+      <DelegateLoginView
+        onLogin={vi.fn()}
+        isLoading={false}
+        onBack={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+    expect(screen.queryByText('ARQ FOR SOFTWARE DEVELOPMENT')).toBeNull();
   });
 });
