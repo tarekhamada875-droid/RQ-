@@ -65,7 +65,7 @@ describe('LoginView safe interaction contract', () => {
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[12]);
-    fireEvent.click(buttons[13]);
+    fireEvent.click(buttons[12]);
 
     expect(setLoginPhone).not.toHaveBeenCalled();
     expect(handleGarageLogin).not.toHaveBeenCalled();
