@@ -288,7 +288,7 @@ export const AdminDelegateDetailsView = memo(({
 
           {/* History Section */}
           <AdminDelegateHistorySection 
-            recharges={recharges}
+            recharges={activeDataset}
             isLoading={isLoading}
             adminLang={adminLang}
           />
