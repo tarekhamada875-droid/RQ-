@@ -172,10 +172,12 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         if (part.type !== 'literal') acc[part.type] = part.value;
         return acc;
       }, {});
-      const cairoDayStart = new Date(`${cairoParts.year}-${cairoParts.month}-${cairoParts.day}T00:00:00+03:00`);
+      const cairoDateKey = `${cairoParts.year}-${cairoParts.month}-${cairoParts.day}`;
+      const { start: cairoDayStart, end: cairoNextDayStart } = getCairoDayBounds(cairoDateKey);
       const delegateGaragesToday = await getAdminDb().collection('garages')
         .where('createdByDelegateId', '==', delegateEntityId)
         .where('createdAt', '>=', cairoDayStart)
+        .where('createdAt', '<', cairoNextDayStart)
         .limit(3)
         .get();
       if (delegateGaragesToday.size >= 3) {
