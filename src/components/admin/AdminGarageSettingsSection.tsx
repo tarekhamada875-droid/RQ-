@@ -4,6 +4,8 @@ import { formatDisplayPin, normalizeDigits } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useAppStore } from '../../store/appStore';
 
+export const isValidStaffPin = (pin: string): boolean => /^\d{8}$/.test(pin);
+
 export const AdminGarageSettingsSection = (props: any) => {
   const {
     t,
@@ -183,7 +185,7 @@ export const AdminGarageSettingsSection = (props: any) => {
                                 />
                                 <button
                                   onClick={async () => {
-                                    if (!/^\d{8}$/.test(editingStaffPinValue)) {
+                                    if (!isValidStaffPin(editingStaffPinValue)) {
                                       useAppStore.getState().showToast(t('رمز دخول الموظف يجب أن يتكون من 8 أرقام بالضبط.'), 'error');
                                       return;
                                     }
