@@ -128,6 +128,13 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     if (retiredCreationField) return c.json({ success: false, error: 'RETIRED_GARAGE_FIELD', field: retiredCreationField }, 400);
     const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'isTrial', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
     const { phone: rawPhone, hourlyRate: rawHourlyRate, overnightRate: rawOvernightRate, createdByDelegateId, createdByDelegateName, referrerId, referrerName, referredByGarageId, referredByGarageName } = sanitized;
+    const requestedTrial = sanitized.isTrial === true
+      || sanitized.isTrial === 'true'
+      || sanitized.isTrial === 'on'
+      || sanitized.isTrial === '1';
+    if (requestedTrial && callerRole !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Trial credits require Admin approval' }, 403);
+    }
     const name = validateString(sanitized.name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(sanitized.pin);
     const idempotencyKey = validateIdempotencyKey(
