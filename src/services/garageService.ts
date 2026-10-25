@@ -4,7 +4,6 @@ import {
   collection, 
   query, 
   where, 
-  or,
   onSnapshot, 
   doc, 
   getDoc,
@@ -12,7 +11,7 @@ import {
   serverTimestamp, 
 } from 'firebase/firestore';
 import type { Garage } from '../types';
-import { withRetry, sortGaragesNewestFirst } from '../utils';
+import { withRetry } from '../utils';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 
@@ -59,70 +58,6 @@ export const garageService = {
   getDashboardSummary: async (garageId: string): Promise<GarageDashboardSummary> => {
     const response = await apiFetch<{ data: { summary: GarageDashboardSummary } }>(`/api/garages/${encodeURIComponent(garageId)}/dashboard-summary`);
     return response.data.summary;
-  },
-
-  subscribeToGarages: (callback: (garages: Garage[]) => void) => {
-    const trackerUnsub = listenerTracker.register('garages');
-    let timeoutId: any = null;
-    let latestGarages: Garage[] | null = null;
-    let isFirst = true;
-
-    const emit = () => {
-      if (latestGarages) {
-        callback(latestGarages);
-      }
-    };
-
-    const q = query(collection(db, 'garages'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const rawGarages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
-      latestGarages = sortGaragesNewestFirst(rawGarages);
-      if (isFirst) {
-        isFirst = false;
-        emit();
-      } else {
-        // Throttle high-frequency updates (e.g. 10-30 transactions/sec across 1000 garages) to prevent UI thread lockup
-        if (!timeoutId) {
-          timeoutId = setTimeout(() => {
-            timeoutId = null;
-            emit();
-          }, 2000);
-        }
-      }
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'garages'));
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-      unsub();
-      trackerUnsub();
-    };
-  },
-
-  subscribeToDelegateGarages: (delegateId: string, callback: (garages: Garage[]) => void) => {
-    if (!delegateId) {
-      callback([]);
-      return () => {};
-    }
-    const trackerUnsub = listenerTracker.register(`delegates/${delegateId}/garages`);
-    const q = query(
-      collection(db, 'garages'),
-      or(
-        where('createdByDelegateId', '==', delegateId),
-        where('referrerId', '==', delegateId)
-      )
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      const rawGarages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Garage));
-      callback(sortGaragesNewestFirst(rawGarages));
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'garages/delegate'));
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
   },
 
   getAdminGaragesPage: async (pageSize = 50, lastDocRef: GaragePageCursor | null = null): Promise<GaragePage> => {
