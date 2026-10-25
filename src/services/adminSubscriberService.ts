@@ -122,5 +122,4 @@ export const adminSubscriberService = {
     }
   },
 
-  // Coupons
 };
