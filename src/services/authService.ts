@@ -1,9 +1,4 @@
-import { auth, db } from '../firebase';
-import { 
-  doc, 
-  setDoc,
-  serverTimestamp
-} from 'firebase/firestore';
+import { auth } from '../firebase';
 import { normalizeDigits } from '../utils';
 import { claimEntitySession, releaseEntitySession, getCanonicalSessionId } from './authSessionService';
 import { apiFetch } from '../api/apiClient';
