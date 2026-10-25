@@ -1,6 +1,5 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SystemConfig } from '../types';
 import { useSystemConfig } from './useSystemConfig';
 
 const serviceMock = vi.hoisted(() => {
