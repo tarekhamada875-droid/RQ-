@@ -422,12 +422,15 @@ export function useGarageSession({
         }
       };
 
-      // 5-minute heartbeat interval is safe with the 24-hour inactivity timeout and reduces Firebase Spark write quota
-      heartbeatTimer = setInterval(sendHeartbeat, 300000);
+      // Each heartbeat costs ~3 Firestore writes on the Worker. 15 minutes keeps the
+      // session fresh (24-hour limit) while staying well inside the free write quota.
+      const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+      const HEARTBEAT_RESUME_GAP_MS = 10 * 60 * 1000;
+      heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
 
       visibilityHandler = () => {
         if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-          if (Date.now() - lastHeartbeatTime > 180000) {
+          if (Date.now() - lastHeartbeatTime > HEARTBEAT_RESUME_GAP_MS) {
             sendHeartbeat().catch(() => {});
           }
         }
