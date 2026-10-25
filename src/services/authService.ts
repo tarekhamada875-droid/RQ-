@@ -116,18 +116,6 @@ export const authService = {
     }
   },
 
-  releaseAdminSessionOnServer: async (uid: string, sessionId: string): Promise<void> => {
-    if (!uid || !sessionId) return;
-    try {
-      const firebaseIdToken = typeof auth.currentUser?.getIdToken === 'function' ? await auth.currentUser.getIdToken().catch(() => '') : '';
-      await apiFetch('/api/auth/release-admin-session', {
-        method: 'POST',
-        body: { uid, sessionId, firebaseIdToken }
-      });
-    } catch (e) {
-      console.error('[AuthService] Error releasing admin session on server:', e);
-    }
-  },
 
   verifyAdminPinForLogout: async (inputPin: string): Promise<boolean> => {
     const normInput = normalizeDigits(String(inputPin || '')).replace(/\D/g, '');
@@ -146,14 +134,6 @@ export const authService = {
     return false;
   },
 
-  updateSession: async (collectionName: string, id: string, _meta?: any) => {
-    if (!id) return;
-    try {
-      await setDoc(doc(db, collectionName, id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {
-      console.error(`[AuthService] Error updating ${collectionName} session:`, e);
-    }
-  },
 
   releaseDelegateSession: async (delegateId: string, sessionId?: string) => {
     if (!delegateId) return;
@@ -200,17 +180,6 @@ export const authService = {
     return { currentSessionId: sid };
   },
 
-  claimOrRefreshDelegateSession: async (delegateId: string, sessionId?: string, deviceInfo?: any) => {
-    return authService.claimDelegateSession(delegateId, sessionId, deviceInfo);
-  },
 
 
-  updateStaffSession: async (id: string, _meta?: any) => {
-    if (!id) return;
-    try {
-      await setDoc(doc(db, 'staff_sessions', id), { lastActive: serverTimestamp() }, { merge: true });
-    } catch (e) {
-      console.error('[AuthService] Error updating staff session:', e);
-    }
-  }
 };
