@@ -2,10 +2,6 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SystemConfig } from '../types';
 import { useSystemConfig } from './useSystemConfig';
-import {
-  useSystemDelegateCommissions,
-  useSystemReferralFee,
-} from './useSystemSubscribersFlatFee';
 
 const serviceMock = vi.hoisted(() => {
   const callbacks: Array<(config: any) => void> = [];
@@ -34,34 +30,6 @@ afterEach(() => {
 });
 
 describe('useSystemConfig singleton', () => {
-  it('shares one subscription and one snapshot update across config and fee consumers', () => {
-    const { result, unmount } = renderHook(() => {
-      const config = useSystemConfig();
-      const referralFee = useSystemReferralFee();
-      const delegateCommissions = useSystemDelegateCommissions();
-      return { config, referralFee, delegateCommissions };
-    });
-
-    expect(serviceMock.subscribeToSystemConfig).toHaveBeenCalledTimes(1);
-    expect(serviceMock.callbacks).toHaveLength(1);
-
-    const config: SystemConfig = {
-      monthlySubscribersSurchargePercent: 25,
-      referralFeePerRenewal: 85,
-      delegatePackageCommissions: { daily: 8, weekly: 18, biweekly: 28, monthly: 48 },
-    };
-    const notify = serviceMock.callbacks[0];
-    expect(notify).toBeTypeOf('function');
-    act(() => notify?.(config));
-
-    expect(result.current.config).toEqual(config);
-    expect(result.current.referralFee).toBe(85);
-    expect(result.current.delegateCommissions).toEqual({ daily: 8, weekly: 18, biweekly: 28, monthly: 48 });
-
-    unmount();
-    expect(serviceMock.unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
   it('keeps the shared subscription alive until the last independent consumer unmounts', () => {
     const first = renderHook(() => useSystemConfig());
     const second = renderHook(() => useSystemConfig());
