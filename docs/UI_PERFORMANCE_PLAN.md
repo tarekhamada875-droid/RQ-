@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 1 IN PROGRESS — P1.1 complete and verified; P1.2 next** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 1 IN PROGRESS — P1.1 and P1.2 complete and verified; P1.3 next** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -93,7 +93,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P0.3 | Baseline size counts | low | [x] | 2026-10-25 | 8e5cd17 | Executed in run #40198933303. Corrected measured baseline: 30,526 non-test `.ts`/`.tsx` lines in `src` + `server`; 19,309 lines in test files under `src`, `server`, and `tools`; 498 tracked files (`git ls-files`); 595 files found excluding `node_modules` (includes untracked runner-generated files, so use tracked count for repo baseline). The plan's original ungrouped `find` expression reports 41,545 and overcounts due to `-o` precedence; do not use that as the non-test count. |
 | P0.4 | Ask & record owner decisions D1–D5 | low | [x] | 2026-10-25 | pending | Owner answers recorded; D2 remains unknown due Cloudflare billing scope; D4 requires caller investigation |
 | P1.1 | Heartbeat 5 min → 15 min | low | [x] | 2026-10-25 | ff70579 | Merged in PR #395 (merge `d700304`); Production Gate run #40199945696 passed. Heartbeat now 15 min; resume heartbeat after 10 min. No production deployment. |
-| P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [ ] | | | |
+| P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [x] | 2026-10-25 | 5dcf0d4 | Merged in PR #397 (merge `28a0cca`); Production Gate run #40200933260 passed. Poll interval is 120 s; polling pauses while hidden. Deploy jobs skipped. |
 | P1.3 | Delete dead all-garages live listener | low | [ ] | | | |
 | P1.4 | Usage monitoring setup (OWNER ACTION) | low | [ ] | | | |
 | P2.1 | Delete dead files (+ their tests) | low | [ ] | | | |
@@ -983,6 +983,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 3 | 2026-10-25 | P0.3 | Recorded measured source/test/file counts and documented the original `find` precedence issue. | workflow + plan updated | Run #40198933303: corrected non-test TS/TSX lines 30,526; test-file lines 19,309; tracked files 498; broad find excluding `node_modules` 595. The plan's ungrouped expression returned 41,545 and is not a valid non-test count. | 8e5cd17 | Use tracked files and corrected grouped source count as the baseline. |
 | 4 | 2026-10-25 | P0.2/P0.3 | Phase 0 baseline evidence consolidated in canonical plan; marked Phase 0 complete. | `docs/UI_PERFORMANCE_PLAN.md` updated | Exact `npm run ci:check` passed; all baseline metrics recorded from workflow run #40198933303. | pending | Temporary verification workflow should be removed after this evidence is merged; no application code changed. | |
 | 5 | 2026-10-25 | P1.1 | Reduced session heartbeat from 5 to 15 minutes and changed the visible-tab resume threshold to 10 minutes; updated the interval regression test. | `src/hooks/useGarageSession.ts`, `src/hooks/useGarageSession.test.tsx` | Production Gate run #40199945696 passed (typecheck, full suite, build/artifact checks); PR #395 merged to `main`. | ff70579 | No owner action needed for this task; no production deployment. |
+| 6 | 2026-10-25 | P1.2 | Reduced delegate dashboard polling from 15 seconds to 120 seconds, paused periodic polling while the document is hidden, and added regression coverage for interval and visibility behavior. | `src/hooks/useGarageSync.ts`, `src/hooks/useGarageSync.test.tsx` | Production Gate run #40200933260 passed (typecheck, full suite, Firestore rules, production build and artifact checks); PR #397 merged to `main`. Deploy jobs skipped; no production deployment. | 5dcf0d4 | No owner action needed for this task; no production deployment. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
