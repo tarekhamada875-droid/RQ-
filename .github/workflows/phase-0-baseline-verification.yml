@@ -62,6 +62,6 @@ jobs:
           echo "=== Corrected tracked file count (Git index; excludes .git internals and ignored files) ==="
           git ls-files | wc -l
           echo "=== Corrected non-test TypeScript lines (grouped find predicates) ==="
-          find src server -type f \\( -name '*.ts' -o -name '*.tsx' \\) ! -name '*.test.*' ! -path '*/__tests__/*' -print0 | xargs -0 wc -l | tail -1
-          echo "=== Test TypeScript lines in src/server/tools ==="
+          find src server -type f \( -name '*.ts' -o -name '*.tsx' \) ! -name '*.test.*' ! -path '*/__tests__/*' -print0 | xargs -0 wc -l | tail -1
+          echo "=== Test file lines across src/server/tools ==="
           find src server tools -type f -name '*.test.*' -print0 | xargs -0 wc -l | tail -1
