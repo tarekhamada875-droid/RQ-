@@ -70,7 +70,8 @@ describe('AdminDelegateDetailsView Component', () => {
     expect(screen.getByText('عرض آخر معاملات الشحن والعمولات')).toBeInTheDocument();
     expect(screen.getByText('ناجح')).toBeInTheDocument();
     expect(screen.getAllByText('1,500').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('150').length).toBeGreaterThan(0);
+    // A legacy commission field on a recharge log is not an authoritative commission event.
+    expect(screen.queryByText('150')).not.toBeInTheDocument();
     expect(serviceMocks.getDelegateRecharges).toHaveBeenCalledWith('del-123');
   });
   it('ignores late history responses from the previously selected delegate', async () => {
