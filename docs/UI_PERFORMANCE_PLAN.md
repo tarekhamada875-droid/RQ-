@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 1 IN PROGRESS — P1.1, P1.2, and P1.3 complete and verified; P1.4 owner action next** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 2 IN PROGRESS — P2.1 complete and verified; P1.4 usage-monitoring owner action remains pending** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -96,7 +96,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [x] | 2026-10-25 | 5dcf0d4 | Merged in PR #397 (merge `28a0cca`); Production Gate run #40200933260 passed. Poll interval is 120 s; polling pauses while hidden. Deploy jobs skipped. |
 | P1.3 | Delete dead garage live listeners | low | [x] | 2026-10-25 | caffcff | Removed both unused garage listener methods, their unused imports, and the obsolete test that depended on the removed delegate listener. PR #399 merged; Production Gate run #40201555729 passed. |
 | P1.4 | Usage monitoring setup (OWNER ACTION) | low | [ ] | | | |
-| P2.1 | Delete dead files (+ their tests) | low | [ ] | | | |
+| P2.1 | Delete dead files (+ their tests) | low | [x] | 2026-10-25 | 7dde9ad | PR #401 merged as 2af758a; Production Gate run #40207192163 passed. Removed 11 audit-listed dead files and retired their dependent test cases/imports. Deploy jobs skipped; no production deployment. |
 | P2.2 | Delete dead functions/methods | med | [ ] | | | |
 | P2.3 | Remove coupons feature (D5) | low | [ ] | | | |
 | P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [ ] | | | Owner believes old copies may still call these routes; retain HTTP 410 compatibility until evidence says safe |
@@ -985,6 +985,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 5 | 2026-10-25 | P1.1 | Reduced session heartbeat from 5 to 15 minutes and changed the visible-tab resume threshold to 10 minutes; updated the interval regression test. | `src/hooks/useGarageSession.ts`, `src/hooks/useGarageSession.test.tsx` | Production Gate run #40199945696 passed (typecheck, full suite, build/artifact checks); PR #395 merged to `main`. | ff70579 | No owner action needed for this task; no production deployment. |
 | 6 | 2026-10-25 | P1.2 | Reduced delegate dashboard polling from 15 seconds to 120 seconds, paused periodic polling while the document is hidden, and added regression coverage for interval and visibility behavior. | `src/hooks/useGarageSync.ts`, `src/hooks/useGarageSync.test.tsx` | Production Gate run #40200933260 passed (typecheck, full suite, Firestore rules, production build and artifact checks); PR #397 merged to `main`. Deploy jobs skipped; no production deployment. | 5dcf0d4 | No owner action needed for this task; no production deployment. |
 | 7 | 2026-10-25 | P1.3 | Removed the unused `subscribeToGarages` and `subscribeToDelegateGarages` methods and their now-unused imports; removed the obsolete test that only exercised the deleted delegate listener. | `src/services/garageService.ts`, `src/__tests__/delegateScopeIsolation.test.ts` (deleted) | Production Gate run #40201555729 passed; PR #399 merged to `main` as `e466f2a073ed0b6e8ebe9a3c0b302adeda28b351`. Deployment jobs skipped; no production deployment. | caffcff | No owner action needed for code cleanup; usage monitoring setup is the next owner action. |
+| 8 | 2026-10-25 | P2.1 | Removed audit-listed dead files and only the obsolete tests/imports that depended on deleted code. The first run caught two unused imports; they were removed and the corrected commit passed the full Production Gate. | 11 files deleted; 2 test files adjusted | Initial run #40207028434 failed typecheck on unused `act` and `SystemConfig`; corrected commit passed Production Gate run #40207192163. PR #401 merged to `main` as `2af758a73db7eca5d03461a3d7aa43d13fe44bb9`; deployment jobs skipped. | 7dde9ad | No production deployment. P1.4 Firebase Usage monitoring owner action remains pending. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
