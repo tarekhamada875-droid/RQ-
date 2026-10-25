@@ -20,10 +20,11 @@ describe('Hono Worker CORS security', () => {
     expect(response.headers.get('access-control-allow-headers')?.toLowerCase()).toContain('x-session-id');
   });
 
-  it('supports the local Vite development origin', async () => {
+  it('does not allow the local Vite development origin by default', async () => {
     const response = await preflight('http://localhost:5173');
     expect(response.status).toBe(204);
-    expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+    expect(response.headers.get('access-control-allow-origin')).not.toBe('http://localhost:5173');
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://rq-acg.pages.dev');
   });
 
   it('does not reflect an unapproved third-party origin', async () => {

@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 3 COMPLETE — P3.1–P3.4 complete and verified; Cloudflare application release remains** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 4 IN PROGRESS — P4.1 complete and verified; remaining security/configuration tasks continue** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -106,7 +106,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P3.2 | Lock Firestore rules (browser = read-only) | **high** | [x] | 2026-10-25 | 4bcca03 | Session, garage, staff, delegate, settings, package, retired billing, system-config, and daily-counter browser writes are denied; emulator matrix passes. |
 | P3.3 | Close `admin_settings` wallet read | med | [x] | 2026-10-25 | 4bcca03 | Wallet/subscription settings are Admin-only; non-admin reads are denied and Admin reads remain covered. |
 | P3.4 | Update rules tests; deploy rules (OWNER ACTION) | **high** | [x] | 2026-10-25 | 4bcca03 | Emulator/full gate passed. Preview project was deleted, so the owner explicitly authorized the direct path; Firebase CLI released the checked-in rules to production database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`, and the live read-back shows Worker/server-only mutations. |
-| P4.1 | CORS allowlist cleanup | low | [ ] | | | |
+| P4.1 | CORS allowlist cleanup | low | [x] | 2026-10-25 | pending | Default Worker CORS now allows only `https://rq-acg.pages.dev`; local/custom origins remain configurable through `ALLOWED_ORIGINS`. Focused CORS tests, source-origin audit, and garage browser smoke passed. |
 | P4.2 | Remove legacy PIN formats (needs D1 = NO) | **high** | [ ] | | | |
 | P4.3 | Check Worker plan / CPU (OWNER ACTION, D2) | med | [ ] | | | |
 | P4.4 | Make repo private + rotate secrets (OWNER ACTION) | med | [ ] | | | |
@@ -990,6 +990,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 10 | 2026-10-25 | P3.1 | Removed the browser Firestore session-claim fallback and its transaction helpers; moved the retained session timeout constant to session policy; outage and invalid-session paths now fail closed. | `src/services/authSessionService.ts`, `src/services/authSessionService.test.ts`, `src/domain/auth/sessionPolicy.ts`; 2 helper files deleted | `npm run lint` passed; focused Vitest run passed: 3 files, 20 tests; `git diff --check` passed. | 38d7439 | No UI or business-rule changes. Rules remain to be hardened and deployed in P3.2–P3.4. |
 | 11 | 2026-10-25 | P3.2/P3.3 | Locked the browser Firestore surface to reads plus Worker/Admin SDK writes, retired legacy billing writes, removed the old wallet settings read for non-admins, and deleted helpers proven unused by the new rules. | `firestore.rules`, `tools/firestore-rules-security.test.mjs` | `npm run test:rules` passed; emulator matrix passed after updating expected browser writes and seeding the valid server-owned package fixture; `git diff --check` passed. | 4bcca03 | P3.4 remains: preview walkthrough, then production rules deploy, then full UI/CI validation. |
 | 12 | 2026-10-25 | P3.4 | Full production gate passed. Preview project was deleted, so the owner authorized the documented direct production path. Rules were released to the exact named production database and verified by live read-back. | `firestore.rules` | `npm run ci:check` passed all checks. `npx firebase-tools deploy --only firestore:rules --project gen-lang-client-0091669619 --config firebase.json --non-interactive` succeeded; database list confirmed `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`; live rules show server-only session, garage, staff, package, and vehicle mutations. | pending | Proceed with the Cloudflare Pages/Worker release after the verified commits are merged to `main`. |
+| 13 | 2026-10-25 | P4.1 | Removed hard-coded AI Studio and localhost CORS fallback origins; the production Pages origin remains the only built-in default, while `ALLOWED_ORIGINS` remains the explicit override for authorized environments. | `server/cloudflareWorker.ts`, `src/__tests__/corsSecurity.test.ts` | Focused CORS suite: 3/3 passed. Source audit found no hard-coded `localhost:5173` or `aistudio` in production source. `npm run ui-fixtures:browser-smoke:garage` passed against Auth/Firestore emulators; authenticated garage dashboard marker and 7 Firestore listeners verified. | pending | Run full `npm run ci:check`, then merge through the normal Production Gate/Cloudflare workflow. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
