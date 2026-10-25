@@ -14,8 +14,7 @@ export interface CommissionRequestLike {
     commission?: number;
     revenueAmount?: number;
     amount?: number;
-    };
-  [key: string]: unknown;
+  };
 }
 
 export const getRequestMonthKey = (request: CommissionRequestLike): string | null => {
@@ -48,11 +47,6 @@ export interface CommissionFinancialSummary {
   rejectedCount: number;
 }
 
-/**
- * Aggregate only canonical activity types. Gross sales are recharge activity amounts;
- * commission is recorded only by Worker-owned commission_earned events.
- * Request approval status and arbitrary legacy commission values are not authoritative.
- */
 export const calculateCommissionFinancialSummary = (
   requests: CommissionRequestLike[],
   monthKey: string = 'all'
