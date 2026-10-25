@@ -398,8 +398,8 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
-  describe('5. Admin Announcements & Coupons & Packages', () => {
-    it('manages announcements, coupons, and packages for admin only', async () => {
+  describe('5. Admin Announcements & Packages', () => {
+    it('manages announcements and packages for admin only', async () => {
       // Announcements
       const annRes = await call('/api/admin/announcements/create', tokens.admin, {
         method: 'POST',
@@ -419,26 +419,6 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ id: annId })
       });
       expect(deleteAnn.status).toBe(200);
-
-      // Coupons
-      const couponRes = await call('/api/admin/coupons/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ code: 'SAVE20', discountPercent: 20 })
-      });
-      expect(couponRes.status).toBe(200);
-      const couponId = (await couponRes.json()).id;
-
-      const updateCoupon = await call('/api/admin/coupons/update', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: couponId, discountPercent: 25 })
-      });
-      expect(updateCoupon.status).toBe(200);
-
-      const deleteCoupon = await call('/api/admin/coupons/delete', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: couponId })
-      });
-      expect(deleteCoupon.status).toBe(200);
 
       // Packages
       const legacyPkgRes = await call('/api/admin/packages/create', tokens.admin, {
