@@ -88,8 +88,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 
 | ID | Task | Risk | Status | Date | Commit | Notes |
 |----|------|------|--------|------|--------|-------|
-| P0.1 | Branch, Node 22, `npm ci` | low | [ ] | | | |
-| P0.2 | Baseline: lint + test + ci:check | low | [ ] | | | |
+| P0.1 | Branch, Node 22, `npm ci` | low | [!] | 2026-10-25 | — | GitHub branch exists, but this session has no repository checkout/terminal; Node version and npm ci cannot honestly be reported as run. Needs an executable repo workspace or local CI run. |
+| P0.2 | Baseline: lint + test + ci:check | low | [!] | 2026-10-25 | — | Production Gate succeeded only in Markdown-only validation mode; Typecheck, full tests, rules tests, build, and maintainability jobs were skipped. Baseline remains unverified. |
 | P0.3 | Baseline size counts | low | [ ] | | | |
 | P0.4 | Ask & record owner decisions D1–D5 | low | [x] | 2026-10-25 | pending | Owner answers recorded; D2 remains unknown due Cloudflare billing scope; D4 requires caller investigation |
 | P1.1 | Heartbeat 5 min → 15 min | low | [ ] | | | |
@@ -979,7 +979,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | # | Date | Task ID | What was done (1–2 lines) | Files changed (+/−) | Commands run and result | Commit | Problems / questions for owner |
 |---|------|---------|---------------------------|---------------------|-------------------------|--------|-------------------------------|
 | 1 | 2026-10-25 | P0.4 | Recorded owner decisions: no real customer data; Cloudflare billing tier unknown because Billing Read is not authorized; keep current session behavior pending pilot feedback; investigate old billing endpoint callers before removing 410 compatibility routes; remove coupons. | plan updated | Cloudflare account and Worker list read successfully; subscription query returned 403 due missing Billing Read permission | pending | Need authorized billing visibility for D2; do not remove legacy billing tombstones until caller safety is established. |
-| 2 | | | | | | | |
+| 2 | 2026-10-25 | P0.1/P0.2 | Checked Production Gate details. It validated the Markdown-only change, but skipped setup, dependency installation, typecheck, full tests, Firestore rules tests, build, artifact smoke test, and maintainability checks. No local repository terminal is available in this session, so Node/npm baseline cannot be claimed. | plan updated | GitHub Production Gate run 40192384496: Markdown validation passed; application validation jobs skipped | pending | Need an executable repository workspace or a CI run that actually executes application checks before starting source edits. |
 | 3 | | | | | | | |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
