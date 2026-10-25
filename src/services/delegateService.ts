@@ -5,7 +5,6 @@ import {
   query, 
   where, 
   onSnapshot, 
-  doc, 
   getDocs, 
   orderBy, 
   limit,
@@ -130,31 +129,7 @@ export const delegateService = {
     }
   },
 
-  subscribeToDelegate: (delegateId: string, callback: (delegate: Delegate) => void) => {
-    const trackerUnsub = listenerTracker.register(`delegates/${delegateId}`);
-    const unsub = onSnapshot(doc(db, 'delegates', delegateId), (snapshot) => {
-      if (snapshot.exists()) {
-        callback({ id: snapshot.id, ...snapshot.data() } as Delegate);
-      }
-    }, (err) => handleFirestoreError(err, OperationType.GET, `delegates/${delegateId}`));
 
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
-  },
-
-  getDelegateByPhone: async (phone: string) => {
-    try {
-      const q = query(collection(db, 'delegates'), where('phone', '==', phone), limit(1));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) return null;
-      return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Delegate;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, 'delegates');
-      throw error;
-    }
-  },
 
   updateDelegate: async (id: string, data: Partial<Delegate>) => {
     try {

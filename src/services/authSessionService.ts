@@ -8,7 +8,6 @@ import {
   getEntityDocumentId
 } from '../domain/auth/sessionPolicy';
 import {
-  SESSION_TIMEOUT_MS,
   claimSessionInTransaction
 } from '../domain/auth/sessionTransactions';
 export type { EntityRole };
@@ -30,7 +29,6 @@ export interface ClaimSessionParams {
 }
 
 export { SESSION_TIMEOUT_MS } from '../domain/auth/sessionTransactions';
-export const HEARTBEAT_TIMEOUT_MS = SESSION_TIMEOUT_MS;
 
 export const getCanonicalSessionId = (): string => {
   if (typeof window === 'undefined') return 'server_session';
@@ -52,9 +50,6 @@ export const getCanonicalSessionId = (): string => {
   }
 };
 
-export const getOrCreateDeviceId = (): string => {
-  return getCanonicalSessionId();
-};
 
 // In-memory cache to prevent duplicate Firestore transaction collisions within the same client session
 const recentClaims = new Map<string, number>();
@@ -246,12 +241,3 @@ export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: C
   }
 };
 
-export const updateSessionHeartbeat = async (garageId: string): Promise<void> => {
-  const sid = getCanonicalSessionId();
-  await refreshEntitySession({
-    role: 'garage',
-    entityId: garageId,
-    sessionId: sid,
-    uid: garageId
-  });
-};

@@ -405,18 +405,6 @@ export const withRetry = async <T>(
  * Simple lock to prevent concurrent execution of the same async operation.
  * Use for check-in/check-out to prevent double-submits.
  */
-export const createAsyncLock = () => {
-  let isLocked = false;
-  return async <T>(fn: () => Promise<T>): Promise<T | null> => {
-    if (isLocked) return null; // Already running — ignore this call
-    isLocked = true;
-    try {
-      return await fn();
-    } finally {
-      isLocked = false;
-    }
-  };
-};
 
 /**
  * Throttles snapshot updates to prevent excessive re-renders and UI thrashing.

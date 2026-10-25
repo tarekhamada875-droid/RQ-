@@ -25,10 +25,6 @@ export const getRequestMonthKey = (request: CommissionRequestLike): string | nul
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
-export const filterApprovedRequests = <T extends CommissionRequestLike>(requests: T[]): T[] =>
-  Array.isArray(requests) ? requests.filter((request) =>
-    request?.actionType === 'recharge' || request?.actionType === 'commission_earned'
-  ) : [];
 
 export const filterRequestsByMonth = <T extends CommissionRequestLike>(
   requests: T[],
