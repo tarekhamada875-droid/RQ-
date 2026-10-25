@@ -148,34 +148,6 @@ export const garageService = {
     }
   },
 
-  claimOrRefreshGarageSession: async (
-    garageId: string,
-    sessionId: string,
-    _serverTimeOffset = 0
-  ) => {
-    const garageRef = doc(db, 'garages', garageId);
-    const sessionRef = doc(db, 'garage_sessions', garageId);
-
-    return withRetry(() => runTransaction(db, async (transaction) => {
-      const garageSnap = await transaction.get(garageRef);
-      if (!garageSnap.exists()) throw new Error('GARAGE_NOT_FOUND');
-
-      const data = garageSnap.data();
-
-      transaction.update(garageRef, {
-        currentSessionId: sessionId,
-        lastActive: serverTimestamp(),
-      });
-      transaction.set(sessionRef, {
-        garageId,
-        sessionId,
-        uid: auth.currentUser?.uid || null,
-        lastActive: serverTimestamp(),
-      }, { merge: true });
-
-      return { ...data, id: garageSnap.id, currentSessionId: sessionId };
-    }));
-  },
 
   recalculateCarsInside: async (garageId: string): Promise<number> => {
     try {
