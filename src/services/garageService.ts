@@ -1,14 +1,11 @@
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  doc, 
+import {
+  onSnapshot,
+  doc,
   getDoc,
-  runTransaction, 
-  serverTimestamp, 
+  runTransaction,
+  serverTimestamp,
 } from 'firebase/firestore';
 import type { Garage } from '../types';
 import { withRetry } from '../utils';
