@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { spawnProcessTree, stopProcessTree } from './process-tree.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const outputDir = resolve(process.env.RQ_FIXTURE_SMOKE_DIR || join(root, 'docs/ui-opt-01-fixture-smoke'));
+const outputDir = resolve(process.env.RQ_FIXTURE_SMOKE_DIR || join(root, 'tmp/ui-fixture-smoke'));
 const appPort = 4174;
 const debugPort = 9224;
 const projectId = 'demo-rq-ui-fixtures';

@@ -12,7 +12,7 @@ npm run browser-baseline -- --update
 npm run browser-baseline -- --compare
 ```
 
-The harness is `tools/browser-baseline.mjs`. It starts the existing Vite/Node server, drives the locally served app through Chromium’s DevTools Protocol, and writes the matrix to `docs/ui-opt-01-baseline/`. `--update` writes PNG and JSON baselines; `--compare` captures a fresh run and compares its SHA-256 screenshot hash with the stored image. Exact hashes are intentionally strict under the same browser/rendering environment; timing or asynchronous-data changes can make a protected synthetic view differ and should be reviewed rather than silently accepted.
+The harness is `tools/browser-baseline.mjs`. It starts the existing Vite/Node server, drives the locally served app through Chromium’s DevTools Protocol, and writes the matrix to `tmp/ui-baseline/`. `--update` writes PNG and JSON baselines; `--compare` captures a fresh run and compares its SHA-256 screenshot hash with the stored image. Exact hashes are intentionally strict under the same browser/rendering environment; timing or asynchronous-data changes can make a protected synthetic view differ and should be reviewed rather than silently accepted.
 
 The probe does not call the production Worker and does not perform Firestore writes. The existing `tools/performance-benchmark.ts` was not modified or used because it measures server-side report aggregation, not browser rendering.
 
