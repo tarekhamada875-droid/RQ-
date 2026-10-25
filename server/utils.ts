@@ -24,7 +24,6 @@ export function cleanPin(raw: any): string {
 }
 
 // Cryptographic PIN Hashing Helpers
-const LEGACY_PIN_SALT = 'ark_garage_secure_pin_salt_2026';
 const PIN_LOOKUP_SALT = 'ark_garage_secure_pin_lookup_salt_v2';
 
 // Modern per-account unique-salt scrypt hash ($scrypt$N=16384,r=8,p=1$<16_byte_salt_hex>$<derived_hex>)
@@ -45,19 +44,8 @@ export function computeLookupHash(cleanPinStr: string): string {
   return crypto.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString('hex');
 }
 
-// Legacy single-salt hash calculation for backward compatibility
-export function legacyHashPin(cleanPinStr: string): string {
-  if (!cleanPinStr) return '';
-  return crypto.scryptSync(cleanPinStr, LEGACY_PIN_SALT, 32).toString('hex');
-}
-
 export function hashPin(cleanPinStr: string): string {
   return hashPinWithUniqueSalt(cleanPinStr);
-}
-
-export function isHashedPin(pin: string): boolean {
-  if (!pin) return false;
-  return typeof pin === 'string' && pin.length === 64 && /^[0-9a-f]{64}$/i.test(pin);
 }
 
 function safeCompare(a: string, b: string): boolean {
@@ -98,25 +86,9 @@ export function verifySingleFieldValue(inputCleanPin: string, storedVal: any): {
   const strVal = String(storedVal).trim();
   if (!strVal) return { matches: false, isLegacy: false };
 
-  // Format 1: Unique-salt $scrypt$... (Modern)
-  if (strVal.startsWith('$scrypt$')) {
-    if (verifyScryptHash(inputCleanPin, strVal)) {
-      return { matches: true, isLegacy: false };
-    }
-  }
-
-  // Format 2: Old 64-character single-salt hex hash (Legacy)
-  if (isHashedPin(strVal)) {
-    const inputLegacyHash = legacyHashPin(inputCleanPin);
-    if (safeCompare(inputLegacyHash, strVal)) {
-      return { matches: true, isLegacy: true };
-    }
-  }
-
-  // Format 3: Plaintext PIN string (Legacy)
-  const cleanStored = cleanPin(strVal);
-  if (cleanStored && safeCompare(cleanStored, inputCleanPin)) {
-    return { matches: true, isLegacy: true };
+  // Only the modern per-account-salt scrypt format is accepted.
+  if (strVal.startsWith('$scrypt$') && verifyScryptHash(inputCleanPin, strVal)) {
+    return { matches: true, isLegacy: false };
   }
 
   return { matches: false, isLegacy: false };
