@@ -93,7 +93,7 @@ describe('prepaid credit ledger', () => {
     expect(restoreCredits({ ...base, balance: { paid: Number.MAX_SAFE_INTEGER - 1, referral: 1, trial: 0 }, amount: 1, bucket: 'paid' })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
-  it('materializes a deterministic auditable entry id from garage and idempotency key', () => {
+  it('materializes a deterministic auditable entry id from the operation details', () => {
     const result = materializeCreditLedgerEntry({
       ...base,
       kind: 'paid_grant',
@@ -104,8 +104,34 @@ describe('prepaid credit ledger', () => {
     });
     expect(result).toEqual({
       ok: true,
-      value: expect.objectContaining({ entryId: 'garage-1:paid_grant:operation-1' }),
+      value: expect.objectContaining({ entryId: 'garage-1:paid_grant:operation-1:payment-1:2026-10-17T09%3A00%3A00.000Z:0:10' }),
     });
+  });
+
+  it('does not overwrite a prior ledger entry when the same key is reused after expiry for a new balance transition', () => {
+    const first = materializeCreditLedgerEntry({
+      ...base,
+      kind: 'paid_grant',
+      bucket: 'paid',
+      amount: 10,
+      balanceBefore: 0,
+      balanceAfter: 10,
+    });
+    const second = materializeCreditLedgerEntry({
+      ...base,
+      kind: 'paid_grant',
+      bucket: 'paid',
+      amount: 10,
+      balanceBefore: 10,
+      balanceAfter: 20,
+      occurredAt: '2026-10-18T09:00:00.000Z',
+    });
+
+    expect(first.ok && second.ok).toBe(true);
+    if (first.ok && second.ok) {
+      expect(first.value.idempotencyKey).toBe(second.value.idempotencyKey);
+      expect(first.value.entryId).not.toBe(second.value.entryId);
+    }
   });
 
   it('keeps different operation kinds distinct when a key is reused', () => {
@@ -129,8 +155,8 @@ describe('prepaid credit ledger', () => {
     expect(paidGrant.ok && restore.ok).toBe(true);
     if (paidGrant.ok && restore.ok) {
       expect(paidGrant.value.entryId).not.toBe(restore.value.entryId);
-      expect(paidGrant.value.entryId).toBe('garage-1:paid_grant:operation-1');
-      expect(restore.value.entryId).toBe('garage-1:correction_restore:operation-1');
+      expect(paidGrant.value.entryId).toBe('garage-1:paid_grant:operation-1:payment-1:2026-10-17T09%3A00%3A00.000Z:0:10');
+      expect(restore.value.entryId).toBe('garage-1:correction_restore:operation-1:payment-1:2026-10-17T09%3A00%3A00.000Z:10:11');
     }
   });
 });
