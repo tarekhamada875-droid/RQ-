@@ -1,15 +1,5 @@
-import { doc, runTransaction } from 'firebase/firestore';
-import { db } from '../firebase';
 import { EntityRole } from '../types';
 import { authService } from './authService';
-import {
-  ENTITY_COLLECTIONS,
-  SECURITY_COLLECTIONS,
-  getEntityDocumentId
-} from '../domain/auth/sessionPolicy';
-import {
-  claimSessionInTransaction
-} from '../domain/auth/sessionTransactions';
 export type { EntityRole };
 
 export interface GarageSessionDoc {
@@ -28,7 +18,7 @@ export interface ClaimSessionParams {
   pin?: string;
 }
 
-export { SESSION_TIMEOUT_MS } from '../domain/auth/sessionTransactions';
+export { SESSION_TIMEOUT_MS } from '../domain/auth/sessionPolicy';
 
 export const getCanonicalSessionId = (): string => {
   if (typeof window === 'undefined') return 'server_session';
@@ -148,8 +138,7 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     serverConfirmedInvalid = true;
   } catch (err) {
     // A transport/server error is not proof of revocation. The existing
-    // rules-limited fallback below remains available for this transient case.
-    console.warn('Server session validation unavailable; considering restricted fallback:', err);
+    console.warn('Server session validation unavailable; failing closed:', err);
   }
 
   // 2. For Admin role: Use authoritative Server API with PIN or existing token
@@ -172,23 +161,9 @@ export const claimEntitySession = async ({ role, entityId, sessionId, uid, pin }
     }
   }
 
-  if (serverConfirmedInvalid) {
-    throw new Error('SESSION_INVALID');
-  }
-
-  const entityColl = ENTITY_COLLECTIONS[role];
-  const secColl = SECURITY_COLLECTIONS[role];
-  const entityDocId = getEntityDocumentId(role, entityId);
-
-  const entityRef = doc(db, entityColl, entityDocId);
-  const securitySessionRef = doc(db, secColl, uid);
-
-  await runTransaction(db, async (transaction) => {
-    await claimSessionInTransaction(transaction, { entityRef, securitySessionRef, role, sessionId });
-  });
-
-  recentClaims.set(claimKey, Date.now());
-  notifyWorkerSessionReady();
+  // The Worker is the only session authority. If it could not confirm the session
+  // (offline or server error), fail closed; the browser never writes session records.
+  throw new Error(serverConfirmedInvalid ? 'SESSION_INVALID' : 'SESSION_SERVER_UNAVAILABLE');
 };
 
 export const releaseEntitySession = async ({ role, entityId, sessionId, uid }: ClaimSessionParams): Promise<void> => {
@@ -240,4 +215,3 @@ export const refreshEntitySession = async ({ role, entityId, sessionId, uid }: C
     return null;
   }
 };
-

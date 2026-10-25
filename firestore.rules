@@ -345,12 +345,6 @@ service cloud.firestore {
              isValidVehicle(incoming());
     }
 
-    function isAllowedStaffProfileUpdate() {
-      return incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone']) &&
-             (!('name' in incoming()) || (incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100)) &&
-             (!('phone' in incoming()) || (incoming().phone is string && (incoming().phone.size() == 0 || (incoming().phone.size() >= 3 && incoming().phone.size() <= 20))));
-    }
-
     function isValidActivityLog(data) {
       return data.keys().hasAll(['garageId', 'staffName', 'actionType', 'plateNumber', 'timestamp']) &&
              data.garageId is string && isValidId(data.garageId) &&
@@ -363,20 +357,6 @@ service cloud.firestore {
              (!('packageId' in data) || data.packageId == null || data.packageId is string) &&
              (!('details' in data) || data.details is map) &&
              (!('garageName' in data) || data.garageName == null || data.garageName is string);
-    }
-
-    function isValidDelegate(data) {
-      return ('name' in data) && ('phone' in data) && ('pin' in data) && ('role' in data) &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 20 &&
-             data.pin is string && data.pin.size() >= 4 && data.pin.size() <= 10 &&
-             data.role == 'delegate' &&
-             (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128)) &&
-             (!('createdAt' in data) || data.createdAt is timestamp) &&
-             (!('canCreateGarage' in data) || data.canCreateGarage is bool) &&
-             (!('commissionRate' in data) || data.commissionRate is number) &&
-             (!('totalRechargedAmount' in data) || data.totalRechargedAmount is number) &&
-             (!('lastSettledAt' in data) || data.lastSettledAt == null || data.lastSettledAt is timestamp);
     }
 
     function isValidSupervisor(data) {
@@ -396,16 +376,6 @@ service cloud.firestore {
              (('revenueAmount' in data && data.revenueAmount is number) || ('amount' in data && data.amount is number));
     }
 
-    function isValidTopupRequest(data) {
-      return data.keys().hasAll(['garageId', 'garageName', 'packageName', 'amount', 'status', 'createdAt']) &&
-             data.garageId is string && isValidId(data.garageId) &&
-             data.garageName is string && data.garageName.size() <= 100 &&
-             data.packageName is string && data.packageName.size() <= 100 &&
-             data.amount is number && data.amount > 0 &&
-             data.status in ['pending', 'completed', 'cancelled'] &&
-             data.createdAt is timestamp;
-    }
-
     function isValidPackage(data) {
       return data.keys().hasAll(['name', 'price', 'catalogType', 'creditQuantity']) &&
              data.keys().hasOnly(['name', 'price', 'catalogType', 'creditQuantity', 'isActive', 'createdAt']) &&
@@ -423,20 +393,6 @@ service cloud.firestore {
              incoming().lastActive is timestamp;
     }
 
-    function isAllowedGarageOwnerUpdate() {
-      return incoming().diff(existing()).affectedKeys().hasOnly([
-               'hourlyRate', 'overnightRate', 'shimmerColor', 'lastActive'
-             ]) &&
-             (!('hourlyRate' in incoming()) || (incoming().hourlyRate is number && incoming().hourlyRate >= 0 && incoming().hourlyRate <= 10000)) &&
-             (!('overnightRate' in incoming()) || (incoming().overnightRate is number && incoming().overnightRate >= 0 && incoming().overnightRate <= 10000)) &&
-             isGarageUpdateValid(incoming());
-    }
-
-    function isAllowedHeartbeatUpdate() {
-      return incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
-             incoming().lastActive is timestamp;
-    }
-
     // Session validation helpers
     function isValidSessionDoc(data, expectedRole) {
       return data.uid == request.auth.uid &&
@@ -446,46 +402,24 @@ service cloud.firestore {
              data.isActive is bool;
     }
 
-    function isSessionUpdateValid() {
-      return incoming().uid == existing().uid &&
-             incoming().role == existing().role &&
-             incoming().entityId == existing().entityId &&
-             incoming().isActive == existing().isActive &&
-             incoming().sessionId == existing().sessionId &&
-             (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
-             // Client may ONLY refresh its own heartbeat timestamp.
-             // isActive / sessionId / createdAt are server-authoritative
-             // (Admin SDK writes bypass these rules entirely).
-             incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
-             incoming().lastActive is timestamp;
-    }
-
     // ===============================================================
     // Cryptographic Secure Sessions Mapping Rules (Server-Authoritative Only)
     // ===============================================================
 
     match /admin_sessions/{sessionUid} {
       allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
-      // Sessions can ONLY be created by the Server via Firebase Admin SDK
-      allow create: if false;
-      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
-      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false; // Server-only: written by the Worker (Admin SDK)
     }
 
     match /admin_settings/{settingId} {
-      allow get: if isSignedIn() && (
-        isAdmin() || settingId in ['wallet_number', 'subscription_prices']
-      );
+      allow get: if isSignedIn() && isAdmin();
       allow write: if false; // Server-only Admin SDK
     }
 
     match /delegate_sessions/{sessionUid} {
       allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      // Sessions can ONLY be created by the Server via Firebase Admin SDK
-      allow create: if false;
-      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
-      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false; // Server-only: written by the Worker (Admin SDK)
     }
 
     match /supervisor_sessions/{sessionUid} {
@@ -496,19 +430,13 @@ service cloud.firestore {
     match /garage_sessions/{sessionDocId} {
       allow get: if isSignedIn() && (sessionDocId == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      // Sessions can ONLY be created by the Server via Firebase Admin SDK
-      allow create: if false;
-      allow update: if isSignedIn() && sessionDocId == request.auth.uid && isSessionUpdateValid();
-      allow delete: if isSignedIn() && (sessionDocId == request.auth.uid || isAdmin());
+      allow create, update, delete: if false; // Server-only: written by the Worker (Admin SDK)
     }
 
     match /staff_sessions/{sessionUid} {
       allow get: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
       allow list: if isAdmin();
-      // Sessions can ONLY be created by the Server via Firebase Admin SDK
-      allow create: if false;
-      allow update: if isSignedIn() && sessionUid == request.auth.uid && isSessionUpdateValid();
-      allow delete: if isSignedIn() && (sessionUid == request.auth.uid || isAdmin());
+      allow create, update, delete: if false; // Server-only: written by the Worker (Admin SDK)
     }
 
     // ===============================================================
@@ -516,47 +444,25 @@ service cloud.firestore {
     // ===============================================================
 
     match /recharge_requests/{requestId} {
-      allow get: if isValidId(requestId) && (
-        isAdmin() || isSupervisor() ||
-        (isGarageSession(resource.data.garageId)) ||
-        (isDelegate() && resource.data.delegateId == getDelegateIdFromSession())
-      );
-      allow list: if isAdmin() || isSupervisor();
-      allow create: if isGarageSession(incoming().garageId) &&
-                    incoming().status == 'pending' &&
-                    incoming().keys().hasAll(['garageId', 'packageId', 'createdAt']) &&
-                    !('amount' in incoming()) &&
-                    !('revenueAmount' in incoming());
-      allow update, delete: if false; // Server-only
+      // Retired billing model: history is kept for the Admin only; nothing can be written from a browser.
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /referral_rewards/{rewardId} {
-      allow get: if isValidId(rewardId) &&
-        (isAdmin() || isSupervisor() ||
-         (isDelegate() &&
-          ('referrerGarageId' in resource.data) &&
-          isDelegateForGarage(resource.data.referrerGarageId)));
-      allow list: if isAdmin() || isSupervisor();
-      allow create, update, delete: if (isAdmin() || isSupervisor()) && isValidId(rewardId);
+      allow read: if isAdmin();
+      allow write: if false; // Retired referral-days model
     }
 
     match /topup_requests/{requestId} {
-      allow get: if isSignedIn() && isValidId(requestId) &&
-        (isAdmin() || isSupervisor() ||
-         isGarageSession(resource.data.garageId) ||
-         isDelegateForGarage(resource.data.garageId));
-      allow list: if isAdmin() || isSupervisor() || (isDelegate() && isDelegateForGarage(resource.data.garageId)) || isGarageSession(resource.data.garageId);
-      allow create: if isSignedIn() && isValidTopupRequest(incoming()) && isValidId(requestId) && isGarageSession(incoming().garageId) &&
-                    !isGarageDeleting(incoming().garageId);
-      allow update: if (isAdmin() || isSupervisor() || (isGarageSession(existing().garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['status']))) && isValidId(requestId);
-      allow delete: if (isAdmin() || isSupervisor()) && isValidId(requestId);
+      allow read: if isAdmin();
+      allow write: if false; // Retired wallet top-up model
     }
 
     match /packages/{packageId} {
       allow get: if isSignedIn() && isValidPackage(resource.data);
       allow list: if isSignedIn() && resource.data.catalogType == 'credit_bundle';
-      allow create, update: if isAdmin() && isValidPackage(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update, delete: if false; // Worker only: /api/admin/packages/*
     }
 
     match /test/connection {
@@ -564,12 +470,7 @@ service cloud.firestore {
     }
 
     match /login_requests/{requestId} {
-      allow read: if isSignedIn() && isValidId(requestId) && 
-        (request.auth.uid == requestId || isAdmin() || isDelegate() || isSupervisor());
-      allow create: if isSignedIn() && isValidId(requestId);
-      allow update: if false;
-      allow delete: if isSignedIn() && isValidId(requestId) && 
-        (request.auth.uid == requestId || isAdmin() || isDelegate() || isSupervisor());
+      allow read, write: if false;
     }
 
     match /activity_logs/{logId} {
@@ -579,7 +480,7 @@ service cloud.firestore {
 
     match /settings/{docId} {
       allow read: if isAdmin() || isSupervisor();
-      allow write: if isAdmin() && isValidId(docId);
+      allow write: if false;
     }
 
     match /announcements/{announcementId} {
@@ -589,7 +490,7 @@ service cloud.firestore {
 
     match /system_config/{configId} {
       allow read: if false; // Browser clients must use the Worker field projection
-      allow create, update: if isAdmin() && isValidId(configId);
+      allow create, update: if false; // Worker only: /api/admin/update-system-config
       allow delete: if false;
     }
 
@@ -604,23 +505,12 @@ service cloud.firestore {
 
     match /delegates/{delegateId} {
       allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isDelegateSession(delegateId));
-      allow create: if isAdmin() && isValidDelegate(incoming()) && isValidId(delegateId);
-      allow update: if isValidId(delegateId) && (
-        isAdmin() || 
-        (isDelegateSession(delegateId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
-      );
-      allow delete: if isAdmin() && isValidId(delegateId);
+      allow create, update, delete: if false; // Worker only: /api/delegates/*
     }
 
     match /staff/{staffId} {
       allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isGarageSession(resource.data.garageId) || isStaffSession(staffId));
-      // Staff creation/deletion and sensitive field changes go through the Worker.
-      allow create: if false;
-      allow update: if isValidId(staffId) && (
-        ((isAdmin() || isGarageOwner(existing().garageId)) && isAllowedStaffProfileUpdate()) ||
-        (isStaffSession(staffId) && isAllowedHeartbeatUpdate())
-      );
-      allow delete: if false; // Worker also cleans up the associated private PIN records.
+      allow create, update, delete: if false;
     }
 
     match /garages/{garageId} {
@@ -633,18 +523,7 @@ service cloud.firestore {
       allow create: if false; // Garages are strictly created via server API
       allow delete: if false; // Server-only via Admin SDK
       
-      allow update: if isValidId(garageId) && isSignedIn() && (
-        (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny([
-          'balance', 'creditBalance', 'balanceExpiry', 'totalAdminRevenue', 'totalRevenue',
-          'lastRechargeDate', 'lastRechargeAmount', 'lastRechargePackageName',
-          'dailyRefundCount', 'lastRefundDate', 'dailyDeletionCount', 'lastDeletionDate',
-          'totalCommissionEarned', 'totalRechargedAmount', 'commission',
-          'todayRevenue', 'totalVehiclesOut'
-        ])) ||
-        (isGarageOwner(garageId) && isAllowedGarageOwnerUpdate()) ||
-        (isGarageSession(garageId) && isAllowedHeartbeatUpdate()) ||
-        (isDelegateForGarage(garageId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']))
-      );
+      allow update: if false; // Garage documents are written only by the Worker
       
       match /vehicles/{vehicleId} {
         allow read: if isValidId(garageId) && (
@@ -681,23 +560,7 @@ service cloud.firestore {
          isDelegateForGarage(garageId));
       allow list: if isAdmin();
 
-      allow create: if (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
-                       !isGarageDeleting(garageId) &&
-                       !exists(/databases/$(database)/documents/garages/$(garageId)/daily_counts/$(dateId)) &&
-                       request.resource.data.count <= 1 &&
-                       request.resource.data.dateId == dateId;
-
-      allow update: if (isGarageSession(garageId) || isAdmin() || isDelegateForGarage(garageId)) &&
-                       !isGarageDeleting(garageId) &&
-                       (
-                         request.resource.data.count == resource.data.count + 1 ||
-                         (request.resource.data.count == resource.data.count - 1 && resource.data.count > 0)
-                       ) &&
-                       (
-                         (request.resource.data.count == resource.data.count + 1 ?
-                           (resource.data.limit == 0 || request.resource.data.count <= resource.data.limit) :
-                           true)
-                       );
+      allow create, update: if false; // Server-only daily counters
 
       allow delete: if isAdmin();
     }

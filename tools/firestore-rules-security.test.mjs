@@ -167,6 +167,10 @@ try {
       name: 'Synthetic stored monthly package', price: 300, catalogType: 'legacy_time',
       durationDays: 30, dailyCapacity: 50
     });
+    await setDoc(doc(db, 'packages/credit-bundle-valid'), {
+      name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
+      catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
+    });
 
     await setDoc(doc(db, 'garages/g-1/subscribers/sub-1'), {
       id: 'sub-1', ownerName: 'Synthetic Owner', phone: '000', plateNumber: 'ABC123',
@@ -240,13 +244,15 @@ try {
   await assertFails(getDoc(doc(delegateDb, 'delegates/del-2')));
   await assertFails(getDoc(doc(unauthenticatedDb, 'garages/g-1')));
 
-  // Signed-in users retain the two live production settings reads, but not other Admin settings.
-  await assertSucceeds(getDoc(doc(ownerDb, 'admin_settings/wallet_number')));
-  await assertSucceeds(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
+  // Admin settings are private to the Admin role; retired wallet settings are no longer public reads.
+  await assertSucceeds(getDoc(doc(adminDb, 'admin_settings/wallet_number')));
+  await assertSucceeds(getDoc(doc(adminDb, 'admin_settings/subscription_prices')));
+  await assertFails(getDoc(doc(ownerDb, 'admin_settings/wallet_number')));
+  await assertFails(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/private_setting')));
 
   // Every client-written package must use the exact credit-bundle catalog format.
-  await assertSucceeds(setDoc(doc(adminDb, 'packages/credit-bundle-valid'), {
+  await assertFails(setDoc(doc(adminDb, 'packages/credit-bundle-valid'), {
     name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
     catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
   }));
@@ -271,8 +277,8 @@ try {
   ));
   assert.deepEqual(visibleCreditBundles.docs.map((packageDoc) => packageDoc.id), ['credit-bundle-valid']);
 
-  // Staff may refresh only their own heartbeat; they cannot manage peer staff.
-  await assertSucceeds(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
+  // Staff documents are readable by scoped roles but all browser writes are Worker-only.
+  await assertFails(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
   const deniedStaffWrites = [
     updateDoc(doc(staffDb, 'staff/staff-peer'), { name: 'Must Not Change' }),
     updateDoc(doc(staffDb, 'staff/staff-peer'), { role: 'garage' }),
@@ -290,7 +296,7 @@ try {
     updateDoc(doc(staffDb, 'garages/g-1'), { trialDecision: 'continued' })
   ];
   await Promise.all(deniedGarageWrites.map(assertFails));
-  await assertSucceeds(updateDoc(doc(staffDb, 'garages/g-1'), { lastActive: new Date() }));
+  await assertFails(updateDoc(doc(staffDb, 'garages/g-1'), { lastActive: new Date() }));
   await assertFails(updateDoc(doc(inactiveOwnerDb, 'garages/g-1'), { hourlyRate: 99 }));
 
   // The actual garage owner and Admin retain their intended management path.
@@ -300,8 +306,8 @@ try {
   await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), {
     creditBalance: { paid: 999, referral: 0, trial: 0 }
   }));
-  await assertSucceeds(updateDoc(doc(ownerDb, 'staff/staff-peer'), { name: 'Owner Updated Peer' }));
-  await assertSucceeds(updateDoc(doc(ownerDb, 'staff/staff-peer'), { phone: '01112345678' }));
+  await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { name: 'Owner Updated Peer' }));
+  await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { phone: '01112345678' }));
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { role: 'garage' }));
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { garageId: 'g-2' }));
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-peer'), { pin: '9999' }));
@@ -309,19 +315,19 @@ try {
   await assertFails(deleteDoc(doc(ownerDb, 'staff/staff-peer')));
   await assertFails(updateDoc(doc(ownerDb, 'staff/staff-g-2'), { name: 'Cross-Garage Change' }));
   await assertFails(deleteDoc(doc(ownerDb, 'staff/staff-g-2')));
-  await assertSucceeds(updateDoc(doc(ownerDb, 'garages/g-1'), { hourlyRate: 2 }));
+  await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), { hourlyRate: 2 }));
   await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), { trialDecision: 'continued' }));
   await assertFails(updateDoc(doc(ownerDb, 'garages/g-2'), { hourlyRate: 2 }));
-  await assertSucceeds(updateDoc(doc(adminDb, 'staff/staff-g-2'), { name: 'Admin Updated Staff' }));
+  await assertFails(updateDoc(doc(adminDb, 'staff/staff-g-2'), { name: 'Admin Updated Staff' }));
   await assertFails(updateDoc(doc(adminDb, 'staff/staff-g-2'), { role: 'garage' }));
   await assertFails(updateDoc(doc(adminDb, 'staff/staff-g-2'), { pin: '9999' }));
   await assertFails(setDoc(doc(adminDb, 'staff/admin-created-staff'), staff('Admin Created', 'g-2')));
   await assertFails(deleteDoc(doc(adminDb, 'staff/staff-g-2')));
-  await assertSucceeds(updateDoc(doc(adminDb, 'garages/g-2'), { hourlyRate: 3 }));
+  await assertFails(updateDoc(doc(adminDb, 'garages/g-2'), { hourlyRate: 3 }));
 
   // Session records remain server-created and immutable except for the caller's heartbeat.
   await assertSucceeds(getDoc(doc(ownerDb, 'garage_sessions/owner-uid')));
-  await assertSucceeds(updateDoc(doc(ownerDb, 'garage_sessions/owner-uid'), { lastActive: new Date() }));
+  await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/owner-uid'), { lastActive: new Date() }));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/owner-uid'), { isActive: false }));
   await assertFails(setDoc(doc(ownerDb, 'garage_sessions/new-owner'), session('new-owner', 'garage', 'g-1')));
   await assertFails(updateDoc(doc(ownerDb, 'garage_sessions/staff-uid'), { lastActive: new Date() }));
@@ -330,11 +336,9 @@ try {
   // a new session record after the Worker validation/claim path fails.
   await assertFails(attemptBrowserSessionClaimFallback(ownerDb, 'owner-uid', 'browser-fallback-session'));
   await assertFails(attemptBrowserSessionClaimFallback(fallbackOwnerDb, 'fallback-owner-uid', 'browser-fallback-new-session'));
-  // When all session identifiers already match, the same fallback-shaped
-  // transaction reduces to heartbeat-only updates and is permitted by rules.
-  // The coordinator must therefore honor an explicit Worker rejection before
-  // considering any client-side fallback.
-  await assertSucceeds(attemptBrowserSessionClaimFallback(
+  // Even a matching legacy state cannot be refreshed by a browser transaction;
+  // the Worker is the only session writer.
+  await assertFails(attemptBrowserSessionClaimFallback(
     fallbackMatchDb,
     'fallback-match-uid',
     'fallback-match-uid-session',
@@ -347,7 +351,7 @@ try {
     await assertFails(getDoc(doc(signedInDb, 'system_config/safe-config')));
   }
   await assertFails(getDoc(doc(unauthenticatedDb, 'system_config/safe-config')));
-  await assertSucceeds(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
+  await assertFails(updateDoc(doc(adminDb, 'system_config/safe-config'), { startupNotice: 'admin-update' }));
   await assertFails(updateDoc(doc(staffDb, 'system_config/safe-config'), { startupNotice: 'staff-update' }));
 
   // Subscriber reads retain their existing owner/staff/Admin/delegate scope; every mutation is Worker-only.
@@ -366,8 +370,8 @@ try {
   ]);
   await Promise.all(deniedSubscriberMutations.map(assertFails));
 
-  // Delegate self-service is limited to its own record and heartbeat field.
-  await assertSucceeds(updateDoc(doc(delegateDb, 'delegates/del-1'), { lastActive: new Date() }));
+  // Delegate records are readable by scope, but all browser writes go through the Worker.
+  await assertFails(updateDoc(doc(delegateDb, 'delegates/del-1'), { lastActive: new Date() }));
   await assertFails(updateDoc(doc(delegateDb, 'delegates/del-1'), { name: 'Unauthorized Rename' }));
   await assertFails(updateDoc(doc(delegateDb, 'delegates/del-2'), { lastActive: new Date() }));
   await assertFails(updateDoc(doc(delegateDb, 'private_pins/del-1'), { pin: '1234' }));
