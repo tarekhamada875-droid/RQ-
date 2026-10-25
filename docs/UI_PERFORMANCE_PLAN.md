@@ -4,6 +4,27 @@
 
 The audit found defects in shared session/state handling and role workflows. This document is a plan, not proof that any defect remains unfixed; every agent must verify current `main` and reproduce the selected behavior before changing code.
 
+## Audit progress and update log
+
+**Last verified:** 2026-10-25. **Audit status:** In progress; not production-ready by assertion. The full file-by-file and role-workflow audit is not complete.
+
+- Current `main` baseline: `218725ee54b59efc80af4b732ea46bdd62bb88cb`.
+- [PR #380](https://github.com/tarekhamada875-droid/RQ-/pull/380) is merged. It aligns delegate financial summaries with canonical ledger events, retires the obsolete request-based commission utility/tests, and adds coverage. Related audit observations must be checked against this current behavior.
+- Source review so far covers Firestore rules, prepaid-credit ledger domain validation, financial reporting/routes, the Production Gate workflow, and security/operations guidance. This is partial coverage, not a completed file-by-file audit.
+- Observed ledger-domain safeguards include non-negative safe-integer balance validation, overflow guards, a one-credit regular-entry debit rule, and referral-award preconditions. Transaction-level enforcement, idempotency/replay handling, and end-to-end route wiring remain to be verified.
+- Financial report ranges are inclusive-start/exclusive-end. Cairo-local correctness depends on caller-provided boundaries and remains an audit question, not a confirmed defect.
+- Firestore rules permit garage-session updates to `topup_requests` when only `status` changes. Allowed transitions and server authorization must be verified before classifying this as a security defect.
+- The Production Gate includes lint, tests, Firestore rules tests, and build checks for application changes. Green CI alone does not establish live deployment identity, backup recovery, or production readiness.
+- Previously noted PIN-length and subscriber-expiry count concerns must be re-checked against current `main` and tests before being treated as active defects.
+- No application code was changed during this documentation update. Live deployment and recovery verification have not been claimed.
+
+### Audit change log
+
+| Date | Task | Result / evidence | Next action |
+|---|---|---|---|
+| 2026-10-25 | Sync audit status with current main | PR #380 verified merged; audit scope and open questions recorded above. | Continue audit of financial transaction enforcement/idempotency, then verify security and frontend/backend contracts. |
+| After each task | Keep this plan current | Record verified source/test evidence, PR/commit, CI and deployment status where applicable. | Do not mark work complete while checks are pending or failing. |
+
 ## Purpose
 
 Before inviting real garages to rely on RQ, fix confirmed defects, verify the deployed service and recovery procedures, and gather enough customer and cost evidence to make an informed pilot decision. A passing test suite alone does not mean RQ is ready to earn revenue or support a living.
