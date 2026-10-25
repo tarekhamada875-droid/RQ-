@@ -14,3 +14,6 @@ pnpm-lock.yaml
 build/
 dist/
 firestore-debug.log
+
+# Generated UI baseline / smoke output
+tmp/

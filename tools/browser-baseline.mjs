@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const outputDir = resolve(process.env.RQ_BASELINE_DIR || join(root, 'docs/ui-opt-01-baseline'));
+const outputDir = resolve(process.env.RQ_BASELINE_DIR || join(root, 'tmp/ui-baseline'));
 const port = Number(process.env.RQ_BASELINE_PORT || 4173);
 const debugPort = Number(process.env.RQ_BASELINE_DEBUG_PORT || 9223);
 const baseUrl = `http://127.0.0.1:${port}`;
