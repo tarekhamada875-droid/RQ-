@@ -49,12 +49,12 @@ Things only **you** can do (ChatGPT cannot): they are marked **OWNER ACTION**.
 | ID | Question | Default if owner says "I don't know" |
 |----|----------|--------------------------------------|
 | **D1** | Does the production Firebase database contain **real customers** (real garages with real PINs)? | **NO** (pre-launch, only test data). If YES → task P4.2 is skipped (`[-]`). |
-| **D2** | Is the Cloudflare Worker `rq` on the **Free** plan or the **Paid** ($5/month) plan? | Unknown → owner checks (see P4.3). PIN checking uses `crypto.scryptSync`, which is CPU-heavy and may exceed the Free plan's tiny CPU limit. |
-| **D3** | Must a garage tablet stay logged in **more than 24 hours**? (Today a session appears to end 24 h after login even if active.) | **No change** (leave as is). |
-| **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | **NO** (pre-launch). Then P2.4 deletes them. |
+| **D2** | Is the Cloudflare Worker `rq` on the **Free** plan or the **Paid** ($5/month) plan? | Owner does not know; ChatGPT inspected the connected account and found Worker `rq`, but the subscription endpoint returned 403 because the connection lacks Billing Read permission. Keep unknown; do not upgrade or change billing. Recheck through an authorized billing view (P4.3). |
+| **D3** | Must a garage tablet stay logged in **more than 24 hours**? (Today a session appears to end 24 h after login even if active.) | Owner did not understand the technical distinction; safe decision: keep current 24-hour behavior unchanged for now, and verify whether it inconveniences pilot garages before extending it. |
+| **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | Owner believes YES. Do **not** delete the 410 compatibility tombstones yet. First search code and available request/traffic logs for callers; remove only after evidence confirms it is safe. Update P2.4 accordingly. |
 | **D5** | Do you want **coupons** (discount codes)? There is no screen for them. | **NO** → P2.3 deletes the feature. |
 
-Record answers here: D1 = ____ · D2 = ____ · D3 = ____ · D4 = ____ · D5 = ____
+**Recorded owner answers (2026-10-25):** D1 = NO real customer data · D2 = UNKNOWN (Cloudflare billing permission unavailable) · D3 = preserve current behavior pending pilot evidence · D4 = likely YES, investigate before removing compatibility routes · D5 = NO coupons.
 
 ---
 
@@ -91,7 +91,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P0.1 | Branch, Node 22, `npm ci` | low | [ ] | | | |
 | P0.2 | Baseline: lint + test + ci:check | low | [ ] | | | |
 | P0.3 | Baseline size counts | low | [ ] | | | |
-| P0.4 | Ask & record owner decisions D1–D5 | low | [ ] | | | |
+| P0.4 | Ask & record owner decisions D1–D5 | low | [x] | 2026-10-25 | pending | Owner answers recorded; D2 remains unknown due Cloudflare billing scope; D4 requires caller investigation |
 | P1.1 | Heartbeat 5 min → 15 min | low | [ ] | | | |
 | P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [ ] | | | |
 | P1.3 | Delete dead all-garages live listener | low | [ ] | | | |
@@ -99,7 +99,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P2.1 | Delete dead files (+ their tests) | low | [ ] | | | |
 | P2.2 | Delete dead functions/methods | med | [ ] | | | |
 | P2.3 | Remove coupons feature (D5) | low | [ ] | | | |
-| P2.4 | Remove retired-route tombstones (D4) | med | [ ] | | | |
+| P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [ ] | | | Owner believes old copies may still call these routes; retain HTTP 410 compatibility until evidence says safe |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [ ] | | | |
 | P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
 | P3.1 | Remove browser session-write fallback | **high** | [ ] | | | |
@@ -579,7 +579,9 @@ app.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) =
   return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
 });
 ```
-**Tests:** `server/honoApi.contract.test.ts`, `src/__tests__/workerParityRoutes.test.ts`, `src/__tests__/cloudflareWorkerContract.test.ts` and similar may assert "410". Change each such assertion to expect **404** (route gone) **or** delete only that assertion. Do not touch other assertions.
+**Owner decision update (2026-10-25):** the owner believes old installed copies may still call these routes. Therefore **do not delete the tombstones in this task by default**. Search all current client code for calls and inspect available Cloudflare request/analytics logs for evidence of external callers. Record what can and cannot be established. Keep the explicit authenticated HTTP 410 responses until the owner can confirm the old copies are retired or available traffic evidence supports removal. If caller activity cannot be determined, mark this task `[!]` / blocked rather than guessing. Do not change the active prepaid-credit routes listed below.
+
+**Tests:** keep existing 410 compatibility assertions while tombstones remain. Only change those tests if the owner later confirms removal is safe and the corresponding routes are actually deleted.
 
 **Do NOT delete** (these are the real, active routes): `/api/garages/:id/credit-grants`, `/api/garages/:id/credit-ledger`, `/api/admin/packages/*`, `/api/garages/:id/extend-fair-use`, `/api/check-subscriber`, `/api/subscribers/*`, `/api/vehicles/*`, `/api/delegates/*`, `/api/staff/*`.
 
@@ -976,7 +978,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 | # | Date | Task ID | What was done (1–2 lines) | Files changed (+/−) | Commands run and result | Commit | Problems / questions for owner |
 |---|------|---------|---------------------------|---------------------|-------------------------|--------|-------------------------------|
-| 1 | | | | | | | |
+| 1 | 2026-10-25 | P0.4 | Recorded owner decisions: no real customer data; Cloudflare billing tier unknown because Billing Read is not authorized; keep current session behavior pending pilot feedback; investigate old billing endpoint callers before removing 410 compatibility routes; remove coupons. | plan updated | Cloudflare account and Worker list read successfully; subscription query returned 403 due missing Billing Read permission | pending | Need authorized billing visibility for D2; do not remove legacy billing tombstones until caller safety is established. |
 | 2 | | | | | | | |
 | 3 | | | | | | | |
 
@@ -984,7 +986,11 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 | Date | Question from executor | Owner's answer |
 |------|------------------------|----------------|
-| | | |
+| 2026-10-25 | Does production Firebase have real customer data? | No, there is no real customer data. |
+| 2026-10-25 | Which Cloudflare Worker plan is active? | Owner does not know; authorized Cloudflare connection could list Worker scripts but subscription details returned 403 due missing Billing Read scope. |
+| 2026-10-25 | Should garage tablets remain logged in beyond 24 hours? | Owner did not understand the technical distinction; keep existing behavior for now and reassess from pilot evidence. |
+| 2026-10-25 | Are old app copies still calling retired billing endpoints? | Owner believes they may be; investigate before deleting compatibility tombstones. |
+| 2026-10-25 | Should discount coupons exist? | No; remove the unused coupon feature as proposed. |
 
 ## 14. Final sign-off (fill in at the very end)
 
