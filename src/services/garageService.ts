@@ -1,14 +1,11 @@
-import { auth, db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import {
   onSnapshot,
   doc,
   getDoc,
-  runTransaction,
-  serverTimestamp,
 } from 'firebase/firestore';
 import type { Garage } from '../types';
-import { withRetry } from '../utils';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 
