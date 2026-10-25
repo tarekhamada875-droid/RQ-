@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verifyScryptHash, verifySingleFieldValue, hashPinWithUniqueSalt, legacyHashPin } from '../../server/utils';
+import { verifyScryptHash, verifySingleFieldValue, hashPinWithUniqueSalt } from '../../server/utils';
 
 describe('Phase 02: Server Security Hardening & Session Boundaries', () => {
   describe('Constant-Time & Timing-Safe PIN Verification', () => {
@@ -13,22 +13,11 @@ describe('Phase 02: Server Security Hardening & Session Boundaries', () => {
       expect(verifyScryptHash('', scryptHash)).toBe(false);
     });
 
-    it('verifies legacy 64-char single-salt hex hashes with upgrade flag', () => {
-      const pin = '999999';
-      const legacyHex = legacyHashPin(pin);
-      
-      const result = verifySingleFieldValue(pin, legacyHex);
-      expect(result.matches).toBe(true);
-      expect(result.isLegacy).toBe(true);
-
-      const wrongResult = verifySingleFieldValue('111111', legacyHex);
-      expect(wrongResult.matches).toBe(false);
-    });
-
     it('handles null, undefined, empty strings, and malformed inputs gracefully without throwing', () => {
       expect(verifySingleFieldValue('', null).matches).toBe(false);
       expect(verifySingleFieldValue('1234', undefined).matches).toBe(false);
       expect(verifySingleFieldValue('1234', '$scrypt$invalid$format').matches).toBe(false);
+      expect(verifySingleFieldValue('1234', '1234')).toEqual({ matches: false, isLegacy: false });
       expect(verifyScryptHash('1234', 'malformed_hash')).toBe(false);
     });
   });
