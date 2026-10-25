@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 0 IN PROGRESS** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 0 BLOCKED — remaining local-only baseline items** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -88,9 +88,9 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 
 | ID | Task | Risk | Status | Date | Commit | Notes |
 |----|------|------|--------|------|--------|-------|
-| P0.1 | Branch, Node 22, `npm ci` | low | [!] | 2026-10-25 | — | GitHub branch exists, but this session has no repository checkout/terminal; Node version and npm ci cannot honestly be reported as run. Needs an executable repo workspace or local CI run. |
-| P0.2 | Baseline: lint + test + ci:check | low | [!] | 2026-10-25 | — | Production Gate succeeded only in Markdown-only validation mode; Typecheck, full tests, rules tests, build, and maintainability jobs were skipped. Baseline remains unverified. |
-| P0.3 | Baseline size counts | low | [ ] | | | |
+| P0.1 | Branch, Node 22, `npm ci` | low | [x] | 2026-10-25 | 0f2b375 | Verified by Production Gate run #40188951017 on the unchanged application source tree: Node 22 setup and `npm ci --ignore-scripts --no-audit --no-fund` passed. No local checkout was created. |
+| P0.2 | Baseline: lint + test + ci:check | low | [!] | 2026-10-25 | 0f2b375 | On the same application source tree, Production Gate run #40188951017 passed `npm run lint`, `npm run test`, `npm run test:rules`, `npm run build`, Worker artifact smoke test, and `npm run maintainability:check`. The plan's exact `npm run ci:check` command was not run; this item stays blocked until that command is verified. |
+| P0.3 | Baseline size counts | low | [!] | 2026-10-25 | — | The review document gives approximate reference counts (~30,934 app lines, ~19,309 test lines, 538 files), but the exact commands have not been run against an executable checkout in this session. Do not treat reference counts as measured baseline. |
 | P0.4 | Ask & record owner decisions D1–D5 | low | [x] | 2026-10-25 | pending | Owner answers recorded; D2 remains unknown due Cloudflare billing scope; D4 requires caller investigation |
 | P1.1 | Heartbeat 5 min → 15 min | low | [ ] | | | |
 | P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [ ] | | | |
@@ -979,8 +979,8 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | # | Date | Task ID | What was done (1–2 lines) | Files changed (+/−) | Commands run and result | Commit | Problems / questions for owner |
 |---|------|---------|---------------------------|---------------------|-------------------------|--------|-------------------------------|
 | 1 | 2026-10-25 | P0.4 | Recorded owner decisions: no real customer data; Cloudflare billing tier unknown because Billing Read is not authorized; keep current session behavior pending pilot feedback; investigate old billing endpoint callers before removing 410 compatibility routes; remove coupons. | plan updated | Cloudflare account and Worker list read successfully; subscription query returned 403 due missing Billing Read permission | pending | Need authorized billing visibility for D2; do not remove legacy billing tombstones until caller safety is established. |
-| 2 | 2026-10-25 | P0.1/P0.2 | Checked Production Gate details. It validated the Markdown-only change, but skipped setup, dependency installation, typecheck, full tests, Firestore rules tests, build, artifact smoke test, and maintainability checks. No local repository terminal is available in this session, so Node/npm baseline cannot be claimed. | plan updated | GitHub Production Gate run 40192384496: Markdown validation passed; application validation jobs skipped | pending | Need an executable repository workspace or a CI run that actually executes application checks before starting source edits. |
-| 3 | | | | | | | |
+| 2 | 2026-10-25 | P0.1/P0.2 | Earlier Markdown-only run was not app validation. Rechecked the latest full Production Gate on the app source commit used for PR #384; Node 22, dependency install, typecheck, full tests, Firestore rules tests, production build, Worker artifact smoke test, and maintainability checks all passed. | plan updated | Run #40188951017: all listed app steps passed on commit `0f2b3759379a22f04572cd192474cc77e018873a`; source tree is unchanged by the subsequent plan-only PRs. `npm run ci:check` was not separately executed. | 0f2b375 | Keep P0.2 blocked until exact `ci:check` and P0.3 counts are verified. |
+| 3 | 2026-10-25 | P0.3 | Marked the requested exact size-count commands blocked rather than copying the review's approximate reference counts as measured results. | plan updated | No executable checkout/terminal is available in this session. | pending | Need a runnable repository workspace to finish Phase 0 without guessing. | |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
