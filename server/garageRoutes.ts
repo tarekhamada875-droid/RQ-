@@ -1098,59 +1098,6 @@ app.post('/api/admin/announcements/toggle', requireWorkerAuth, async (c) => {
   }
 });
 
-// Admin Coupons Routes
-app.post('/api/admin/coupons/create', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const couponData = { ...body, usedCount: 0, createdAt: new Date() };
-    const docRef = await getAdminDb().collection('coupons').add(couponData);
-    return c.json({ success: true, id: docRef.id });
-  } catch (e: any) {
-    console.error('[Worker Coupons] Error in create:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-app.post('/api/admin/coupons/update', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const { id, ...data } = body;
-    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await getAdminDb().collection('coupons').doc(id).update(data);
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Coupons] Error in update:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-app.post('/api/admin/coupons/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const { id } = body;
-    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await getAdminDb().collection('coupons').doc(id).delete();
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Coupons] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
 // Admin Packages Routes
 app.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
   try {
