@@ -185,7 +185,7 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     const hook = renderHook(() => useGarageSession(props));
     await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
 
-    const heartbeat = intervalSpy.mock.calls.find(([, delay]) => delay === 300000)?.[0] as
+    const heartbeat = intervalSpy.mock.calls.find(([, delay]) => delay === 15 * 60 * 1000)?.[0] as
       (() => Promise<void>) | undefined;
     expect(heartbeat).toBeDefined();
 
