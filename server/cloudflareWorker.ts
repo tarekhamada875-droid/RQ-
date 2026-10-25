@@ -254,14 +254,7 @@ function isAllowedWorkerOrigin(origin: string | undefined): boolean {
   const normalized = origin.replace(/\/+$/, '');
   const configured = configuredAllowedOrigins.split(',').map((value) => value.trim().replace(/\/+$/, '')).filter(Boolean);
   if (configured.includes(normalized)) return true;
-  return new Set([
-    'https://rq-acg.pages.dev',
-    'https://aistudio.google.com',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173'
-  ]).has(normalized);
+  return new Set(['https://rq-acg.pages.dev']).has(normalized);
 }
 
 const FINANCIAL_RATE_LIMIT_MAX_REQUESTS = 30;
