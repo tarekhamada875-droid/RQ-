@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 2 IN PROGRESS — P2.1 and P2.2 complete and verified; P1.4 usage-monitoring owner action remains pending** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 3 IN PROGRESS — P3.1 complete and verified; P3.2/P3.3/P3.4 remain** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -102,7 +102,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [ ] | | | Owner believes old copies may still call these routes; retain HTTP 410 compatibility until evidence says safe |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [ ] | | | |
 | P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
-| P3.1 | Remove browser session-write fallback | **high** | [ ] | | | |
+| P3.1 | Remove browser session-write fallback | **high** | [x] | 2026-10-25 | 38d7439 | Worker is the only session authority; browser fallback transaction helpers and their tests removed. Focused lint/tests passed. |
 | P3.2 | Lock Firestore rules (browser = read-only) | **high** | [ ] | | | |
 | P3.3 | Close `admin_settings` wallet read | med | [ ] | | | |
 | P3.4 | Update rules tests; deploy rules (OWNER ACTION) | **high** | [ ] | | | |
@@ -987,6 +987,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 7 | 2026-10-25 | P1.3 | Removed the unused `subscribeToGarages` and `subscribeToDelegateGarages` methods and their now-unused imports; removed the obsolete test that only exercised the deleted delegate listener. | `src/services/garageService.ts`, `src/__tests__/delegateScopeIsolation.test.ts` (deleted) | Production Gate run #40201555729 passed; PR #399 merged to `main` as `e466f2a073ed0b6e8ebe9a3c0b302adeda28b351`. Deployment jobs skipped; no production deployment. | caffcff | No owner action needed for code cleanup; usage monitoring setup is the next owner action. |
 | 8 | 2026-10-25 | P2.1 | Removed audit-listed dead files and only the obsolete tests/imports that depended on deleted code. The first run caught two unused imports; they were removed and the corrected commit passed the full Production Gate. | 11 files deleted; 2 test files adjusted | Initial run #40207028434 failed typecheck on unused `act` and `SystemConfig`; corrected commit passed Production Gate run #40207192163. PR #401 merged to `main` as `2af758a73db7eca5d03461a3d7aa43d13fe44bb9`; deployment jobs skipped. | 7dde9ad | No production deployment. P1.4 Firebase Usage monitoring owner action remains pending. |
 | 9 | 2026-10-25 | P2.2 | Removed the plan-listed unused session/auth/garage/delegate/utility helpers from their defining modules. Left all review-only methods—including `releaseDelegateSession`, announcement methods and package methods—untouched. | 6 source files updated; no UI, financial transaction, or production deployment changes intended | First run #40209265263 was cancelled after follow-up import cleanup; final Production Gate run #40209268959 passed, including TypeScript, full tests, Firestore rules tests, production build and artifact checks. PR #403 merged to `main` as `210b54b5e83ef944c4471bdad8485a23b4ccddbe`; deployment jobs skipped. | 098c68e | P1.4 Firebase Usage monitoring owner action remains pending. GitHub code search was incomplete, so passing typecheck/tests were used as merge gate; do not treat the search command as independently verified. |
+| 10 | 2026-10-25 | P3.1 | Removed the browser Firestore session-claim fallback and its transaction helpers; moved the retained session timeout constant to session policy; outage and invalid-session paths now fail closed. | `src/services/authSessionService.ts`, `src/services/authSessionService.test.ts`, `src/domain/auth/sessionPolicy.ts`; 2 helper files deleted | `npm run lint` passed; focused Vitest run passed: 3 files, 20 tests; `git diff --check` passed. | 38d7439 | No UI or business-rule changes. Rules remain to be hardened and deployed in P3.2–P3.4. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
