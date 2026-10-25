@@ -53,9 +53,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "=== Non-test TypeScript lines in src/server ==="
+          echo "=== Plan command: non-test TypeScript lines in src/server ==="
           find src server -name '*.ts' -o -name '*.tsx' | grep -v -E '\\.test\\.|__tests__' | xargs wc -l | tail -1
-          echo "=== Test lines in src/server/tools ==="
+          echo "=== Plan command: test lines in src/server/tools ==="
           find src server tools -name '*.test.*' | xargs wc -l | tail -1
-          echo "=== Tracked checkout file count (excluding node_modules) ==="
+          echo "=== Plan command: all files excluding node_modules ==="
           find . -path ./node_modules -prune -o -type f -print | wc -l
+          echo "=== Corrected tracked file count (Git index; excludes .git internals and ignored files) ==="
+          git ls-files | wc -l
+          echo "=== Corrected non-test TypeScript lines (grouped find predicates) ==="
+          find src server -type f \\( -name '*.ts' -o -name '*.tsx' \\) ! -name '*.test.*' ! -path '*/__tests__/*' -print0 | xargs -0 wc -l | tail -1
+          echo "=== Test TypeScript lines in src/server/tools ==="
+          find src server tools -type f -name '*.test.*' -print0 | xargs -0 wc -l | tail -1
