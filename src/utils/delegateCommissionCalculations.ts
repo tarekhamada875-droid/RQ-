@@ -14,8 +14,7 @@ export interface CommissionRequestLike {
     commission?: number;
     revenueAmount?: number;
     amount?: number;
-    [key: string]: unknown;
-  };
+    };
   [key: string]: unknown;
 }
 
