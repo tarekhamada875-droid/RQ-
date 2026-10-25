@@ -135,7 +135,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
-  it('loads initially and at most four times per minute, then polls only the new delegate ID after a switch', async () => {
+  it('polls at 120-second intervals and only the active delegate ID after a switch', async () => {
     const responses = {
       'delegate-1': { id: 'delegate-1', name: 'First delegate from server' },
       'delegate-2': { id: 'delegate-2', name: 'Second delegate from server' }
@@ -159,22 +159,56 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
-    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(5);
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
     expect(serviceMocks.getDashboardData.mock.calls.every(([delegateId]) => delegateId === 'delegate-1')).toBe(true);
 
     act(() => result.current.setDelegate({ id: 'delegate-2', name: 'Switched delegate' }));
     await act(async () => {
       await Promise.resolve();
     });
-    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(6);
-    expect(serviceMocks.getDashboardData.mock.calls[5][0]).toBe('delegate-2');
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(3);
+    expect(serviceMocks.getDashboardData.mock.calls[2][0]).toBe('delegate-2');
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(120_000);
     });
-    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(7);
-    expect(serviceMocks.getDashboardData.mock.calls.filter(([delegateId]) => delegateId === 'delegate-1')).toHaveLength(5);
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(4);
+    expect(serviceMocks.getDashboardData.mock.calls.filter(([delegateId]) => delegateId === 'delegate-1')).toHaveLength(2);
     expect(serviceMocks.getDashboardData.mock.calls.filter(([delegateId]) => delegateId === 'delegate-2')).toHaveLength(2);
+    unmount();
+  });
+
+  it('pauses dashboard polling while the document is hidden and refreshes when visible', async () => {
+    serviceMocks.getDashboardData.mockResolvedValue(
+      dashboardResponse({ id: 'delegate-1', name: 'Visible delegate' })
+    );
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    const { unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: { id: 'delegate-1', name: 'Initial delegate' }
+    }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+
+    visibility.mockReturnValue('visible');
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+    });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
     unmount();
   });
 
@@ -218,7 +252,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(45_000);
+      await vi.advanceTimersByTimeAsync(120_000);
     });
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
 
@@ -227,7 +261,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       await Promise.resolve();
     });
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(120_000);
     });
 
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
@@ -664,7 +698,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     });
     expect(result.current.allGarages).toHaveLength(1);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(120_000);
     });
     expect(result.current.allGarages).toHaveLength(2);
 
