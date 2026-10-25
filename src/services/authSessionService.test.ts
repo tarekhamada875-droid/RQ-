@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { refreshEntitySession, claimEntitySession, releaseEntitySession, recordSessionAsClaimed, _resetRecentClaimsForTesting } from './authSessionService';
 import { authService } from './authService';
-import { runTransaction } from 'firebase/firestore';
 
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((...parts: string[]) => parts.join('/')),
-  runTransaction: vi.fn(),
-}));
+vi.mock('firebase/firestore', () => ({}));
 
 vi.mock('../firebase', () => ({
   db: {},
@@ -22,7 +18,6 @@ vi.mock('./authService', () => ({
 
 const mockedRefresh = vi.mocked(authService.validateOrRefreshSessionOnServer);
 const mockedRelease = vi.mocked(authService.releaseSessionOnServer);
-const mockedRunTransaction = vi.mocked(runTransaction);
 
 describe('auth session server authority', () => {
   beforeEach(() => {
@@ -46,7 +41,6 @@ describe('auth session server authority', () => {
       'garage',
       'garage-1'
     );
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
   it('does not start a browser transaction when an existing session is validated by the server', async () => {
@@ -64,7 +58,6 @@ describe('auth session server authority', () => {
       'garage',
       'garage-1'
     );
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
     expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'rq-session-ready' }));
     dispatchEvent.mockRestore();
   });
@@ -79,10 +72,9 @@ describe('auth session server authority', () => {
       uid: 'firebase-uid-invalid',
     })).rejects.toThrow('SESSION_INVALID');
 
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
-  it('keeps the rules-limited fallback available for a temporary validation outage', async () => {
+  it('fails closed during a temporary validation outage without a browser fallback write', async () => {
     mockedRefresh.mockRejectedValue(new Error('SERVER_UNAVAILABLE'));
 
     await expect(claimEntitySession({
@@ -90,9 +82,7 @@ describe('auth session server authority', () => {
       entityId: 'garage-offline',
       sessionId: 'session-offline',
       uid: 'firebase-uid-offline',
-    })).resolves.toBeUndefined();
-
-    expect(mockedRunTransaction).toHaveBeenCalledOnce();
+    })).rejects.toThrow('SESSION_SERVER_UNAVAILABLE');
   });
 
   it('notifies config listeners when login already claimed the session server-side', () => {
@@ -119,7 +109,6 @@ describe('auth session server authority', () => {
       'staff',
       'staff-1'
     );
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
   it('fails closed during a server outage without attempting a browser fallback write', async () => {
@@ -138,7 +127,6 @@ describe('auth session server authority', () => {
       'garage',
       'garage-1'
     );
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
   it('releases the session through the server without a browser transaction', async () => {
@@ -155,7 +143,6 @@ describe('auth session server authority', () => {
       'garage',
       'garage-1'
     );
-    expect(mockedRunTransaction).not.toHaveBeenCalled();
   });
 
   it('retries a failed release before allowing the same session to be claimed', async () => {
