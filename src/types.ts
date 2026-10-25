@@ -25,15 +25,6 @@ export interface Package {
   createdAt?: any;
 }
 
-export interface Coupon {
-  id: string;
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  isActive: boolean;
-  createdAt?: any;
-}
-
 export interface Garage {
   id: string;
   name: string;
@@ -176,7 +167,6 @@ export interface ActivityLog {
     revenueAmount?: number;
     originalRevenueAmount?: number;
     discountAmount?: number;
-    couponCode?: string;
     requestId?: string;
     commission?: number;
     referrerId?: string;
