@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 4 IN PROGRESS — P4.1 complete and verified; remaining security/configuration tasks continue** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 4 IN PROGRESS — P4.1 and P4.2 complete and merged; P4.3 is the next owner action** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -98,7 +98,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P1.4 | Usage monitoring setup (OWNER ACTION) | low | [ ] | | | |
 | P2.1 | Delete dead files (+ their tests) | low | [x] | 2026-10-25 | 7dde9ad | PR #401 merged as 2af758a; Production Gate run #40207192163 passed. Removed 11 audit-listed dead files and retired their dependent test cases/imports. Deploy jobs skipped; no production deployment. |
 | P2.2 | Delete dead functions/methods | med | [x] | 2026-10-25 | 098c68e | PR #403 merged as 210b54b; Production Gate run #40209268959 passed (typecheck, full tests, rules tests, build and artifact checks). Removed the planned helpers; review-only methods were left untouched. Deploy jobs skipped; no production deployment. |
-| P2.3 | Remove coupons feature (D5) | low | [ ] | | | |
+| P2.3 | Remove coupons feature (D5) | low | [x] | 2026-10-25 | 575ab7e | Merged in PR #405; the retired coupon feature was removed. |
 | P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [ ] | | | Owner believes old copies may still call these routes; retain HTTP 410 compatibility until evidence says safe |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [ ] | | | |
 | P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
@@ -106,8 +106,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P3.2 | Lock Firestore rules (browser = read-only) | **high** | [x] | 2026-10-25 | 4bcca03 | Session, garage, staff, delegate, settings, package, retired billing, system-config, and daily-counter browser writes are denied; emulator matrix passes. |
 | P3.3 | Close `admin_settings` wallet read | med | [x] | 2026-10-25 | 4bcca03 | Wallet/subscription settings are Admin-only; non-admin reads are denied and Admin reads remain covered. |
 | P3.4 | Update rules tests; deploy rules (OWNER ACTION) | **high** | [x] | 2026-10-25 | 4bcca03 | Emulator/full gate passed. Preview project was deleted, so the owner explicitly authorized the direct path; Firebase CLI released the checked-in rules to production database `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`, and the live read-back shows Worker/server-only mutations. |
-| P4.1 | CORS allowlist cleanup | low | [x] | 2026-10-25 | pending | Default Worker CORS now allows only `https://rq-acg.pages.dev`; local/custom origins remain configurable through `ALLOWED_ORIGINS`. Focused CORS tests, source-origin audit, and garage browser smoke passed. |
-| P4.2 | Remove legacy PIN formats (needs D1 = NO) | **high** | [x] | 2026-10-25 | pending | D1 = NO. Server accepts only modern per-account `$scrypt$` PINs; shared-salt legacy hashes and plaintext PINs are rejected. Legacy verifier helpers were removed; dependent fixtures now use modern hashes. Full suite passed: 138 files / 893 tests. |
+| P4.1 | CORS allowlist cleanup | low | [x] | 2026-10-25 | 39b7a90 | Merged in PR #407. Default Worker CORS allows only `https://rq-acg.pages.dev`; local/custom origins remain configurable through `ALLOWED_ORIGINS`. Focused CORS tests, source-origin audit, and garage browser smoke passed. |
+| P4.2 | Remove legacy PIN formats (needs D1 = NO) | **high** | [x] | 2026-10-25 | 729623f | Merged in PR #408. D1 = NO. Server accepts only modern per-account `$scrypt$` PINs; shared-salt legacy hashes and plaintext PINs are rejected. Legacy verifier helpers were removed; dependent fixtures now use modern hashes. Full suite passed: 138 files / 893 tests. |
 | P4.3 | Check Worker plan / CPU (OWNER ACTION, D2) | med | [ ] | | | |
 | P4.4 | Make repo private + rotate secrets (OWNER ACTION) | med | [ ] | | | |
 | P5.1 | Full validation suite | low | [ ] | | | |
