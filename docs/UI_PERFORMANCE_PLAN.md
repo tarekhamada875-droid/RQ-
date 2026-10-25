@@ -17,7 +17,7 @@ You do not need to understand the code. Do these three things:
 1. Give this file to ChatGPT together with the project (a ZIP, or open it in Codex / Claude Code / Cursor so it can edit the real repo).
 2. Paste this message to ChatGPT:
 
-   > Open `RQ_PRODUCTION_FIX_PLAN.md`. You are the executor. Read the "Executor Contract" first and obey it exactly. Start at Phase 0. Do one task at a time. After each task, update the Progress Tracker and the Execution Log in that same file. Stop at the end of each phase and show me the updated tracker. If anything does not match the file, stop and ask me; do not improvise.
+   > Open `docs/UI_PERFORMANCE_PLAN.md`. You are the executor. Read the "Executor Contract" first and obey it exactly. Start at Phase 0. Do one task at a time. After each task, update the Progress Tracker and the Execution Log in that same file. Stop at the end of each phase and show me the updated tracker. If anything does not match the file, stop and ask me; do not improvise.
 
 3. Answer the 5 decisions in section 2 (ChatGPT will ask you). A "default" is given for each.
 
