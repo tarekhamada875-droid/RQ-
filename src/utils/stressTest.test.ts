@@ -84,10 +84,9 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
       const randomOffset = (i * 600000) % (365 * 24 * 3600 * 1000); // spread across year
       logs.push({
         id: `req-${i}`,
-        status: 'approved',
+        actionType: i % 2 === 0 ? 'recharge' : 'commission_earned',
         amount: 100 + (i % 500),
-        revenueAmount: 100 + (i % 500),
-        commission: 30,
+        commission: 100,
         createdAt: new Date(baseTimestamp + randomOffset).toISOString(),
       });
     }
