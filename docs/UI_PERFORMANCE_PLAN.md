@@ -6,24 +6,23 @@ The audit found defects in shared session/state handling and role workflows. Thi
 
 ## Audit progress and update log
 
-**Last verified:** 2026-10-25. **Audit status:** In progress; not production-ready by assertion. The full file-by-file and role-workflow audit is not complete.
+**Last reviewed:** 2026-10-25. **Audit status:** In progress; not production-ready by assertion. The full file-by-file and role-workflow audit is not complete.
 
-- Current `main` baseline: `218725ee54b59efc80af4b732ea46bdd62bb88cb`.
-- [PR #380](https://github.com/tarekhamada875-droid/RQ-/pull/380) is merged. It aligns delegate financial summaries with canonical ledger events, retires the obsolete request-based commission utility/tests, and adds coverage. Related audit observations must be checked against this current behavior.
-- Source review so far covers Firestore rules, prepaid-credit ledger domain validation, financial reporting/routes, the Production Gate workflow, and security/operations guidance. This is partial coverage, not a completed file-by-file audit.
-- Observed ledger-domain safeguards include non-negative safe-integer balance validation, overflow guards, a one-credit regular-entry debit rule, and referral-award preconditions. Transaction-level enforcement, idempotency/replay handling, and end-to-end route wiring remain to be verified.
+- Shared garage/role data ownership protections are present in `src/hooks/useGarageSync.ts`: owner changes clear vehicles, transactions, staff, Admin/Delegate lists and cursors; old list requests are invalidated; queued vehicle/transaction callbacks are ignored; the trailing vehicle throttle is cancelled; and stale Admin garage-detail responses are discarded.
+- Focused regression coverage exists in `src/hooks/useGarageSync.owner-isolation.test.tsx` and `src/hooks/useGarageSync.test.tsx` for garage switches, logout/session-readiness loss, late snapshots, throttle cancellation, and delayed garage-detail responses.
+- Session protections are present in `src/hooks/useGarageSession.ts` and `src/services/authSessionService.ts`: the protected view stays locked while release is pending, a different Firebase identity is not signed out, claims wait for an in-flight release, and failed releases are retried before a claim proceeds. Focused coverage exists in `src/hooks/useGarageSession.test.tsx` and `src/services/authSessionService.test.ts`.
+- Additional Work Order 2 safeguards are present for initial claim failure, authoritative invalid-versus-transient session refresh results, malformed saved identity data, and per-role/account/session logout-PIN attempt scopes. Relevant tests exist in `src/hooks/useGarageSession.test.tsx` and `src/__tests__/logoutAdminPinVerification.test.tsx`.
+- Financial summary code uses canonical financial events rather than legacy request-level commission fields. Transaction-level ledger enforcement, replay/idempotency behavior, and full route-to-report wiring still require audit.
 - Financial report ranges are inclusive-start/exclusive-end. Cairo-local correctness depends on caller-provided boundaries and remains an audit question, not a confirmed defect.
 - Firestore rules permit garage-session updates to `topup_requests` when only `status` changes. Allowed transitions and server authorization must be verified before classifying this as a security defect.
-- The Production Gate includes lint, tests, Firestore rules tests, and build checks for application changes. Green CI alone does not establish live deployment identity, backup recovery, or production readiness.
-- Previously noted PIN-length and subscriber-expiry count concerns must be re-checked against current `main` and tests before being treated as active defects.
-- No application code was changed during this documentation update. Live deployment and recovery verification have not been claimed.
+- Passing automated checks do not establish live deployment identity, backup recovery, or production readiness. Live deployment and recovery verification have not been claimed.
 
 ### Audit change log
 
 | Date | Task | Result / evidence | Next action |
 |---|---|---|---|
-| 2026-10-25 | Sync audit status with current main | PR #380 verified merged; audit scope and open questions recorded above. | Continue audit of financial transaction enforcement/idempotency, then verify security and frontend/backend contracts. |
-| After each task | Keep this plan current | Record verified source/test evidence, PR/commit, CI and deployment status where applicable. | Do not mark work complete while checks are pending or failing. |
+| 2026-10-25 | Revalidate shared ownership and session protections | Current source and focused tests cover owner-state clearing, late async work, release/claim ordering, initial claim failure, invalid-session handling, malformed persisted identity, and scoped logout-PIN attempts. | Continue with the next unverified post-login role workflow; do not reimplement safeguards already present. |
+| After each task | Keep this plan current | Record durable source/test findings and unresolved questions; keep branch, PR, CI-run, and deployment state in live GitHub checks rather than this document. | Do not mark work complete while required checks are pending or failing. |
 
 ## Purpose
 
