@@ -8,7 +8,6 @@ import {
   getEntityDocumentId
 } from '../domain/auth/sessionPolicy';
 import {
-  SESSION_TIMEOUT_MS,
   claimSessionInTransaction
 } from '../domain/auth/sessionTransactions';
 export type { EntityRole };
