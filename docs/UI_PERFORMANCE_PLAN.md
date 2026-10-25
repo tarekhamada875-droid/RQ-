@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 3 IN PROGRESS — P3.1 complete and verified; P3.2/P3.3/P3.4 remain** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 3 IN PROGRESS — P3.1–P3.3 complete and verified; P3.4 deployment and launch validation remain** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -103,8 +103,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P2.5 | Remove screenshot clutter from `docs/` | low | [ ] | | | |
 | P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
 | P3.1 | Remove browser session-write fallback | **high** | [x] | 2026-10-25 | 38d7439 | Worker is the only session authority; browser fallback transaction helpers and their tests removed. Focused lint/tests passed. |
-| P3.2 | Lock Firestore rules (browser = read-only) | **high** | [ ] | | | |
-| P3.3 | Close `admin_settings` wallet read | med | [ ] | | | |
+| P3.2 | Lock Firestore rules (browser = read-only) | **high** | [x] | 2026-10-25 | 4bcca03 | Session, garage, staff, delegate, settings, package, retired billing, system-config, and daily-counter browser writes are denied; emulator matrix passes. |
+| P3.3 | Close `admin_settings` wallet read | med | [x] | 2026-10-25 | 4bcca03 | Wallet/subscription settings are Admin-only; non-admin reads are denied and Admin reads remain covered. |
 | P3.4 | Update rules tests; deploy rules (OWNER ACTION) | **high** | [ ] | | | |
 | P4.1 | CORS allowlist cleanup | low | [ ] | | | |
 | P4.2 | Remove legacy PIN formats (needs D1 = NO) | **high** | [ ] | | | |
@@ -988,6 +988,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 8 | 2026-10-25 | P2.1 | Removed audit-listed dead files and only the obsolete tests/imports that depended on deleted code. The first run caught two unused imports; they were removed and the corrected commit passed the full Production Gate. | 11 files deleted; 2 test files adjusted | Initial run #40207028434 failed typecheck on unused `act` and `SystemConfig`; corrected commit passed Production Gate run #40207192163. PR #401 merged to `main` as `2af758a73db7eca5d03461a3d7aa43d13fe44bb9`; deployment jobs skipped. | 7dde9ad | No production deployment. P1.4 Firebase Usage monitoring owner action remains pending. |
 | 9 | 2026-10-25 | P2.2 | Removed the plan-listed unused session/auth/garage/delegate/utility helpers from their defining modules. Left all review-only methods—including `releaseDelegateSession`, announcement methods and package methods—untouched. | 6 source files updated; no UI, financial transaction, or production deployment changes intended | First run #40209265263 was cancelled after follow-up import cleanup; final Production Gate run #40209268959 passed, including TypeScript, full tests, Firestore rules tests, production build and artifact checks. PR #403 merged to `main` as `210b54b5e83ef944c4471bdad8485a23b4ccddbe`; deployment jobs skipped. | 098c68e | P1.4 Firebase Usage monitoring owner action remains pending. GitHub code search was incomplete, so passing typecheck/tests were used as merge gate; do not treat the search command as independently verified. |
 | 10 | 2026-10-25 | P3.1 | Removed the browser Firestore session-claim fallback and its transaction helpers; moved the retained session timeout constant to session policy; outage and invalid-session paths now fail closed. | `src/services/authSessionService.ts`, `src/services/authSessionService.test.ts`, `src/domain/auth/sessionPolicy.ts`; 2 helper files deleted | `npm run lint` passed; focused Vitest run passed: 3 files, 20 tests; `git diff --check` passed. | 38d7439 | No UI or business-rule changes. Rules remain to be hardened and deployed in P3.2–P3.4. |
+| 11 | 2026-10-25 | P3.2/P3.3 | Locked the browser Firestore surface to reads plus Worker/Admin SDK writes, retired legacy billing writes, removed the old wallet settings read for non-admins, and deleted helpers proven unused by the new rules. | `firestore.rules`, `tools/firestore-rules-security.test.mjs` | `npm run test:rules` passed; emulator matrix passed after updating expected browser writes and seeding the valid server-owned package fixture; `git diff --check` passed. | 4bcca03 | P3.4 remains: preview walkthrough, then production rules deploy, then full UI/CI validation. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 

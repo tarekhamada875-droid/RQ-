@@ -25,11 +25,13 @@ vi.mock('../firebase', () => ({
 describe('claimDelegateSession atomic locking', () => {
   let delegateDocStore: Record<string, any>;
   let releaseSessionOnServerSpy: ReturnType<typeof vi.spyOn>;
+  let validateSessionOnServerSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     _resetRecentClaimsForTesting();
     releaseSessionOnServerSpy = vi.spyOn(authService, 'releaseSessionOnServer').mockResolvedValue();
+    validateSessionOnServerSpy = vi.spyOn(authService, 'validateOrRefreshSessionOnServer').mockResolvedValue(true);
     delegateDocStore = {
       'delegates/del-1': {
         name: 'Delegate 1',
@@ -89,8 +91,9 @@ describe('claimDelegateSession atomic locking', () => {
 
     const fulfilled = results.filter(r => r.status === 'fulfilled');
     expect(fulfilled.length).toBe(2);
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-B');
+    expect(results.map((result) => result.status === 'fulfilled' ? result.value.currentSessionId : null))
+      .toEqual(expect.arrayContaining(['session-A', 'session-B']));
+    expect(validateSessionOnServerSpy).toHaveBeenCalledTimes(2);
   });
 
   it('records multiple sessions under concurrent load', async () => {
@@ -101,25 +104,23 @@ describe('claimDelegateSession atomic locking', () => {
     const fulfilled = results.filter(result => result.status === 'fulfilled');
 
     expect(fulfilled).toHaveLength(5);
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds.length).toBeGreaterThanOrEqual(5);
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
+    expect(validateSessionOnServerSpy).toHaveBeenCalledTimes(5);
   });
 
   it('maintains active session IDs when a new session joins', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
 
-    await firestoreService.claimDelegateSession('del-1', 'session-B');
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-A');
-    expect(delegateDocStore['delegates/del-1'].activeSessionIds).toContain('session-B');
+    const secondClaim = await firestoreService.claimDelegateSession('del-1', 'session-B');
+    expect(secondClaim.currentSessionId).toBe('session-B');
+    expect(validateSessionOnServerSpy).toHaveBeenCalledTimes(2);
   });
 
   it('allows the same session to refresh', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
-
     const refreshed = await firestoreService.claimDelegateSession('del-1', 'session-A');
     expect(refreshed.currentSessionId).toBe('session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+
   });
 
   it('rejects a missing delegate ID instead of returning a fake session', async () => {
@@ -136,15 +137,14 @@ describe('claimDelegateSession atomic locking', () => {
 
     const newClaim = await firestoreService.claimDelegateSession('del-1', 'session-NEW');
     expect(newClaim.currentSessionId).toBe('session-NEW');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-NEW');
   });
 
   it('delegates release to the server without mutating browser session state', async () => {
     await firestoreService.claimDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+
 
     await firestoreService.releaseDelegateSession('del-1', 'session-OTHER');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+
     expect(releaseSessionOnServerSpy).toHaveBeenLastCalledWith(
       'del-1',
       'session-OTHER',
@@ -153,7 +153,7 @@ describe('claimDelegateSession atomic locking', () => {
     );
 
     await firestoreService.releaseDelegateSession('del-1', 'session-A');
-    expect(delegateDocStore['delegates/del-1'].currentSessionId).toBe('session-A');
+
     expect(releaseSessionOnServerSpy).toHaveBeenLastCalledWith(
       'del-1',
       'session-A',
