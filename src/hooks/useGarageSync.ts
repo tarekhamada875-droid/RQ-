@@ -370,13 +370,26 @@ export function useGarageSync({
     };
 
     void loadDashboard();
-    const refresh = window.setInterval(loadDashboard, 15000);
+    // Delegates do not need second-by-second numbers. Every refresh reads the delegate
+    // record plus a page of garages, so poll slowly and only while the tab is visible.
+    const DASHBOARD_REFRESH_MS = 120_000;
+    const DASHBOARD_MIN_GAP_MS = 30_000;
+    let lastDashboardLoadAt = Date.now();
+    const refreshIfVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (Date.now() - lastDashboardLoadAt < DASHBOARD_MIN_GAP_MS) return;
+      lastDashboardLoadAt = Date.now();
+      void loadDashboard();
+    };
+    const refresh = window.setInterval(refreshIfVisible, DASHBOARD_REFRESH_MS);
+    document.addEventListener('visibilitychange', refreshIfVisible);
     return () => {
       cancelled = true;
       if (delegateDashboardGenerationRef.current === requestGeneration) {
         delegateDashboardGenerationRef.current += 1;
       }
       window.clearInterval(refresh);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
     };
   }, [isSessionReady, isAuthReady, delegateUserId, delegateId, view, delegateDashboardRetryVersion]);
 
