@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 1 IN PROGRESS — P1.1 and P1.2 complete and verified; P1.3 next** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 1 IN PROGRESS — P1.1, P1.2, and P1.3 complete and verified; P1.4 owner action next** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
 >
 > This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
 
@@ -94,7 +94,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P0.4 | Ask & record owner decisions D1–D5 | low | [x] | 2026-10-25 | pending | Owner answers recorded; D2 remains unknown due Cloudflare billing scope; D4 requires caller investigation |
 | P1.1 | Heartbeat 5 min → 15 min | low | [x] | 2026-10-25 | ff70579 | Merged in PR #395 (merge `d700304`); Production Gate run #40199945696 passed. Heartbeat now 15 min; resume heartbeat after 10 min. No production deployment. |
 | P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [x] | 2026-10-25 | 5dcf0d4 | Merged in PR #397 (merge `28a0cca`); Production Gate run #40200933260 passed. Poll interval is 120 s; polling pauses while hidden. Deploy jobs skipped. |
-| P1.3 | Delete dead all-garages live listener | low | [ ] | | | |
+| P1.3 | Delete dead garage live listeners | low | [x] | 2026-10-25 | caffcff | Removed both unused garage listener methods, their unused imports, and the obsolete test that depended on the removed delegate listener. PR #399 merged; Production Gate run #40201555729 passed. |
 | P1.4 | Usage monitoring setup (OWNER ACTION) | low | [ ] | | | |
 | P2.1 | Delete dead files (+ their tests) | low | [ ] | | | |
 | P2.2 | Delete dead functions/methods | med | [ ] | | | |
@@ -984,6 +984,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 4 | 2026-10-25 | P0.2/P0.3 | Phase 0 baseline evidence consolidated in canonical plan; marked Phase 0 complete. | `docs/UI_PERFORMANCE_PLAN.md` updated | Exact `npm run ci:check` passed; all baseline metrics recorded from workflow run #40198933303. | pending | Temporary verification workflow should be removed after this evidence is merged; no application code changed. | |
 | 5 | 2026-10-25 | P1.1 | Reduced session heartbeat from 5 to 15 minutes and changed the visible-tab resume threshold to 10 minutes; updated the interval regression test. | `src/hooks/useGarageSession.ts`, `src/hooks/useGarageSession.test.tsx` | Production Gate run #40199945696 passed (typecheck, full suite, build/artifact checks); PR #395 merged to `main`. | ff70579 | No owner action needed for this task; no production deployment. |
 | 6 | 2026-10-25 | P1.2 | Reduced delegate dashboard polling from 15 seconds to 120 seconds, paused periodic polling while the document is hidden, and added regression coverage for interval and visibility behavior. | `src/hooks/useGarageSync.ts`, `src/hooks/useGarageSync.test.tsx` | Production Gate run #40200933260 passed (typecheck, full suite, Firestore rules, production build and artifact checks); PR #397 merged to `main`. Deploy jobs skipped; no production deployment. | 5dcf0d4 | No owner action needed for this task; no production deployment. |
+| 7 | 2026-10-25 | P1.3 | Removed the unused `subscribeToGarages` and `subscribeToDelegateGarages` methods and their now-unused imports; removed the obsolete test that only exercised the deleted delegate listener. | `src/services/garageService.ts`, `src/__tests__/delegateScopeIsolation.test.ts` (deleted) | Production Gate run #40201555729 passed; PR #399 merged to `main` as `e466f2a073ed0b6e8ebe9a3c0b302adeda28b351`. Deployment jobs skipped; no production deployment. | caffcff | No owner action needed for code cleanup; usage monitoring setup is the next owner action. |
 
 ## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
 
