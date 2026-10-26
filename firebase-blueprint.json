@@ -1,262 +1,136 @@
 {
-  "entities": {
+  "purpose": "Current product and architecture reference for RQ. This file is documentation only; it is not deployed Firebase configuration, a Firestore security policy, or the authoritative database schema.",
+  "authoritativeSources": {
+    "productModel": "docs/PROJECT.md",
+    "securityRules": "docs/SECURITY.md",
+    "firestoreRules": "firestore.rules",
+    "firestoreIndexes": "firestore.indexes.json",
+    "serverImplementation": "server/"
+  },
+  "architecture": {
+    "frontend": "React + Vite PWA served through Cloudflare Pages",
+    "api": "Cloudflare Worker using Hono",
+    "identity": "Firebase Authentication; Worker validates identity, role, active session, and garage scope",
+    "database": "Cloud Firestore; sensitive writes are performed by the Worker/Admin SDK",
+    "language": "Arabic-only user-facing UI with RTL layout",
+    "regionAndBusinessDay": "Cairo, Egypt; date-only business values use validated Cairo calendar-date helpers"
+  },
+  "billing": {
+    "model": "prepaid credits only",
+    "authority": "Worker/API",
+    "balances": [
+      "paid",
+      "referral",
+      "trial"
+    ],
+    "ledgerKinds": [
+      "paid_grant",
+      "referral_award",
+      "trial_grant",
+      "regular_entry_debit",
+      "subscriber_renewal_debit",
+      "correction_restore"
+    ],
+    "rules": [
+      "A new trial grants exactly 100 trial credits.",
+      "Trial credits are tracked separately and are not cash revenue.",
+      "A regular vehicle entry consumes one eligible credit.",
+      "Credit grants, debits, restores, referrals, and commissions must be transactional, idempotent, and auditable.",
+      "Delegate commission is exactly 100 EGP once per garage, triggered by its first successful paid credit grant."
+    ],
+    "retired": [
+      "Garage-level subscription billing",
+      "Duration, capacity, weekly, or monthly garage packages",
+      "Legacy recharge requests and owner-wallet top-ups",
+      "The old two-free-day trial",
+      "Legacy commission paths"
+    ]
+  },
+  "activeConcepts": {
     "Garage": {
-      "title": "Garage",
-      "description": "Represents a garage owner's account and settings.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the garage" },
-        "phone": { "type": "string", "description": "Phone number used for login" },
-        "pin": { "type": "string", "description": "PIN used for login" },
-        "hourlyRate": { "type": "number", "description": "Rate per hour" },
-        "overnightRate": { "type": "number", "description": "Flat rate for overnight stay" },
-        "billingModel": { "type": "string", "enum": ["commission"], "description": "Pricing model" },
-        "commissionPerVehicle": { "type": "number", "description": "Cost per car entry" },
-        "balance": { "type": "number", "description": "Current prepaid balance in EGP" },
-        "isLocked": { "type": "boolean", "description": "Whether the garage is locked due to zero balance" },
-        "totalAdminRevenue": { "type": "number", "description": "Total revenue collected by admin from this garage" },
-        "subscriptionExpiry": { "type": "string", "format": "date-time", "description": "When the subscription ends" },
-        "subscriptionDays": { "type": "number", "description": "Total days of subscription" },
-        "currentSessionId": { "type": "string", "description": "Unique ID of the current active session" },
-        "lastSync": { "type": "string", "format": "date-time", "description": "Last time the garage data was synced" },
-        "lastOnlineCheck": { "type": "string", "format": "date-time", "description": "Last time the garage was confirmed online" },
-        "monthlyGiftAmount": { "type": "number", "description": "Amount of gift balance added monthly" },
-        "lastGiftMonth": { "type": "string", "description": "Last month the gift was awarded (YYYY-MM)" },
-        "referralBonusBalance": { "type": "number", "description": "Total cash bonus balance from referring garages" },
-        "referredByGarageId": { "type": "string", "description": "ID of referring garage" },
-        "referredByGarageName": { "type": "string", "description": "Name of referring garage" },
-        "lastReferralRewardMonth": { "type": "string", "description": "Last month referral bonus was awarded (YYYY-MM)" },
-        "referralRewardMonthsCount": { "type": "number", "description": "Count of months referral bonus was awarded" },
-        "totalReferralRewardDays": { "type": "number", "description": "Total reward days accumulated from referrals" },
-        "lastReferralClaimAt": { "type": "string", "format": "date-time", "description": "Timestamp when reward days were last claimed" },
-        "totalGaragesReferredCount": { "type": "number", "description": "Total number of garages referred" },
-        "referralRewardAwardedAt": { "type": "string", "format": "date-time", "description": "Timestamp when referral reward was awarded" },
-        "activePlates": { "type": "object", "description": "Map of currently active plate numbers to their vehicle IDs" },
-      },
-      "required": ["name", "phone", "hourlyRate", "overnightRate", "subscriptionExpiry", "subscriptionDays"]
+      "description": "Garage account, access/session identity, hourly and overnight rates, and prepaid-credit balances.",
+      "collection": "garages",
+      "notes": [
+        "The Worker owns authorization and financial decisions.",
+        "Do not treat subscription expiry, package capacity, or billingModel fields as active billing rules."
+      ]
     },
     "Vehicle": {
-      "title": "Vehicle",
-      "description": "Represents a vehicle parked in a garage.",
-      "type": "object",
-      "properties": {
-        "plateNumber": { "type": "string", "description": "Vehicle plate number" },
-        "entryTime": { "type": "string", "format": "date-time", "description": "Time of entry" },
-        "exitTime": { "type": "string", "format": "date-time", "description": "Time of exit" },
-        "type": { "type": "string", "enum": ["hourly", "overnight"], "description": "Parking type" },
-        "garageId": { "type": "string", "description": "ID of the garage" },
-        "status": { "type": "string", "enum": ["inside", "outside"], "description": "Current status" },
-        "totalCost": { "type": "number", "description": "Total cost calculated at exit" }
-      },
-      "required": ["plateNumber", "entryTime", "type", "garageId", "status"]
-    },
-    "Staff": {
-      "title": "Staff",
-      "description": "Represents a staff member authorized to work at a garage.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the staff member" },
-        "phone": { "type": "string", "description": "Phone number used for login" },
-        "pin": { "type": "string", "description": "PIN used for login" },
-        "garageId": { "type": "string", "description": "ID of the garage they belong to" },
-        "role": { "type": "string", "enum": ["staff"], "description": "Role of the user" },
-        "currentSessionId": { "type": "string", "description": "Unique ID of the current active session to prevent multiple logins" }
-      },
-      "required": ["name", "phone", "garageId", "role"]
+      "description": "Vehicle parking lifecycle and hourly/overnight stay details.",
+      "path": "garages/{garageId}/vehicles/{vehicleId}",
+      "notes": [
+        "Check-in and check-out are Worker-authoritative and idempotent."
+      ]
     },
     "Subscriber": {
-      "title": "Subscriber",
-      "description": "Represents a monthly subscriber parked in a garage.",
-      "type": "object",
-      "properties": {
-        "plateNumber": { "type": "string", "description": "Vehicle plate number" },
-        "plateNumberRaw": { "type": "string", "description": "Raw string format" },
-        "ownerName": { "type": "string", "description": "Name of owner" },
-        "phone": { "type": "string", "description": "Phone of owner" },
-        "startDate": { "type": "string", "description": "YYYY-MM-DD" },
-        "endDate": { "type": "string", "description": "YYYY-MM-DD" },
-        "garageId": { "type": "string", "description": "ID of the garage" }
-      },
-      "required": ["plateNumber", "plateNumberRaw", "ownerName", "phone", "startDate", "endDate", "garageId"]
+      "description": "Garage-owned monthly vehicle subscriber.",
+      "path": "garages/{garageId}/subscribers/{subscriberId}",
+      "notes": [
+        "Subscriber eligibility and renewal are server-authoritative.",
+        "There is no separate subscriber charge."
+      ]
     },
-    "ActivityLog": {
-      "title": "ActivityLog",
-      "description": "Represents an action performed by a staff member or garage owner.",
-      "type": "object",
-      "properties": {
-        "garageId": { "type": "string", "description": "ID of the garage" },
-        "staffId": { "type": "string", "description": "ID of the staff member (null if owner)" },
-        "staffName": { "type": "string", "description": "Name of the person who performed the action" },
-        "actionType": { "type": "string", "enum": ["check_in", "check_out"], "description": "Type of action" },
-        "plateNumber": { "type": "string", "description": "Vehicle plate number" },
-        "timestamp": { "type": "string", "format": "date-time", "description": "When the action occurred" }
-      },
-      "required": ["garageId", "staffName", "actionType", "plateNumber", "timestamp"]
+    "Staff": {
+      "description": "Staff identity and garage-scoped authorization.",
+      "collection": "staff"
     },
     "Delegate": {
-      "title": "Delegate",
-      "description": "Represents a delegate authorized by the admin to recharge garages.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the delegate" },
-        "phone": { "type": "string", "description": "Phone number used for login" },
-        "pin": { "type": "string", "description": "PIN used for login" },
-        "role": { "type": "string", "enum": ["delegate"], "description": "Role of the user" },
-        "currentSessionId": { "type": "string", "description": "Unique ID of the current active session" },
-        "commissionRate": { "type": "number", "description": "Percentage rate for delegate commissions" },
-        "totalRechargedAmount": { "type": "number", "description": "Total amount recharged" },
-        "lastSettledAt": { "type": "string", "format": "date-time", "description": "Timestamp when the monthly account was last settled/renewed" }
-      },
-      "required": ["name", "phone", "pin", "role"]
+      "description": "Delegate identity, referral attribution, and commission eligibility.",
+      "collection": "delegates",
+      "notes": [
+        "Delegate commission is governed by docs/PROJECT.md, not by this reference file."
+      ]
     },
-    "Supervisor": {
-      "title": "Supervisor",
-      "description": "Represents an assistant administrator or supervisor who can manage delegates, create garages, and recharge packages.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the supervisor" },
-        "phone": { "type": "string", "description": "Phone number used for login" },
-        "pin": { "type": "string", "description": "PIN used for login" },
-        "role": { "type": "string", "enum": ["supervisor"], "description": "Role of the user" },
-        "currentSessionId": { "type": "string", "description": "Unique ID of the current active session" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the supervisor was created" }
-      },
-      "required": ["name", "phone", "pin", "role"]
+    "CreditLedgerEntry": {
+      "description": "Auditable record of each prepaid-credit balance transition.",
+      "fields": [
+        "entryId",
+        "garageId",
+        "kind",
+        "bucket",
+        "amount",
+        "balanceBefore",
+        "balanceAfter",
+        "totalBalanceAfter",
+        "actorUid",
+        "actorRole",
+        "reason",
+        "reference",
+        "occurredAt",
+        "idempotencyKey"
+      ],
+      "buckets": [
+        "paid",
+        "referral",
+        "trial"
+      ],
+      "source": "server/domain/prepaidCreditLedger.ts"
     },
-    "TopupRequest": {
-      "title": "TopupRequest",
-      "description": "Represents a request from a garage owner to recharge their balance.",
-      "type": "object",
-      "properties": {
-        "garageId": { "type": "string", "description": "ID of the garage" },
-        "garageName": { "type": "string", "description": "Name of the garage" },
-        "packageName": { "type": "string", "description": "Name of the package chosen" },
-        "amount": { "type": "number", "description": "Amount in EGP" },
-        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"], "description": "Status of the request" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the request was made" }
-      },
-      "required": ["garageId", "garageName", "packageName", "amount", "status", "createdAt"]
+    "DomainEvent": {
+      "description": "Auditable domain event written transactionally with relevant business mutations.",
+      "notes": [
+        "Consult current Worker implementation for exact event fields and storage paths."
+      ]
     },
-    "Package": {
-      "title": "Package",
-      "description": "Represents a recharge package available for garages.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the package" },
-        "price": { "type": "number", "description": "Price of the package" },
-        "vehiclesCount": { "type": "number", "description": "Number of vehicles included in the package" }
-      },
-      "required": ["name", "price", "vehiclesCount"]
-    },
-    "GarageLiveState": {
-      "title": "GarageLiveState",
-      "description": "Living state matrix holding active inside vehicles and real-time garage counters.",
-      "type": "object",
-      "properties": {
-        "garageId": { "type": "string", "description": "ID of the garage" },
-        "activeCars": { "type": "object", "description": "Map of currently active inside cars keyed by raw plate number" },
-        "totalInside": { "type": "number", "description": "Total count of active vehicles currently inside" },
-        "todayCount": { "type": "number", "description": "Total vehicle entries recorded today" },
-        "todayRevenue": { "type": "number", "description": "Total revenue generated today" },
-        "lastTransactionDate": { "type": "string", "description": "Date of the last transaction (YYYY-MM-DD)" },
-        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of last live state update" }
-      },
-      "required": ["garageId", "activeCars", "totalInside"]
-    },
-    "ArchiveReceipt": {
-      "title": "ArchiveReceipt",
-      "description": "Cold immutable receipt archive of completed vehicle stays.",
-      "type": "object",
-      "properties": {
-        "garageId": { "type": "string", "description": "ID of the garage" },
-        "garageName": { "type": "string", "description": "Name of the garage" },
-        "plateNumber": { "type": "string", "description": "Formatted vehicle plate number" },
-        "plateNumberRaw": { "type": "string", "description": "Raw vehicle plate number" },
-        "entryTime": { "type": "string", "format": "date-time", "description": "Entry time" },
-        "exitTime": { "type": "string", "format": "date-time", "description": "Exit time" },
-        "type": { "type": "string", "enum": ["hourly", "overnight"], "description": "Stay type" },
-        "totalCost": { "type": "number", "description": "Calculated total cost" },
-        "isSubscriber": { "type": "boolean", "description": "Whether vehicle belonged to a subscriber" },
-        "staffId": { "type": "string", "description": "ID of staff who processed checkout" },
-        "staffName": { "type": "string", "description": "Name of staff who processed checkout" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Record creation timestamp" }
-      },
-      "required": ["garageId", "plateNumber", "plateNumberRaw", "entryTime", "exitTime", "totalCost"]
+    "AdminSettings": {
+      "description": "Administrative settings required by active application workflows.",
+      "notes": [
+        "Do not reintroduce legacy wallet or subscription-price settings."
+      ]
     }
   },
-  "firestore": {
-    "/packages/{packageId}": {
-      "schema": "Package",
-      "description": "Collection of available recharge packages."
-    },
-    "/garages/{garageId}": {
-      "schema": "Garage",
-      "description": "Collection of garage accounts."
-    },
-    "/garages/{garageId}/live/{docId}": {
-      "schema": "GarageLiveState",
-      "description": "Sub-collection holding the living state matrix for high-speed, single-read garage syncing."
-    },
-    "/archive_receipts/{receiptId}": {
-      "schema": "ArchiveReceipt",
-      "description": "Global cold archive of completed parking transaction receipts."
-    },
-    "/garages/{garageId}/vehicles/{vehicleId}": {
-      "schema": "Vehicle",
-      "description": "Sub-collection of vehicles for a specific garage."
-    },
-    "/garages/{garageId}/subscribers/{subscriberId}": {
-      "schema": "Subscriber",
-      "description": "Sub-collection of monthly subscribers for a specific garage."
-    },
-    "/staff/{staffId}": {
-      "schema": "Staff",
-      "description": "Global collection of authorized staff members."
-    },
-    "/activity_logs/{logId}": {
-      "schema": "ActivityLog",
-      "description": "Global collection of activity logs for admin tracking."
-    },
-    "/delegates/{delegateId}": {
-      "schema": "Delegate",
-      "description": "Global collection of delegates."
-    },
-    "/topup_requests/{requestId}": {
-      "schema": "TopupRequest",
-      "description": "Global collection of top-up requests."
-    },
-    "/supervisors/{supervisorId}": {
-      "schema": "Supervisor",
-      "description": "Global collection of supervisors."
-    },
-    "/admin_settings/{settingId}": {
-      "schema": {
-        "title": "AdminSetting",
-        "type": "object",
-        "properties": {
-          "pin": { "type": "string", "description": "Admin authenticate pin" },
-          "number": { "type": "string", "description": "Wallet Vodafone Cash number formatted with separators" },
-          "updatedAt": { "type": "string", "format": "date-time"}
-        }
-      },
-      "description": "Global collection of administrative variables like wallet number or admin pin."
-    },
-    "/system_config/{configId}": {
-      "schema": {
-        "title": "SystemConfig",
-        "type": "object",
-        "properties": {
-          "defaultTrialDays": { "type": "number" },
-          "supportPhone": { "type": "string" },
-          "walletNumber": { "type": "string" },
-          "monthlySubscribersFlatFee": { "type": "number" },
-          "monthlySubscribersSurchargePercent": { "type": "number" },
-          "referralFeePerRenewal": { "type": "number" },
-          "isMaintenanceMode": { "type": "boolean" },
-          "maintenanceMessage": { "type": "string" }
-        }
-      },
-      "description": "Global public system configuration (fees, commissions, wallet, status)."
-    }
-  }
+  "retiredConcepts": [
+    "Package catalog and package-based garage billing",
+    "TopupRequest and recharge-request workflows",
+    "Supervisor role/schema from the old template",
+    "Garage subscriptionExpiry and subscriptionDays as billing authority",
+    "Referral reward days and monthly gift balances",
+    "Gemini server-side API capability"
+  ],
+  "safetyNotes": [
+    "This reference does not define or replace Firestore security rules.",
+    "Do not use it to create or migrate production data.",
+    "Before changing collections, fields, financial rules, or access control, inspect current code, tests, docs/PROJECT.md, docs/SECURITY.md, and firestore.rules.",
+    "Do not infer that an old field should be deleted from stored records merely because it is listed as retired here."
+  ]
 }
