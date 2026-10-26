@@ -54,7 +54,7 @@ Things only **you** can do (the executor cannot do them for you): they are marke
 | **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | Traffic evidence was inconclusive (10% sampling, seven-day retention). On 2026-10-26 the owner explicitly directed removal anyway and accepted the possibility that old copies will receive 404s. Remove only the retired endpoints; keep active prepaid-credit routes untouched. |
 | **D5** | Do you want **coupons** (discount codes)? There is no screen for them. | **NO** → P2.3 deletes the feature. |
 
-**Recorded owner answers (2026-10-25):** D1 = NO real customer data · D2 = UNKNOWN (Cloudflare billing permission unavailable) · D3 = preserve current behavior pending pilot evidence · D4 = likely YES, investigate before removing compatibility routes · D5 = NO coupons.
+**Recorded owner answers (updated 2026-10-26):** D1 = NO real customer data · D2 = UNKNOWN (Cloudflare billing permission unavailable) · D3 = preserve current behavior pending pilot evidence · D4 = older callers may exist, but the owner explicitly superseded the prior caution and directed removal despite inconclusive telemetry · D5 = NO coupons.
 
 ---
 
