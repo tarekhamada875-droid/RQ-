@@ -93,7 +93,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/garages/:id/credit-ledger',
       'POST /api/garages/recalculate-cars-inside'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(69);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(70);
   });
 
   it('keeps the global Worker export in the monolith', () => {
