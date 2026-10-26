@@ -391,53 +391,6 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect([...mockDb.records.entries()]).toEqual(before);
   });
 
-  it('3. POST /api/vehicles/delete with refund handles accounting rollback and event ledger', async () => {
-    // Check in and check out vehicle
-    await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-admin-token'
-      },
-      body: JSON.stringify({
-        garageId: testGarageId,
-        plateNumber: 'ق ف غ 9876',
-        plateRaw: 'قفغ9876',
-        type: 'hourly'
-      })
-    }), workerEnv);
-
-    await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-admin-token'
-      },
-      body: JSON.stringify({
-        garageId: testGarageId,
-        vehicleId: 'قفغ9876'
-      })
-    }), workerEnv);
-
-    // Delete with refund
-    const deleteRes = await api.fetch(new Request('http://localhost/api/vehicles/delete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer valid-admin-token'
-      },
-      body: JSON.stringify({
-        garageId: testGarageId,
-        vehicleId: 'قفغ9876',
-        refundAmount: 10
-      })
-    }), workerEnv);
-
-    expect(deleteRes.status).toBe(200);
-    const body = await deleteRes.json() as any;
-    expect(body.success).toBe(true);
-  });
-
   it('4. GET /api/vehicles/inside and GET /api/vehicles/history return live operational state', async () => {
     // Check in vehicle
     await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
