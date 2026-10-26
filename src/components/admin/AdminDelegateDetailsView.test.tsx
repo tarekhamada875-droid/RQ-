@@ -65,6 +65,7 @@ describe('AdminDelegateDetailsView Component', () => {
       timestamp: new Date()
     }]);
 
+    serviceMocks.getDelegatePaidGrantSummary.mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 1500, currentCyclePaidGrantTotalEgp: 1500, recentPaidGrants: [] });
     renderDetails({ ...mockDelegate, totalRechargedAmount: 0, totalCommissionEarned: 0 });
     fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
 
@@ -149,6 +150,7 @@ describe('AdminDelegateDetailsView Component', () => {
       sourceCreditGrantId: 'credit-entry-1'
     }]);
 
+    serviceMocks.getDelegatePaidGrantSummary.mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 20, currentCyclePaidGrantTotalEgp: 20, recentPaidGrants: [] });
     renderDetails({ ...mockDelegate, totalRechargedAmount: 100, totalCommissionEarned: 100 });
     fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
     await screen.findByText('SMALL-RECHARGE');
