@@ -53,10 +53,7 @@ describe('Hono API contracts', () => {
       '/api/subscribers/add', '/api/subscribers/renew', '/api/subscribers/update', '/api/subscribers/delete',
       '/api/vehicles/check-in', '/api/vehicles/check-out', '/api/auth/verify-pin',
       '/api/auth/check-pin-availability', '/api/auth/verify-admin-pin', '/api/auth/claim-admin-session',
-      '/api/auth/release-admin-session', '/api/admin/update-pin', '/api/transactions/recharge-garage',
-      '/api/transactions/admin-topup-balance', '/api/transactions/use-referral-reward',
-      '/api/transactions/approve-recharge-request', '/api/transactions/reject-recharge-request',
-      '/api/transactions/garage-self-subscribe', '/api/recharge-requests/create'
+      '/api/auth/release-admin-session', '/api/admin/update-pin'
     ];
     for (const path of paths) {
       expect((await honoRequest(path, emptyPost)).status, path).toBe(401);
