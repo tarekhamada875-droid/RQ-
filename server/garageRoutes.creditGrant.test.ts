@@ -32,6 +32,7 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
     totalRechargedAmount: 0
   };
   const writes: Array<{ operation: string; path: string; data: any }> = [];
+  const paymentReferenceMarkers = new Set<string>();
   const transaction = {
     get: vi.fn(async (documentRef: any) => {
       if (documentRef.path === 'garages/garage-1') return { exists: true, data: () => ({ ...garage }) };
@@ -39,11 +40,13 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
         return { exists: options.withDelegate !== false, data: () => ({ ...delegate }) };
       }
       if (documentRef.path === 'credit_referral_awards/garage-1') return { exists: false, data: () => undefined };
+      if (documentRef.path.startsWith('payment_reference_markers/')) return { exists: paymentReferenceMarkers.has(documentRef.path), data: () => undefined };
       if (documentRef.path.startsWith('packages/')) return { exists: false, data: () => undefined };
       return { exists: false, data: () => undefined };
     }),
     set: vi.fn((documentRef: any, data: any, merge?: any) => {
       writes.push({ operation: 'set', path: documentRef.path, data });
+      if (documentRef.path.startsWith('payment_reference_markers/')) paymentReferenceMarkers.add(documentRef.path);
       if (documentRef.path === 'garages/garage-1') Object.assign(garage, merge ? data : data);
     }),
     update: vi.fn((documentRef: any, data: any) => {
@@ -218,3 +221,4 @@ describe('first paid credit grant delegate commission', () => {
     expect(harness.grantPaidCredits).not.toHaveBeenCalled();
   });
 });
+
