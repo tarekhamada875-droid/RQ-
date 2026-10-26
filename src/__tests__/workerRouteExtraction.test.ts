@@ -61,6 +61,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/delegate/withdraw-commission',
       'POST /api/delegates/settle-account',
       'GET /api/delegates/:id/commission-history',
+      'GET /api/delegates/:id/paid-grant-history',
       'GET /api/financial-summary',
       'GET /api/reports/financial'
     ]);
@@ -101,3 +102,4 @@ describe('Cross-F1 Worker route extraction inventory', () => {
     expect(workerSource).toContain('fetch: workerApp.fetch');
   });
 });
+
