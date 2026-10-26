@@ -167,7 +167,7 @@ export const AdminDelegateStatsGrid: React.FC<AdminDelegateStatsGridProps> = mem
           <div>
             <div className="flex items-baseline gap-2" dir="ltr">
               <span className="text-3xl font-black font-sans tracking-tight text-emerald-400">
-                {formatCurrency(Math.max(0, totalRecharged - commissionValue))}
+                {formatCurrency(totalRecharged - commissionValue)}
               </span>
               <span className="text-sm font-bold text-slate-400">{t('ج.م')}</span>
             </div>
@@ -177,7 +177,7 @@ export const AdminDelegateStatsGrid: React.FC<AdminDelegateStatsGridProps> = mem
             <div className="flex items-center justify-between">
               <div className="text-slate-400">
                 <span>{t('الصافي التاريخي:')} </span>
-                <strong className="text-emerald-400 font-mono">{formatCurrency(Math.max(0, allTimeTotal - allTimeCommission))} {t('ج.م')}</strong>
+                <strong className="text-emerald-400 font-mono">{formatCurrency(allTimeTotal - allTimeCommission)} {t('ج.م')}</strong>
               </div>
 
               <button
@@ -202,3 +202,4 @@ export const AdminDelegateStatsGrid: React.FC<AdminDelegateStatsGridProps> = mem
 });
 
 AdminDelegateStatsGrid.displayName = 'AdminDelegateStatsGrid';
+
