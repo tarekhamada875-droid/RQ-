@@ -96,7 +96,7 @@ export const AdminGarageDetailsView = memo(({
     let current = true;
     setTodayEntriesFromSummary(null);
     void firestoreService.getDashboardSummary(selectedGarageForDetails.id).then(summary => {
-      if (current && typeof summary.todayEntries === 'number') setTodayEntriesFromSummary(summary.todayEntries);
+      if (current && typeof summary.entriesToday === 'number') setTodayEntriesFromSummary(summary.entriesToday);
     }).catch(() => {});
     return () => { current = false; };
   }, [selectedGarageForDetails.id]);
