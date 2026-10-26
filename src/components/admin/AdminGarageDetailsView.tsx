@@ -90,6 +90,16 @@ export const AdminGarageDetailsView = memo(({
   const [overnightRateInput, setOvernightRateInput] = useState<string>(String(selectedGarageForDetails.overnightRate || 0));
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isUpdatingLock, setIsUpdatingLock] = useState(false);
+  const [todayEntriesFromSummary, setTodayEntriesFromSummary] = useState<number | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    setTodayEntriesFromSummary(null);
+    void firestoreService.getDashboardSummary(selectedGarageForDetails.id).then(summary => {
+      if (current && typeof summary.todayEntries === 'number') setTodayEntriesFromSummary(summary.todayEntries);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [selectedGarageForDetails.id]);
 
   useEffect(() => {
     setHourlyRateInput(String(selectedGarageForDetails.hourlyRate || 0));
@@ -298,7 +308,7 @@ export const AdminGarageDetailsView = memo(({
   const today = getCairoDateKey();
   const isTodayValid = selectedGarageForDetails.lastTransactionDate === today;
 
-  const dailyCount = isTodayValid ? (selectedGarageForDetails.todayCount || 0) : 0;
+  const dailyCount = todayEntriesFromSummary ?? (isTodayValid ? (selectedGarageForDetails.todayCount || 0) : 0);
   const dailyRevenue = isTodayValid ? (selectedGarageForDetails.todayRevenue || 0) : 0;
 
   const totalCount = selectedGarageForDetails.totalVehiclesOut || 0;
@@ -458,3 +468,4 @@ export const AdminGarageDetailsView = memo(({
     </div>
   );
 });
+
