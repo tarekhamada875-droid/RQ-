@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 2 IN PROGRESS — P2.5 is complete; P2.6 remains. P1.4 and P2.4 are blocked; do not mark Phase 2 complete or advance while required items lack a verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
+> **STATUS: PHASE 2 IN PROGRESS — P2.5 is complete; P2.6 is partially implemented but blocked on a reliable repository-wide reference scan. P1.4 and P2.4 are blocked; do not mark Phase 2 complete or advance while required items lack a verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
 > This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
@@ -101,7 +101,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P2.3 | Remove coupons feature (D5) | low | [x] | 2026-10-25 | 575ab7e | Merged in PR #405; the retired coupon feature was removed. |
 | P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [!] | 2026-10-25 | f26b3dc | PR #412 merged. Blocked: current client source contains no calls, and a read-only query found zero sampled matches for the retired route families in the seven-day Workers Logs window. Production Worker `rq` logs are sampled at 10% and retained for seven days, so absence does not establish that older installed copies are retired. Keep all authenticated HTTP 410 tombstones until the owner confirms retirement or stronger traffic evidence is available. |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [x] | 2026-10-25 | f82b40c | Removed 113 baseline and 6 authenticated-smoke artifacts (~1.58 MB); capture outputs now default to ignored `tmp/` folders. Full Production Gate passed. Its PR deploy jobs were skipped, but separate post-merge automation unexpectedly deployed the Worker artifact and passed live smoke; this deployment was not requested. |
-| P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
+| P2.6 | Remove AI Studio leftovers | low | [~] | 2026-10-26 | pending | Removed obsolete Gemini environment example. JSON template files retained pending a reliable repository-wide reference scan; incomplete code-search responses do not establish that they are unreferenced. Phase 2 remains open pending checks. |
 | P3.1 | Remove browser session-write fallback | **high** | [x] | 2026-10-25 | 38d7439 | Worker is the only session authority; browser fallback transaction helpers and their tests removed. Focused lint/tests passed. |
 | P3.2 | Lock Firestore rules (browser = read-only) | **high** | [x] | 2026-10-25 | 4bcca03 | Session, garage, staff, delegate, settings, package, retired billing, system-config, and daily-counter browser writes are denied; emulator matrix passes. |
 | P3.3 | Close `admin_settings` wallet read | med | [x] | 2026-10-25 | 4bcca03 | Wallet/subscription settings are Admin-only; non-admin reads are denied and Admin reads remain covered. |
@@ -599,13 +599,8 @@ The generated browser baseline and authenticated smoke-test outputs were removed
 
 ### P2.6 Remove AI Studio template leftovers
 
-1. Run `grep -rn "metadata.json\|firebase-blueprint" . -I --exclude-dir=node_modules --exclude-dir=.git`. In my scan nothing referenced them. If still nothing: **delete** `metadata.json` and `firebase-blueprint.json`. If something references them → leave them and report.
-2. `.env.example` — delete these three lines (the app has no AI feature):
-```
-# GEMINI_API_KEY: Required for Gemini AI API calls.
-# AI Studio automatically injects this at runtime from user secrets.
-GEMINI_API_KEY="MY_GEMINI_API_KEY"
-```
+1. The planned repository-wide reference scan has **not been verified** in this session: GitHub code search returned incomplete/no-result responses, and the available GitHub connector could not complete a bounded scan of all tracked text blobs. Therefore, **retain** `metadata.json` and `firebase-blueprint.json` until a reliable scan can establish whether code or configuration references them. Do not treat search-tool empty results as proof that they are unused.
+2. `.env.example` — removed the obsolete three-line Gemini example (the app has no AI feature). All other environment examples remain unchanged.
 3. The CORS list is handled in P4.1.
 
 **Phase 2 done when:** P2.1–P2.6 `[x]` (REVIEW items answered by the owner), and `npm run lint && npm test && npm run ci:check` pass. In the report, state: files deleted, lines removed (re-run P0.3 commands).
@@ -1000,3 +995,5 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 - Repo private + secrets rotated: ☐
 - Pilot stage reached: ____ garages · peak writes/day: ____ · peak reads/day: ____
 - Executor's closing note (what was NOT done and why):
+
+| 19 | 2026-10-26 | P2.6 | Removed the obsolete Gemini API key example from `.env.example`. Kept both JSON template files because a reliable repository-wide reference scan could not be completed; GitHub code-search responses were incomplete and are not evidence of no references. | `.env.example`, `docs/UI_PERFORMANCE_PLAN.md` updated | No local checkout or shell is available to run the planned grep or local checks. Production Gate checks are required before this bounded change can be considered verified; Phase 2 remains open. | pending | P2.6 remains partially blocked until a reliable scan determines whether either JSON file can safely be deleted. Do not delete them based only on empty code-search results. |
