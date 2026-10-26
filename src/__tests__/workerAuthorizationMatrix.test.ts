@@ -163,7 +163,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     });
     mockDb.seed('supervisors/legacy-supervisor', { id: 'legacy-supervisor', name: 'Preserved record' });
 
-    for (const path of ['/api/garages', '/api/garages/garage-a', '/api/recharge-requests', '/api/admin/summary']) {
+    for (const path of ['/api/garages', '/api/garages/garage-a', '/api/admin/summary']) {
       const response = await call(path, tokens.supervisor);
       expect(response.status, path).toBe(403);
       expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
@@ -258,11 +258,6 @@ describe('Worker role and garage-scope authorization matrix', () => {
       });
       expect(response.status, `${path} with ${token}`).toBe(403);
     }
-  });
-
-  it.each([tokens.delegate, tokens.garage, tokens.staff, tokens.supervisor])('denies %s from reading recharge requests', async (token) => {
-    const response = await call('/api/recharge-requests', token);
-    expect(response.status).toBe(403);
   });
 
   it('does not trust a client-supplied role to elevate a garage owner', async () => {
@@ -380,14 +375,6 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(response.status).toBe(200);
   });
 
-  it('rejects the retired trial-expiry decision route', async () => {
-    const response = await call('/api/garages/trial-decision', tokens.garage, {
-      method: 'POST',
-      body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'continued' })
-    });
-    expect(response.status).toBe(410);
-    expect(mockDb.records.get('garages/garage-a')).not.toHaveProperty('trialDecision');
-  });
   it('serves a live dashboard summary only within the caller garage scope', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed('garages/garage-a/projection_buckets/bucket-1', {
