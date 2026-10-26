@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../utils/ThemeContext';
 
 const serviceMocks = vi.hoisted(() => ({
   getDelegateRecharges: vi.fn().mockResolvedValue([]),
+  getDelegatePaidGrantSummary: vi.fn().mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 0, currentCyclePaidGrantTotalEgp: 0, recentPaidGrants: [] }),
   getDelegateCommissionHistory: vi.fn().mockResolvedValue([]),
   settleDelegateAccount: vi.fn().mockResolvedValue(undefined),
   updateDelegate: vi.fn().mockResolvedValue(undefined),
@@ -40,6 +41,7 @@ const renderDetails = (delegate: Delegate = mockDelegate) => render(
 describe('AdminDelegateDetailsView Component', () => {
   beforeEach(() => {
     serviceMocks.getDelegateRecharges.mockReset().mockResolvedValue([]);
+    serviceMocks.getDelegatePaidGrantSummary.mockReset().mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 0, currentCyclePaidGrantTotalEgp: 0, recentPaidGrants: [] });
     serviceMocks.getDelegateCommissionHistory.mockReset().mockResolvedValue([]);
   });
 
@@ -161,3 +163,4 @@ describe('AdminDelegateDetailsView Component', () => {
   });
 
 });
+
