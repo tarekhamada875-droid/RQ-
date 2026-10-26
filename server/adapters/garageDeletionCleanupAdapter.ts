@@ -14,7 +14,7 @@ function garageOwnedQueries(adminDb: any, garageId: string): any[] {
   return [
     ...GARAGE_SUBCOLLECTIONS.map((name) => adminDb.collection(`garages/${garageId}/${name}`)),
     adminDb.collection('activity_logs').where('garageId', '==', garageId),
-    adminDb.collection('recharge_requests').where('garageId', '==', garageId),
+    // Financial history is garage-owned data and must be removed atomically with the garage.\n    adminDb.collection('credit_ledger').where('garageId', '==', garageId),\n    adminDb.collection('payment_reference_markers').where('garageId', '==', garageId),\n    adminDb.collection('credit_referral_awards').where('garageId', '==', garageId),\n    adminDb.collection('recharge_requests').where('garageId', '==', garageId),
     adminDb.collection('staff').where('garageId', '==', garageId),
     adminDb.collection('garage_sessions').where('entityId', '==', garageId),
     adminDb.collection('private_pins').where('entityId', '==', garageId).where('entityType', '==', 'garages'),
