@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: Q1–Q17 are recorded in Section 13.1; documentation-only PR #443 merged after Production Gate run #40287268784 passed. Approved fixes: Q15/Q16 merged in PR #444; Q2/Q3 financial-report changes merged in PR #445 after Production Gate run #40291657581 passed. Q4 delegate-finance correction is next. The current audit recorded 50 findings and 51 questions. Launch sign-off remains incomplete: unresolved business details, approved fixes, owner-only billing/privacy/backup checks, and the four-role walkthrough are still open. This is a static review of active production paths and major UI/business logic, not a literal manual read of every line in every file.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
+> **STATUS: Q1–Q17 are recorded in Section 13.1. Final decision reconciliation: Q1–Q7, Q10–Q12, Q14–Q17 are implemented/verified; Q8 is intentionally unchanged by owner decision; Q9 remains pending its action-to-permission matrix; Q13 legacy Supervisor deletion is intentionally deferred. PRs #443–#450 passed their required Production Gates and merged. No production deployment is claimed by this audit. The current audit recorded 50 findings and 51 questions. Launch sign-off remains incomplete: unresolved business details, approved fixes, owner-only billing/privacy/backup checks, and the four-role walkthrough are still open. This is a static review of active production paths and major UI/business logic, not a literal manual read of every line in every file.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
 > This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
@@ -1032,6 +1032,26 @@ The owner supplied the following answers in the referenced conversation. These a
 | Q15 — Firestore transaction conflicts | Add safe retries for transaction conflicts. | AQ38. |
 | Q16 — Updating missing database records | Make strict updates fail when the target document is missing. | AQ39. |
 | Q17 — Garage deletion and audit consistency | Make deletion retention behavior consistent. Read together with Q11, delete all related financial history consistently rather than leaving partial financial records or summaries behind. | AQ48. |
+
+## 13.2 Final decision implementation status (2026-10-26)
+
+| Decision(s) | Status | Evidence / disposition |
+|---|---|---|
+| Q1 | Complete | PR #448 merged; Admin daily count uses the authoritative Cairo daily summary. |
+| Q2–Q3 | Complete | PR #445 merged; paid grants and Cairo-local report boundaries are covered by the Production Gate. |
+| Q4 | Complete | PR #447 merged; delegate finance uses paid-grant data and preserves negative net results. |
+| Q5 | Complete | Existing renewal route and ledger tests enforce a fixed 5-credit debit. |
+| Q6 | Complete | PR #449 merged; duplicate paid-grant payment references return conflict. |
+| Q7 | Complete | Existing ledger and grant tests enforce a 20-credit referral award. |
+| Q8 | Intentionally unchanged | Owner chose to retain current behavior: new check-ins are blocked, checkout remains available. |
+| Q9 | Pending | Requires the concrete per-action staff permission matrix. |
+| Q10–Q11, Q17 | Complete | PR #450 merged; deletion removes garage-owned records and financial markers/history while preserving one deletion audit record. |
+| Q12 | Complete | Settlement records require amount/date evidence only; no payment method or receipt is required. |
+| Q13 | Deferred | Owner chose to leave legacy Supervisor records for now; active access remains blocked. |
+| Q14 | Complete | Delegate refresh already resets ownership/pagination, guards stale requests, and refreshes visible lists. |
+| Q15–Q16 | Complete | PR #444 merged; transaction retries and strict missing-record updates are covered by the gate. |
+
+This reconciliation distinguishes implementation evidence from owner-deferred or under-specified work. The final launch sign-off remains incomplete because owner-only billing/privacy/backup checks and the four-role manual walkthrough have not been verified in this session.
 
 ## 13. Owner Q&A / decisions log (executor asks, owner answers; keep a record)
 
