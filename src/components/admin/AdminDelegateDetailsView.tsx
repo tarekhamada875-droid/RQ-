@@ -66,21 +66,23 @@ export const AdminDelegateDetailsView = memo(({
     setPaidGrantSummary(null);
 
     const fetchHistory = async () => {
-      const [grantResult, commissionResult] = await Promise.allSettled([
+      const [grantResult, commissionResult, legacyHistoryResult] = await Promise.allSettled([
         firestoreService.getDelegatePaidGrantSummary(delegate.id),
-        firestoreService.getDelegateCommissionHistory(delegate.id)
+        firestoreService.getDelegateCommissionHistory(delegate.id),
+        firestoreService.getDelegateRecharges(delegate.id)
       ]);
       if (!isCurrent) return;
 
       if (grantResult.status === 'fulfilled') {
         const summary = grantResult.value;
         setPaidGrantSummary(summary);
-        const logsData = (summary.recentPaidGrants || []).map(grant => ({
+        const paidGrantLogs = (summary.recentPaidGrants || []).map(grant => ({
           id: grant.entryId, garageId: grant.garageId, staffId: delegate.id, staffName: delegate.name,
           actionType: 'credit_grant', plateNumber: grant.garageName || grant.garageId,
           timestamp: grant.occurredAt, amount: grant.amountEgp, commission: 0
         } as ActivityLog));
-        setRecharges(logsData);
+        const legacyLogs = legacyHistoryResult.status === 'fulfilled' ? legacyHistoryResult.value : [];
+        setRecharges([...legacyLogs, ...paidGrantLogs]);
         setHistoryTotal(summary.allTimePaidGrantTotalEgp);
       } else {
         console.error('Failed to fetch delegate paid grants:', grantResult.reason);
