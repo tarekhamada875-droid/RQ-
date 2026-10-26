@@ -165,7 +165,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
   it('pushes the selected date range into Firestore reads and preserves matching totals', async () => {
     mockDb.seed('garages/financial-read-test/events/before', {
       eventType: 'recharge_approved', aggregateId: 'before',
-      occurredAt: '2025-12-31T23:59:59.000Z', payload: { amount: 11 }
+      occurredAt: '2025-12-31T21:59:59.999Z', payload: { amount: 11 }
     });
     mockDb.seed('garages/financial-read-test/events/in-range', {
       eventType: 'recharge_approved', aggregateId: 'in-range',
