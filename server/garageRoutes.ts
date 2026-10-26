@@ -256,14 +256,14 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 
     if (callerRole === 'delegate') {
       garageDoc.createdByDelegateId = delegateEntityId;
-      garageDoc.createdByDelegateName = createdByDelegateName || callerName || 'المندوب';
+      garageDoc.createdByDelegateName = createdByDelegateName || callerName || '???????';
       garageDoc.referrerId = delegateEntityId;
-      garageDoc.referrerName = referrerName || createdByDelegateName || callerName || 'المندوب';
+      garageDoc.referrerName = referrerName || createdByDelegateName || callerName || '???????';
     } else if (createdByDelegateId) {
       garageDoc.createdByDelegateId = createdByDelegateId;
-      garageDoc.createdByDelegateName = createdByDelegateName || 'المندوب';
+      garageDoc.createdByDelegateName = createdByDelegateName || '???????';
       garageDoc.referrerId = referrerId || createdByDelegateId;
-      garageDoc.referrerName = referrerName || createdByDelegateName || 'المندوب';
+      garageDoc.referrerName = referrerName || createdByDelegateName || '???????';
     }
 
     if (referredByGarageId) {
@@ -275,9 +275,9 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       garageId,
       garageName: garageDoc.name,
       staffId: callerUid || null,
-      staffName: callerName || 'الإدارة (إنشاء جراج)',
+      staffName: callerName || '??????? (????? ????)',
       actionType: 'create',
-      plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)',
+      plateNumber: '????? ???? ???? ???? (???? ??????)',
       timestamp: now,
       amount: 0,
       details: {
@@ -1159,9 +1159,6 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const paymentReferenceMarkerId = encodeURIComponent(paymentReference).slice(0, 150);
     const paymentReferenceMarkerRef = getAdminDb().doc(`payment_reference_markers/${paymentReferenceMarkerId}`);
     let granted: any = null;
-    const existingReference = await getAdminDb().collection('credit_ledger')
-      .where('paymentReference', '==', paymentReference).limit(1).get();
-    if (!existingReference.empty) return c.json({ success: false, error: 'PAYMENT_REFERENCE_ALREADY_USED' }, 409);
     await getAdminDb().runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
