@@ -46,32 +46,6 @@ export function registerFinancialRoutes(app: WorkerApp, deps: FinancialRouteDeps
   } = deps;
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
 
-// Legacy recharge-request endpoints remain authenticated for compatibility, but no longer
-// inspect request payloads or access request records. New prepaid grants use their own routes.
-const retiredRechargeRequest = (allowedRoles?: string[]) => async (c: any) => {
-  const user = c.get('user');
-  if (allowedRoles && !allowedRoles.includes(user?.role)) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-};
-
-const retireRechargeCreation = retiredRechargeRequest(['garage', 'delegate']);
-const retireRechargeAdminAction = retiredRechargeRequest(['admin']);
-const retireRechargeHistory = retiredRechargeRequest(['admin']);
-const retireMyRechargeHistory = retiredRechargeRequest();
-app.post('/api/recharge-requests/create', requireWorkerAuth, enforceWorkerFinancialRateLimit, retireRechargeCreation);
-app.post('/api/recharge-requests', requireWorkerAuth, enforceWorkerFinancialRateLimit, retireRechargeCreation);
-app.post('/api/recharge-requests/process', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/transactions/approve-recharge-request', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/recharge-requests/reject', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/transactions/reject-recharge-request', requireWorkerAuth, retireRechargeAdminAction);
-app.get('/api/recharge-requests', requireWorkerAuth, retireRechargeHistory);
-app.get('/api/recharge-requests/my', requireWorkerAuth, retireMyRechargeHistory);
-
-// Retired owner-wallet endpoint remains an authenticated compatibility tombstone.
-app.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-
 // Handler 7: Delegate Commission Earnings & Dashboard (GET /api/delegate/commission-earnings & GET /api/delegates/dashboard)
 const handleDelegateDashboard = async (c: any) => {
   try {
@@ -86,10 +60,6 @@ const handleDelegateDashboard = async (c: any) => {
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
     const section = c.req.query('section');
-    if (section === 'requests') {
-      return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-    }
-
     const garagesCollection = getAdminDb().collection('garages');
     const childQuery = (name: string) => name === 'createdGarages'
       ? garagesCollection.where('createdByDelegateId', '==', delegateId)

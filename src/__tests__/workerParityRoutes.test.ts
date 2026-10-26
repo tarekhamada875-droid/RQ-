@@ -94,8 +94,8 @@ describe('Worker Route Parity Suite', () => {
       const response = await call('/api/garages/trial-decision', tokens.garage, {
         method: 'POST', body: JSON.stringify({ garageId: 'garage-a', trialDecision: 'continued' })
       });
-      expect(response.status).toBe(410);
-      expect(await response.json()).toMatchObject({ success: false, error: 'TRIAL_DECISION_WORKFLOW_RETIRED' });
+      // Removed routes now fall through to the standard not-found response.
+      expect(response.status).toBe(404);
       expect(mockDb.records.get('garages/garage-a')).not.toHaveProperty('trialDecision');
       expect([...mockDb.records.keys()].some((path) => path.startsWith('activity_logs/'))).toBe(false);
     });
@@ -229,10 +229,8 @@ describe('Worker Route Parity Suite', () => {
         method: 'POST', body: JSON.stringify({ entityType: 'supervisors', entityId: 'legacy-supervisor', newPin: '88997' })
       });
 
-      for (const response of [create, update, remove]) {
-        expect(response.status).toBe(410);
-        expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
-      }
+      // Retired management routes are removed; legacy records remain untouched.
+      for (const response of [create, update, remove]) expect(response.status).toBe(404);
       expect(pinRotation.status).toBe(400);
       expect(await pinRotation.json()).toMatchObject({ success: false, error: 'INVALID_ENTITY_TYPE' });
       expect(mockDb.records.get('supervisors/legacy-supervisor')).toEqual(legacyRecord);

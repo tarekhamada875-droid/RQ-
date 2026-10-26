@@ -54,94 +54,11 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     });
   });
 
-  it('closes the retired Admin wallet top-up without parsing or writing', async () => {
-    const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
-    const writesBefore = mockDb.documentWriteCount;
-
-    const unauthenticated = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{malformed-json'
-    }), workerEnv);
-    expect(unauthenticated.status).toBe(401);
-
-    const response = await api.fetch(new Request('http://localhost/api/transactions/admin-topup-balance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
-      body: '{malformed-json'
-    }), workerEnv);
-
-    expect(response.status).toBe(410);
-    expect(await response.json()).toEqual({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
-    expect(mockDb.documentWriteCount).toBe(writesBefore);
-    expect([...mockDb.records.entries()]).toEqual([...recordsBefore.entries()]);
-  });
-
-  it('closes legacy recharge-request endpoints without reading or mutating request records', async () => {
-    mockDb.seed('recharge_requests/legacy-pending', { status: 'pending', garageId: testGarageId });
-    mockDb.seed('recharge_request_guards/legacy-guard', { activeRequestId: 'legacy-pending' });
-    const legacyBefore = [...mockDb.records.entries()].filter(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'));
-    const collectionSpy = vi.spyOn(mockDb, 'collection');
-    const docSpy = vi.spyOn(mockDb, 'doc');
-    const queryCountBefore = mockDb.queryResultSizes.length;
-
-    const routes: Array<[string, string, string]> = [
-      ['POST', '/api/recharge-requests/create', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['POST', '/api/recharge-requests', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['POST', '/api/recharge-requests/process', 'Bearer valid-admin-token'],
-      ['POST', '/api/transactions/approve-recharge-request', 'Bearer valid-admin-token'],
-      ['POST', '/api/recharge-requests/reject', 'Bearer valid-admin-token'],
-      ['POST', '/api/transactions/reject-recharge-request', 'Bearer valid-admin-token'],
-      ['GET', '/api/recharge-requests', 'Bearer valid-admin-token'],
-      ['GET', '/api/recharge-requests/my', 'Bearer valid-delegate-token']
-    ];
-
-    for (const [method, path, authorization] of routes) {
-      const response = await api.fetch(new Request(`http://localhost${path}`, {
-        method,
-        headers: { Authorization: authorization, ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}) },
-        ...(method === 'POST' ? { body: '{malformed-json' } : {})
-      }), workerEnv);
-      expect(response.status, `${method} ${path}`).toBe(410);
-      expect(await response.json()).toMatchObject({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
-    }
-
-    const forbiddenRoutes: Array<[string, string, string]> = [
-      ['POST', '/api/recharge-requests/create', 'Bearer valid-admin-token'],
-      ['POST', '/api/recharge-requests', 'Bearer valid-admin-token'],
-      ['POST', '/api/recharge-requests/process', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['POST', '/api/transactions/approve-recharge-request', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['POST', '/api/recharge-requests/reject', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['POST', '/api/transactions/reject-recharge-request', 'Bearer valid-garage-token-worker-test-garage-cf7'],
-      ['GET', '/api/recharge-requests', 'Bearer valid-garage-token-worker-test-garage-cf7']
-    ];
-    for (const [method, path, authorization] of forbiddenRoutes) {
-      const response = await api.fetch(new Request(`http://localhost${path}`, {
-        method,
-        headers: { Authorization: authorization }
-      }), workerEnv);
-      expect(response.status, `${method} ${path} wrong role`).toBe(403);
-    }
-
-    const adminPersonalHistory = await api.fetch(new Request('http://localhost/api/recharge-requests/my', {
-      headers: { Authorization: 'Bearer valid-admin-token' }
-    }), workerEnv);
-    expect(adminPersonalHistory.status).toBe(410);
-
-    expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
-    expect(docSpy.mock.calls.some(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'))).toBe(false);
-    expect(mockDb.queryResultSizes).toHaveLength(queryCountBefore);
-    expect([...mockDb.records.entries()].filter(([path]) => path.startsWith('recharge_requests/') || path.startsWith('recharge_request_guards/'))).toEqual(legacyBefore);
-    collectionSpy.mockRestore();
-    docSpy.mockRestore();
-  });
-
-  it('pages delegate garages only and closes the retired request section without querying it', async () => {
+  it('pages delegate garages only and rejects unknown sections without querying them', async () => {
     mockDb.seed('delegates/delegate-uid', { name: 'Paginated Delegate' });
     for (let index = 0; index < 5; index += 1) {
       mockDb.seed(`garages/created-${index}`, { createdByDelegateId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
       mockDb.seed(`garages/referred-${index}`, { referrerId: 'delegate-uid', createdAt: new Date(Date.UTC(2026, 9, 17, 10, 0, 0) - index * 60_000) });
-      mockDb.seed(`recharge_requests/delegate-page-${index}`, { delegateId: 'delegate-uid', status: 'approved' });
     }
     mockDb.resetDocumentCounts();
     const collectionSpy = vi.spyOn(mockDb, 'collection');
@@ -158,18 +75,13 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(first.pagination).not.toHaveProperty('requests');
     expect(mockDb.queryResultSizes.slice(-2)).toEqual([3, 3]);
 
-    const queryCountAfterGaragePages = mockDb.queryResultSizes.length;
-    const retiredSection = await api.fetch(new Request('http://localhost/api/delegates/dashboard?section=requests&limit=2', {
+    const queryCount = mockDb.queryResultSizes.length;
+    const unknownSection = await api.fetch(new Request('http://localhost/api/delegates/dashboard?section=requests&limit=2', {
       headers: { Authorization: 'Bearer valid-delegate-token' }
     }), workerEnv);
-    expect(retiredSection.status).toBe(410);
-    expect(await retiredSection.json()).toMatchObject({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' });
-    expect(mockDb.queryResultSizes).toHaveLength(queryCountAfterGaragePages);
-    const wrongRoleSection = await api.fetch(new Request('http://localhost/api/delegates/dashboard?section=requests&limit=2', {
-      headers: { Authorization: 'Bearer valid-admin-token' }
-    }), workerEnv);
-    expect(wrongRoleSection.status).toBe(403);
-    expect(mockDb.queryResultSizes).toHaveLength(queryCountAfterGaragePages);
+    expect(unknownSection.status).toBe(400);
+    expect(await unknownSection.json()).toMatchObject({ success: false, error: 'INVALID_PAGE_SECTION' });
+    expect(mockDb.queryResultSizes).toHaveLength(queryCount);
     expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
     collectionSpy.mockRestore();
   });

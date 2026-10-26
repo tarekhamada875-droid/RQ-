@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 2 IN PROGRESS — P2.5 and P2.6 are complete. P1.4 and P2.4 remain blocked; do not mark Phase 2 complete or advance while required items lack a verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
+> **STATUS: PHASE 2 IN PROGRESS — P2.5 and P2.6 are complete. P2.4 removal is in progress under the owner’s explicit direction; P1.4 remains blocked. Do not mark Phase 2 complete until required items have verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
 > This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
@@ -51,10 +51,10 @@ Things only **you** can do (the executor cannot do them for you): they are marke
 | **D1** | Does the production Firebase database contain **real customers** (real garages with real PINs)? | **NO** (pre-launch, only test data). If YES → task P4.2 is skipped (`[-]`). |
 | **D2** | Is the Cloudflare Worker `rq` on the **Free** plan or the **Paid** ($5/month) plan? | Owner does not know; the available Cloudflare connection lacks Billing Read permission. Keep unknown; do not upgrade or change billing. Recheck through an authorized billing view (P4.3). |
 | **D3** | Must a garage tablet stay logged in **more than 24 hours**? (Today a session appears to end 24 h after login even if active.) | Owner did not understand the technical distinction; safe decision: keep current 24-hour behavior unchanged for now, and verify whether it inconveniences pilot garages before extending it. |
-| **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | Owner believes YES. Do **not** delete the 410 compatibility tombstones yet. First search code and available request/traffic logs for callers; remove only after evidence confirms it is safe. Update P2.4 accordingly. |
+| **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | Traffic evidence was inconclusive (10% sampling, seven-day retention). On 2026-10-26 the owner explicitly directed removal anyway and accepted the possibility that old copies will receive 404s. Remove only the retired endpoints; keep active prepaid-credit routes untouched. |
 | **D5** | Do you want **coupons** (discount codes)? There is no screen for them. | **NO** → P2.3 deletes the feature. |
 
-**Recorded owner answers (2026-10-25):** D1 = NO real customer data · D2 = UNKNOWN (Cloudflare billing permission unavailable) · D3 = preserve current behavior pending pilot evidence · D4 = likely YES, investigate before removing compatibility routes · D5 = NO coupons.
+**Recorded owner answers (updated 2026-10-26):** D1 = NO real customer data · D2 = UNKNOWN (Cloudflare billing permission unavailable) · D3 = preserve current behavior pending pilot evidence · D4 = older callers may exist, but the owner explicitly superseded the prior caution and directed removal despite inconclusive telemetry · D5 = NO coupons.
 
 ---
 
@@ -99,7 +99,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P2.1 | Delete dead files (+ their tests) | low | [x] | 2026-10-25 | 7dde9ad | PR #401 merged as 2af758a; Production Gate run #40207192163 passed. Removed 11 audit-listed dead files and retired their dependent test cases/imports. Deploy jobs skipped; no production deployment. |
 | P2.2 | Delete dead functions/methods | med | [x] | 2026-10-25 | 098c68e | PR #403 merged as 210b54b; Production Gate run #40209268959 passed (typecheck, full tests, rules tests, build and artifact checks). Removed the planned helpers; review-only methods were left untouched. Deploy jobs skipped; no production deployment. |
 | P2.3 | Remove coupons feature (D5) | low | [x] | 2026-10-25 | 575ab7e | Merged in PR #405; the retired coupon feature was removed. |
-| P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [!] | 2026-10-25 | f26b3dc | PR #412 merged. Blocked: current client source contains no calls, and a read-only query found zero sampled matches for the retired route families in the seven-day Workers Logs window. Production Worker `rq` logs are sampled at 10% and retained for seven days, so absence does not establish that older installed copies are retired. Keep all authenticated HTTP 410 tombstones until the owner confirms retirement or stronger traffic evidence is available. |
+| P2.4 | Remove retired billing/trial/supervisor endpoint tombstones per owner direction (D4) | med | [~] | 2026-10-26 | pending | Owner explicitly directed removal despite unresolved old-client traffic. Removed routes, updated focused regression tests and route inventory, and preserved the active prepaid-credit grants/ledger and current credit-bundle catalog. Await automated verification before marking complete. |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [x] | 2026-10-25 | f82b40c | Removed 113 baseline and 6 authenticated-smoke artifacts (~1.58 MB); capture outputs now default to ignored `tmp/` folders. Full Production Gate passed. Its PR deploy jobs were skipped, but separate post-merge automation unexpectedly deployed the Worker artifact and passed live smoke; this deployment was not requested. |
 | P2.6 | Refresh retained template artifacts to current product model (owner direction) | low | [x] | 2026-10-26 | 3739700 | PR #419 merged; Production Gate run #40267974321 passed, including typecheck, full test suite, Firestore rules tests, production build, artifact smoke, maintainability, and production-artifact checks. Both files were retained and refreshed; no runtime source or stored data changed. |
 | P3.1 | Remove browser session-write fallback | **high** | [x] | 2026-10-25 | 38d7439 | Worker is the only session authority; browser fallback transaction helpers and their tests removed. Focused lint/tests passed. |
@@ -517,75 +517,24 @@ export interface Coupon {
 
 ---
 
-### P2.4 Remove the retired-route tombstones (needs D4 = NO)
+### P2.4 Remove retired-route tombstones — owner-approved breaking change
 
-The live app never calls these (I searched `src` for every path). They only answer "410 retired". Removing them shrinks the API surface.
+**Owner decision (2026-10-26):** despite inconclusive old-client telemetry, the owner explicitly directed removal. Available telemetry was sampled at 10% and retained for seven days, so it could not establish whether every older installed copy had stopped calling the retired routes. Treat removal as a deliberate breaking change: old copies may receive 404 responses. Do not expand this task to unrelated routes or data.
 
-**`server/financialRoutes.ts` — delete from the comment "Legacy recharge-request endpoints…" through the `admin-topup-balance` handler:**
-```ts
-// Legacy recharge-request endpoints remain authenticated for compatibility, but no longer
-// inspect request payloads or access request records. New prepaid grants use their own routes.
-const retiredRechargeRequest = (allowedRoles?: string[]) => async (c: any) => {
-  const user = c.get('user');
-  if (allowedRoles && !allowedRoles.includes(user?.role)) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-};
+Removed from the Worker route registry by deleting the handlers:
+- Legacy recharge requests and history: `/api/recharge-requests/*`, `/api/transactions/approve-recharge-request`, `/api/transactions/reject-recharge-request`
+- Retired owner wallet top-up: `/api/transactions/admin-topup-balance`
+- Old time-based trial decision: `/api/garages/trial-decision`
+- Retired supervisor create/update/delete endpoints
+- Old fair-use extension endpoints
+- Legacy garage recharge, self-subscribe and referral-reward endpoints
+- Retired `section=requests` handling on delegate dashboard/detail reads; other supported sections remain
 
-const retireRechargeCreation = retiredRechargeRequest(['garage', 'delegate']);
-const retireRechargeAdminAction = retiredRechargeRequest(['admin']);
-const retireRechargeHistory = retiredRechargeRequest(['admin']);
-const retireMyRechargeHistory = retiredRechargeRequest();
-app.post('/api/recharge-requests/create', requireWorkerAuth, enforceWorkerFinancialRateLimit, retireRechargeCreation);
-app.post('/api/recharge-requests', requireWorkerAuth, enforceWorkerFinancialRateLimit, retireRechargeCreation);
-app.post('/api/recharge-requests/process', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/transactions/approve-recharge-request', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/recharge-requests/reject', requireWorkerAuth, retireRechargeAdminAction);
-app.post('/api/transactions/reject-recharge-request', requireWorkerAuth, retireRechargeAdminAction);
-app.get('/api/recharge-requests', requireWorkerAuth, retireRechargeHistory);
-app.get('/api/recharge-requests/my', requireWorkerAuth, retireMyRechargeHistory);
+**Must remain active:** `/api/garages/:id/credit-grants`, `/api/garages/:id/credit-ledger`, `/api/admin/packages/*` (current credit-bundle catalog), `/api/subscribers/*`, `/api/vehicles/*`, `/api/delegates/*`, `/api/staff/*`. This task must not change prepaid-credit grant/consumption logic, Firebase data, or production settings.
 
-// Retired owner-wallet endpoint remains an authenticated compatibility tombstone.
-app.post('/api/transactions/admin-topup-balance', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-```
-If `enforceWorkerFinancialRateLimit` is no longer used anywhere after this, leave it (lint will not complain about an exported/used-elsewhere symbol; only remove if lint flags it).
+**Tests updated:** removed tests that required tombstone responses; preserved delegate pagination coverage and now assert unsupported `section=requests` is rejected as an invalid section without querying legacy request data. Route inventory expectation updated from 87 to 69 registrations.
 
-**`server/garageRoutes.ts` — delete these three blocks:**
-```ts
-// The old time-based trial decision workflow is retired. Trial eligibility is represented by server-owned credits.
-app.post('/api/garages/trial-decision', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'TRIAL_DECISION_WORKFLOW_RETIRED' }, 410);
-});
-```
-```ts
-// Retired role endpoints remain as explicit, non-mutating tombstones for old clients.
-app.post('/api/supervisors/create', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
-app.post('/api/supervisors/update', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
-app.post('/api/supervisors/delete', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
-```
-```ts
-// Legacy Admin recharge is retired; prepaid credit grants remain available via /api/garages/:id/credit-grants.
-app.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-
-// Retired owner self-subscribe and referral-day endpoints remain authenticated compatibility tombstones.
-app.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-
-app.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-```
-**Owner decision update (2026-10-25):** the owner believes old installed copies may still call these routes. Therefore **do not delete the tombstones in this task by default**. Search all current client code for calls and inspect available Cloudflare request/analytics logs for evidence of external callers. Record what can and cannot be established. Keep the explicit authenticated HTTP 410 responses until the owner can confirm the old copies are retired or available traffic evidence supports removal. If caller activity cannot be determined, mark this task `[!]` / blocked rather than guessing. Do not change the active prepaid-credit routes listed below.
-
-**Tests:** keep existing 410 compatibility assertions while tombstones remain. Only change those tests if the owner later confirms removal is safe and the corresponding routes are actually deleted.
-
-**Do NOT delete** (these are the real, active routes): `/api/garages/:id/credit-grants`, `/api/garages/:id/credit-ledger`, `/api/admin/packages/*`, `/api/garages/:id/extend-fair-use`, `/api/check-subscriber`, `/api/subscribers/*`, `/api/vehicles/*`, `/api/delegates/*`, `/api/staff/*`.
-
-**Verify:** `grep -rn "recharge-requests\|admin-topup\|recharge-garage\|garage-self-subscribe\|trial-decision\|use-referral-reward\|supervisors/" src server tools` → only test files/docs mention at most. `npm run lint && npm test`.
+**Verification:** GitHub Production Gate must pass typecheck, full test suite, Firestore rules tests, production build, Worker artifact smoke test, maintainability and artifact checks before this task is marked complete. No local tests are claimed. Review the diff for unintended changes and verify the active credit-bundle catalog and prepaid-credit routes remain.
 
 ---
 
@@ -1001,3 +950,5 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 | 19 | 2026-10-26 | P2.6 | Removed the obsolete Gemini API key example from `.env.example`. Initially retained both JSON files because a reliable repository-wide reference scan could not be completed. | `.env.example`, `docs/UI_PERFORMANCE_PLAN.md` updated | GitHub code-search responses were incomplete; they were not treated as proof that the files were unused. PR #418's post-merge workflow #40267081564 deployed the reused Worker artifact and passed live smoke checks. | b51c1009 | Owner subsequently directed that both JSON files be updated rather than deleted; see log entry 20. |
 | 20 | 2026-10-26 | P2.6 | Per owner direction, updated `metadata.json` to remove the obsolete Gemini capability declaration and refreshed `firebase-blueprint.json` to describe the current Cloudflare Worker + Firebase architecture, prepaid-credit model, active concepts, and authoritative sources. The blueprint explicitly states it is documentation-only and must not drive production schema changes. | `metadata.json`, `firebase-blueprint.json`, `docs/UI_PERFORMANCE_PLAN.md` | PR #419 merged. Production Gate run #40267974321 passed: typecheck, full test suite, Firestore rules tests, production build, Worker artifact smoke, maintainability, and production-artifact checks. The PR's deploy jobs were skipped; separate post-merge workflow #40268449931 deployed the reused Worker artifact and passed live smoke checks. No application source, Firestore rules, or stored data changed. | 3739700 | P2.6 complete by owner-approved disposition; no repository-wide reference scan was required because both files were retained and updated rather than deleted. P1.4 and P2.4 remain blockers to Phase 2 completion. |
+| 21 | 2026-10-26 | P2.4 | Owner explicitly directed removal of retired billing/trial/supervisor route tombstones despite inconclusive old-client telemetry. Removed only retired handlers and their obsolete tests; retained delegate pagination coverage and changed unsupported request sections to the standard invalid-section response. Updated route inventory from 87 to 69. | `server/financialRoutes.ts`, `server/garageRoutes.ts`, `server/readRoutes.ts`, related Worker tests, `docs/UI_PERFORMANCE_PLAN.md` | Automated Production Gate verification pending; no local test run claimed. Active prepaid-credit grants/ledger and credit-bundle catalog intentionally untouched. | pending | Do not mark P2.4 complete until the gate passes and the PR diff is reviewed. |
+

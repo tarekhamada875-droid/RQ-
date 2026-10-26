@@ -56,15 +56,6 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/vehicles/history'
     ]);
     expect(registrations(financialRoutesSource)).toEqual([
-      'POST /api/recharge-requests/create',
-      'POST /api/recharge-requests',
-      'POST /api/recharge-requests/process',
-      'POST /api/transactions/approve-recharge-request',
-      'POST /api/recharge-requests/reject',
-      'POST /api/transactions/reject-recharge-request',
-      'GET /api/recharge-requests',
-      'GET /api/recharge-requests/my',
-      'POST /api/transactions/admin-topup-balance',
       'GET /api/delegate/commission-earnings',
       'GET /api/delegates/dashboard',
       'POST /api/delegate/withdraw-commission',
@@ -85,13 +76,9 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/garages/rebuild-projections',
       'GET /api/garages/:id/dashboard-summary',
       'GET /api/garages/:id',
-      'POST /api/garages/trial-decision',
       'POST /api/staff/create',
       'POST /api/staff/update',
       'POST /api/staff/delete',
-      'POST /api/supervisors/create',
-      'POST /api/supervisors/update',
-      'POST /api/supervisors/delete',
       'POST /api/delegates/create',
       'POST /api/delegates/update',
       'POST /api/delegates/delete',
@@ -101,16 +88,11 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/admin/announcements/toggle',
       'POST /api/admin/packages/create',
       'POST /api/admin/packages/delete',
-      'POST /api/admin/garages/:id/extend-fair-use',
-      'POST /api/garages/:id/extend-fair-use',
       'POST /api/garages/:id/credit-grants',
       'GET /api/garages/:id/credit-ledger',
-      'POST /api/transactions/recharge-garage',
-      'POST /api/transactions/garage-self-subscribe',
-      'POST /api/transactions/use-referral-reward',
       'POST /api/garages/recalculate-cars-inside'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(87);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(69);
   });
 
   it('keeps the global Worker export in the monolith', () => {
