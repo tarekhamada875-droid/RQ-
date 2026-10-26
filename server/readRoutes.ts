@@ -559,10 +559,6 @@ app.get('/api/admin/delegates/:id', requireWorkerAuth, async (c) => {
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
     const section = c.req.query('section');
-    if (section === 'requests') {
-      return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-    }
-
     const garagesCollection = getAdminDb().collection('garages');
     const childQuery = (name: string) => name === 'createdGarages'
       ? garagesCollection.where('createdByDelegateId', '==', delegateId)
