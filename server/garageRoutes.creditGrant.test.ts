@@ -196,8 +196,8 @@ describe('first paid credit grant delegate commission', () => {
       }
     });
 
-    const second = await harness.route(requestContext(grantBody(50, 'grant-second')));
-    expect(second.status).toBe(200);
+    const second = await harness.route(requestContext({ ...grantBody(50, 'grant-second'), paymentReference: 'PAY-grant-first' }));
+    expect(second.status).toBe(409);
     expect(harness.delegate.totalCommissionEarned).toBe(100);
     expect(harness.delegate.totalRechargedAmount).toBe(100);
     expect(harness.recordDomainEventInTransaction.mock.calls.map((call) => call[2]).filter((event) => event.eventType === 'commission_earned')).toHaveLength(1);
