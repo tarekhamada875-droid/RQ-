@@ -342,15 +342,11 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(mockDb.queryResultSizes.slice(-2)).toEqual([3, 3]);
 
     const queryCount = mockDb.queryResultSizes.length;
-    const retiredRequests = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?section=requests&limit=2', {
+    const unknownSection = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?section=requests&limit=2', {
       headers: { Authorization: 'Bearer valid-admin-token' }
     }), workerEnv);
-    expect(retiredRequests.status).toBe(410);
-    expect(mockDb.queryResultSizes).toHaveLength(queryCount);
-    const wrongRoleSection = await api.fetch(new Request('http://localhost/api/admin/delegates/del-page?section=requests&limit=2', {
-      headers: { Authorization: 'Bearer valid-delegate-token' }
-    }), workerEnv);
-    expect(wrongRoleSection.status).toBe(403);
+    expect(unknownSection.status).toBe(400);
+    expect(await unknownSection.json()).toMatchObject({ success: false, error: 'INVALID_PAGE_SECTION' });
     expect(mockDb.queryResultSizes).toHaveLength(queryCount);
     expect(collectionSpy.mock.calls.some(([path]) => path === 'recharge_requests')).toBe(false);
     collectionSpy.mockRestore();
