@@ -6,7 +6,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { Trash2, History, Check } from 'lucide-react';
 import { Delegate, ActivityLog } from '../../types';
-import type { DelegateCommissionHistoryItem } from '../../services/delegateService';
+import type { DelegateCommissionHistoryItem, DelegatePaidGrantSummary } from '../../services/delegateService';
 import { firestoreService } from '../../services';
 import { safeDate } from '../../utils';
 import { 
@@ -36,6 +36,7 @@ export const AdminDelegateDetailsView = memo(({
 }: AdminDelegateDetailsViewProps) => {
   const [recharges, setRecharges] = useState<ActivityLog[]>([]);
   const [commissionEvents, setCommissionEvents] = useState<DelegateCommissionHistoryItem[]>([]);
+  const [paidGrantSummary, setPaidGrantSummary] = useState<DelegatePaidGrantSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
@@ -62,23 +63,27 @@ export const AdminDelegateDetailsView = memo(({
     setRecharges([]);
     setCommissionEvents([]);
     setHistoryTotal(0);
+    setPaidGrantSummary(null);
 
     const fetchHistory = async () => {
-      const [rechargeResult, commissionResult] = await Promise.allSettled([
-        firestoreService.getDelegateRecharges(delegate.id),
+      const [grantResult, commissionResult] = await Promise.allSettled([
+        firestoreService.getDelegatePaidGrantSummary(delegate.id),
         firestoreService.getDelegateCommissionHistory(delegate.id)
       ]);
       if (!isCurrent) return;
 
-      if (rechargeResult.status === 'fulfilled') {
-        const logsData = rechargeResult.value || [];
+      if (grantResult.status === 'fulfilled') {
+        const summary = grantResult.value;
+        setPaidGrantSummary(summary);
+        const logsData = (summary.recentPaidGrants || []).map(grant => ({
+          id: grant.entryId, garageId: grant.garageId, staffId: delegate.id, staffName: delegate.name,
+          actionType: 'credit_grant', plateNumber: grant.garageName || grant.garageId,
+          timestamp: grant.occurredAt, amount: grant.amountEgp, commission: 0
+        } as ActivityLog));
         setRecharges(logsData);
-        const sum = logsData
-          .filter(log => log.actionType === 'recharge')
-          .reduce((acc, log) => typeof log.amount === 'number' && Number.isFinite(log.amount) ? acc + log.amount : acc, 0);
-        setHistoryTotal(sum);
+        setHistoryTotal(summary.allTimePaidGrantTotalEgp);
       } else {
-        console.error('Failed to fetch delegate recharges:', rechargeResult.reason);
+        console.error('Failed to fetch delegate paid grants:', grantResult.reason);
       }
 
       if (commissionResult.status === 'fulfilled') {
@@ -123,8 +128,6 @@ export const AdminDelegateDetailsView = memo(({
     });
   };
 
-  // Recharge logs remain the sales source; fixed commissions come from Worker-owned
-  // domain events so monthly stats and settlement history use the canonical ledger.
   const commissionActivityLogs: ActivityLog[] = commissionEvents
     .filter((event) => event.eventType === 'commission_earned')
     .map((event) => ({
@@ -145,10 +148,7 @@ export const AdminDelegateDetailsView = memo(({
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');
 
   const getCurrentMonthKey = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit' }).format(new Date());
   };
 
   const currentMonthKey = getCurrentMonthKey();
@@ -166,8 +166,11 @@ export const AdminDelegateDetailsView = memo(({
 
   // Include months with either recharge activity or canonical commission events
   const availableMonths = React.useMemo(() => {
-    return getAvailableRequestMonths(activeDataset, currentMonthKey);
-  }, [activeDataset, currentMonthKey]);
+    return Array.from(new Set([
+      ...getAvailableRequestMonths(activeDataset, currentMonthKey),
+      ...Object.keys(paidGrantSummary?.monthlyPaidGrantTotalsEgp || {})
+    ])).sort().reverse();
+  }, [activeDataset, currentMonthKey, paidGrantSummary]);
 
   const activeMonthKey = selectedMonthKey === 'current' ? currentMonthKey : selectedMonthKey;
 
@@ -182,6 +185,11 @@ export const AdminDelegateDetailsView = memo(({
   const selectedPeriodDataset = activeMonthKey === currentMonthKey ? currentCycleDataset : activeDataset;
 
   const totalRecharged = React.useMemo(() => {
+    if (paidGrantSummary) {
+      if (activeMonthKey === 'all') return paidGrantSummary.allTimePaidGrantTotalEgp;
+      if (activeMonthKey === currentMonthKey) return paidGrantSummary.currentCyclePaidGrantTotalEgp;
+      return paidGrantSummary.monthlyPaidGrantTotalsEgp[activeMonthKey] || 0;
+    }
     if (activeMonthKey === 'all') {
       const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
       return Math.max(calculated, historyTotal);
@@ -190,6 +198,7 @@ export const AdminDelegateDetailsView = memo(({
   }, [activeDataset, activeMonthKey, historyTotal, selectedPeriodDataset]);
 
   const allTimeTotal = React.useMemo(() => {
+    if (paidGrantSummary) return paidGrantSummary.allTimePaidGrantTotalEgp;
     const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
     return Math.max(calculated, historyTotal);
   }, [activeDataset, historyTotal]);
@@ -347,3 +356,4 @@ export const AdminDelegateDetailsView = memo(({
 });
 
 AdminDelegateDetailsView.displayName = 'AdminDelegateDetailsView';
+
