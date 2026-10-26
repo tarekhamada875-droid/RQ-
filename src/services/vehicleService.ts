@@ -113,14 +113,14 @@ export const vehicleService = {
     }
   },
   
-  deleteVehicleWithRefund: async (garageId: string, vehicleId: string, refundAmount: number, _passedTodayYMD?: string, staffName?: string, _staffId?: string) => {
+  deleteVehicle: async (garageId: string, vehicleId: string, _passedTodayYMD?: string, staffName?: string, _staffId?: string) => {
     try {
       await apiFetch('/api/vehicles/delete', {
         method: 'POST',
         body: {
           garageId,
           vehicleId,
-          refundAmount,
+          refundAmount: 0,
           staffName,
           idempotencyKey: generateIdempotencyKey('vehicle_delete')
         }
