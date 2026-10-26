@@ -77,6 +77,97 @@ describe('Worker Firestore transaction adapter', () => {
     expect(urls.some((url) => url.includes(':commit'))).toBe(true);
   });
 
+  it('retries a transaction after a commit conflict and reruns the callback', async () => {
+    const requests: Array<{ url: string; body?: string }> = [];
+    let transactionCount = 0;
+    let commitCount = 0;
+    let rollbackCount = 0;
+    const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      requests.push({ url, body: typeof init?.body === 'string' ? init.body : undefined });
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return new Response(JSON.stringify({ access_token: 'test-access-token', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes(':beginTransaction')) {
+        transactionCount += 1;
+        return new Response(JSON.stringify({ transaction: `test-transaction-${transactionCount}` }), { status: 200 });
+      }
+      if (url.includes(':commit')) {
+        commitCount += 1;
+        if (commitCount === 1) {
+          return new Response(JSON.stringify({ error: { code: 409, status: 'ABORTED' } }), { status: 409 });
+        }
+        return new Response('{}', { status: 200 });
+      }
+      if (url.includes(':rollback')) {
+        rollbackCount += 1;
+        return new Response('{}', { status: 200 });
+      }
+      throw new Error(`Unexpected Firestore request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    initializeFirebaseAdmin({
+      FIREBASE_PROJECT_ID: 'transaction-retry-test-project',
+      FIREBASE_DATABASE_ID: '(default)',
+      FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        project_id: 'transaction-retry-test-project',
+        client_email: 'transaction-retry-test@example.invalid',
+        private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+        token_uri: 'https://oauth2.googleapis.com/token'
+      })
+    });
+
+    const callback = vi.fn(async (transaction: any) => {
+      transaction.set(adminDb.doc('test_records/retry-result'), { value: 'committed' });
+      return 'committed';
+    });
+
+    await expect(adminDb.runTransaction(callback)).resolves.toBe('committed');
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(transactionCount).toBe(2);
+    expect(commitCount).toBe(2);
+    expect(rollbackCount).toBe(1);
+  });
+
+  it('adds an existence precondition to update but not merge-set writes', async () => {
+    const commits: Array<{ writes: any[] }> = [];
+    const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('oauth2.googleapis.com/token')) {
+        return new Response(JSON.stringify({ access_token: 'test-access-token', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes(':commit')) {
+        commits.push(JSON.parse(String(init?.body || '{}')));
+        return new Response('{}', { status: 200 });
+      }
+      throw new Error(`Unexpected Firestore request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    initializeFirebaseAdmin({
+      FIREBASE_PROJECT_ID: 'strict-update-test-project',
+      FIREBASE_DATABASE_ID: '(default)',
+      FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        project_id: 'strict-update-test-project',
+        client_email: 'strict-update-test@example.invalid',
+        private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+        token_uri: 'https://oauth2.googleapis.com/token'
+      })
+    });
+
+    await adminDb.doc('test_records/existing').update({ value: 'strict' });
+    await adminDb.doc('test_records/merge-create').set({ value: 'merge' }, { merge: true });
+
+    expect(commits).toHaveLength(2);
+    expect(commits[0].writes[0].currentDocument).toEqual({ exists: true });
+    expect(commits[1].writes[0].currentDocument).toBeUndefined();
+    expect(commits[0].writes[0].updateMask.fieldPaths).toEqual(['value']);
+    expect(commits[1].writes[0].updateMask.fieldPaths).toEqual(['value']);
+  });
+
   it('serializes stable timestamp and document-reference cursors for paged queries', async () => {
     const requests: Array<{ url: string; body?: string }> = [];
     const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
