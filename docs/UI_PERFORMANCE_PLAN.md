@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: END-TO-END STATIC AUDIT PASS COMPLETE — 50 findings and 51 owner questions are recorded below. No application code or production settings were changed during this audit pass. The application-code release at commit `6046868` passed Production Gate and live Worker smoke in run `#40273010643`; Cloudflare Pages production deployment for docs-only commit `9e88e122` also succeeded. Launch sign-off is NOT complete: owner business rules, high-priority fixes, owner-only billing/privacy/backup checks, and the four-role walkthrough remain open. This was a static review of active production paths and major UI/business logic, not a literal manual read of every line in every file.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
+> **STATUS: 17 owner decisions received and recorded in Section 13.1; documentation-only decision-record PR is pending Production Gate. No policy-dependent application changes have started. The current audit recorded 50 findings and 51 questions. Launch sign-off remains incomplete: unresolved business details, approved fixes, owner-only billing/privacy/backup checks, and the four-role walkthrough are still open. This is a static review of active production paths and major UI/business logic, not a literal manual read of every line in every file.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
 > This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
@@ -1008,6 +1008,30 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 18 | 2026-10-26 | Continuity protocol | Made durable progress updates mandatory for every project session, clarified that `tokens ending` adds a handoff rather than initiating continuity, and changed the start prompt to resume from the current plan instead of Phase 0. | `AGENTS.md`, `docs/UI_PERFORMANCE_PLAN.md` | `git diff --check` and `npm run ci:check` passed locally; no application source was changed. | N/A — process-rule update | Documentation-only; no application code or deployment workflow changed. |
 
 | 23 | 2026-10-26 | P4.3 | Read-only Cloudflare check confirmed `rq` and `rq-hono-preview` both report `usage_model: standard`; this is not evidence of Free/Paid account subscription or CPU usage. Billing usage endpoint returned HTTP 403 due missing Billing Read scope. | `docs/UI_PERFORMANCE_PLAN.md` updated | GET usage-model succeeded for both scripts; GET account billing usage blocked by permission. No Cloudflare settings changed. | recorded | Owner must check subscription/CPU in dashboard or provide a Cloudflare connection with Billing Read. P4.4 remains owner-only; then Phase 5 validation. |
+
+| 40 | 2026-10-26 | Owner decisions Q1–Q17 | Recorded the owner’s 17 answers against the matching audit questions. Preserved unresolved sub-details (such as financial revenue timing, lock exceptions, staff action mapping, and referral threshold) instead of inferring policy. | `docs/UI_PERFORMANCE_PLAN.md` only | Documentation review; no application source or production settings changed. Production Gate is required on the docs-only PR; because the gate classifies Markdown-only changes, it should run `git diff --check` and skip application build/tests. | pending | Do not start policy-dependent fixes until the decision-record PR's Production Gate passes; then group approved fixes into small related PRs with regression tests. |\n## 13.1 Owner decisions received 2026-10-26 (Q1–Q17)
+
+The owner supplied the following answers in the referenced conversation. These are policy approvals for the corresponding audit findings; they do not by themselves mean implementation or Production Gate verification is complete. Where an answer resolves only part of a broader audit question, the unanswered detail remains open.
+
+| User question | Recorded decision | Related audit questions / scope |
+|---|---|---|
+| Q1 — Daily vehicle count | Keep and fix the daily vehicle count so it reflects actual vehicle entries for the Cairo business day. | AQ4. This resolves whether the legacy count is needed and how it should count. |
+| Q2 — Financial reports | Base financial reporting on confirmed, actually paid credit grants. | AQ1, AQ40. Do not use legacy recharge/wallet fields as a substitute for paid-grant records. The distinction between cash collected at grant time and revenue recognized when credits are consumed is not further specified. |
+| Q3 — Cairo dates | Use Cairo-local calendar dates for date-based reporting and daily calculations. | AQ2, AQ29. This approves Cairo boundaries, including correct timezone behavior; any report end-date inclusivity still follows the date-picker/report contract and should be checked during implementation. |
+| Q4 — Delegate financial screen | Correct the Admin delegate-finance screen to use the current paid-grant records and correct net figures. | AQ40. |
+| Q5 — Subscriber renewal prices | Every renewal costs 5 credits regardless of the selected renewal duration. | AQ12, AQ19. The duration choices and date-editing rules are not independently changed by this answer. |
+| Q6 — Duplicate payment references | Enforce uniqueness of payment references across paid grants. | AQ43. |
+| Q7 — Referral reward | Set the referral reward to 20 credits. | AQ37. Whether a minimum paid-grant threshold should apply remains open under AQ50. |
+| Q8 — Locking or suspending a garage | Enforce the lock/suspension immediately so the garage is blocked. | AQ44. The exact action exceptions, if any (such as allowing checkout), remain to be specified before implementing an exception. |
+| Q9 — Staff permissions | Use different permissions for different staff actions. | AQ45. The concrete action-to-permission matrix must be mapped to the existing staff actions before implementation. |
+| Q10 — Deleting a garage | On deletion, clean up related records and block access immediately. | AQ47, AQ49. Includes preventing writes while deletion is in progress and cleaning related authentication artifacts. |
+| Q11 — Financial history after deletion | Delete all financial history related to the deleted garage. | AQ48. Apply this consistently to related ledgers, paid-grant events, delegate commission history, and derived summaries. |
+| Q12 — Delegate settlement evidence | Amount and date are sufficient; no payment method or receipt/reference is required. | AQ46. |
+| Q13 — Retired Supervisor role | Remove the retired Supervisor role from the remaining product paths. | AQ42. |
+| Q14 — Refreshing delegate garage lists | Fix refresh behavior so removed, deleted, or unlinked garages disappear from the delegate list. | AQ41. |
+| Q15 — Firestore transaction conflicts | Add safe retries for transaction conflicts. | AQ38. |
+| Q16 — Updating missing database records | Make strict updates fail when the target document is missing. | AQ39. |
+| Q17 — Garage deletion and audit consistency | Make deletion retention behavior consistent. Read together with Q11, delete all related financial history consistently rather than leaving partial financial records or summaries behind. | AQ48. |
 
 ## 13. Owner Q&A / decisions log (executor asks, owner answers; keep a record)
 
