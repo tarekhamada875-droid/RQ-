@@ -143,7 +143,7 @@ class DocumentReference {
   readonly id: string;
   constructor(public readonly name: string) { this.id = name.split('/').pop() || ''; }
   async get(): Promise<DocumentSnapshot> { return new DocumentSnapshot(await activeDb!.getDocument(this.name)); }
-  async set(data: JsonMap, options?: { merge?: boolean }): Promise<void> { await activeDb!.write([{ reference: this.name, data, method: options?.merge ? 'update' : 'set' }]); }
+  async set(data: JsonMap, options?: { merge?: boolean }): Promise<void> { await activeDb!.write([{ reference: this.name, data, method: options?.merge ? 'merge' : 'set' }]); }
   async update(data: JsonMap): Promise<void> { await activeDb!.write([{ reference: this.name, data, method: 'update' }]); }
   async delete(): Promise<void> { await activeDb!.write([{ reference: this.name, data: {}, method: 'delete' }]); }
 }
@@ -168,7 +168,7 @@ class CollectionReference extends QueryReference {
 
 class FirestoreBatch {
   protected writes: Array<{ reference: string; data: JsonMap; method: string }> = [];
-  set(ref: DocumentReference, data: JsonMap, options?: { merge?: boolean }): this { this.writes.push({ reference: ref.name, data, method: options?.merge ? 'update' : 'set' }); return this; }
+  set(ref: DocumentReference, data: JsonMap, options?: { merge?: boolean }): this { this.writes.push({ reference: ref.name, data, method: options?.merge ? 'merge' : 'set' }); return this; }
   update(ref: DocumentReference, data: JsonMap): this { this.writes.push({ reference: ref.name, data, method: 'update' }); return this; }
   delete(ref: DocumentReference): this { this.writes.push({ reference: ref.name, data: {}, method: 'delete' }); return this; }
   async commit(): Promise<void> { await activeDb!.write(this.writes); }
@@ -188,6 +188,13 @@ class FirestoreTransaction extends FirestoreBatch {
   get pendingWrites(): Array<{ reference: string; data: JsonMap; method: string }> { return this.writes; }
 }
 
+class FirestoreWriteError extends Error {
+  constructor(public readonly status: number) {
+    super(`FIRESTORE_WRITE_FAILED:${status}`);
+    this.name = 'FirestoreWriteError';
+  }
+}
+
 class FirestoreRest {
   readonly documentsRoot: string;
   constructor(public readonly projectId: string, public readonly databaseId: string) { this.documentsRoot = `projects/${projectId}/databases/${databaseId}/documents`; }
@@ -196,18 +203,23 @@ class FirestoreRest {
   collectionGroup(path: string): QueryReference { return new QueryReference(path, [], undefined, [], true); }
   batch(): FirestoreBatch { return new FirestoreBatch(); }
   async runTransaction<T>(callback: (transaction: FirestoreTransaction) => Promise<T>): Promise<T> {
-    const begin = await firestoreRequest(`${this.documentsRoot}:beginTransaction`, { method: 'POST', body: JSON.stringify({ options: { readWrite: {} } }) });
-    if (!begin.ok) throw new Error(`FIRESTORE_TRANSACTION_BEGIN_FAILED:${begin.status}`);
-    const { transaction } = await begin.json() as { transaction: string };
-    const tx = new FirestoreTransaction(transaction);
-    try {
-      const result = await callback(tx);
-      await this.write(tx.pendingWrites, transaction);
-      return result;
-    } catch (error) {
-      await firestoreRequest(`${this.documentsRoot}:rollback`, { method: 'POST', body: JSON.stringify({ transaction }) }).catch(() => undefined);
-      throw error;
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const begin = await firestoreRequest(`${this.documentsRoot}:beginTransaction`, { method: 'POST', body: JSON.stringify({ options: { readWrite: {} } }) });
+      if (!begin.ok) throw new Error(`FIRESTORE_TRANSACTION_BEGIN_FAILED:${begin.status}`);
+      const { transaction } = await begin.json() as { transaction: string };
+      const tx = new FirestoreTransaction(transaction);
+      try {
+        const result = await callback(tx);
+        await this.write(tx.pendingWrites, transaction);
+        return result;
+      } catch (error) {
+        await firestoreRequest(`${this.documentsRoot}:rollback`, { method: 'POST', body: JSON.stringify({ transaction }) }).catch(() => undefined);
+        if (!(error instanceof FirestoreWriteError) || error.status !== 409 || attempt + 1 >= maxAttempts) throw error;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(100 * (2 ** attempt), 1000)));
+      }
     }
+    throw new Error('FIRESTORE_TRANSACTION_RETRY_EXHAUSTED');
   }
   async getDocument(name: string, transaction?: string): Promise<any> {
     if (transaction) {
@@ -261,14 +273,15 @@ class FirestoreRest {
         }
         const update: JsonMap = { name: write.reference, fields };
         const result: JsonMap = { update };
-        if (write.method === 'update') result.updateMask = { fieldPaths: Object.keys(fields) };
+        if (write.method === 'merge' || write.method === 'update') result.updateMask = { fieldPaths: Object.keys(fields) };
+        if (write.method === 'update') result.currentDocument = { exists: true };
         if (transforms.length) result.updateTransforms = transforms;
         return result;
       }),
       ...(transaction ? { transaction } : {})
     };
     const response = await firestoreRequest(`${this.documentsRoot}:commit`, { method: 'POST', body: JSON.stringify(body) });
-    if (!response.ok) throw new Error(`FIRESTORE_WRITE_FAILED:${response.status}`);
+    if (!response.ok) throw new FirestoreWriteError(response.status);
   }
 }
 
