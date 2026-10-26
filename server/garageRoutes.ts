@@ -1156,10 +1156,21 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 1, max: 1_000_000, integerOnly: true });
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
+    const paymentReferenceMarkerId = encodeURIComponent(paymentReference).slice(0, 150);
+    const paymentReferenceMarkerRef = getAdminDb().doc(`payment_reference_markers/${paymentReferenceMarkerId}`);
     let granted: any = null;
     await getAdminDb().runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
+      const referenceMarkerSnapshot = await t.get(paymentReferenceMarkerRef);
+      if (referenceMarkerSnapshot.exists) {
+        const marker = referenceMarkerSnapshot.data?.() || {};
+        if (marker.idempotencyKey === idempotencyKey && marker.result) {
+          granted = marker.result;
+          return;
+        }
+        throw new Error('PAYMENT_REFERENCE_ALREADY_USED');
+      }
       const garageRef = getAdminDb().doc(`garages/${garageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
@@ -1301,10 +1312,14 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         });
       }
       granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
+      t.set(paymentReferenceMarkerRef, { paymentReference, entryId: entry.value.entryId, garageId, idempotencyKey, result: granted, createdAt: new Date() });
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
     });
     return c.json({ success: true, data: granted });
   } catch (error: any) {
+    if (error?.message === 'PAYMENT_REFERENCE_ALREADY_USED') {
+      return c.json({ success: false, error: 'PAYMENT_REFERENCE_ALREADY_USED' }, 409);
+    }
     if (error?.message === 'DELEGATE_NOT_FOUND' || error?.message === 'INVALID_DELEGATE_COMMISSION_BALANCE') {
       return c.json({ success: false, error: error.message }, 409);
     }
@@ -1334,6 +1349,9 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
     });
     return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });
   } catch (error: any) {
+    if (error?.message === 'PAYMENT_REFERENCE_ALREADY_USED') {
+      return c.json({ success: false, error: 'PAYMENT_REFERENCE_ALREADY_USED' }, 409);
+    }
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
@@ -1363,3 +1381,4 @@ app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) =>
 });
 
 }
+

@@ -32,6 +32,8 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
     totalRechargedAmount: 0
   };
   const writes: Array<{ operation: string; path: string; data: any }> = [];
+  const paymentReferenceMarkers = new Set<string>();
+  const paymentReferenceMarkerData = new Map<string, any>();
   const transaction = {
     get: vi.fn(async (documentRef: any) => {
       if (documentRef.path === 'garages/garage-1') return { exists: true, data: () => ({ ...garage }) };
@@ -39,11 +41,13 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
         return { exists: options.withDelegate !== false, data: () => ({ ...delegate }) };
       }
       if (documentRef.path === 'credit_referral_awards/garage-1') return { exists: false, data: () => undefined };
+      if (documentRef.path.startsWith('payment_reference_markers/')) return { exists: paymentReferenceMarkers.has(documentRef.path), data: () => paymentReferenceMarkerData.get(documentRef.path) };
       if (documentRef.path.startsWith('packages/')) return { exists: false, data: () => undefined };
       return { exists: false, data: () => undefined };
     }),
     set: vi.fn((documentRef: any, data: any, merge?: any) => {
       writes.push({ operation: 'set', path: documentRef.path, data });
+      if (documentRef.path.startsWith('payment_reference_markers/')) { paymentReferenceMarkers.add(documentRef.path); paymentReferenceMarkerData.set(documentRef.path, data); }
       if (documentRef.path === 'garages/garage-1') Object.assign(garage, merge ? data : data);
     }),
     update: vi.fn((documentRef: any, data: any) => {
@@ -192,8 +196,8 @@ describe('first paid credit grant delegate commission', () => {
       }
     });
 
-    const second = await harness.route(requestContext(grantBody(50, 'grant-second')));
-    expect(second.status).toBe(200);
+    const second = await harness.route(requestContext({ ...grantBody(50, 'grant-second'), paymentReference: 'PAY-grant-first' }));
+    expect(second.status).toBe(409);
     expect(harness.delegate.totalCommissionEarned).toBe(100);
     expect(harness.delegate.totalRechargedAmount).toBe(100);
     expect(harness.recordDomainEventInTransaction.mock.calls.map((call) => call[2]).filter((event) => event.eventType === 'commission_earned')).toHaveLength(1);
@@ -218,3 +222,4 @@ describe('first paid credit grant delegate commission', () => {
     expect(harness.grantPaidCredits).not.toHaveBeenCalled();
   });
 });
+
