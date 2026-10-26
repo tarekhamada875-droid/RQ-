@@ -711,10 +711,6 @@ app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
   }
 });
 
-// The old time-based trial decision workflow is retired. Trial eligibility is represented by server-owned credits.
-app.post('/api/garages/trial-decision', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'TRIAL_DECISION_WORKFLOW_RETIRED' }, 410);
-});
 // Staff Management Routes
 app.post('/api/staff/create', requireWorkerAuth, async (c) => {
   try {
@@ -838,11 +834,6 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
   }
 });
-
-// Retired role endpoints remain as explicit, non-mutating tombstones for old clients.
-app.post('/api/supervisors/create', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
-app.post('/api/supervisors/update', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
-app.post('/api/supervisors/delete', requireWorkerAuth, (c) => c.json({ success: false, error: 'ROLE_RETIRED' }, 410));
 
 // Delegates Management Routes
 app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
@@ -1145,11 +1136,6 @@ app.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
   }
 });
 
-// Keep legacy fair-use paths as authenticated no-write tombstones.
-const handleExtendFairUse = (c: any) => c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-app.post('/api/admin/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
-app.post('/api/garages/:id/extend-fair-use', requireWorkerAuth, handleExtendFairUse);
-
 // Admin confirms offline payment and explicitly grants non-expiring prepaid credits.
 app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
   try {
@@ -1351,20 +1337,6 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
-});
-
-// Legacy Admin recharge is retired; prepaid credit grants remain available via /api/garages/:id/credit-grants.
-app.post('/api/transactions/recharge-garage', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-
-// Retired owner self-subscribe and referral-day endpoints remain authenticated compatibility tombstones.
-app.post('/api/transactions/garage-self-subscribe', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
-});
-
-app.post('/api/transactions/use-referral-reward', requireWorkerAuth, async (c) => {
-  return c.json({ success: false, error: 'LEGACY_BILLING_MODEL_RETIRED' }, 410);
 });
 
 // Garage Maintenance: Recalculate Cars Inside
