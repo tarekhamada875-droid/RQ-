@@ -1,5 +1,6 @@
 import type { WorkerApp } from './cloudflareWorker';
 import { getCairoDateKey, getCairoDayBounds } from './projections';
+import { parseMoneyAmount } from './money';
 
 export type FinancialRouteDependency = (...args: any[]) => any;
 
@@ -265,6 +266,135 @@ app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorke
   }
 });
 
+// Admin-only paid-grant history for the delegate detail screen. Grant ownership
+// follows the garage creator, matching the Worker rule that awards first-grant
+// commission to createdByDelegateId. Aggregate every page, but return only the
+// newest 50 rows so the response stays bounded as ledger history grows.
+app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorkerFinancialRateLimit, async (c: any) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+
+    let delegateId: string;
+    try {
+      delegateId = validateId(c.req.param('id'), 'id', true);
+    } catch {
+      return c.json({ success: false, error: 'INVALID_DELEGATE_ID' }, 400);
+    }
+
+    const delegateSnap = await getAdminDb().collection('delegates').doc(delegateId).get();
+    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+
+    const settledValue = delegateSnap.data()?.lastSettledAt;
+    const settledDate = settledValue && typeof settledValue === 'object' && typeof settledValue.toDate === 'function'
+      ? settledValue.toDate()
+      : settledValue ? new Date(settledValue) : null;
+    const settledAt = settledDate instanceof Date && Number.isFinite(settledDate.getTime()) ? settledDate : null;
+    const monthlyPaidGrantTotalsEgp: Record<string, number> = {};
+    let allTimePaidGrantTotalEgp = 0;
+    let currentCyclePaidGrantTotalEgp = 0;
+    const recentPaidGrants: Array<{
+      entryId: string;
+      garageId: string;
+      garageName: string;
+      amountEgp: number;
+      creditAmount: number;
+      occurredAt: string;
+      paymentReference?: string;
+    }> = [];
+
+    const garageCollection = getAdminDb().collection('garages');
+    const creditLedgerCollection = getAdminDb().collection('credit_ledger');
+    const garageScope = `delegate-paid-grants:${delegateId}:garages`;
+    let garageCursor: string | undefined;
+    let hasMoreGarages = true;
+
+    while (hasMoreGarages) {
+      const garagePageRequest = parseFirestorePageRequest('50', garageCursor, garageScope);
+      const garagePage = await readWorkerFirestorePage(
+        garageCollection.where('createdByDelegateId', '==', delegateId),
+        garageCollection,
+        garagePageRequest
+      );
+
+      for (const garageDocument of garagePage.documents) {
+        const garage = garageDocument.data() || {};
+        const ledgerScope = `delegate-paid-grants:${delegateId}:${garageDocument.id}`;
+        let ledgerCursor: string | undefined;
+        let hasMoreLedger = true;
+
+        while (hasMoreLedger) {
+          const ledgerPageRequest = parseFirestorePageRequest('100', ledgerCursor, ledgerScope);
+          const ledgerPage = await readWorkerFirestorePage(
+            creditLedgerCollection.where('garageId', '==', garageDocument.id),
+            creditLedgerCollection,
+            ledgerPageRequest,
+            'occurredAt'
+          );
+
+          for (const ledgerDocument of ledgerPage.documents) {
+            const entry = ledgerDocument.data() || {};
+            if (entry.kind !== 'paid_grant' || entry.paymentConfirmed !== true) continue;
+            const creditAmount = parseMoneyAmount(entry.amount);
+            const amountEgp = parseMoneyAmount(entry.paymentAmountEgp);
+            if (creditAmount === null || creditAmount <= 0 || amountEgp !== creditAmount) continue;
+
+            const rawOccurredAt = entry.occurredAt && typeof entry.occurredAt === 'object' && typeof entry.occurredAt.toDate === 'function'
+              ? entry.occurredAt.toDate()
+              : entry.occurredAt;
+            const occurredDate = rawOccurredAt instanceof Date ? rawOccurredAt : new Date(rawOccurredAt);
+            if (!Number.isFinite(occurredDate.getTime())) continue;
+            const occurredAt = occurredDate.toISOString();
+            const monthKey = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit'
+            }).format(occurredDate);
+
+            allTimePaidGrantTotalEgp += amountEgp;
+            monthlyPaidGrantTotalsEgp[monthKey] = (monthlyPaidGrantTotalsEgp[monthKey] || 0) + amountEgp;
+            if (!settledAt || occurredDate > settledAt) currentCyclePaidGrantTotalEgp += amountEgp;
+
+            recentPaidGrants.push({
+              entryId: String(entry.entryId || ledgerDocument.id),
+              garageId: garageDocument.id,
+              garageName: typeof garage.name === 'string' ? garage.name : '',
+              amountEgp,
+              creditAmount,
+              occurredAt,
+              ...(typeof entry.paymentReference === 'string' ? { paymentReference: entry.paymentReference } : {})
+            });
+          }
+
+          ledgerCursor = ledgerPage.nextCursor || undefined;
+          hasMoreLedger = ledgerPage.hasMore;
+        }
+      }
+
+      garageCursor = garagePage.nextCursor || undefined;
+      hasMoreGarages = garagePage.hasMore;
+    }
+
+    recentPaidGrants.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+    return c.json({
+      success: true,
+      data: {
+        monthlyPaidGrantTotalsEgp,
+        allTimePaidGrantTotalEgp,
+        currentCyclePaidGrantTotalEgp,
+        recentPaidGrants: recentPaidGrants.slice(0, 50)
+      }
+    });
+  } catch (error: any) {
+    if (error?.message === 'INVALID_PAGE_SIZE' || error?.message === 'INVALID_PAGE_CURSOR') {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+    console.error('[Worker Delegate] Error loading paid grant history:', error);
+    return c.json({ success: false, error: error?.message || 'PAID_GRANT_HISTORY_FAILED' }, 500);
+  }
+});
+
 // Handler 9: Financial Summary Report (GET /api/financial-summary & GET /api/reports/financial)
 const handleFinancialSummaryReport = async (c: any) => {
   try {
@@ -363,3 +493,4 @@ app.get('/api/financial-summary', requireWorkerAuth, handleFinancialSummaryRepor
 app.get('/api/reports/financial', requireWorkerAuth, handleFinancialSummaryReport);
 
 }
+
