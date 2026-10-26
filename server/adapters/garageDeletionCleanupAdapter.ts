@@ -14,6 +14,8 @@ function garageOwnedQueries(adminDb: any, garageId: string): any[] {
   return [
     ...GARAGE_SUBCOLLECTIONS.map((name) => adminDb.collection(`garages/${garageId}/${name}`)),
     adminDb.collection('activity_logs').where('garageId', '==', garageId),
+    // Financial history is garage-owned data and must be removed atomically with the garage.
+    adminDb.collection('credit_ledger').where('garageId', '==', garageId),
     adminDb.collection('recharge_requests').where('garageId', '==', garageId),
     adminDb.collection('staff').where('garageId', '==', garageId),
     adminDb.collection('garage_sessions').where('entityId', '==', garageId),
@@ -112,7 +114,11 @@ export async function processGarageDeletionStep(
       return { status: 'running', phase: 'finalizing', processedRecords, deletedThisStep: 0 };
     }
 
+    const paymentMarkersRef = adminDb.doc(`payment_reference_markers/${encodeURIComponent(garageId)}`);
+    const referralAwardRef = adminDb.doc(`credit_referral_awards/${garageId}`);
     const garageSnapshot = await transaction.get(garageRef);
+    const paymentMarkerSnapshot = await transaction.get(paymentMarkersRef);
+    const referralAwardSnapshot = await transaction.get(referralAwardRef);
     const garageData = garageSnapshot.exists ? garageSnapshot.data() || {} : {};
     if (garageSnapshot.exists && garageData.isDeleting !== true) {
       throw new Error('GARAGE_DELETION_TARGET_CHANGED');
@@ -139,6 +145,8 @@ export async function processGarageDeletionStep(
         deletedByUid: actor.uid || null
       }
     });
+    if (paymentMarkerSnapshot.exists) transaction.delete(paymentMarkersRef);
+    if (referralAwardSnapshot.exists) transaction.delete(referralAwardRef);
     transaction.delete(garageRef);
     transaction.set(jobRef, {
       garageId,
