@@ -30,6 +30,7 @@ vi.mock('../services', () => ({
   firestoreService: {
     updateGarage: vi.fn().mockResolvedValue(true),
     getGarageById: vi.fn().mockResolvedValue(null),
+    getDashboardSummary: vi.fn().mockResolvedValue({ entriesToday: 0 }),
     isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
     addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
     removeStaff: vi.fn().mockResolvedValue(undefined),
@@ -365,3 +366,4 @@ describe('Arabic-only shared interface', () => {
     consoleError.mockRestore();
   });
 });
+
