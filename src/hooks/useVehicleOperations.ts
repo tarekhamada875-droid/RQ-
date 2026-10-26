@@ -383,10 +383,9 @@ export function useVehicleOperations({
     showToast('جاري حذف اللوحة...', 'info');
 
     try {
-      const success = await firestoreService.deleteVehicleWithRefund(
+      const success = await firestoreService.deleteVehicle(
         garage.id,
         vehicleToDelete.id,
-        0,
         todayYMD,
         currentStaff ? currentStaff.name : 'مدير الجراج',
         currentStaff ? currentStaff.id : undefined
