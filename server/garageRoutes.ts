@@ -256,14 +256,14 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 
     if (callerRole === 'delegate') {
       garageDoc.createdByDelegateId = delegateEntityId;
-      garageDoc.createdByDelegateName = createdByDelegateName || callerName || '???????';
+      garageDoc.createdByDelegateName = createdByDelegateName || callerName || 'المندوب';
       garageDoc.referrerId = delegateEntityId;
-      garageDoc.referrerName = referrerName || createdByDelegateName || callerName || '???????';
+      garageDoc.referrerName = referrerName || createdByDelegateName || callerName || 'المندوب';
     } else if (createdByDelegateId) {
       garageDoc.createdByDelegateId = createdByDelegateId;
-      garageDoc.createdByDelegateName = createdByDelegateName || '???????';
+      garageDoc.createdByDelegateName = createdByDelegateName || 'المندوب';
       garageDoc.referrerId = referrerId || createdByDelegateId;
-      garageDoc.referrerName = referrerName || createdByDelegateName || '???????';
+      garageDoc.referrerName = referrerName || createdByDelegateName || 'المندوب';
     }
 
     if (referredByGarageId) {
@@ -275,9 +275,9 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       garageId,
       garageName: garageDoc.name,
       staffId: callerUid || null,
-      staffName: callerName || '??????? (????? ????)',
+      staffName: callerName || 'الإدارة (إنشاء جراج)',
       actionType: 'create',
-      plateNumber: '????? ???? ???? ???? (???? ??????)',
+      plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)',
       timestamp: now,
       amount: 0,
       details: {
@@ -1163,7 +1163,14 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
       const referenceMarkerSnapshot = await t.get(paymentReferenceMarkerRef);
-      if (referenceMarkerSnapshot.exists) throw new Error('PAYMENT_REFERENCE_ALREADY_USED');
+      if (referenceMarkerSnapshot.exists) {
+        const marker = referenceMarkerSnapshot.data?.() || {};
+        if (marker.idempotencyKey === idempotencyKey && marker.result) {
+          granted = marker.result;
+          return;
+        }
+        throw new Error('PAYMENT_REFERENCE_ALREADY_USED');
+      }
       const garageRef = getAdminDb().doc(`garages/${garageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
@@ -1305,7 +1312,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         });
       }
       granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
-      t.set(paymentReferenceMarkerRef, { paymentReference, entryId: entry.value.entryId, garageId, createdAt: new Date() });
+      t.set(paymentReferenceMarkerRef, { paymentReference, entryId: entry.value.entryId, garageId, idempotencyKey, result: granted, createdAt: new Date() });
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
     });
     return c.json({ success: true, data: granted });
