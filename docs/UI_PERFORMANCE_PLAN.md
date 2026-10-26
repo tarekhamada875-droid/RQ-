@@ -1,6 +1,6 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: PHASE 2 IN PROGRESS — P2.4, P2.5 and P2.6 are complete and verified. P1.4 remains blocked by an owner-only Firebase usage/budget setup action. Do not mark Phase 2 complete until required items have verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
+> **STATUS: PRODUCTION AUDIT IN PROGRESS — P0–P4 work has substantial verified completion, but owner-only Firebase/Cloudflare usage checks and repository privacy/secrets review remain open. App-code merge `6046868d012da731e5cee8d1e47e418ffb550b5e` passed Production Gate and its reused Worker artifact was deployed and live-smoke-tested. Final role walkthrough and launch sign-off are NOT complete. The audit has confirmed financial-reporting, date-consistency, daily-statistics, subscriber-flow, and commission-rule concerns; see provisional findings/questions below.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
 > This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
@@ -70,7 +70,7 @@ Things only **you** can do (the executor cannot do them for you): they are marke
 | F4 | `firestore.rules` still lets the **browser** write retired collections (`recharge_requests`, `topup_requests`, `referral_rewards`, `packages`) and many others, bypassing the Worker | `firestore.rules` | Contradicts README ("browser must not mutate"). The Worker route says 410 "retired" but the database rule says "allowed" |
 | F5 | `admin_settings` readable by **any signed-in user** for retired keys `wallet_number`, `subscription_prices` | `firestore.rules` | Old wallet model leftover |
 | F6 | The browser has **zero** direct Firestore writes in live code, yet it has a hidden **fallback** that writes session documents (`runTransaction`), plus dead methods that write (`updateSession`, `updateStaffSession`, `claimOrRefreshGarageSession`) | `src/services/authSessionService.ts`, `authService.ts`, `garageService.ts` | A second "authority" the code comments themselves say must not exist |
-| F7 | Old PIN formats still accepted: **plain-text PIN** and a single hard-coded salt `ark_garage_secure_pin_salt_2026` | `server/utils.ts` | Weak; the repo is **public**, so the salt is public |
+| F7 | Legacy plaintext/shared-salt PIN verification has been removed; remaining PIN lookup uses fixed public `PIN_LOOKUP_SALT` for deterministic indexed lookup hashes | `server/utils.ts` | Unique-salt scrypt protects stored verification hashes, but short numeric lookup hashes could be guessed if the private PIN database were exposed |
 | F8 | ~25 unused files/functions (listed in Phase 2). Retired routes return 410 (harmless but clutter). Coupons feature has routes but no screen. | many | Confusing for the next developer/AI |
 | F9 | 113 generated browser-baseline artifacts (~1.5 MB) and 6 generated authenticated-smoke artifacts | `docs/` | Generated clutter; capture tools now write to ignored temporary folders |
 | F10 | AI Studio template leftovers: `metadata.json`, `firebase-blueprint.json`, `GEMINI_API_KEY` in `.env.example`, `https://aistudio.google.com` + localhost hard-coded in the production CORS allowlist | root, `server/cloudflareWorker.ts` | Cleanup / hardening |
@@ -81,6 +81,27 @@ Things only **you** can do (the executor cannot do them for you): they are marke
 **Not verified by me:** I did not run the app, tests, or emulators. Free-plan limits quoted (50,000 reads/day, 20,000 writes/day) are from my knowledge — **check the current Firebase pricing page**. I did not find the page size used by the delegate dashboard.
 
 ---
+
+## 3.1 Current code-audit findings — provisional; audit continues
+
+These findings were confirmed by reading current `main` source and relevant tests. No application code was changed during this inspection. Owner questions are recorded in Section 13; do not guess at business policy.
+
+| ID | Confirmed finding | Evidence and impact | Owner decision needed? |
+|---|---|---|---|
+| A1 | Prepaid-credit payments are not included in headline cash/revenue formulas. | `server/financialReporting.ts` adds paid-credit purchase payments to `prepaidCreditPaymentsEgp`, but `cashCollectedTotal` only adds legacy recharge + wallet totals and `companyNetRevenue` only uses legacy recharge less commission/refund. A test expects a prepaid payment to appear separately while cash collected and net revenue remain zero. | Yes — define intended formulas. |
+| A2 | Financial report date boundaries use UTC midnight rather than Cairo business-day boundaries. | `server/financialRoutes.ts` constructs boundaries using `T00:00:00.000Z`, while check-in/check-out and garage reports use `Africa/Cairo` date keys. Transactions around Cairo midnight can land in the wrong selected report day. | Yes — confirm Cairo-local report dates. |
+| A3 | Subscriber active/expired counters can disagree with check-in eligibility on the subscriber's end date. | `server/subscriberRoutes.ts` parses `YYYY-MM-DD` as a timestamp and compares it with the current instant. Check-in compares Cairo date strings inclusively, so counters can mark a subscriber expired during the end date while check-in still accepts it. | Yes — confirm end dates remain valid through the whole Cairo calendar day. |
+| A4 | Legacy daily counters are wrong, and `todayRevenue` may carry yesterday's amount into a new day. | Check-in decision always returns `isNewDay: false` and `used: 0`; route therefore sets `todayCount` to 1 on every entry. It also updates `lastTransactionDate` without resetting `todayRevenue`, so a later check-out can add today's revenue to yesterday's. Newer `daily_stats`/maintained projections can disagree with legacy fields. | Yes — confirm whether legacy fields are still displayed; if retained, they must reflect the Cairo business day correctly. |
+| A5 | Firestore rules let a delegate who created/referred a garage read that garage's subscriber documents, including personal details. | `firestore.rules` permits `isDelegateForGarage(garageId)` to read/list subscriber documents, and rules tests explicitly expect delegate reads to succeed. | Yes — confirm whether delegate access to subscriber names/phones/notes/dates is intended. |
+| A6 | Financial report service is exposed through `adminService`, but the existing plan review found no production screen caller. | `src/services/adminBillingService.ts` provides `getFinancialReport` and is composed into `adminService`; this may be an unused backend/service path rather than a visible Admin report. | Yes — keep and wire it into Admin UI, or retire after final caller verification? |
+| A7 | PIN lookup still uses a fixed public salt for its deterministic lookup hash. | `server/utils.ts` uses `PIN_LOOKUP_SALT` for `computeLookupHash`. A database exposure could permit offline guessing of short numeric PINs against lookup hashes. | Yes — prioritize a lookup-hash redesign/migration before launch or schedule after pilot? |
+| A8 | Launch-readiness evidence is incomplete despite passing automated gates. | App-code merge `6046868d012da731e5cee8d1e47e418ffb550b5e` passed Production Gate and its reused Worker artifact was deployed/live-smoke-tested. All-role manual walkthroughs and owner-only usage/billing/privacy actions remain unconfirmed. | Yes — owner actions and guided role walkthrough remain. |
+| A9 | Delegate commission is hard-coded to 100 EGP on a garage's first paid credit grant, regardless of grant/payment amount. | `server/garageRoutes.ts` adds 100 to delegate commission/unsettled totals and records `commissionAmount: 100`. A 30 EGP grant can create a 100 EGP commission obligation. | Yes — confirm the commission rule. |
+| A10 | Active monthly subscribers are rejected by the only vehicle check-in route; no separate subscriber vehicle check-in route was found in the inspected path. | `server/domain/vehicleCheckIn.ts` returns `MONTHLY_SUBSCRIBER_NOT_CHECKED_IN` for active subscribers and a route test expects failure. This may prevent tracking subscribers entering/exiting through the normal vehicle flow. | Yes — confirm whether active subscriber cars should be tracked without a regular credit debit. |
+| A11 | Renewing a monthly subscriber consumes five paid credits. | Subscriber renewal route/tests debit exactly five paid credits and do not use referral credits. This differs from the one-credit regular entry rule. | Yes — confirm the five-credit renewal charge. |
+| A12 | The Packages tab is gone, but backend credit-bundle templates remain. | Credit-grant route accepts optional `packageId` from the `packages` collection; direct amount grants also work. | Yes — keep admin-only templates or remove the remaining catalog/template path? |
+
+**Do not implement owner-dependent behavior changes until the corresponding Section 13 questions are answered.** Continue the audit for additional confirmed defects, security issues, wiring gaps, and dead code before declaring the question list final.
 
 ## 4. Progress Tracker (every executor updates this)
 
@@ -727,7 +748,7 @@ AFTER:
 
 ## 9. PHASE 4 — Security and configuration cleanup
 
-### P4.1 CORS allowlist: production origin only
+### P4.1 CORS allowlist: production origin only — COMPLETED ON MAIN
 
 **File:** `server/cloudflareWorker.ts`, function `isAllowedWorkerOrigin`.
 BEFORE:
@@ -750,9 +771,9 @@ The Worker already accepts any origin listed in the `ALLOWED_ORIGINS` setting (t
 
 ---
 
-### P4.2 Remove old PIN formats (only if D1 = NO; otherwise mark `[-]`)
+### P4.2 Remove old PIN formats — COMPLETED ON MAIN (D1 = NO)
 
-Today the server also accepts (a) a 64-character hash made with one shared hard-coded salt and (b) a **plain-text** PIN. Good news: when someone logs in with an old format, the server upgrades it to the modern format (`migratePinToHash` in `server/cloudflareWorker.ts`). So if there are no real customers (D1 = NO), the old branches can simply go. If you ever restore old data, accounts with old-format PINs would stop logging in.
+COMPLETED: the current `main` verifier accepts only modern unique-salt scrypt; legacy plaintext/shared-salt verification was removed and auth fixtures/tests were updated (Execution Log #14). The snippets below are historical patch context only—do not reapply. The owner confirmed there is no real customer data.
 
 **File:** `server/utils.ts` — function `verifySingleFieldValue`.
 BEFORE:
@@ -837,7 +858,9 @@ git diff --check
 ```
 All must pass. Paste the totals (tests passed/failed) in the log.
 
-### P5.2 Manual walkthrough (OWNER with the executor's checklist, on the **preview** project first)
+### P5.2 Manual walkthrough (OWNER with the executor's checklist — preview project unavailable)
+
+The previously configured preview Firebase project was deleted (Execution Log #12). Do not assume a preview environment exists. Before any live walkthrough, ask the owner to confirm whether to use the production project with synthetic test accounts/data; never use real customer data or run destructive tests.
 Everything must look and behave **exactly as before** (Arabic, RTL, same screens).
 - **Garage owner:** log in with PIN → check a car **in** → see it in "inside" list → check it **out** (credits drop correctly) → open today's report → add / renew a monthly subscriber → open credit history.
 - **Staff:** log in → check in / out → cannot reach owner-only screens.
@@ -933,6 +956,27 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 ## 13. Owner Q&A / decisions log (executor asks, owner answers; keep a record)
 
+**Open questions from the current code audit (not yet final; more audit work remains):**
+
+| ID | Question for the owner | Why it matters |
+|---|---|---|
+| AQ1 | Should cash collected include prepaid-credit payments, and should company net revenue include those payments less delegate commissions and refunds? What exact formula should the report use? | Current report omits prepaid payments from headline formulas. |
+| AQ2 | Should financial reports use Cairo-local calendar days from midnight to midnight? | Current filters use UTC midnight. |
+| AQ3 | Should a monthly subscriber remain active through the entire `endDate` in Cairo time? | Check-in eligibility and maintained active/expired counters can disagree. |
+| AQ4 | Is the old garage `todayCount` / API `dailyCount` still displayed or needed? If yes, should it count actual entries today; if not, may we retire it and rely on maintained daily stats? | The old field is set to 1 on each check-in, and daily revenue can carry over from yesterday. |
+| AQ5 | Should delegates who referred/created a garage be allowed to read subscriber names, phone numbers, notes, and dates for that garage? | Firestore rules currently allow it. |
+| AQ6 | Do you want a financial report visible and usable in the Admin screen? If yes, keep and wire it correctly; if not, retire the unused service/route after final caller checks? | A service exists but the plan's review found no production screen caller. |
+| AQ7 | Do you authorize making the GitHub repository private and reviewing/rotating any credentials that may have appeared in public history? Separately, should we prioritize redesigning the fixed-salt PIN lookup hash before launch? | The repo is public and the lookup salt is in source; these are separate security tasks. |
+| AQ8 | Can you check the Cloudflare dashboard for the `rq` Worker plan and CPU/errors, including repeated PIN login tests, or provide a connection with Billing Read access? | Current connection cannot verify Free/Paid status or billing usage. |
+| AQ9 | Can you check Firestore Usage and configure a budget/usage alert, or provide authorized access so the launch budget can be verified? | Owner-only quota/cost check remains unverified. |
+| AQ10 | Since the preview Firebase project was deleted, do you want the final manual walkthrough run against the existing production project using synthetic test accounts/data? | Automated tests do not prove all four roles and end-to-end money/credit flows work live. |
+| AQ11 | Is a fixed 100 EGP delegate commission on the first paid credit grant intentional, even when the grant is smaller than 100 EGP? If not, should commission be a percentage, per-credit amount, fixed signup reward, or zero? | Current route adds 100 EGP to the delegate's unsettled amount on the first paid grant. |
+| AQ12 | Should active monthly subscriber vehicles be allowed to check in/out without consuming a regular credit? | The only inspected check-in route rejects active subscribers and no separate subscriber vehicle flow was found. |
+| AQ13 | Should monthly subscriber renewal continue to cost exactly five paid credits? | This is separate from the one-credit regular entry and excludes referral credits. |
+| AQ14 | Should the remaining credit-bundle template catalog stay in the backend while the Packages tab stays removed, or should we remove the template path too? | Credit grants work with a direct amount, but the optional template path remains. |
+
+
+
 | Date | Question from executor | Owner's answer |
 |------|------------------------|----------------|
 | 2026-10-25 | Does production Firebase have real customer data? | No, there is no real customer data. |
@@ -956,4 +1000,4 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 
 | 22 | 2026-10-26 | P2.4 verification | Reconciled the plan with the merged PR and completed Production Gate. | `docs/UI_PERFORMANCE_PLAN.md` | Run #40272536511 passed all required verification steps. Deployment jobs were skipped, so this entry does not claim a production deployment. | pending | Next eligible planned task is P4.3 (owner-only Cloudflare plan/CPU check) or P4.4 (owner-only repository privacy/secrets rotation); Phase 2 is not fully complete because P1.4 remains blocked. |
-| 24 | 2026-10-26 | Production code audit — initial findings | Inspected current-main vehicle check-in/check-out, prepaid-credit ledger, financial report logic/tests, subscriber date handling, Firestore access rules/tests, PIN verification, investment calculator, and release workflows. Recorded provisional findings A1–A8 and owner questions AQ1–AQ10; audit is not yet complete. | `docs/UI_PERFORMANCE_PLAN.md` only; no application code changed | Read-only GitHub source inspection. No tests were run by this audit session. Verified PR #422 app-code merge passed Production Gate and the reused Worker artifact was deployed and live-smoke-tested in run #40273010643. | pending | Do not change business/reporting/privacy behavior until the owner answers the linked questions. Continue auditing remaining UI, routes, calculations, dead code, and launch evidence; then finalize the question list. |
+| 24 | 2026-10-26 | Production code audit — initial findings | Inspected current-main vehicle check-in/check-out, prepaid-credit ledger, financial report logic/tests, subscriber date handling, Firestore access rules/tests, PIN verification, investment calculator, and release workflows. Recorded provisional findings A1–A12 and owner questions AQ1–AQ14; audit is not yet complete. | `docs/UI_PERFORMANCE_PLAN.md` only; no application code changed | Read-only GitHub source inspection. No tests were run by this audit session. Verified PR #422 app-code merge passed Production Gate and the reused Worker artifact was deployed and live-smoke-tested in run #40273010643. | pending | Do not change business/reporting/privacy behavior until the owner answers the linked questions. Continue auditing remaining UI, routes, calculations, dead code, and launch evidence; then finalize the question list. |
