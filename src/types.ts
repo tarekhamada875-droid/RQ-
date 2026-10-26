@@ -151,7 +151,7 @@ export interface ActivityLog {
   garageId: string;
   staffId: string | null;
   staffName: string;
-  actionType: 'check_in' | 'check_out' | 'recharge' | 'delete_refund' | 'commission_payment' | 'commission_earned' | 'balance_topup' | 'self_subscribe';
+  actionType: 'check_in' | 'check_out' | 'recharge' | 'credit_grant' | 'delete_refund' | 'commission_payment' | 'commission_earned' | 'balance_topup' | 'self_subscribe';
   plateNumber: string;
   timestamp: any;
   amount?: number;
@@ -238,3 +238,4 @@ export interface SystemConfig {
 }
 
 export * from './types/apiContracts';
+

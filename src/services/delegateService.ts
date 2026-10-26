@@ -30,6 +30,12 @@ export interface DelegateCommissionHistoryItem {
   settlementId?: string;
   sourceCreditGrantId?: string;
 }
+export interface DelegatePaidGrantSummary {
+  monthlyPaidGrantTotalsEgp: Record<string, number>;
+  allTimePaidGrantTotalEgp: number;
+  currentCyclePaidGrantTotalEgp: number;
+  recentPaidGrants: Array<{ entryId: string; garageId: string; garageName: string; amountEgp: number; creditAmount: number; occurredAt: string; paymentReference?: string }>;
+}
 
 export interface DelegateDashboardPage {
   items: Garage[];
@@ -174,6 +180,11 @@ export const delegateService = {
     }
   },
 
+  getDelegatePaidGrantSummary: async (delegateId: string): Promise<DelegatePaidGrantSummary> => {
+    const response = await apiFetch<{ data: DelegatePaidGrantSummary }>(`/api/delegates/${encodeURIComponent(delegateId)}/paid-grant-history`);
+    return response.data;
+  },
+
   getDelegateRecharges: async (delegateId: string) => {
     try {
       const q = query(
@@ -194,3 +205,4 @@ export const delegateService = {
   },
 
 };
+

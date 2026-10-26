@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../utils/ThemeContext';
 
 const serviceMocks = vi.hoisted(() => ({
   getDelegateRecharges: vi.fn().mockResolvedValue([]),
+  getDelegatePaidGrantSummary: vi.fn().mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 0, currentCyclePaidGrantTotalEgp: 0, recentPaidGrants: [] }),
   getDelegateCommissionHistory: vi.fn().mockResolvedValue([]),
   settleDelegateAccount: vi.fn().mockResolvedValue(undefined),
   updateDelegate: vi.fn().mockResolvedValue(undefined),
@@ -40,6 +41,7 @@ const renderDetails = (delegate: Delegate = mockDelegate) => render(
 describe('AdminDelegateDetailsView Component', () => {
   beforeEach(() => {
     serviceMocks.getDelegateRecharges.mockReset().mockResolvedValue([]);
+    serviceMocks.getDelegatePaidGrantSummary.mockReset().mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 0, currentCyclePaidGrantTotalEgp: 0, recentPaidGrants: [] });
     serviceMocks.getDelegateCommissionHistory.mockReset().mockResolvedValue([]);
   });
 
@@ -63,6 +65,7 @@ describe('AdminDelegateDetailsView Component', () => {
       timestamp: new Date()
     }]);
 
+    serviceMocks.getDelegatePaidGrantSummary.mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 1500, currentCyclePaidGrantTotalEgp: 1500, recentPaidGrants: [] });
     renderDetails({ ...mockDelegate, totalRechargedAmount: 0, totalCommissionEarned: 0 });
     fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
 
@@ -147,6 +150,7 @@ describe('AdminDelegateDetailsView Component', () => {
       sourceCreditGrantId: 'credit-entry-1'
     }]);
 
+    serviceMocks.getDelegatePaidGrantSummary.mockResolvedValue({ monthlyPaidGrantTotalsEgp: {}, allTimePaidGrantTotalEgp: 20, currentCyclePaidGrantTotalEgp: 20, recentPaidGrants: [] });
     renderDetails({ ...mockDelegate, totalRechargedAmount: 100, totalCommissionEarned: 100 });
     fireEvent.click(await screen.findByText('سجل الشحن والعمولات'));
     await screen.findByText('SMALL-RECHARGE');
@@ -161,3 +165,4 @@ describe('AdminDelegateDetailsView Component', () => {
   });
 
 });
+
