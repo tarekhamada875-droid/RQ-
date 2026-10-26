@@ -1053,6 +1053,20 @@ The owner supplied the following answers in the referenced conversation. These a
 
 This reconciliation distinguishes implementation evidence from owner-deferred or under-specified work. The final launch sign-off remains incomplete because owner-only billing/privacy/backup checks and the four-role manual walkthrough have not been verified in this session.
 
+## 12.4 Supplemental audit outside Q1–Q17 (2026-10-26)
+
+The owner decisions covered the approved product rules, but not every operational and security question. The following additional findings were identified from the current source and release configuration. They are questions only; no behavior is changed by this audit.
+
+| ID | New question | Evidence / why it matters |
+|---|---|---|
+| AQ52 | How long should idempotency records, payment-reference markers, and deletion-job records be retained, and may they be purged after a defined period? | These records prevent duplicate writes and support recovery, but no retention/cleanup policy is documented. Indefinite growth can increase cost and query load; early deletion can weaken replay protection. |
+| AQ53 | What is the required retention and access policy for garage PII (subscriber names, phones, notes, and vehicle plates) after operational use? | The active routes and Firestore rules expose garage-scoped personal data to multiple roles, while no documented retention, export, or erasure policy was found. |
+| AQ54 | What alerting and incident-response path should be used for repeated transaction conflicts, authentication failures, rate-limit events, and Worker 5xx errors? | The code logs failures, but the repository does not define alert thresholds, on-call ownership, or a tested escalation path. |
+| AQ55 | What session lifetime and forced-revocation policy should apply after PIN changes, staff removal, garage lock/suspension, or suspected credential compromise? | Session refresh and revocation paths exist, but there is no single documented policy covering credential rotation and immediate invalidation across all roles. |
+| AQ56 | Should rate-limit state and security audit logs be isolated per environment and retained as compliance evidence, or may they be reset during maintenance? | Production and non-production namespaces are partly separated, but the retention and reset policy is not documented; resetting them can remove evidence or weaken abuse controls. |
+
+These supplemental questions are distinct from the 17 owner decisions and the existing AQ1–AQ51 list. They should be answered before launch sign-off if the product will hold real customer data.
+
 ## 13. Owner Q&A / decisions log (executor asks, owner answers; keep a record)
 
 **Owner questions from the completed audit pass.**
