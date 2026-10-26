@@ -147,7 +147,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect([...mockDb.records.entries()].find(([path, value]: [string, any]) => path.startsWith('credit_ledger/') && value.garageId === 'bill06-referrer' && value.kind === 'referral_award' && value.idempotencyKey === 'first_paid_grant:bill06-credit-garage')?.[1]).toMatchObject({ kind: 'referral_award', bucket: 'referral', amount: 20, source: 'first_paid_grant_referral', referredGarageId: garageId });
     expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({ referredGarageId: garageId, referrerGarageId: 'bill06-referrer', amount: 20 });
     const second = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, amount: 31, paymentAmountEgp: 31, idempotencyKey: 'bill06-grant-002' }) }));
-    expect(second.status).toBe(200);
+    expect(second.status).toBe(409);
     expect(mockDb.records.get('garages/bill06-referrer')?.creditBalance).toEqual({ paid: 2, referral: 21, trial: 0 });
   });
 
@@ -201,3 +201,4 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(other.status).toBe(403);
   });
 });
+
