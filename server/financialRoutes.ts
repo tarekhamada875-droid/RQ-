@@ -1,4 +1,5 @@
 import type { WorkerApp } from './cloudflareWorker';
+import { getCairoDateKey, getCairoDayBounds } from './projections';
 
 export type FinancialRouteDependency = (...args: any[]) => any;
 
@@ -292,7 +293,8 @@ const handleFinancialSummaryReport = async (c: any) => {
     }
 
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const todayDateKey = getCairoDateKey(now);
+    const today = new Date(`${todayDateKey}T00:00:00.000Z`);
     const defaultEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     const subtractOneCalendarYear = (date: Date) => {
       const year = date.getUTCFullYear() - 1;
@@ -309,8 +311,8 @@ const handleFinancialSummaryReport = async (c: any) => {
     }
     // Apply inclusive-start/exclusive-end boundaries in Firestore and process
     // stable cursor pages so Worker memory is independent of ledger history.
-    const startAt = new Date(`${start}T00:00:00.000Z`);
-    const endAt = new Date(`${end}T00:00:00.000Z`);
+    const startAt = getCairoDayBounds(start).start;
+    const endAt = getCairoDayBounds(end).start;
     // Domain events persist occurredAt as an ISO string, unlike settlement
     // records, whose settledAt field is a Firestore Timestamp/Date.
     const eventStartAt = startAt.toISOString();
@@ -321,7 +323,7 @@ const handleFinancialSummaryReport = async (c: any) => {
     eventsQuery = eventsQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
     settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
     if (!delegateId) creditLedgerQuery = creditLedgerQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
-    const accumulator = createFinancialReportAccumulator({ start, end, delegateId });
+    const accumulator = createFinancialReportAccumulator({ start: startAt, end: endAt, delegateId });
     const pageSize = 250;
     const forEachPage = async (baseQuery: any, timestampField: string, consume: (value: any) => void) => {
       let cursor: any = null;

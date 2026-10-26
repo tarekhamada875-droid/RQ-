@@ -100,8 +100,8 @@ describe('financial reporting projections', () => {
     ]);
 
     expect(report.prepaidCreditPaymentsEgp).toBe(50);
-    expect(report.cashCollectedTotal).toBe(0);
-    expect(report.companyNetRevenue).toBe(0);
+    expect(report.cashCollectedTotal).toBe(50);
+    expect(report.companyNetRevenue).toBe(50);
     expect(report.creditActivity).toEqual({
       paidGrantCount: 1,
       paidCreditsGranted: 50,
@@ -164,10 +164,10 @@ describe('financial reporting projections', () => {
       grossRechargeTotal: 101,
       walletTopupTotal: 25.5,
       prepaidCreditPaymentsEgp: 40,
-      cashCollectedTotal: 126.5,
+      cashCollectedTotal: 166.5,
       commissionTotal: 5,
       refundTotal: 7,
-      companyNetRevenue: 89,
+      companyNetRevenue: 154.5,
       historicalSettledTotal: 10,
       currentUnsettledByDelegate: { 'del-1': 101 },
       creditActivity: { paidGrantCount: 1, paidCreditsGranted: 10, paidGrantCountWithoutEgpRecord: 1, paidCreditsWithoutEgpRecord: 10 },

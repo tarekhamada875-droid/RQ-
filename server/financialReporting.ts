@@ -262,7 +262,7 @@ export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReport
 /** Finalizes streamed state into the public report shape. */
 export function finishFinancialReport(accumulator: FinancialReportAccumulator): FinancialReport {
   const { grossRechargeTotal, walletTopupTotal, prepaidCreditPaymentsEgp, commissionTotal, refundTotal, historicalSettledTotal } = accumulator;
-  const cashCollectedTotal = addMoney(grossRechargeTotal, walletTopupTotal);
+  const cashCollectedTotal = addMoney(addMoney(grossRechargeTotal, walletTopupTotal), prepaidCreditPaymentsEgp);
   return {
     grossRechargeTotal: round(grossRechargeTotal),
     walletTopupTotal: round(walletTopupTotal),
@@ -270,7 +270,7 @@ export function finishFinancialReport(accumulator: FinancialReportAccumulator): 
     cashCollectedTotal,
     commissionTotal: round(commissionTotal),
     refundTotal: round(refundTotal),
-    companyNetRevenue: round(grossRechargeTotal - commissionTotal - refundTotal),
+    companyNetRevenue: round(cashCollectedTotal - commissionTotal - refundTotal),
     historicalSettledTotal: round(historicalSettledTotal),
     currentUnsettledByDelegate: Object.fromEntries(Object.entries(accumulator.currentUnsettledByDelegate).map(([id, amount]) => [id, round(amount)])),
     creditActivity: accumulator.creditActivity,

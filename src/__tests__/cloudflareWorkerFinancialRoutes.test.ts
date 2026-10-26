@@ -165,7 +165,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
   it('pushes the selected date range into Firestore reads and preserves matching totals', async () => {
     mockDb.seed('garages/financial-read-test/events/before', {
       eventType: 'recharge_approved', aggregateId: 'before',
-      occurredAt: '2025-12-31T23:59:59.000Z', payload: { amount: 11 }
+      occurredAt: '2025-12-31T21:59:59.999Z', payload: { amount: 11 }
     });
     mockDb.seed('garages/financial-read-test/events/in-range', {
       eventType: 'recharge_approved', aggregateId: 'in-range',
@@ -190,6 +190,28 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     expect(bounded.status).toBe(200);
     expect((await bounded.json() as any).data.report.grossRechargeTotal).toBe(100);
     expect(mockDb.documentReadCount).toBeLessThan(unboundedReads);
+  });
+
+  it('uses Cairo-local day boundaries for financial report date filters', async () => {
+    mockDb.seed('garages/cairo-report/events/before-day', {
+      eventType: 'recharge_approved', aggregateId: 'before-day',
+      occurredAt: '2026-01-01T21:59:59.999Z', payload: { amount: 11 }
+    });
+    mockDb.seed('garages/cairo-report/events/start-boundary', {
+      eventType: 'recharge_approved', aggregateId: 'start-boundary',
+      occurredAt: '2026-01-01T22:00:00.000Z', payload: { amount: 100 }
+    });
+    mockDb.seed('garages/cairo-report/events/end-boundary', {
+      eventType: 'recharge_approved', aggregateId: 'end-boundary',
+      occurredAt: '2026-01-02T22:00:00.000Z', payload: { amount: 13 }
+    });
+
+    const response = await api.fetch(new Request('http://localhost/api/reports/financial?start=2026-01-02&end=2026-01-03', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+
+    expect(response.status).toBe(200);
+    expect((await response.json() as any).data.report.grossRechargeTotal).toBe(100);
   });
   it('defaults an undated report to a bounded 12-month window', async () => {
     const response = await api.fetch(new Request('http://localhost/api/reports/financial', {
@@ -225,8 +247,8 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     const report = (await response.json() as any).data.report;
     expect(report).toMatchObject({
       prepaidCreditPaymentsEgp: 50,
-      cashCollectedTotal: 0,
-      companyNetRevenue: 0,
+      cashCollectedTotal: 50,
+      companyNetRevenue: 50,
       creditActivity: {
         paidGrantCount: 1,
         paidCreditsGranted: 50,
