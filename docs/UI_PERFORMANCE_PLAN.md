@@ -1,8 +1,8 @@
 # RQ — Production Fix Plan (Executor File)
 
-> **STATUS: TRACKER RECONCILIATION REQUIRED — P4.1 and P4.2 are merged; earlier items P1.4 and P2.4–P2.6 remain unresolved and must be resolved before advancing the phase sequence** &nbsp;|&nbsp; Last updated by: ChatGPT &nbsp;|&nbsp; Date: 2026-10-25
+> **STATUS: PHASE 2 IN PROGRESS — P2.5 is complete; P2.6 remains. P1.4 and P2.4 are blocked; do not mark Phase 2 complete or advance while required items lack a verified completion or approved disposition.** &nbsp;|&nbsp; Last updated by: repository executor &nbsp;|&nbsp; Date: 2026-10-26
 >
-> This file is a **work order and a live progress sheet**. The AI that executes it (ChatGPT) must keep it updated as it works. See "Executor Contract" below.
+> This file is a **work order and a live progress sheet**. Every person or AI agent working on the repository must keep it updated as work proceeds. See "Executor Contract" below.
 
 Project: `tarekhamada875-droid/RQ-` (Arabic-only garage-management PWA)
 Stack: React 19 + Vite (Cloudflare Pages) → Hono Worker (Cloudflare) → Firebase Auth + Firestore
@@ -14,18 +14,18 @@ Reviewed by: Claude, from the ZIP of the `main` branch (538 files). **I read the
 
 You do not need to understand the code. Do these three things:
 
-1. Give this file to ChatGPT together with the project (a ZIP, or open it in Codex / Claude Code / Cursor so it can edit the real repo).
-2. Paste this message to ChatGPT:
+1. Give the working agent access to the current repository and these instructions. Prefer the live repository over an old ZIP.
+2. Paste this message to the agent:
 
-   > Open `docs/UI_PERFORMANCE_PLAN.md`. You are the executor. Read the "Executor Contract" first and obey it exactly. Start at Phase 0. Do one task at a time. After each task, update the Progress Tracker and the Execution Log in that same file. Stop at the end of each phase and show me the updated tracker. If anything does not match the file, stop and ask me; do not improvise.
+   > Verify the current `main` branch and read `AGENTS.md`, `README.md`, `docs/PROJECT.md`, `docs/SECURITY.md`, and `docs/UI_PERFORMANCE_PLAN.md`. Follow the Executor Contract. Resume at the first eligible unfinished item in the current Progress Tracker; do not restart completed work or assume Phase 0 is next. Work on one bounded item at a time. After each item or material new finding/decision, update the tracker and Execution Log in this plan before stopping or switching tasks. Use the existing canonical documents, not chat history, as durable project memory. Ask me only when a decision or owner-only action is genuinely unresolved.
 
-3. Answer the 5 decisions in section 2 (ChatGPT will ask you). A "default" is given for each.
+3. Review the five decisions in section 2 and the Owner Q&A log. Answer only questions that are not already recorded; do not ask again for decisions already on file.
 
-Things only **you** can do (ChatGPT cannot): they are marked **OWNER ACTION**.
+Things only **you** can do (the executor cannot do them for you): they are marked **OWNER ACTION**.
 
 ---
 
-## 1. Executor Contract (rules ChatGPT must follow)
+## 1. Executor Contract (rules every executor must follow)
 
 1. **Work in order.** Phase 0 → 1 → 2 → 3 → 4 → 5. Do not skip ahead. Phase 6 is a backlog: **do not do it.**
 2. **One branch per phase** (`fix/phase-1-quota`, `fix/phase-2-dead-code`, …), **one commit per task**, commit message `P<phase>.<task>: <what>`.
@@ -35,21 +35,21 @@ Things only **you** can do (ChatGPT cannot): they are marked **OWNER ACTION**.
 6. **Do NOT change:** any Arabic text, layout, RTL behaviour, colours, or screens; financial transaction logic (`server/domain/*`, check-in/check-out/refund transactions, credit grants, idempotency, reports); package versions; add no new dependencies; no refactors that are not listed here.
 7. **Tests:** delete a test only when this file says so (because it tests code being deleted). Never weaken or skip a test to make it pass. If a test fails for an unlisted reason, **STOP and report**.
 8. **Never** run anything against the production Firebase project. Use the emulators / fixtures that the repo already provides. Never print or commit secrets.
-9. **Update this file after every task** (this is mandatory):
-   - In the Progress Tracker (section 4): change `[ ]` to `[x]`, fill **Date**, **Commit** (short hash), **Notes**.
-   - Add a row to the Execution Log (section 12).
-   - Update the top line `STATUS:` (e.g. `PHASE 2 IN PROGRESS`).
+9. **Always-on continuity is mandatory for every executor and session; do not wait for `tokens ending`:**
+   - After every bounded plan item, material repository/project change, owner decision, blocker, or finding that changes what is safe or next, update this plan before switching tasks or ending the session.
+   - In the Progress Tracker (section 4), record the verified status, date, commit, and concise notes. Add one Execution Log row (section 12) with what changed, affected files, checks and results, any blocker/owner action, and the exact next eligible item. Update the top `STATUS:` line when the project state changes.
+   - For durable facts outside this plan, update the appropriate existing canonical document (`docs/PROJECT.md`, `docs/SECURITY.md`, or `docs/OPERATIONS.md`). Do not create separate handoff/history files, and never leave important state only in chat. Record durable facts; re-check branch, PR, check, and deployment state live at the next session.
    - Status marks: `[ ]` not started · `[~]` in progress · `[x]` done and verified · `[!]` blocked (write why) · `[-]` skipped by owner decision (write which decision).
 10. **Report format at the end of each phase** (3–6 lines): what changed, files deleted (count), lines removed, test results, anything the owner must decide.
 
 ---
 
-## 2. Owner decisions (ChatGPT must ask these in Phase 0 and record the answers)
+## 2. Owner decisions (check recorded answers first; ask only unresolved questions)
 
 | ID | Question | Default if owner says "I don't know" |
 |----|----------|--------------------------------------|
 | **D1** | Does the production Firebase database contain **real customers** (real garages with real PINs)? | **NO** (pre-launch, only test data). If YES → task P4.2 is skipped (`[-]`). |
-| **D2** | Is the Cloudflare Worker `rq` on the **Free** plan or the **Paid** ($5/month) plan? | Owner does not know; ChatGPT inspected the connected account and found Worker `rq`, but the subscription endpoint returned 403 because the connection lacks Billing Read permission. Keep unknown; do not upgrade or change billing. Recheck through an authorized billing view (P4.3). |
+| **D2** | Is the Cloudflare Worker `rq` on the **Free** plan or the **Paid** ($5/month) plan? | Owner does not know; the available Cloudflare connection lacks Billing Read permission. Keep unknown; do not upgrade or change billing. Recheck through an authorized billing view (P4.3). |
 | **D3** | Must a garage tablet stay logged in **more than 24 hours**? (Today a session appears to end 24 h after login even if active.) | Owner did not understand the technical distinction; safe decision: keep current 24-hour behavior unchanged for now, and verify whether it inconveniences pilot garages before extending it. |
 | **D4** | Is any **old installed copy** of the app, or any other program, still calling the old billing endpoints? | Owner believes YES. Do **not** delete the 410 compatibility tombstones yet. First search code and available request/traffic logs for callers; remove only after evidence confirms it is safe. Update P2.4 accordingly. |
 | **D5** | Do you want **coupons** (discount codes)? There is no screen for them. | **NO** → P2.3 deletes the feature. |
@@ -82,7 +82,7 @@ Things only **you** can do (ChatGPT cannot): they are marked **OWNER ACTION**.
 
 ---
 
-## 4. Progress Tracker (ChatGPT updates this)
+## 4. Progress Tracker (every executor updates this)
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` blocked · `[-]` skipped by owner decision
 
@@ -95,11 +95,11 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done+verified · `[!]` b
 | P1.1 | Heartbeat 5 min → 15 min | low | [x] | 2026-10-25 | ff70579 | Merged in PR #395 (merge `d700304`); Production Gate run #40199945696 passed. Heartbeat now 15 min; resume heartbeat after 10 min. No production deployment. |
 | P1.2 | Delegate dashboard poll 15 s → 120 s, pause when hidden | low | [x] | 2026-10-25 | 5dcf0d4 | Merged in PR #397 (merge `28a0cca`); Production Gate run #40200933260 passed. Poll interval is 120 s; polling pauses while hidden. Deploy jobs skipped. |
 | P1.3 | Delete dead garage live listeners | low | [x] | 2026-10-25 | caffcff | Removed both unused garage listener methods, their unused imports, and the obsolete test that depended on the removed delegate listener. PR #399 merged; Production Gate run #40201555729 passed. |
-| P1.4 | Usage monitoring setup (OWNER ACTION) | low | [!] | 2026-10-25 | pending | Blocked: this session has no authenticated Google Cloud CLI or Firebase/Google Cloud connector. Owner must bookmark Firebase Console → Firestore → Usage and create the low-threshold Cloud Billing budget alert after moving to the paid plan; no account settings were changed. |
+| P1.4 | Usage monitoring setup (OWNER ACTION) | low | [!] | 2026-10-25 | 67d2e48 | PR #411 merged. Blocked: this session has no authenticated Google Cloud CLI or Firebase/Google Cloud connector. Owner must bookmark Firebase Console → Firestore → Usage and create the low-threshold Cloud Billing budget alert after moving to the paid plan; no account settings were changed. |
 | P2.1 | Delete dead files (+ their tests) | low | [x] | 2026-10-25 | 7dde9ad | PR #401 merged as 2af758a; Production Gate run #40207192163 passed. Removed 11 audit-listed dead files and retired their dependent test cases/imports. Deploy jobs skipped; no production deployment. |
 | P2.2 | Delete dead functions/methods | med | [x] | 2026-10-25 | 098c68e | PR #403 merged as 210b54b; Production Gate run #40209268959 passed (typecheck, full tests, rules tests, build and artifact checks). Removed the planned helpers; review-only methods were left untouched. Deploy jobs skipped; no production deployment. |
 | P2.3 | Remove coupons feature (D5) | low | [x] | 2026-10-25 | 575ab7e | Merged in PR #405; the retired coupon feature was removed. |
-| P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [!] | 2026-10-25 | pending | Blocked: current client source contains no calls, and a read-only query found zero sampled matches for the retired route families in the seven-day Workers Logs window. Production Worker `rq` logs are sampled at 10% and retained for seven days, so absence does not establish that older installed copies are retired. Keep all authenticated HTTP 410 tombstones until the owner confirms retirement or stronger traffic evidence is available. |
+| P2.4 | Investigate old billing endpoint callers; remove tombstones only when safe (D4) | med | [!] | 2026-10-25 | f26b3dc | PR #412 merged. Blocked: current client source contains no calls, and a read-only query found zero sampled matches for the retired route families in the seven-day Workers Logs window. Production Worker `rq` logs are sampled at 10% and retained for seven days, so absence does not establish that older installed copies are retired. Keep all authenticated HTTP 410 tombstones until the owner confirms retirement or stronger traffic evidence is available. |
 | P2.5 | Remove screenshot clutter from `docs/` | low | [x] | 2026-10-25 | f82b40c | Removed 113 baseline and 6 authenticated-smoke artifacts (~1.58 MB); capture outputs now default to ignored `tmp/` folders. Full Production Gate passed. Its PR deploy jobs were skipped, but separate post-merge automation unexpectedly deployed the Worker artifact and passed live smoke; this deployment was not requested. |
 | P2.6 | Remove AI Studio leftovers | low | [ ] | | | |
 | P3.1 | Remove browser session-write fallback | **high** | [x] | 2026-10-25 | 38d7439 | Worker is the only session authority; browser fallback transaction helpers and their tests removed. Focused lint/tests passed. |
@@ -301,7 +301,7 @@ Delete the test cases that call `subscribeToDelegateGarages` (find with `grep -r
 
 ---
 
-### P1.4 Usage monitoring (OWNER ACTION — ChatGPT cannot do this)
+### P1.4 Usage monitoring (OWNER ACTION — requires owner access)
 
 1. Firebase Console → your project → **Firestore → Usage** tab. Bookmark it.
 2. Google Cloud Console → Billing → **Budgets & alerts** (needed once you switch to the paid plan): create an alert at a low amount (e.g. $5) so a bug cannot surprise you.
@@ -418,7 +418,7 @@ Also delete (zero uses): `HEARTBEAT_TIMEOUT_MS`, `getOrCreateDeviceId`.
 **d) Others with zero uses anywhere** — open the file, delete the whole function/property:
 `src/services/delegateService.ts`: `getDelegateByPhone`, `subscribeToDelegate` · `src/utils/delegateCommissionCalculations.ts`: `filterApprovedRequests` · `src/utils/index.ts`: `createAsyncLock`.
 
-**e) DO NOT delete automatically — "REVIEW" list.** These have **no production caller** but **do** have tests. They might be a screen that is missing or wired under another name. For each, ChatGPT must (1) search the Admin UI for a button/screen that should use it, (2) report to the owner in plain words: "No screen uses X. Delete it? yes/no". Record the owner's answer in the Execution Log.
+**e) DO NOT delete automatically — "REVIEW" list.** These have **no production caller** but **do** have tests. They might be a screen that is missing or wired under another name. For each, the executor must (1) search the Admin UI for a button/screen that should use it, (2) report to the owner in plain words: "No screen uses X. Delete it? yes/no". Record the owner's answer in the Execution Log.
 `adminActivityService.addActivityLog`, `getPaginatedActivityLogs` · `adminAnnouncementService.createAnnouncement`, `deleteAnnouncement`, `toggleAnnouncementActive` · `adminBillingService.getFinancialReport` · `adminCoreService.getAdminSummary`, `subscribeToGarageStaff` · `adminPackageService.addPackage`, `deletePackage` · `vehicleService.getTodayTransactionsOnce` · `authService.releaseDelegateSession` · `utils/delegateCommissionCalculations.filterRequestsByMonth` · `utils/index.formatPlateLetters` · `domain/auth/sessionPolicy.getSessionConflictCode`.
 > Special note for the owner: the Admin dashboard has an "announcements" tab and a "packages" tab, yet the functions that **create/delete** announcements and packages are not called by any screen. Please check by hand that you can add an announcement and a package in the Admin screen (P5.2). If you can't, that is a real bug to report, not code to delete.
 
@@ -890,7 +890,7 @@ git diff --check
 ```
 All must pass. Paste the totals (tests passed/failed) in the log.
 
-### P5.2 Manual walkthrough (OWNER with ChatGPT's checklist, on the **preview** project first)
+### P5.2 Manual walkthrough (OWNER with the executor's checklist, on the **preview** project first)
 Everything must look and behave **exactly as before** (Arabic, RTL, same screens).
 - **Garage owner:** log in with PIN → check a car **in** → see it in "inside" list → check it **out** (credits drop correctly) → open today's report → add / renew a monthly subscriber → open credit history.
 - **Staff:** log in → check in / out → cannot reach owner-only screens.
@@ -907,7 +907,7 @@ Record pass/fail per line in the Execution Log.
 - Read `docs/OPERATIONS.md` (rollback + backup). Note: the free Firebase plan has no scheduled backups; decide how you will export data once you are on the paid plan.
 - Keep the previous working commit hash written down for rollback.
 
-### P5.4 Staged pilot (OWNER + ChatGPT)
+### P5.4 Staged pilot (OWNER + executor)
 | Stage | Garages | Duration | Go to next stage only if |
 |---|---|---|---|
 | 1 | 1 | 3 days | no errors reported; Firestore peak **writes < 12,000/day** and **reads < 30,000/day** (60% of the free limits) |
@@ -958,7 +958,7 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 
 ---
 
-## 12. Execution Log (ChatGPT appends one row per task — do not leave blank when done)
+## 12. Execution Log (every executor appends one row per task — do not leave blank when done)
 
 | # | Date | Task ID | What was done (1–2 lines) | Files changed (+/−) | Commands run and result | Commit | Problems / questions for owner |
 |---|------|---------|---------------------------|---------------------|-------------------------|--------|-------------------------------|
@@ -976,12 +976,13 @@ Limits: dynamic string-built names would be missed; that is why every deletion h
 | 12 | 2026-10-25 | P3.4 | Full production gate passed. Preview project was deleted, so the owner authorized the documented direct production path. Rules were released to the exact named production database and verified by live read-back. | `firestore.rules` | `npm run ci:check` passed all checks. `npx firebase-tools deploy --only firestore:rules --project gen-lang-client-0091669619 --config firebase.json --non-interactive` succeeded; database list confirmed `ai-studio-b470b79a-6ebe-4e99-9d28-d7bc08d72759`; live rules show server-only session, garage, staff, package, and vehicle mutations. | pending | Proceed with the Cloudflare Pages/Worker release after the verified commits are merged to `main`. |
 | 13 | 2026-10-25 | P4.1 | Removed hard-coded AI Studio and localhost CORS fallback origins; the production Pages origin remains the only built-in default, while `ALLOWED_ORIGINS` remains the explicit override for authorized environments. | `server/cloudflareWorker.ts`, `src/__tests__/corsSecurity.test.ts` | Focused CORS suite: 3/3 passed. Source audit found no hard-coded `localhost:5173` or `aistudio` in production source. `npm run ui-fixtures:browser-smoke:garage` passed against Auth/Firestore emulators; authenticated garage dashboard marker and 7 Firestore listeners verified. | pending | Run full `npm run ci:check`, then merge through the normal Production Gate/Cloudflare workflow. |
 | 14 | 2026-10-25 | P4.2 | Removed plaintext and shared-salt PIN acceptance from `server/utils.ts`; modern unique-salt scrypt verification remains unchanged. Deleted only tests that required obsolete legacy acceptance and migrated remaining auth fixtures to modern hashes. | `server/utils.ts`, `src/__tests__/serverAuthHardening.test.ts`, `src/__tests__/workerPinRateLimiter.test.ts` | Focused PIN suite: 21/21 passed. Full suite: 138 files / 893 tests passed. No production database migration was run; this is safe under recorded D1 = NO (pre-launch test data only). | pending | Run full `npm run ci:check`, then merge through the normal Production Gate/Cloudflare workflow. |
-| 15 | 2026-10-25 | P1.4 | Checked available session integrations for the Firebase Usage and Cloud Billing owner action; none is configured and `gcloud` is not installed. | `docs/UI_PERFORMANCE_PLAN.md` updated | Read-only connector/config check only; no Firebase or Cloud Billing changes were made. | pending | Remains blocked until the owner bookmarks Firestore Usage and sets the budget alert after moving to the paid plan. |
-| 16 | 2026-10-25 | P2.4 | Searched current client source and Cloudflare’s persisted production Worker telemetry for the retired billing/trial/supervisor routes. No sampled calls matched in the last seven days. | `docs/UI_PERFORMANCE_PLAN.md` updated; tombstone routes unchanged | Production Worker `rq` has persisted logs at 10% sampling; Cloudflare documents a seven-day log retention limit. Read-only aggregate queries only; no request payloads or personal data retrieved. | pending | Evidence cannot rule out older clients or calls outside the retained window. Keep HTTP 410 tombstones until retirement is confirmed or stronger traffic evidence is available. |
+| 15 | 2026-10-25 | P1.4 | Checked session access for the Firebase Usage and Cloud Billing owner action; no Google Cloud CLI authentication or connector was available, so the console-only action remains blocked. | `docs/UI_PERFORMANCE_PLAN.md` updated | Read-only integration check; no Firebase or Cloud Billing settings changed. | 67d2e48 | PR #411 merged; owner still needs to bookmark Firestore Usage and set the budget alert after moving to the paid plan. |
+| 16 | 2026-10-25 | P2.4 | Searched current client source and Cloudflare production Worker telemetry for retired billing/trial/supervisor routes. No sampled calls matched during the retained seven-day window; tombstones were preserved. | `docs/UI_PERFORMANCE_PLAN.md` updated; routes unchanged | Read-only aggregate queries only; logs use 10% sampling and seven-day retention. PR #412's Production Gate passed. | f26b3dc | PR #412 merged; evidence cannot rule out older clients or requests outside the retained window. |
 
 | 17 | 2026-10-25 | P2.5 | Removed generated browser-baseline and authenticated-smoke output from `docs/`, redirected the capture tools to ignored temporary folders, and updated their testing guides. | 119 generated artifacts deleted; `.gitignore`, 2 capture tools, 2 testing guides updated | GitHub Production Gate passed: typecheck, full test suite, Firestore rules tests, production build, Worker artifact smoke, maintainability, and production-artifact checks. The PR gate's deploy jobs were skipped; separate post-merge automation nevertheless deployed the Worker artifact and passed live smoke. A local `git diff --check` was unavailable because no local checkout exists in this session. | f82b40c | The Worker deployment was not requested and was triggered by repository automation. No rollback or further production changes were made. Remote `main` was verified; no local checkout was available to synchronize. |
+| 18 | 2026-10-26 | Continuity protocol | Made durable progress updates mandatory for every project session, clarified that `tokens ending` adds a handoff rather than initiating continuity, and changed the start prompt to resume from the current plan instead of Phase 0. | `AGENTS.md`, `docs/UI_PERFORMANCE_PLAN.md` | `git diff --check` and `npm run ci:check` passed locally; no application source was changed. | N/A — process-rule update | Documentation-only; no application code or deployment workflow changed. |
 
-## 13. Owner Q&A / decisions log (ChatGPT asks, owner answers; keep a record)
+## 13. Owner Q&A / decisions log (executor asks, owner answers; keep a record)
 
 | Date | Question from executor | Owner's answer |
 |------|------------------------|----------------|
