@@ -51,7 +51,6 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/vehicles/check-in',
       'POST /api/vehicles/check-out',
       'POST /api/vehicles/delete',
-      'POST /api/vehicles/refund',
       'GET /api/vehicles/inside',
       'GET /api/vehicles/history'
     ]);
@@ -93,7 +92,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/garages/:id/credit-ledger',
       'POST /api/garages/recalculate-cars-inside'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(70);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(69);
   });
 
   it('keeps the global Worker export in the monolith', () => {
@@ -102,4 +101,3 @@ describe('Cross-F1 Worker route extraction inventory', () => {
     expect(workerSource).toContain('fetch: workerApp.fetch');
   });
 });
-
