@@ -572,7 +572,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
   }
 });
 
-// Both aliases share one retry namespace; the fingerprint distinguishes the requested delete/refund operation.
+// Vehicle correction is deletion-only; refunds are no longer supported.
 const VEHICLE_DELETE_REFUND_IDEMPOTENCY_SCOPE = '/api/vehicles/delete-refund';
 
 // Route 3 & 4: POST /api/vehicles/delete & POST /api/vehicles/refund
@@ -606,12 +606,9 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const requestedRefund = refundAmount === undefined || refundAmount === null || refundAmount === ''
-      ? 0
-      : parseMoneyAmount(refundAmount);
-    if (requestedRefund === null) {
-      return c.json({ success: false, error: 'INVALID_REFUND_AMOUNT' }, 400);
-    }
+    const requestedRefund = refundAmount === undefined || refundAmount === null || refundAmount === '' ? 0 : parseMoneyAmount(refundAmount);
+    if (requestedRefund === null) return c.json({ success: false, error: 'INVALID_REFUND_AMOUNT' }, 400);
+    if (requestedRefund > 0) return c.json({ success: false, error: 'REFUNDS_NOT_SUPPORTED' }, 410);
     const operation = requestedRefund > 0 ? 'refund' : 'delete';
     const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
     const requestFingerprint = createRequestFingerprint({
@@ -842,7 +839,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
 };
 
 app.post('/api/vehicles/delete', requireWorkerAuth, handleVehicleDeleteOrRefund);
-app.post('/api/vehicles/refund', requireWorkerAuth, handleVehicleDeleteOrRefund);
+
 
 // Route 5: GET /api/vehicles/inside
 app.get('/api/vehicles/inside', requireWorkerAuth, async (c) => {
