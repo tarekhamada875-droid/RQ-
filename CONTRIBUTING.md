@@ -2,7 +2,7 @@
 
 Read `docs/PROJECT.md`, `docs/SECURITY.md`, and `docs/RELEASES.md` before making a substantial change.
 
-For implementation and launch-readiness work before production, follow only `docs/UI_PERFORMANCE_PLAN.md`, the Pre-Production and Pilot Readiness Plan. Do not resume the skipped Reliability and Scale or legacy-data-cleanup workstreams, and do not start speculative UI optimization.
+The previous implementation plan was removed at the owner’s request. Do not start new pre-production or launch-readiness implementation until the owner answers the production questionnaire and the replacement `docs/LAST-PLAN-BEFORE-PRODUCTION.md` is created. Do not resume the skipped Reliability and Scale or legacy-data-cleanup workstreams, and do not start speculative UI optimization.
 
 Start from synchronized `main` with a clean working tree. Create one short-lived branch for one bounded change. Add or update a focused regression test before changing sensitive behavior. Preserve current UI/UX unless the task explicitly approves a UI change.
 
@@ -21,7 +21,7 @@ git diff --check
 
 ## Documentation governance
 
-Keep the repository’s documentation small and canonical. Use `docs/PROJECT.md` for product and architecture, `docs/UI_PERFORMANCE_PLAN.md` as the only active implementation plan, `docs/SECURITY.md` for security, `docs/RELEASES.md` for release procedure, `docs/OPERATIONS.md` for operations, and `docs/testing/` for test procedures and historical evidence. Do not treat reports or baselines as independent task plans. Do not add new handoff, knowledge, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not add root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`; consolidate durable information into the correct canonical document instead.
+Keep the repository’s documentation small and canonical. Use `docs/PROJECT.md` for product and architecture, `docs/SECURITY.md` for security, `docs/RELEASES.md` for release procedure, `docs/OPERATIONS.md` for operations, and `docs/testing/` for test procedures and historical evidence. The replacement implementation plan will be `docs/LAST-PLAN-BEFORE-PRODUCTION.md`, created only after the owner answers the questionnaire; until then there is no active implementation plan. Do not treat reports or baselines as independent task plans. Do not add new handoff, knowledge, working-agreement, roadmap, release-history, agent-instruction, or duplicate security files. Do not add root-level Markdown files beyond `README.md`, `AGENTS.md`, and `CONTRIBUTING.md`; consolidate durable information into the correct canonical document instead.
 
 ## Pull requests and reporting
 
