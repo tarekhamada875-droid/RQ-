@@ -33,7 +33,7 @@ Use synthetic emulator data locally. Never commit `.env` files, service-account 
 ## Canonical documents
 
 - [`docs/PROJECT.md`](docs/PROJECT.md) — current product model and architecture
-- [`docs/UI_PERFORMANCE_PLAN.md`](docs/UI_PERFORMANCE_PLAN.md) — the single pre-production and pilot readiness plan
+- **Implementation plan:** temporarily absent by owner request. Do not start new pre-production work until the owner answers the production questionnaire; the replacement will be `docs/LAST-PLAN-BEFORE-PRODUCTION.md`.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — security and authorization invariants
 - [`docs/RELEASES.md`](docs/RELEASES.md) — branch, PR, validation, and deployment workflow
 - [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — monitoring, traces, backup, restore, and rollback

@@ -36,4 +36,4 @@ The 10,000-operation model used 949 report queries. Modeled report reads decreas
 
 ## Current status: historical evidence only
 
-This report preserves the completed implementation and synthetic validation above. At the time it was written, deployment and a ten-garage load/cost test were listed as possible separate follow-ups. The owner later marked the Reliability and Scale workstream skipped. **Do not run that load/cost test or resume the skipped workstream from this report.** Current implementation work is governed only by `docs/UI_PERFORMANCE_PLAN.md`.
+This report preserves the completed implementation and synthetic validation above. At the time it was written, deployment and a ten-garage load/cost test were listed as possible separate follow-ups. The owner later marked the Reliability and Scale workstream skipped. **Do not run that load/cost test or resume the skipped workstream from this report.** This historical report is evidence only and does not authorize implementation work. The owner-approved replacement plan will be `docs/LAST-PLAN-BEFORE-PRODUCTION.md` after questionnaire answers are reconciled.
