@@ -80,7 +80,7 @@ Other explicit choices that should be implemented once their dependent rules are
 
 ## 5. Implementation plan and ordering
 
-**No feature implementation is eligible until Blockers B1–B9 are resolved or explicitly marked as deferred with an approved safe rule.** Tasks must remain one bounded change at a time. Do not start a later phase while its prerequisite decision is still open.
+The owner has authorized implementation to begin. Requirements that are explicit and independent of unresolved decisions may be implemented as isolated, tested changes. **Do not implement a feature or behavior that depends on Blockers B1–B9 until they are resolved or explicitly deferred with an approved safe rule.** Keep each change bounded; do not treat this authorization as approval to guess about pricing, financial reporting, roles, deletion/retention, production data, or account configuration.
 
 ### Phase 0 — Resolve product rules and establish one contract
 
@@ -168,6 +168,7 @@ Other explicit choices that should be implemented once their dependent rules are
 | Item | Status | Next action |
 |---|---|---|
 | Capture all 91 questionnaire answers | Complete | Owner answers recorded above; no question was silently omitted. |
+| Existing-plate checkout prompt | Complete on feature branch | If a typed plate matches an active vehicle already loaded for this garage, open that vehicle’s checkout flow instead of only showing a duplicate-check-in error; backed by a focused test. |
 | Resolve Section 4 blockers | **Blocked** | Owner chooses or clarifies the listed conflicts. |
 | Update canonical product contract | Not started | Begin only after blocker decisions are recorded. |
 | Phases 1–7 implementation | Not started | Start one bounded plan item at a time after Phase 0 exits. |
@@ -175,4 +176,5 @@ Other explicit choices that should be implemented once their dependent rules are
 
 ## 7. Execution log
 
+- **2026-10-28 — Safe implementation started at the owner’s request.** Implemented the isolated existing-plate checkout prompt in `src/hooks/useVehicleOperations.ts` and added `src/hooks/useVehicleOperations.existingVehicleCheckout.test.tsx`. The focused test and TypeScript check passed. No pricing, accounting, authorization policy, deletion/retention, production data, cloud account, or deployment behavior was changed. **Next:** continue only with requirements that do not depend on unresolved blockers; resolve Section 4 before implementing dependent behavior.
 - **2026-10-27 — Plan drafted from the owner’s uploaded answers.** Matched all Questions 1–91, including custom notes and deleted-question requests. Inspected current product/security documents and the vehicle, subscriber, credit-ledger, financial-reporting, and authorization decision modules to identify conflicts and implementation touchpoints. No application code or production data was changed. **Next eligible task:** resolve Section 4 blockers, then update `docs/PROJECT.md` before implementation.

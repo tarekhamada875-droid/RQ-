@@ -75,8 +75,11 @@ export function useVehicleOperations({
     
     const existing = vehicles.find(v => v.plateNumberRaw === raw);
     if (existing) {
-      showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
       setShowCheckInModal(false);
+      setSelectedVehicle(existing);
+      setShowCheckOutModal(true);
+      setNewPlateNumber('');
+      showToast('السيارة موجودة بالفعل بالداخل - تم فتح نافذة المغادرة', 'info');
       return;
     }
 
