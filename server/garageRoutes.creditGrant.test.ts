@@ -100,7 +100,7 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
     checkIdempotencyInTransaction: async () => ({ isDuplicate: false }),
     saveEntityPinInTransaction: vi.fn(),
     maintainedGarageSummaryRef: vi.fn(),
-    maintainedAdminSummaryRef: vi.fn(),
+    maintainedAdminSummaryRef: vi.fn(() => ({ set: vi.fn(async () => undefined) })),
     MAINTAINED_SUMMARY_VERSION: 1,
     writeMaintainedAdminDelta: vi.fn(),
     storeIdempotencyInTransaction: vi.fn(),

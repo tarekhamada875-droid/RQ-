@@ -1240,6 +1240,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const paymentReferenceMarkerId = encodeURIComponent(`${garageId}:${paymentReference}`).slice(0, 150);
     const paymentReferenceMarkerRef = getAdminDb().doc(`payment_reference_markers/${paymentReferenceMarkerId}`);
     let granted: any = null;
+    let wasNewGrant = false;
     await getAdminDb().runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
@@ -1405,7 +1406,13 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
       t.set(paymentReferenceMarkerRef, { paymentReference, entryId: entry.value.entryId, garageId, idempotencyKey, result: granted, createdAt: new Date() });
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
+      wasNewGrant = true;
     });
+    // Mark admin summary stale so /api/admin/summary recomputes totalAdminRevenue.
+    // Skip on idempotent replays (granted was loaded from cache, no new write).
+    if (wasNewGrant) {
+      await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
+    }
     return c.json({ success: true, data: granted });
   } catch (error: any) {
     if (error?.message === 'PAYMENT_REFERENCE_ALREADY_USED') {
