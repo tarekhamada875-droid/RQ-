@@ -184,17 +184,17 @@ export const AdminGarageModals = memo(({
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                    {t('رمز الدخول الجديد (8 أرقام):')}
+                    {t('رمز الدخول الجديد (5 أرقام):')}
                   </label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]{8}"
-                    minLength={8}
-                    maxLength={8}
+                    pattern="[0-9]{5}"
+                    minLength={5}
+                    maxLength={5}
                     value={garagePinInput}
                     onChange={(e) => {
-                      setGaragePinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8));
+                      setGaragePinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5));
                       setPinError('');
                     }}
                     placeholder="••••"
@@ -212,7 +212,7 @@ export const AdminGarageModals = memo(({
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={isUpdatingGaragePin || !/^\d{8}$/.test(garagePinInput)}
+                  disabled={isUpdatingGaragePin || !/^\d{5}$/.test(garagePinInput)}
                   className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   {isUpdatingGaragePin ? (

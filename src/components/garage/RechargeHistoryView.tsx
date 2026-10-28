@@ -32,10 +32,8 @@ const formatDate = (timestamp: unknown) => safeDate(timestamp).toLocaleDateStrin
   day: 'numeric',
 });
 
-const formatTime = (timestamp: unknown) => safeDate(timestamp).toLocaleTimeString('ar-EG', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
+// Time display is hidden from user-facing screens per Q89D.
+// Server timestamps remain authoritative internally for billing and audit.
 
 export const RechargeHistoryView = memo(({ garage, onClose, showToast }: RechargeHistoryViewProps) => {
   const [grants, setGrants] = useState<CreditGrantRecord[]>([]);
@@ -150,8 +148,6 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast }: Recharg
                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300">الرصيد بعد الشحن: <span className="font-mono text-slate-900 dark:text-slate-100">{balanceAfter.toLocaleString('ar-EG')}</span></p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-400 dark:text-slate-500">
                       <span>{formatDate(timestamp)}</span>
-                      <span aria-hidden="true">•</span>
-                      <span>{formatTime(timestamp)}</span>
                     </div>
                   </div>
                 </article>

@@ -1153,7 +1153,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const packageId = sanitized.packageId ? validateId(sanitized.packageId, 'packageId', true) : null;
     if (packageId === null && sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     if (packageId !== null && sanitized.amount !== undefined) return c.json({ success: false, error: 'CHOOSE_TEMPLATE_OR_AMOUNT' }, 400);
-    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 1, max: 1_000_000, integerOnly: true });
+    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 50, max: 2_000, integerOnly: true });
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
     const paymentReferenceMarkerId = encodeURIComponent(paymentReference).slice(0, 150);
@@ -1177,7 +1177,8 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const garage = garageSnap.data() || {};
       if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
       const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
-      const commissionDelegateId = isFirstPaidGrant && typeof garage.createdByDelegateId === 'string'
+      const isFirstQualifyingGrant = !garage.firstQualifyingGrantAt && paymentAmountEgp >= 500;
+      const commissionDelegateId = isFirstQualifyingGrant && typeof garage.createdByDelegateId === 'string'
         ? garage.createdByDelegateId.trim()
         : '';
       const commissionDelegateRef = commissionDelegateId
@@ -1205,9 +1206,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         throw new Error('INVALID_DELEGATE_COMMISSION_BALANCE');
       }
       const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
-      const referralMarkerRef = isFirstPaidGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
+      const referralMarkerRef = isFirstQualifyingGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
       const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
-      const referrerRef = isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
+      const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
       const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
       let amount: number;
       let template: any = null;
@@ -1221,7 +1222,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         amount = validatedTemplate.creditQuantity;
         if (validatedTemplate.finalPrice !== amount) throw new Error('CREDIT_TEMPLATE_PRICE_MISMATCH');
       } else {
-        amount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
+        amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
       }
       if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
       const balance = {
@@ -1236,7 +1237,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       let referralAward: any = null;
       let referralLedger: any = null;
       let referralTransition: any = null;
-      if (isFirstPaidGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
+      if (isFirstQualifyingGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
         const referrer = referrerSnap.data() || {};
         const rewardIdempotencyKey = `first_paid_grant:${garageId}`;
         referralTransition = awardReferralCredits({
@@ -1260,7 +1261,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         referralAward = { garageId: referrerGarageId, amount: 20, bucket: 'referral', entryId: referralLedger.entryId };
       }
       const now = new Date();
-      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}) }, { merge: true });
+      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}), ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}) }, { merge: true });
       t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentAmountEgp, paymentReference });
       recordDomainEventInTransaction(t, getAdminDb(), {
         garageId,
@@ -1300,7 +1301,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         t.set(getAdminDb().doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
         t.set(getAdminDb().collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
       }
-      if (isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
+      if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {
           referredGarageId: garageId,
           referrerGarageId: referrerGarageId || null,

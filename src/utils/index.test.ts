@@ -133,11 +133,11 @@ describe('Security & Helper Utils', () => {
     expect(isSessionActive(undefined)).toBe(false);
   });
 
-  it('generates a unique 8-digit safe PIN avoiding collisions', () => {
-    const existingPins = new Set(['11111111', '22222222', '33333333']);
+  it('generates a unique 5-digit safe PIN avoiding collisions', () => {
+    const existingPins = new Set(['11111', '22222', '33333']);
     const pin = generateSafePin(existingPins);
 
-    expect(pin).toHaveLength(8);
+    expect(pin).toHaveLength(5);
     expect(existingPins.has(pin)).toBe(false);
   });
 

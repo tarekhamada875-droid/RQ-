@@ -49,6 +49,6 @@ describe('AdminAddGarageModal accessible names', () => {
     expect(props.onClose).toHaveBeenCalledOnce();
 
     fireEvent.click(screen.getByRole('button', { name: 'توليد رقم سري عشوائي' }));
-    expect(props.setPinInput).toHaveBeenCalledWith(expect.stringMatching(/^\d{8}$/));
+    expect(props.setPinInput).toHaveBeenCalledWith(expect.stringMatching(/^\d{5}$/));
   });
 });
