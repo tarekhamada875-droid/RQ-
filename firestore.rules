@@ -545,6 +545,41 @@ service cloud.firestore {
       allow read, create, update, delete: if false; // Server-only immutable financial audit ledger
     }
 
+    // === SERVER-ONLY COLLECTIONS (explicit deny for documentation) ===
+    // These collections are written exclusively by the Worker via Admin SDK.
+    // The global deny-all above also protects them, but explicit rules document
+    // the intent and prevent accidental exposure if a permissive rule is added later.
+    match /credit_ledger/{entryId} {
+      allow read, write: if false;
+    }
+    match /payment_reference_markers/{markerId} {
+      allow read, write: if false;
+    }
+    match /idempotency_records/{recordId} {
+      allow read, write: if false;
+    }
+    match /session_index/{sessionHash} {
+      allow read, write: if false;
+    }
+    match /rate_limits/{rateLimitId} {
+      allow read, write: if false;
+    }
+    match /rate_limits_{environment}_v2/{rateLimitId} {
+      allow read, write: if false;
+    }
+    match /credit_referral_awards/{garageId} {
+      allow read, write: if false;
+    }
+    match /settlements/{settlementId} {
+      allow read, write: if false;
+    }
+    match /delegate_garage_creation_quota_locks/{lockId} {
+      allow read, write: if false;
+    }
+    match /garage_deletion_jobs/{jobId} {
+      allow read, write: if false;
+    }
+
     match /admin_rate_limits/{adminUid}/operations/{operationId} {
       allow get: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create';
       allow create, update: if isAdmin() && adminUid == request.auth.uid && operationId == 'garage_create' &&
