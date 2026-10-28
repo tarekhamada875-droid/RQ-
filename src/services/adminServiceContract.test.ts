@@ -36,20 +36,13 @@ describe('adminService facade contract', () => {
 
   it('preserves the complete public method key set', () => {
     expect(Object.keys(adminService).sort()).toEqual([
-      'addPackage',
       'addStaff',
       'addSubscriber',
       'adminGrantGarageCredits',
-      'createAnnouncement',
-      'deleteAnnouncement',
-      'deletePackage',
       'deleteSubscriber',
       'getActivityLogsSince',
-      'getAdminSummary',
-      'getFinancialReport',
       'getGarageCreditLedger',
       'getMoreSubscribers',
-      'getPaginatedActivityLogs',
       'getStaffByGarageOnce',
       'getSubscriberByPlateOnce',
       'getSystemConfig',
@@ -63,7 +56,6 @@ describe('adminService facade contract', () => {
       'subscribeToPackages',
       'subscribeToSubscribers',
       'subscribeToSystemConfig',
-      'toggleAnnouncementActive',
       'updateAdminPin',
       'updateStaff',
       'updateSubscriber',

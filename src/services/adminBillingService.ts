@@ -1,5 +1,4 @@
 import { apiFetch } from '../api/apiClient';
-import type { FinancialReportData, FinancialReportFilters } from './adminServiceTypes';
 
 export const adminBillingService = {
   adminGrantGarageCredits: async (garageId: string, command: { packageId?: string; amount?: number; paymentAmountEgp: number; paymentReference: string; reason: string; paymentConfirmed: boolean; idempotencyKey: string }): Promise<any> => {
@@ -15,12 +14,5 @@ export const adminBillingService = {
     return Array.isArray(response?.data) ? response.data : [];
   },
 
-  getFinancialReport: async (filters: FinancialReportFilters): Promise<FinancialReportData> => {
-    const params = new URLSearchParams({ start: filters.start, end: filters.end });
-    const response = await apiFetch<{ data?: { report?: FinancialReportData } }>(`/api/reports/financial?${params.toString()}`);
-    if (!response.data?.report) throw new Error('REPORT_DATA_UNAVAILABLE');
-    return response.data.report;
-  },
-
-
+  // getFinancialReport: removed. Dead code — no admin UI calls this.
 };

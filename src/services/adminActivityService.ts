@@ -1,5 +1,5 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, onSnapshot, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { safeDate } from '../utils';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
@@ -36,25 +36,8 @@ export const adminActivityService = {
   },
 
 
-  getPaginatedActivityLogs: async (pageSize = 20, lastDocRef?: any) => {
-    try {
-      let q = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(pageSize));
-      if (lastDocRef) {
-        q = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), startAfter(lastDocRef), limit(pageSize));
-      }
-      const snap = await getDocs(q);
-      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog));
-      return { 
-        logs, 
-        lastDoc: snap.docs[snap.docs.length - 1] || null,
-        hasMore: snap.docs.length === pageSize
-      };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'activity_logs');
-      throw error;
-    }
-  },
-
+  // getPaginatedActivityLogs: removed. Dead code — nobody calls this.
+  // Activity logs are loaded via the Worker API and subscribeToGarageRechargeLogs.
 
   subscribeToGarageRechargeLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/recharge_logs`);

@@ -2,13 +2,10 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Staff } from '../types';
-import type { AdminSummary } from './adminServiceTypes';
 
 export const adminCoreService = {
-  getAdminSummary: async (): Promise<AdminSummary> => {
-    const response = await apiFetch<{ summary: AdminSummary }>('/api/admin/summary');
-    return response.summary;
-  },
+  // getAdminSummary: removed. Dead code — nobody calls this.
+  // The admin overview tab doesn't display summary stats.
 
   // Staff
 
