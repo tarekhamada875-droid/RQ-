@@ -18,10 +18,11 @@ export interface RouteDeps {
   maintainedSummaryVersion: number;
 }
 
-const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor'] as const;
+const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber'] as const;
 
 const DEFAULT_SYSTEM_CONFIG = {
-  adminColor: '#10b981'
+  adminColor: '#10b981',
+  paymentWalletNumber: ''
 };
 
 function projectSystemConfig(config: Record<string, any>): Record<string, any> {
@@ -89,8 +90,14 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       updatedAt: new Date()
     };
 
-    if (body.walletNumber !== undefined || body.subscriptionPrices !== undefined || body.defaultTrialDays !== undefined || body.monthlySubscribersFlatFee !== undefined || body.monthlySubscribersSurchargePercent !== undefined) {
+    if (body.subscriptionPrices !== undefined || body.defaultTrialDays !== undefined || body.monthlySubscribersFlatFee !== undefined || body.monthlySubscribersSurchargePercent !== undefined) {
       throw new ValidationError('Retired configuration field', 'RETIRED_CONFIG_FIELD', 400);
+    }
+    if (body.paymentWalletNumber !== undefined) {
+      if (typeof body.paymentWalletNumber !== 'string' || body.paymentWalletNumber.length > 120) {
+        throw new ValidationError('Invalid paymentWalletNumber', 'INVALID_PAYMENT_WALLET_NUMBER', 400);
+      }
+      updatePayload.paymentWalletNumber = body.paymentWalletNumber.trim();
     }
     if (body.referralFeePerRenewal !== undefined) {
       updatePayload.referralFeePerRenewal = validateNumber(body.referralFeePerRenewal, 'referralFeePerRenewal', { min: 0 });

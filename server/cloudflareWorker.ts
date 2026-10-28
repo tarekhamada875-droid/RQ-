@@ -1345,6 +1345,7 @@ registerFinancialRoutes(workerApp, {
 // 10. Garage Management & System Hardening (CF8)
 registerGarageRoutes(workerApp, {
   getAdminDb: () => adminDb,
+  getAdminAuth: () => adminAuth,
   requireWorkerAuth,
   enforceWorkerFinancialRateLimit,
   canSubmitGarageApplication,

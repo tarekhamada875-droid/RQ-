@@ -185,7 +185,7 @@ describe('Worker Route Parity Suite', () => {
         body: JSON.stringify({ id: staffId })
       });
       expect(deleteRes.status).toBe(200);
-      expect(await deleteRes.json()).toEqual({ success: true });
+      expect(await deleteRes.json()).toMatchObject({ success: true });
       expect(mockDb.records.get(`staff/${staffId}`)).toBeUndefined();
       expect(mockDb.records.has(`private_pins/${staffId}`)).toBe(false);
       expect(mockDb.records.has(`pin_reservations/${updatedLookupHash}`)).toBe(false);

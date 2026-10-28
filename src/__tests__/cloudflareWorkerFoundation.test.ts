@@ -82,7 +82,8 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       const body = await res.json() as any;
       expect(body.success).toBe(true);
       expect(body.config).toEqual({
-        adminColor: '#123456'
+        adminColor: '#123456',
+        paymentWalletNumber: ''
       });
     }
   });
@@ -98,6 +99,7 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
     expect(body.success).toBe(true);
     expect(body.config.adminColor).toBe('#10b981');
     expect(body.config.walletNumber).toBeUndefined();
+    expect(body.config.paymentWalletNumber).toBe('');
     expect(body.config.subscriptionPrices).toBeUndefined();
   });
 

@@ -234,6 +234,7 @@ export interface SystemConfig {
   isMaintenanceMode?: boolean;
   maintenanceMessage?: string;
   adminColor?: string; // Persisted admin accent/shimmer color
+  paymentWalletNumber?: string; // Wallet number shown to garage owners when credits are exhausted
   updatedAt?: any;
 }
 
