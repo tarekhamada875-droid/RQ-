@@ -396,28 +396,8 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
-  describe('5. Admin Announcements & Packages', () => {
-    it('manages announcements and packages for admin only', async () => {
-      // Announcements
-      const annRes = await call('/api/admin/announcements/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ title: 'تحديث هام', message: 'مرحبا بالجميع', isActive: true })
-      });
-      expect(annRes.status).toBe(200);
-      const annId = (await annRes.json()).id;
-
-      const toggleRes = await call('/api/admin/announcements/toggle', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: annId, isActive: false })
-      });
-      expect(toggleRes.status).toBe(200);
-
-      const deleteAnn = await call('/api/admin/announcements/delete', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: annId })
-      });
-      expect(deleteAnn.status).toBe(200);
-
+  describe('5. Admin Packages', () => {
+    it('manages packages for admin only', async () => {
       // Packages
       const legacyPkgRes = await call('/api/admin/packages/create', tokens.admin, {
         method: 'POST',

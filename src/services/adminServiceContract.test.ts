@@ -47,7 +47,6 @@ describe('adminService facade contract', () => {
       'getSubscriberByPlateOnce',
       'getSystemConfig',
       'getSystemLogsByPlateOnce',
-      'onAnnouncementsChange',
       'removeStaff',
       'renewSubscriber',
       'subscribeToAdminPin',

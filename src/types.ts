@@ -176,20 +176,6 @@ export interface Vehicle {
   isSubscriber?: boolean;
 }
 
-
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  target: 'all' | 'specific';
-  targetGarageId?: string | null;
-  targetGarageName?: string | null;
-  priority: 'normal' | 'important' | 'urgent';
-  isActive: boolean;
-  createdAt: any;
-  authorName?: string;
-}
-
 export interface SystemConfig {
   id?: string;
   supportPhone?: string;

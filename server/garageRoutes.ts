@@ -1116,57 +1116,8 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 });
 
 // Admin Announcements Routes
-app.post('/api/admin/announcements/create', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+// Announcements endpoints removed — feature retired by owner.
 
-    const body = await c.req.json().catch(() => ({}));
-    const data = { ...body, createdAt: new Date() };
-    const docRef = await getAdminDb().collection('announcements').add(data);
-    return c.json({ success: true, id: docRef.id });
-  } catch (e: any) {
-    console.error('[Worker Announcements] Error in create:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-app.post('/api/admin/announcements/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const { id } = body;
-    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await getAdminDb().collection('announcements').doc(id).delete();
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Announcements] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
-
-app.post('/api/admin/announcements/toggle', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const { id, isActive } = body;
-    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await getAdminDb().collection('announcements').doc(id).update({ isActive: Boolean(isActive) });
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Announcements] Error in toggle:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
 
 // Admin Packages Routes
 app.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {

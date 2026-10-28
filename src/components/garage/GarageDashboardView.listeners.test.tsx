@@ -226,7 +226,6 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     unmount();
     expect(activeCount(rechargeListeners)).toBe(0);
     expect(activeCount(subscriberListeners)).toBe(0);
-    expect(announcementUnsubscribe).toHaveBeenCalledOnce();
   });
 
   it('counts only subscribers expiring today through three days from now using the Cairo business day', async () => {

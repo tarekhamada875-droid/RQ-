@@ -322,10 +322,7 @@ app.get('/api/admin/summary', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
-    const [maintainedAdminSnap, announcementsSnap] = await Promise.all([
-      maintainedAdminSummaryRef().get(),
-      getAdminDb().collection('announcements').where('isActive', '==', true).get()
-    ]);
+    const maintainedAdminSnap = await maintainedAdminSummaryRef().get();
     const maintainedAdmin = maintainedAdminSnap.exists ? maintainedAdminSnap.data() || {} : null;
     if (isUsableMaintainedSummary(maintainedAdmin, ['totalGarages', 'activeGarages', 'lockedGarages', 'totalDelegates', 'totalAdminRevenue'])) {
       c.header('X-Summary-Source', 'maintained_summary');
@@ -337,7 +334,6 @@ app.get('/api/admin/summary', requireWorkerAuth, async (c) => {
           lockedGarages: Number(maintainedAdmin.lockedGarages || 0),
           totalDelegates: Number(maintainedAdmin.totalDelegates || 0),
           totalAdminRevenue: Number(maintainedAdmin.totalAdminRevenue || 0),
-          activeAnnouncements: announcementsSnap.size,
           timestamp: new Date().toISOString()
         }
       });
@@ -382,7 +378,6 @@ app.get('/api/admin/summary', requireWorkerAuth, async (c) => {
         lockedGarages,
         totalDelegates: delegatesSnap.size,
         totalAdminRevenue,
-        activeAnnouncements: announcementsSnap.size,
         timestamp: new Date().toISOString()
       }
     });

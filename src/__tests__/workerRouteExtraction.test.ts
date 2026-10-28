@@ -83,16 +83,13 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/delegates/update',
       'POST /api/delegates/delete',
       'POST /api/people/update-pin',
-      'POST /api/admin/announcements/create',
-      'POST /api/admin/announcements/delete',
-      'POST /api/admin/announcements/toggle',
       'POST /api/admin/packages/create',
       'POST /api/admin/packages/delete',
       'POST /api/garages/:id/credit-grants',
       'GET /api/garages/:id/credit-ledger',
       'POST /api/garages/recalculate-cars-inside'
     ]);
-    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(69);
+    expect(registrations(workerSource).length + registrations(readRoutesSource).length + registrations(vehicleRoutesSource).length + registrations(subscriberRoutesSource).length + registrations(financialRoutesSource).length + registrations(garageRoutesSource).length).toBe(66);
   });
 
   it('keeps the global Worker export in the monolith', () => {

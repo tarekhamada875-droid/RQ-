@@ -483,11 +483,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /announcements/{announcementId} {
-      allow read: if isAdmin() || isSupervisor() || isGarageOwnerOrStaff();
-      allow create, update, delete: if false; // Server-only via Admin SDK
-    }
-
     match /system_config/{configId} {
       allow read: if false; // Browser clients must use the Worker field projection
       allow create, update: if false; // Worker only: /api/admin/update-system-config
