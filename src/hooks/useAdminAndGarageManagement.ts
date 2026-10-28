@@ -141,6 +141,8 @@ export function useAdminAndGarageManagement({
           err?.includes('نشط حالياً على جهاز آخر')
         ) {
           showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+        } else if (err === 'RATE_LIMIT_EXCEEDED' || err === 'RATE_LIMITER_UNAVAILABLE') {
+          showToast('محاولات كثيرة خاطئة. انتظر دقيقة ثم حاول مرة أخرى', 'error');
         } else if (err === 'PIN_NOT_UNIQUE') {
           showToast('رقم السر مكرر؛ برجاء مراجعة الإدارة', 'error');
         } else if (err && err !== 'بيانات الدخول غير صحيحة' && err !== 'INVALID_PIN' && err !== 'تعذر الاتصال بخادم التحقق') {
@@ -300,7 +302,10 @@ export function useAdminAndGarageManagement({
     } catch (err: any) {
       console.error('Login critical error:', err);
       const errMsg = err?.message || String(err);
-      if (errMsg.includes('permission') || errMsg.includes('Permission')) {
+      const errCode = err?.code || '';
+      if (errCode === 'RATE_LIMIT_EXCEEDED' || errCode === 'RATE_LIMITER_UNAVAILABLE' || errMsg.includes('RATE_LIMIT')) {
+        showToast('محاولات كثيرة خاطئة. انتظر دقيقة ثم حاول مرة أخرى', 'error');
+      } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
         showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
       } else {
         showToast('تعذر تسجيل الدخول. يرجى المحاولة مرة أخرى', 'error');
@@ -316,7 +321,7 @@ export function useAdminAndGarageManagement({
       return;
     }
     const cleanPin = normalizeDigits(pin || '').replace(/\D/g, '');
-    if (!cleanPin || cleanPin.length < 4) {
+    if (!cleanPin || cleanPin.length < 5) {
       showToast('الرقم السري غير صحيح', 'error');
       return;
     }
@@ -353,6 +358,8 @@ export function useAdminAndGarageManagement({
           err?.includes('نشط حالياً على جهاز آخر')
         ) {
           showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
+        } else if (err === 'RATE_LIMIT_EXCEEDED' || err === 'RATE_LIMITER_UNAVAILABLE') {
+          showToast('محاولات كثيرة خاطئة. انتظر دقيقة ثم حاول مرة أخرى', 'error');
         } else if (err === 'PIN_NOT_UNIQUE') {
           showToast('رمز الدخول غير صالح حالياً، يرجى مراجعة الإدارة', 'error');
         } else if (err && err !== 'بيانات الدخول غير صحيحة' && err !== 'INVALID_PIN' && err !== 'تعذر الاتصال بخادم التحقق') {
