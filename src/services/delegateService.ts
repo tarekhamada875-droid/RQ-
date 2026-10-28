@@ -4,14 +4,12 @@ import {
   collection, 
   query, 
   where, 
-  onSnapshot, 
   getDocs, 
   orderBy, 
   limit,
 } from 'firebase/firestore';
 import type { Delegate, Garage, ActivityLog } from '../types';
 import { safeDate } from '../utils';
-import { listenerTracker } from '../utils/listenerTracker';
 
 export interface DelegateDashboardData {
   delegate: Delegate;
@@ -106,21 +104,9 @@ export const delegateService = {
     }
   },
 
-  subscribeToDelegates: (callback: (delegates: Delegate[]) => void) => {
-    const trackerUnsub = listenerTracker.register('delegates');
-    const q = query(collection(db, 'delegates'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const delegates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Delegate));
-      callback(delegates);
-    }, (err) => {
-      console.warn('[delegateService] subscribeToDelegates listener error:', err);
-      callback([]);
-    });
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
+  subscribeToDelegates: (_callback: (delegates: Delegate[]) => void) => {
+    // Removed: dead code. Nobody calls this. The admin uses getAdminDelegatesPage (paginated API).
+    return () => {};
   },
 
   getAdminDelegatesPage: async (pageSize = 50, lastDocRef: string | null = null): Promise<DelegatePage> => {

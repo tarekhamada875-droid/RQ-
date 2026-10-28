@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Garage, Vehicle, Staff, Supervisor } from '../types';
-import { firestoreService } from '../services';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -201,14 +200,12 @@ export function useGarageApp() {
     useAppStore.getState().setDelegates(delegates);
   }, [delegates]);
 
-  // Admin PIN Sync (only active during admin dashboard sessions)
-  useEffect(() => {
-    if (!user || (!view.startsWith('admin_') && view !== 'admin_dashboard')) return;
-    const unsub = firestoreService.subscribeToAdminPin((pin) => {
-      setActiveAdminPin(pin);
-    });
-    return () => unsub();
-  }, [user, view, setActiveAdminPin]);
+  // Admin PIN Sync — removed.
+  // The previous onSnapshot on admin_settings/auth_pin was dead code:
+  // the pin field was moved to private_pins (hashed), so this listener
+  // always returned '' and wasted Firestore reads continuously while
+  // the admin was logged in. activeAdminPin is now always '' and
+  // currentAdminPin is ignored by AdminPinSettingsView.
 
 
   // 3. Vehicle Operations Hook
