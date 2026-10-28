@@ -376,6 +376,46 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(await replayRes.json()).toMatchObject({ success: true, data: { cost: body.data.cost } });
   });
 
+  it('allows a garage owner to check out an active vehicle when the garage is locked and credits are exhausted', async () => {
+    const plateNumber = 'س ص ع 5678';
+    const plateRaw = 'سصع5678';
+    const checkInRes = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token',
+        'x-idempotency-key': 'locked-garage-checkin'
+      },
+      body: JSON.stringify({ garageId: testGarageId, plateNumber, plateRaw, type: 'hourly' })
+    }), workerEnv);
+    expect(checkInRes.status).toBe(200);
+
+    const garagePath = `garages/${testGarageId}`;
+    const garage = mockDb.getDocument(garagePath);
+    mockDb.seed(garagePath, {
+      ...garage,
+      isLocked: true,
+      billingModel: 'prepaid_credits',
+      creditBalance: { paid: 0, referral: 0, trial: 0 }
+    });
+
+    const checkOutRes = await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer valid-garage-token-${testGarageId}`,
+        'x-idempotency-key': 'locked-garage-checkout'
+      },
+      body: JSON.stringify({ garageId: testGarageId, vehicleId: plateRaw, idempotencyKey: 'locked-garage-checkout' })
+    }), workerEnv);
+
+    expect(checkOutRes.status).toBe(200);
+    expect(await checkOutRes.json()).toMatchObject({ success: true });
+    expect(mockDb.records.get(`${garagePath}/vehicles/${plateRaw}`)?.status).toBe('outside');
+    expect(mockDb.records.get(garagePath)?.isLocked).toBe(true);
+    expect(mockDb.records.get(garagePath)?.creditBalance).toEqual({ paid: 0, referral: 0, trial: 0 });
+  });
+
   it('rejects cross-garage vehicle mutations before writing state', async () => {
     const before = [...mockDb.records.entries()];
     const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
