@@ -168,7 +168,7 @@ The owner has authorized implementation to begin. Requirements that are explicit
 | Item | Status | Next action |
 |---|---|---|
 | Capture all 91 questionnaire answers | Complete | Owner answers recorded above; no question was silently omitted. |
-| Existing-plate checkout prompt | Complete on feature branch | If a typed plate matches an active vehicle already loaded for this garage, open that vehicle’s checkout flow instead of only showing a duplicate-check-in error; backed by a focused test. |
+| Existing-plate checkout prompt | Complete on feature branch | If a typed plate matches an active vehicle already loaded for this garage, open that vehicle’s checkout flow instead of only showing a duplicate-check-in error; focused test also asserts this still works when the garage is locked and all credit buckets are empty. |
 | Resolve Section 4 blockers | **Blocked** | Owner chooses or clarifies the listed conflicts. |
 | Update canonical product contract | Not started | Begin only after blocker decisions are recorded. |
 | Phases 1–7 implementation | Not started | Start one bounded plan item at a time after Phase 0 exits. |
@@ -176,5 +176,5 @@ The owner has authorized implementation to begin. Requirements that are explicit
 
 ## 7. Execution log
 
-- **2026-10-28 — Safe implementation started at the owner’s request.** Implemented the isolated existing-plate checkout prompt in `src/hooks/useVehicleOperations.ts` and added `src/hooks/useVehicleOperations.existingVehicleCheckout.test.tsx`. The focused test and TypeScript check passed. No pricing, accounting, authorization policy, deletion/retention, production data, cloud account, or deployment behavior was changed. **Next:** continue only with requirements that do not depend on unresolved blockers; resolve Section 4 before implementing dependent behavior.
+- **2026-10-28 — Safe implementation started at the owner’s request.** Implemented the isolated existing-plate checkout prompt in `src/hooks/useVehicleOperations.ts` and added `src/hooks/useVehicleOperations.existingVehicleCheckout.test.tsx`. Extended the focused test to assert that checkout remains available while the garage is locked and all credit buckets are empty. The focused test, TypeScript check, and full local `npm run ci:check` passed. No pricing, accounting, authorization policy, deletion/retention, production data, cloud account, or deployment behavior was changed. **Next:** push the test extension and confirm the remote PR gate; keep the PR in draft and do not deploy. Then continue only with requirements that do not depend on unresolved blockers, resolving Section 4 before implementing dependent behavior.
 - **2026-10-27 — Plan drafted from the owner’s uploaded answers.** Matched all Questions 1–91, including custom notes and deleted-question requests. Inspected current product/security documents and the vehicle, subscriber, credit-ledger, financial-reporting, and authorization decision modules to identify conflicts and implementation touchpoints. No application code or production data was changed. **Next eligible task:** resolve Section 4 blockers, then update `docs/PROJECT.md` before implementation.

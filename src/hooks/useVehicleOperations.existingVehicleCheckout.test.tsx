@@ -21,7 +21,7 @@ describe('useVehicleOperations existing vehicle check-in', () => {
     vi.clearAllMocks();
   });
 
-  it('opens checkout for the matching vehicle already inside instead of creating another check-in', async () => {
+  it('keeps checkout available for an existing vehicle when the garage is locked and out of credits', async () => {
     const typedPlate = '123 أ ب ج';
     const plateNumberRaw = getRawPlate(typedPlate);
     const vehicle = {
@@ -37,7 +37,11 @@ describe('useVehicleOperations existing vehicle check-in', () => {
     const closeKeyboard = vi.fn();
 
     const { result } = renderHook(() => useVehicleOperations({
-      garage: { id: 'garage-1' } as Garage,
+      garage: {
+        id: 'garage-1',
+        isLocked: true,
+        creditBalance: { paid: 0, referral: 0, trial: 0 },
+      } as Garage,
       setGarage,
       currentStaff: null,
       vehicles: [vehicle],
