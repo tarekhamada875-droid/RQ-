@@ -27,7 +27,6 @@ export interface Garage {
   balanceExpiry?: any; // Timestamp
   createdAt: any; // Timestamp
   balanceDays?: number;
-  ownerUid?: string;
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   billingModel?: 'subscription' | 'prepaid_credits';
