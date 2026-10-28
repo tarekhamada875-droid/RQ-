@@ -1,26 +1,14 @@
 import { db } from '../firebase';
-import { apiFetch } from '../api/apiClient';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Package } from '../types';
 import { isCreditBundlePackage } from '../utils/packageCatalog';
 import { listenerTracker } from '../utils/listenerTracker';
 
 export const adminPackageService = {
-  addPackage: async (pkg: Omit<Package, 'id' | 'createdAt' | 'isActive'>): Promise<void> => {
-    await apiFetch('/api/admin/packages/create', {
-      method: 'POST',
-      body: pkg
-    });
-  },
-
-
-  deletePackage: async (id: string): Promise<void> => {
-    await apiFetch('/api/admin/packages/delete', {
-      method: 'POST',
-      body: { id }
-    });
-  },
-
+  // addPackage, deletePackage: removed.
+  // Dead code — the admin packages management UI was retired.
+  // The server endpoints still exist but nobody calls them from the client.
+  // subscribeToPackages is still used by useGarageSync to display packages.
 
   subscribeToPackages: (callback: (packages: Package[]) => void) => {
     const trackerUnsubscribe = listenerTracker.register('packages');
@@ -72,6 +60,4 @@ export const adminPackageService = {
       }
     };
   },
-
-  // Subscribers
 };
