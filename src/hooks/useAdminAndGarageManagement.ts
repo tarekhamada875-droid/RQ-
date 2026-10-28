@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { Garage, Package, Supervisor } from '../types';
+import { Garage, Supervisor } from '../types';
 import { firestoreService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
@@ -14,7 +14,6 @@ import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 
 interface UseAdminAndGarageManagementProps {
   allGarages: Garage[];
-  packages: Package[];
   delegate: any | null;
   currentSupervisor: Supervisor | null;
   loginPhone: string;
@@ -41,7 +40,6 @@ interface UseAdminAndGarageManagementProps {
 
 export function useAdminAndGarageManagement({
   allGarages,
-  packages: _packages,
   delegate,
   currentSupervisor,
   loginPhone,

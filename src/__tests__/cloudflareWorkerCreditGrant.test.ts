@@ -17,7 +17,6 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
   beforeEach(() => {
     mockDb.clear();
     mockDb.seed(`garages/${garageId}`, { name: 'Prepaid test', billingModel: 'prepaid_credits', creditBalance: { paid: 10, referral: 4 } });
-    mockDb.seed('packages/credit-template-50', { name: '50 credits', catalogType: 'credit_bundle', creditQuantity: 50, price: 50, isActive: true });
   });
 
   it('requires external-payment confirmation and Admin authorization before any writes', async () => {
@@ -104,41 +103,6 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect([...mockDb.records.keys()].filter((path) => path.includes('/events/'))).toHaveLength(0);
   });
 
-  it('grants selected template quantity only when the template obeys the one-to-one price rule', async () => {
-    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'credit-template-50', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-template', reason: 'Verified bundle payment', idempotencyKey: 'bill06-template-1' }) }));
-    expect(response.status).toBe(200);
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 60, referral: 4, trial: 0 });
-    expect([...mockDb.records.entries()].find(([path, value]: [string, any]) => path.startsWith('credit_ledger/') && value.garageId === garageId && value.kind === 'paid_grant' && value.idempotencyKey === 'bill06-template-1')?.[1]).toMatchObject({ amount: 50, paymentAmountEgp: 50, source: 'admin_template_grant', packageId: 'credit-template-50', packageName: '50 credits' });
-    expect(mockDb.records.get(`garages/${garageId}`)?.balance).toBeUndefined();
-  });
-
-  it('rejects a legacy-time package template without changing the prepaid garage', async () => {
-    mockDb.seed('packages/legacy-time-template', { name: 'Legacy month', catalogType: 'legacy_time', durationDays: 30, price: 300, dailyCapacity: 50, isActive: true });
-    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'legacy-time-template', paymentAmountEgp: 300, paymentConfirmed: true, paymentReference: 'transfer-legacy-template', reason: 'Legacy template must be rejected', idempotencyKey: 'bill07-legacy-template' }) }));
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ success: false, error: 'PACKAGE_NOT_CREDIT_BUNDLE' });
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 10, referral: 4 });
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(0);
-  });
-
-  it('rejects a credit template that also carries a time-based format', async () => {
-    mockDb.seed('packages/mixed-time-template', {
-      name: 'Mixed format', catalogType: 'credit_bundle', creditQuantity: 50,
-      price: 50, durationDays: 30, isActive: true
-    });
-    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'mixed-time-template', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-mixed-template', reason: 'Mixed format must be rejected', idempotencyKey: 'bill07-mixed-template' }) }));
-    expect(response.status).toBe(400);
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 10, referral: 4 });
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(0);
-  });
-
-  it('rejects an existing credit template whose price differs from the credit count', async () => {
-    mockDb.seed('packages/credit-template-mismatch', { name: 'Mismatched', catalogType: 'credit_bundle', creditQuantity: 50, price: 60, isActive: true });
-    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ packageId: 'credit-template-mismatch', paymentAmountEgp: 50, paymentConfirmed: true, paymentReference: 'transfer-mismatch', reason: 'Verified transfer', idempotencyKey: 'bill07-template-mismatch' }) }));
-    expect(response.status).toBe(400);
-    expect(mockDb.records.get(`garages/${garageId}`)?.creditBalance).toEqual({ paid: 10, referral: 4 });
-  });
-
   it('awards 20 referral credits once on the first paid grant and keeps a distinct auditable record', async () => {
     mockDb.seed(`garages/${garageId}`, { name: 'Prepaid test', billingModel: 'prepaid_credits', referredByGarageId: 'bill06-referrer', creditBalance: { paid: 10, referral: 4 } });
     mockDb.seed('garages/bill06-referrer', { name: 'Referrer', billingModel: 'prepaid_credits', creditBalance: { paid: 2, referral: 1 } });
@@ -184,7 +148,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     const post = (body: any) => api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, ...body }) }));
     expect((await post({ amount: 1.5 })).status).toBe(400);
     expect((await post({ paymentAmountEgp: undefined })).status).toBe(400);
-    expect((await post({ packageId: 'credit-template-50' })).status).toBe(400);
+    
     expect((await post({ amount: 0 })).status).toBe(400);
   });
 

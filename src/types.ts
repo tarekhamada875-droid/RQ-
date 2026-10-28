@@ -5,15 +5,6 @@
 
 export type EntityRole = 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
 
-export interface Package {
-  id: string;
-  name: string;
-  price: number;
-  catalogType: 'credit_bundle';
-  creditQuantity: number;
-  isActive?: boolean;
-  createdAt?: any;
-}
 
 export interface Garage {
   id: string;

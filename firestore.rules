@@ -459,12 +459,6 @@ service cloud.firestore {
       allow write: if false; // Retired wallet top-up model
     }
 
-    match /packages/{packageId} {
-      allow get: if isSignedIn() && isValidPackage(resource.data);
-      allow list: if isSignedIn() && resource.data.catalogType == 'credit_bundle';
-      allow create, update, delete: if false; // Worker only: /api/admin/packages/*
-    }
-
     match /test/connection {
       allow read, write: if false;
     }

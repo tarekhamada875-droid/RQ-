@@ -45,7 +45,6 @@ export interface GarageRouteDeps {
   canManageDelegates: GarageRouteDependency;
   saveEntityPin: GarageRouteDependency;
   canUpdateEntityPin: GarageRouteDependency;
-  validatePackageCatalogRecord: GarageRouteDependency;
   grantPaidCredits: GarageRouteDependency;
   grantTrialCredits: GarageRouteDependency;
   awardReferralCredits: GarageRouteDependency;
@@ -100,7 +99,6 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     canManageDelegates,
     saveEntityPin,
     canUpdateEntityPin,
-    validatePackageCatalogRecord,
     grantPaidCredits,
     grantTrialCredits,
     awardReferralCredits,
@@ -1119,52 +1117,8 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 // Announcements endpoints removed — feature retired by owner.
 
 
-// Admin Packages Routes
-app.post('/api/admin/packages/create', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const rawPackage = await c.req.json().catch(() => ({}));
-    if (rawPackage.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
-    const validatedPackage = validatePackageCatalogRecord(rawPackage, 'new');
-    if (validatedPackage.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
-    const pkgData: Record<string, any> = {
-      name: validatedPackage.name,
-      price: validatedPackage.basePrice,
-      catalogType: validatedPackage.catalogType,
-      isActive: true,
-      createdAt: new Date()
-    };
-    pkgData.creditQuantity = validatedPackage.creditQuantity;
-
-    const docRef = await getAdminDb().collection('packages').add(pkgData);
-    return c.json({ success: true, id: docRef.id });
-  } catch (e: any) {
-    console.error('[Worker Packages] Error in create:', e);
-    const statusCode = ['INVALID_PACKAGE_CONFIGURATION', 'PACKAGE_NOT_CREDIT_BUNDLE'].includes(e?.message) ? 400 : 500;
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, statusCode as any);
-  }
-});
-
-app.post('/api/admin/packages/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (user?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-
-    const body = await c.req.json().catch(() => ({}));
-    const { id } = body;
-    if (!id) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-
-    await getAdminDb().collection('packages').doc(id).update({ isActive: false });
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Packages] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
-  }
-});
+// Admin Packages Routes removed — feature retired by owner.
+// Credit grants now use custom amounts (50-2000 EGP) only.
 
 // Admin confirms offline payment and explicitly grants non-expiring prepaid credits.
 app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
@@ -1174,18 +1128,16 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['packageId', 'amount', 'paymentAmountEgp', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
+    const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
     if (sanitized.paymentConfirmed !== true) return c.json({ success: false, error: 'PAYMENT_CONFIRMATION_REQUIRED' }, 400);
     const paymentReference = validateString(sanitized.paymentReference, 'paymentReference', { min: 1, max: 120, required: true });
     const reason = validateString(sanitized.reason, 'reason', { min: 1, max: 300, required: true });
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
     if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
-    const packageId = sanitized.packageId ? validateId(sanitized.packageId, 'packageId', true) : null;
-    if (packageId === null && sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
-    if (packageId !== null && sanitized.amount !== undefined) return c.json({ success: false, error: 'CHOOSE_TEMPLATE_OR_AMOUNT' }, 400);
+    if (sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 50, max: 2_000, integerOnly: true });
     const callerUid = user.uid;
-    const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
+    const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
     // Payment references are unique per-garage (Q24B): the same transfer reference
     // may be used by two different garages, but never twice for the same garage.
     const paymentReferenceMarkerId = encodeURIComponent(`${garageId}:${paymentReference}`).slice(0, 150);
@@ -1244,19 +1196,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
       const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
       let amount: number;
-      let template: any = null;
-      if (packageId) {
-        const templateRef = getAdminDb().doc(`packages/${packageId}`);
-        const templateSnap = await t.get(templateRef);
-        if (!templateSnap.exists) throw new Error('PACKAGE_NOT_FOUND');
-        template = { id: templateSnap.id, ...templateSnap.data() };
-        if (template.isActive === false || template.catalogType !== 'credit_bundle') throw new Error('PACKAGE_NOT_CREDIT_BUNDLE');
-        const validatedTemplate = validatePackageCatalogRecord(template, template.id);
-        amount = validatedTemplate.creditQuantity;
-        if (validatedTemplate.finalPrice !== amount) throw new Error('CREDIT_TEMPLATE_PRICE_MISMATCH');
-      } else {
-        amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
-      }
+      amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
       if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
       const balance = {
         paid: Number(garage.creditBalance?.paid || 0),
@@ -1304,7 +1244,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
         ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {})
       }, { merge: true });
-      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentAmountEgp, paymentReference });
+      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp, paymentReference });
       recordDomainEventInTransaction(t, getAdminDb(), {
         garageId,
         aggregateType: 'credit_grant',
@@ -1337,7 +1277,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           }
         });
       }
-      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, packageId, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { creditBalance: referralTransition.value.balance }, { merge: true });
         t.set(getAdminDb().doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });

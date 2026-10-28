@@ -52,14 +52,6 @@ describe('Worker Route Parity Suite', () => {
       balance: 500,
       carsInside: 2
     });
-    mockDb.seed('packages/pkg-monthly', {
-      id: 'pkg-monthly',
-      name: 'باقة شهرية',
-      price: 300,
-      durationDays: 30,
-      dailyCapacity: 50,
-      isActive: true
-    });
   });
 
   describe('0. Delegate dashboard replacement', () => {
@@ -396,68 +388,7 @@ describe('Worker Route Parity Suite', () => {
     });
   });
 
-  describe('5. Admin Packages', () => {
-    it('manages packages for admin only', async () => {
-      // Packages
-      const legacyPkgRes = await call('/api/admin/packages/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ name: 'Legacy month', price: 300, durationDays: 30, dailyCapacity: 50, catalogType: 'legacy_time' })
-      });
-      expect(legacyPkgRes.status).toBe(400);
 
-      const mixedPkgRes = await call('/api/admin/packages/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ name: 'Mixed package', price: 300, creditQuantity: 300, durationDays: 30, catalogType: 'credit_bundle' })
-      });
-      expect(mixedPkgRes.status).toBe(400);
-
-      const pkgRes = await call('/api/admin/packages/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'رصيد جديد',
-          price: 150,
-          creditQuantity: 150,
-          catalogType: 'credit_bundle'
-        })
-      });
-      expect(pkgRes.status).toBe(200);
-      const newPkgId = (await pkgRes.json()).id;
-
-      const deletePkg = await call('/api/admin/packages/delete', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: newPkgId })
-      });
-      expect(deletePkg.status).toBe(200);
-
-      const creditPkgRes = await call('/api/admin/packages/create', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'قالب 400 رصيد',
-          price: 400,
-          creditQuantity: 400,
-          catalogType: 'credit_bundle'
-        })
-      });
-      expect(creditPkgRes.status).toBe(200);
-      const creditPkgId = (await creditPkgRes.json()).id;
-      const creditPkgSnapshot = await mockDb.collection('packages').doc(creditPkgId).get();
-      expect(creditPkgSnapshot.data()).toMatchObject({
-        name: 'قالب 400 رصيد',
-        price: 400,
-        creditQuantity: 400,
-        catalogType: 'credit_bundle',
-        isActive: true
-      });
-      expect(creditPkgSnapshot.data()).not.toHaveProperty('durationDays');
-      expect(creditPkgSnapshot.data()).not.toHaveProperty('dailyCapacity');
-
-      const deleteCreditPkg = await call('/api/admin/packages/delete', tokens.admin, {
-        method: 'POST',
-        body: JSON.stringify({ id: creditPkgId })
-      });
-      expect(deleteCreditPkg.status).toBe(200);
-    });
-  });
 
   describe('6. Transactions: Self-Subscribe, Direct Recharge, Referral Reward', () => {
     it('updates garage referredByGarageId and persists in database', async () => {

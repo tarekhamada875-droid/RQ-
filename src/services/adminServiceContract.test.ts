@@ -52,7 +52,6 @@ describe('adminService facade contract', () => {
       'subscribeToAdminPin',
       'subscribeToGarageRechargeLogs',
       'subscribeToGarageStaff',
-      'subscribeToPackages',
       'subscribeToSubscribers',
       'subscribeToSystemConfig',
       'updateAdminPin',

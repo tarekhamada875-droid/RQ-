@@ -160,9 +160,7 @@ export function useGarageApp() {
     delegateDashboardError,
     retryDelegateDashboard,
     loadMoreDelegateGarages,
-    packages,
     delegateGarages,
-    sortedPackages,
     adminGarageHasMore,
     adminDelegateHasMore,
     adminListsLoading,
@@ -191,10 +189,6 @@ export function useGarageApp() {
   useEffect(() => {
     useAppStore.getState().setGarages(allGarages);
   }, [allGarages]);
-
-  useEffect(() => {
-    useAppStore.getState().setPackages(packages);
-  }, [packages]);
 
   useEffect(() => {
     useAppStore.getState().setDelegates(delegates);
@@ -259,7 +253,6 @@ export function useGarageApp() {
     removeDelegate,
   } = useAdminAndGarageManagement({
     allGarages,
-    packages,
     delegate,
     currentSupervisor,
     loginPhone,
@@ -337,7 +330,6 @@ export function useGarageApp() {
     vehicles,
     todayTransactions,
     allGarages,
-    packages,
     staffList,
     setStaffList,
     delegatePagination,
@@ -347,7 +339,6 @@ export function useGarageApp() {
     delegateDashboardError,
     retryDelegateDashboard,
     loadMoreDelegateGarages,
-    sortedPackages,
     delegateGarages,
     adminGarageHasMore,
     adminDelegateHasMore,
@@ -417,7 +408,6 @@ export function useGarageApp() {
     vehicles,
     todayTransactions,
     allGarages,
-    packages,
     adminPin,
     setAdminPin,
     activeAdminPin,
@@ -480,7 +470,6 @@ export function useGarageApp() {
     isOnline,
     showOfflineScreen,
     inputRef,
-    sortedPackages,
     delegateGarages,
     adminGarageHasMore,
     adminDelegateHasMore,

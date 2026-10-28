@@ -16,7 +16,6 @@ import { garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './a
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
 import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance, canInvalidateAllSessions } from './domain/authorization';
-import { validatePackageCatalogRecord } from './packageCatalog';
 import { awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, grantTrialCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
@@ -1384,7 +1383,6 @@ registerGarageRoutes(workerApp, {
   canManageDelegates,
   saveEntityPin,
   canUpdateEntityPin,
-  validatePackageCatalogRecord,
   grantPaidCredits,
   grantTrialCredits,
   awardReferralCredits,
