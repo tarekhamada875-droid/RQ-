@@ -36,7 +36,6 @@ describe('adminService facade contract', () => {
 
   it('preserves the complete public method key set', () => {
     expect(Object.keys(adminService).sort()).toEqual([
-      'addActivityLog',
       'addPackage',
       'addStaff',
       'addSubscriber',

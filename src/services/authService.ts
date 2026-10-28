@@ -1,6 +1,6 @@
 import { auth } from '../firebase';
 import { normalizeDigits } from '../utils';
-import { claimEntitySession, releaseEntitySession, getCanonicalSessionId } from './authSessionService';
+import { releaseEntitySession, getCanonicalSessionId } from './authSessionService';
 import { apiFetch } from '../api/apiClient';
 
 export const authService = {
@@ -153,27 +153,8 @@ export const authService = {
     }
   },
 
-  claimDelegateSession: async (delegateId: string, sessionId?: string, _deviceInfo?: any) => {
-    if (!delegateId) throw new Error('DELEGATE_ID_REQUIRED');
-    const sid = sessionId || getCanonicalSessionId();
-    let targetUid = delegateId;
-    try {
-      if (auth && auth.currentUser && auth.currentUser.uid) {
-        targetUid = auth.currentUser.uid;
-      }
-    } catch (e) {
-      console.warn('[AuthService] Could not resolve current user for delegate claim:', e);
-    }
-
-    await claimEntitySession({
-      role: 'delegate',
-      entityId: delegateId,
-      sessionId: sid,
-      uid: targetUid
-    });
-
-    return { currentSessionId: sid };
-  },
+  // claimDelegateSession: removed. Dead code — nobody calls this.
+  // Delegate session claiming goes through claimEntitySession directly.
 
 
 

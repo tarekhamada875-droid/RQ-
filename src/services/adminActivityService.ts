@@ -1,23 +1,12 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { apiFetch } from '../api/apiClient';
 import { collection, query, where, onSnapshot, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 import { safeDate } from '../utils';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
 
 export const adminActivityService = {
-  addActivityLog: async (log: Record<string, any>) => {
-    try {
-      const res = await apiFetch('/api/activity-logs/add', {
-        method: 'POST',
-        body: log
-      });
-      return res.id;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'activity_logs');
-      throw error;
-    }
-  },
+  // addActivityLog: removed. The /api/activity-logs/add endpoint always
+  // returns 403 (SERVER_GENERATED_ONLY) and nobody calls this function.
 
 
   getActivityLogsSince: async (sinceDate: Date, maxCount = 2000): Promise<ActivityLog[]> => {
