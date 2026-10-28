@@ -234,6 +234,8 @@ export function useVehicleOperations({
         message.includes('conflicts with the current state')
       ) {
         showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
+      } else if (message.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || message.includes('INSUFFICIENT_PAID_CREDITS') || message.includes('رصيدك خلص')) {
+        showToast('رصيدك خلص — يرجى شحن الرصيد قبل إدخال سيارات جديدة', 'error');
       } else if (message.includes('permission') || message.includes('PERMISSION_DENIED') || message === 'UNAUTHORIZED') {
         setNewPlateNumber(formatted);
         showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');

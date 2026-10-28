@@ -20,6 +20,7 @@ vi.mock('../../firebase', () => ({
 }));
 vi.mock('../../utils/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
 vi.mock('../../utils/sounds', () => ({ soundManager: { play: vi.fn() } }));
+vi.mock('../../hooks/useSystemConfig', () => ({ useSystemConfig: () => ({ adminColor: '#10b981', paymentWalletNumber: '' }) }));
 vi.mock('../ui/FlipNumber', () => ({ FlipNumber: () => null }));
 vi.mock('./RegistrationCard', () => ({ RegistrationCard: () => null }));
 vi.mock('./SmartActionPrompt', () => ({ SmartActionPrompt: () => null }));

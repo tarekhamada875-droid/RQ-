@@ -52,8 +52,8 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
     if (submitting) return;
 
     const creditAmount = Number(amount.trim());
-    if (!Number.isSafeInteger(creditAmount) || creditAmount < 1 || creditAmount > 1_000_000) {
-      setError('أدخل عددًا صحيحًا من 1 إلى 1,000,000.');
+    if (!Number.isSafeInteger(creditAmount) || creditAmount < 50 || creditAmount > 2_000) {
+      setError('أدخل عددًا صحيحًا من 50 إلى 2,000 جنيه.');
       setSuccess('');
       return;
     }

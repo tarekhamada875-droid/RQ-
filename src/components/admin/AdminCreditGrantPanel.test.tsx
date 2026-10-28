@@ -37,14 +37,14 @@ describe('AdminCreditGrantPanel', () => {
 
   it('accepts Arabic-Indic and Persian digits in the credit amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '٢٠' } });
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '١٠٠' } });
     fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-arabic-123' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
-      amount: 20,
-      paymentAmountEgp: 20,
+      amount: 100,
+      paymentAmountEgp: 100,
       paymentReference: 'receipt-arabic-123',
       paymentConfirmed: true,
     })));
@@ -53,7 +53,7 @@ describe('AdminCreditGrantPanel', () => {
   it('reuses the same idempotency key when retrying an ambiguous failed grant', async () => {
     vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-retry-123' } });
     fireEvent.click(screen.getByRole('checkbox'));
 
@@ -67,13 +67,13 @@ describe('AdminCreditGrantPanel', () => {
     const firstCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[0][1];
     const retryCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[1][1];
     expect(retryCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
-    expect(await screen.findByRole('status')).toHaveTextContent('20 رصيد تمت إضافته.');
+    expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
   });
 
   it('shows Arabic guidance when the server returns an English error code', async () => {
     vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
@@ -86,13 +86,13 @@ describe('AdminCreditGrantPanel', () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 1 إلى 1,000,000/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 50 إلى 2,000/);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
   it('requires a real payment reference and explicit payment confirmation', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/مرجع الدفع الفعلي/i);
@@ -106,18 +106,18 @@ describe('AdminCreditGrantPanel', () => {
 
   it('submits the entered payment reference only after confirmation', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
-      amount: 20,
-      paymentAmountEgp: 20,
+      amount: 100,
+      paymentAmountEgp: 100,
       paymentReference: 'receipt-123',
       reason: 'إضافة رصيد يدوي',
       paymentConfirmed: true,
     })));
-    expect(await screen.findByRole('status')).toHaveTextContent('20 رصيد تمت إضافته.');
+    expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
   });
 });
