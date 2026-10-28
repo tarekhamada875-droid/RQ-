@@ -174,7 +174,7 @@ function grantBody(amount: number, idempotencyKey: string) {
 describe('first paid credit grant delegate commission', () => {
   it('records exactly one 100 EGP commission and updates lifetime and unsettled totals', async () => {
     const harness = createCreditGrantHarness();
-    const first = await harness.route(requestContext(grantBody(100, 'grant-first')));
+    const first = await harness.route(requestContext(grantBody(500, 'grant-first')));
     expect(first.status).toBe(200);
     expect(harness.delegate.totalCommissionEarned).toBe(100);
     expect(harness.delegate.totalRechargedAmount).toBe(100);
@@ -205,7 +205,7 @@ describe('first paid credit grant delegate commission', () => {
 
   it('does not award commission to garages without a delegate owner', async () => {
     const harness = createCreditGrantHarness({ withDelegate: false });
-    const response = await harness.route(requestContext(grantBody(100, 'grant-no-delegate')));
+    const response = await harness.route(requestContext(grantBody(500, 'grant-no-delegate')));
 
     expect(response.status).toBe(200);
     expect(harness.recordDomainEventInTransaction.mock.calls.map((call) => call[2]).filter((event) => event.eventType === 'commission_earned')).toHaveLength(0);
@@ -214,7 +214,7 @@ describe('first paid credit grant delegate commission', () => {
   it('rolls back a first paid grant when its recorded delegate is missing', async () => {
     const harness = createCreditGrantHarness({ withDelegate: false });
     harness.garage.createdByDelegateId = 'delegate-1';
-    const response = await harness.route(requestContext(grantBody(100, 'grant-missing-delegate')));
+    const response = await harness.route(requestContext(grantBody(500, 'grant-missing-delegate')));
 
     expect(response.status).toBe(409);
     expect(response.body).toMatchObject({ success: false, error: 'DELEGATE_NOT_FOUND' });

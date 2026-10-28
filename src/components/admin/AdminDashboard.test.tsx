@@ -99,7 +99,7 @@ const fillAddGarageDraft = () => {
   fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '25' } });
   fireEvent.change(screen.getByPlaceholderText('50'), { target: { value: '60' } });
   fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
-  fireEvent.change(screen.getByPlaceholderText('12345678'), { target: { value: '12345678' } });
+  fireEvent.change(screen.getByPlaceholderText('12345'), { target: { value: '12345' } });
   fireEvent.click(screen.getByRole('switch'));
 };
 
@@ -187,7 +187,7 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('10')).toHaveValue('25');
     expect(screen.getByPlaceholderText('50')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
-    expect(screen.getByPlaceholderText('12345678')).toHaveValue('12345678');
+    expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });
 
@@ -209,7 +209,7 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('10')).toHaveValue('');
     expect(screen.getByPlaceholderText('50')).toHaveValue('');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('');
-    expect(screen.getByPlaceholderText('12345678')).toHaveValue('');
+    expect(screen.getByPlaceholderText('12345')).toHaveValue('');
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   });
 
@@ -228,7 +228,7 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('10')).toHaveValue('25');
     expect(screen.getByPlaceholderText('50')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
-    expect(screen.getByPlaceholderText('12345678')).toHaveValue('12345678');
+    expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });
 

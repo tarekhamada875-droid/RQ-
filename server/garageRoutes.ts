@@ -4,6 +4,7 @@ export type GarageRouteDependency = (...args: any[]) => any;
 
 export interface GarageRouteDeps {
   getAdminDb: () => any;
+  getAdminAuth: () => any;
   requireWorkerAuth: GarageRouteDependency;
   enforceWorkerFinancialRateLimit: GarageRouteDependency;
   canSubmitGarageApplication: GarageRouteDependency;
@@ -58,6 +59,7 @@ export interface GarageRouteDeps {
 export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): void {
   const {
     getAdminDb,
+    getAdminAuth,
     requireWorkerAuth,
     enforceWorkerFinancialRateLimit,
     canSubmitGarageApplication,
@@ -818,15 +820,92 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const staffId = validateId(id, 'id', true);
     const staffRef = getAdminDb().collection('staff').doc(staffId);
-    await getAdminDb().runTransaction(async (t: any) => {
-      const targetStaffSnap = await t.get(staffRef);
-      if (user?.role !== 'admin' && (!targetStaffSnap.exists || !canManageStaffForGarage(user, targetStaffSnap.data()?.garageId))) {
-        throw new Error('FORBIDDEN: Cannot delete staff outside your garage');
+
+    // 1. Verify authorization and read the staff doc before mutation.
+    const staffSnap = await staffRef.get();
+    if (!staffSnap.exists) {
+      if (user?.role === 'admin') return c.json({ success: true, alreadyDeleted: true });
+      return c.json({ success: false, error: 'STAFF_NOT_FOUND' }, 404);
+    }
+    const staffData = staffSnap.data() || {};
+    if (user?.role !== 'admin' && !canManageStaffForGarage(user, staffData.garageId)) {
+      return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
+    }
+
+    // 2. Revoke all active sessions for this staff member BEFORE deleting the doc.
+    const now = new Date();
+    let revokedSessions = 0;
+    const crypto = await import('crypto');
+    const hashSessionId = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+    const staffSessionsSnap = await getAdminDb().collection('staff_sessions')
+      .where('entityId', '==', staffId)
+      .get();
+    const adminAuthInstance = getAdminAuth();
+    const uidsToDelete: string[] = [];
+    let sessionBatch = getAdminDb().batch();
+    let sessionBatchWrites = 0;
+    for (const sessionDoc of staffSessionsSnap.docs) {
+      const sessionData = sessionDoc.data() || {};
+      const uid = sessionData.uid;
+      if (uid && !uidsToDelete.includes(uid)) uidsToDelete.push(uid);
+      if (sessionData.isActive === true) revokedSessions += 1;
+      sessionBatch.update(sessionDoc.ref, { isActive: false, lastActive: now });
+      sessionBatchWrites += 1;
+      if (sessionData.uid && sessionData.sessionId) {
+        sessionBatch.set(getAdminDb().doc(`session_index/${hashSessionId(`${sessionData.uid}:${sessionData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
+        sessionBatchWrites += 1;
       }
+      const deviceSessions = await getAdminDb().collection(`staff_sessions/${sessionDoc.id}/sessions`).get();
+      for (const deviceDoc of deviceSessions.docs) {
+        const deviceData = deviceDoc.data() || {};
+        if (deviceData.isActive === true) revokedSessions += 1;
+        sessionBatch.update(deviceDoc.ref, { isActive: false, lastActive: now });
+        sessionBatchWrites += 1;
+        if (deviceData.uid && deviceData.sessionId) {
+          sessionBatch.set(getAdminDb().doc(`session_index/${hashSessionId(`${deviceData.uid}:${deviceData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
+          sessionBatchWrites += 1;
+        }
+        if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = getAdminDb().batch(); sessionBatchWrites = 0; }
+      }
+      if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = getAdminDb().batch(); sessionBatchWrites = 0; }
+    }
+    if (sessionBatchWrites > 0) await sessionBatch.commit();
+
+    // 3. Delete the staff doc and its PIN atomically.
+    await getAdminDb().runTransaction(async (t: any) => {
       await deleteEntityPinInTransaction(t, 'staff', staffId);
       t.delete(staffRef);
     });
-    return c.json({ success: true });
+
+    // 4. Delete the Firebase Auth user(s) — prevents any future login.
+    let deletedAuthUsers = 0;
+    if (adminAuthInstance) {
+      for (const uid of uidsToDelete) {
+        try {
+          await adminAuthInstance.deleteUser(uid);
+          deletedAuthUsers += 1;
+        } catch (err: any) {
+          console.warn(`[Worker Staff] Could not delete Auth user ${uid} for staff ${staffId}:`, err?.message || err);
+        }
+      }
+    }
+
+    // 5. Delete this staff member's activity history.
+    let deletedActivityLogs = 0;
+    let activityBatch = getAdminDb().batch();
+    let activityBatchWrites = 0;
+    const activitySnap = await getAdminDb().collection('activity_logs')
+      .where('staffId', '==', staffId)
+      .get();
+    for (const doc of activitySnap.docs) {
+      activityBatch.delete(doc.ref);
+      activityBatchWrites += 1;
+      deletedActivityLogs += 1;
+      if (activityBatchWrites >= 450) { await activityBatch.commit(); activityBatch = getAdminDb().batch(); activityBatchWrites = 0; }
+    }
+    if (activityBatchWrites > 0) await activityBatch.commit();
+
+    return c.json({ success: true, revokedSessions, deletedAuthUsers, deletedActivityLogs });
   } catch (e: any) {
     console.error('[Worker Staff] Error in delete:', e);
     if (String(e?.message || '').includes('FORBIDDEN')) return c.json({ success: false, error: 'FORBIDDEN: Cannot delete staff outside your garage' }, 403);
@@ -1153,10 +1232,12 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const packageId = sanitized.packageId ? validateId(sanitized.packageId, 'packageId', true) : null;
     if (packageId === null && sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     if (packageId !== null && sanitized.amount !== undefined) return c.json({ success: false, error: 'CHOOSE_TEMPLATE_OR_AMOUNT' }, 400);
-    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 1, max: 1_000_000, integerOnly: true });
+    const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 50, max: 2_000, integerOnly: true });
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, packageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
-    const paymentReferenceMarkerId = encodeURIComponent(paymentReference).slice(0, 150);
+    // Payment references are unique per-garage (Q24B): the same transfer reference
+    // may be used by two different garages, but never twice for the same garage.
+    const paymentReferenceMarkerId = encodeURIComponent(`${garageId}:${paymentReference}`).slice(0, 150);
     const paymentReferenceMarkerRef = getAdminDb().doc(`payment_reference_markers/${paymentReferenceMarkerId}`);
     let granted: any = null;
     await getAdminDb().runTransaction(async (t: any) => {
@@ -1177,7 +1258,8 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const garage = garageSnap.data() || {};
       if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
       const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
-      const commissionDelegateId = isFirstPaidGrant && typeof garage.createdByDelegateId === 'string'
+      const isFirstQualifyingGrant = !garage.firstQualifyingGrantAt && paymentAmountEgp >= 500;
+      const commissionDelegateId = isFirstQualifyingGrant && typeof garage.createdByDelegateId === 'string'
         ? garage.createdByDelegateId.trim()
         : '';
       const commissionDelegateRef = commissionDelegateId
@@ -1205,9 +1287,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         throw new Error('INVALID_DELEGATE_COMMISSION_BALANCE');
       }
       const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
-      const referralMarkerRef = isFirstPaidGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
+      const referralMarkerRef = isFirstQualifyingGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
       const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
-      const referrerRef = isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
+      const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
       const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
       let amount: number;
       let template: any = null;
@@ -1221,7 +1303,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         amount = validatedTemplate.creditQuantity;
         if (validatedTemplate.finalPrice !== amount) throw new Error('CREDIT_TEMPLATE_PRICE_MISMATCH');
       } else {
-        amount = validateNumber(sanitized.amount, 'amount', { min: 1, max: 1_000_000, integerOnly: true });
+        amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
       }
       if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
       const balance = {
@@ -1236,7 +1318,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       let referralAward: any = null;
       let referralLedger: any = null;
       let referralTransition: any = null;
-      if (isFirstPaidGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
+      if (isFirstQualifyingGrant && referrerRef && referrerSnap?.exists && referrerSnap.data()?.billingModel === 'prepaid_credits' && referralMarkerRef && !referralMarkerSnap?.exists) {
         const referrer = referrerSnap.data() || {};
         const rewardIdempotencyKey = `first_paid_grant:${garageId}`;
         referralTransition = awardReferralCredits({
@@ -1260,7 +1342,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         referralAward = { garageId: referrerGarageId, amount: 20, bucket: 'referral', entryId: referralLedger.entryId };
       }
       const now = new Date();
-      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}) }, { merge: true });
+      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}), ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}) }, { merge: true });
       t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentAmountEgp, paymentReference });
       recordDomainEventInTransaction(t, getAdminDb(), {
         garageId,
@@ -1300,7 +1382,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         t.set(getAdminDb().doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
         t.set(getAdminDb().collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
       }
-      if (isFirstPaidGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
+      if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {
           referredGarageId: garageId,
           referrerGarageId: referrerGarageId || null,

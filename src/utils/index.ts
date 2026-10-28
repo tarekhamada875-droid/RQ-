@@ -300,10 +300,10 @@ export const getStorage = <T>(key: string, defaultValue: T): T => {
   }
 };
 
-export const NEW_PIN_LENGTH = 8;
+export const NEW_PIN_LENGTH = 5;
 
 /**
- * Generates an eight-digit PIN that is unique against the provided local set.
+ * Generates a five-digit PIN that is unique against the provided local set.
  * The server remains authoritative for global uniqueness.
  */
 export const generateSafePin = (existingPins: Set<string> | string[] = new Set()): string => {
@@ -328,7 +328,7 @@ export const generateSafePin = (existingPins: Set<string> | string[] = new Set()
     attempts++;
   }
   if (!pin) {
-    pin = Math.floor(10000000 + Math.random() * 90000000).toString();
+    pin = Math.floor(10000 + Math.random() * 90000).toString();
   }
   return pin;
 };

@@ -20,8 +20,8 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
   const t = useAdminTranslation(adminLang);
 
   const handleUpdatePin = async () => {
-    if (!/^\d{8}$/.test(pinInput)) {
-      alert('يجب أن يكون الرمز 8 أرقام بالضبط');
+    if (!/^\d{5}$/.test(pinInput)) {
+      alert('يجب أن يكون الرمز 5 أرقام بالضبط');
       return;
     }
     setIsUpdatingPin(true);
@@ -61,10 +61,10 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                   type="tel"
                   inputMode="numeric"
                   value={pinInput}
-                  minLength={8}
-                  maxLength={8}
-                  pattern="[0-9]{8}"
-                  onChange={(e) => setPinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 8))}
+                  minLength={5}
+                  maxLength={5}
+                  pattern="[0-9]{5}"
+                  onChange={(e) => setPinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
                   className="w-16 bg-transparent text-blue-600 dark:text-blue-400 text-sm font-black text-center focus:outline-none focus:ring-0 border-0 p-0 font-mono"
                   placeholder="••••"
                 />

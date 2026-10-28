@@ -124,8 +124,8 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 setErrorMessage(null);
                 const hourlyNum = Number(localForm.hourlyRate) || 0;
                 const overnightNum = Number(localForm.overnightRate) || 0;
-                if (!/^\d{8}$/.test(localPin)) {
-                  setErrorMessage(t('رمز الدخول يجب أن يكون 8 أرقام'));
+                if (!/^\d{5}$/.test(localPin)) {
+                  setErrorMessage(t('رمز الدخول يجب أن يكون 5 أرقام'));
                   return;
                 }
                 if (hourlyNum <= 0 && overnightNum <= 0) {
@@ -288,14 +288,14 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                       inputMode="numeric"
                       value={localPin}
                       onChange={(e) => {
-                        const val = sanitizeNumeric(e.target.value).slice(0, 8);
+                        const val = sanitizeNumeric(e.target.value).slice(0, 5);
                         setLocalPin(val);
                         setPinInput(val);
                       }}
-                      placeholder="12345678"
-                      minLength={8}
-                      maxLength={8}
-                      pattern="[0-9]{8}"
+                      placeholder="12345"
+                      minLength={5}
+                      maxLength={5}
+                      pattern="[0-9]{5}"
                       required
                       className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-slate-900 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.5em] text-center transition-all pl-14"
                       dir="ltr"

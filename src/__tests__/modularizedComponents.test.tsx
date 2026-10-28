@@ -78,8 +78,8 @@ const mockGarage: Garage = {
   id: 'garage_test_1',
   name: 'جراج النصر النموذجي',
   phone: '01012345678',
-  pin: '12345678',
-  ownerPin: '12345678',
+  pin: '12345',
+  ownerPin: '12345',
   balance: 1500,
   isLocked: false,
   isSuspended: false,
@@ -219,7 +219,7 @@ describe('Modularized Admin Components Integrity', () => {
       name: 'H Staff Probe',
       garageId: mockGarage.id,
       role: 'staff',
-      pin: expect.stringMatching(/^\d{8}$/),
+      pin: expect.stringMatching(/^\d{5}$/),
     }));
 
     fireEvent.click(screen.getByTitle('حذف الموظف'));

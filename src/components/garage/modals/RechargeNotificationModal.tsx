@@ -52,12 +52,8 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
       })
     : 'غير معروف';
 
-  const formattedTime = rechargeLog.timestamp
-    ? safeDate(rechargeLog.timestamp).toLocaleTimeString('ar-EG', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    : 'غير معروف';
+  // Time display is hidden from user-facing screens per Q89D.
+  // formattedTime is retained for potential admin-only use but not shown to users.
 
   const modalTitle = isReferralReward
     ? 'مبروك! جالك يوم هدية مجاني 🎁'
@@ -153,10 +149,10 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
                 <div className="w-full border-t border-slate-200/40 dark:border-slate-800/40" />
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                    الوقت والتاريخ:
+                    التاريخ:
                   </span>
                   <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono">
-                    {formattedTime} - {formattedDate}
+                    {formattedDate}
                   </span>
                 </div>
               </>
@@ -182,10 +178,10 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
                 <div className="w-full border-t border-slate-200/40 dark:border-slate-800/40" />
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                    الوقت والتاريخ:
+                    التاريخ:
                   </span>
                   <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono">
-                    {formattedTime} - {formattedDate}
+                    {formattedDate}
                   </span>
                 </div>
               </>
