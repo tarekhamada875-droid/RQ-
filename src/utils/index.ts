@@ -137,10 +137,6 @@ export const isPlateValid = (val: string): boolean => {
 /**
  * Formats plate letters with standard spacing.
  */
-export const formatPlateLetters = (letters: string): string => {
-  return letters.split('').join(' ');
-};
-
 export const normalizePhone = (phone: string): string => {
   return normalizeDigits(phone.trim()).replace(/[^\d+]/g, '');
 };
@@ -364,42 +360,6 @@ export const isLightColor = (color: string | undefined): boolean => {
  * Retries a Firestore/API operation with exponential backoff and network checks.
  * Immediate throw for non-retryable authorization or business rule errors.
  */
-export const withRetry = async <T>(
-  operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delayMs: number = 300
-): Promise<T> => {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    throw new Error('لا يوجد اتصال بالإنترنت. يرجى التأكد من اتصالك بشبكة الإنترنت ثم المحاولة مرة أخرى.');
-  }
-
-  const isNonRetryable = (err: any): boolean => {
-    if (!err) return false;
-    const msg = (err.message || String(err)).toLowerCase();
-    const code = (err.code || '').toLowerCase();
-    const combined = `${code} ${msg}`;
-    return /permission|unauthenticated|unauthorized|invalid-argument|not[-_ ]found|already-exists|locked|expired|validation|reached_daily_deletion_limit|insufficient_balance/.test(combined);
-  };
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (err: any) {
-      lastError = err;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new Error('انقطع الاتصال بالإنترنت أثناء تنفيذ العملية. يرجى إعادة الاتصال والمحاولة مرة أخرى.', { cause: err });
-      }
-      if (isNonRetryable(err)) {
-        throw err;
-      }
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt - 1)));
-      }
-    }
-  }
-  throw lastError;
-};
 
 /**
  * Simple lock to prevent concurrent execution of the same async operation.
