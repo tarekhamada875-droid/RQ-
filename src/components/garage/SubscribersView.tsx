@@ -370,7 +370,12 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
       setActiveSubscriberForRenew(null);
     } catch (err: any) {
       console.error("Renewal Error:", err);
-      showToast('حدث خطأ أثناء تجديد الاشتراك', 'error');
+      const errMsg = err?.message || String(err);
+      if (errMsg.includes('INSUFFICIENT_PAID_CREDITS') || errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS')) {
+        showToast('رصيدك خلص — تجديد الاشتراك يحتاج 5 رصيد مدفوع. يرجى شحن الرصيد أولاً', 'error');
+      } else {
+        showToast('حدث خطأ أثناء تجديد الاشتراك', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -407,8 +412,8 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
           showToast('تمت إضافة المشترك بنجاح', 'success');
           clearDraft();
         } catch (error: any) {
-          if (error?.message?.includes('INSUFFICIENT_BALANCE')) {
-            showToast('عفواً، اشتراك الجراج لا يكفي لإتمام العملية.', 'error');
+          if (error?.message?.includes('INSUFFICIENT_PAID_CREDITS') || error?.message?.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || error?.message?.includes('INSUFFICIENT_BALANCE')) {
+            showToast('عفواً، رصيد الجراج لا يكفي لإتمام العملية.', 'error');
             return;
           }
           throw error;
