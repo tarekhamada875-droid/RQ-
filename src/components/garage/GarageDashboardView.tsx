@@ -23,6 +23,7 @@ import {
 import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
 import { firestoreService } from '../../services';
+import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
@@ -271,6 +272,8 @@ export const GarageDashboardView = memo((props: any) => {
     ? prepaidCreditTotal <= 0
     : Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
   const shouldShowSmartPrompt = isBalanceDepleted;
+  const systemConfig = useSystemConfig();
+  const paymentWalletNumber = systemConfig?.paymentWalletNumber;
 
   return (
     <div
@@ -312,6 +315,7 @@ export const GarageDashboardView = memo((props: any) => {
             {shouldShowSmartPrompt ? (
               <SmartActionPrompt
                 garage={garage}
+                paymentWalletNumber={paymentWalletNumber}
               />
             ) : (
               <RegistrationCard
