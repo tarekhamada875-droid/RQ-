@@ -725,10 +725,9 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       await migratePinToHash('delegates', match.id, normalizedPin);
     }
 
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
-    const entityColl = entityCollMap[match.role];
-    const secColl = secCollMap[match.role];
+    const sessionDef = workerSessionDefinition(match.role);
+    const entityColl = sessionDef?.entity || '';
+    const secColl = sessionDef?.sessions || '';
     const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
     if (!adminDb || !entityColl || !secColl) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
 
@@ -912,10 +911,9 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     if (!adminDb) return c.json({ success: false, valid: false, error: 'DATABASE_UNAVAILABLE' }, 503);
 
     if (role === 'supervisor') return c.json({ success: false, valid: false, error: 'ROLE_RETIRED' }, 403);
-    const secCollMap: Record<string, string> = { admin: 'admin_sessions', delegate: 'delegate_sessions', garage: 'garage_sessions', staff: 'staff_sessions' };
-    const entityCollMap: Record<string, string> = { admin: 'admin_settings', delegate: 'delegates', garage: 'garages', staff: 'staff' };
-    const secColl = secCollMap[role];
-    const entityColl = entityCollMap[role];
+    const sessionDef = workerSessionDefinition(role);
+    const secColl = sessionDef?.sessions || '';
+    const entityColl = sessionDef?.entity || '';
     if (!secColl || !entityColl) return c.json({ success: false, valid: false, error: 'INVALID_ROLE' });
 
     const rootRef = adminDb.doc(`${secColl}/${effectiveUid}`);
