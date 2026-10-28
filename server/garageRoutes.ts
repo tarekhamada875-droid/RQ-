@@ -1342,7 +1342,16 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         referralAward = { garageId: referrerGarageId, amount: 20, bucket: 'referral', entryId: referralLedger.entryId };
       }
       const now = new Date();
-      t.set(garageRef, { creditBalance: transition.value.balance, ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}), ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}) }, { merge: true });
+      // Admin revenue = the EGP the admin collected from this garage for paid credits (1 EGP = 1 credit).
+      // This is SEPARATE from garage revenue (what the garage earned from cars).
+      const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
+      const newAdminRevenue = currentAdminRevenue + paymentAmountEgp;
+      t.set(garageRef, {
+        creditBalance: transition.value.balance,
+        totalAdminRevenue: newAdminRevenue,
+        ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
+        ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {})
+      }, { merge: true });
       t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: packageId ? 'admin_template_grant' : 'admin_entered_grant', packageId, packageName: template?.name || null, paymentConfirmed: true, paymentAmountEgp, paymentReference });
       recordDomainEventInTransaction(t, getAdminDb(), {
         garageId,
