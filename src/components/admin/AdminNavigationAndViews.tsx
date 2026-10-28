@@ -8,7 +8,8 @@ import {
   Key,
   ChevronRight,
   ShieldCheck,
-  Calculator
+  Calculator,
+  Wallet
 } from 'lucide-react';
 import { Garage, Delegate, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
@@ -18,6 +19,7 @@ import { AdminRequestsView } from './AdminRequestsView';
 import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
+import { AdminWalletSettingsView } from './AdminWalletSettingsView';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -170,7 +172,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions') ? 'text-current' : 'text-sky-500'}`} />
+              <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings') ? 'text-current' : 'text-sky-500'}`} />
               <span>{t('الإعدادات')}</span>
             </button>
           </div>
@@ -237,6 +239,23 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
                 <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
+
+            {/* Payment Wallet Number */}
+            <div
+              onClick={() => setActiveTab('wallet_settings')}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-slate-900 dark:text-white text-base">رقم محفظة الدفع</h3>
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                  <Wallet className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                <span>يُعرض لأصحاب الجراجات عند نفاد الرصيد</span>
+                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-amber-500 rotate-180`} />
+              </div>
+            </div>
           </div>
         </div>
       ) : activeTab === 'garages' ? (
@@ -262,6 +281,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         />
       ) : activeTab === 'active_sessions' ? (
         <AdminActiveSessionsView onLogout={onLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
+      ) : activeTab === 'wallet_settings' ? (
+        <AdminWalletSettingsView onBack={() => setActiveTab('catalog_settings')} t={t} />
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
           currentAdminPin={currentAdminPin}

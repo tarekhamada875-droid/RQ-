@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Key, Check, Loader2, Wallet } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Key, Check, Loader2 } from 'lucide-react';
 import { normalizeDigits } from '../../utils';
 import { firestoreService } from '../../services';
 import { apiFetch } from '../../api/apiClient';
@@ -25,54 +25,6 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
   const [isVerifyingCurrent, setIsVerifyingCurrent] = useState<boolean>(false);
 
-  // Payment wallet number — shown to garage owners when their credits run out.
-  const [paymentWalletNumber, setPaymentWalletNumber] = useState<string>('');
-  const [walletSaveError, setWalletSaveError] = useState<string>('');
-  const [walletSaveSuccess, setWalletSaveSuccess] = useState<string>('');
-  const [isSavingWallet, setIsSavingWallet] = useState<boolean>(false);
-
-  // Load the current wallet number once the admin is verified.
-  useEffect(() => {
-    if (!isAdminPinVerified) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const data = await apiFetch<{ success?: boolean; config?: { paymentWalletNumber?: string } }>('/api/system-config');
-        if (!cancelled && data?.success && data.config) {
-          setPaymentWalletNumber(data.config.paymentWalletNumber || '');
-        }
-      } catch (err) {
-        // Non-fatal: the field just starts empty.
-        console.warn('Failed to load paymentWalletNumber:', err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isAdminPinVerified]);
-
-  const handleSaveWallet = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setWalletSaveError('');
-    setWalletSaveSuccess('');
-    const trimmed = paymentWalletNumber.trim();
-    if (!trimmed) {
-      setWalletSaveError(t('أدخل رقم محفظة الدفع أولاً.'));
-      return;
-    }
-    if (trimmed.length > 120) {
-      setWalletSaveError(t('رقم المحفظة طويل جداً.'));
-      return;
-    }
-    setIsSavingWallet(true);
-    try {
-      await firestoreService.updateSystemConfig({ paymentWalletNumber: trimmed });
-      setWalletSaveSuccess(t('تم حفظ رقم محفظة الدفع بنجاح.'));
-    } catch (err: any) {
-      setWalletSaveError(t('تعذّر حفظ رقم المحفظة. حاول مرة أخرى.'));
-    } finally {
-      setIsSavingWallet(false);
-    }
-  };
-
   const handleVerifyCurrentPin = async (event: React.FormEvent) => {
     event.preventDefault();
     setAdminPinError('');
@@ -80,7 +32,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
-    if (attempt.length < 4) {
+    if (attempt.length < 5) {
       setAdminPinError(t('أدخل رمز الدخول الحالي للمتابعة.'));
       return;
     }
@@ -89,7 +41,8 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     try {
       const data = await apiFetch('/api/auth/verify-admin-pin', {
         method: 'POST',
-        body: { pin: attempt }
+        body: { pin: attempt },
+        timeoutMs: 30000
       });
       if (data && data.valid) {
         setIsAdminPinVerified(true);
@@ -317,72 +270,6 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 </p>
               )}
             </form>
-
-            {/* Payment Wallet Number Section */}
-            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
-              <div className="mb-6 text-center space-y-3 relative z-10">
-                <div className="w-14 h-14 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-                  <Wallet className="w-7 h-7 text-amber-600 dark:text-amber-400 stroke-[2.5]" />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                  {t('رقم محفظة الدفع')}
-                </h3>
-                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-                  {t('يُعرض لأصحاب الجراجات عند نفاد رصيدهم ليعرفوا أين يرسلون الدفع')}
-                </p>
-              </div>
-
-              <form onSubmit={handleSaveWallet} className="space-y-6 relative z-10">
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    inputMode="tel"
-                    value={paymentWalletNumber}
-                    onChange={(e) => {
-                      setPaymentWalletNumber(e.target.value);
-                      setWalletSaveError('');
-                      setWalletSaveSuccess('');
-                    }}
-                    maxLength={120}
-                    aria-label={t('رقم محفظة الدفع')}
-                    required
-                    placeholder={t('01012345678 / Instapay / محفظة')}
-                    className="w-full max-w-md mx-auto block text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-bold text-lg text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all font-mono"
-                    dir="ltr"
-                  />
-                </div>
-
-                <div className="flex gap-3 sm:gap-4 pt-2 justify-center">
-                  <button
-                    type="submit"
-                    disabled={isSavingWallet}
-                    className="px-8 h-14 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                  >
-                    {isSavingWallet ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{t('جاري الحفظ...')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-5 h-5 stroke-[3]" />
-                        <span>{t('حفظ رقم المحفظة')}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                {walletSaveError && (
-                  <p role="alert" className="mt-2 text-center text-sm font-black text-red-500">
-                    {walletSaveError}
-                  </p>
-                )}
-                {walletSaveSuccess && (
-                  <p role="status" className="mt-2 text-center text-sm font-black text-emerald-500">
-                    {walletSaveSuccess}
-                  </p>
-                )}
-              </form>
-            </div>
           </div>
         )}
       </div>
