@@ -7,7 +7,6 @@ import {
   getRawPlate,
   getPlateParts,
   isPlateValid,
-  formatPlateLetters,
   normalizePhone,
   calculateCost,
   getDuration,
@@ -36,7 +35,6 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
       const clean = getCleanPlate(rawInput);
       const raw = getRawPlate(rawInput);
       const parts = getPlateParts(rawInput);
-      const formatted = formatPlateLetters(`${l1}${l2}${l3}`);
       const normalizedPhone = normalizePhone(`+20100${i.toString().padStart(6, '0')}`);
       const normalizedDigits = normalizeDigits('١٢٣٤٥٦٧٨٩٠');
       const normalizedLetters = normalizeLetters('أ ب ج');
@@ -46,7 +44,6 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
       expect(clean).toBeDefined();
       expect(raw).toBeDefined();
       expect(parts.letters).toBeDefined();
-      expect(formatted).toBeDefined();
       expect(normalizedPhone).toBeDefined();
       expect(normalizedDigits).toBe('1234567890');
       expect(normalizedLetters).toBeDefined();

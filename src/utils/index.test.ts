@@ -7,7 +7,6 @@ import {
   getRawPlate,
   getPlateParts,
   isPlateValid,
-  formatPlateLetters,
   normalizePhone,
   formatPlateNumber,
   getDuration,
@@ -52,7 +51,6 @@ describe('Normalization & String Utilities Edge Cases', () => {
   });
 
   it('formats plate numbers visually for display', () => {
-    expect(formatPlateLetters('أبج')).toBe('أ ب ج');
     expect(formatPlateNumber('أ ب ج 1234')).toBe('أ ب ج : 1234');
   });
 });

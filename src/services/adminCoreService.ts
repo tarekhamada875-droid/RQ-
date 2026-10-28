@@ -1,7 +1,6 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
-import { collection, query, where, onSnapshot, doc, getDocs, orderBy } from 'firebase/firestore';
-import { listenerTracker } from '../utils/listenerTracker';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Staff } from '../types';
 import type { AdminSummary } from './adminServiceTypes';
 
@@ -71,32 +70,16 @@ export const adminCoreService = {
   },
 
 
-  subscribeToGarageStaff: (garageId: string, callback: (staff: Staff[]) => void) => {
-    const trackerUnsub = listenerTracker.register(`garages/${garageId}/staff`);
-    const q = query(
-      collection(db, 'staff'),
-      where('garageId', '==', garageId),
-      orderBy('createdAt', 'desc')
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff));
-      callback(list);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'staff'));
-
-    return () => {
-      unsub();
-      trackerUnsub();
-    };
+  subscribeToGarageStaff: (_garageId: string, _callback: (staff: Staff[]) => void) => {
+    // Removed: dead code. Nobody calls this. Staff are loaded via the Worker API.
+    return () => {};
   },
 
 
-  subscribeToAdminPin: (callback: (pin: string) => void) => {
-    return onSnapshot(doc(db, 'admin_settings', 'auth_pin'), (snapshot) => {
-      callback(snapshot.data()?.pin || '');
-    }, (err) => {
-      console.warn('Admin pin subscription notice:', err);
-      callback('');
-    });
+  subscribeToAdminPin: (_callback: (pin: string) => void) => {
+    // Removed: dead code. The pin field was moved to private_pins (hashed),
+    // so this onSnapshot always returned ''. Nobody calls this anymore.
+    return () => {};
   },
 
 

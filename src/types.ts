@@ -5,16 +5,6 @@
 
 export type EntityRole = 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
 
-export interface EntitySession {
-  uid: string;
-  role: EntityRole;
-  entityId: string;
-  sessionId: string;
-  isActive: boolean;
-  createdAt?: any;
-  lastActive?: any;
-}
-
 export interface Package {
   id: string;
   name: string;
@@ -37,7 +27,6 @@ export interface Garage {
   balanceExpiry?: any; // Timestamp
   createdAt: any; // Timestamp
   balanceDays?: number;
-  ownerUid?: string;
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   billingModel?: 'subscription' | 'prepaid_credits';
@@ -85,23 +74,6 @@ export interface Garage {
   activePackageName?: string; // Current package name
   status?: 'pending' | 'approved' | 'rejected';
   isTrial?: boolean; // Server-owned trial-credit grant indicator
-  unlimitedFairUse?: UnlimitedFairUse | null;
-}
-
-export type UnlimitedTierType = 'daily' | 'biweekly' | 'monthly';
-
-export interface UnlimitedFairUse {
-  isActive: boolean;
-  tierType: UnlimitedTierType;
-  cycleCarsCount: number;
-  currentAllowance: number;
-  maxAllowance: number;
-  stepAmount: number;
-  threshold: number;
-  extensionsCount: number;
-  isNearMaxLimit?: boolean;
-  isMaxLimitReached?: boolean;
-  lastExtendedAt?: any;
 }
 
 export interface Staff {
