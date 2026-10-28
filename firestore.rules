@@ -564,9 +564,6 @@ service cloud.firestore {
     match /rate_limits/{rateLimitId} {
       allow read, write: if false;
     }
-    match /rate_limits_{environment}_v2/{rateLimitId} {
-      allow read, write: if false;
-    }
     match /credit_referral_awards/{garageId} {
       allow read, write: if false;
     }
