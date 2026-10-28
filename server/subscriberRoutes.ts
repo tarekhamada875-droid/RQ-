@@ -252,7 +252,16 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         if (materialized.ok === false) throw new Error(materialized.error);
         creditDebit = { ...creditResult.value, entry: materialized.value };
         t.set(getAdminDb().doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
-        t.set(garageRef, { creditBalance: creditDebit.balance }, { merge: true });
+        // Subscriber renewal = 5 EGP garage revenue (the garage collected 5 EGP from the subscriber).
+        // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
+        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;
+        t.set(garageRef, {
+          creditBalance: creditDebit.balance,
+          totalRevenue: (garageData.totalRevenue || 0) + creditDebit.entry.amount,
+          todayRevenue: isNewRevenueDay ? creditDebit.entry.amount : (garageData.todayRevenue || 0) + creditDebit.entry.amount,
+          lastTransactionDate: todayKey
+        }, { merge: true });
       }
       const activityDelta = subscriberActivityDelta(currentSnap.data() || {}, { ...currentSnap.data(), ...dates });
       writeMaintainedGarageDelta(t, validatedGarageId, {
