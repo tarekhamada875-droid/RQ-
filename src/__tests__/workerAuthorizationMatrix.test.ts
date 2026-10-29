@@ -428,7 +428,29 @@ describe('Worker role and garage-scope authorization matrix', () => {
     const fallbackResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
     const fallbackReadCount = mockDb.documentReadCount;
     expect(fallbackResponse.status).toBe(200);
-    expect(fallbackReadCount).toBe(liveReadCount + 1);
+    // Fallback now checks maintained_summary/daily first (1 read), then
+    // dashboard_summary/current (1 read) = 2 extra reads over the live path.
+    expect(fallbackReadCount).toBe(liveReadCount + 2);
+  });
+
+  it('serves the dashboard summary from maintained_summary/daily when projection buckets are absent', async () => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    mockDb.seed(`garages/garage-a/maintained_summary/daily_${today}`, {
+      garageId: 'garage-a',
+      dateId: today,
+      schemaVersion: 1,
+      todayEntries: 3,
+      todayExits: 1,
+      todayRevenue: 75
+    });
+
+    const response = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.data.summary.source).toBe('maintained_daily_summary');
+    expect(body.data.summary.entriesToday).toBe(3);
+    expect(body.data.summary.exitsToday).toBe(1);
+    expect(body.data.summary.grossRevenue).toBe(75);
   });
 
   it('serves a fresh stored dashboard summary when live buckets are absent', async () => {

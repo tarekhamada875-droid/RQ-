@@ -669,6 +669,28 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
       : undefined;
     c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
     if (bucketSnap.empty) {
+      // projection_buckets is no longer written on the hot path (efficiency fix).
+      // Fall back to the maintained_summary daily doc, then to the stored rebuild.
+      const maintainedDailyRef = getAdminDb().doc(`garages/${garageId}/maintained_summary/daily_${today}`);
+      const maintainedDailySnap = await maintainedDailyRef.get();
+      if (maintainedDailySnap.exists) {
+        const md = maintainedDailySnap.data() || {};
+        const summary = {
+          activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
+          entriesToday: Number(md.todayEntries || 0),
+          exitsToday: Number(md.todayExits || 0),
+          grossRevenue: Number(md.todayRevenue || 0),
+          refundTotal: 0,
+          netRevenue: Number(md.todayRevenue || 0),
+          garageId,
+          dateId: today,
+          rebuiltAt: new Date().toISOString(),
+          source: 'maintained_daily_summary',
+          ...(report ? { report } : {})
+        };
+        c.header('X-Summary-Source', 'maintained_daily_summary');
+        return c.json({ success: true, data: { garageId, summary } });
+      }
       const summarySnap = await getAdminDb().doc(`garages/${garageId}/dashboard_summary/current`).get();
       if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
       const storedSummary = summarySnap.data() || {};
