@@ -7,14 +7,12 @@ import {
   LogOut,
   ChevronRight
 } from 'lucide-react';
-import { Supervisor } from '../../types';
 
 interface AdminHeaderProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
   showMenu: boolean;
   setShowMenu: (show: boolean) => void;
-  currentSupervisor: Supervisor | null;
   onOpenAppearanceSettings: () => void;
   onLogout: () => void;
   menuRef: React.RefObject<HTMLDivElement>;
@@ -26,7 +24,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   setActiveTab,
   showMenu,
   setShowMenu,
-  currentSupervisor,
   onOpenAppearanceSettings,
   onLogout,
   menuRef,
@@ -103,7 +100,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         </div>
                         <div className="flex flex-col text-right">
                           <span className="text-mobile-wrap text-sm font-black text-slate-900 dark:text-slate-100 max-w-[150px] leading-snug">
-                            {currentSupervisor ? currentSupervisor.name : t('مالك النظام')}
+                            {t('مالك النظام')}
                           </span>
                         </div>
                       </div>

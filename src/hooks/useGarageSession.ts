@@ -3,7 +3,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Garage, Staff, Supervisor } from '../types';
+import { Garage, Staff } from '../types';
 import {
   getCanonicalSessionId,
   claimEntitySession,
@@ -52,8 +52,6 @@ interface UseGarageSessionProps {
   setDelegate: (d: any | null) => void;
   currentStaff: Staff | null;
   setCurrentStaff: (s: Staff | null) => void;
-  currentSupervisor: Supervisor | null;
-  setCurrentSupervisor: (s: Supervisor | null) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -66,8 +64,6 @@ export function useGarageSession({
   setDelegate,
   currentStaff,
   setCurrentStaff,
-  currentSupervisor,
-  setCurrentSupervisor,
   showToast,
 }: UseGarageSessionProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -129,13 +125,8 @@ export function useGarageSession({
       activeRole = 'delegate';
       activeEntityId = delegate.id;
     } else if (view === 'admin_dashboard' || view.startsWith('admin_')) {
-      if (currentSupervisor) {
-        activeRole = 'supervisor';
-        activeEntityId = currentSupervisor.id;
-      } else {
-        activeRole = 'admin';
-        activeEntityId = 'auth_pin';
-      }
+      activeRole = 'admin';
+      activeEntityId = 'auth_pin';
     }
 
     // Storage may be disabled or quota/security-restricted. Never let it interrupt
@@ -156,7 +147,6 @@ export function useGarageSession({
     setGarage(null);
     setDelegate(null);
     setCurrentStaff(null);
-    setCurrentSupervisor(null);
     setView('login');
     setShowLogoutConfirm(false);
 
@@ -194,14 +184,7 @@ export function useGarageSession({
       logoutInProgressRef.current = false;
       setIsLoggingOut(false);
     }
-  }, [view, currentStaff, garage, delegate, currentSupervisor, sessionId, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setView]);
-
-  // Retire stale browser sessions without touching their preserved Firestore records.
-  useEffect(() => {
-    if (!currentSupervisor) return;
-    logDiagnostic('RETIRED_SUPERVISOR_SESSION_CLEARED');
-    handleLogout(true);
-  }, [currentSupervisor, handleLogout]);
+  }, [view, currentStaff, garage, delegate, sessionId, setGarage, setDelegate, setCurrentStaff, setView]);
 
   const handleInitiateLogout = () => {
     setShowLogoutConfirm(true);
@@ -284,7 +267,7 @@ export function useGarageSession({
 
       let activeRole: EntityRole | null = null;
       let activeEntityId: string | null = null;
-      let docCollection: 'garages' | 'staff' | 'delegates' | 'supervisors' | 'admin_settings' | null = null;
+      let docCollection: 'garages' | 'staff' | 'delegates' | 'admin_settings' | null = null;
 
       if (view === 'garage') {
         if (currentStaff) {
@@ -301,15 +284,9 @@ export function useGarageSession({
         activeEntityId = delegate.id;
         docCollection = 'delegates';
       } else if (view === 'admin_dashboard' || view.startsWith('admin_')) {
-        if (currentSupervisor) {
-          activeRole = 'supervisor';
-          activeEntityId = currentSupervisor.id;
-          docCollection = 'supervisors';
-        } else {
-          activeRole = 'admin';
-          activeEntityId = 'auth_pin';
-          docCollection = 'admin_settings';
-        }
+        activeRole = 'admin';
+        activeEntityId = 'auth_pin';
+        docCollection = 'admin_settings';
       }
 
       if (!activeRole || !activeEntityId) {
@@ -319,11 +296,9 @@ export function useGarageSession({
         const hasStoredGarage = hasValidStoredEntity('app_garage');
         const hasStoredStaff = hasValidStoredEntity('app_staff');
         const hasStoredDelegate = hasValidStoredEntity('app_delegate');
-        const hasStoredSupervisor = hasValidStoredEntity('app_supervisor');
         if (
           (view === 'garage' && (hasStoredGarage || hasStoredStaff)) ||
-          (view === 'delegate_dashboard' && hasStoredDelegate) ||
-          (view.startsWith('admin_') && hasStoredSupervisor)
+          (view === 'delegate_dashboard' && hasStoredDelegate)
         ) {
           return;
         }
@@ -528,7 +503,7 @@ export function useGarageSession({
         document.removeEventListener('visibilitychange', visibilityHandler);
       }
     };
-  }, [view, isAuthReady, sessionId, garage?.id, delegate?.id, currentStaff?.id, currentSupervisor?.id]);
+  }, [view, isAuthReady, sessionId, garage?.id, delegate?.id, currentStaff?.id]);
 
   return {
     user,

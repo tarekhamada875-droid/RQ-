@@ -19,13 +19,13 @@ export function AppOverlays({ app }: AppOverlaysProps) {
   const { navigationUi, vehicleOperations, session, adminManagement } = app;
   const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress, now } = navigationUi;
   const { garage, delegate } = app.garageData;
-  const { currentStaff, currentSupervisor, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
+  const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
   const activeIdentity = view === 'garage'
     ? (currentStaff?.id ? `staff:${currentStaff.id}` : garage?.id ? `garage:${garage.id}` : 'garage:pending')
     : view === 'delegate_dashboard'
       ? (delegate?.id ? `delegate:${delegate.id}` : 'delegate:pending')
       : (view === 'admin_dashboard' || view.startsWith('admin_'))
-        ? (currentSupervisor?.id ? `supervisor:${currentSupervisor.id}` : 'admin:auth-pin')
+        ? 'admin:auth-pin'
         : `view:${view}`;
   const logoutAttemptScope = `${activeIdentity}:session:${sessionId}`;
   const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = vehicleOperations;

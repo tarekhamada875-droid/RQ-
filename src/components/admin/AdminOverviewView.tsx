@@ -16,20 +16,18 @@ import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
 interface AdminOverviewViewProps {
   allGarages: Garage[];
   onOpenAddGarage?: () => void;
-  isSupervisor?: boolean;
 }
 
 export const AdminOverviewView = memo(({
   allGarages,
   onOpenAddGarage,
-  isSupervisor = false
 }: AdminOverviewViewProps) => {
   const [showPlateLookupModal, setShowPlateLookupModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   return (
     <div dir="rtl" className="space-y-6 text-right font-sans max-w-6xl mx-auto px-2 sm:px-4 pb-12">
-      {!isSupervisor && (
+      {(
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-sm">
           <div>
             <h2 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
@@ -74,14 +72,14 @@ export const AdminOverviewView = memo(({
         </div>
       )}
 
-      {!isSupervisor && showPlateLookupModal && (
+      {showPlateLookupModal && (
         <PlateLookupModal
           allGarages={allGarages}
           onClose={() => setShowPlateLookupModal(false)}
         />
       )}
 
-      {!isSupervisor && showExportModal && (
+      {showExportModal && (
         <ActivityLogExportModal
           onClose={() => setShowExportModal(false)}
         />

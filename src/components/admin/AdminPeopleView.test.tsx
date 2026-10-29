@@ -32,7 +32,7 @@ describe('AdminPeopleView delegate creation', () => {
     render(
       <AdminPeopleView
         delegates={[]}
-        currentSupervisor={null}
+       
         allGarages={[]}
         onSelectDelegate={vi.fn()}
       />,
@@ -52,7 +52,7 @@ describe('AdminPeopleView delegate creation', () => {
     render(
       <AdminPeopleView
         delegates={[]}
-        currentSupervisor={null}
+       
         allGarages={[]}
         onSelectDelegate={vi.fn()}
       />,
@@ -72,7 +72,7 @@ describe('AdminPeopleView delegate creation', () => {
     render(
       <AdminPeopleView
         delegates={[]}
-        currentSupervisor={null}
+       
         allGarages={[]}
         onSelectDelegate={vi.fn()}
       />,
@@ -97,7 +97,7 @@ describe('AdminPeopleView Arabic-only interface', () => {
     render(
       <AdminPeopleView
         delegates={[]}
-        currentSupervisor={null}
+       
         allGarages={[]}
         onSelectDelegate={vi.fn()}
       />,

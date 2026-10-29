@@ -65,7 +65,6 @@ const createSnapshot = (exists: boolean, garageData: Record<string, unknown> = {
 const createProps = () => ({
   allGarages: [],
   delegate: null,
-  currentSupervisor: null,
   loginPhone: '12345678',
   setLoginPhone: vi.fn(),
   setAdminPin: vi.fn(),
@@ -74,7 +73,6 @@ const createProps = () => ({
   setGarage: vi.fn(),
   setDelegate: vi.fn(),
   setCurrentStaff: vi.fn(),
-  setCurrentSupervisor: vi.fn(),
   setSelectedGarageForDetails: vi.fn(),
   setView: vi.fn(),
   setIsLoading: vi.fn(),

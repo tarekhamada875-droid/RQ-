@@ -6,7 +6,6 @@ interface AdminGaragesTabViewProps {
   displayedGarages: Garage[];
   adminSearch: string;
   setAdminSearch: (s: string) => void;
-  currentSupervisor: any;
   onSelectGarage: (garage: Garage) => void;
   onOpenAddGarage: () => void;
   t: (key: string) => string;
@@ -21,7 +20,6 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
   displayedGarages,
   adminSearch,
   setAdminSearch,
-  currentSupervisor,
   onSelectGarage,
   onOpenAddGarage,
   t,
@@ -33,8 +31,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* Add Garage Button - Hidden for Supervisors */}
-      {!currentSupervisor && (
+            {(
         <button
           onClick={onOpenAddGarage}
           className="w-full bg-slate-900 dark:bg-emerald-600 text-white dark:text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-4 hover:opacity-90 transition-all outline-none active:scale-[0.98]"
@@ -85,14 +82,9 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                   <div 
                     key={g.id} 
                     onClick={() => {
-                      if (currentSupervisor) return;
-                      onSelectGarage(g);
+                                            onSelectGarage(g);
                     }}
-                    className={`w-full bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition-all ${
-                      currentSupervisor 
-                        ? 'cursor-default select-none' 
-                        : 'cursor-pointer active:scale-[0.99] group'
-                    }`}
+                    className={`w-full bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span className="text-mobile-wrap font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-snug">
@@ -104,7 +96,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                         </span>
                       )}
                     </div>
-                    {!currentSupervisor && (
+                    {(
                       <div className="shrink-0 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">
                         <ChevronLeft className="w-4 h-4" />
                       </div>

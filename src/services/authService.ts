@@ -48,7 +48,7 @@ export const authService = {
         ...(token ? { firebaseIdToken: token } : {})
       };
 
-      const data = await apiFetch<{ success: boolean; role?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage'; accountId?: string; account?: any; sessionClaimed?: boolean; error?: string }>('/api/auth/verify-pin', {
+      const data = await apiFetch<{ success: boolean; role?: 'admin' | 'delegate' | 'staff' | 'garage'; accountId?: string; account?: any; sessionClaimed?: boolean; error?: string }>('/api/auth/verify-pin', {
         method: 'POST',
         body: payload
       });

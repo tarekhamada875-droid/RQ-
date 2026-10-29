@@ -80,17 +80,6 @@ export interface Delegate {
   lastSettledAt?: any; // Timestamp
 }
 
-export interface Supervisor {
-  id: string;
-  name: string;
-  phone: string;
-  pin: string;
-  role: 'supervisor';
-  currentSessionId?: string | null;
-  lastActive?: any; // Timestamp
-  createdAt: any;
-}
-
 export interface ActivityLog {
   id: string;
   garageId: string;

@@ -104,10 +104,6 @@ service cloud.firestore {
       );
     }
 
-    function isSupervisor() {
-      // Retired role: preserved legacy documents never grant client access.
-      return false;
-    }
 
     function isDelegate() {
       return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
@@ -146,10 +142,6 @@ service cloud.firestore {
       );
     }
 
-    function isSupervisorSession(supervisorId) {
-      // Retired role: no legacy session may access Supervisor records.
-      return false;
-    }
 
     function isDelegateSession(delegateId) {
       return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
@@ -359,13 +351,6 @@ service cloud.firestore {
              (!('garageName' in data) || data.garageName == null || data.garageName is string);
     }
 
-    function isValidSupervisor(data) {
-      return ('name' in data) && ('phone' in data) && ('pin' in data) && ('role' in data) &&
-             data.name is string && data.name.size() > 0 &&
-             data.phone is string && data.phone.size() >= 1 &&
-             data.pin is string && data.pin.size() >= 4 &&
-             data.role == 'supervisor';
-    }
 
     function isValidRechargeRequest(data) {
       return data.keys().hasAll(['garageId', 'garageName', 'delegateId', 'delegateName', 'packageId', 'packageName', 'status', 'createdAt']) &&
@@ -454,12 +439,12 @@ service cloud.firestore {
     }
 
     match /activity_logs/{logId} {
-      allow read: if isAdmin() || isSupervisor() || (isGarageSession(resource.data.garageId));
+      allow read: if isAdmin() || (isGarageSession(resource.data.garageId));
       allow create, update, delete: if false; // Server-only
     }
 
     match /settings/{docId} {
-      allow read: if isAdmin() || isSupervisor();
+      allow read: if isAdmin();
       allow write: if false;
     }
 
@@ -479,12 +464,12 @@ service cloud.firestore {
     }
 
     match /delegates/{delegateId} {
-      allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isDelegateSession(delegateId));
+      allow read: if isSignedIn() && (isAdmin() || isDelegateSession(delegateId));
       allow create, update, delete: if false; // Worker only: /api/delegates/*
     }
 
     match /staff/{staffId} {
-      allow read: if isSignedIn() && (isAdmin() || isSupervisor() || isGarageSession(resource.data.garageId) || isStaffSession(staffId));
+      allow read: if isSignedIn() && (isAdmin() || isGarageSession(resource.data.garageId) || isStaffSession(staffId));
       allow create, update, delete: if false;
     }
 
@@ -574,7 +559,7 @@ service cloud.firestore {
 
     match /garages/{garageId}/daily_stats/{dateId} {
       allow read: if isValidId(garageId) && (
-        isAdmin() || isSupervisor() ||
+        isAdmin() ||
         isGarageSession(garageId) ||
         isDelegateForGarage(garageId)
       );

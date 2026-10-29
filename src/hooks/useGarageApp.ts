@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Garage, Vehicle, Staff, Supervisor } from '../types';
+import { Garage, Vehicle, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -67,7 +67,6 @@ export function useGarageApp() {
   const [garage, setGarage] = useLocalStorageState<Garage | null>('app_garage', null);
   const [delegate, setDelegate] = useLocalStorageState<any | null>('app_delegate', null);
   const [currentStaff, setCurrentStaff] = useLocalStorageState<Staff | null>('app_staff', null);
-  const [currentSupervisor, setCurrentSupervisor] = useLocalStorageState<Supervisor | null>('app_supervisor', null);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [todayTransactions, setTodayTransactions] = useState<Vehicle[]>([]);
@@ -142,8 +141,6 @@ export function useGarageApp() {
     setDelegate,
     currentStaff,
     setCurrentStaff,
-    currentSupervisor,
-    setCurrentSupervisor,
     showToast,
   });
 
@@ -177,7 +174,6 @@ export function useGarageApp() {
     setGarage,
     delegate,
     currentStaff,
-    currentSupervisor,
     setDelegate,
     selectedGarageForDetails,
     setSelectedGarageForDetails,
@@ -254,7 +250,6 @@ export function useGarageApp() {
   } = useAdminAndGarageManagement({
     allGarages,
     delegate,
-    currentSupervisor,
     loginPhone,
     setLoginPhone,
     setAdminPin,
@@ -263,7 +258,6 @@ export function useGarageApp() {
     setGarage,
     setDelegate,
     setCurrentStaff,
-    setCurrentSupervisor,
     setSelectedGarageForDetails,
     setView,
     setIsLoading,
@@ -285,7 +279,6 @@ export function useGarageApp() {
     sessionId,
     currentStaff,
     setCurrentStaff,
-    currentSupervisor,
     showLogoutConfirm,
     setShowLogoutConfirm,
     isLoggingOut,
@@ -439,7 +432,6 @@ export function useGarageApp() {
     setShowStaffStats,
     showSubscribers,
     setShowSubscribers,
-    currentSupervisor,
     isInputFocused,
     setIsInputFocused,
     staffList,

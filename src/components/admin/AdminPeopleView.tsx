@@ -4,6 +4,7 @@
  */
 
 import React, { useState, memo } from 'react';
+import { Delegate, Garage } from '../../types';
 import {
   Users,
   Plus,
@@ -12,14 +13,12 @@ import {
   Loader2,
   Briefcase
 } from 'lucide-react';
-import { Delegate, Supervisor, Garage } from '../../types';
 import { firestoreService } from '../../services';
 import { generateSafePin, normalizeDigits, formatDisplayPin } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
 interface AdminPeopleViewProps {
   delegates: Delegate[];
-  currentSupervisor: Supervisor | null;
   allGarages?: Garage[];
   onSelectDelegate: (delegate: Delegate) => void;
   hasMore?: boolean;
@@ -31,7 +30,6 @@ interface AdminPeopleViewProps {
 
 export const AdminPeopleView = memo(({
   delegates,
-  currentSupervisor,
   allGarages = [],
   onSelectDelegate,
   hasMore = false,
@@ -105,7 +103,7 @@ export const AdminPeopleView = memo(({
     <div dir="rtl" className="space-y-6 text-right font-sans max-w-6xl mx-auto px-2 sm:px-4">
       {/* Sleek Segment Switcher & Action Trigger */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
-        {!currentSupervisor ? (
+        {(
           <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto">
             <button
               type="button"
@@ -119,14 +117,9 @@ export const AdminPeopleView = memo(({
               </span>
             </button>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
-            <Briefcase className="w-5 h-5 text-emerald-500" />
-            <span>قائمة المناديب التابعين لك</span>
-          </div>
         )}
 
-        {!currentSupervisor && (
+        {(
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
@@ -143,7 +136,7 @@ export const AdminPeopleView = memo(({
       </div>
 
       {/* Collapsible Add Form */}
-      {showAddForm && !currentSupervisor && (
+      {showAddForm && (
         <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/30 rounded-3xl p-6 shadow-md max-w-xl mx-auto space-y-4 animate-in fade-in duration-200">
           <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-500/10 text-emerald-600">
@@ -246,9 +239,9 @@ export const AdminPeopleView = memo(({
             return (
               <div
                 key={d.id}
-                onClick={() => !currentSupervisor && onSelectDelegate(d)}
+                onClick={() => onSelectDelegate(d)}
                 className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
-                  currentSupervisor ? 'border-slate-200 dark:border-slate-800' : 'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 cursor-pointer'
+                  'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 cursor-pointer'
                 }`}
               >
                 {/* Header */}

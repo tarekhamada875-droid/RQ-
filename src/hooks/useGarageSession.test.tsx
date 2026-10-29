@@ -317,7 +317,6 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     expect(props.setGarage).toHaveBeenCalledWith(null);
     expect(props.setDelegate).toHaveBeenCalledWith(null);
     expect(props.setCurrentStaff).toHaveBeenCalledWith(null);
-    expect(props.setCurrentSupervisor).toHaveBeenCalledWith(null);
     expect(props.setView).toHaveBeenCalledWith('login');
     expect(sessionMocks.signOut).toHaveBeenCalledOnce();
     expect(hook.result.current.isLoggingOut).toBe(false);
