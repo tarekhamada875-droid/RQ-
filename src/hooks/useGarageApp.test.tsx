@@ -39,7 +39,7 @@ vi.mock('./useLocalStorage', () => ({
 vi.mock('./useOnlineStatus', () => ({ useOnlineStatus: () => ({ isOnline: true, showOfflineScreen: false }) }));
 vi.mock('./useServerTime', () => ({ useServerTime: () => ({ now: new Date('2026-10-18T10:00:00.000Z') }) }));
 vi.mock('../utils/sounds', () => ({ soundManager: { play: vi.fn(), resume: vi.fn() } }));
-vi.mock('../store/appStore', () => ({ useAppStore: { getState: () => ({ showToast: vi.fn(), setGarages: vi.fn(), setPackages: vi.fn(), setDelegates: vi.fn() }) } }));
+vi.mock('../store/appStore', () => ({ useAppStore: { getState: () => ({ showToast: vi.fn(), setGarages: vi.fn(), setDelegates: vi.fn() }) } }));
 vi.mock('./useGarageSession', () => ({
   useGarageSession: () => ({
     user: { uid: 'user-1' },
@@ -97,7 +97,7 @@ vi.mock('./useGarageSync', () => ({
   useGarageSync: () => ({
     allGarages: [], delegates: [], staffList: [], setStaffList: vi.fn(), delegatePagination: {},
     delegateListsLoading: false, loadMoreDelegateGarages: vi.fn(),
-    packages: [], delegateGarages: [], sortedPackages: [], adminGarageHasMore: false,
+    packages: [], delegateGarages: [], adminGarageHasMore: false,
     adminDelegateHasMore: false, adminListsLoading: false, adminListsError: false,
     loadMoreAdminGarages: vi.fn(), loadMoreAdminDelegates: vi.fn(), refreshAdminLists: vi.fn()
   })

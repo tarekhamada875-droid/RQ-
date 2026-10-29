@@ -256,13 +256,10 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
         referralCreditsGranted: 20,
         regularEntryDebitCount: 2,
         regularEntryCreditsConsumed: 2,
-        regularEntryPaidCreditsConsumed: 0,
-        regularEntryReferralCreditsConsumed: 0,
         subscriberRenewalCount: 1,
         subscriberRenewalCreditsConsumed: 5,
         correctionRestoreCount: 1,
         restoredCredits: 1,
-        restoredReferralCredits: 0,
       }
     });
 

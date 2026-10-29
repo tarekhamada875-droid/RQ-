@@ -1,19 +1,5 @@
 import { create } from 'zustand';
-import { Garage, Delegate, Supervisor } from '../types';
-
-export interface ToastItem {
-  id: string;
-  message: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-}
-
-export interface AppNotification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: any;
-  read?: boolean;
-}
+import { Garage, Delegate } from '../types';
 
 interface AppState {
   // Primary Store Data
@@ -22,81 +8,22 @@ interface AppState {
   updateGarage: (garage: Garage) => void;
   delegates: Delegate[];
   setDelegates: (delegates: Delegate[]) => void;
-  notifications: AppNotification[];
-  addNotification: (notification: AppNotification) => void;
-  clearNotification: (id: string) => void;
-  toasts: ToastItem[];
+  /**
+   * No-op retained for backward compatibility with callers in
+   * AdminGarageDetailsView / AdminGarageSettingsSection. The actual toast UI
+   * is driven by local state in useGarageApp; this store call writes to
+   * nothing visible. Safe to remove once those callers are migrated.
+   */
   showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
-  removeToast: (id: string) => void;
-
-  // Backwards Compatible & Additional State
-  allGarages: Garage[];
-  setAllGarages: (garages: Garage[]) => void;
-  user: any;
-  setUser: (user: any) => void;
-  isAuthenticated: boolean;
-  setIsAuthenticated: (auth: boolean) => void;
-  view: string;
-  setView: (view: string) => void;
-  role: 'admin' | 'delegate' | 'garage' | null;
-  setRole: (role: any) => void;
-  supervisors: Supervisor[];
-  setSupervisors: (supervisors: Supervisor[]) => void;
-
-  // Selected Items
-  selectedGarageForDetails: Garage | null;
-  setSelectedGarageForDetails: (garage: Garage | null) => void;
-  selectedDelegateForDetails: Delegate | null;
-  setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
-
-  // UI State
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
-  toast: { message: string; type: string } | null;
-  setToast: (toast: { message: string; type: string } | null) => void;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   garages: [],
-  setGarages: (garages) => set({ garages, allGarages: garages }),
-  updateGarage: (updatedGarage) => set((state) => {
-    const newGarages = state.garages.map(g => g.id === updatedGarage.id ? updatedGarage : g);
-    return { garages: newGarages, allGarages: newGarages };
-  }),
+  setGarages: (garages) => set({ garages }),
+  updateGarage: (updatedGarage) => set((state) => ({
+    garages: state.garages.map(g => g.id === updatedGarage.id ? updatedGarage : g),
+  })),
   delegates: [],
   setDelegates: (delegates) => set({ delegates }),
-  notifications: [],
-  addNotification: (notification) => set((state) => ({ notifications: [notification, ...state.notifications] })),
-  clearNotification: (id) => set((state) => ({ notifications: state.notifications.filter(n => n.id !== id) })),
-  toasts: [],
-  showToast: (message, type = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    const newToast: ToastItem = { id, message, type };
-    set((state) => ({ toasts: [...state.toasts, newToast], toast: { message, type } }));
-    setTimeout(() => {
-      get().removeToast(id);
-    }, 3000);
-  },
-  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) })),
-
-  allGarages: [],
-  setAllGarages: (allGarages) => set({ allGarages, garages: allGarages }),
-  user: null,
-  setUser: (user) => set({ user }),
-  isAuthenticated: false,
-  setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
-  view: 'login',
-  setView: (view) => set({ view }),
-  role: null,
-  setRole: (role) => set({ role }),
-  supervisors: [],
-  setSupervisors: (supervisors) => set({ supervisors }),
-  selectedGarageForDetails: null,
-  setSelectedGarageForDetails: (selectedGarageForDetails) => set({ selectedGarageForDetails }),
-  selectedDelegateForDetails: null,
-  setSelectedDelegateForDetails: (selectedDelegateForDetails) => set({ selectedDelegateForDetails }),
-  isLoading: false,
-  setIsLoading: (isLoading) => set({ isLoading }),
-  toast: null,
-  setToast: (toast) => set({ toast }),
+  showToast: () => {},
 }));

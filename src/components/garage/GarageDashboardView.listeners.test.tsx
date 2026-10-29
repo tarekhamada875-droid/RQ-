@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const serviceMocks = vi.hoisted(() => ({
-  onAnnouncementsChange: vi.fn(),
   subscribeToGarageRechargeLogs: vi.fn(),
   subscribeToSubscribers: vi.fn(),
 }));
@@ -53,7 +52,6 @@ vi.mock('./RechargeHistoryView', () => ({
   ),
 }));
 vi.mock('./modals/RechargeNotificationModal', () => ({ RechargeNotificationModal: () => null }));
-vi.mock('./modals/AnnouncementModal', () => ({ AnnouncementModal: () => null }));
 vi.mock('../modals/StaffStatsModal', () => ({ StaffStatsModal: () => null }));
 vi.mock('./GarageReportsView', () => ({ GarageReportsView: () => null }));
 vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));
@@ -73,7 +71,8 @@ type SubscriberCallback = (subscribers: any[], page: any) => void;
 
 let rechargeListeners: ActiveListener<RechargeCallback>[];
 let subscriberListeners: ActiveListener<SubscriberCallback>[];
-let announcementUnsubscribe: ReturnType<typeof vi.fn>;
+
+const activeCount = <T,>(listeners: ActiveListener<T>[]) => listeners.filter(({ active }) => active).length;
 
 const makeGarage = (overrides: Record<string, unknown> = {}) => ({
   id: 'garage-listener-integration',
@@ -84,12 +83,8 @@ const makeGarage = (overrides: Record<string, unknown> = {}) => ({
   shimmerColor: '#ffffff',
   dailyCapacity: 50,
   carsInside: 0,
-  balance: 500,
-  balanceExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  billingModel: 'subscription',
-  activePackageName: 'Monthly',
-  activePackageId: 'monthly',
-  lastRechargeDate: null,
+  credits: 500,
+  billingModel: 'prepaid_credits',
   ...overrides,
 });
 
@@ -123,18 +118,11 @@ const DashboardHarness = ({ now = new Date(), garage = makeGarage() }: { now?: D
   );
 };
 
-const activeCount = <T,>(listeners: ActiveListener<T>[]) => listeners.filter(({ active }) => active).length;
-
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   rechargeListeners = [];
   subscriberListeners = [];
-  announcementUnsubscribe = vi.fn();
-  serviceMocks.onAnnouncementsChange.mockImplementation((callback) => {
-    callback([]);
-    return announcementUnsubscribe;
-  });
   serviceMocks.subscribeToGarageRechargeLogs.mockImplementation((_garageId, callback, limit) => {
     const unsubscribe = vi.fn();
     const listener = { callback, limit, active: true, unsubscribe };
@@ -248,7 +236,7 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     try {
       const initialNow = new Date('2026-10-19T12:14:00.000Z');
       const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
-      const garage = makeGarage({ lastRechargeDate: rechargeTime });
+      const garage = makeGarage();
       render(<DashboardHarness now={initialNow} garage={garage} />);
       const recharge = {
         id: 'expiring-recharge',

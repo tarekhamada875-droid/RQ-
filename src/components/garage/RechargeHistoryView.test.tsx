@@ -17,10 +17,6 @@ vi.mock('../../services/adminBillingService', () => ({
   adminBillingService: billingMocks,
 }));
 
-vi.mock('../../store/appStore', () => ({
-  useAppStore: (selector: (state: { packages: never[] }) => unknown) => selector({ packages: [] }),
-}));
-
 import { RechargeHistoryView } from './RechargeHistoryView';
 
 afterEach(() => {

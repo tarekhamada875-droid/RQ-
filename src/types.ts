@@ -21,15 +21,11 @@ export interface Garage {
   billingModel?: 'subscription' | 'prepaid_credits';
   /** Single prepaid credit balance (paid + referral + trial merged as of 2026-10-29). */
   credits?: number;
-  balance?: number;
   isLocked?: boolean;
   isSuspended?: boolean;
   lockReason?: string;
   lastRateChangeDate?: any; // Timestamp or ISO date of last rate modification
   totalAdminRevenue?: number;
-  lastRechargeAmount?: number;
-  lastRechargeDate?: any; // Timestamp
-  lastRechargePackageName?: string;
   totalRevenue?: number;
   totalVehiclesOut?: number;
   dailyRefundCount?: number;
@@ -53,7 +49,6 @@ export interface Garage {
   createdByDelegateName?: string | null;
   hasMonthlySubscribers?: boolean;
   dailyCapacity?: number; // Daily car limit (50, 100, 150, or 0/undefined for unlimited)
-  activePackageName?: string; // Current package name
   status?: 'pending' | 'approved' | 'rejected';
   isTrial?: boolean; // Server-owned trial-credit grant indicator
 }

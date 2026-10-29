@@ -133,15 +133,14 @@ export const GarageDashboardView = memo((props: any) => {
     const lastAckId = localStorage.getItem(`acknowledged_recharge_${garage.id}`);
     const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${garage.id}`) || 0);
     const latest = candidateLogs[0];
-    const fallbackDate = latest ? null : garage.lastRechargeDate;
-    if (!latest && !fallbackDate) {
+    if (!latest) {
       setHasNewRecharge(false);
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
       return;
     }
 
-    const logDate = safeDate(latest?.timestamp ?? fallbackDate);
+    const logDate = safeDate(latest?.timestamp);
     const logTime = logDate.getTime();
     const logId = latest?.id ?? `recharge_${logTime}`;
     const diffMs = Math.max(0, (now?.getTime?.() ?? Date.now()) - logTime);
@@ -149,21 +148,8 @@ export const GarageDashboardView = memo((props: any) => {
     const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
 
     if (!isAcknowledged && isRecent) {
-      const fallbackLog: any = latest || {
-        id: logId,
-        garageId: garage.id,
-        actionType: 'recharge',
-        plateNumber: garage.lastRechargePackageName ? `شحن باقة: ${garage.lastRechargePackageName}` : 'شحن رصيد الجراج',
-        amount: garage.lastRechargeAmount || 0,
-        timestamp: garage.lastRechargeDate,
-        details: {
-          packageName: garage.lastRechargePackageName || 'الباقة',
-          revenueAmount: garage.lastRechargeAmount || 0,
-          isTrial: Boolean(garage?.isTrial),
-        },
-      };
       setHasNewRecharge(true);
-      setLatestRechargeLog(fallbackLog);
+      setLatestRechargeLog(latest);
       setIsRechargeNotificationOpen(true);
       if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== logId) {
         try {
@@ -178,7 +164,7 @@ export const GarageDashboardView = memo((props: any) => {
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
     }
-  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.lastRechargeDate, garage?.lastRechargeAmount, garage?.lastRechargePackageName, garage?.isTrial]);
+  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.isTrial]);
 
   useEffect(() => {
     if (!isRechargeNotificationOpen || !latestRechargeLog) return;
@@ -247,15 +233,11 @@ export const GarageDashboardView = memo((props: any) => {
   };
 
 
-  // Check if balance or package status requires the SmartActionPrompt
-  const isActiveTrial = garage?.isTrial === true;
-  const hasActivePaidPackage = (
-    garage?.billingModel === 'subscription' || Boolean(garage?.activePackageName || garage?.packageName)
-  );
+  // Smart-action prompt fires only when the single prepaid balance is depleted.
+  // Legacy `billingModel: 'subscription'`, `balance`, and `activePackageName`
+  // paths were removed when the product collapsed to prepaid-credits-only.
   const prepaidCreditTotal = Number(garage?.credits ?? 0);
-  const isBalanceDepleted = prepaidCreditsEnabled
-    ? prepaidCreditTotal <= 0
-    : Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;
+  const isBalanceDepleted = prepaidCreditsEnabled && prepaidCreditTotal <= 0;
   const shouldShowSmartPrompt = isBalanceDepleted;
   const systemConfig = useSystemConfig();
   const paymentWalletNumber = systemConfig?.paymentWalletNumber;

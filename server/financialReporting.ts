@@ -16,7 +16,6 @@ export interface SettlementRecord {
 
 export interface CreditLedgerReportEntry {
   kind?: string;
-  bucket?: string;
   amount?: unknown;
   paymentAmountEgp?: unknown;
   occurredAt?: string | Date;
@@ -33,16 +32,10 @@ export interface CreditActivityMetrics {
   trialCreditsGranted: number;
   regularEntryDebitCount: number;
   regularEntryCreditsConsumed: number;
-  regularEntryPaidCreditsConsumed: number;
-  regularEntryReferralCreditsConsumed: number;
-  regularEntryTrialCreditsConsumed: number;
   subscriberRenewalCount: number;
   subscriberRenewalCreditsConsumed: number;
   correctionRestoreCount: number;
   restoredCredits: number;
-  restoredPaidCredits: number;
-  restoredReferralCredits: number;
-  restoredTrialCredits: number;
 }
 
 export interface FinancialReportOptions {
@@ -88,16 +81,10 @@ const emptyCreditActivity = (): CreditActivityMetrics => ({
   trialCreditsGranted: 0,
   regularEntryDebitCount: 0,
   regularEntryCreditsConsumed: 0,
-  regularEntryPaidCreditsConsumed: 0,
-  regularEntryReferralCreditsConsumed: 0,
-  regularEntryTrialCreditsConsumed: 0,
   subscriberRenewalCount: 0,
   subscriberRenewalCreditsConsumed: 0,
   correctionRestoreCount: 0,
   restoredCredits: 0,
-  restoredPaidCredits: 0,
-  restoredReferralCredits: 0,
-  restoredTrialCredits: 0,
 });
 
 function asDate(value: string | Date | undefined): Date | null {
