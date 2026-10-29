@@ -1,9 +1,8 @@
 import { FieldValue } from './firebaseWorkerAdmin';
 import { adminDb } from './firebaseAdmin';
-import { projectionBucketPath, projectionBucketUpdate, projectionShardCount, ProjectionDelta } from './deltaProjection';
 
 /**
- * Maintained-summary and projection-bucket helpers.
+ * Maintained-summary helpers.
  *
  * These write-side helpers update Firestore "summary" documents atomically
  * (via FieldValue.increment) so that dashboards and admin reports can read
@@ -14,16 +13,6 @@ import { projectionBucketPath, projectionBucketUpdate, projectionShardCount, Pro
  */
 
 export const MAINTAINED_SUMMARY_VERSION = 1;
-
-export function writeProjectionBucket(transaction: any, garageId: string, dateId: string, operationId: string, delta: ProjectionDelta): void {
-  if (!adminDb || Object.keys(delta).length === 0) return;
-  const configuredRate = Number(process.env.PROJECTION_OPERATIONS_PER_SECOND || 1);
-  const shardCount = projectionShardCount(Number.isFinite(configuredRate) ? configuredRate : 1);
-  const bucket = projectionBucketUpdate(operationId, dateId, delta, shardCount);
-  const bucketRef = adminDb.doc(projectionBucketPath(garageId, dateId, operationId, shardCount));
-  const increments = Object.fromEntries(Object.entries(delta).map(([field, value]) => [field, FieldValue.increment(Number(value || 0))]));
-  transaction.set(bucketRef, { ...increments, operationId: bucket.operationId, projectionVersion: bucket.projectionVersion, dateId: bucket.dateId, shard: bucket.shard, updatedAt: new Date() }, { merge: true });
-}
 
 export function maintainedGarageSummaryRef(garageId: string): any {
   return adminDb?.doc(`garages/${garageId}/maintained_summary/current`);

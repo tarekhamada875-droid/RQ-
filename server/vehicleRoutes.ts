@@ -1,6 +1,5 @@
 import type { WorkerApp } from './cloudflareWorker';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
-import type { ProjectionDelta } from './deltaProjection';
 import { applyCheckoutReportDelta, emptyDailyReportAggregate } from './reportAggregate';
 
 export type VehicleRouteDependency = (...args: any[]) => any;
@@ -31,7 +30,6 @@ export interface VehicleRouteDeps {
   debitRegularEntry: VehicleRouteDependency;
   materializeCreditLedgerEntry: VehicleRouteDependency;
   restoreCredits: VehicleRouteDependency;
-  writeProjectionBucket: (transaction: any, garageId: string, dateId: string, operationId: string, delta: ProjectionDelta) => void;
   writeMaintainedGarageDelta: VehicleRouteDependency;
   writeMaintainedGarageDailyDelta: VehicleRouteDependency;
 }

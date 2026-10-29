@@ -60,7 +60,6 @@ import {
   writeMaintainedGarageDailyDelta,
   writeMaintainedAdminDelta,
   writeMaintainedSubscriberDelta,
-  writeProjectionBucket,
   isUsableMaintainedSummary
 } from './workerMaintenance';
 
@@ -334,7 +333,6 @@ registerVehicleRoutes(workerApp, {
   debitRegularEntry,
   materializeCreditLedgerEntry,
   restoreCredits,
-  writeProjectionBucket,
   writeMaintainedGarageDelta,
   writeMaintainedGarageDailyDelta
 });
