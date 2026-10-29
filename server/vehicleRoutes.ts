@@ -129,7 +129,6 @@ export function registerVehicleRoutes(app: WorkerApp, deps: VehicleRouteDeps): v
     debitRegularEntry,
     materializeCreditLedgerEntry,
     restoreCredits,
-    writeProjectionBucket,
     writeMaintainedGarageDelta,
     writeMaintainedGarageDailyDelta
   } = deps;
@@ -295,17 +294,10 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       });
       writeMaintainedGarageDailyDelta(t, garageId, today, { todayEntries: 1 });
 
-      const logRef = getAdminDb().collection('activity_logs').doc();
-      t.set(logRef, {
-        garageId,
-        garageName: garageData.name || '',
-        staffId: staffId || null,
-        staffName: resolvedStaffName,
-        actionType: 'check_in',
-        plateNumber,
-        timestamp: new Date(),
-        amount: 0
-      });
+      // No activity_logs write for check-in — the domain event (vehicle_entered)
+      // already carries the same data, and no hot-path reader consumes check_in
+      // activity logs. This saves 1 write per check-in (~20,000/day at scale).
+      // The garage dashboard's "today transactions" reads check_out logs only.
 
       resultData = {
         isSubscriber: isSubscriberAuthoritative,
@@ -362,7 +354,6 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           projectionDelta: createVehicleDelta('vehicle_entered')
         }
       });
-      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_entered'));
 
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/vehicles/check-in', user?.uid, requestFingerprint);
@@ -550,7 +541,6 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
           projectionDelta: createVehicleDelta('vehicle_exited', finalDecisionCost)
         }
       });
-      writeProjectionBucket(t, garageId, today, operationId, createVehicleDelta('vehicle_exited', finalDecisionCost));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(t, idempotencyKey, { cost: finalDecisionCost }, '/api/vehicles/check-out', user?.uid, requestFingerprint);
       }
@@ -796,7 +786,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           projectionDelta: refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted')
         }
       });
-      writeProjectionBucket(t, garageId, todayYMD, operationId, refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted'));
       if (idempotencyKey) {
         storeIdempotencyInTransaction(
           t,
