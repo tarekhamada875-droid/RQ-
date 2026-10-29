@@ -39,19 +39,6 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
       totalRechargedAmount: 500,
       totalCommissionEarned: 100
     });
-
-    mockDb.seed('packages/pkg_monthly_standard', {
-      id: 'pkg_monthly_standard',
-      name: 'باقة شهرية standard',
-      price: 500,
-      basePrice: 500,
-      discountAmount: 0,
-      finalPrice: 500,
-      durationDays: 30,
-      dailyCapacity: 50,
-      isUnlimited: false,
-      isActive: true
-    });
   });
 
   it('pages delegate garages only and rejects unknown sections without querying them', async () => {

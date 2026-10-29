@@ -13,9 +13,6 @@ export type DomainEventType =
   | 'subscriber_deleted'
   | 'recharge_approved'
   | 'wallet_topup_approved'
-  | 'wallet_debited'
-  | 'package_purchased'
-  | 'recharge_rejected'
   | 'delegate_settled'
   | 'commission_earned'
   | 'prepaid_credit_grant_paid';
@@ -78,7 +75,7 @@ export interface CreateEventParams {
 const EVENT_AGGREGATE_TYPES: Record<DomainEventType, AggregateType> = {
   vehicle_entered: 'vehicle', vehicle_exited: 'vehicle', vehicle_refunded: 'vehicle', vehicle_deleted: 'vehicle',
   subscriber_created: 'subscriber', subscriber_renewed: 'subscriber', subscriber_updated: 'subscriber', subscriber_deleted: 'subscriber',
-  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', wallet_debited: 'wallet', package_purchased: 'recharge', recharge_rejected: 'recharge', delegate_settled: 'delegate', commission_earned: 'delegate', prepaid_credit_grant_paid: 'credit_grant'
+  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', delegate_settled: 'delegate', commission_earned: 'delegate', prepaid_credit_grant_paid: 'credit_grant'
 };
 const SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 
@@ -97,8 +94,6 @@ const MONEY_EVENT_RULES: Partial<Record<DomainEventType, MoneyEventRule>> = {
     errorCode: 'INVALID_RECHARGE_PAYLOAD'
   },
   wallet_topup_approved: { required: ['amount'], errorCode: 'INVALID_WALLET_TOPUP_PAYLOAD' },
-  wallet_debited: { required: ['amount'], errorCode: 'INVALID_WALLET_DEBIT_PAYLOAD' },
-  package_purchased: { required: ['amount'], errorCode: 'INVALID_PACKAGE_PURCHASE_PAYLOAD' },
   delegate_settled: { required: ['previousRechargedAmount'], errorCode: 'INVALID_DELEGATE_SETTLEMENT_PAYLOAD' },
   commission_earned: { required: ['commissionAmount'], errorCode: 'INVALID_COMMISSION_PAYLOAD' },
   prepaid_credit_grant_paid: { required: ['amount'], errorCode: 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD' }

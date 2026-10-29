@@ -453,10 +453,6 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    match /login_requests/{requestId} {
-      allow read, write: if false;
-    }
-
     match /activity_logs/{logId} {
       allow read: if isAdmin() || isSupervisor() || (isGarageSession(resource.data.garageId));
       allow create, update, delete: if false; // Server-only

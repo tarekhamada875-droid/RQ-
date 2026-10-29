@@ -242,13 +242,6 @@ try {
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/private_setting')));
 
-  // Packages are a retired feature; all browser writes to the collection must be denied.
-  await assertFails(setDoc(doc(adminDb, 'packages/credit-bundle-valid'), {
-    name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
-    catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
-  }));
-  await assertFails(getDoc(doc(ownerDb, 'packages/credit-bundle-valid')));
-
   // Staff documents are readable by scoped roles but all browser writes are Worker-only.
   await assertFails(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
   const deniedStaffWrites = [
