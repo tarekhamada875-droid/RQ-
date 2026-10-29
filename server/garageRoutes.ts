@@ -1034,6 +1034,8 @@ app.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
       if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) return;
       await deleteEntityPinInTransaction(t, 'delegates', delegateId);
       t.delete(delegateRef);
+      // Atomically decrement the admin-summary counter inside the transaction.
+      writeMaintainedAdminDelta(t, { totalDelegates: -1 });
     });
     if (missingDelegate) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
     if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) {
@@ -1044,7 +1046,6 @@ app.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
       }, 409);
     }
 
-    await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Delegate] Error in delete:', e);
@@ -1136,7 +1137,6 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, reason });
     let granted: any = null;
-    let wasNewGrant = false;
     await getAdminDb().runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
@@ -1273,11 +1273,10 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       }
       granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
-      wasNewGrant = true;
+      // Atomically increment the admin-summary counter inside the transaction
+      // so the next admin-dashboard read is O(1) instead of a full collection scan.
+      writeMaintainedAdminDelta(t, { totalAdminRevenue: paymentAmountEgp });
     });
-    if (wasNewGrant) {
-      await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
-    }
     return c.json({ success: true, data: granted });
   } catch (error: any) {
     if (error?.message === 'DELEGATE_NOT_FOUND' || error?.message === 'INVALID_DELEGATE_COMMISSION_BALANCE') {
