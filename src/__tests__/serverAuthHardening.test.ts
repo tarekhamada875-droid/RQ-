@@ -26,37 +26,36 @@ describe('Phase 02: Server Security Hardening & Session Boundaries', () => {
     it('prohibits releasing session if authenticated UID does not match session owner (unless admin)', () => {
       const callerUid: string = 'user_attacker_123';
       const targetSessionUid: string = 'user_victim_456';
-      const isCallerAdminOrSupervisor = false;
+      const isCallerAdmin = false;
 
-      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdminOrSupervisor;
+      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdmin;
       expect(isAuthorizedToRelease).toBe(false);
     });
 
     it('permits releasing own session when authenticated UID matches target session', () => {
       const callerUid: string = 'user_legit_123';
       const targetSessionUid: string = 'user_legit_123';
-      const isCallerAdminOrSupervisor = false;
+      const isCallerAdmin = false;
 
-      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdminOrSupervisor;
+      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdmin;
       expect(isAuthorizedToRelease).toBe(true);
     });
 
-    it('permits admin or supervisor to release targeted session on behalf of users', () => {
+    it('permits admin to release targeted session on behalf of users', () => {
       const callerUid: string = 'admin_uid_789';
       const targetSessionUid: string = 'user_victim_456';
-      const isCallerAdminOrSupervisor = true;
+      const isCallerAdmin = true;
 
-      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdminOrSupervisor;
+      const isAuthorizedToRelease = (callerUid === targetSessionUid) || isCallerAdmin;
       expect(isAuthorizedToRelease).toBe(true);
     });
   });
 
   describe('Transaction Protection & Body Spoofing Prevention', () => {
     it('strictly enforces role checking on approve-recharge-request', () => {
-      const canApprove = (role?: string) => role === 'admin' || role === 'supervisor';
+      const canApprove = (role?: string) => role === 'admin';
 
       expect(canApprove('admin')).toBe(true);
-      expect(canApprove('supervisor')).toBe(true);
       expect(canApprove('garage')).toBe(false);
       expect(canApprove('staff')).toBe(false);
       expect(canApprove('delegate')).toBe(false);

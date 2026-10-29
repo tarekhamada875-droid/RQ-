@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Vehicle, Staff, Supervisor } from '../types';
+import { Garage, Vehicle, Staff } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
 
@@ -12,7 +12,6 @@ interface UseGarageSyncProps {
   setGarage: (g: Garage | null) => void;
   delegate: any | null;
   currentStaff: Staff | null;
-  currentSupervisor: Supervisor | null;
   setDelegate: (d: any | null) => void;
   selectedGarageForDetails: Garage | null;
   setSelectedGarageForDetails: (g: Garage | null) => void;
@@ -30,7 +29,6 @@ export function useGarageSync({
   setGarage,
   delegate,
   currentStaff,
-  currentSupervisor,
   setDelegate,
   selectedGarageForDetails,
   setSelectedGarageForDetails,
@@ -76,7 +74,7 @@ export function useGarageSync({
     : view === 'delegate_dashboard'
       ? `delegate:${delegate?.id ?? ''}:user:${user?.uid ?? ''}`
       : isAdminView
-        ? `admin:${currentSupervisor?.id ?? 'admin'}:user:${user?.uid ?? ''}`
+        ? `admin:auth-pin:user:${user?.uid ?? ''}`
         : `view:${view}:user:${user?.uid ?? ''}`);
   const previousDataOwnerKeyRef = useRef(dataOwnerKey);
 

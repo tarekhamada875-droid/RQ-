@@ -4,11 +4,11 @@
  */
 
 import React, { memo } from 'react';
-import { Garage, Delegate, Supervisor } from '../../types';
 import { firestoreService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
+import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 import { normalizeArabicSearch, resolveShimmerColor, isLightColor, normalizeDigits, sortGaragesNewestFirst } from '../../utils';
@@ -41,8 +41,6 @@ interface AdminDashboardProps {
   onLoadMoreAdminGarages?: () => Promise<void>;
   onLoadMoreAdminDelegates?: () => Promise<void>;
   onRefreshAdminLists?: () => Promise<void>;
-  // Retained only to constrain stale legacy Supervisor client state.
-  currentSupervisor?: Supervisor | null;
   currentAdminPin: string;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
 }
@@ -64,7 +62,6 @@ export const AdminDashboard = memo(({
   onLoadMoreAdminGarages,
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
-  currentSupervisor = null,
   currentAdminPin,
   showToast
 }: AdminDashboardProps) => {
@@ -80,13 +77,6 @@ export const AdminDashboard = memo(({
     else if (activeTab === 'trial_leads') setActiveTab('overview');
     else if (activeTab === 'packages') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
-
-  // Keep any stale legacy Supervisor state on the Delegates-only People view.
-  React.useEffect(() => {
-    if (currentSupervisor && (activeTab !== 'people' && activeTab !== 'delegates' && activeTab !== 'supervisors')) {
-      setActiveTab('people');
-    }
-  }, [currentSupervisor, activeTab, setActiveTab]);
 
   const [showOverview, setShowOverview] = React.useState<boolean>(false);
   const [pinInput, setPinInput] = React.useState<string>('');
@@ -214,10 +204,6 @@ export const AdminDashboard = memo(({
 
   const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (currentSupervisor) {
-      showToast?.('غير مصرح للمشرف بإضافة جراجات', 'error');
-      return false;
-    }
     try {
       const created = await createNewGarage(e);
       if (!created) return false;
@@ -358,7 +344,6 @@ export const AdminDashboard = memo(({
         setActiveTab={setActiveTab}
         showMenu={showMenu}
         setShowMenu={setShowMenu}
-        currentSupervisor={currentSupervisor}
         onOpenAppearanceSettings={() => setShowAppearanceSettings(true)}
         onLogout={onLogout}
         menuRef={menuRef}
@@ -373,7 +358,6 @@ export const AdminDashboard = memo(({
         <AdminNavigationAndViews
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          currentSupervisor={currentSupervisor}
           delegates={delegates}
           pendingGarages={pendingGarages}
           approvedGarages={approvedGarages}
@@ -381,19 +365,17 @@ export const AdminDashboard = memo(({
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
           onSelectGarage={(g) => {
-            if (currentSupervisor) return;
             setSelectedGarageForDetails(g);
             setView('admin_garage_details');
           }}
           onSelectDelegate={(d) => {
-            if (currentSupervisor) return;
             setSelectedDelegateForDetails(d);
             setView('admin_delegate_details');
           }}
-          onOpenAddGarage={!currentSupervisor ? () => {
+          onOpenAddGarage={() => {
             setPinInput('');
             setShowOverview(true);
-          } : undefined}
+          }}
           adminGarageHasMore={adminGarageHasMore}
           adminDelegateHasMore={adminDelegateHasMore}
           adminListsLoading={adminListsLoading}

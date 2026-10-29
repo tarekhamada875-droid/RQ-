@@ -1,4 +1,5 @@
 import React from 'react';
+import { Garage, Delegate } from '../../types';
 import {
   BarChart3,
   Car,
@@ -11,7 +12,6 @@ import {
   Calculator,
   Wallet
 } from 'lucide-react';
-import { Garage, Delegate, Supervisor } from '../../types';
 import { AdminOverviewView } from './AdminOverviewView';
 import { AdminPeopleView } from './AdminPeopleView';
 import { AdminGaragesTabView } from './AdminGaragesTabView';
@@ -24,7 +24,6 @@ import { AdminWalletSettingsView } from './AdminWalletSettingsView';
 interface AdminNavigationAndViewsProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
-  currentSupervisor: Supervisor | null;
   delegates: Delegate[];
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
@@ -52,7 +51,6 @@ interface AdminNavigationAndViewsProps {
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
   activeTab,
   setActiveTab,
-  currentSupervisor,
   delegates,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
@@ -80,7 +78,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   return (
     <>
       {/* Top Navigation Bar with Horizontal Scrolling */}
-      {!currentSupervisor && (
+      {(
         <div className="mb-5 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-hide no-scrollbar hide-scroll-bar touch-pan-x snap-x snap-mandatory">
             {/* Tab 1: Overview */}
@@ -139,12 +137,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               type="button"
               onClick={() => setActiveTab('people')}
               className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors'
+                activeTab === 'people' || activeTab === 'delegates'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Users className={`w-4 h-4 ${(activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors') ? 'text-current' : 'text-indigo-500'}`} />
+              <Users className={`w-4 h-4 ${(activeTab === 'people' || activeTab === 'delegates') ? 'text-current' : 'text-indigo-500'}`} />
               <span>{t('الأشخاص')}</span>
             </button>
 
@@ -182,13 +180,11 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       {activeTab === 'overview' ? (
         <AdminOverviewView
           allGarages={approvedGarages}
-          isSupervisor={Boolean(currentSupervisor)}
           onOpenAddGarage={onOpenAddGarage}
         />
-      ) : activeTab === 'people' || activeTab === 'delegates' || activeTab === 'supervisors' ? (
+      ) : activeTab === 'people' || activeTab === 'delegates' ? (
         <AdminPeopleView
           delegates={delegates}
-          currentSupervisor={currentSupervisor}
           allGarages={approvedGarages}
           onSelectDelegate={onSelectDelegate}
           hasMore={adminDelegateHasMore}
@@ -268,7 +264,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onRefresh={onRefreshAdminLists}
           adminSearch={adminSearch}
           setAdminSearch={setAdminSearch}
-          currentSupervisor={currentSupervisor}
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage || (() => {})}
           t={t}

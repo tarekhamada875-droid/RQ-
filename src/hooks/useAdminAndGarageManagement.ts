@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { Garage, Supervisor } from '../types';
+import { Garage } from '../types';
 import { firestoreService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
@@ -15,7 +15,6 @@ import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 interface UseAdminAndGarageManagementProps {
   allGarages: Garage[];
   delegate: any | null;
-  currentSupervisor: Supervisor | null;
   loginPhone: string;
   setLoginPhone: (s: string) => void;
   setAdminPin: (s: string) => void;
@@ -24,7 +23,6 @@ interface UseAdminAndGarageManagementProps {
   setGarage: (g: Garage | null) => void;
   setDelegate: (d: any | null) => void;
   setCurrentStaff: (s: any | null) => void;
-  setCurrentSupervisor: (s: Supervisor | null) => void;
   setSelectedGarageForDetails: (g: Garage | null) => void;
   setView: (view: any) => void;
   setIsLoading: (b: boolean) => void;
@@ -41,7 +39,6 @@ interface UseAdminAndGarageManagementProps {
 export function useAdminAndGarageManagement({
   allGarages,
   delegate,
-  currentSupervisor,
   loginPhone,
   setLoginPhone,
   setAdminPin,
@@ -50,7 +47,6 @@ export function useAdminAndGarageManagement({
   setGarage,
   setDelegate,
   setCurrentStaff,
-  setCurrentSupervisor,
   setSelectedGarageForDetails,
   setView,
   setIsLoading,
@@ -311,7 +307,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setCurrentSupervisor, setLoginPhone, setAdminPin, setActiveAdminPin, setUser, setIsLoading]);
+  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setAdminPin, setActiveAdminPin, setUser, setIsLoading]);
 
   const handleDelegateLogin = useCallback(async (pin: string) => {
     if (!isOnline) {
@@ -423,10 +419,6 @@ export function useAdminAndGarageManagement({
 
   // Create new garage
   const createNewGarage = useCallback(async (e: React.FormEvent<HTMLFormElement>): Promise<boolean> => {
-    if (currentSupervisor) {
-      showToast('غير مصرح للمشرف بإضافة جراجات جديدة', 'error');
-      return false;
-    }
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى المحاولة عند عودة النت.', 'error');
       return false;
@@ -519,7 +511,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, currentSupervisor, delegate, allGarages, showToast, closeKeyboard, setIsLoading, refreshAdminLists]);
+  }, [isOnline, delegate, allGarages, showToast, closeKeyboard, setIsLoading, refreshAdminLists]);
 
   // Delete garage
   const deleteGarage = useCallback(async (g: Garage | null) => {
