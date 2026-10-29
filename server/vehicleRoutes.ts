@@ -215,21 +215,16 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const decision = decideVehicleCheckIn(checkInGarage, checkInVehicle);
       if (decision.ok === false) throw new Error(decision.error);
       const { isNewDay, used } = decision.value;
-      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
+      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || typeof garageData.credits === 'number';
       let creditDebit: any = null;
       if (prepaidCreditsEnabled && !isSubscriberAuthoritative) {
         const creditResult = debitRegularEntry({
-          balance: {
-            paid: Number(garageData.creditBalance?.paid || 0),
-            referral: Number(garageData.creditBalance?.referral || 0),
-            trial: Number(garageData.creditBalance?.trial || 0),
-          },
+          balance: Number(garageData.credits ?? 0),
           amount: 1,
           garageId,
           actorUid: user?.uid || staffId || 'system',
           actorRole: callerRole || 'staff',
           reason: 'regular_vehicle_entry',
-          reference: operationId,
           occurredAt: new Date().toISOString(),
           idempotencyKey: idempotencyKey || operationId,
         });
@@ -259,7 +254,6 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         ...(creditDebit ? {
           creditDebit: {
             amount: creditDebit.entry.amount,
-            bucket: creditDebit.entry.bucket,
             ledgerEntryId: creditDebit.entry.entryId,
           }
         } : {})
@@ -272,7 +266,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         lastTransactionDate: today
       };
       if (creditDebit) {
-        garageUpdate.creditBalance = creditDebit.balance;
+        garageUpdate.credits = creditDebit.balance;
       }
 
       t.set(garageRef, garageUpdate, { merge: true });
@@ -334,11 +328,10 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         dailyCapacity: 0
       };
       if (creditDebit) {
-        resultData.creditBalance = creditDebit.balance;
-        resultData.remainingCredits = creditDebit.balance.paid + creditDebit.balance.referral + creditDebit.balance.trial;
+        resultData.credits = creditDebit.balance;
+        resultData.remainingCredits = creditDebit.balance;
         resultData.creditDebit = {
           amount: creditDebit.entry.amount,
-          bucket: creditDebit.entry.bucket,
           ledgerEntryId: creditDebit.entry.entryId,
         };
       }
@@ -364,7 +357,6 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           operationVersion: nextOperationVersion(vehicleSnap.data()?.operationVersion),
           ...(creditDebit ? {
             creditAmount: creditDebit.entry.amount,
-            creditBucket: creditDebit.entry.bucket,
             creditLedgerEntryId: creditDebit.entry.entryId,
           } : {}),
           projectionDelta: createVehicleDelta('vehicle_entered')
@@ -681,20 +673,14 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         : 0;
       const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
       let creditRestore: any = null;
-      if (garageData.creditBalance !== undefined && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
+      if (typeof garageData.credits === 'number' && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
         const restoreResult = restoreCredits({
-          balance: {
-            paid: Number(garageData.creditBalance?.paid || 0),
-            referral: Number(garageData.creditBalance?.referral || 0),
-            trial: Number(garageData.creditBalance?.trial || 0),
-          },
+          balance: Number(garageData.credits ?? 0),
           amount: Number(vehicleData.creditDebit.amount),
-          bucket: vehicleData.creditDebit.bucket,
           garageId,
           actorUid: user?.uid || staffId || 'system',
           actorRole: callerRole || 'staff',
           reason: 'authorized_vehicle_deletion_refund',
-          reference: operationId,
           occurredAt: new Date().toISOString(),
           idempotencyKey: idempotencyKey || operationId,
         });
@@ -730,7 +716,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
       }
       if (creditRestore) {
-        updates.creditBalance = creditRestore.balance;
+        updates.credits = creditRestore.balance;
       }
       if (vehicleData.status === 'inside') updates.carsInside = Math.max(0, (garageData.carsInside || 0) - 1);
       if (enteredToday) updates.todayCount = Math.max(0, (garageData.todayCount || 0) - 1);
@@ -779,7 +765,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         amount: refundAmt,
         ...(creditRestore ? {
           creditAmount: creditRestore.entry.amount,
-          creditBucket: creditRestore.entry.bucket,
           creditLedgerEntryId: creditRestore.entry.entryId,
         } : {})
       });
@@ -802,7 +787,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           previousCost: vehicleData.totalCost || 0,
           ...(creditRestore ? {
             creditRestored: creditRestore.entry.amount,
-            creditRestoreBucket: creditRestore.entry.bucket,
             creditRestoreLedgerEntryId: creditRestore.entry.entryId,
           } : {}),
           staffId: staffId || null,

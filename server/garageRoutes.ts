@@ -48,6 +48,7 @@ export interface GarageRouteDeps {
   grantPaidCredits: GarageRouteDependency;
   grantTrialCredits: GarageRouteDependency;
   awardReferralCredits: GarageRouteDependency;
+  applyCorrection: GarageRouteDependency;
   materializeCreditLedgerEntry: GarageRouteDependency;
   recordDomainEventInTransaction: GarageRouteDependency;
   startGarageDeletionRoute: GarageRouteDependency;
@@ -102,6 +103,7 @@ export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): voi
     grantPaidCredits,
     grantTrialCredits,
     awardReferralCredits,
+    applyCorrection,
     materializeCreditLedgerEntry,
     recordDomainEventInTransaction,
     startGarageDeletionRoute,
@@ -237,9 +239,8 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       dailyCapacity: finalDailyCapacity,
       activePackageName,
       packageName: activePackageName,
-      balanceExpiry,
-      balance: 0,
-      creditBalance: { paid: 0, referral: 0, trial: trialCreditAmount },
+      balanceExpiry: null,
+      credits: trialCreditAmount,
       carsInside: 0,
       carsInsideCount: 0,
       todayCount: 0,
@@ -336,13 +337,12 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       }
       if (isTrial) {
         const trialTransition = grantTrialCredits({
-          balance: { paid: 0, referral: 0, trial: 0 },
+          balance: 0,
           amount: trialCreditAmount,
           garageId,
           actorUid: callerUid,
           actorRole: callerRole || 'system',
           reason: 'New garage trial credit grant',
-          reference: garageId,
           occurredAt: now.toISOString(),
           idempotencyKey: `garage-create:${garageId}:trial`,
         });
@@ -410,7 +410,8 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
       'billingModel', 'commissionPerVehicle', 'monthlySubscriptionFee', 'dailyCapacity', 'capacity', 'allowMonthlySubscribers',
       'activePackageName', 'packageName', 'balance', 'balanceExpiry', 'balanceDays', 'carsInside',
       'lastBalanceDeduction', 'lastPaidFriday', 'lastRechargeAmount', 'lastRechargeDate', 'lastRechargePackageName',
-      'totalRechargedCars', 'referralBonusBalance', 'referralRewardClaimed', 'referralRewardAwardedAt'
+      'totalRechargedCars', 'referralBonusBalance', 'referralRewardClaimed', 'referralRewardAwardedAt',
+      'creditBalance', 'credits'
     ]);
     const retiredUpdateField = Object.keys(data).find((field) => retiredUpdateFields.has(field) && data[field] !== undefined);
     if (retiredUpdateField) return c.json({ success: false, error: 'RETIRED_GARAGE_FIELD', field: retiredUpdateField }, 400);
@@ -1121,6 +1122,10 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 // Credit grants now use custom amounts (50-2000 EGP) only.
 
 // Admin confirms offline payment and explicitly grants non-expiring prepaid credits.
+// Payment references were removed by owner decision (2026-10-29): grants now take
+// just an amount + reason. The 50-2,000 EGP range is enforced. Delegate commission
+// (100 EGP once, when the first qualifying paid grant >= 500 EGP) and the
+// referral reward (20 credits to the referring garage, same trigger) still fire.
 app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -1128,34 +1133,20 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
-    const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'paymentReference', 'reason', 'idempotencyKey'], false);
+    const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'reason', 'idempotencyKey'], false);
     if (sanitized.paymentConfirmed !== true) return c.json({ success: false, error: 'PAYMENT_CONFIRMATION_REQUIRED' }, 400);
-    const paymentReference = validateString(sanitized.paymentReference, 'paymentReference', { min: 1, max: 120, required: true });
     const reason = validateString(sanitized.reason, 'reason', { min: 1, max: 300, required: true });
     const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
     if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
     if (sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
     const paymentAmountEgp = validateNumber(sanitized.paymentAmountEgp, 'paymentAmountEgp', { min: 50, max: 2_000, integerOnly: true });
     const callerUid = user.uid;
-    const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, paymentReference, reason });
-    // Payment references are unique per-garage (Q24B): the same transfer reference
-    // may be used by two different garages, but never twice for the same garage.
-    const paymentReferenceMarkerId = encodeURIComponent(`${garageId}:${paymentReference}`).slice(0, 150);
-    const paymentReferenceMarkerRef = getAdminDb().doc(`payment_reference_markers/${paymentReferenceMarkerId}`);
+    const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, reason });
     let granted: any = null;
     let wasNewGrant = false;
     await getAdminDb().runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
-      const referenceMarkerSnapshot = await t.get(paymentReferenceMarkerRef);
-      if (referenceMarkerSnapshot.exists) {
-        const marker = referenceMarkerSnapshot.data?.() || {};
-        if (marker.idempotencyKey === idempotencyKey && marker.result) {
-          granted = marker.result;
-          return;
-        }
-        throw new Error('PAYMENT_REFERENCE_ALREADY_USED');
-      }
       const garageRef = getAdminDb().doc(`garages/${garageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
@@ -1198,12 +1189,8 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       let amount: number;
       amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
       if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
-      const balance = {
-        paid: Number(garage.creditBalance?.paid || 0),
-        referral: Number(garage.creditBalance?.referral || 0),
-        trial: Number(garage.creditBalance?.trial || 0),
-      };
-      const transition = grantPaidCredits({ balance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, reference: paymentReference, occurredAt: new Date().toISOString(), idempotencyKey });
+      const currentBalance = Number(garage.credits ?? 0);
+      const transition = grantPaidCredits({ balance: currentBalance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, occurredAt: new Date().toISOString(), idempotencyKey });
       if (transition.ok === false) throw new Error(transition.error);
       const entry = materializeCreditLedgerEntry(transition.value.entry);
       if (entry.ok === false) throw new Error(entry.error);
@@ -1214,12 +1201,11 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         const referrer = referrerSnap.data() || {};
         const rewardIdempotencyKey = `first_paid_grant:${garageId}`;
         referralTransition = awardReferralCredits({
-          balance: { paid: Number(referrer.creditBalance?.paid || 0), referral: Number(referrer.creditBalance?.referral || 0), trial: Number(referrer.creditBalance?.trial || 0) },
+          balance: Number(referrer.credits ?? 0),
           garageId: referrerGarageId,
           actorUid: callerUid,
           actorRole: 'admin',
           reason: 'First confirmed paid grant referral reward',
-          reference: garageId,
           occurredAt: transition.value.entry.occurredAt,
           idempotencyKey: rewardIdempotencyKey,
           referrerGarageId,
@@ -1231,20 +1217,18 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         const materializedReward = materializeCreditLedgerEntry(referralTransition.value.entry);
         if (materializedReward.ok === false) throw new Error(materializedReward.error);
         referralLedger = materializedReward.value;
-        referralAward = { garageId: referrerGarageId, amount: 20, bucket: 'referral', entryId: referralLedger.entryId };
+        referralAward = { garageId: referrerGarageId, amount: 20, entryId: referralLedger.entryId };
       }
       const now = new Date();
-      // Admin revenue = the EGP the admin collected from this garage for paid credits (1 EGP = 1 credit).
-      // This is SEPARATE from garage revenue (what the garage earned from cars).
       const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
       const newAdminRevenue = currentAdminRevenue + paymentAmountEgp;
       t.set(garageRef, {
-        creditBalance: transition.value.balance,
+        credits: transition.value.balance,
         totalAdminRevenue: newAdminRevenue,
         ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
         ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {})
       }, { merge: true });
-      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp, paymentReference });
+      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp });
       recordDomainEventInTransaction(t, getAdminDb(), {
         garageId,
         aggregateType: 'credit_grant',
@@ -1277,9 +1261,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           }
         });
       }
-      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, paymentReference, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, reason, ledgerEntryId: entry.value.entryId } });
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
-        t.set(referrerRef, { creditBalance: referralTransition.value.balance }, { merge: true });
+        t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
         t.set(getAdminDb().doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
         t.set(getAdminDb().collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
       }
@@ -1295,23 +1279,65 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         });
       }
       granted = { garageId, amount, paymentAmountEgp, balance: transition.value.balance, entryId: entry.value.entryId, referralAward };
-      t.set(paymentReferenceMarkerRef, { paymentReference, entryId: entry.value.entryId, garageId, idempotencyKey, result: granted, createdAt: new Date() });
       storeIdempotencyInTransaction(t, idempotencyKey, granted, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       wasNewGrant = true;
     });
-    // Mark admin summary stale so /api/admin/summary recomputes totalAdminRevenue.
-    // Skip on idempotent replays (granted was loaded from cache, no new write).
     if (wasNewGrant) {
       await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
     }
     return c.json({ success: true, data: granted });
   } catch (error: any) {
-    if (error?.message === 'PAYMENT_REFERENCE_ALREADY_USED') {
-      return c.json({ success: false, error: 'PAYMENT_REFERENCE_ALREADY_USED' }, 409);
-    }
     if (error?.message === 'DELEGATE_NOT_FOUND' || error?.message === 'INVALID_DELEGATE_COMMISSION_BALANCE') {
       return c.json({ success: false, error: error.message }, 409);
     }
+    const { statusCode, message } = mapDomainErrorToStatus(error);
+    return c.json({ success: false, error: message }, statusCode as any);
+  }
+});
+
+// Admin credit correction: adds or removes credits from a garage outside the
+// normal 50-2,000 EGP grant flow, for fixing mistakes. Positive amount adds,
+// negative amount removes (cannot drive balance below zero). A typed reason is
+// required and recorded in the ledger as kind='correction_delta'.
+app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
+    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    const garageId = validateId(c.req.param('id'), 'garageId', true);
+    const body = await c.req.json().catch(() => ({}));
+    const sanitized = sanitizePayload(body, ['amount', 'reason', 'idempotencyKey'], false);
+    const reason = validateString(sanitized.reason, 'reason', { min: 1, max: 300, required: true });
+    const idempotencyKey = validateIdempotencyKey(sanitized.idempotencyKey || c.req.header('idempotency-key') || c.req.header('x-idempotency-key'));
+    if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
+    if (sanitized.amount === undefined) return c.json({ success: false, error: 'CREDIT_AMOUNT_REQUIRED' }, 400);
+    // Allow any non-zero integer amount, positive or negative, within a sane bound.
+    const amount = validateNumber(sanitized.amount, 'amount', { min: -100_000, max: 100_000, integerOnly: true });
+    if (amount === 0) return c.json({ success: false, error: 'INVALID_CREDIT_AMOUNT' }, 400);
+    const callerUid = user.uid;
+    const requestFingerprint = createRequestFingerprint({ garageId, amount, reason, kind: 'correction' });
+    let correction: any = null;
+    await getAdminDb().runTransaction(async (t: any) => {
+      const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
+      if (isDuplicate) { correction = cachedResult; return; }
+      const garageRef = getAdminDb().doc(`garages/${garageId}`);
+      const garageSnap = await t.get(garageRef);
+      if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
+      const garage = garageSnap.data() || {};
+      if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
+      const currentBalance = Number(garage.credits ?? 0);
+      const transition = applyCorrection({ balance: currentBalance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, occurredAt: new Date().toISOString(), idempotencyKey });
+      if (transition.ok === false) throw new Error(transition.error);
+      const entry = materializeCreditLedgerEntry(transition.value.entry);
+      if (entry.ok === false) throw new Error(entry.error);
+      t.set(garageRef, { credits: transition.value.balance }, { merge: true });
+      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_correction' });
+      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_correction', timestamp: new Date(), details: { amount, reason, ledgerEntryId: entry.value.entryId } });
+      correction = { garageId, amount, reason, balance: transition.value.balance, entryId: entry.value.entryId };
+      storeIdempotencyInTransaction(t, idempotencyKey, correction, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
+    });
+    return c.json({ success: true, data: correction });
+  } catch (error: any) {
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }
@@ -1333,14 +1359,11 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
     const page = buildFirestorePage(snapshot.docs, pageRequest, 'occurredAt');
     const entries = page.documents.map((doc: any) => {
       const row = doc.data() || {};
-      const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, bucket: row.bucket, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, totalBalanceAfter: row.totalBalanceAfter, occurredAt: row.occurredAt };
-      return user?.role === 'admin' ? { ...common, paymentAmountEgp: row.paymentAmountEgp, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, reference: row.reference, idempotencyKey: row.idempotencyKey, source: row.source, packageId: row.packageId, packageName: row.packageName } : common;
+      const common = { id: doc.id, entryId: row.entryId, garageId: row.garageId, kind: row.kind, amount: row.amount, balanceBefore: row.balanceBefore, balanceAfter: row.balanceAfter, occurredAt: row.occurredAt };
+      return user?.role === 'admin' ? { ...common, paymentAmountEgp: row.paymentAmountEgp, actorUid: row.actorUid, actorRole: row.actorRole, reason: row.reason, idempotencyKey: row.idempotencyKey, source: row.source } : common;
     });
     return c.json({ success: true, data: entries, hasMore: page.hasMore, nextCursor: page.nextCursor });
   } catch (error: any) {
-    if (error?.message === 'PAYMENT_REFERENCE_ALREADY_USED') {
-      return c.json({ success: false, error: 'PAYMENT_REFERENCE_ALREADY_USED' }, 409);
-    }
     const { statusCode, message } = mapDomainErrorToStatus(error);
     return c.json({ success: false, error: message }, statusCode as any);
   }

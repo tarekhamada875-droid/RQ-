@@ -38,6 +38,7 @@ describe('adminService facade contract', () => {
     expect(Object.keys(adminService).sort()).toEqual([
       'addStaff',
       'addSubscriber',
+      'adminCorrectGarageCredits',
       'adminGrantGarageCredits',
       'deleteSubscriber',
       'getActivityLogsSince',

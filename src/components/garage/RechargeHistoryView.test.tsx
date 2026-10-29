@@ -38,7 +38,7 @@ describe('RechargeHistoryView credit grants', () => {
 
     render(
       <RechargeHistoryView
-        garage={{ id: 'garage-recharge-test', dailyCapacity: 20, billingModel: 'prepaid_credits', creditBalance: { paid: 12, referral: 3, trial: 0 } } as any}
+        garage={{ id: 'garage-recharge-test', dailyCapacity: 20, billingModel: 'prepaid_credits', credits: 15 } as any}
         onClose={vi.fn()}
       />,
     );

@@ -163,7 +163,6 @@ function requestContext(body: Record<string, unknown>) {
 function grantBody(amount: number, idempotencyKey: string) {
   return {
     paymentConfirmed: true,
-    paymentReference: `PAY-${idempotencyKey}`,
     reason: 'تأكيد دفع اختبار',
     amount,
     paymentAmountEgp: amount,
@@ -196,8 +195,11 @@ describe('first paid credit grant delegate commission', () => {
       }
     });
 
-    const second = await harness.route(requestContext({ ...grantBody(50, 'grant-second'), paymentReference: 'PAY-grant-first' }));
-    expect(second.status).toBe(409);
+    // Payment references were removed; the second grant succeeds (different
+    // idempotency key), and the qualifying-grant marker is already set so no
+    // second commission fires.
+    const second = await harness.route(requestContext({ ...grantBody(50, 'grant-second') }));
+    expect(second.status).toBe(200);
     expect(harness.delegate.totalCommissionEarned).toBe(100);
     expect(harness.delegate.totalRechargedAmount).toBe(100);
     expect(harness.recordDomainEventInTransaction.mock.calls.map((call) => call[2]).filter((event) => event.eventType === 'commission_earned')).toHaveLength(1);

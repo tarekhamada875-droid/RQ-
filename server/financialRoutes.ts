@@ -303,7 +303,6 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
       amountEgp: number;
       creditAmount: number;
       occurredAt: string;
-      paymentReference?: string;
     }> = [];
 
     const garageCollection = getAdminDb().collection('garages');
@@ -363,7 +362,6 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
               amountEgp,
               creditAmount,
               occurredAt,
-              ...(typeof entry.paymentReference === 'string' ? { paymentReference: entry.paymentReference } : {})
             });
           }
 

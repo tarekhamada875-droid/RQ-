@@ -206,8 +206,8 @@ export function useVehicleOperations({
           } : {}),
         } : prev);
       }
-      if (serverData?.creditBalance && typeof serverData.creditBalance.paid === 'number' && typeof serverData.creditBalance.referral === 'number') {
-        setGarage(prev => prev ? { ...prev, creditBalance: serverData.creditBalance } : prev);
+      if (typeof serverData?.credits === 'number') {
+        setGarage(prev => prev ? { ...prev, credits: serverData.credits } : prev);
       }
     } catch (error: any) {
       setVehicles(previousVehicles);

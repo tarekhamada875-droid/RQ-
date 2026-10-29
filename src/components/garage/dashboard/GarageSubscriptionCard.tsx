@@ -12,11 +12,8 @@ interface GarageSubscriptionCardProps {
   showBreakdown?: boolean;
 }
 
-export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: GarageSubscriptionCardProps) => {
-  const paidCredits = Math.max(0, Number(garage.creditBalance?.paid || 0));
-  const referralCredits = Math.max(0, Number(garage.creditBalance?.referral || 0));
-  const trialCredits = Math.max(0, Number(garage.creditBalance?.trial || 0));
-  const totalCredits = paidCredits + referralCredits + trialCredits;
+export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardProps) => {
+  const totalCredits = Math.max(0, Number(garage.credits ?? 0));
   const isLowCredit = totalCredits <= 50;
   const isCriticalCredit = totalCredits <= 10;
   const previousCredits = useRef<number | null>(null);
@@ -33,7 +30,7 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
   }, [totalCredits]);
 
   // Legacy money-balance and time-based subscription UI was retired.
-  if (garage.billingModel !== 'prepaid_credits' && garage.creditBalance === undefined) return null;
+  if (garage.billingModel !== 'prepaid_credits' && typeof garage.credits !== 'number') return null;
 
   return (
     <div className="flex gap-4 shrink-0 w-full select-none" id="persistent_balance_card">
@@ -57,9 +54,6 @@ export const GarageSubscriptionCard = memo(({ garage, showBreakdown = false }: G
               <ArrowDown key={position} className={`credit-debit-arrow credit-debit-arrow-${position}`} strokeWidth={4} data-testid="credit-debit-arrow" />
             ))}
           </span>
-        )}
-        {showBreakdown && (
-          <span className="text-[10px] md:text-xs font-bold text-slate-500">Paid: {paidCredits} · Referral: {referralCredits} · Trial: {trialCredits}</span>
         )}
         <span className="sr-only">Total access credits {totalCredits}</span>
       </div>

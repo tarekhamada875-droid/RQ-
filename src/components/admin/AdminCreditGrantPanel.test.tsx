@@ -6,11 +6,12 @@ import { firestoreService } from '../../services';
 vi.mock('../../services', () => ({
   firestoreService: {
     adminGrantGarageCredits: vi.fn(async () => ({})),
+    adminCorrectGarageCredits: vi.fn(async () => ({})),
   },
 }));
 
 const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subscription' };
-const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits' };
+const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits', credits: 0 };
 
 describe('AdminCreditGrantPanel', () => {
   beforeEach(() => {
@@ -23,29 +24,28 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.getByText(/إضافة الرصيد متاحة للجراجات/i)).toBeTruthy();
   });
 
-  it('shows the Arabic-only amount form', () => {
+  it('shows the Arabic-only grant form with reason field and no payment reference', () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-
     expect(screen.getByLabelText(/الرصيد المراد إضافته/i)).toBeTruthy();
     expect(screen.getByPlaceholderText(/أدخل قيمة الرصيد/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /إضافة رصيد/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^إضافة رصيد$/i })).toBeTruthy();
     expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.getByLabelText(/مرجع الدفع الفعلي/i)).toBeTruthy();
+    // Payment reference field is removed in the single-bucket model.
+    expect(screen.queryByLabelText(/مرجع الدفع الفعلي/i)).toBeNull();
     expect(screen.getByText(/أؤكد أن الدفع الفعلي قد تم استلامه والتحقق منه/i)).toBeTruthy();
-    expect(screen.getByRole('region', { name: /إضافة رصيد يدوي/ })).toBeTruthy();
+    expect(screen.getByRole('region', { name: /إدارة رصيد الجراج/ })).toBeTruthy();
   });
 
   it('accepts Arabic-Indic and Persian digits in the credit amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '١٠٠' } });
-    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-arabic-123' } });
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تحويل بنكي' } });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 100,
       paymentAmountEgp: 100,
-      paymentReference: 'receipt-arabic-123',
       paymentConfirmed: true,
     })));
   });
@@ -54,14 +54,14 @@ describe('AdminCreditGrantPanel', () => {
     vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
-    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-retry-123' } });
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تحويل بنكي' } });
     fireEvent.click(screen.getByRole('checkbox'));
 
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('تعذرت إضافة الرصيد. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
     expect(screen.queryByText('NETWORK_ERROR')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
 
     const firstCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[0][1];
@@ -74,9 +74,9 @@ describe('AdminCreditGrantPanel', () => {
     vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
-    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تحويل بنكي' } });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('إضافة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.');
     expect(screen.queryByText('GARAGE_NOT_PREPAID')).toBeNull();
@@ -84,40 +84,53 @@ describe('AdminCreditGrantPanel', () => {
 
   it('requires a valid whole-number credit amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 50 إلى 2,000/);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
-  it('requires a real payment reference and explicit payment confirmation', async () => {
+  it('requires a reason and explicit payment confirmation before grant', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/مرجع الدفع الفعلي/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/سبب/);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تحويل بنكي' } });
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/تأكيد استلام الدفع والتحقق منه/i);
     expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
-  it('submits the entered payment reference only after confirmation', async () => {
+  it('submits the grant only after confirmation', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
-    fireEvent.change(screen.getByLabelText(/مرجع الدفع الفعلي/i), { target: { value: 'receipt-123' } });
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تحويل بنكي' } });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: /إضافة رصيد/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 100,
       paymentAmountEgp: 100,
-      paymentReference: 'receipt-123',
-      reason: 'إضافة رصيد يدوي',
+      reason: 'تحويل بنكي',
       paymentConfirmed: true,
     })));
     expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
+  });
+
+  it('applies a negative correction in correction mode', async () => {
+    render(<AdminCreditGrantPanel garage={{ ...prepaidGarage, credits: 100 }} />);
+    fireEvent.click(screen.getByRole('tab', { name: /تصحيح رصيد/i }));
+    fireEvent.change(screen.getByLabelText(/قيمة التصحيح/i), { target: { value: '-50' } });
+    fireEvent.change(screen.getByLabelText(/السبب/i), { target: { value: 'تصحيح خطأ إضافة' } });
+    fireEvent.click(screen.getByRole('button', { name: /تطبيق التصحيح/i }));
+
+    await waitFor(() => expect(firestoreService.adminCorrectGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+      amount: -50,
+      reason: 'تصحيح خطأ إضافة',
+    })));
+    expect(await screen.findByRole('status')).toHaveTextContent(/50 رصيد تم خصمه كتصحيح/);
   });
 });

@@ -273,8 +273,12 @@ try {
   await assertFails(updateDoc(doc(inactiveOwnerDb, 'garages/g-1'), { hourlyRate: 99 }));
 
   // The actual garage owner and Admin retain their intended management path.
+  // Browser writes to financial fields (credits, legacy creditBalance) are denied.
   await assertFails(updateDoc(doc(adminDb, 'garages/g-1'), {
-    creditBalance: { paid: 999, referral: 0, trial: 0 }
+    credits: 999
+  }));
+  await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), {
+    credits: 999
   }));
   await assertFails(updateDoc(doc(ownerDb, 'garages/g-1'), {
     creditBalance: { paid: 999, referral: 0, trial: 0 }

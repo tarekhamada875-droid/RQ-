@@ -9,10 +9,7 @@ interface SmartActionPromptProps {
 
 /** Depleted garages are funded by an admin credit grant. */
 export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ garage, paymentWalletNumber }) => {
-  const paid = Math.max(0, Number(garage.creditBalance?.paid || 0));
-  const referral = Math.max(0, Number(garage.creditBalance?.referral || 0));
-  const trial = Math.max(0, Number(garage.creditBalance?.trial || 0));
-  const total = paid + referral + trial;
+  const total = Math.max(0, Number(garage.credits ?? 0));
   const walletNumber = (paymentWalletNumber || '').trim();
 
   return (
@@ -31,7 +28,6 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ garage, pa
         هذا الجراج يعمل بنظام الرصيد مسبق الدفع. تواصل مع الإدارة لإضافة رصيد جديد.
       </p>
       <div className="font-mono text-2xl font-black text-slate-900 dark:text-white mb-1">{total.toLocaleString('ar-EG')}</div>
-      <div className="text-xs font-bold text-slate-500 mb-4">مدفوع: {paid.toLocaleString('ar-EG')} · إحالة: {referral.toLocaleString('ar-EG')} · تجريبي: {trial.toLocaleString('ar-EG')}</div>
       {walletNumber && (
         <div className="mt-2 pt-4 border-t border-amber-500/30">
           <div className="flex items-center justify-center gap-2 mb-2 text-amber-600 dark:text-amber-400">

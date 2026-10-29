@@ -245,31 +245,29 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.queryByText('الرصيد المتبقي')).toBeNull();
   });
 
-  it('keeps only the total credit on the dashboard card and opt-in breakdown on the history page', () => {
-    const creditGarage = { ...mockGarage, billingModel: 'prepaid_credits', creditBalance: { paid: 12, referral: 3, trial: 0 } } as any;
+  it('shows only the total credit on the dashboard card (single bucket)', () => {
+    const creditGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 15 } as any;
 
-    const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={creditGarage} />);
+    renderWithTheme(<GarageSubscriptionCard garage={creditGarage} />);
     expect(screen.getByText('15')).toBeDefined();
+    // The per-bucket breakdown has been retired with the single-bucket model.
     expect(screen.queryByText(/Paid: 12/)).toBeNull();
-
-    rerender(<ThemeProvider><GarageSubscriptionCard garage={creditGarage} showBreakdown /></ThemeProvider>);
-    expect(screen.getByText(/Paid: 12/)).toBeDefined();
   });
 
   it('shows a low-credit indicator at 50 credits and a critical indicator at 10 credits', () => {
-    const lowCreditGarage = { ...mockGarage, billingModel: 'prepaid_credits', creditBalance: { paid: 50, referral: 0, trial: 0 } } as any;
+    const lowCreditGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 50 } as any;
     const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={lowCreditGarage} />);
 
     expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('Low credits');
 
-    const criticalCreditGarage = { ...lowCreditGarage, creditBalance: { paid: 10, referral: 0, trial: 0 } } as any;
+    const criticalCreditGarage = { ...lowCreditGarage, credits: 10 } as any;
     rerender(<ThemeProvider><GarageSubscriptionCard garage={criticalCreditGarage} /></ThemeProvider>);
     expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('Critical credits');
   });
 
   it('shows staggered falling arrows across the credit card after a deduction', () => {
-    const initialGarage = { ...mockGarage, billingModel: 'prepaid_credits', creditBalance: { paid: 12, referral: 3, trial: 0 } } as any;
-    const deductedGarage = { ...initialGarage, creditBalance: { paid: 10, referral: 3, trial: 0 } };
+    const initialGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 15 } as any;
+    const deductedGarage = { ...initialGarage, credits: 13 };
     const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={initialGarage} />);
 
     rerender(<ThemeProvider><GarageSubscriptionCard garage={deductedGarage} /></ThemeProvider>);
