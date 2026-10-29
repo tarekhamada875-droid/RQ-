@@ -12,7 +12,6 @@ const serviceMocks = vi.hoisted(() => ({
   getGarageById: vi.fn(),
   // Anti-regression spies: the sync hook must never restore recharge-request history reads.
   getAdminRechargeRequestsPage: vi.fn(),
-  subscribeToPackages: vi.fn(),
   subscribeToActiveVehicles: vi.fn(),
   subscribeToTodayTransactions: vi.fn(),
   subscribeToGarage: vi.fn(),
@@ -69,7 +68,6 @@ beforeEach(() => {
   serviceMocks.getStaffByGarageOnce.mockReset().mockResolvedValue([]);
   serviceMocks.getGarageById.mockReset().mockResolvedValue(null);
   serviceMocks.getAdminRechargeRequestsPage.mockReset().mockResolvedValue({ requests: [], lastDoc: null, hasMore: false });
-  serviceMocks.subscribeToPackages.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToActiveVehicles.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToTodayTransactions.mockReset().mockReturnValue(() => {});
   serviceMocks.subscribeToGarage.mockReset().mockReturnValue(() => {});
@@ -478,7 +476,6 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       subscriptions.push(subscription);
       return subscription.unsubscribe;
     };
-    serviceMocks.subscribeToPackages.mockImplementation(() => register('packages'));
     serviceMocks.subscribeToActiveVehicles.mockImplementation(() => register('active-vehicles'));
     serviceMocks.subscribeToTodayTransactions.mockImplementation(() => register('today-transactions'));
     serviceMocks.subscribeToGarage.mockImplementation(() => register('current-garage'));
@@ -494,7 +491,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     const firstMount = renderHook(() => useGarageSync(props));
     expect(activeSubscriptions().map(({ key }) => key).sort()).toEqual([
-      'active-vehicles', 'current-garage', 'packages', 'today-transactions',
+      'active-vehicles', 'current-garage', 'today-transactions',
     ]);
     const firstSubscriptions = subscriptions.slice();
 
@@ -503,13 +500,13 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     firstSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
 
     const secondMount = renderHook(() => useGarageSync(props));
-    expect(activeSubscriptions()).toHaveLength(4);
+    expect(activeSubscriptions()).toHaveLength(3);
     const secondSubscriptions = subscriptions.slice(firstSubscriptions.length);
 
     secondMount.unmount();
     expect(activeSubscriptions()).toHaveLength(0);
     secondSubscriptions.forEach(({ unsubscribe }) => expect(unsubscribe).toHaveBeenCalledOnce());
-    expect(subscriptions).toHaveLength(8);
+    expect(subscriptions).toHaveLength(6);
   });
 
   it('ignores a queued garage subscription callback after switching garages', () => {

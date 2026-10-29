@@ -12,7 +12,6 @@ import React, {
   memo,
 } from "react";
 import { Car } from "lucide-react";
-import { Announcement } from "../../types";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
 import {
@@ -22,7 +21,6 @@ import {
 } from "../../utils";
 import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
-import { firestoreService } from '../../services';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
@@ -75,13 +73,6 @@ export const GarageDashboardView = memo((props: any) => {
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!auth.currentUser);
-  const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
-  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-
-  const visibleAnnouncement = activeAnnouncements.find(
-    (announcement) => !dismissedAnnouncements[announcement.id]
-  ) ?? null;
 
   const garageId = garage?.id;
   const shouldSubscribeToSubscribers = Boolean(
@@ -107,13 +98,7 @@ export const GarageDashboardView = memo((props: any) => {
     }).length;
   }, [now, subscriberPage.subscribers]);
 
-  useEffect(() => {
-    const unsub = firestoreService.onAnnouncementsChange((list) => {
-      const relevant = list.filter(a => a.isActive && (a.target === 'all' || a.targetGarageId === garageId));
-      setActiveAnnouncements(relevant);
-    });
-    return () => unsub();
-  }, [garageId]);
+  // Announcements listener removed — feature retired by owner.
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((user) => {
@@ -287,14 +272,6 @@ export const GarageDashboardView = memo((props: any) => {
         isInputFocused={isInputFocused}
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
-        visibleAnnouncement={visibleAnnouncement}
-        onOpenAnnouncement={(announcement) => {
-          setSelectedAnnouncement(announcement);
-          setDismissedAnnouncements((prev) => ({
-            ...prev,
-            [announcement.id]: true,
-          }));
-        }}
         expiringSubscribersCount={expiringSubscribersCount}
         hasNewRecharge={hasNewRecharge}
         onNavigateOverlay={handleNavigateOverlay}
@@ -442,8 +419,6 @@ export const GarageDashboardView = memo((props: any) => {
         isRechargeNotificationOpen={isRechargeNotificationOpen}
         rechargeLog={latestRechargeLog}
         onCloseRechargeNotification={handleAcknowledgeRecharge}
-        selectedAnnouncement={selectedAnnouncement}
-        onCloseAnnouncement={() => setSelectedAnnouncement(null)}
       />
     </div>
   );

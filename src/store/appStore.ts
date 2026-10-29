@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Garage, Delegate, Package, Supervisor } from '../types';
+import { Garage, Delegate, Supervisor } from '../types';
 
 export interface ToastItem {
   id: string;
@@ -20,8 +20,6 @@ interface AppState {
   garages: Garage[];
   setGarages: (garages: Garage[]) => void;
   updateGarage: (garage: Garage) => void;
-  packages: Package[];
-  setPackages: (packages: Package[]) => void;
   delegates: Delegate[];
   setDelegates: (delegates: Delegate[]) => void;
   notifications: AppNotification[];
@@ -65,8 +63,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newGarages = state.garages.map(g => g.id === updatedGarage.id ? updatedGarage : g);
     return { garages: newGarages, allGarages: newGarages };
   }),
-  packages: [],
-  setPackages: (packages) => set({ packages }),
   delegates: [],
   setDelegates: (delegates) => set({ delegates }),
   notifications: [],

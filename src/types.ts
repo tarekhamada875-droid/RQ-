@@ -5,15 +5,6 @@
 
 export type EntityRole = 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
 
-export interface Package {
-  id: string;
-  name: string;
-  price: number;
-  catalogType: 'credit_bundle';
-  creditQuantity: number;
-  isActive?: boolean;
-  createdAt?: any;
-}
 
 export interface Garage {
   id: string;
@@ -174,20 +165,6 @@ export interface Vehicle {
   enteredByRole?: 'admin' | 'garage' | 'staff' | null;
   enteredByUid?: string | null; // Audit metadata only; never correction authority
   isSubscriber?: boolean;
-}
-
-
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  target: 'all' | 'specific';
-  targetGarageId?: string | null;
-  targetGarageName?: string | null;
-  priority: 'normal' | 'important' | 'urgent';
-  isActive: boolean;
-  createdAt: any;
-  authorName?: string;
 }
 
 export interface SystemConfig {

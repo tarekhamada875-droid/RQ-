@@ -12,12 +12,11 @@ import {
   PieChart,
   Sliders,
   Crown,
-  Megaphone,
   FileText,
   History,
   BarChart3,
 } from 'lucide-react';
-import { Garage, Staff, Announcement } from '../../../types';
+import { Garage, Staff } from '../../../types';
 import { IconButton } from '../../ui/IconButton';
 
 interface GarageDashboardHeaderAndDrawerProps {
@@ -26,8 +25,6 @@ interface GarageDashboardHeaderAndDrawerProps {
   isInputFocused: boolean;
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
-  visibleAnnouncement: Announcement | null;
-  onOpenAnnouncement: (announcement: Announcement) => void;
   expiringSubscribersCount: number;
   hasNewRecharge: boolean;
   onNavigateOverlay: (overlay: string) => void;
@@ -40,8 +37,6 @@ export const GarageDashboardHeaderAndDrawer = memo(({
   isInputFocused,
   isMenuOpen,
   setIsMenuOpen,
-  visibleAnnouncement,
-  onOpenAnnouncement,
   expiringSubscribersCount,
   hasNewRecharge,
   onNavigateOverlay,
@@ -53,39 +48,12 @@ export const GarageDashboardHeaderAndDrawer = memo(({
         <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 z-40 w-full shrink-0">
           <div className="max-w-4xl mx-auto flex justify-between items-center w-full">
             <div className="flex items-center">
-              {!visibleAnnouncement ? (
-                <div className="h-11 px-4 bg-slate-900 dark:bg-slate-800 border border-slate-900 dark:border-slate-800 text-white rounded-2xl flex items-center justify-center shadow-sm font-black text-xs select-none">
-                  <span className="text-slate-100 dark:text-slate-200">
-                    {garage?.name}
-                  </span>
-                </div>
-              ) : (
-                <div
-                  className="h-11 w-11 bg-slate-900 dark:bg-slate-800 border border-slate-900 dark:border-slate-800 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-sm select-none pointer-events-none"
-                  title={garage?.name}
-                >
-                  <Crown className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-
-            {visibleAnnouncement && (
-              <button
-                type="button"
-                aria-label="عرض الإعلان المهم"
-                onClick={() => onOpenAnnouncement(visibleAnnouncement)}
-                className="absolute left-1/2 -translate-x-1/2 h-11 max-w-[min(60vw,280px)] px-4 bg-[#f8f6f0] dark:bg-slate-800 border-2 border-[#1a1915] dark:border-slate-700 rounded-2xl shadow-[2px_2px_0px_0px_#1a1915] dark:shadow-none font-black text-xs truncate transition-transform active:translate-y-[2px] active:shadow-none flex items-center justify-center"
-              >
-                <span className={`inline-flex items-center gap-2 truncate ${
-                  visibleAnnouncement.priority === 'urgent' ? 'text-red-600 dark:text-red-400' :
-                  visibleAnnouncement.priority === 'important' ? 'text-amber-600 dark:text-amber-400' :
-                  'text-[#1a1915] dark:text-amber-400'
-                }`}>
-                  <Megaphone className="w-4 h-4 shrink-0" />
-                  <span className="truncate">إعلان مهم</span>
+              <div className="h-11 px-4 bg-slate-900 dark:bg-slate-800 border border-slate-900 dark:border-slate-800 text-white rounded-2xl flex items-center justify-center shadow-sm font-black text-xs select-none">
+                <span className="text-slate-100 dark:text-slate-200">
+                  {garage?.name}
                 </span>
-              </button>
-            )}
+              </div>
+            </div>
 
             <div className="flex items-center gap-3">
               <IconButton

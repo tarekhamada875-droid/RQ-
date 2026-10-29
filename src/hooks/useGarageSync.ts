@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Garage, Vehicle, Package, Staff, Supervisor } from '../types';
+import { Garage, Vehicle, Staff, Supervisor } from '../types';
 import { firestoreService } from '../services';
 import { throttleSnapshot } from '../utils';
 
@@ -67,23 +67,7 @@ export function useGarageSync({
   const delegateDashboardOwnerRef = useRef<string | undefined>(undefined);
   const delegateDashboardLoadedOwnerRef = useRef<string | undefined>(undefined);
   const delegateDashboardGenerationRef = useRef(0);
-  const [packages, setPackages] = useState<Package[]>(() => {
-    try {
-      const cached = localStorage.getItem('app_packages_cache');
-      if (cached) {
-        let jsonStr = cached;
-        const separatorIdx = cached.indexOf('|');
-        if (separatorIdx !== -1) {
-          jsonStr = cached.substring(separatorIdx + 1);
-        }
-        const parsed = JSON.parse(jsonStr);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // A malformed cache is equivalent to having no cached vehicles.
-    }
-    return [];
-  });
+  // Packages state removed — feature retired by owner.
 
   // Keep transient garage data tied to the active role/entity, not just the shared garage ID.
   const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
@@ -436,20 +420,7 @@ export function useGarageSync({
     await loadMoreDelegateSection('referredGarages', requestGeneration);
   }, [loadMoreDelegateSection]);
 
-  // Sync packages independently (prevents redundant re-subscribing on view changes)
-  useEffect(() => {
-    if (!isAuthReady || !user) return;
-
-    let cancelled = false;
-    const unsubPackages = firestoreService.subscribeToPackages((pkgs) => {
-      if (!cancelled) setPackages(Array.isArray(pkgs) ? pkgs : []);
-    });
-
-    return () => {
-      cancelled = true;
-      unsubPackages();
-    };
-  }, [isAuthReady, user]);
+  // Packages listener removed — feature retired by owner.
 
   // Sync bounded admin collections. Detail pages retain their own selected-document reads.
   useEffect(() => {
@@ -513,10 +484,6 @@ export function useGarageSync({
     return allGarages.filter(g => g.createdByDelegateId === delegate.id || g.referrerId === delegate.id);
   }, [allGarages, delegate]);
 
-  const sortedPackages = useMemo(() => {
-    const activePkgs = packages || [];
-    return [...activePkgs].sort((a, b) => a.price - b.price);
-  }, [packages]);
 
   return {
     allGarages,
@@ -539,10 +506,7 @@ export function useGarageSync({
     delegateDashboardError,
     retryDelegateDashboard,
     loadMoreDelegateGarages,
-    packages,
-    setPackages,
     loadGarageData,
     delegateGarages,
-    sortedPackages,
   };
 }

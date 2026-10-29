@@ -6,7 +6,6 @@ import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
-import { AnnouncementModal } from "./modals/AnnouncementModal";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
 
 const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
@@ -40,8 +39,6 @@ export const GarageDashboardOverlays = (props: any) => {
     isRechargeNotificationOpen,
     rechargeLog,
     onCloseRechargeNotification,
-    selectedAnnouncement,
-    onCloseAnnouncement,
   } = props;
 
   return (
@@ -94,7 +91,6 @@ export const GarageDashboardOverlays = (props: any) => {
       )}
       {showTermsModal && <TermsAndConditionsModal onClose={onCloseTerms} />}
       <RechargeNotificationModal isOpen={isRechargeNotificationOpen && !!rechargeLog} rechargeLog={rechargeLog} onClose={onCloseRechargeNotification} />
-      <AnnouncementModal announcement={selectedAnnouncement} onClose={onCloseAnnouncement} />
     </>
   );
 };
