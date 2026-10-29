@@ -623,9 +623,11 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
       return c.json({ success: false, valid: false, error: 'SESSION_EXPIRED' });
     }
 
-    // The security session is the authoritative record for heartbeat checks.
-    // Entity snapshots can lag briefly after the atomic claim; rejecting here
-    // would send a valid newly signed-in user into a false session-expired loop.
+    // The entity-doc hasActiveSession check is needed here to detect multi-device
+    // eviction: when device B claims the session, device A's sessionId is removed
+    // from the entity's activeSessionIds, but the device-session doc is not updated.
+    // Without this read, an evicted device would keep seeing a live dashboard until
+    // its 24h session timeout.
     const targetEntityId = role === 'admin' ? 'auth_pin' : sessionData.entityId || entityId;
     if (targetEntityId) {
       const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
@@ -641,10 +643,13 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
         await updateSessionIndex(effectiveUid, sessionId, { isActive: false });
         return c.json({ success: false, valid: false, error: 'SESSION_REVOKED' });
       }
-      await entityRef.set({ lastActive: new Date() }, { merge: true });
+      // Skip the entity.lastActive write — it's audit-only and adds 1 write per
+      // heartbeat. The deviceRef.lastActive + session_index.lastActive are sufficient
+      // for the session freshness check.
     }
-    await rootRef.set({ lastActive: new Date() }, { merge: true });
-    await updateSessionIndex(effectiveUid, sessionId, { isActive: true, lastActive: new Date() });
+    const now = new Date();
+    await deviceRef.set({ lastActive: now, isActive: true }, { merge: true });
+    await updateSessionIndex(effectiveUid, sessionId, { isActive: true, lastActive: now });
     return c.json({ success: true, valid: true });
   } catch (error: any) {
     console.error('[Worker Auth] Error validating session:', error);

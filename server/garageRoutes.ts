@@ -425,7 +425,16 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     }
 
     await getAdminDb().collection('garages').doc(id).update(updates);
-    await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
+
+    // Only mark the admin summary stale when fields that actually affect the
+    // summary counters change (isLocked → lockedGarages, status → activeGarages).
+    // Routine edits (name, phone, rates, colors, etc.) do NOT require a full
+    // collection scan to recompute the summary.
+    const summaryAffectingFields = new Set(['isLocked', 'status', 'isTrial']);
+    const affectsSummary = Object.keys(updates).some((key) => summaryAffectingFields.has(key));
+    if (affectsSummary) {
+      await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
+    }
     return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker Garage] Error updating garage:', err);

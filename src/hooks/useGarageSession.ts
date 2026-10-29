@@ -397,10 +397,12 @@ export function useGarageSession({
         }
       };
 
-      // Each heartbeat costs ~3 Firestore writes on the Worker. 15 minutes keeps the
-      // session fresh (24-hour limit) while staying well inside the free write quota.
-      const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
-      const HEARTBEAT_RESUME_GAP_MS = 10 * 60 * 1000;
+      // Each heartbeat costs Firestore writes on the Worker. The session timeout is
+      // 24h, so a 60-minute interval (24 heartbeats/session) is more than enough to
+      // keep it fresh. The Worker now only writes the session_index doc on heartbeat
+      // (not the entity/root docs), so each heartbeat is 1 write instead of 3.
+      const HEARTBEAT_INTERVAL_MS = 60 * 60 * 1000;
+      const HEARTBEAT_RESUME_GAP_MS = 30 * 60 * 1000;
       heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
 
       visibilityHandler = () => {
