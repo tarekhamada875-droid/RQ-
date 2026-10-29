@@ -375,45 +375,45 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(response.status).toBe(200);
   });
 
-  it('serves a live dashboard summary only within the caller garage scope', async () => {
+  it('serves a maintained dashboard summary only within the caller garage scope', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    mockDb.seed('garages/garage-a/projection_buckets/bucket-1', {
+    mockDb.seed(`garages/garage-a/maintained_summary/daily_${today}`, {
+      garageId: 'garage-a',
       dateId: today,
-      entriesToday: 3,
-      exitsToday: 1,
-      grossRevenue: 120,
-      refundTotal: 10,
-      netRevenue: 110
+      schemaVersion: 1,
+      todayEntries: 3,
+      todayExits: 1,
+      todayRevenue: 120
     });
     const own = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
     expect(own.status).toBe(200);
     expect(await own.json()).toMatchObject({
       success: true,
-      data: { garageId: 'garage-a', summary: { entriesToday: 3, exitsToday: 1, grossRevenue: 120, refundTotal: 10, netRevenue: 110, source: 'live_projection_buckets' } }
+      data: { garageId: 'garage-a', summary: { entriesToday: 3, exitsToday: 1, grossRevenue: 120, source: 'maintained_daily_summary' } }
     });
 
     const crossGarage = await call('/api/garages/garage-b/dashboard-summary', tokens.garage);
     expect(crossGarage.status).toBe(403);
   });
 
-  it('defers the stored summary read when live projection buckets are available', async () => {
+  it('defers the stored summary read when maintained_summary/daily is available', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    mockDb.seed('garages/garage-a/projection_buckets/live', {
+    mockDb.seed(`garages/garage-a/maintained_summary/daily_${today}`, {
+      garageId: 'garage-a',
       dateId: today,
-      entriesToday: 1,
-      exitsToday: 0,
-      grossRevenue: 25,
-      refundTotal: 0,
-      netRevenue: 25
+      schemaVersion: 1,
+      todayEntries: 1,
+      todayExits: 0,
+      todayRevenue: 25
     });
 
     mockDb.resetDocumentCounts();
-    const liveResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
-    const liveReadCount = mockDb.documentReadCount;
-    expect(liveResponse.status).toBe(200);
+    const primaryResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
+    const primaryReadCount = mockDb.documentReadCount;
+    expect(primaryResponse.status).toBe(200);
     expect(mockDb.records.has('garages/garage-a/dashboard_summary/current')).toBe(false);
 
-    mockDb.records.delete('garages/garage-a/projection_buckets/live');
+    mockDb.records.delete(`garages/garage-a/maintained_summary/daily_${today}`);
     mockDb.seed('garages/garage-a/dashboard_summary/current', {
       dateId: today,
       rebuiltAt: new Date().toISOString(),
@@ -428,12 +428,12 @@ describe('Worker role and garage-scope authorization matrix', () => {
     const fallbackResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
     const fallbackReadCount = mockDb.documentReadCount;
     expect(fallbackResponse.status).toBe(200);
-    // Fallback now checks maintained_summary/daily first (1 read), then
-    // dashboard_summary/current (1 read) = 2 extra reads over the live path.
-    expect(fallbackReadCount).toBe(liveReadCount + 2);
+    // Fallback reads maintained_summary/daily (miss) then dashboard_summary/current
+    // (1 extra read over the primary path, which hits maintained_summary/daily).
+    expect(fallbackReadCount).toBe(primaryReadCount + 1);
   });
 
-  it('serves the dashboard summary from maintained_summary/daily when projection buckets are absent', async () => {
+  it('serves the dashboard summary from maintained_summary/daily as the primary source', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed(`garages/garage-a/maintained_summary/daily_${today}`, {
       garageId: 'garage-a',
@@ -453,7 +453,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(body.data.summary.grossRevenue).toBe(75);
   });
 
-  it('serves a fresh stored dashboard summary when live buckets are absent', async () => {
+  it('serves a fresh stored dashboard summary as a secondary fallback', async () => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     mockDb.seed('garages/garage-a/dashboard_summary/current', {
       dateId: today,
