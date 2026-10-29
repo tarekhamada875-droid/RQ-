@@ -36,7 +36,6 @@ vi.mock('../services', () => ({
     removeStaff: vi.fn().mockResolvedValue(undefined),
     subscribeToGarageRechargeLogs: vi.fn(() => () => {}),
     subscribeToSubscribers: vi.fn(() => () => {}),
-    onAnnouncementsChange: vi.fn(() => () => {}),
     subscribeToSystemConfig: vi.fn((cb) => {
       cb({ adminColor: '#10b981' });
       return () => {};
@@ -80,7 +79,7 @@ const mockGarage: Garage = {
   phone: '01012345678',
   pin: '12345',
   ownerPin: '12345',
-  balance: 1500,
+  credits: 1500,
   isLocked: false,
   isSuspended: false,
   carsInside: 12,

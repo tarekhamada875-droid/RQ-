@@ -578,14 +578,15 @@ describe('garage creation Hono contract', () => {
     expect(response.status).toBe(200);
     expect(garage).toMatchObject({
       name: 'Synthetic Trial Garage', status: 'approved', isTrial: true,
-      billingModel: 'prepaid_credits', dailyCapacity: 0, activePackageName: '',
-      packageName: '', credits: 100
+      billingModel: 'prepaid_credits', dailyCapacity: 0, credits: 100
     });
-    expect(garage.balanceExpiry).toBeNull();
+    expect(garage.activePackageName).toBeUndefined();
+    expect(garage.packageName).toBeUndefined();
+    expect(garage.balanceExpiry).toBeUndefined();
     expect(log).toMatchObject({
       garageName: 'Synthetic Trial Garage', actionType: 'create',
       plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)', amount: 0,
-      details: { packageName: '', durationDays: 0, carsCount: 0, revenueAmount: 0, isTrial: true, trialCreditsGranted: 100 }
+      details: { durationDays: 0, carsCount: 0, revenueAmount: 0, isTrial: true, trialCreditsGranted: 100 }
     });
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'trial_grant' && record.amount === 100)).toBe(true);
   });

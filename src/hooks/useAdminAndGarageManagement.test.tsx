@@ -64,7 +64,6 @@ const createSnapshot = (exists: boolean, garageData: Record<string, unknown> = {
 
 const createProps = () => ({
   allGarages: [],
-  packages: [],
   delegate: null,
   currentSupervisor: null,
   loginPhone: '12345678',

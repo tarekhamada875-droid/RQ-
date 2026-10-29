@@ -12,16 +12,10 @@ const emptyCreditActivity = {
   trialCreditsGranted: 0,
   regularEntryDebitCount: 0,
   regularEntryCreditsConsumed: 0,
-  regularEntryPaidCreditsConsumed: 0,
-  regularEntryReferralCreditsConsumed: 0,
-  regularEntryTrialCreditsConsumed: 0,
   subscriberRenewalCount: 0,
   subscriberRenewalCreditsConsumed: 0,
   correctionRestoreCount: 0,
   restoredCredits: 0,
-  restoredPaidCredits: 0,
-  restoredReferralCredits: 0,
-  restoredTrialCredits: 0,
 };
 
 const events = [
@@ -89,14 +83,14 @@ describe('financial reporting projections', () => {
       { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 50, creditAmount: 50, creditLedgerEntryId: 'g1' } },
       { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g-old', occurredAt: '2026-09-17T08:00:00.000Z', payload: { amount: 100, creditAmount: 100 } },
     ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' }, [
-      { kind: 'paid_grant', bucket: 'paid', amount: 50, paymentAmountEgp: 50, occurredAt: '2026-09-18T08:00:00.000Z' },
-      { kind: 'referral_award', bucket: 'referral', amount: 20, occurredAt: '2026-09-18T08:01:00.000Z' },
-      { kind: 'regular_entry_debit', bucket: 'paid', amount: 1, occurredAt: '2026-09-18T08:02:00.000Z' },
-      { kind: 'regular_entry_debit', bucket: 'referral', amount: 1, occurredAt: '2026-09-18T08:03:00.000Z' },
-      { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5, occurredAt: '2026-09-18T08:04:00.000Z' },
-      { kind: 'correction_restore', bucket: 'referral', amount: 1, occurredAt: '2026-09-18T08:05:00.000Z' },
-      { kind: 'regular_entry_debit', bucket: 'paid', amount: 0.5, occurredAt: '2026-09-18T08:06:00.000Z' },
-      { kind: 'paid_grant', bucket: 'paid', amount: 200, occurredAt: '2026-09-19T00:00:00.000Z' },
+      { kind: 'paid_grant', amount: 50, paymentAmountEgp: 50, occurredAt: '2026-09-18T08:00:00.000Z' },
+      { kind: 'referral_award', amount: 20, occurredAt: '2026-09-18T08:01:00.000Z' },
+      { kind: 'regular_entry_debit', amount: 1, occurredAt: '2026-09-18T08:02:00.000Z' },
+      { kind: 'regular_entry_debit', amount: 1, occurredAt: '2026-09-18T08:03:00.000Z' },
+      { kind: 'subscriber_renewal_debit', amount: 5, occurredAt: '2026-09-18T08:04:00.000Z' },
+      { kind: 'correction_restore', amount: 1, occurredAt: '2026-09-18T08:05:00.000Z' },
+      { kind: 'regular_entry_debit', amount: 0.5, occurredAt: '2026-09-18T08:06:00.000Z' },
+      { kind: 'paid_grant', amount: 200, occurredAt: '2026-09-19T00:00:00.000Z' },
     ]);
 
     expect(report.prepaidCreditPaymentsEgp).toBe(50);
@@ -113,16 +107,10 @@ describe('financial reporting projections', () => {
       trialCreditsGranted: 0,
       regularEntryDebitCount: 2,
       regularEntryCreditsConsumed: 2,
-      regularEntryPaidCreditsConsumed: 0,
-      regularEntryReferralCreditsConsumed: 0,
-      regularEntryTrialCreditsConsumed: 0,
       subscriberRenewalCount: 1,
       subscriberRenewalCreditsConsumed: 5,
       correctionRestoreCount: 1,
       restoredCredits: 1,
-      restoredPaidCredits: 0,
-      restoredReferralCredits: 0,
-      restoredTrialCredits: 0,
     });
   });
 
@@ -156,8 +144,8 @@ describe('financial reporting projections', () => {
       { settlementId: 's2', settledAt: '2026-09-18T08:15:00.000Z', previousCycleTotal: Number.NaN },
       { settlementId: 's3', settledAt: '2026-09-18T08:16:00.000Z', previousCycleTotal: -3 }
     ], {}, [
-      { kind: 'paid_grant', bucket: 'paid', amount: 10, occurredAt: '2026-09-18T08:17:00.000Z' },
-      { kind: 'paid_grant', bucket: 'paid', amount: 1.5, occurredAt: '2026-09-18T08:18:00.000Z' },
+      { kind: 'paid_grant', amount: 10, occurredAt: '2026-09-18T08:17:00.000Z' },
+      { kind: 'paid_grant', amount: 1.5, occurredAt: '2026-09-18T08:18:00.000Z' },
     ]);
 
     expect(report).toMatchObject({

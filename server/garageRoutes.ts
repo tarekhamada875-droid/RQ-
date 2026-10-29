@@ -125,7 +125,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const retiredCreationFields = ['billingModel', 'dailyCapacity', 'initialPackageId', 'packages'];
+    const retiredCreationFields = ['billingModel', 'dailyCapacity'];
     const retiredCreationField = retiredCreationFields.find((field) => body && typeof body === 'object' && body[field] !== undefined);
     if (retiredCreationField) return c.json({ success: false, error: 'RETIRED_GARAGE_FIELD', field: retiredCreationField }, 400);
     const sanitized = sanitizePayload(body, ['name', 'phone', 'hourlyRate', 'overnightRate', 'pin', 'isTrial', 'createdByDelegateId', 'createdByDelegateName', 'referrerId', 'referrerName', 'referredByGarageId', 'referredByGarageName', 'idempotencyKey'], false);
@@ -221,8 +221,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const isTrial = sanitized.isTrial === true || sanitized.isTrial === 'true' || sanitized.isTrial === 'on' || sanitized.isTrial === '1';
     const trialCreditAmount = isTrial ? 100 : 0;
     const finalDailyCapacity = 0;
-    const activePackageName = '';
-    const balanceExpiry = null;
     const garageRef = getAdminDb().collection('garages').doc();
     const garageId = garageRef.id;
     const logRef = getAdminDb().collection('activity_logs').doc();
@@ -237,9 +235,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       createdAt: now,
       isTrial,
       dailyCapacity: finalDailyCapacity,
-      activePackageName,
-      packageName: activePackageName,
-      balanceExpiry: null,
       credits: trialCreditAmount,
       carsInside: 0,
       carsInsideCount: 0,
@@ -282,7 +277,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       timestamp: now,
       amount: 0,
       details: {
-        packageName: activePackageName,
         durationDays: 0,
         carsCount: 0,
         revenueAmount: 0,
@@ -362,7 +356,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         totalSubscribersCount: 0,
         activeSubscribersCount: 0,
         expiredSubscribersCount: 0,
-        balanceExpiry,
         isTrial,
         dailyCapacity: finalDailyCapacity,
         hourlyRate: hourlyRateValue,
