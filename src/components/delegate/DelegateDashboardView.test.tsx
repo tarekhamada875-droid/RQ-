@@ -13,7 +13,6 @@ vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: (
 afterEach(() => cleanup());
 
 function renderDelegateDashboard(
-  canCreateGarage?: boolean,
   createGarageResult = true,
   dashboardState: {
     delegateDashboardLoading?: boolean;
@@ -27,15 +26,14 @@ function renderDelegateDashboard(
     };
   } = {}
 ) {
-  const delegate: Delegate = {
+  const delegate = {
     id: 'delegate_1',
     name: 'Test Delegate',
     phone: '01000000000',
     pin: '12345678',
     role: 'delegate',
     createdAt: new Date(0),
-    canCreateGarage
-  };
+  } as Delegate;
   const onCreateGarage = vi.fn(async (_event: React.FormEvent<HTMLFormElement>) => createGarageResult);
 
   render(
@@ -54,7 +52,7 @@ function renderDelegateDashboard(
 
 describe('DelegateDashboardView garage application access', () => {
   it('shows loading state instead of an empty result while the dashboard loads', () => {
-    renderDelegateDashboard(undefined, true, { delegateDashboardLoading: true });
+    renderDelegateDashboard(true, { delegateDashboardLoading: true });
 
     expect(screen.getByRole('status')).toHaveTextContent('جارٍ تحميل بيانات الجراجات');
     expect(screen.queryByText('لا توجد جراجات مطابقة للبحث')).not.toBeInTheDocument();
@@ -62,7 +60,7 @@ describe('DelegateDashboardView garage application access', () => {
 
   it('shows a retryable error when the initial dashboard load fails', () => {
     const onRetryDelegateDashboard = vi.fn();
-    renderDelegateDashboard(undefined, true, {
+    renderDelegateDashboard(true, {
       delegateDashboardError: true,
       onRetryDelegateDashboard
     });
@@ -74,7 +72,7 @@ describe('DelegateDashboardView garage application access', () => {
   });
 
   it('surfaces pagination errors while keeping the load-more action available', () => {
-    renderDelegateDashboard(undefined, true, {
+    renderDelegateDashboard(true, {
       delegateListsError: true,
       delegatePagination: {
         createdGarages: { hasMore: true, nextCursor: 'created-cursor' },
@@ -87,8 +85,8 @@ describe('DelegateDashboardView garage application access', () => {
     expect(screen.getByRole('button', { name: 'عرض المزيد من الجراجات' })).toBeInTheDocument();
   });
 
-  it.each([undefined, false, true])('shows and opens the application form when legacy canCreateGarage is %s', (legacyPermission) => {
-    renderDelegateDashboard(legacyPermission);
+  it('shows and opens the application form', () => {
+    renderDelegateDashboard();
     fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
 
     expect(screen.getByRole('heading', { name: 'طلب إنشاء جراج جديد' })).toBeInTheDocument();
@@ -97,7 +95,7 @@ describe('DelegateDashboardView garage application access', () => {
   });
 
   it('prevents native submit and preserves the request draft when creation returns false', async () => {
-    const { onCreateGarage } = renderDelegateDashboard(undefined, false);
+    const { onCreateGarage } = renderDelegateDashboard(false);
     fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
 
     const nameInput = screen.getByPlaceholderText('جراج التوفيق');
@@ -113,7 +111,7 @@ describe('DelegateDashboardView garage application access', () => {
   });
 
   it('closes the request form after successful creation', async () => {
-    const { onCreateGarage } = renderDelegateDashboard(undefined, true);
+    const { onCreateGarage } = renderDelegateDashboard(true);
     fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
 
     const nameInput = screen.getByPlaceholderText('جراج التوفيق');

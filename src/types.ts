@@ -15,32 +15,23 @@ export interface Garage {
   ownerPin?: string;
   hourlyRate: number;
   overnightRate: number;
-  balanceExpiry?: any; // Timestamp
   createdAt: any; // Timestamp
-  balanceDays?: number;
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   billingModel?: 'subscription' | 'prepaid_credits';
   /** Single prepaid credit balance (paid + referral + trial merged as of 2026-10-29). */
   credits?: number;
-  /** @deprecated Replaced by `credits`. Kept for type-shape migration only; do not read. */
-  creditBalance?: { paid: number; referral: number; trial: number };
-  commissionPerVehicle?: number;
-  monthlySubscriptionFee?: number;
   balance?: number;
   isLocked?: boolean;
   isSuspended?: boolean;
   lockReason?: string;
   lastRateChangeDate?: any; // Timestamp or ISO date of last rate modification
-  lastBalanceDeduction?: any; // Timestamp
-  lastPaidFriday?: string; // YYYY-MM-DD
   totalAdminRevenue?: number;
   lastRechargeAmount?: number;
   lastRechargeDate?: any; // Timestamp
   lastRechargePackageName?: string;
   totalRevenue?: number;
   totalVehiclesOut?: number;
-  totalRechargedCars?: number;
   dailyRefundCount?: number;
   lastRefundDate?: string; // YYYY-MM-DD
   dailyDeletionCount?: number;
@@ -50,12 +41,9 @@ export interface Garage {
   lastTransactionDate?: string; // YYYY-MM-DD
   checkInSound?: string;
   checkOutSound?: string;
-  referralBonusBalance?: number; // Cash bonus balance in EGP (fallback/manual)
   referredByGarageId?: string | null; // ID of referring garage
   referredByGarageName?: string | null; // Name of referring garage
   referrerId?: string | null; // ID of referring delegate
-  referralRewardClaimed?: boolean; // Legacy field for initial 15-day reward (now 1 day per renewal)
-  referralRewardAwardedAt?: any; // Timestamp
   totalGaragesReferredCount?: number; // Total count of garages referred
   shimmerColor?: string;
   activePlates?: Record<string, any>;
@@ -91,10 +79,6 @@ export interface Delegate {
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   createdAt: any;
-  /** Legacy field on existing records; every delegate may now submit applications. */
-  canCreateGarage?: boolean;
-  /** Legacy read-only field retained for old documents; Worker rejects writes. */
-  commissionRate?: number;
   /** Legacy-named Worker balance for unsettled delegate commission; not gross recharge sales. */
   totalRechargedAmount?: number;
   totalCommissionEarned?: number;
@@ -117,7 +101,7 @@ export interface ActivityLog {
   garageId: string;
   staffId: string | null;
   staffName: string;
-  actionType: 'check_in' | 'check_out' | 'recharge' | 'credit_grant' | 'delete_refund' | 'commission_payment' | 'commission_earned' | 'balance_topup' | 'self_subscribe';
+  actionType: 'check_in' | 'check_out' | 'recharge' | 'credit_grant' | 'delete_refund' | 'commission_earned' | 'credit_correction' | 'credit_referral_award';
   plateNumber: string;
   timestamp: any;
   amount?: number;

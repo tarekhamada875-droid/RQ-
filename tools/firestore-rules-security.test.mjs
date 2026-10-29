@@ -28,8 +28,7 @@ assert.deepEqual(rechargeActivityLogCompositeIndex?.fields, [
 ], 'firestore.indexes.json must retain the ordered garage recharge activity-log index');
 for (const [collectionGroup, equalityField] of [
   ['garages', 'createdByDelegateId'],
-  ['garages', 'referrerId'],
-  ['recharge_requests', 'delegateId']
+  ['garages', 'referrerId']
 ]) {
   const pageIndex = firestoreIndexes.indexes.find((index) =>
     index.collectionGroup === collectionGroup && index.queryScope === 'COLLECTION' &&

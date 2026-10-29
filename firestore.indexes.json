@@ -17,14 +17,6 @@
       ]
     },
     {
-      "collectionGroup": "recharge_requests",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "staff",
       "queryScope": "COLLECTION",
       "fields": [
@@ -86,14 +78,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "referrerId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "recharge_requests",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "delegateId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
