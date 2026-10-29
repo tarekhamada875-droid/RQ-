@@ -475,26 +475,25 @@ app.get('/api/admin/subscribers', requireWorkerAuth, async (c) => {
     const status = c.req.query('status') || 'all';
 
     let docs: any[] = [];
+    const todayDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
+    let query: any;
     if (garageId) {
-      const snap = await getAdminDb().collection(`garages/${garageId}/subscribers`).limit(limitQuery).get();
-      docs = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      query = getAdminDb().collection(`garages/${garageId}/subscribers`);
     } else {
-      const snap = await getAdminDb().collectionGroup('subscribers').limit(limitQuery).get();
-      docs = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+      query = getAdminDb().collectionGroup('subscribers');
     }
 
-    const now = Date.now();
-    if (status === 'active') {
-      docs = docs.filter((sub) => {
-        const end = safeDateMillis(sub.endDate);
-        return end === 0 || end >= now;
-      });
-    } else if (status === 'expired') {
-      docs = docs.filter((sub) => {
-        const end = safeDateMillis(sub.endDate);
-        return end > 0 && end < now;
-      });
+    // Push the status filter into Firestore instead of filtering client-side.
+    // This prevents empty pages when the first N subscribers are all the wrong status.
+    // endDate is stored as "YYYY-MM-DD" so string comparison is chronologically correct.
+    if (status === 'expired') {
+      query = query.where('endDate', '<', todayDateKey);
+    } else if (status === 'active') {
+      query = query.where('endDate', '>=', todayDateKey);
     }
+    const snap = await query.limit(limitQuery).get();
+    docs = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return c.json({
       success: true,

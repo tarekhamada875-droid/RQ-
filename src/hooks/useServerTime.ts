@@ -41,8 +41,25 @@ export function useServerTime() {
 
   useEffect(() => {
     fetchServerTimeOffset();
-    const interval = setInterval(fetchServerTimeOffset, 300000); // sync every 5 mins
-    return () => clearInterval(interval);
+    // Clock drift on modern devices is <1s/hour, so syncing every 6 hours is
+    // more than sufficient. Also resync when the tab regains visibility (covers
+    // long sleep/wake cycles). This cuts Worker requests from 288/day to ~10/day
+    // per active client.
+    const interval = setInterval(fetchServerTimeOffset, 6 * 60 * 60 * 1000);
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchServerTimeOffset();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisible);
+    }
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisible);
+      }
+    };
   }, [fetchServerTimeOffset]);
 
   useEffect(() => {
