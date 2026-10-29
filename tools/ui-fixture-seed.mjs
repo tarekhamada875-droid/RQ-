@@ -115,15 +115,6 @@ const documents = [
     createdAt: now,
     updatedAt: now,
   }],
-  [`garages/${fixtureGarageId}/packages/ui-fixture-package`, {
-    id: 'ui-fixture-package',
-    name: 'UI Fixture Credits',
-    credits: 100,
-    price: 1000,
-    active: true,
-    createdAt: now,
-    updatedAt: now,
-  }],
 ];
 
 const batch = db.batch();

@@ -14,8 +14,6 @@ const eventFixtures: EventFixture[] = [
   { eventType: 'vehicle_refunded', aggregateType: 'vehicle', amountField: 'refundAmount', errorCode: 'INVALID_REFUND_PAYLOAD', payload: { refundAmount: 10, accountingDate: '2026-10-15', accountingPolicy: 'refund_on_refund_date' } },
   { eventType: 'recharge_approved', aggregateType: 'recharge', amountField: 'amount', errorCode: 'INVALID_RECHARGE_PAYLOAD', payload: { amount: 10 } },
   { eventType: 'wallet_topup_approved', aggregateType: 'wallet', amountField: 'amount', errorCode: 'INVALID_WALLET_TOPUP_PAYLOAD', payload: { amount: 10 } },
-  { eventType: 'wallet_debited', aggregateType: 'wallet', amountField: 'amount', errorCode: 'INVALID_WALLET_DEBIT_PAYLOAD', payload: { amount: 10 } },
-  { eventType: 'package_purchased', aggregateType: 'recharge', amountField: 'amount', errorCode: 'INVALID_PACKAGE_PURCHASE_PAYLOAD', payload: { amount: 10 } },
   { eventType: 'delegate_settled', aggregateType: 'delegate', amountField: 'previousRechargedAmount', errorCode: 'INVALID_DELEGATE_SETTLEMENT_PAYLOAD', payload: { delegateId: 'd1', settlementId: 's1', previousRechargedAmount: 10, settledAt: '2026-10-15T00:00:00.000Z' } },
   { eventType: 'commission_earned', aggregateType: 'delegate', amountField: 'commissionAmount', errorCode: 'INVALID_COMMISSION_PAYLOAD', payload: { delegateId: 'd1', commissionAmount: 10, sourceRechargeId: 'r1', earnedAt: '2026-10-15T00:00:00.000Z' } },
   { eventType: 'prepaid_credit_grant_paid', aggregateType: 'credit_grant', amountField: 'amount', errorCode: 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD', payload: { amount: 10, creditAmount: 10, creditLedgerEntryId: 'garage-1:key-1' } },

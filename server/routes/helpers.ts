@@ -1,5 +1,4 @@
 import { ValidationError } from '../validation';
-import { canManageGarageScopedData as decideGarageScope } from '../domain/authorization';
 
 /**
  * Domain Error Status Code Resolver
@@ -87,11 +86,4 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   }
 
   return { statusCode: 500, code: 'INTERNAL_ERROR', message: 'حدث خطأ غير متوقع في الخادم' };
-}
-
-export function canManageGarageScopedData(
-  req: { user?: Parameters<typeof decideGarageScope>[0] },
-  garageId: string
-): boolean {
-  return decideGarageScope(req.user, garageId);
 }

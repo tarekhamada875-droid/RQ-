@@ -42,7 +42,6 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
       }
       if (documentRef.path === 'credit_referral_awards/garage-1') return { exists: false, data: () => undefined };
       if (documentRef.path.startsWith('payment_reference_markers/')) return { exists: paymentReferenceMarkers.has(documentRef.path), data: () => paymentReferenceMarkerData.get(documentRef.path) };
-      if (documentRef.path.startsWith('packages/')) return { exists: false, data: () => undefined };
       return { exists: false, data: () => undefined };
     }),
     set: vi.fn((documentRef: any, data: any, merge?: any) => {

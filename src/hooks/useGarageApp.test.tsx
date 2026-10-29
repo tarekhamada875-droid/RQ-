@@ -97,7 +97,7 @@ vi.mock('./useGarageSync', () => ({
   useGarageSync: () => ({
     allGarages: [], delegates: [], staffList: [], setStaffList: vi.fn(), delegatePagination: {},
     delegateListsLoading: false, loadMoreDelegateGarages: vi.fn(),
-    packages: [], delegateGarages: [], adminGarageHasMore: false,
+    delegateGarages: [], adminGarageHasMore: false,
     adminDelegateHasMore: false, adminListsLoading: false, adminListsError: false,
     loadMoreAdminGarages: vi.fn(), loadMoreAdminDelegates: vi.fn(), refreshAdminLists: vi.fn()
   })
