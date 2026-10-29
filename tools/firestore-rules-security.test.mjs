@@ -163,14 +163,6 @@ try {
     await setDoc(doc(db, 'admin_settings/wallet_number'), { value: 'synthetic-wallet' });
     await setDoc(doc(db, 'admin_settings/subscription_prices'), { value: { monthly: 500 } });
     await setDoc(doc(db, 'admin_settings/private_setting'), { value: 'admin-only' });
-    await setDoc(doc(db, 'packages/existing-legacy-record'), {
-      name: 'Synthetic stored monthly package', price: 300, catalogType: 'legacy_time',
-      durationDays: 30, dailyCapacity: 50
-    });
-    await setDoc(doc(db, 'packages/credit-bundle-valid'), {
-      name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
-      catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
-    });
 
     await setDoc(doc(db, 'garages/g-1/subscribers/sub-1'), {
       id: 'sub-1', ownerName: 'Synthetic Owner', phone: '000', plateNumber: 'ABC123',
@@ -251,31 +243,12 @@ try {
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/subscription_prices')));
   await assertFails(getDoc(doc(ownerDb, 'admin_settings/private_setting')));
 
-  // Every client-written package must use the exact credit-bundle catalog format.
+  // Packages are a retired feature; all browser writes to the collection must be denied.
   await assertFails(setDoc(doc(adminDb, 'packages/credit-bundle-valid'), {
     name: 'Synthetic 400 credits', price: 400, creditQuantity: 400,
     catalogType: 'credit_bundle', isActive: true, createdAt: new Date()
   }));
-  await assertFails(setDoc(doc(adminDb, 'packages/time-based-only'), {
-    name: 'Synthetic monthly package', price: 300, durationDays: 30,
-    dailyCapacity: 50, catalogType: 'legacy_time'
-  }));
-  await assertFails(setDoc(doc(adminDb, 'packages/mixed-credit-and-duration'), {
-    name: 'Synthetic mixed package', price: 400, creditQuantity: 400,
-    catalogType: 'credit_bundle', durationDays: 30
-  }));
-  await assertFails(setDoc(doc(adminDb, 'packages/mismatched-credit-price'), {
-    name: 'Synthetic mismatched bundle', price: 500, creditQuantity: 400,
-    catalogType: 'credit_bundle'
-  }));
-  await assertSucceeds(getDoc(doc(ownerDb, 'packages/credit-bundle-valid')));
-  await assertFails(getDoc(doc(ownerDb, 'packages/existing-legacy-record')));
-  await assertFails(getDocs(collection(ownerDb, 'packages')));
-  const visibleCreditBundles = await getDocs(query(
-    collection(ownerDb, 'packages'),
-    where('catalogType', '==', 'credit_bundle')
-  ));
-  assert.deepEqual(visibleCreditBundles.docs.map((packageDoc) => packageDoc.id), ['credit-bundle-valid']);
+  await assertFails(getDoc(doc(ownerDb, 'packages/credit-bundle-valid')));
 
   // Staff documents are readable by scoped roles but all browser writes are Worker-only.
   await assertFails(updateDoc(doc(staffDb, 'staff/staff-1'), { lastActive: new Date() }));
