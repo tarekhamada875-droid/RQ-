@@ -119,7 +119,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
   it('debits one prepaid credit atomically and returns the auditable remaining balance', async () => {
     mockDb.seed(`garages/${testGarageId}`, {
       billingModel: 'prepaid_credits',
-      creditBalance: { paid: 2, referral: 1 },
+      credits: 3,
     });
     const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
@@ -127,25 +127,25 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 1111', plateRaw: 'ABC1111' }),
     }), workerEnv);
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ success: true, data: { creditBalance: { paid: 1, referral: 1 }, remainingCredits: 2, creditDebit: { amount: 1, bucket: 'paid' } } });
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 1, trial: 0 });
+    expect(await response.json()).toMatchObject({ success: true, data: { credits: 2, remainingCredits: 2, creditDebit: { amount: 1 } } });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(2);
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'regular_entry_debit' && record.amount === 1)).toBe(true);
   });
 
   it('blocks a prepaid regular entry at zero credits without writing vehicle state', async () => {
-    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 0, referral: 0 } });
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', credits: 0 });
     const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 2222', plateRaw: 'ABC2222' }),
     }), workerEnv);
     expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ success: false, error: 'رصيد الدخول غير كافٍ لتسجيل هذه السيارة' });
+    expect(await response.json()).toMatchObject({ success: false, error: 'رصيد غير كافٍ لإتمام هذه العملية' });
     expect(mockDb.records.has(`garages/${testGarageId}/vehicles/ABC2222`)).toBe(false);
   });
 
   it('does not debit prepaid credits for a monthly subscriber check-in attempt', async () => {
-    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 4, referral: 3 } });
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', credits: 7 });
     const subscriberId = `plate_${Buffer.from('ABC1234').toString('base64url')}`;
     mockDb.seed(`garages/${testGarageId}/subscribers/${subscriberId}`, { plateNumberRaw: 'ABC1234', startDate: '2020-01-01', endDate: '2099-12-31' });
     const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
@@ -154,11 +154,11 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, plateNumber: 'ABC 1234', plateRaw: 'ABC1234' }),
     }), workerEnv);
     expect(response.status).toBe(409);
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 4, referral: 3 });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(7);
   });
 
   it('restores the consumed credit on an authorized vehicle deletion', async () => {
-    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', creditBalance: { paid: 1, referral: 0 } });
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', credits: 1 });
     const checkIn = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token', 'x-idempotency-key': 'prepaid-entry-restore-1' },
@@ -171,8 +171,8 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, vehicleId: 'ABC3333', refundAmount: 0 }),
     }), workerEnv);
     expect(deletion.status).toBe(200);
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.creditBalance).toEqual({ paid: 1, referral: 0, trial: 0 });
-    expect([...mockDb.records.values()].some((record: any) => record.kind === 'correction_restore' && record.amount === 1)).toBe(true);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(1);
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'authorized_deletion_restore' && record.amount === 1)).toBe(true);
   });
 
   it('allows the same garage or staff entity to correct its entry after re-login with a new Firebase UID', async () => {

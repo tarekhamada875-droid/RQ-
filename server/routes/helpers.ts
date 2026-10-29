@@ -55,11 +55,8 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('MONTHLY_SUBSCRIBER_NOT_CHECKED_IN')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'هذه السيارة مسجلة كمشترك شهري' };
   }
-  if (errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS')) {
-    return { statusCode: 409, code: 'INSUFFICIENT_ELIGIBLE_CREDITS', message: 'رصيد الدخول غير كافٍ لتسجيل هذه السيارة' };
-  }
-  if (errMsg.includes('INSUFFICIENT_PAID_CREDITS')) {
-    return { statusCode: 409, code: 'INSUFFICIENT_PAID_CREDITS', message: 'رصيد التجديد المدفوع غير كافٍ لإتمام تجديد المشترك' };
+  if (errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || errMsg.includes('INSUFFICIENT_PAID_CREDITS') || errMsg.includes('INSUFFICIENT_CREDITS')) {
+    return { statusCode: 409, code: 'INSUFFICIENT_CREDITS', message: 'رصيد غير كافٍ لإتمام هذه العملية' };
   }
   if (errMsg.includes('GARAGE_DELETION_IN_PROGRESS')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'جاري حذف بيانات الجراج، العمليات متوقفة' };

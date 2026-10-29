@@ -21,6 +21,9 @@ export interface Garage {
   currentSessionId?: string | null;
   lastActive?: any; // Timestamp
   billingModel?: 'subscription' | 'prepaid_credits';
+  /** Single prepaid credit balance (paid + referral + trial merged as of 2026-10-29). */
+  credits?: number;
+  /** @deprecated Replaced by `credits`. Kept for type-shape migration only; do not read. */
   creditBalance?: { paid: number; referral: number; trial: number };
   commissionPerVehicle?: number;
   monthlySubscriptionFee?: number;

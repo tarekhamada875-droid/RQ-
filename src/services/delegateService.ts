@@ -32,7 +32,7 @@ export interface DelegatePaidGrantSummary {
   monthlyPaidGrantTotalsEgp: Record<string, number>;
   allTimePaidGrantTotalEgp: number;
   currentCyclePaidGrantTotalEgp: number;
-  recentPaidGrants: Array<{ entryId: string; garageId: string; garageName: string; amountEgp: number; creditAmount: number; occurredAt: string; paymentReference?: string }>;
+  recentPaidGrants: Array<{ entryId: string; garageId: string; garageName: string; amountEgp: number; creditAmount: number; occurredAt: string }>;
 }
 
 export interface DelegateDashboardPage {

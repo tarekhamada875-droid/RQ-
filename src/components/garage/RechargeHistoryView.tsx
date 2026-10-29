@@ -98,7 +98,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast }: Recharg
             <div>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>
               <p className="mt-1 text-3xl font-black font-mono text-slate-900 dark:text-slate-100">
-                {(Number(garage.creditBalance?.paid || 0) + Number(garage.creditBalance?.referral || 0) + Number(garage.creditBalance?.trial || 0)).toLocaleString('ar-EG')}
+                {Number(garage.credits ?? 0).toLocaleString('ar-EG')}
                 <span className="mr-2 text-sm font-bold text-slate-500 dark:text-slate-400">رصيد</span>
               </p>
             </div>

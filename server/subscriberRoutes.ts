@@ -207,11 +207,11 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
       const decision = decideSubscriberRenew(currentState, dates);
       if (decision.ok === false) throw lifecycleErrorToLegacyError(decision.error);
       const garageData = garageSnap.exists ? (garageSnap.data() || {}) : {};
-      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || garageData.creditBalance !== undefined;
+      const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || typeof garageData.credits === 'number';
 
       // A retried renewal may arrive without an idempotency key. Once the requested
       // date range is already persisted, treat it as a no-op rather than debiting
-      // the same five paid credits again (and overwriting the deterministic ledger ID).
+      // the same five credits again (and overwriting the deterministic ledger ID).
       if (
         prepaidCreditsEnabled
         && currentState.startDate === dates.startDate
@@ -219,31 +219,21 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
       ) {
         resultData = {
           success: true,
-          creditBalance: {
-            paid: Number(garageData.creditBalance?.paid || 0),
-            referral: Number(garageData.creditBalance?.referral || 0),
-            trial: Number(garageData.creditBalance?.trial || 0),
-          },
+          credits: Number(garageData.credits ?? 0),
         };
         return;
       }
 
       let creditDebit: any = null;
       if (prepaidCreditsEnabled) {
-        const renewalReference = `${subscriberId}:${dates.startDate}:${dates.endDate}`;
-        const renewalKey = idempotencyKey || `subscriber-renewal:${renewalReference}`;
+        const renewalKey = idempotencyKey || `subscriber-renewal:${subscriberId}:${dates.startDate}:${dates.endDate}`;
         const creditResult = debitSubscriberRenewal({
-          balance: {
-            paid: Number(garageData.creditBalance?.paid || 0),
-            referral: Number(garageData.creditBalance?.referral || 0),
-            trial: Number(garageData.creditBalance?.trial || 0),
-          },
+          balance: Number(garageData.credits ?? 0),
           amount: 5,
           garageId: validatedGarageId,
           actorUid: user?.uid || 'system',
           actorRole: callerRole,
           reason: 'monthly_subscriber_renewal',
-          reference: renewalReference,
           occurredAt: new Date().toISOString(),
           idempotencyKey: renewalKey,
         });
@@ -257,7 +247,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;
         t.set(garageRef, {
-          creditBalance: creditDebit.balance,
+          credits: creditDebit.balance,
           totalRevenue: (garageData.totalRevenue || 0) + creditDebit.entry.amount,
           todayRevenue: isNewRevenueDay ? creditDebit.entry.amount : (garageData.todayRevenue || 0) + creditDebit.entry.amount,
           lastTransactionDate: todayKey
@@ -289,7 +279,6 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
           endDate: dates.endDate,
           ...(creditDebit ? {
             creditAmount: creditDebit.entry.amount,
-            creditBucket: creditDebit.entry.bucket,
             creditLedgerEntryId: creditDebit.entry.entryId,
           } : {})
         }
@@ -297,10 +286,9 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
       resultData = {
         success: true,
         ...(creditDebit ? {
-          creditBalance: creditDebit.balance,
+          credits: creditDebit.balance,
           creditDebit: {
             amount: creditDebit.entry.amount,
-            bucket: creditDebit.entry.bucket,
             ledgerEntryId: creditDebit.entry.entryId,
           },
         } : {}),

@@ -107,7 +107,7 @@ export const GarageDashboardView = memo((props: any) => {
     return () => unsub();
   }, []);
 
-  const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || garage?.creditBalance !== undefined;
+  const prepaidCreditsEnabled = garage?.billingModel === 'prepaid_credits' || typeof garage?.credits === 'number';
 
   const totalInsideCount = useMemo(
     () =>
@@ -252,7 +252,7 @@ export const GarageDashboardView = memo((props: any) => {
   const hasActivePaidPackage = (
     garage?.billingModel === 'subscription' || Boolean(garage?.activePackageName || garage?.packageName)
   );
-  const prepaidCreditTotal = Number(garage?.creditBalance?.paid || 0) + Number(garage?.creditBalance?.referral || 0) + Number(garage?.creditBalance?.trial || 0);
+  const prepaidCreditTotal = Number(garage?.credits ?? 0);
   const isBalanceDepleted = prepaidCreditsEnabled
     ? prepaidCreditTotal <= 0
     : Number(garage?.balance || 0) <= 0 && !isActiveTrial && !hasActivePaidPackage;

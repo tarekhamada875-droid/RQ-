@@ -579,7 +579,7 @@ describe('garage creation Hono contract', () => {
     expect(garage).toMatchObject({
       name: 'Synthetic Trial Garage', status: 'approved', isTrial: true,
       billingModel: 'prepaid_credits', dailyCapacity: 0, activePackageName: '',
-      packageName: '', balance: 0, creditBalance: { paid: 0, referral: 0, trial: 100 }
+      packageName: '', credits: 100
     });
     expect(garage.balanceExpiry).toBeNull();
     expect(log).toMatchObject({
@@ -587,7 +587,7 @@ describe('garage creation Hono contract', () => {
       plateNumber: 'إنشاء حساب جراج جديد (نظام الرصيد)', amount: 0,
       details: { packageName: '', durationDays: 0, carsCount: 0, revenueAmount: 0, isTrial: true, trialCreditsGranted: 100 }
     });
-    expect([...mockDb.records.values()].some((record: any) => record.kind === 'trial_grant' && record.amount === 100 && record.bucket === 'trial')).toBe(true);
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'trial_grant' && record.amount === 100)).toBe(true);
   });
 
   it('creates a delegate-owned pending garage below the daily quota', async () => {

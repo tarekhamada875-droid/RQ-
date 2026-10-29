@@ -120,7 +120,7 @@ function round(value: number): number {
 }
 
 function addCredits(total: number, value: unknown): number {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) return total;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value === 0) return total;
   const next = total + value;
   return Number.isSafeInteger(next) ? next : total;
 }
@@ -219,7 +219,7 @@ export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReport
   const activity = accumulator.creditActivity;
   if (!activity || !inRange(entry.occurredAt, accumulator.options)) return;
   const amount = entry.amount;
-  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 1) return;
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount === 0) return;
 
   switch (entry.kind) {
     case 'paid_grant':
@@ -241,20 +241,21 @@ export function addFinancialReportCreditLedgerEntry(accumulator: FinancialReport
     case 'regular_entry_debit':
       activity.regularEntryDebitCount = incrementCount(activity.regularEntryDebitCount);
       activity.regularEntryCreditsConsumed = addCredits(activity.regularEntryCreditsConsumed, amount);
-      if (entry.bucket === 'paid') activity.regularEntryPaidCreditsConsumed = addCredits(activity.regularEntryPaidCreditsConsumed, amount);
-      if (entry.bucket === 'referral') activity.regularEntryReferralCreditsConsumed = addCredits(activity.regularEntryReferralCreditsConsumed, amount);
-      if (entry.bucket === 'trial') activity.regularEntryTrialCreditsConsumed = addCredits(activity.regularEntryTrialCreditsConsumed, amount);
       break;
     case 'subscriber_renewal_debit':
       activity.subscriberRenewalCount = incrementCount(activity.subscriberRenewalCount);
       activity.subscriberRenewalCreditsConsumed = addCredits(activity.subscriberRenewalCreditsConsumed, amount);
       break;
+    case 'authorized_deletion_restore':
     case 'correction_restore':
       activity.correctionRestoreCount = incrementCount(activity.correctionRestoreCount);
       activity.restoredCredits = addCredits(activity.restoredCredits, amount);
-      if (entry.bucket === 'paid') activity.restoredPaidCredits = addCredits(activity.restoredPaidCredits, amount);
-      if (entry.bucket === 'referral') activity.restoredReferralCredits = addCredits(activity.restoredReferralCredits, amount);
-      if (entry.bucket === 'trial') activity.restoredTrialCredits = addCredits(activity.restoredTrialCredits, amount);
+      break;
+    case 'correction_delta':
+      // Admin corrections can be positive or negative; we track the absolute
+      // credit movement under restoredCredits for visibility, signed-agnostic.
+      activity.correctionRestoreCount = incrementCount(activity.correctionRestoreCount);
+      activity.restoredCredits = addCredits(activity.restoredCredits, amount);
       break;
   }
 }

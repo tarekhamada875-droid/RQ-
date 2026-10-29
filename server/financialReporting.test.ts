@@ -113,15 +113,15 @@ describe('financial reporting projections', () => {
       trialCreditsGranted: 0,
       regularEntryDebitCount: 2,
       regularEntryCreditsConsumed: 2,
-      regularEntryPaidCreditsConsumed: 1,
-      regularEntryReferralCreditsConsumed: 1,
+      regularEntryPaidCreditsConsumed: 0,
+      regularEntryReferralCreditsConsumed: 0,
       regularEntryTrialCreditsConsumed: 0,
       subscriberRenewalCount: 1,
       subscriberRenewalCreditsConsumed: 5,
       correctionRestoreCount: 1,
       restoredCredits: 1,
       restoredPaidCredits: 0,
-      restoredReferralCredits: 1,
+      restoredReferralCredits: 0,
       restoredTrialCredits: 0,
     });
   });
