@@ -449,16 +449,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /referral_rewards/{rewardId} {
-      allow read: if isAdmin();
-      allow write: if false; // Retired referral-days model
-    }
-
-    match /topup_requests/{requestId} {
-      allow read: if isAdmin();
-      allow write: if false; // Retired wallet top-up model
-    }
-
     match /test/connection {
       allow read, write: if false;
     }

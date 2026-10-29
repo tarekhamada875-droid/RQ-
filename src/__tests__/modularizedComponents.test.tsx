@@ -92,7 +92,6 @@ const mockGarage: Garage = {
   overnightRate: 40,
   hasMonthlySubscribers: true,
   lastTransactionDate: '2026-09-25',
-  balanceExpiry: { seconds: 1800000000, nanoseconds: 0 } as any,
   status: 'approved',
   createdAt: new Date(),
 };

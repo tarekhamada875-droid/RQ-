@@ -71,7 +71,6 @@ function getActionLabel(action?: string): string {
       return 'شحن رصيد';
     case 'delete_refund':
       return 'حذف سيارة مع استرداد';
-    case 'commission_payment':
     case 'commission_earned':
       return 'استحقاق عمولة';
     case 'prepaid_credit_grant_paid':
