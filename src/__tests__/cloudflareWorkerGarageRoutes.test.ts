@@ -14,6 +14,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 }));
 
 import { api } from '../../server/api';
+import { getCairoDayBounds } from '../../server/projections';
 installDefaultWorkerTestSessionHeaders(api, mockDb);
 
 describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes', () => {
@@ -60,7 +61,8 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(new Date());
-    const dayStart = new Date(`${today}T00:00:00+03:00`);
+    // Use the server's DST-aware Cairo midnight (handles the UTC+2/UTC+3 transition)
+    const { start: dayStart, end: dayEnd } = getCairoDayBounds(today);
     const eventAt = (minutesAfterStart: number) => new Date(dayStart.getTime() + minutesAfterStart * 60_000).toISOString();
     mockDb.seed(`garages/${testGarageId}`, {
       carsInside: 2, lastTransactionDate: today, todayCount: 1, todayRevenue: 45
@@ -73,7 +75,7 @@ describe('CF8 — Cloudflare Worker Garage Management & Final Hardening Routes',
     mockDb.seed(`garages/${testGarageId}/events/exit`, { occurredAt: eventAt(2), eventType: 'vehicle_exited', payload: { cost: 50 } });
     mockDb.seed(`garages/${testGarageId}/events/refund`, { occurredAt: eventAt(3), eventType: 'vehicle_refunded', payload: { refundAmount: 5 } });
     mockDb.seed(`garages/${testGarageId}/events/before-day`, { occurredAt: new Date(dayStart.getTime() - 1).toISOString(), eventType: 'vehicle_entered' });
-    mockDb.seed(`garages/${testGarageId}/events/next-day`, { occurredAt: new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString(), eventType: 'vehicle_entered' });
+    mockDb.seed(`garages/${testGarageId}/events/next-day`, { occurredAt: new Date(dayEnd.getTime() + 60_000).toISOString(), eventType: 'vehicle_entered' });
     const recordsBefore = new Map([...mockDb.records.entries()].map(([path, data]) => [path, structuredClone(data)]));
 
     const response = await api.fetch(new Request('http://localhost/api/garages/reconciliation', {
