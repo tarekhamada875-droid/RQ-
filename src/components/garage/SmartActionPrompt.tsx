@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import type { Garage } from '../../types';
 
 interface SmartActionPromptProps {
@@ -36,13 +36,6 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ paymentWal
       className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border-2 border-amber-500/60 relative shrink-0 p-6 sm:p-8 max-w-md md:max-w-xl mx-auto w-full shadow-xl"
       dir="rtl"
     >
-      {/* Warning icon */}
-      <div className="flex justify-center mb-4">
-        <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg">
-          <AlertTriangle className="w-7 h-7" strokeWidth={2.5} />
-        </div>
-      </div>
-
       {/* Headline */}
       <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-3 text-center">
         رصيدك خلص
@@ -52,7 +45,7 @@ export const SmartActionPrompt: React.FC<SmartActionPromptProps> = ({ paymentWal
         <>
           {/* One short prompt */}
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4 text-center">
-            أرسل الدفع إلى
+            أبعت مبلغ الرصيد على رقم المحفظة ده
           </p>
 
           {/* Hero wallet number, dashed for readability */}
