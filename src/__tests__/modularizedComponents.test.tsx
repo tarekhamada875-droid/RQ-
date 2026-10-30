@@ -329,6 +329,37 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     // Brand footer
     expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
   });
+
+  it('hides the persistent balance card and shows the SmartActionPrompt when credits = 0', () => {
+    // Depleted garage: credits = 0, prepaid_credits billing model
+    const depletedGarage = { ...mockGarage, billingModel: 'prepaid_credits' as const, credits: 0 };
+
+    renderWithTheme(
+      <GarageDashboardView
+        garage={depletedGarage}
+        currentStaff={null}
+        isInputFocused={false}
+        now={new Date()}
+        vehicles={[]}
+        todayTransactions={[]}
+        setSelectedVehicle={vi.fn()}
+        setShowCheckOutModal={vi.fn()}
+        closeKeyboard={vi.fn()}
+        newPlateNumber=""
+        setNewPlateNumber={vi.fn()}
+        setIsInputFocused={vi.fn()}
+        plateInputRef={{ current: null }}
+        handleCheckIn={vi.fn()}
+        inputRef={{ current: null }}
+        onLogout={vi.fn()}
+      />
+    );
+
+    // The persistent balance card (with "Critical credits" badge) is gone
+    expect(screen.queryByTestId('low-credit-indicator')).not.toBeInTheDocument();
+    // The depleted-state SmartActionPrompt owns the main area instead
+    expect(screen.getByText('رصيدك خلص')).toBeInTheDocument();
+  });
 });
 
 

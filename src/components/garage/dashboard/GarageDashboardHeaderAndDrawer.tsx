@@ -15,6 +15,7 @@ import {
   FileText,
   History,
   BarChart3,
+  Menu,
 } from 'lucide-react';
 import { Garage, Staff } from '../../../types';
 import { IconButton } from '../../ui/IconButton';
@@ -76,7 +77,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                 {isMenuOpen ? (
                   <XIcon className="w-6 h-6 stroke-[3]" />
                 ) : (
-                  <Users className="w-6 h-6 stroke-[3]" />
+                  <Menu className="w-6 h-6 stroke-[3]" />
                 )}
               </IconButton>
             </div>
