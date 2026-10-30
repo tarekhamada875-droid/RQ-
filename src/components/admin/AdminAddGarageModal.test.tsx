@@ -23,7 +23,7 @@ const makeProps = () => ({
 });
 
 describe('AdminAddGarageModal accessible names', () => {
-  it('associates all six visible add-garage fields with their labels', () => {
+  it('associates all five visible fields with their labels and shows trial info banner', () => {
     const { container } = render(<AdminAddGarageModal {...makeProps()} />);
 
     const controls = [
@@ -32,12 +32,21 @@ describe('AdminAddGarageModal accessible names', () => {
       screen.getByRole('textbox', { name: 'سعر المبيت' }),
       screen.getByRole('textbox', { name: 'رقم الموبايل (اختياري)' }),
       screen.getByRole('textbox', { name: 'رمز الدخول' }),
-      screen.getByRole('combobox', { name: 'الجراج المُرشِّح / تمت الإحالة بواسطة (اختياري)' }),
+      screen.getByRole('combobox', { name: 'الجراج المُرشِّح (اختياري)' }),
     ];
 
-    expect(container.querySelectorAll('label[for^="admin-add-garage-"]')).toHaveLength(6);
+    // 4 label-associated fields (name, phone, pin, referrer) + 2 aria-labeled (hourly, overnight)
+    expect(container.querySelectorAll('label[for^="admin-add-garage-"]')).toHaveLength(4);
     controls.forEach((control) => expect(control).toHaveAccessibleName());
-    expect(screen.getByRole('switch', { name: /منح 100 رصيد تجربة مجاني/ })).toBeInTheDocument();
+
+    // Trial credits are now automatic — no toggle, just an info banner
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.getByText('يُمنح 100 رصيد تجربة مجاني تلقائيًا عند الإنشاء')).toBeInTheDocument();
+
+    // Hidden field always sends isTrial=true
+    const hiddenInput = container.querySelector('input[type="hidden"][name="isTrial"]') as HTMLInputElement;
+    expect(hiddenInput).toBeTruthy();
+    expect(hiddenInput.value).toBe('true');
   });
 
   it('names every button and keeps close and safe-PIN generation callbacks intact', () => {

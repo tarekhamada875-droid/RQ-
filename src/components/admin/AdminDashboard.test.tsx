@@ -100,7 +100,6 @@ const fillAddGarageDraft = () => {
   fireEvent.change(screen.getByPlaceholderText('50'), { target: { value: '60' } });
   fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
   fireEvent.change(screen.getByPlaceholderText('12345'), { target: { value: '12345' } });
-  fireEvent.click(screen.getByRole('switch'));
 };
 
 const submitAddGarageDraft = () => {
@@ -188,7 +187,6 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('50')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('closes and clears the add-garage draft only after successful creation', async () => {
@@ -210,7 +208,6 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('50')).toHaveValue('');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('');
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   });
 
   it('keeps the add-garage draft open and reports an unexpected rejected create request', async () => {
@@ -229,7 +226,6 @@ describe('AdminDashboard garage actions', () => {
     expect(screen.getByPlaceholderText('50')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('refreshes paginated Admin lists after a successful garage approval', async () => {
