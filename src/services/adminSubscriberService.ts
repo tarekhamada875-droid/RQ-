@@ -1,7 +1,7 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { apiFetch } from '../api/apiClient';
 import { generateIdempotencyKey } from '../types/apiContracts';
-import { collection, query, where, onSnapshot, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, onSnapshot, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { Subscriber } from '../types';
 import type { SubscriberPageCursor, SubscriberPageInfo, SubscriberPage } from './adminServiceTypes';
@@ -120,6 +120,27 @@ export const adminSubscriberService = {
       console.error('Error fetching subscriber by plate:', err);
       throw err;
     }
+  },
+
+  /**
+   * Searches subscribers across ALL garages in a single collectionGroup query.
+   * Replaces the O(N) per-garage loop in PlateLookupModal.
+   * Returns subscribers with their parent garageId (extracted from the doc path).
+   */
+  getSubscribersByPlateAcrossGarages: async (rawPlate: string): Promise<Array<Subscriber & { garageId: string }>> => {
+    const q = query(
+      collectionGroup(db, 'subscribers'),
+      where('plateNumberRaw', '==', rawPlate),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => {
+      const data = doc.data() as Subscriber;
+      // Extract garageId from path: garages/{garageId}/subscribers/{subscriberId}
+      const pathParts = doc.ref.path.split('/');
+      const garageId = pathParts.length >= 2 ? pathParts[1] : '';
+      return { ...data, id: doc.id, garageId };
+    });
   },
 
 };

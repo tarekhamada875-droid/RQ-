@@ -131,7 +131,7 @@ export const adminActivityService = {
     try {
       const q = query(
         collection(db, 'activity_logs'),
-        where('plateNumber', '==', rawPlate),
+        where('plateNumberRaw', '==', rawPlate),
         limit(50)
       );
       const snap = await getDocs(q);

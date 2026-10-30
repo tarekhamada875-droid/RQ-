@@ -46,6 +46,7 @@ describe('adminService facade contract', () => {
       'getMoreSubscribers',
       'getStaffByGarageOnce',
       'getSubscriberByPlateOnce',
+      'getSubscribersByPlateAcrossGarages',
       'getSystemConfig',
       'getSystemLogsByPlateOnce',
       'removeStaff',
