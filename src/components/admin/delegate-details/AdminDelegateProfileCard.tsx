@@ -65,7 +65,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                   maxLength={5}
                   pattern="[0-9]{5}"
                   onChange={(e) => setPinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
-                  className="w-16 bg-transparent text-blue-600 dark:text-blue-400 text-sm font-black text-center focus:outline-none focus:ring-0 border-0 p-0 font-mono"
+                  className="w-16 bg-transparent text-blue-600 dark:text-blue-400 text-sm font-black text-center focus:outline-none focus:ring-0 border-0 p-0 font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="••••"
                 />
                 <button

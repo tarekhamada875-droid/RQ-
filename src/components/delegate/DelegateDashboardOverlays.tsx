@@ -58,38 +58,36 @@ export const DelegateDashboardOverlays = (props: any) => {
               >
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">اسم الجراج</label>
-                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-all placeholder:text-slate-400" dir="rtl" />
+                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
                 </div>
   
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5 text-center">
                     <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block">سعر الساعة</label>
-                    <div className="relative">
-                      <input 
-                        name="hourlyRate" 
-                        type="text" 
-                        inputMode="numeric" 
+                    <div>
+                      <input
+                        name="hourlyRate"
+                        type="text"
+                        inputMode="numeric"
                         pattern="[0-9]*"
-                        placeholder="10" 
-                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg" 
-                        dir="ltr" 
+                        placeholder="10 ج.م"
+                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center outline-none focus:border-amber-500 font-mono text-lg"
+                        dir="ltr"
                       />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ج.م</span>
                     </div>
                   </div>
                   <div className="space-y-1.5 text-center">
                     <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block">سعر المبيت</label>
-                    <div className="relative">
-                      <input 
-                        name="overnightRate" 
-                        type="text" 
-                        inputMode="numeric" 
+                    <div>
+                      <input
+                        name="overnightRate"
+                        type="text"
+                        inputMode="numeric"
                         pattern="[0-9]*"
-                        placeholder="50" 
-                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg" 
-                        dir="ltr" 
+                        placeholder="50 ج.م"
+                        className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center outline-none focus:border-amber-500 font-mono text-lg"
+                        dir="ltr"
                       />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">ج.م</span>
                     </div>
                   </div>
                 </div>
@@ -157,7 +155,7 @@ export const DelegateDashboardOverlays = (props: any) => {
                     type="tel"
                     inputMode="numeric"
                     placeholder="01xxxxxxxxx" 
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none focus:border-amber-500 transition-all placeholder:text-slate-400" 
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none focus:border-amber-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" 
                     dir="ltr" 
                   />
                 </div>

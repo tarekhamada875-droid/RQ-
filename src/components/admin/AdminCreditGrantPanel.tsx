@@ -175,7 +175,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           onChange={(event) => setAmount(event.target.value.replace(/[٠-٩۰-۹]/g, (digit) => String(digit.charCodeAt(0) >= 0x06f0 ? digit.charCodeAt(0) - 0x06f0 : digit.charCodeAt(0) - 0x0660)).replace(/[^\d-]/g, ''))}
           placeholder={mode === 'grant' ? 'أدخل قيمة الرصيد' : 'مثال: 50 أو -50'}
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
-          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
         />
         <label htmlFor="credit-reason" className="block text-sm font-bold text-slate-800 dark:text-slate-100">
           السبب
@@ -187,7 +187,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           placeholder={mode === 'grant' ? 'سبب إضافة الرصيد' : 'سبب التصحيح'}
-          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
         />
         {mode === 'grant' && (
           <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-100">
