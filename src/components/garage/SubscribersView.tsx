@@ -32,6 +32,42 @@ const formatDateKey = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+type SubscriberStatus = {
+  label: string;
+  color: string;
+  isAlert: boolean;
+  isExpired: boolean;
+  alertMessage: string;
+};
+
+// Static status configs allocated once at module load, not per-subscriber-per-render.
+// Only the "expires in N days" case needs a dynamic label/alertMessage.
+const STATUS_EXPIRED: SubscriberStatus = {
+  label: 'منتهي الصلاحية',
+  color: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900',
+  isAlert: true,
+  isExpired: true,
+  alertMessage: 'تنبيه: انتهى موعد الاشتراك الشهري لهذا المشترك. يرجى تجديد الاشتراك أو حذف البيانات نهائياً.',
+};
+
+const STATUS_EXPIRES_TODAY: SubscriberStatus = {
+  label: 'ينتهي اليوم',
+  color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900',
+  isAlert: true,
+  isExpired: false,
+  alertMessage: 'تنبيه: ينتهي هذا الاشتراك الشهري اليوم.',
+};
+
+const STATUS_ACTIVE: SubscriberStatus = {
+  label: 'ساري',
+  color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900',
+  isAlert: false,
+  isExpired: false,
+  alertMessage: '',
+};
+
+const EXPIRING_COLOR = 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900';
+
 interface SubscribersViewProps {
   garage: Garage;
   onClose: () => void;
@@ -251,39 +287,25 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   const todayDateKey = getCairoDateKey();
   const todayDateObj = parseDateKey(todayDateKey);
 
-  const getStatus = (endStr: string) => {
+  // Returns a module-level constant for the static cases (no allocation).
+  // Only the "expires in N days" case allocates, since the label + alertMessage
+  // are dynamic. Previously this function allocated a new object with long
+  // Arabic strings on every call, per subscriber, per render.
+  const getStatus = (endStr: string): SubscriberStatus => {
     const end = parseDateKey(endStr);
     const diffTime = end.getTime() - todayDateObj.getTime();
     const diffDays = Math.ceil(diffTime / 86400000);
-    
-    if (diffDays < 0) return { 
-      label: 'منتهي الصلاحية', 
-      color: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900', 
-      isAlert: true, 
-      isExpired: true,
-      alertMessage: 'تنبيه: انتهى موعد الاشتراك الشهري لهذا المشترك. يرجى تجديد الاشتراك أو حذف البيانات نهائياً.' 
-    };
-    if (diffDays === 0) return { 
-      label: 'ينتهي اليوم', 
-      color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900', 
-      isAlert: true, 
+
+    if (diffDays < 0) return STATUS_EXPIRED;
+    if (diffDays === 0) return STATUS_EXPIRES_TODAY;
+    if (diffDays <= 3) return {
+      label: `ينتهي بعد ${diffDays} أيام`,
+      color: EXPIRING_COLOR,
+      isAlert: true,
       isExpired: false,
-      alertMessage: 'تنبيه: ينتهي هذا الاشتراك الشهري اليوم.' 
+      alertMessage: `تنبيه: متبقي ${diffDays} أيام فقط على انتهاء الاشتراك الشهري.`,
     };
-    if (diffDays <= 3) return { 
-      label: `ينتهي بعد ${diffDays} أيام`, 
-      color: 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-900', 
-      isAlert: true, 
-      isExpired: false,
-      alertMessage: `تنبيه: متبقي ${diffDays} أيام فقط على انتهاء الاشتراك الشهري.` 
-    };
-    return { 
-      label: 'ساري', 
-      color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900', 
-      isAlert: false, 
-      isExpired: false,
-      alertMessage: '' 
-    };
+    return STATUS_ACTIVE;
   };
 
   const handleOpenAdd = () => {
