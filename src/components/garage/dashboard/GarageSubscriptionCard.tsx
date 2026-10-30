@@ -12,11 +12,21 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
   const isCriticalCredit = totalCredits <= 10;
   const previousCredits = useRef<number | null>(null);
   const [showDebitFeedback, setShowDebitFeedback] = useState(false);
+  // Incremented on every debit so React remounts the arrows and the CSS
+  // animation re-triggers. Without this, consecutive debits (two cars check
+  // in quickly) don't replay the animation because the DOM nodes persist.
+  const [debitNonce, setDebitNonce] = useState(0);
+
+  // Must match the CSS animation duration (credit-debit-fall = 2.4s) so the
+  // arrows complete their fall before being unmounted. Previously this was
+  // 1500ms, which cut the animation at 62% — causing a visible freeze/jump.
+  const DEBIT_FEEDBACK_MS = 2500;
 
   useEffect(() => {
     if (previousCredits.current !== null && totalCredits < previousCredits.current) {
       setShowDebitFeedback(true);
-      const timer = window.setTimeout(() => setShowDebitFeedback(false), 1500);
+      setDebitNonce((n) => n + 1);
+      const timer = window.setTimeout(() => setShowDebitFeedback(false), DEBIT_FEEDBACK_MS);
       previousCredits.current = totalCredits;
       return () => window.clearTimeout(timer);
     }
@@ -43,7 +53,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
           {totalCredits.toLocaleString('en-US')}
         </div>
         {showDebitFeedback && (
-          <span id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none text-red-600 dark:text-red-400" data-testid="credit-debit-feedback">
+          <span key={debitNonce} id="balance_arrows_container" aria-hidden="true" className="absolute inset-0 z-20 overflow-hidden pointer-events-none text-red-600 dark:text-red-400" data-testid="credit-debit-feedback">
             {["left", "left-mid", "left-center", "right-center", "right-mid", "right"].map((position) => (
               <ArrowDown key={position} className={`credit-debit-arrow credit-debit-arrow-${position}`} strokeWidth={4} data-testid="credit-debit-arrow" />
             ))}
