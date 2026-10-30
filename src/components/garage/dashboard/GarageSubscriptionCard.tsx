@@ -4,12 +4,6 @@ import { Garage } from '../../../types';
 
 interface GarageSubscriptionCardProps {
   garage: Garage;
-  isUrgentRed?: boolean;
-  remainingDays?: number;
-  isWarningYellow?: boolean;
-  countdownValue?: number;
-  isCountdownInHours?: boolean;
-  showBreakdown?: boolean;
 }
 
 export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardProps) => {
@@ -42,7 +36,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
             className={`absolute top-3 left-4 z-10 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${isCriticalCredit ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'}`}
           >
             <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-            {isCriticalCredit ? 'Critical credits' : 'Low credits'}
+            {isCriticalCredit ? 'آخر رصيد' : 'رصيدك بيخلص'}
           </div>
         )}
         <div className={`relative z-10 py-1 text-4xl md:text-7xl font-black font-mono transition-colors ${showDebitFeedback ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`} aria-live="polite">
@@ -55,7 +49,7 @@ export const GarageSubscriptionCard = memo(({ garage }: GarageSubscriptionCardPr
             ))}
           </span>
         )}
-        <span className="sr-only">Total access credits {totalCredits}</span>
+        <span className="sr-only">إجمالي الرصيد {totalCredits}</span>
       </div>
     </div>
   );

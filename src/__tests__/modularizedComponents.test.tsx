@@ -232,11 +232,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     renderWithTheme(
       <GarageSubscriptionCard
         garage={mockGarage}
-        isUrgentRed={false}
-        remainingDays={10}
-        isWarningYellow={false}
-        countdownValue={10}
-        isCountdownInHours={false}
       />
     );
 
@@ -256,11 +251,11 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     const lowCreditGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 50 } as any;
     const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={lowCreditGarage} />);
 
-    expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('Low credits');
+    expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('رصيدك بيخلص');
 
     const criticalCreditGarage = { ...lowCreditGarage, credits: 10 } as any;
     rerender(<ThemeProvider><GarageSubscriptionCard garage={criticalCreditGarage} /></ThemeProvider>);
-    expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('Critical credits');
+    expect(screen.getByTestId('low-credit-indicator')).toHaveTextContent('آخر رصيد');
   });
 
   it('shows staggered falling arrows across the credit card after a deduction', () => {
@@ -367,7 +362,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
       />
     );
 
-    // The persistent balance card (with "Critical credits" badge) is gone
+    // The persistent balance card (with "آخر رصيد" badge) is gone
     expect(screen.queryByTestId('low-credit-indicator')).not.toBeInTheDocument();
     // The depleted-state SmartActionPrompt owns the main area instead
     expect(screen.getByText('رصيدك خلص')).toBeInTheDocument();
