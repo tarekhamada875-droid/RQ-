@@ -179,7 +179,7 @@ export const AdminGarageSettingsSection = (props: any) => {
                                   maxLength={5}
                                   pattern="[0-9]{5}"
                                   onChange={(e) => setEditingStaffPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
-                                  className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black"
+                                  className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                   placeholder="••••"
                                   autoFocus
                                 />

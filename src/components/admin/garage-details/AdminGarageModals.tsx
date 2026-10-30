@@ -75,7 +75,7 @@ export const AdminGarageModals = memo(({
                   value={staffForm.name}
                   autoFocus
                   onChange={e => setStaffForm(prev => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center transition-all"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 text-center transition-all"
                 />
               </div>
 
@@ -199,7 +199,7 @@ export const AdminGarageModals = memo(({
                     }}
                     placeholder="••••"
                     autoFocus
-                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none transition-all"
+                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                   {pinError && (
                     <p className="text-xs font-bold text-rose-500 text-center mt-2 animate-shake">

@@ -160,7 +160,7 @@ export const SubscriberModals = (props: any) => {
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value.replace(/[0-9]/g, ''))}
                       onFocus={() => setIsPlateFocused(false)}
-                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                       placeholder="الاسم"
                       required
                     />

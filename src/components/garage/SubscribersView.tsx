@@ -505,7 +505,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث باللوحة أو الاسم أو رقم الهاتف..."
-            className="w-full pl-4 pr-12 py-3.5 bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:border-slate-400 dark:focus:border-slate-600 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 placeholder:font-medium"
+            className="w-full pl-4 pr-12 py-3.5 bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:border-slate-400 dark:focus:border-slate-600 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
           />
         </div>
 
