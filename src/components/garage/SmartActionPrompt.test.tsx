@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SmartActionPrompt } from './SmartActionPrompt';
 
-describe('SmartActionPrompt depleted-balance card (v2 minimal)', () => {
-  it('renders headline + short prompt + dashed wallet number', () => {
-    render(<SmartActionPrompt garage={{ credits: 0 } as any} paymentWalletNumber="01552411323" />);
+describe('SmartActionPrompt depleted-balance card (v3 no-icon minimal)', () => {
+  it('renders headline + short prompt + dashed wallet number (no warning icon)', () => {
+    const { container } = render(<SmartActionPrompt garage={{ credits: 0 } as any} paymentWalletNumber="01552411323" />);
 
     expect(screen.getByText('رصيدك خلص')).toBeInTheDocument();
-    // Short prompt — not the old long paragraph
-    expect(screen.getByText('أرسل الدفع إلى')).toBeInTheDocument();
+    // Short prompt — owner-approved phrasing
+    expect(screen.getByText('أبعت مبلغ الرصيد على رقم المحفظة ده')).toBeInTheDocument();
     // Hero wallet number is dashed every 3 digits for readability
     expect(screen.getByText('015-524-113-23')).toBeInTheDocument();
+    // Warning triangle icon removed per owner directive (was eating space)
+    expect(container.querySelector('svg.lucide-alert-triangle, svg[class*="alert-triangle"]')).not.toBeInTheDocument();
   });
 
   it('does not render a copy button (removed per owner directive)', () => {
@@ -30,11 +32,12 @@ describe('SmartActionPrompt depleted-balance card (v2 minimal)', () => {
     });
   });
 
-  it('does not render the old long explanatory paragraph', () => {
+  it('does not render the old long explanatory paragraph or the v2 prompt', () => {
     render(<SmartActionPrompt garage={{ credits: 0 } as any} paymentWalletNumber="01552411323" />);
     expect(screen.queryByText(/أرسل الدفع للمحفظة دي/)).not.toBeInTheDocument();
     expect(screen.queryByText(/هيتشحن رصيدك تلقائيًا/)).not.toBeInTheDocument();
     expect(screen.queryByText(/تواصل مع الإدارة لإضافة رصيد جديد/)).not.toBeInTheDocument();
+    expect(screen.queryByText('أرسل الدفع إلى')).not.toBeInTheDocument();
   });
 
   it('falls back to a short admin-contact line when no wallet number is configured', () => {
