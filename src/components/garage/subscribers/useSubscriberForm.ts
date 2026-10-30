@@ -95,7 +95,7 @@ export function useSubscriberForm(
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
@@ -219,7 +219,6 @@ export function useSubscriberForm(
       setShowRenewModal(false);
       setActiveSubscriberForRenew(null);
     } catch (err: any) {
-      console.error('Renewal Error:', err);
       const errMsg = err?.message || String(err);
       if (errMsg.includes('INSUFFICIENT_PAID_CREDITS') || errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS')) {
         showToast('رصيدك خلص — تجديد الاشتراك يحتاج 5 رصيد مدفوع. يرجى شحن الرصيد أولاً', 'error');
@@ -279,7 +278,6 @@ export function useSubscriberForm(
       setShowAddModal(false);
       onFormClose();
     } catch (error: any) {
-      console.error('Subscriber Save Error:', error);
       let errorMsg = 'حدث خطأ أثناء الحفظ';
 
       try {

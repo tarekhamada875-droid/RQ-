@@ -121,8 +121,9 @@ export const GarageReportsView = memo(({
       if (freshGarage) setLocalGarage(freshGarage);
       setDashboardSummary(freshSummary);
       setLastRefreshed(new Date());
-    } catch (err) {
-      console.error('Failed to refresh reports from Firestore:', err);
+    } catch {
+      // Refresh is best-effort — the user sees stale data, which is acceptable
+      // for a reports view. No console leak in production.
     } finally {
       setIsRefreshing(false);
     }
