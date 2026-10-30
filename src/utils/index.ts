@@ -53,9 +53,15 @@ export const normalizeDigits = (val: string): string => {
 
 export const normalizeLetters = (val: string): string => {
   if (!val) return '';
-  // Force any Alef variation to be Alef with Hamza (أ) as per Egyptian plate standard
-  // Also normalize Yeh (ى) to (ي) to treat them as the same as requested
-  return val.replace(/[اإآى]/g, m => (m === 'ى' ? 'ي' : 'أ'));
+  // MUST match server's normalizePlateRaw (server/validation.ts) so that
+  // client-side getRawPlate() output is identical to the stored plateNumberRaw.
+  // Any mismatch here breaks plate lookup exact-match queries.
+  return val
+    .replace(/[إأآٱ]/g, 'ا')  // all Alef variants → plain Alef (ا)
+    .replace(/ة/g, 'ه')        // Teh Marbuta → Heh
+    .replace(/ى/g, 'ي')        // Alef Maksura → Yeh
+    .replace(/ئ/g, 'ي')        // Yeh with Hamza → Yeh
+    .replace(/ؤ/g, 'و');       // Waw with Hamza → Waw
 };
 
 /**
