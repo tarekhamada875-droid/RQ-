@@ -265,7 +265,7 @@ export const GarageDashboardView = memo((props: any) => {
           isInputFocused ? "gap-3 pt-3 pb-3" : "gap-4"
         }`}
       >
-        {!(isInputFocused && activeTab === "main") && (
+        {!(isInputFocused && activeTab === "main") && !isBalanceDepleted && (
           <GarageSubscriptionCard garage={garage} />
         )}
 
