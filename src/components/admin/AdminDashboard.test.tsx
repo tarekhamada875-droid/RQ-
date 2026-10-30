@@ -127,7 +127,7 @@ it('keeps the Admin interface right-to-left', () => {
   expect(document.querySelector('.admin-custom-theme')).toHaveAttribute('dir', 'rtl');
 });
 
-it('resets a saved retired trial leads tab to Overview without touching other saved data', async () => {
+it('resets a saved retired trial leads tab to Garages without touching other saved data', async () => {
   localStorage.setItem('app_admin_tab', 'trial_leads');
   localStorage.setItem('unrelated-setting', 'keep-me');
 
@@ -146,8 +146,8 @@ it('resets a saved retired trial leads tab to Overview without touching other sa
   );
 
   await waitFor(() => {
-    expect(screen.getByTestId('active-admin-tab')).toHaveTextContent('overview');
-    expect(localStorage.getItem('app_admin_tab')).toBe('overview');
+    expect(screen.getByTestId('active-admin-tab')).toHaveTextContent('garages');
+    expect(localStorage.getItem('app_admin_tab')).toBe('garages');
   });
   expect(localStorage.getItem('unrelated-setting')).toBe('keep-me');
 });

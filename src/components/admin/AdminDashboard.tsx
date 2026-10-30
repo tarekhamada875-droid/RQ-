@@ -69,12 +69,15 @@ export const AdminDashboard = memo(({
   // Localized states to encapsulate admin view and prevent global App re-renders
   const systemConfig = useSystemConfig();
   const [adminSearch, setAdminSearch] = React.useState<string>('');
-  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'wallet_settings' | 'partners_calculator'>('app_admin_tab', 'overview');
+  // `activeTab` includes retired values ('overview' | 'packages' | 'trial_leads' |
+  // 'supervisors') so the redirect effect below can detect and migrate them out
+  // of older browsers' localStorage. They have no UI surface.
+  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'wallet_settings' | 'partners_calculator'>('app_admin_tab', 'garages');
 
   // Older browser storage may point at retired tabs. Normalize these saved values without touching user data.
   React.useEffect(() => {
     if (activeTab === 'supervisors') setActiveTab('people');
-    else if (activeTab === 'trial_leads') setActiveTab('overview');
+    else if (activeTab === 'trial_leads' || activeTab === 'overview') setActiveTab('garages');
     else if (activeTab === 'packages') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
 
