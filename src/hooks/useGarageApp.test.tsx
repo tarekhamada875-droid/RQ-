@@ -38,7 +38,7 @@ vi.mock('./useLocalStorage', () => ({
 vi.mock('./useOnlineStatus', () => ({ useOnlineStatus: () => ({ isOnline: true, showOfflineScreen: false }) }));
 vi.mock('./useServerTime', () => ({ useServerTime: () => ({ now: new Date('2026-10-18T10:00:00.000Z') }) }));
 vi.mock('../utils/sounds', () => ({ soundManager: { play: vi.fn(), resume: vi.fn() } }));
-vi.mock('../store/appStore', () => ({ useAppStore: { getState: () => ({ showToast: vi.fn(), setGarages: vi.fn(), setDelegates: vi.fn() }) } }));
+vi.mock('../store/appStore', () => ({ useAppStore: { getState: () => ({ showToast: vi.fn() }) } }));
 vi.mock('./useGarageSession', () => ({
   useGarageSession: () => ({
     user: { uid: 'user-1' },
