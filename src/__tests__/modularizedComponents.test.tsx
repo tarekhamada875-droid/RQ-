@@ -332,8 +332,8 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
     // Garage name is in header
     expect(screen.getByText('جراج النصر النموذجي')).toBeDefined();
-    // Brand footer
-    expect(screen.getByText('أرق لتطوير البرمجيات')).toBeDefined();
+    // Brand footer was moved to the Terms page (not on dashboard anymore)
+    expect(screen.queryByText('أرق لتطوير البرمجيات')).not.toBeInTheDocument();
   });
 
   it('hides the persistent balance card and shows the SmartActionPrompt when credits = 0', () => {
