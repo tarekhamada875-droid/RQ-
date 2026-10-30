@@ -110,13 +110,12 @@ export function useSubscriberList(
       setSubscribers((current) => mergeSubscriberPages(current, page.subscribers));
       setSubscriberCursor(page.lastDoc);
       setHasMoreSubscribers(page.hasMore);
-    } catch (error) {
+    } catch {
       if (
         requestGeneration !== subscriberRequestGenerationRef.current ||
         activeGarageIdRef.current !== requestedGarageId
       )
         return;
-      console.error('Failed to load another subscriber page:', error);
       showToast('تعذر تحميل المزيد من المشتركين. يرجى المحاولة مرة أخرى.', 'error');
     } finally {
       if (requestGeneration === subscriberRequestGenerationRef.current) {

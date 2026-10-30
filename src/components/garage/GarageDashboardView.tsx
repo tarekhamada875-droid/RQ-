@@ -189,8 +189,10 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
       if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== logId) {
         try {
           soundManager.play("checkIn");
-        } catch (err) {
-          console.error(err);
+        } catch {
+          // Sound playback is best-effort — failures (autoplay policy, missing
+          // audio context) are not actionable for the user and already surfaced
+          // via the visual recharge notification. No console leak in production.
         }
         localStorage.setItem(`dashboard_sound_recharge_${garage.id}`, logId);
       }
