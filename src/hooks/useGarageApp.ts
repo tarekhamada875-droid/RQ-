@@ -182,13 +182,12 @@ export function useGarageApp() {
     showToast,
   });
 
-  useEffect(() => {
-    useAppStore.getState().setGarages(allGarages);
-  }, [allGarages]);
-
-  useEffect(() => {
-    useAppStore.getState().setDelegates(delegates);
-  }, [delegates]);
+  // App-store mirror writes removed — these two useEffects copied the entire
+  // allGarages/delegates arrays into the Zustand store on every Firestore
+  // snapshot, but zero components subscribe to store.garages or store.delegates.
+  // The only store subscriber is updateGarage (a function reference), and the
+  // store's showToast is a no-op retained for backward-compat with callers
+  // that still call useAppStore.getState().showToast(...).
 
   // Admin PIN Sync — removed.
   // The previous onSnapshot on admin_settings/auth_pin was dead code:

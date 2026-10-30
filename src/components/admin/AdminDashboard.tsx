@@ -225,33 +225,36 @@ export const AdminDashboard = memo(({
     return sortGaragesNewestFirst(allGarages.filter(g => g.status === 'pending'));
   }, [allGarages]);
 
-  const effectiveGarages = React.useMemo(() => {
-    return sortGaragesNewestFirst(allGarages);
+  // Pre-normalize search fields once when the garage list changes, not on
+  // every keystroke. Filters out pending garages (never searchable) so the
+  // search loop below only touches approved rows.
+  const searchableGarages = React.useMemo(() => {
+    return allGarages
+      .filter(garage => garage && garage.status !== 'pending')
+      .map(garage => ({
+        garage,
+        normalizedName: normalizeArabicSearch(garage.name || ''),
+        rawPhone: garage.phone || '',
+        normalizedPhone: normalizeDigits(garage.phone || ''),
+      }));
   }, [allGarages]);
 
   const displayedGarages = React.useMemo(() => {
     const rawSearch = adminSearch.trim();
-    if (!rawSearch) {
-      return sortGaragesNewestFirst(effectiveGarages.filter(garage => garage?.status !== 'pending'));
-    }
+    if (!rawSearch) return approvedGarages;
+
     const q = normalizeArabicSearch(rawSearch);
     const digitQuery = normalizeDigits(rawSearch);
 
-    // Search across both loaded page rows and global pool to ensure complete 1000-garage coverage
-    const pool = Array.from(new Map([...allGarages, ...effectiveGarages].map(g => [g.id, g])).values());
-
-    const filtered = pool.filter(garage => {
-      if (!garage || garage.status === 'pending') return false;
-
-      const normalizedName = normalizeArabicSearch(garage.name || '');
-      const rawPhone = garage.phone || '';
-      const normalizedPhone = normalizeDigits(rawPhone);
-      const phoneMatch = rawPhone.includes(rawSearch) || (digitQuery ? normalizedPhone.includes(digitQuery) : false);
-      return normalizedName.includes(q) || phoneMatch;
-    });
+    const filtered = searchableGarages
+      .filter(({ normalizedName, rawPhone, normalizedPhone }) => {
+        const phoneMatch = rawPhone.includes(rawSearch) || (digitQuery ? normalizedPhone.includes(digitQuery) : false);
+        return normalizedName.includes(q) || phoneMatch;
+      })
+      .map(({ garage }) => garage);
 
     return sortGaragesNewestFirst(filtered);
-  }, [effectiveGarages, allGarages, adminSearch]);
+  }, [searchableGarages, approvedGarages, adminSearch]);
 
   return (
     <div className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`} dir="rtl">
