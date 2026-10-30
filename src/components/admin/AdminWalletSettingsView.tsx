@@ -115,7 +115,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 aria-label={t('رقم محفظة الدفع')}
                 required
                 placeholder={t('01012345678 / Instapay / محفظة')}
-                className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
+                className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
                 dir="ltr"
                 autoFocus
               />
