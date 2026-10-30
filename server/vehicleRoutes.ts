@@ -315,6 +315,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         },
         carsInside: Number(garageUpdate.carsInside || 0),
         dailyCount: Number(garageUpdate.todayCount || 0),
+        lastTransactionDate: today,
         dailyCapacity: 0
       };
       if (creditDebit) {
@@ -398,13 +399,13 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
-    let finalCost = 0;
+    let checkoutResult: any = { cost: 0 };
 
     await getAdminDb().runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
-          finalCost = Number(duplicate.cachedResult?.cost || 0);
+          checkoutResult = duplicate.cachedResult || { cost: 0 };
           return;
         }
       }
@@ -442,7 +443,6 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       const decision = decideVehicleCheckOut({ today, cost }, checkOutGarage, checkOutVehicle);
       if (decision.ok === false) throw new Error(decision.error);
       const { cost: finalDecisionCost, isNewDay } = decision.value;
-      finalCost = finalDecisionCost;
 
       t.set(vehicleRef, {
         status: 'outside',
@@ -452,14 +452,16 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
         operationVersion: nextOperationVersion(vehicleData.operationVersion)
       }, { merge: true });
 
-      t.set(garageRef, {
+      const updatedGarageState = {
         totalRevenue: (garageData.totalRevenue || 0) + finalDecisionCost,
         totalVehiclesOut: (garageData.totalVehiclesOut || 0) + 1,
         todayRevenue: isNewDay ? finalDecisionCost : (garageData.todayRevenue || 0) + finalDecisionCost,
         todayCount: isNewDay ? 0 : (garageData.todayCount || 0),
         lastTransactionDate: today,
         carsInside: Math.max(0, (garageData.carsInside || 0) - 1)
-      }, { merge: true });
+      };
+      t.set(garageRef, updatedGarageState, { merge: true });
+      checkoutResult = { cost: finalDecisionCost, ...updatedGarageState };
 
       if (!dailyStatsSnap.exists) {
         t.set(dailyStatsRef, {
@@ -540,11 +542,11 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
         }
       });
       if (idempotencyKey) {
-        storeIdempotencyInTransaction(t, idempotencyKey, { cost: finalDecisionCost }, '/api/vehicles/check-out', user?.uid, requestFingerprint);
+        storeIdempotencyInTransaction(t, idempotencyKey, checkoutResult, '/api/vehicles/check-out', user?.uid, requestFingerprint);
       }
     });
 
-    return c.json({ success: true, data: { cost: finalCost } });
+    return c.json({ success: true, data: checkoutResult });
   } catch (err: any) {
     console.error('[Worker] Check-out error:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);

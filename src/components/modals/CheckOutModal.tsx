@@ -15,7 +15,7 @@ interface CheckOutModalProps {
   isLoading: boolean;
   loadingType: string | null;
   now: Date;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onDelete: () => void;
   onCancel: () => void;
 }
@@ -43,10 +43,14 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const [isConfirming, setIsConfirming] = React.useState(false);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const handleGuardedConfirm = () => {
+  const handleGuardedConfirm = async () => {
     if (isLoading || isConfirming) return;
     setIsConfirming(true);
-    onConfirm();
+    try {
+      await onConfirm();
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   const isGenerating = false;
@@ -151,7 +155,8 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
       >
         {/* Handle Bar Area */}
         <button 
-          onClick={onCancel}
+          onClick={() => !isLoading && !isConfirming && onCancel()}
+          disabled={isLoading || isConfirming}
           className="w-full h-14 absolute top-0 left-0 flex items-start justify-center pt-5 group outline-none z-20"
           aria-label="إغلاق"
         >

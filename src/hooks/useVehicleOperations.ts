@@ -101,9 +101,9 @@ export function useVehicleOperations({
 
     let isSubscriber = false;
     
+    setIsLoading(true);
+    setLoadingType(type);
     if (garage.hasMonthlySubscribers) {
-      setIsLoading(true);
-      setLoadingType(type);
       try {
         const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
         if (subData && subData.endDate) {
@@ -133,40 +133,11 @@ export function useVehicleOperations({
       return;
     }
 
-    // Execute Check-In optimistically and handle per-plate async lock
-    const previousVehicles = [...vehicles];
-    const previousGarage = garage ? { ...garage } : null;
+    // Keep the form pending until the Worker confirms the entry. The Worker
+    // response contains the vehicle, car count, daily count, and credit balance.
     const entrantEntityId = currentStaff?.id ?? garage.id;
     const entrantRole = currentStaff ? 'staff' : 'garage';
-    const optimisticVehicle: Vehicle = {
-      id: raw,
-      plateNumber: formatted,
-      plateNumberRaw: raw,
-      entryTime: new Date() as any,
-      type: type,
-      garageId: garage.id,
-      status: 'inside',
-      staffId: entrantEntityId,
-      staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
-      enteredByEntityId: entrantEntityId,
-      enteredByRole: entrantRole,
-      isSubscriber: isSubscriber
-    };
-    
-    setVehicles(prev => [optimisticVehicle, ...prev.filter(v => v.id !== raw)]);
-    // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR COUNTERS
-    setGarage(prev => prev ? {
-      ...prev,
-      carsInside: (prev.carsInside || 0) + 1,
-      todayCount: (prev.todayCount || 0) + 1,
-      lastTransactionDate: getCairoDateKey()
-    } : prev);
-    setNewPlateNumber('');
-    setShowCheckInModal(false);
-    soundManager.play('checkIn');
-    
-    setIsLoading(true);
-    setLoadingType(type);
+
     try {
       const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
         firestoreService.checkInVehicle(garage.id, {
@@ -203,27 +174,23 @@ export function useVehicleOperations({
       };
       setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
 
-      if (typeof serverData?.carsInside === 'number' || typeof serverData?.dailyCount === 'number') {
-        setGarage(prev => prev ? {
-          ...prev,
-          ...(typeof serverData.carsInside === 'number' ? { carsInside: serverData.carsInside } : {}),
-          ...(typeof serverData.dailyCount === 'number' ? {
-            todayCount: serverData.dailyCount,
-            lastTransactionDate: getCairoDateKey(),
-          } : {}),
-        } : prev);
+      const serverGaragePatch: Partial<Garage> = {};
+      if (typeof serverData?.carsInside === 'number') serverGaragePatch.carsInside = serverData.carsInside;
+      if (typeof serverData?.dailyCount === 'number') {
+        serverGaragePatch.todayCount = serverData.dailyCount;
+        serverGaragePatch.lastTransactionDate = typeof serverData.lastTransactionDate === 'string'
+          ? serverData.lastTransactionDate
+          : getCairoDateKey();
       }
-      if (typeof serverData?.credits === 'number') {
-        setGarage(prev => prev ? { ...prev, credits: serverData.credits } : prev);
+      if (typeof serverData?.credits === 'number') serverGaragePatch.credits = serverData.credits;
+      if (Object.keys(serverGaragePatch).length > 0) {
+        setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
       }
+      setNewPlateNumber('');
+      setShowCheckInModal(false);
+      soundManager.play('checkIn');
     } catch (error: any) {
-      setVehicles(previousVehicles);
-      if (previousGarage) {
-        setGarage(previousGarage);
-      }
       if (error?.message === 'Operation already in progress') {
-        setIsLoading(false);
-        setLoadingType(null);
         return;
       }
       
@@ -273,23 +240,7 @@ export function useVehicleOperations({
     closeKeyboard();
 
     const vehicleToOut = selectedVehicle;
-
-    const previousVehicles = [...vehicles];
-    const previousGarage = garage ? { ...garage } : null;
-    setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
     const cost = calculateCost(vehicleToOut, garage, now);
-    // ⚡ INSTANT 0ms OPTIMISTIC FLIP FOR CHECK-OUT
-    setGarage(prev => prev ? {
-      ...prev,
-      carsInside: Math.max(0, (prev.carsInside || 0) - 1),
-      todayRevenue: Number(((prev.todayRevenue || 0) + cost).toFixed(2)),
-      totalRevenue: Number(((prev.totalRevenue || 0) + cost).toFixed(2))
-    } : prev);
-    setShowCheckOutModal(false);
-    setSelectedVehicle(null);
-    setNewPlateNumber('');
-    soundManager.play('checkOut');
-    
     setIsLoading(true);
     setLoadingType('checkout');
     try {
@@ -306,24 +257,24 @@ export function useVehicleOperations({
       if (!res.success) {
         throw new Error(res.error);
       }
-      if (typeof res.cost === 'number' && res.cost !== cost) {
-        const costDelta = res.cost - cost;
-        setGarage(prev => prev ? {
-          ...prev,
-          todayRevenue: Number(((prev.todayRevenue || 0) + costDelta).toFixed(2)),
-          totalRevenue: Number(((prev.totalRevenue || 0) + costDelta).toFixed(2)),
-        } : prev);
+
+      setVehicles(prev => prev.filter(v => v.id !== vehicleToOut.id));
+      const serverGaragePatch: Partial<Garage> = {};
+      if (typeof res.carsInside === 'number') serverGaragePatch.carsInside = res.carsInside;
+      if (typeof res.totalVehiclesOut === 'number') serverGaragePatch.totalVehiclesOut = res.totalVehiclesOut;
+      if (typeof res.todayRevenue === 'number') serverGaragePatch.todayRevenue = res.todayRevenue;
+      if (typeof res.totalRevenue === 'number') serverGaragePatch.totalRevenue = res.totalRevenue;
+      if (typeof res.todayCount === 'number') serverGaragePatch.todayCount = res.todayCount;
+      if (typeof res.lastTransactionDate === 'string') serverGaragePatch.lastTransactionDate = res.lastTransactionDate;
+      if (Object.keys(serverGaragePatch).length > 0) {
+        setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
       }
+      setShowCheckOutModal(false);
+      setSelectedVehicle(null);
+      setNewPlateNumber('');
+      soundManager.play('checkOut');
     } catch (error: any) {
-      setVehicles(previousVehicles);
-      if (previousGarage) {
-        setGarage(previousGarage);
-      }
-      setSelectedVehicle(vehicleToOut);
-      
       if (error?.message === 'Operation already in progress') {
-        setIsLoading(false);
-        setLoadingType(null);
         return;
       }
       
@@ -353,6 +304,7 @@ export function useVehicleOperations({
       showToast(errMsg, 'error');
       setShowCheckOutModal(false);
       setSelectedVehicle(null);
+      setNewPlateNumber('');
     } finally {
       setIsLoading(false);
       setLoadingType(null);
