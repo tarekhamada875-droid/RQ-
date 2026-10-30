@@ -93,7 +93,7 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast }: Recharg
       </header>
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 sm:p-6 pb-10 overflow-y-auto custom-scrollbar stable-scrollbar">
-        <section className="mb-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 px-5 py-4 shadow-sm">
+        <section className="mb-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#faf9f6] dark:bg-slate-900 px-5 py-4 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>

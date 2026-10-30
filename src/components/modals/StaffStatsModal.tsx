@@ -46,21 +46,23 @@ export const StaffStatsModal: React.FC<StaffStatsModalProps> = memo(({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col transition-colors" dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
       {/* Header */}
-      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-white dark:bg-slate-900 shrink-0 transition-colors shadow-sm">
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none cursor-pointer shrink-0 active:scale-95"
-          aria-label="الرجوع"
-          title="رجوع"
-        >
-          <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
-        </button>
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white leading-none">موظفي الوردية</h2>
+      <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
+        <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
+          <button
+            onClick={onClose}
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none cursor-pointer shrink-0 active:scale-95"
+            aria-label="الرجوع"
+            title="رجوع"
+          >
+            <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">موظفي الوردية</h1>
+          </div>
         </div>
-      </div>
+      </header>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar stable-scrollbar pb-10">
@@ -94,7 +96,7 @@ export const StaffStatsModal: React.FC<StaffStatsModalProps> = memo(({
               const count = getStaffStats(staff.name);
               
               return (
-                <div key={staff.id} className="p-4 bg-[#faf9f6] dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between transition-colors">
+                <div key={staff.id} className="p-4 bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500 font-black text-lg">

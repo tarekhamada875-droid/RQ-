@@ -178,21 +178,23 @@ export const GarageReportsView = memo(({
   }, [dashboardSummary, localTodayExitedVehicles, localGarage, staffList]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col transition-colors select-none" dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors select-none" dir="rtl">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800/80 flex items-center gap-4 bg-white dark:bg-slate-900 shrink-0 transition-colors">
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
-          aria-label="الرجوع"
-          title="رجوع"
-        >
-          <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
-        </button>
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">تقارير وإحصائيات الجراج</h2>
+      <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
+        <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
+          <button
+            onClick={onClose}
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            aria-label="الرجوع"
+            title="رجوع"
+          >
+            <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">تقارير وإحصائيات الجراج</h1>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Modern, Compact Refresh Bar */}
       <div className="px-5 py-2.5 bg-slate-100/40 dark:bg-slate-900/40 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between shrink-0">
@@ -224,7 +226,7 @@ export const GarageReportsView = memo(({
         <div className="grid grid-cols-2 gap-3.5">
           
           {/* Card: Revenue */}
-          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-xl flex flex-col justify-between shadow-sm">
+          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">إيرادات اليوم</span>
               <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/40 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
@@ -237,7 +239,7 @@ export const GarageReportsView = memo(({
           </div>
 
           {/* Card: Departures */}
-          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-xl flex flex-col shadow-sm">
+          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">مغادرات اليوم</span>
               <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center text-rose-500 dark:text-rose-400">
@@ -255,7 +257,7 @@ export const GarageReportsView = memo(({
         </div>
 
         {/* Row 2: Staff Shift Performance List */}
-        <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <button
             onClick={handleStaffPerformanceToggle}
             className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
