@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Calculator,
   Wallet,
-  Plus,
   Download
 } from 'lucide-react';
 import { AdminPeopleView } from './AdminPeopleView';
@@ -223,25 +222,9 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               </div>
             </div>
 
-            {/* Add New Garage */}
-            {onOpenAddGarage && (
-              <div
-                id="btn_quick_add_garage"
-                onClick={onOpenAddGarage}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-slate-900 dark:text-white text-base">{t('إضافة جراج جديد')}</h3>
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shrink-0">
-                    <Plus className="w-5 h-5 stroke-[3]" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                  <span>{t('إنشاء جراج جديد في النظام')}</span>
-                  <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
-                </div>
-              </div>
-            )}
+            {/* Add New Garage — removed from Settings; the Garages tab already
+                has an "إضافة جراج جديد" button (AdminGaragesTabView), making
+                this card redundant. */}
 
             {/* Admin PIN */}
             <div 
