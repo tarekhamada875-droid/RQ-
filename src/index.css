@@ -352,15 +352,10 @@ input[type="number"]::-webkit-outer-spin-button {
   will-change: transform, opacity;
 }
 
-/* Position the arrows horizontally. Opacity is fully controlled by the
-   animation keyframes — do NOT set static opacity here or it will override
-   the animation and freeze the arrows. */
-.credit-debit-arrow-left { left: 10%; margin-left: 0; animation-delay: 0s; }
-.credit-debit-arrow-left-mid { left: 25%; margin-left: 0; animation-delay: 0.1s; }
-.credit-debit-arrow-left-center { left: 39%; margin-left: 0; animation-delay: 0.2s; }
-.credit-debit-arrow-right-center { right: 39%; left: auto; margin-left: 0; animation-delay: 0.2s; }
-.credit-debit-arrow-right-mid { right: 25%; left: auto; margin-left: 0; animation-delay: 0.1s; }
-.credit-debit-arrow-right { right: 10%; left: auto; margin-left: 0; animation-delay: 0s; }
+/* Three spaced arrows keep the debit cue readable without crowding the balance. */
+.credit-debit-arrow-left { left: 22%; margin-left: 0; animation-delay: 0s; }
+.credit-debit-arrow-center { left: 50%; margin-left: -1.25rem; animation-delay: 0.14s; }
+.credit-debit-arrow-right { right: 22%; left: auto; margin-left: 0; animation-delay: 0.28s; }
 
 @media (prefers-reduced-motion: reduce) {
   .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }
@@ -387,7 +382,6 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
 }
-
 
 
 

@@ -107,7 +107,16 @@ export const vehicleService = {
           idempotencyKey: generateIdempotencyKey('vehicle_checkout')
         }
       });
-      return { success: true, cost: data.data?.cost };
+      return {
+        success: true,
+        cost: data.data?.cost,
+        carsInside: data.data?.carsInside,
+        totalVehiclesOut: data.data?.totalVehiclesOut,
+        todayRevenue: data.data?.todayRevenue,
+        totalRevenue: data.data?.totalRevenue,
+        todayCount: data.data?.todayCount,
+        lastTransactionDate: data.data?.lastTransactionDate
+      };
     } catch (err: any) {
       return { success: false, error: err.message };
     }

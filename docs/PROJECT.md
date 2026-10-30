@@ -40,6 +40,10 @@ New writes must reject them. The server endpoints for these features no longer e
 
 The Worker is authoritative for identity, role, garage scope, financial values, subscriber eligibility, counters, reports, and mutations. The browser renders server decisions and may provide optimistic feedback, but it cannot approve money, change balances, or make final eligibility decisions. The browser performs zero direct Firestore writes.
 
+The target BFF boundary is for the browser to use the Worker for all application-data reads and writes. That migration is not yet complete: direct Firestore read listeners and one-shot reads remain in vehicle, garage, delegate, subscriber, staff, activity, and session client code. Replace them feature-by-feature with authenticated, role-scoped Worker routes, preserving current multi-device freshness; do not treat the BFF target as complete until those browser read paths are removed and verified.
+
+For vehicle check-in and check-out, keep the form visibly pending until the Worker confirms the transaction. Apply the vehicle list, car counter, credit balance, and revenue from the same confirmed response or subsequent authoritative snapshot; do not independently animate optimistic counter or balance changes before confirmation.
+
 Multi-document business changes use Firestore transactions. Retried intents use idempotency keys and request fingerprints. Domain events, activity records, projections, and ledgers must agree through reconciliation.
 
 Staff deletion performs full revocation: all active sessions are revoked, the session index is invalidated, the Firebase Auth user is deleted, and the staff member's activity history is removed.

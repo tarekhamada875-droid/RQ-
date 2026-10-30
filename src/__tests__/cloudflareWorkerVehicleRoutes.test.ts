@@ -362,6 +362,12 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     const body = await checkOutRes.json() as any;
     expect(body.success).toBe(true);
     expect(typeof body.data.cost).toBe('number');
+    expect(body.data.carsInside).toBe(0);
+    expect(typeof body.data.totalVehiclesOut).toBe('number');
+    expect(typeof body.data.todayRevenue).toBe('number');
+    expect(typeof body.data.totalRevenue).toBe('number');
+    expect(typeof body.data.todayCount).toBe('number');
+    expect(typeof body.data.lastTransactionDate).toBe('string');
 
     const replayRes = await api.fetch(new Request('http://localhost/api/vehicles/check-out', {
       method: 'POST',
@@ -373,7 +379,7 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, vehicleId: 'سصع5678', idempotencyKey: 'idemp_checkout_1' })
     }), workerEnv);
     expect(replayRes.status).toBe(200);
-    expect(await replayRes.json()).toMatchObject({ success: true, data: { cost: body.data.cost } });
+    expect(await replayRes.json()).toEqual({ success: true, data: body.data });
   });
 
   it('rejects cross-garage vehicle mutations before writing state', async () => {

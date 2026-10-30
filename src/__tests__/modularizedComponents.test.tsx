@@ -267,8 +267,10 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
     expect(screen.getByTestId('credit-debit-feedback')).toBeDefined();
     const arrows = screen.getAllByTestId('credit-debit-arrow');
-    expect(arrows).toHaveLength(6);
+    expect(arrows).toHaveLength(3);
     expect(arrows[0]).toHaveClass('credit-debit-arrow-left');
+    expect(arrows[1]).toHaveClass('credit-debit-arrow-center');
+    expect(arrows[2]).toHaveClass('credit-debit-arrow-right');
   });
 
   it('renders GarageActiveVehiclesList and handles empty state', () => {
@@ -400,4 +402,3 @@ describe('Arabic-only shared interface', () => {
     consoleError.mockRestore();
   });
 });
-
