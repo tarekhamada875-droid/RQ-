@@ -19,7 +19,6 @@ import { AdminPinSettingsView } from './AdminPinSettingsView';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
 import { AdminWalletSettingsView } from './AdminWalletSettingsView';
-import { PlateLookupModal } from '../modals/PlateLookupModal';
 import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
 
 interface AdminNavigationAndViewsProps {
@@ -75,7 +74,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showToast,
   onLogout
 }) => {
-  const [showPlateLookupModal, setShowPlateLookupModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   return (
@@ -186,24 +184,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'catalog_settings' ? (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-            {/* Plate Lookup */}
-            <div
-              id="btn_open_plate_lookup"
-              onClick={() => setShowPlateLookupModal(true)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{t('استعلام عن لوحة')}</h3>
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shrink-0">
-                  <Car className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>{t('البحث عن لوحة عبر كل الجراجات')}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
-              </div>
-            </div>
-
             {/* Export Activity Logs (CSV) */}
             <div
               id="btn_export_activity_logs"
@@ -309,13 +289,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           t={t}
         />
       ) : null}
-
-      {showPlateLookupModal && (
-        <PlateLookupModal
-          allGarages={approvedGarages}
-          onClose={() => setShowPlateLookupModal(false)}
-        />
-      )}
 
       {showExportModal && (
         <ActivityLogExportModal
