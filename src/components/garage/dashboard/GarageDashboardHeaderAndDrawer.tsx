@@ -70,7 +70,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                 {(expiringSubscribersCount > 0 || hasNewRecharge) && !isMenuOpen && (
                   <span
                     className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
-                      hasNewRecharge ? 'bg-emerald-500' : 'bg-red-500'
+                      expiringSubscribersCount > 0 ? 'bg-red-500' : 'bg-emerald-500'
                     }`}
                   />
                 )}
@@ -110,7 +110,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                 damping: 26,
                 stiffness: 220,
               }}
-              className="fixed top-3 bottom-3 left-3 w-[220px] xs:w-[245px] max-w-[calc(100vw-24px)] bg-[#faf9f6] dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800/80 z-[150] flex flex-col overflow-hidden pointer-events-auto"
+              className="fixed top-3 bottom-3 left-3 w-[220px] xs:w-[245px] max-w-[calc(100vw-24px)] bg-[#faf9f6] dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 z-[150] flex flex-col overflow-hidden pointer-events-auto"
               style={{
                 willChange: 'transform, opacity',
                 transform: 'translate3d(0, 0, 0)',
@@ -134,7 +134,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                     type="button"
                     onClick={() => setIsMenuOpen(false)}
                     aria-label="إغلاق القائمة"
-                    className="w-8 h-8 bg-red-500 dark:bg-red-600 text-white rounded-lg flex items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none shrink-0"
+                    className="w-8 h-8 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors outline-none shrink-0"
                   >
                     <XIcon className="w-5 h-5" />
                   </IconButton>
@@ -142,11 +142,44 @@ export const GarageDashboardHeaderAndDrawer = memo(({
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar-slate">
+                {/* Section: Operational */}
+                <div className="px-1 pt-1 pb-0.5">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">عمليات</span>
+                </div>
                 <div className="space-y-2">
+                  {!currentStaff && (
+                    <button
+                      onClick={() => onNavigateOverlay('reports')}
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 active:scale-95 transition-all duration-150 outline-none cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
+                          <PieChart className="w-4 h-4 text-amber-400 dark:text-slate-950" />
+                        </div>
+                        <span className="font-bold text-sm">التقارير</span>
+                      </div>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onNavigateOverlay('history')}
+                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 transition-all outline-none cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
+                        <History className="w-4 h-4 text-amber-400 dark:text-slate-950" />
+                      </div>
+                      <span className="font-bold text-sm">تاريخ الشحن</span>
+                    </div>
+                    {hasNewRecharge && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-xs font-black">جديد</span>
+                    )}
+                  </button>
+
                   {!currentStaff && garage?.hasMonthlySubscribers && (
                     <button
                       onClick={() => onNavigateOverlay('subscribers')}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none"
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 transition-all outline-none"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
@@ -165,7 +198,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                   {!currentStaff && (
                     <button
                       onClick={() => onNavigateOverlay('staff')}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none"
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 transition-all outline-none"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
@@ -175,39 +208,16 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                       </div>
                     </button>
                   )}
+                </div>
 
-                  {!currentStaff && (
-                    <button
-                      onClick={() => onNavigateOverlay('reports')}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 active:scale-95 transition-all duration-150 outline-none cursor-pointer animate-fade-in"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                          <PieChart className="w-4 h-4 text-amber-400 dark:text-slate-950" />
-                        </div>
-                        <span className="font-bold text-sm">التقارير</span>
-                      </div>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => onNavigateOverlay('history')}
-                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
-                        <History className="w-4 h-4 text-amber-400 dark:text-slate-950" />
-                      </div>
-                      <span className="font-bold text-sm">تاريخ الشحن</span>
-                    </div>
-                    {hasNewRecharge && (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-xs font-black">جديد</span>
-                    )}
-                  </button>
-
+                {/* Section: Settings */}
+                <div className="px-1 pt-3 pb-0.5">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">إعدادات</span>
+                </div>
+                <div className="space-y-2">
                   <button
                     onClick={() => onNavigateOverlay('appearance')}
-                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none"
+                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 transition-all outline-none"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
@@ -219,7 +229,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
 
                   <button
                     onClick={() => onNavigateOverlay('terms')}
-                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none cursor-pointer"
+                    className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-200 dark:border-slate-800 transition-all outline-none cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
@@ -239,7 +249,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                   }}
                   className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-black text-sm outline-none"
                 >
-                  <LogOut className="w-5 h-5 rotate-180" />
+                  <LogOut className="w-5 h-5" />
                   <span>تسجيل الخروج</span>
                 </button>
               </div>
