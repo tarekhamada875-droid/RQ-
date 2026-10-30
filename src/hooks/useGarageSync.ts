@@ -126,8 +126,28 @@ export function useGarageSync({
     let active = true;
     const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
       if (!active) return;
-      setVehicles(activeVehicles);
-    }, 100);
+      // Merge: preserve optimistic vehicles that the server snapshot hasn't
+      // confirmed yet. An optimistic vehicle (added during check-in) has an
+      // entryTime that is a plain Date, not a Firestore Timestamp. If the
+      // server snapshot doesn't include a vehicle with the same ID, keep the
+      // optimistic one for up to 5 seconds (after that, assume it failed and
+      // drop it). This prevents the "flip then disappear then reappear" flicker
+      // where the throttled snapshot overwrites the optimistic update before
+      // the server confirms it.
+      setVehicles((current) => {
+        const serverIds = new Set(activeVehicles.map((v) => v.id));
+        const now = Date.now();
+        const optimisticKeep = current.filter((v) => {
+          if (serverIds.has(v.id)) return false; // server has it, let server win
+          // Keep if it's a recent optimistic entry (< 5s old) with a plain Date entryTime
+          const entryMs = v.entryTime instanceof Date
+            ? v.entryTime.getTime()
+            : v.entryTime?.toDate ? v.entryTime.toDate().getTime() : 0;
+          return entryMs > 0 && (now - entryMs) < 5000;
+        });
+        return [...optimisticKeep, ...activeVehicles];
+      });
+    }, 150);
 
     const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
       // Unsubscribe normally stops future snapshots, but an already queued callback

@@ -102,6 +102,8 @@ export function useVehicleOperations({
     let isSubscriber = false;
     
     if (garage.hasMonthlySubscribers) {
+      setIsLoading(true);
+      setLoadingType(type);
       try {
         const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
         if (subData && subData.endDate) {
@@ -113,13 +115,16 @@ export function useVehicleOperations({
           }
         }
       } catch (e) {
-        console.error("Sub check error", e);
+        setIsLoading(false);
+        setLoadingType(null);
         showToast('تعذر التحقق من حالة الاشتراك. يرجى المحاولة مرة أخرى.', 'error');
         return;
       }
     }
 
     if (isSubscriber) {
+      setIsLoading(false);
+      setLoadingType(null);
       setSubscriberWarningPlate(formatted);
       setShowSubscriberWarning(true);
       setShowCheckInModal(false);
@@ -160,6 +165,8 @@ export function useVehicleOperations({
     setShowCheckInModal(false);
     soundManager.play('checkIn');
     
+    setIsLoading(true);
+    setLoadingType(type);
     try {
       const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
         firestoreService.checkInVehicle(garage.id, {
@@ -214,7 +221,11 @@ export function useVehicleOperations({
       if (previousGarage) {
         setGarage(previousGarage);
       }
-      if (error?.message === 'Operation already in progress') return;
+      if (error?.message === 'Operation already in progress') {
+        setIsLoading(false);
+        setLoadingType(null);
+        return;
+      }
       
       let message = error?.message || '';
       if (message.startsWith('{') && message.endsWith('}')) {
@@ -246,6 +257,9 @@ export function useVehicleOperations({
         setNewPlateNumber(formatted);
         showToast(message || 'حدث خطأ أثناء إدخال السيارة، يرجى المحاولة مرة أخرى', 'error');
       }
+    } finally {
+      setIsLoading(false);
+      setLoadingType(null);
     }
   }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
 
@@ -276,6 +290,8 @@ export function useVehicleOperations({
     setNewPlateNumber('');
     soundManager.play('checkOut');
     
+    setIsLoading(true);
+    setLoadingType('checkout');
     try {
       const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
         firestoreService.checkOutVehicle(
@@ -305,9 +321,12 @@ export function useVehicleOperations({
       }
       setSelectedVehicle(vehicleToOut);
       
-      if (error?.message === 'Operation already in progress') return;
+      if (error?.message === 'Operation already in progress') {
+        setIsLoading(false);
+        setLoadingType(null);
+        return;
+      }
       
-      console.error('CheckOut Error:', error);
       let errMsg: string;
       
       try {
@@ -334,6 +353,9 @@ export function useVehicleOperations({
       showToast(errMsg, 'error');
       setShowCheckOutModal(false);
       setSelectedVehicle(null);
+    } finally {
+      setIsLoading(false);
+      setLoadingType(null);
     }
   }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles]);
 
@@ -366,6 +388,8 @@ export function useVehicleOperations({
     deletingVehicleRef.current = selectedVehicle.id;
     soundManager.play('checkOut');
     setShowCheckOutModal(false);
+    setIsLoading(true);
+    setLoadingType('delete');
 
     const vehicleToDelete = selectedVehicle;
     const previousVehicles = [...vehicles];
@@ -403,7 +427,6 @@ export function useVehicleOperations({
         showToast('فشل في حذف السيارة، جرب تانى', 'error');
       }
     } catch (err: any) {
-      console.error('Delete Vehicle Error:', err);
       // Rollback on error
       setVehicles(previousVehicles);
       if (previousGarage) {
@@ -416,6 +439,8 @@ export function useVehicleOperations({
       }
     } finally {
       deletingVehicleRef.current = null;
+      setIsLoading(false);
+      setLoadingType(null);
     }
   }, [isOnline, garage, selectedVehicle, isLoading, currentStaff, showToast, vehicles, setGarage, setVehicles]);
 
