@@ -170,7 +170,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   value={localForm.name}
                   onChange={(e) => setLocalForm(prev => ({ ...prev, name: e.target.value }))}
                   required
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold focus:border-emerald-500 dark:focus:border-emerald-500 outline-none text-base transition-all"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold focus:border-emerald-500 dark:focus:border-emerald-500 outline-none text-base transition-all"
                 />
               </div>
               <div className="space-y-1.5">
@@ -184,7 +184,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     const val = sanitizeNumeric(e.target.value);
                     setLocalForm(prev => ({ ...prev, phone: val }));
                   }}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider transition-all"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider transition-all"
                   dir="ltr"
                 />
               </div>
@@ -194,39 +194,37 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <div className="space-y-1.5">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('التعريفة')}</span>
               <div className="grid grid-cols-2 gap-3">
-                <div className="relative">
+                <div>
                   <input
                     name="hourlyRate"
                     id="admin-add-garage-hourly-rate"
                     type="text"
                     inputMode="numeric"
                     aria-label={t('سعر الساعة')}
-                    placeholder="10"
+                    placeholder="10 ج.م"
                     value={localForm.hourlyRate}
                     onChange={(e) => {
                       const val = sanitizeNumeric(e.target.value);
                       setLocalForm(prev => ({ ...prev, hourlyRate: val }));
                     }}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م/ساعة')}</span>
                 </div>
-                <div className="relative">
+                <div>
                   <input
                     name="overnightRate"
                     id="admin-add-garage-overnight-rate"
                     type="text"
                     inputMode="numeric"
                     aria-label={t('سعر المبيت')}
-                    placeholder="50"
+                    placeholder="50 ج.م"
                     value={localForm.overnightRate}
                     onChange={(e) => {
                       const val = sanitizeNumeric(e.target.value);
                       setLocalForm(prev => ({ ...prev, overnightRate: val }));
                     }}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-slate-300 dark:text-slate-600 font-bold">{t('ج.م مبيت')}</span>
                 </div>
               </div>
             </div>
@@ -251,7 +249,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                   maxLength={5}
                   pattern="[0-9]{5}"
                   required
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.5em] text-center text-lg transition-all pl-12"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.3em] text-center text-lg transition-all pl-12"
                   dir="ltr"
                 />
                 <IconButton

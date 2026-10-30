@@ -96,8 +96,8 @@ const renderDashboardForGarageCreation = (
 
 const fillAddGarageDraft = () => {
   fireEvent.change(screen.getByPlaceholderText('اسم الجراج...'), { target: { value: 'Draft Garage' } });
-  fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '25' } });
-  fireEvent.change(screen.getByPlaceholderText('50'), { target: { value: '60' } });
+  fireEvent.change(screen.getByPlaceholderText('10 ج.م'), { target: { value: '25' } });
+  fireEvent.change(screen.getByPlaceholderText('50 ج.م'), { target: { value: '60' } });
   fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
   fireEvent.change(screen.getByPlaceholderText('12345'), { target: { value: '12345' } });
 };
@@ -183,8 +183,8 @@ describe('AdminDashboard garage actions', () => {
 
     await waitFor(() => expect(createNewGarage).toHaveBeenCalledTimes(1));
     expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('Draft Garage');
-    expect(screen.getByPlaceholderText('10')).toHaveValue('25');
-    expect(screen.getByPlaceholderText('50')).toHaveValue('60');
+    expect(screen.getByPlaceholderText('10 ج.م')).toHaveValue('25');
+    expect(screen.getByPlaceholderText('50 ج.م')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
   });
@@ -204,8 +204,8 @@ describe('AdminDashboard garage actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open add garage' }));
     expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('');
-    expect(screen.getByPlaceholderText('10')).toHaveValue('');
-    expect(screen.getByPlaceholderText('50')).toHaveValue('');
+    expect(screen.getByPlaceholderText('10 ج.م')).toHaveValue('');
+    expect(screen.getByPlaceholderText('50 ج.م')).toHaveValue('');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('');
   });
@@ -222,8 +222,8 @@ describe('AdminDashboard garage actions', () => {
 
     await waitFor(() => expect(showToast).toHaveBeenCalledWith('temporary failure', 'error'));
     expect(screen.getByPlaceholderText('اسم الجراج...')).toHaveValue('Draft Garage');
-    expect(screen.getByPlaceholderText('10')).toHaveValue('25');
-    expect(screen.getByPlaceholderText('50')).toHaveValue('60');
+    expect(screen.getByPlaceholderText('10 ج.م')).toHaveValue('25');
+    expect(screen.getByPlaceholderText('50 ج.م')).toHaveValue('60');
     expect(screen.getByPlaceholderText('01xxxxxxxxx')).toHaveValue('01012345678');
     expect(screen.getByPlaceholderText('12345')).toHaveValue('12345');
   });
