@@ -179,6 +179,13 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
               يُعد مجرد تسجيل الدخول أو استخدام هذه المنظومة أو النقر على أي من خدماتها إقراراً صريحاً ونهائياً لا رجعة فيه بقراءة هذه الشروط وفهمها والموافقة التامة عليها والالتزام ببنودها. وفي حال نشوء أي نزاع حول تفسير هذه الشروط، ينعقد الاختصاص القضائي الحصري للمحاكم المختصة بجمهورية مصر العربية وفقاً للقوانين المصرية السارية.
             </p>
           </section>
+
+          {/* Branding */}
+          <div className="pt-6 flex items-center justify-center gap-3 select-none text-slate-400 dark:text-slate-500 font-bold text-[10px] md:text-xs tracking-wider uppercase">
+            <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
+            <span>طُوِّر بواسطة أرق لتطوير البرمجيات</span>
+            <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
+          </div>
         </div>
       </main>
     </div>

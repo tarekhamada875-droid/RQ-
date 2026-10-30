@@ -409,20 +409,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
             onRegisterNewCar={() => setActiveTab("main")}
           />
         )}
-
-        <div
-          className={`mt-auto mb-2 py-4 flex items-center justify-center gap-3 select-none text-slate-400 dark:text-slate-500 font-bold text-[10px] md:text-xs tracking-wider uppercase transition-all duration-300 ${
-            isInputFocused || activeTab !== "main"
-              ? "opacity-0 h-0 overflow-hidden pointer-events-none py-0 my-0"
-              : "opacity-100"
-          }`}
-        >
-          <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-slate-200 dark:to-slate-800" />
-          <span className="brand-shimmer-text">
-            أرق لتطوير البرمجيات
-          </span>
-          <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-slate-200 dark:to-slate-800" />
-        </div>
       </main>
 
       {/* Dashboard Overlays (Modals & Fullscreen Views) */}
