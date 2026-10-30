@@ -328,7 +328,7 @@ input[type="number"]::-webkit-outer-spin-button {
   0% {
     top: -2.25rem;
     opacity: 0;
-    transform: translateY(-0.5rem) scale(0.82);
+    transform: scale(0.82);
   }
   14% {
     opacity: 0.95;
@@ -339,7 +339,7 @@ input[type="number"]::-webkit-outer-spin-button {
   100% {
     top: calc(100% + 2.25rem);
     opacity: 0;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
 }
 
@@ -351,12 +351,15 @@ input[type="number"]::-webkit-outer-spin-button {
   animation: credit-debit-fall 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-.credit-debit-arrow-left { left: 10%; animation-delay: 0s; opacity: 0.95; }
-.credit-debit-arrow-left-mid { left: 25%; animation-delay: 0.1s; opacity: 0.78; }
-.credit-debit-arrow-left-center { left: 39%; animation-delay: 0.2s; opacity: 0.58; }
-.credit-debit-arrow-right-center { right: 39%; animation-delay: 0.2s; opacity: 0.58; }
-.credit-debit-arrow-right-mid { right: 25%; animation-delay: 0.1s; opacity: 0.78; }
-.credit-debit-arrow-right { right: 10%; animation-delay: 0s; opacity: 0.95; }
+/* Position-only — opacity is controlled by the animation keyframes, NOT here.
+   Previously these classes set static opacity which overrode the animation's
+   opacity keyframes, causing the arrows to appear frozen/static. */
+.credit-debit-arrow-left { left: 10%; animation-delay: 0s; }
+.credit-debit-arrow-left-mid { left: 25%; animation-delay: 0.1s; }
+.credit-debit-arrow-left-center { left: 39%; animation-delay: 0.2s; }
+.credit-debit-arrow-right-center { right: 39%; animation-delay: 0.2s; }
+.credit-debit-arrow-right-mid { right: 25%; animation-delay: 0.1s; }
+.credit-debit-arrow-right { right: 10%; animation-delay: 0s; }
 
 @media (prefers-reduced-motion: reduce) {
   .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }
