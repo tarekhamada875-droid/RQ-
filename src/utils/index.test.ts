@@ -25,22 +25,23 @@ describe('Normalization & String Utilities Edge Cases', () => {
   });
 
   it('normalizes all variations of Arabic letters consistently', () => {
-    expect(normalizeLetters('إسماعيل أسامة')).toBe('أسمأعيل أسأمة');
+    // normalizeLetters now matches server normalizePlateRaw: all Alef variants → plain ا
+    expect(normalizeLetters('إسماعيل أسامة')).toBe('اسماعيل اسامه');
     expect(normalizeArabicSearch('أحمد إبراهيم هدى فاطمة')).toBe('احمد ابراهيم هدي فاطمه');
   });
 
   it('correctly handles complex plate extraction and edge cases', () => {
     // Normal valid Egyptian plate with 3 letters and up to 4 numbers
-    expect(getCleanPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('أبج١٢٣٤');
-    expect(getRawPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('أبج1234');
+    expect(getCleanPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('ابج١٢٣٤');
+    expect(getRawPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('ابج1234');
 
     const parts = getPlateParts(' س ص ع  ٩ ٨ ٧ ');
     expect(parts.letters).toBe('سصع');
     expect(parts.numbers).toBe('987');
 
     // Validation checks
-    expect(isPlateValid(' أ ب ج 1 2 3 ')).toBe(true);
-    expect(isPlateValid('أ ب ج')).toBe(false); // No numbers
+    expect(isPlateValid(' ا ب ج 1 2 3 ')).toBe(true);
+    expect(isPlateValid('ا ب ج')).toBe(false); // No numbers
     expect(isPlateValid('1234')).toBe(false); // No letters
     expect(isPlateValid('')).toBe(false); // Empty
   });
@@ -51,7 +52,7 @@ describe('Normalization & String Utilities Edge Cases', () => {
   });
 
   it('formats plate numbers visually for display', () => {
-    expect(formatPlateNumber('أ ب ج 1234')).toBe('أ ب ج : 1234');
+    expect(formatPlateNumber('أ ب ج 1234')).toBe('ا ب ج : 1234');
   });
 });
 
