@@ -82,39 +82,38 @@ export const PlateLookupModal: React.FC<PlateLookupModalProps> = memo(({
 
     try {
       const now = new Date();
+
+      // 3 queries total (constant), replacing the previous O(N) per-garage loop.
+      // collectionGroup searches across ALL garages in one shot.
+      const [matchedVehicles, matchedSubscribers, systemLogs] = await Promise.all([
+        firestoreService.getVehiclesByPlateAcrossGarages(targetRaw),
+        firestoreService.getSubscribersByPlateAcrossGarages(targetRaw),
+        firestoreService.getSystemLogsByPlateOnce(targetRaw),
+      ]);
+
+      // Build a garage lookup map from the already-loaded allGarages prop
+      const garageMap = new Map(allGarages.map(g => [g.id, g]));
+
       const foundActive: Array<{ vehicle: Vehicle; garage: Garage; accruedCost: number }> = [];
       const foundHistory: Array<{ vehicle: Vehicle; garageName: string }> = [];
       const foundSubs: Array<{ subscriber: Subscriber; garageName: string }> = [];
 
-      // Search in parallel across all garages
-      const garagePromises = allGarages.map(async (garage) => {
-        try {
-          // Query matching vehicles for this plate directly
-          const matchedVehicles = await firestoreService.getVehiclesByPlateOnce(garage.id, targetRaw);
-
-          matchedVehicles.forEach(v => {
-            if (v.status === 'inside') {
-              const cost = calculateCost(v, garage, now);
-              foundActive.push({ vehicle: v, garage, accruedCost: cost });
-            } else {
-              foundHistory.push({ vehicle: v, garageName: garage.name });
-            }
-          });
-
-          // Fetch subscriber info if any
-          const subDoc = await firestoreService.getSubscriberByPlateOnce(garage.id, targetRaw);
-          if (subDoc) {
-            foundSubs.push({ subscriber: subDoc, garageName: garage.name });
-          }
-        } catch (err) {
-          console.error(`Error searching in garage ${garage.name}:`, err);
+      for (const v of matchedVehicles) {
+        const garage = garageMap.get(v.garageId);
+        const garageName = garage?.name || v.garageId;
+        if (v.status === 'inside') {
+          const cost = garage ? calculateCost(v, garage, now) : 0;
+          foundActive.push({ vehicle: v, garage: garage || { id: v.garageId, name: garageName } as Garage, accruedCost: cost });
+        } else {
+          foundHistory.push({ vehicle: v, garageName });
         }
-      });
+      }
 
-      await Promise.all(garagePromises);
-
-      // Fetch Activity Logs matching the plate across system
-      const systemLogs = await firestoreService.getSystemLogsByPlateOnce(targetRaw);
+      for (const sub of matchedSubscribers) {
+        const garage = garageMap.get(sub.garageId);
+        const garageName = garage?.name || sub.garageId;
+        foundSubs.push({ subscriber: sub, garageName });
+      }
 
       setActiveVehicles(foundActive);
       setVehicleHistory(foundHistory);

@@ -1,5 +1,5 @@
 
-import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
@@ -226,6 +226,27 @@ export const vehicleService = {
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
+  },
+
+  /**
+   * Searches across ALL garages in a single collectionGroup query.
+   * Replaces the O(N) per-garage loop in PlateLookupModal.
+   * Returns vehicles with their parent garageId (extracted from the doc path).
+   */
+  getVehiclesByPlateAcrossGarages: async (plateNumberRaw: string): Promise<Array<Vehicle & { garageId: string }>> => {
+    const q = query(
+      collectionGroup(db, 'vehicles'),
+      where('plateNumberRaw', '==', plateNumberRaw),
+      limit(50)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+      const data = doc.data() as Vehicle;
+      // Extract garageId from path: garages/{garageId}/vehicles/{vehicleId}
+      const pathParts = doc.ref.path.split('/');
+      const garageId = pathParts.length >= 2 ? pathParts[1] : '';
+      return { ...data, id: doc.id, garageId };
+    });
   },
 
   getTodayTransactionsOnce: async (garageId: string): Promise<any[]> => {
