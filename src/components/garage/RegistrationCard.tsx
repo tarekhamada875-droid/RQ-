@@ -42,6 +42,21 @@ export const RegistrationCard = memo(({
   const activeShimmerColor = resolveShimmerColor(garage?.shimmerColor, theme);
   const [isDebouncing, setIsDebouncing] = React.useState(false);
 
+  // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
+  // changes (Firestore snapshot), not on every keystroke. Replaces the O(N)
+  // vehicles.find() + getRawPlate() per-vehicle scan that ran in render.
+  // First-wins semantics match the previous Array.find behavior.
+  const insideVehicleByRawPlate = React.useMemo(() => {
+    const map = new Map<string, Vehicle>();
+    for (const v of vehicles) {
+      if (v.status === 'inside') {
+        const raw = getRawPlate(v.plateNumberRaw);
+        if (!map.has(raw)) map.set(raw, v);
+      }
+    }
+    return map;
+  }, [vehicles]);
+
   const handleGuardedCheckIn = (type: 'hourly' | 'overnight') => {
     if (isDebouncing || isLoading) return;
     setIsDebouncing(true);
@@ -229,9 +244,9 @@ export const RegistrationCard = memo(({
               const raw = getRawPlate(newPlateNumber);
               const isValid = isPlateValid(newPlateNumber);
 
-              // Find if vehicle matching this plate is currently inside
+              // O(1) lookup in the pre-built map instead of O(N) scan per keystroke
               const existing = (isValid && raw)
-                ? vehicles.find(v => getRawPlate(v.plateNumberRaw) === raw && v.status === 'inside')
+                ? insideVehicleByRawPlate.get(raw)
                 : undefined;
 
               // 1. If car is inside, ALWAYS allow check-out (even if subscription/balance is out)
