@@ -23,22 +23,24 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
   const resolvedActiveColor = resolveShimmerColor('#f59e0b', theme);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col transition-colors duration-300" dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
       {/* Header */}
-      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-white dark:bg-slate-900 shrink-0 transition-colors shadow-sm">
-        <button 
-          type="button"
-          onClick={onClose}
-          className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none cursor-pointer shrink-0 active:scale-95"
-          aria-label="الرجوع"
-          title="رجوع"
-        >
-          <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
-        </button>
-        <div>
-          <h3 className="text-xl font-black text-slate-900 dark:text-white leading-none mb-1 transition-colors">إعدادات المظهر</h3>
+      <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
+        <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none cursor-pointer shrink-0 active:scale-95"
+            aria-label="الرجوع"
+            title="رجوع"
+          >
+            <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">إعدادات المظهر</h1>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Content */}
       <div className="p-6 overflow-y-auto custom-scrollbar-slate stable-scrollbar flex-1">
