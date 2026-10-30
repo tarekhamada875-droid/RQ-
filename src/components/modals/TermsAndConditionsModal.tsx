@@ -4,13 +4,27 @@
  */
 
 import React, { memo } from 'react';
-import { X, ShieldCheck, Scale, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Scale } from 'lucide-react';
 import { soundManager } from '../../utils/sounds';
 
 interface TermsAndConditionsModalProps {
   onClose: () => void;
 }
 
+/**
+ * Fullscreen terms & conditions view (redesigned from centered modal).
+ *
+ * Design decisions:
+ * - Fullscreen (not centered modal) to match Subscribers/Reports/RechargeHistory
+ *   layout pattern — visual unification across garage tabs.
+ * - The "I agree" button is removed. Article 7 of the terms already states
+ *   that using the app = explicit irrevocable agreement, so a separate
+ *   approval button is legally redundant and actually weakens the position
+ *   (implies the user MUST click agree). The header back button is the only
+ *   way out — same as every other fullscreen view.
+ * - Legal text is unchanged — already in the owner's favor (full liability
+ *   waiver, indemnification, Egyptian jurisdiction).
+ */
 export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = memo(({ onClose }) => {
   const handleClose = () => {
     try {
@@ -22,56 +36,47 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-xs font-sans overflow-y-auto"
+    <div
+      className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors"
       dir="rtl"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
     >
-      <div 
-        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-all my-auto max-h-[90vh] flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="terms-modal-title"
-      >
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center font-black shrink-0">
-              <Scale className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 id="terms-modal-title" className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-                الشروط والأحكام وإخلاء المسؤولية القانونية
-              </h3>
-              <p className="text-[11px] font-bold text-slate-400">
-                وثيقة قانونية ملزمة وإخلاء مسؤولية شامل وحصانة قضائية
-              </p>
-            </div>
-          </div>
-
+      {/* Header — matches Subscribers/RechargeHistory pattern */}
+      <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 z-40 w-full shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center gap-4 w-full">
           <button
             type="button"
             onClick={handleClose}
-            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95 shrink-0"
-            aria-label="إغلاق النافذة"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            aria-label="الرجوع"
+            title="رجوع"
           >
-            <X className="w-5 h-5" />
+            <ChevronRight className="w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5]" />
           </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed select-text">
-          {/* Legal Notice Box */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-black text-xs sm:text-sm">إشعار قانوني ملزم وهام جداً:</p>
-              <p className="text-[11px] sm:text-xs opacity-90 leading-normal">
-                باستخدامك أو تسجيلك للدخول في هذه المنظومة الإلكترونية، فإنك تقر وتوافق دون قيد أو شرط على كافة البنود والالتزامات وإخلاء المسؤولية القانونية الواردة أدناه، وتعد هذه الوثيقة عقداً قانونياً ملزماً ونهائياً لك وللمنشأة التابع لها.
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Scale className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">
+                الشروط والأحكام
+              </h1>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                إخلاء المسؤولية القانونية
               </p>
             </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Scrollable Content */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar-slate stable-scrollbar">
+        <div className="max-w-2xl mx-auto w-full p-4 sm:p-6 space-y-5 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed select-text pb-10">
+
+          {/* Legal Notice Box */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+            <p className="text-[11px] sm:text-xs opacity-90 leading-normal">
+              باستخدامك أو تسجيلك للدخول في هذه المنظومة الإلكترونية، فإنك تقر وتوافق دون قيد أو شرط على كافة البنود والالتزامات وإخلاء المسؤولية القانونية الواردة أدناه، وتعد هذه الوثيقة عقداً قانونياً ملزماً ونهائياً لك وللمنشأة التابع لها.
+            </p>
           </div>
 
           {/* Article 1 */}
@@ -175,24 +180,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
             </p>
           </section>
         </div>
-
-        {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>حماية قانونية وحصانة تشغيلية شاملة للمنظومة وإدارتها</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleClose}
-            className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-amber-500 font-black text-xs sm:text-sm rounded-xl transition-all shadow-sm outline-none cursor-pointer flex items-center justify-center gap-2 active:scale-95"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>فهمت وموافق على الشروط والأحكام</span>
-          </button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 });
