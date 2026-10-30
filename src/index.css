@@ -326,9 +326,8 @@ input[type="number"]::-webkit-outer-spin-button {
 
 @keyframes credit-debit-fall {
   0% {
-    top: -2.25rem;
+    transform: translateY(-3rem) scale(0.82);
     opacity: 0;
-    transform: scale(0.82);
   }
   14% {
     opacity: 0.95;
@@ -337,29 +336,31 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 0.8;
   }
   100% {
-    top: calc(100% + 2.25rem);
+    transform: translateY(calc(100% + 3rem)) scale(1);
     opacity: 0;
-    transform: scale(1);
   }
 }
 
 .credit-debit-arrow {
   position: absolute;
-  top: -2.25rem;
+  top: 0;
+  left: 50%;
   width: 2.5rem;
   height: 2.5rem;
-  animation: credit-debit-fall 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  margin-left: -1.25rem;
+  animation: credit-debit-fall 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
-/* Position-only — opacity is controlled by the animation keyframes, NOT here.
-   Previously these classes set static opacity which overrode the animation's
-   opacity keyframes, causing the arrows to appear frozen/static. */
-.credit-debit-arrow-left { left: 10%; animation-delay: 0s; }
-.credit-debit-arrow-left-mid { left: 25%; animation-delay: 0.1s; }
-.credit-debit-arrow-left-center { left: 39%; animation-delay: 0.2s; }
-.credit-debit-arrow-right-center { right: 39%; animation-delay: 0.2s; }
-.credit-debit-arrow-right-mid { right: 25%; animation-delay: 0.1s; }
-.credit-debit-arrow-right { right: 10%; animation-delay: 0s; }
+/* Position the arrows horizontally. Opacity is fully controlled by the
+   animation keyframes — do NOT set static opacity here or it will override
+   the animation and freeze the arrows. */
+.credit-debit-arrow-left { left: 10%; margin-left: 0; animation-delay: 0s; }
+.credit-debit-arrow-left-mid { left: 25%; margin-left: 0; animation-delay: 0.1s; }
+.credit-debit-arrow-left-center { left: 39%; margin-left: 0; animation-delay: 0.2s; }
+.credit-debit-arrow-right-center { right: 39%; left: auto; margin-left: 0; animation-delay: 0.2s; }
+.credit-debit-arrow-right-mid { right: 25%; left: auto; margin-left: 0; animation-delay: 0.1s; }
+.credit-debit-arrow-right { right: 10%; left: auto; margin-left: 0; animation-delay: 0s; }
 
 @media (prefers-reduced-motion: reduce) {
   .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }
