@@ -107,6 +107,36 @@ describe('Parking Duration & Cost Calculation Comprehensive Scenarios', () => {
     expect(calculateCost(vehicle, baseGarage)).toBe(0);
   });
 
+  it('scenario 7: Day-cap prevents price dip — 23h never costs more than 24h', () => {
+    // With hourlyRate=20 and overnightRate=100, the hourly total exceeds
+    // the overnight rate at 5h (5*20=100). The cap should kick in at that
+    // point, not wait until 24h. Before the fix, 23h cost 460 but 24h
+    // cost 300 — a DIP. Now both cost 300 (the overnight rate).
+    const entry = new Date('2026-08-01T10:00:00Z');
+
+    // 5h: hourly = 100 = overnight → no dip
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T15:00:00Z'))).toBe(100);
+
+    // 6h: hourly = 120 > overnight = 100 → capped to 100
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T16:00:00Z'))).toBe(100);
+
+    // 23h: hourly = 460 > overnight = 100 → capped to 100 (was 460 before fix!)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'))).toBe(100);
+
+    // 24h: capped to 100 (same as 23h — no dip)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'))).toBe(100);
+
+    // 25h: 1 full day + 1h = 100 + 20 = 120
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(120);
+
+    // Monotonic: 23h (100) ≤ 24h (100) ≤ 25h (120)
+    const cost23h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'));
+    const cost24h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'));
+    const cost25h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T11:00:00Z'));
+    expect(cost23h).toBeLessThanOrEqual(cost24h);
+    expect(cost24h).toBeLessThanOrEqual(cost25h);
+  });
+
   it('formats getDuration output in Arabic for various time spans', () => {
     const now = new Date('2026-08-04T12:00:00Z');
 
