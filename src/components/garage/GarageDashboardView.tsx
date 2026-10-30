@@ -30,8 +30,37 @@ import { GarageSubscriptionCard } from "./dashboard/GarageSubscriptionCard";
 import { GarageActiveVehiclesList } from "./dashboard/GarageActiveVehiclesList";
 import { useGarageDashboardLiveData } from "../../hooks/useGarageDashboardLiveData";
 import { getCairoDateKey } from "../../domain/garage/businessDay";
+import type { Garage, Staff, Vehicle } from "../../types";
 
-export const GarageDashboardView = memo((props: any) => {
+type ToastType = 'success' | 'error' | 'info';
+
+interface GarageDashboardViewProps {
+  garage: Garage;
+  currentStaff: Staff | null;
+  isInputFocused: boolean;
+  now?: Date;
+  vehicles?: Vehicle[];
+  todayTransactions?: Vehicle[];
+  setSelectedVehicle: (vehicle: Vehicle | null) => void;
+  setShowCheckOutModal: (show: boolean) => void;
+  closeKeyboard: () => void;
+  newPlateNumber: string;
+  setNewPlateNumber: (value: string) => void;
+  setIsInputFocused: (focused: boolean) => void;
+  plateInputRef: React.RefObject<HTMLInputElement>;
+  handleCheckIn: (type: 'hourly' | 'overnight', bypassWarning?: boolean) => void;
+  inputRef: React.RefObject<HTMLDivElement>;
+  onLogout: () => void;
+  showToast: (message: string, type?: ToastType) => void;
+  staffList: Staff[];
+  showStaffStats: boolean;
+  setShowStaffStats: (show: boolean) => void;
+  showSubscribers: boolean;
+  setShowSubscribers: (show: boolean) => void;
+  isLoading?: boolean;
+}
+
+export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const {
     garage,
     currentStaff,

@@ -317,10 +317,16 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         newPlateNumber=""
         setNewPlateNumber={vi.fn()}
         setIsInputFocused={vi.fn()}
-        plateInputRef={{ current: null }}
+        plateInputRef={{ current: null } as any}
         handleCheckIn={vi.fn()}
-        inputRef={{ current: null }}
+        inputRef={{ current: null } as any}
         onLogout={vi.fn()}
+        showToast={vi.fn()}
+        staffList={[]}
+        showStaffStats={false}
+        setShowStaffStats={vi.fn()}
+        showSubscribers={false}
+        setShowSubscribers={vi.fn()}
       />
     );
 
@@ -348,10 +354,16 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         newPlateNumber=""
         setNewPlateNumber={vi.fn()}
         setIsInputFocused={vi.fn()}
-        plateInputRef={{ current: null }}
+        plateInputRef={{ current: null } as any}
         handleCheckIn={vi.fn()}
-        inputRef={{ current: null }}
+        inputRef={{ current: null } as any}
         onLogout={vi.fn()}
+        showToast={vi.fn()}
+        staffList={[]}
+        showStaffStats={false}
+        setShowStaffStats={vi.fn()}
+        showSubscribers={false}
+        setShowSubscribers={vi.fn()}
       />
     );
 
