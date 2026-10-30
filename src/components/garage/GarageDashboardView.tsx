@@ -84,9 +84,12 @@ export const GarageDashboardView = memo((props: any) => {
     isRechargeHistoryOpen,
     shouldSubscribeToSubscribers,
   });
+  // Use a stable Cairo date key instead of the raw `now` Date object.
+  // `now` ticks every second/minute from the parent, but expiry is day-granular —
+  // recomputing on every tick was pure waste.
+  const todayCairoKey = getCairoDateKey(now ?? new Date());
   const expiringSubscribersCount = useMemo(() => {
-    const today = getCairoDateKey(now ?? new Date());
-    const todayUtc = Date.parse(`${today}T00:00:00Z`);
+    const todayUtc = Date.parse(`${todayCairoKey}T00:00:00Z`);
     return subscriberPage.subscribers.filter((subscriber) => {
       const endDate = new Date(subscriber.endDate);
       if (!Number.isFinite(endDate.getTime())) return false;
@@ -96,7 +99,7 @@ export const GarageDashboardView = memo((props: any) => {
       const daysUntilExpiry = (endDateUtc - todayUtc) / (1000 * 60 * 60 * 24);
       return daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
     }).length;
-  }, [now, subscriberPage.subscribers]);
+  }, [todayCairoKey, subscriberPage.subscribers]);
 
   // Announcements listener removed — feature retired by owner.
 
@@ -143,6 +146,9 @@ export const GarageDashboardView = memo((props: any) => {
     const logDate = safeDate(latest?.timestamp);
     const logTime = logDate.getTime();
     const logId = latest?.id ?? `recharge_${logTime}`;
+    // Use the `now` prop for testability (fake timers control it via the prop),
+    // but `now` is intentionally NOT in this effect's deps array — otherwise
+    // every parent tick would re-run this effect and churn state setters.
     const diffMs = Math.max(0, (now?.getTime?.() ?? Date.now()) - logTime);
     const isRecent = diffMs < 15 * 60 * 1000;
     const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
@@ -166,6 +172,14 @@ export const GarageDashboardView = memo((props: any) => {
     }
   }, [garage?.id, isAuthenticated, rechargeLogs, garage?.isTrial]);
 
+  // Auto-close the recharge notification 15 minutes after the log timestamp.
+  // PERF FIX: `now` was previously in the deps array. In production, `now` ticks
+  // every second from the parent, causing this effect to re-run every tick —
+  // clearTimeout + new setTimeout on every tick. The timer still eventually
+  // fired (remainingMs approaches 0), but it churned timers every second.
+  // Now `now` is read once when the notification opens (for the initial
+  // remainingMs), and the timer runs undisturbed until it fires or the user
+  // acknowledges. `now` is still read from the prop for testability.
   useEffect(() => {
     if (!isRechargeNotificationOpen || !latestRechargeLog) return;
 
@@ -179,7 +193,7 @@ export const GarageDashboardView = memo((props: any) => {
     }, remainingMs);
 
     return () => window.clearTimeout(expiryTimer);
-  }, [isRechargeNotificationOpen, latestRechargeLog, now]);
+  }, [isRechargeNotificationOpen, latestRechargeLog]);
 
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garage?.id) {
@@ -203,10 +217,21 @@ export const GarageDashboardView = memo((props: any) => {
 
   const visibleVehicles = sortedVehicles.slice(0, itemsPerPage);
 
+  // Keep a ref of itemsPerPage + vehicles.length so the observer callback reads
+  // latest values without re-creating the observer on every page increment.
+  // BUG FIX: previously `itemsPerPage` was in this effect's deps. The observer
+  // callback called setItemsPerPage(prev => prev + 10), which triggered effect
+  // cleanup (disconnect) + new observer creation on every scroll — a feedback
+  // loop that churned observers during active scrolling.
+  const itemsPerPageRef = useRef(itemsPerPage);
+  itemsPerPageRef.current = itemsPerPage;
+  const vehiclesLengthRef = useRef(vehicles.length);
+  vehiclesLengthRef.current = vehicles.length;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && itemsPerPage < vehicles.length) {
+        if (entries[0].isIntersecting && itemsPerPageRef.current < vehiclesLengthRef.current) {
           setItemsPerPage((prev) => prev + 10);
         }
       },
@@ -220,7 +245,7 @@ export const GarageDashboardView = memo((props: any) => {
       observer.observe(observerTargetRef.current);
     }
     return () => observer.disconnect();
-  }, [vehicles.length, itemsPerPage, activeTab]);
+  }, [vehicles.length, activeTab]);
 
   const handleNavigateOverlay = (target: string) => {
     setIsMenuOpen(false);
