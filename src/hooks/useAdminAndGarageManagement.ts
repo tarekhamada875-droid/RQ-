@@ -546,21 +546,7 @@ export function useAdminAndGarageManagement({
     }
   }, [isLoading, isOnline, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress, refreshAdminLists]);
 
-  // Update garage hourly/overnight rate
-  const updateGarageRate = useCallback(async (g: Garage, field: 'hourlyRate' | 'overnightRate', value: number) => {
-    try {
-      await firestoreService.updateGarage(g.id, { [field]: value });
-      await refreshAdminLists();
-    } catch {
-      // The caller has no recovery UI for this background rate update.
-    }
-  }, [refreshAdminLists]);
 
-  const addDelegate = useCallback(async (data: any) => {
-    const result = await firestoreService.addDelegate(data);
-    await refreshAdminLists();
-    return result;
-  }, [refreshAdminLists]);
 
   const removeDelegate = useCallback(async (id: string) => {
     await firestoreService.removeDelegate(id);
@@ -572,8 +558,6 @@ export function useAdminAndGarageManagement({
     handleDelegateLogin,
     createNewGarage,
     deleteGarage,
-    updateGarageRate,
-    addDelegate,
     removeDelegate,
   };
 }

@@ -16,13 +16,10 @@ import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
-import { AdminGarageList } from './AdminGarageList';
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
 import { AdminAddGarageModal } from './AdminAddGarageModal';
 import { AdminConfirmDialog } from './AdminConfirmDialog';
-
-export { AdminGarageList };
 
 interface AdminDashboardProps {
   allGarages: Garage[];
@@ -32,7 +29,6 @@ interface AdminDashboardProps {
   setSelectedGarageForDetails: (garage: Garage | null) => void;
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
   delegates: Delegate[];
-  addDelegate?: (data: Omit<Delegate, 'id'>) => Promise<any>;
   onLogout: () => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
@@ -53,7 +49,6 @@ export const AdminDashboard = memo(({
   setSelectedGarageForDetails,
   setSelectedDelegateForDetails,
   delegates,
-  addDelegate: _addDelegate,
   onLogout,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,

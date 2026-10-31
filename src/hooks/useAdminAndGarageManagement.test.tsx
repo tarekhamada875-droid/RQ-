@@ -191,34 +191,15 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     expect(props.setView).not.toHaveBeenCalled();
   });
 
-  it('refreshes Admin lists after successful garage-rate updates', async () => {
+  it('refreshes Admin lists after successful delegate delete', async () => {
     const props = createProps();
     const { result } = renderHook(() => useAdminAndGarageManagement(props));
-
-    await act(async () => {
-      await result.current.updateGarageRate({ id: 'garage-1' } as any, 'hourlyRate', 25);
-    });
-
-    expect(firestoreService.updateGarage).toHaveBeenCalledWith('garage-1', { hourlyRate: 25 });
-    expect(props.refreshAdminLists).toHaveBeenCalledOnce();
-  });
-
-  it('refreshes Admin lists after successful delegate create and delete', async () => {
-    const props = createProps();
-    const { result } = renderHook(() => useAdminAndGarageManagement(props));
-
-    let created: unknown;
-    await act(async () => {
-      created = await result.current.addDelegate({ name: 'Delegate' } as any);
-    });
-    expect(created).toEqual({ id: 'delegate-1' });
-    expect(props.refreshAdminLists).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await result.current.removeDelegate('delegate-1');
     });
     expect(firestoreService.removeDelegate).toHaveBeenCalledWith('delegate-1');
-    expect(props.refreshAdminLists).toHaveBeenCalledTimes(2);
+    expect(props.refreshAdminLists).toHaveBeenCalledTimes(1);
   });
 
   it('releases the exact attempted session when a login claim fails ambiguously', async () => {
