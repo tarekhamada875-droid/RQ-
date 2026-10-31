@@ -106,17 +106,17 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
   it('Stress Test 4: Extreme Parking Duration & Tariff Calculations (Extreme Edge Cases)', () => {
     const garage = { hourlyRate: 25, overnightRate: 150 };
 
-    // Case A: 1 year continuous parking (8,760 hours)
+    // Case A: 1 year continuous parking (8,760 hours) — hourly, no cap
     const entry1Year = new Date('2025-08-04T10:00:00Z');
     const now1Year = new Date('2026-08-04T10:00:00Z');
     const costHourlyYear = calculateCost({ entryTime: entry1Year, type: 'hourly' }, garage, now1Year);
-    // The configured overnight rate caps each full 24-hour block.
-    expect(costHourlyYear).toBe(365 * 150); // 54,750 EGP
+    // Hourly billing has no cap — 8760 hours × 25 = 219,000 EGP
+    expect(costHourlyYear).toBe(8760 * 25); // 219,000 EGP
 
-    // Case A2: The cap applies after 24 hours and also caps the partial day.
+    // Case A2: 25 hours hourly — no cap, pure hours × rate
     const entry25Hours = new Date('2026-08-01T10:00:00Z');
     const now25Hours = new Date('2026-08-02T11:00:00Z');
-    expect(calculateCost({ entryTime: entry25Hours, type: 'hourly' }, garage, now25Hours)).toBe(175);
+    expect(calculateCost({ entryTime: entry25Hours, type: 'hourly' }, garage, now25Hours)).toBe(25 * 25); // 625
 
     // Case B: 100 days overnight parking
     const entry100Days = new Date('2026-05-01T10:00:00Z');

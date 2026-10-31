@@ -107,34 +107,37 @@ describe('Parking Duration & Cost Calculation Comprehensive Scenarios', () => {
     expect(calculateCost(vehicle, baseGarage)).toBe(0);
   });
 
-  it('scenario 7: Day-cap prevents price dip — 23h never costs more than 24h', () => {
-    // With hourlyRate=20 and overnightRate=100, the hourly total exceeds
-    // the overnight rate at 5h (5*20=100). The cap should kick in at that
-    // point, not wait until 24h. Before the fix, 23h cost 460 but 24h
-    // cost 300 — a DIP. Now both cost 300 (the overnight rate).
+  it('scenario 7: hourly billing has no cap — keeps climbing past overnight rate', () => {
+    // Owner directive: hourly and overnight are independent. An hourly car pays
+    // hours × rate indefinitely — no ceiling, no cap, no switching to overnight.
+    // With hourlyRate=20 and overnightRate=100, the hourly total exceeds the
+    // overnight rate at 5h (5*20=100) and keeps climbing.
     const entry = new Date('2026-08-01T10:00:00Z');
 
-    // 5h: hourly = 100 = overnight → no dip
+    // 5h: 5 × 20 = 100 (equals overnight, but NOT capped — it's hourly)
     expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T15:00:00Z'))).toBe(100);
 
-    // 6h: hourly = 120 > overnight = 100 → capped to 100
-    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T16:00:00Z'))).toBe(100);
+    // 6h: 6 × 20 = 120 (exceeds overnight, but NOT capped — keeps climbing)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-01T16:00:00Z'))).toBe(120);
 
-    // 23h: hourly = 460 > overnight = 100 → capped to 100 (was 460 before fix!)
-    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'))).toBe(100);
+    // 23h: 23 × 20 = 460 (way past overnight=100, but still climbing)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'))).toBe(460);
 
-    // 24h: capped to 100 (same as 23h — no dip)
-    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'))).toBe(100);
+    // 24h: 24 × 20 = 480 (no dip, no cap)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'))).toBe(480);
 
-    // 25h: 1 full day + 1h = 100 + 20 = 120
-    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(120);
+    // 25h: 25 × 20 = 500 (keeps going)
+    expect(calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(500);
 
-    // Monotonic: 23h (100) ≤ 24h (100) ≤ 25h (120)
+    // Monotonic: always increasing, never dips
     const cost23h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T09:00:00Z'));
     const cost24h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T10:00:00Z'));
     const cost25h = calculateCost({ entryTime: entry, type: 'hourly' }, baseGarage, new Date('2026-08-02T11:00:00Z'));
-    expect(cost23h).toBeLessThanOrEqual(cost24h);
-    expect(cost24h).toBeLessThanOrEqual(cost25h);
+    expect(cost23h).toBeLessThan(cost24h);
+    expect(cost24h).toBeLessThan(cost25h);
+
+    // Overnight car at 25h: 2 days × 100 = 200 (completely independent)
+    expect(calculateCost({ entryTime: entry, type: 'overnight' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(200);
   });
 
   it('formats getDuration output in Arabic for various time spans', () => {
