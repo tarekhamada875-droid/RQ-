@@ -3,32 +3,61 @@ import { firestoreService } from '../../services';
 import { formatDisplayPin, normalizeDigits } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useAppStore } from '../../store/appStore';
+import type { Staff } from '../../types';
 
 export const isValidStaffPin = (pin: string): boolean => /^\d{5}$/.test(pin);
 
-export const AdminGarageSettingsSection = (props: any) => {
-  const {
-    t,
-    isZone3Open,
-    setIsZone3Open,
-    rateCheck,
-    hourlyRateInput,
-    setHourlyRateInput,
-    overnightRateInput,
-    setOvernightRateInput,
-    hasRateChanges,
-    isSavingRates,
-    handleSaveRates,
-    staffList,
-    openAddStaffModal,
-    editingStaffPinId,
-    setEditingStaffPinId,
-    editingStaffPinValue,
-    setEditingStaffPinValue,
-    isUpdatingStaffPin,
-    setIsUpdatingStaffPin,
-    setStaffToDelete,
-  } = props;
+interface RateCheck {
+  allowed: boolean;
+  daysRemaining: number;
+  nextAllowedDate: Date | null;
+}
+
+interface AdminGarageSettingsSectionProps {
+  t: (key: string) => string;
+  isZone3Open: boolean;
+  setIsZone3Open: (open: boolean) => void;
+  rateCheck: RateCheck;
+  hourlyRateInput: string;
+  setHourlyRateInput: (value: string) => void;
+  overnightRateInput: string;
+  setOvernightRateInput: (value: string) => void;
+  hasRateChanges: boolean;
+  isSavingRates: boolean;
+  handleSaveRates: () => Promise<void> | void;
+  staffList: Staff[];
+  openAddStaffModal: () => void;
+  editingStaffPinId: string | null;
+  setEditingStaffPinId: (id: string | null) => void;
+  editingStaffPinValue: string;
+  setEditingStaffPinValue: (value: string) => void;
+  isUpdatingStaffPin: boolean;
+  setIsUpdatingStaffPin: (updating: boolean) => void;
+  setStaffToDelete: (staff: Staff | null) => void;
+}
+
+export const AdminGarageSettingsSection = ({
+  t,
+  isZone3Open,
+  setIsZone3Open,
+  rateCheck,
+  hourlyRateInput,
+  setHourlyRateInput,
+  overnightRateInput,
+  setOvernightRateInput,
+  hasRateChanges,
+  isSavingRates,
+  handleSaveRates,
+  staffList,
+  openAddStaffModal,
+  editingStaffPinId,
+  setEditingStaffPinId,
+  editingStaffPinValue,
+  setEditingStaffPinValue,
+  isUpdatingStaffPin,
+  setIsUpdatingStaffPin,
+  setStaffToDelete,
+}: AdminGarageSettingsSectionProps) => {
 
   return (
     <>
