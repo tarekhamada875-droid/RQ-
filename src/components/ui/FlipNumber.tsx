@@ -7,7 +7,11 @@ interface FlipCardProps {
 }
 
 export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', color = 'default' }) => {
-  const digits = value.toString().padStart(size === 'sm' ? 1 : 2, '0').split('');
+  // Show only the digits that exist — no leading-zero padding. A count of 3
+  // renders as "3", not "03". The counter grows/shrinks in width as the digit
+  // count changes (9 -> 10 adds a slot, 10 -> 9 removes one), which is the
+  // intended behavior.
+  const digits = value.toString().split('');
   const previousDigitsRef = useRef<string[] | null>(null);
 
   useEffect(() => {
