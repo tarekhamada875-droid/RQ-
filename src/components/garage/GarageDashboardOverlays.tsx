@@ -7,39 +7,70 @@ import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
+import type { ActivityLog, Garage, Staff, Vehicle } from "../../types";
+import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
 const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
 
-export const GarageDashboardOverlays = (props: any) => {
-  const {
-    garage,
-    isLocked,
-    isSubscribersOpen,
-    isRechargeHistoryOpen,
-    rechargeLogs,
-    isRechargeLogsLoading,
-    subscriberPage,
-    isStaffStatsOpen,
-    isReportsOpen,
-    isAppearanceOpen,
-    showTermsModal,
-    showToast,
-    onToggleMenu,
-    onCloseSubscribers,
-    onCloseRechargeHistory,
-    onCloseStaffStats,
-    onCloseReports,
-    onCloseAppearance,
-    onCloseTerms,
-    currentStaff,
-    staffList,
-    vehiclesInside,
-    todayExitedVehicles,
-    now,
-    isRechargeNotificationOpen,
-    rechargeLog,
-    onCloseRechargeNotification,
-  } = props;
+interface GarageDashboardOverlaysProps {
+  garage: Garage;
+  isLocked: boolean;
+  isSubscribersOpen: boolean;
+  isRechargeHistoryOpen: boolean;
+  rechargeLogs: ActivityLog[];
+  isRechargeLogsLoading: boolean;
+  subscriberPage: SharedSubscriberPage | null;
+  isStaffStatsOpen: boolean;
+  isReportsOpen: boolean;
+  isAppearanceOpen: boolean;
+  showTermsModal: boolean;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  onToggleMenu: () => void;
+  onCloseSubscribers: () => void;
+  onCloseRechargeHistory: () => void;
+  onCloseStaffStats: () => void;
+  onCloseReports: () => void;
+  onCloseAppearance: () => void;
+  onCloseTerms: () => void;
+  currentStaff: Staff | null;
+  staffList: Staff[];
+  vehiclesInside: Vehicle[];
+  todayExitedVehicles: Vehicle[];
+  now: Date;
+  isRechargeNotificationOpen: boolean;
+  rechargeLog: ActivityLog | null;
+  onCloseRechargeNotification: () => void;
+}
+
+export const GarageDashboardOverlays = ({
+  garage,
+  isLocked,
+  isSubscribersOpen,
+  isRechargeHistoryOpen,
+  rechargeLogs,
+  isRechargeLogsLoading,
+  subscriberPage,
+  isStaffStatsOpen,
+  isReportsOpen,
+  isAppearanceOpen,
+  showTermsModal,
+  showToast,
+  onToggleMenu,
+  onCloseSubscribers,
+  onCloseRechargeHistory,
+  onCloseStaffStats,
+  onCloseReports,
+  onCloseAppearance,
+  onCloseTerms,
+  currentStaff,
+  staffList,
+  vehiclesInside,
+  todayExitedVehicles,
+  now,
+  isRechargeNotificationOpen,
+  rechargeLog,
+  onCloseRechargeNotification,
+}: GarageDashboardOverlaysProps) => {
 
   return (
     <>
