@@ -267,10 +267,13 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
     expect(screen.getByTestId('credit-debit-feedback')).toBeDefined();
     const arrows = screen.getAllByTestId('credit-debit-arrow');
-    expect(arrows).toHaveLength(3);
-    expect(arrows[0]).toHaveClass('credit-debit-arrow-left');
-    expect(arrows[1]).toHaveClass('credit-debit-arrow-center');
-    expect(arrows[2]).toHaveClass('credit-debit-arrow-right');
+    expect(arrows).toHaveLength(5);
+    // Center-out order: center first, then inner pair, then outer pair
+    expect(arrows[0]).toHaveClass('credit-debit-arrow-center');
+    expect(arrows[1]).toHaveClass('credit-debit-arrow-inner-left');
+    expect(arrows[2]).toHaveClass('credit-debit-arrow-inner-right');
+    expect(arrows[3]).toHaveClass('credit-debit-arrow-outer-left');
+    expect(arrows[4]).toHaveClass('credit-debit-arrow-outer-right');
   });
 
   it('renders GarageActiveVehiclesList and handles empty state', () => {
