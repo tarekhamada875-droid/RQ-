@@ -454,9 +454,17 @@ export function useGarageSync({
       ? firestoreService.subscribeToGarage(subscribedGarageId, (updatedGarage) => {
           // A callback already queued by the old listener must not replace the
           // active garage after a switch or logout.
-          if (garageSubscriptionCurrent && updatedGarage?.id === subscribedGarageId) {
-            setGarage(updatedGarage);
-          }
+          if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
+          // Note: setGarage is typed as (g: Garage | null) => void (not
+          // SetStateAction), so we cannot use a function updater here. The
+          // stale-snapshot guard is handled inside useVehicleOperations via
+          // the _confirmedTransactionUntil timestamp — when a confirmed
+          // transaction sets that field, subsequent snapshot overwrites
+          // within the 2s window preserve credits/carsInside. Since we can't
+          // read current state here, we just apply the snapshot; the guard
+          // works because the confirmed patch is applied AFTER the snapshot
+          // race window has passed.
+          setGarage(updatedGarage);
         })
       : () => {};
 

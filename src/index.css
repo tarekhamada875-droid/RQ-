@@ -352,10 +352,15 @@ input[type="number"]::-webkit-outer-spin-button {
   will-change: transform, opacity;
 }
 
-/* Three spaced arrows keep the debit cue readable without crowding the balance. */
-.credit-debit-arrow-left { left: 22%; margin-left: 0; animation-delay: 0s; }
-.credit-debit-arrow-center { left: 50%; margin-left: -1.25rem; animation-delay: 0.14s; }
-.credit-debit-arrow-right { right: 22%; left: auto; margin-left: 0; animation-delay: 0.28s; }
+/* 5-arrow center-out pattern (Manus spec).
+   Order: center (0s) → inner pair (0.15s) → outer pair (0.3s).
+   Opacity is fully controlled by the animation keyframes — do NOT set
+   static opacity here or it will override the animation and freeze. */
+.credit-debit-arrow-center { left: 50%; margin-left: -1.25rem; animation-delay: 0s; }
+.credit-debit-arrow-inner-left { left: 32%; margin-left: -1.25rem; animation-delay: 0.15s; }
+.credit-debit-arrow-inner-right { right: 32%; left: auto; margin-left: 0; animation-delay: 0.15s; }
+.credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.3s; }
+.credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.3s; }
 
 @media (prefers-reduced-motion: reduce) {
   .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }

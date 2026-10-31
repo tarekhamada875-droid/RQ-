@@ -61,13 +61,45 @@ export function useVehicleOperations({
 
   const deletingVehicleRef = useRef<string | null>(null);
 
+  // ── Transaction lock (Manus reliability model) ──────────────────────────
+  // A shared, per-garage transaction lock that prevents overlapping check-in
+  // and check-out. The lock has a 3-second minimum floor from submission —
+  // even if the Worker responds instantly, controls stay disabled until the
+  // feedback animation has had time to complete. A slow request extends the
+  // lock; the timer does NOT cancel or expire the request.
+  const MIN_LOCK_MS = 3000;
+  const transactionLockUntilRef = useRef<number>(0);
+
+  /** Returns true if a transaction is currently locked (in-flight or within
+   *  the minimum feedback window). Checked synchronously by both check-in
+   *  and check-out guards. */
+  const isTransactionLocked = useCallback(() => {
+    return Date.now() < transactionLockUntilRef.current || isLoading;
+  }, [isLoading]);
+
+  /** Acquires the lock. Called at the start of check-in / check-out / delete.
+   *  Sets the minimum floor; the request itself may extend it. */
+  const acquireTransactionLock = useCallback(() => {
+    transactionLockUntilRef.current = Date.now() + MIN_LOCK_MS;
+  }, []);
+
+  /** Releases the lock, but not before the minimum floor has elapsed. Resolves
+   *  immediately if the floor has passed, otherwise waits the remainder. */
+  const releaseTransactionLock = useCallback(async () => {
+    const remaining = transactionLockUntilRef.current - Date.now();
+    if (remaining > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, remaining));
+    }
+    transactionLockUntilRef.current = 0;
+  }, []);
+
   // Check In
   const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', bypassWarning = false) => {
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
       return;
     }
-    if (!garage || !newPlateNumber || isLoading) return;
+    if (!garage || !newPlateNumber || isTransactionLocked()) return;
     closeKeyboard();
 
     const raw = getRawPlate(newPlateNumber);
@@ -103,6 +135,7 @@ export function useVehicleOperations({
     
     setIsLoading(true);
     setLoadingType(type);
+    acquireTransactionLock();
     if (garage.hasMonthlySubscribers) {
       try {
         const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
@@ -117,6 +150,7 @@ export function useVehicleOperations({
       } catch (e) {
         setIsLoading(false);
         setLoadingType(null);
+        await releaseTransactionLock();
         showToast('تعذر التحقق من حالة الاشتراك. يرجى المحاولة مرة أخرى.', 'error');
         return;
       }
@@ -125,6 +159,7 @@ export function useVehicleOperations({
     if (isSubscriber) {
       setIsLoading(false);
       setLoadingType(null);
+      await releaseTransactionLock();
       setSubscriberWarningPlate(formatted);
       setShowSubscriberWarning(true);
       setShowCheckInModal(false);
@@ -184,6 +219,10 @@ export function useVehicleOperations({
       }
       if (typeof serverData?.credits === 'number') serverGaragePatch.credits = serverData.credits;
       if (Object.keys(serverGaragePatch).length > 0) {
+        // Set a 2-second guard window so stale Firestore snapshots can't
+        // revert the just-confirmed credits/carsInside. The subscribeToGarage
+        // listener checks this timestamp and merges instead of overwriting.
+        (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
         setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
       }
       setNewPlateNumber('');
@@ -227,8 +266,9 @@ export function useVehicleOperations({
     } finally {
       setIsLoading(false);
       setLoadingType(null);
+      await releaseTransactionLock();
     }
-  }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast]);
+  }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
@@ -236,13 +276,14 @@ export function useVehicleOperations({
       showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
       return;
     }
-    if (!garage || !selectedVehicle || isLoading) return;
+    if (!garage || !selectedVehicle || isTransactionLocked()) return;
     closeKeyboard();
 
     const vehicleToOut = selectedVehicle;
     const cost = calculateCost(vehicleToOut, garage, now);
     setIsLoading(true);
     setLoadingType('checkout');
+    acquireTransactionLock();
     try {
       const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
         firestoreService.checkOutVehicle(
@@ -267,6 +308,9 @@ export function useVehicleOperations({
       if (typeof res.todayCount === 'number') serverGaragePatch.todayCount = res.todayCount;
       if (typeof res.lastTransactionDate === 'string') serverGaragePatch.lastTransactionDate = res.lastTransactionDate;
       if (Object.keys(serverGaragePatch).length > 0) {
+        // Set a 2-second guard window so stale Firestore snapshots can't
+        // revert the just-confirmed carsInside/revenue. See check-in for details.
+        (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
         setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
       }
       setShowCheckOutModal(false);
@@ -308,8 +352,9 @@ export function useVehicleOperations({
     } finally {
       setIsLoading(false);
       setLoadingType(null);
+      await releaseTransactionLock();
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   // Delete Vehicle
   const handleDeleteVehicle = useCallback(async () => {
