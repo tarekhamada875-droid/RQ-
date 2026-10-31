@@ -30,7 +30,7 @@ function errorMessage(error: unknown): string {
   return 'تعذر تحميل جلسات الأجهزة أو تحديثها';
 }
 
-export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, showToast }) => {
+export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, t, showToast }) => {
   const [sessions, setSessions] = React.useState<ActiveSession[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [busySession, setBusySession] = React.useState<string | null>(null);
@@ -54,7 +54,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
 
   const revokeSession = async (session: ActiveSession) => {
     if (!session.id || busySession) return;
-    if (!window.confirm(session.isCurrent ? 'هل تريد تسجيل الخروج من هذا الجهاز؟' : 'هل تريد إلغاء جلسة هذا الجهاز؟')) return;
+    if (!window.confirm(session.isCurrent ? t('هل تريد تسجيل الخروج من هذا الجهاز؟') : t('هل تريد إلغاء جلسة هذا الجهاز؟'))) return;
     setBusySession(session.id);
     setError(null);
     try {
@@ -64,7 +64,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
         return;
       }
       setSessions((current) => current.filter((entry) => entry.id !== session.id));
-      showToast?.('تم إلغاء جلسة الجهاز بنجاح', 'success');
+      showToast?.(t('تم إلغاء جلسة الجهاز بنجاح'), 'success');
     } catch (revokeError) {
       const message = errorMessage(revokeError);
       setError(message);
@@ -79,15 +79,15 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
     <div dir="rtl" className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200 text-right">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white">{'الأجهزة والجلسات النشطة'}</h2>
-          <p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">{'راجع الأجهزة التي تستخدم حسابك وألغِ الجلسات غير المعروفة.'}</p>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">{t('الأجهزة والجلسات النشطة')}</h2>
+          <p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">{t('راجع الأجهزة التي تستخدم حسابك وألغِ الجلسات غير المعروفة.')}</p>
         </div>
-        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-black text-slate-600 dark:text-slate-300 hover:border-emerald-500">{'عودة'}</button>
+        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-black text-slate-600 dark:text-slate-300 hover:border-emerald-500">{t('عودة')}</button>
       </div>
 
       <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 flex gap-3 items-start">
         <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-        <p className="text-xs leading-6 font-bold text-emerald-900 dark:text-emerald-200">{'المعرّفات المعروضة هنا غير قابلة لعكسها إلى رقم الجلسة الحقيقي. لا تشاركها خارج فريقك.'}</p>
+        <p className="text-xs leading-6 font-bold text-emerald-900 dark:text-emerald-200">{t('المعرّفات المعروضة هنا غير قابلة لعكسها إلى رقم الجلسة الحقيقي. لا تشاركها خارج فريقك.')}</p>
       </div>
 
       {error && (
@@ -98,16 +98,16 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs font-black text-slate-500 dark:text-slate-400">{sessions.length} {'جلسة'}</span>
+        <span className="text-xs font-black text-slate-500 dark:text-slate-400">{sessions.length} {t('جلسة')}</span>
         <button type="button" onClick={() => void loadSessions()} disabled={isLoading} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 text-xs font-black disabled:opacity-50">
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {'تحديث'}
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> {t('تحديث')}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="py-16 flex flex-col items-center gap-3 text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /><span className="text-sm font-bold">{'جاري تحميل الجلسات...'}</span></div>
+        <div className="py-16 flex flex-col items-center gap-3 text-slate-400"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /><span className="text-sm font-bold">{t('جاري تحميل الجلسات...')}</span></div>
       ) : sessions.length === 0 ? (
-        <div className="py-16 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-500">{'لا توجد جلسات نشطة ظاهرة لهذا الحساب.'}</div>
+        <div className="py-16 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-500">{t('لا توجد جلسات نشطة ظاهرة لهذا الحساب.')}</div>
       ) : (
         <div className="space-y-3">
           {sessions.map((session) => (
@@ -115,16 +115,16 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${session.isCurrent ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{deviceIcon(session)}</div>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-slate-900 dark:text-white">{session.isCurrent ? ('هذا الجهاز') : ('جهاز مسجّل')}</span>
-                  {session.isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-black"><CheckCircle2 className="w-3 h-3" />{'الحالي'}</span>}
-                  {!session.isActive && <span className="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black">{'غير نشط'}</span>}
+                  <span className="font-black text-slate-900 dark:text-white">{session.isCurrent ? t('هذا الجهاز') : t('جهاز مسجّل')}</span>
+                  {session.isCurrent && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-black"><CheckCircle2 className="w-3 h-3" />{t('الحالي')}</span>}
+                  {!session.isActive && <span className="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 text-[10px] font-black">{t('غير نشط')}</span>}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400"><Clock3 className="w-3.5 h-3.5" /> {'آخر نشاط:'} {formatTimestamp(session.lastActive, 'ar-EG')}</div>
-                <div className="text-[10px] font-mono text-slate-400 truncate">{'معرّف آمن:'} {session.id.slice(0, 12)}…</div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400"><Clock3 className="w-3.5 h-3.5" /> {t('آخر نشاط:')} {formatTimestamp(session.lastActive, 'ar-EG')}</div>
+                <div className="text-[10px] font-mono text-slate-400 truncate">{t('معرّف آمن:')} {session.id.slice(0, 12)}…</div>
               </div>
               <button type="button" onClick={() => void revokeSession(session)} disabled={busySession !== null} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-black disabled:opacity-50 shrink-0">
                 {busySession === session.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                {session.isCurrent ? ('تسجيل الخروج') : ('إلغاء الجلسة')}
+                {session.isCurrent ? t('تسجيل الخروج') : t('إلغاء الجلسة')}
               </button>
             </article>
           ))}
