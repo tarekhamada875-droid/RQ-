@@ -108,13 +108,13 @@ export const RegistrationCard = memo(({
   };
 
   return (
-    <div 
+    <div
       ref={inputRef}
       className={`bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border relative shrink-0 p-4 md:p-8 max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto w-full transition-all duration-150 ${
-        isInputFocused 
-          ? 'border-slate-900 dark:border-slate-700' 
+        isInputFocused
+          ? 'border-slate-900 dark:border-slate-700'
           : 'border-slate-200 dark:border-slate-800'
-      }`}
+      } ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
     >
       <BorderShimmer isActive={shimmerActive} rx={32} ry={32} color={activeShimmerColor} />
       <div className="relative">
@@ -138,19 +138,20 @@ export const RegistrationCard = memo(({
               </button>
             )}
             
-            <div className="relative h-28 sm:h-36 md:h-52 lg:h-60 overflow-hidden" onClick={() => { setIsInputFocused(true); plateInputRef.current?.focus(); }}>
+            <div className="relative h-28 sm:h-36 md:h-52 lg:h-60 overflow-hidden" onClick={() => { if (isLoading) return; setIsInputFocused(true); plateInputRef.current?.focus(); }}>
               <span id="registration-plate-input-description" className="sr-only">
                 استخدم لوحة المفاتيح الظاهرة لإدخال أحرف وأرقام اللوحة المصرية.
               </span>
-              <input 
+              <input
                 ref={plateInputRef}
-                type="text" 
+                type="text"
                 aria-label="رقم لوحة السيارة"
                 aria-describedby="registration-plate-input-description"
                 inputMode="none"
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
+                disabled={isLoading}
                 value={newPlateNumber}
                 onChange={(e) => {
                   const val = e.target.value;
