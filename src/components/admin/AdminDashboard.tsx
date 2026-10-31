@@ -15,6 +15,7 @@ import { normalizeArabicSearch, resolveShimmerColor, isLightColor, normalizeDigi
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import '../../styles/admin-custom-theme.css';
 
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
@@ -255,89 +256,11 @@ export const AdminDashboard = memo(({
   }, [searchableGarages, approvedGarages, adminSearch]);
 
   return (
-    <div className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`} dir="rtl">
-      <style>{`
-        .admin-custom-theme .text-emerald-500,
-        .admin-custom-theme .text-emerald-500,
-        .admin-custom-theme .text-emerald-600,
-        .admin-custom-theme .text-emerald-700,
-        .admin-custom-theme .dark\\:text-emerald-400,
-        .admin-custom-theme .text-emerald-450 {
-          color: ${resolvedAdminColor} !important;
-        }
-        .admin-custom-theme .bg-emerald-600,
-        .admin-custom-theme .bg-emerald-500,
-        .admin-custom-theme .dark\\:bg-emerald-600,
-        .admin-custom-theme .dark\\:bg-emerald-500 {
-          background-color: ${resolvedAdminColor} !important;
-          color: ${isLightColor(resolvedAdminColor) ? '#0f172a' : '#ffffff'} !important;
-        }
-        .admin-custom-theme .bg-emerald-600 *,
-        .admin-custom-theme .bg-emerald-500 *,
-        .admin-custom-theme .dark\\:bg-emerald-600 *,
-        .admin-custom-theme .dark\\:bg-emerald-500 * {
-          color: ${isLightColor(resolvedAdminColor) ? '#0f172a' : 'inherit'} !important;
-        }
-        .admin-custom-theme .hover\\:bg-emerald-700:hover,
-        .admin-custom-theme .bg-emerald-600:hover,
-        .admin-custom-theme .bg-emerald-500:hover,
-        .admin-custom-theme .dark\\:bg-emerald-600:hover,
-        .admin-custom-theme .dark\\:bg-emerald-500:hover {
-          background-color: ${resolvedAdminColor}e6 !important;
-          opacity: 0.95;
-        }
-        .admin-custom-theme .bg-emerald-50,
-        .admin-custom-theme .bg-emerald-50\\/30,
-        .admin-custom-theme .bg-emerald-50\\/50,
-        .admin-custom-theme .bg-emerald-100,
-        .admin-custom-theme .dark\\:bg-emerald-950\\/40,
-        .admin-custom-theme .dark\\:bg-emerald-950\\/45,
-        .admin-custom-theme .dark\\:bg-emerald-950\\/10 {
-          background-color: ${resolvedAdminColor}15 !important;
-        }
-        .admin-custom-theme .bg-emerald-400\\/10,
-        .admin-custom-theme .dark\\:bg-emerald-400\\/5,
-        .admin-custom-theme .bg-emerald-50\\/50 {
-          background-color: ${resolvedAdminColor}1a !important;
-        }
-        .admin-custom-theme .border-emerald-500,
-        .admin-custom-theme .border-emerald-600,
-        .admin-custom-theme .border-emerald-400,
-        .admin-custom-theme .border-emerald-300,
-        .admin-custom-theme .border-emerald-100,
-        .admin-custom-theme .dark\\:border-emerald-700\\/80,
-        .admin-custom-theme .dark\\:border-emerald-900\\/50 {
-          border-color: ${resolvedAdminColor}80 !important;
-        }
-        .admin-custom-theme .border-emerald-500\\/20,
-        .admin-custom-theme .border-emerald-400\\/10 {
-          border-color: ${resolvedAdminColor}20 !important;
-        }
-        .admin-custom-theme .focus\\:border-emerald-500:focus,
-        .admin-custom-theme .focus\\:border-emerald-400:focus {
-          border-color: ${resolvedAdminColor} !important;
-        }
-        .admin-custom-theme .focus\\:ring-emerald-500:focus,
-        .admin-custom-theme .focus\\:ring-emerald-400:focus,
-        .admin-custom-theme .dark\\:focus\\:ring-emerald-500:focus {
-          --tw-ring-color: ${resolvedAdminColor} !important;
-          border-color: ${resolvedAdminColor} !important;
-        }
-        .admin-custom-theme .shadow-emerald-500\\/5 {
-          --tw-shadow-color: ${resolvedAdminColor}1a !important;
-          --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -1px var(--tw-shadow-color) !important;
-        }
-        .admin-custom-theme .from-emerald-500\\/5 {
-          --tw-gradient-from: ${resolvedAdminColor}0d !important;
-          --tw-gradient-to: transparent !important;
-          --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
-        }
-        .admin-custom-theme .dark\\:from-emerald-500\\/5 {
-          --tw-gradient-from: ${resolvedAdminColor}0d !important;
-          --tw-gradient-to: transparent !important;
-          --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
-        }
-      `}</style>
+    <div
+      className={`admin-custom-theme h-screen h-[100dvh] w-full bg-[#faf9f6] dark:bg-slate-950 font-sans relative text-slate-900 dark:text-slate-100 transition-colors overflow-hidden flex flex-col`}
+      dir="rtl"
+      style={{ '--admin-color': resolvedAdminColor, '--admin-color-text': isLightColor(resolvedAdminColor) ? '#0f172a' : '#ffffff' } as React.CSSProperties}
+    >
       
       {/* Header */}
       <AdminHeader
