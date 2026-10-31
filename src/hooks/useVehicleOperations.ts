@@ -57,6 +57,10 @@ export function useVehicleOperations({
   const [showCheckOutModal, setShowCheckOutModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingType, setLoadingType] = useState<'hourly' | 'overnight' | 'checkout' | 'delete' | 'general' | null>(null);
+  // Tracks whether the last checkout succeeded. The dashboard watches this
+  // (via isLoading transition) to decide whether to return to the main tab
+  // (success) or stay on the active-vehicles list (failure).
+  const [checkoutJustSucceeded, setCheckoutJustSucceeded] = useState<boolean>(false);
 
   const [showRecentExitWarning, setShowRecentExitWarning] = useState<boolean>(false);
   const [recentVehicle, setRecentVehicle] = useState<Vehicle | null>(null);
@@ -318,6 +322,7 @@ export function useVehicleOperations({
     setIsLoading(true);
     setLoadingType('checkout');
     acquireTransactionLock();
+    setCheckoutJustSucceeded(false); // reset before attempt
     try {
       // FIX #6: generate the idempotency key ONCE per transaction attempt.
       // See check-in for details.
@@ -353,6 +358,7 @@ export function useVehicleOperations({
       setSelectedVehicle(null);
       setNewPlateNumber('');
       soundManager.play('checkOut');
+      setCheckoutJustSucceeded(true);
       // FIX #4: return to the main dashboard so the user sees the large
       // inside-car count decrease. Without this, the active-vehicles list
       // stays on screen after checkout.
@@ -505,6 +511,7 @@ export function useVehicleOperations({
     setIsLoading,
     loadingType,
     setLoadingType,
+    checkoutJustSucceeded,
     showRecentExitWarning,
     setShowRecentExitWarning,
     recentVehicle,
