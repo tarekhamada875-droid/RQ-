@@ -238,28 +238,12 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
   
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
-    const overnightRate = garage.overnightRate || 0;
     const hours = Math.ceil(diffMs / MS_PER_HOUR);
-    let total = Math.max(1, hours) * hourlyRate;
-
-    // Day-Cap Rate Optimization: once the hourly accumulation exceeds the
-    // overnight rate, cap each 24h chunk at the overnight rate so the user
-    // never pays more than overnightRate per day.
-    //
-    // BUG FIX: previously the condition was `diffMs >= MS_PER_DAY`, which meant
-    // the cap only kicked in at 24h. But with hourlyRate=25 and overnightRate=500,
-    // the hourly total exceeds the overnight rate at 20h (20*25=500). Between 20h
-    // and 24h the price kept climbing (525, 550, 575) then DROPPED back to 500 at
-    // 24h. Now the cap triggers the moment `total > overnightRate`, so the price
-    // is monotonically non-decreasing — it never dips.
-    if (overnightRate > 0 && total > overnightRate) {
-      const fullDays = Math.floor(diffMs / MS_PER_DAY);
-      const remMs = diffMs % MS_PER_DAY;
-      const remHours = Math.ceil(remMs / MS_PER_HOUR);
-      const blended = (fullDays * overnightRate) + Math.min(overnightRate, remHours * hourlyRate);
-      total = Math.min(total, blended);
-    }
-
+    // Hourly billing is independent of overnight — no cap, no ceiling.
+    // A car checked in as hourly pays hours × rate indefinitely. The overnight
+    // rate only applies to cars explicitly checked in as 'overnight'.
+    // (Previous day-cap logic removed per owner directive.)
+    const total = Math.max(1, hours) * hourlyRate;
     return Math.round(total * 100) / 100;
   }
   return 0;
