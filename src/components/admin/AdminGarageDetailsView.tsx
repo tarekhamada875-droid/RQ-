@@ -3,19 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, memo, useRef, useEffect, useCallback } from 'react';
+import { useState, memo, useRef, useEffect } from 'react';
 import {
   ChevronRight,
   Trash2,
   MoreVertical
 } from 'lucide-react';
-import { firestoreService } from '../../services';
-import { normalizeDigits, canChangeGarageRates, isHashedPin, generateSafePin } from '../../utils';
+import { isHashedPin } from '../../utils';
 import { Garage, Staff } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { useAppStore } from '../../store/appStore';
+import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from './garage-details/AdminGarageFinancialsSection';
@@ -34,15 +33,6 @@ interface AdminGarageDetailsViewProps {
   onRefreshAdminLists?: () => Promise<void>;
 }
 
-export function getGaragePinUpdateErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : '';
-  if (message === 'PIN_ALREADY_TAKEN' || message === 'الرمز مستخدم بالفعل') {
-    return 'الرمز مستخدم بالفعل';
-  }
-  if (message && /[\u0600-\u06FF]/.test(message)) return message;
-  return 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.';
-}
-
 export const AdminGarageDetailsView = memo(({
   selectedGarageForDetails,
   setView,
@@ -52,88 +42,38 @@ export const AdminGarageDetailsView = memo(({
   setStaffList,
   isLoading,
   setIsLoading,
-
   onRefreshAdminLists
 }: AdminGarageDetailsViewProps) => {
+  // ── UI toggle state (stays in the view) ──────────────────────────────
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [staffForm, setStaffForm] = useState({ name: '', pin: '' });
   const [showMenu, setShowMenu] = useState(false);
-  const { adminLang } = useTheme();
-  const t = useAdminTranslation(adminLang);
-
-  const refreshAdminListsAfterMutation = async () => {
-    try {
-      await onRefreshAdminLists?.();
-    } catch (error) {
-      console.error('Failed to refresh Admin lists after garage update:', error);
-    }
-  };
-
-  // Accordion state for Zone 3
   const [isZone3Open, setIsZone3Open] = useState(false);
-
   const [showEditGaragePinModal, setShowEditGaragePinModal] = useState(false);
-  const [garagePinInput, setGaragePinInput] = useState(selectedGarageForDetails.pin || '');
-  const [isUpdatingGaragePin, setIsUpdatingGaragePin] = useState(false);
-  const [pinError, setPinError] = useState('');
 
+  // Inline staff-PIN editing state — purely visual; the actual updateStaff
+  // call lives in AdminGarageSettingsSection.
   const [editingStaffPinId, setEditingStaffPinId] = useState<string | null>(null);
   const [editingStaffPinValue, setEditingStaffPinValue] = useState<string>('');
   const [isUpdatingStaffPin, setIsUpdatingStaffPin] = useState(false);
 
-  const [hourlyRateInput, setHourlyRateInput] = useState<string>(String(selectedGarageForDetails.hourlyRate || 0));
-  const [overnightRateInput, setOvernightRateInput] = useState<string>(String(selectedGarageForDetails.overnightRate || 0));
-  const [isSavingRates, setIsSavingRates] = useState(false);
-  const [isUpdatingLock, setIsUpdatingLock] = useState(false);
-  useEffect(() => {
-    setHourlyRateInput(String(selectedGarageForDetails.hourlyRate || 0));
-    setOvernightRateInput(String(selectedGarageForDetails.overnightRate || 0));
-  }, [selectedGarageForDetails.id, selectedGarageForDetails.hourlyRate, selectedGarageForDetails.overnightRate]);
+  const { adminLang } = useTheme();
+  const t = useAdminTranslation(adminLang);
 
-  useEffect(() => {
-    setGaragePinInput(selectedGarageForDetails.pin || '');
-  }, [selectedGarageForDetails.id, selectedGarageForDetails.pin]);
+  // ── Actions + business state (extracted to hook) ─────────────────────
+  const actions = useAdminGarageDetailsActions({
+    garage: selectedGarageForDetails,
+    setSelectedGarageForDetails,
+    staffList,
+    setStaffList,
+    isLoading,
+    setIsLoading,
+    onRefreshAdminLists,
+  });
 
-  const hasRateChanges =
-    hourlyRateInput !== String(selectedGarageForDetails.hourlyRate || 0) ||
-    overnightRateInput !== String(selectedGarageForDetails.overnightRate || 0);
-
-  const rateCheck = canChangeGarageRates(selectedGarageForDetails);
-
-  const handleSaveRates = async () => {
-    if (!rateCheck.allowed) return;
-
-    const hourly = Number(normalizeDigits(hourlyRateInput));
-    const overnight = Number(normalizeDigits(overnightRateInput));
-
-    if (isNaN(hourly) || isNaN(overnight)) return;
-
-    setIsSavingRates(true);
-    try {
-      const now = new Date();
-      await firestoreService.updateGarage(selectedGarageForDetails.id, {
-        hourlyRate: hourly,
-        overnightRate: overnight,
-        lastRateChangeDate: now,
-      });
-      await refreshAdminListsAfterMutation();
-      // Update via the setter with a new object instead of mutating the prop.
-      setSelectedGarageForDetails({
-        ...selectedGarageForDetails,
-        hourlyRate: hourly,
-        overnightRate: overnight,
-        lastRateChangeDate: now,
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSavingRates(false);
-    }
-  };
-
+  // ── Menu click-outside ───────────────────────────────────────────────
   const menuRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -144,137 +84,18 @@ export const AdminGarageDetailsView = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleToggleLock = async () => {
-    if (isUpdatingLock) return;
-    setIsUpdatingLock(true);
-    try {
-      const newLocked = !selectedGarageForDetails.isLocked;
-      await firestoreService.updateGarage(selectedGarageForDetails.id, {
-        isLocked: newLocked,
-        isSuspended: newLocked
-      });
-      await refreshAdminListsAfterMutation();
-      setSelectedGarageForDetails({
-        ...selectedGarageForDetails,
-        isLocked: newLocked,
-        isSuspended: newLocked
-      });
-    } catch (err) {
-      console.error('Failed to toggle garage lock:', err);
-    } finally {
-      setIsUpdatingLock(false);
-    }
-  };
-
-  const handleToggleMonthlySubscribers = async () => {
-    const newState = !selectedGarageForDetails.hasMonthlySubscribers;
-    try {
-      await firestoreService.updateGarage(selectedGarageForDetails.id, { hasMonthlySubscribers: newState });
-      await refreshAdminListsAfterMutation();
-      setSelectedGarageForDetails({ ...selectedGarageForDetails, hasMonthlySubscribers: newState });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleAddStaffSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = staffForm.name.trim();
-    if (!name || !staffForm.pin) return;
-    setIsLoading(true);
-    try {
-      const pinCheck = await firestoreService.isPinTaken(staffForm.pin);
-      if (pinCheck.taken) {
-        const { showToast } = useAppStore.getState();
-        showToast?.(
-          'الرمز مستخدم بالفعل',
-          'error'
-        );
-        return;
-      }
-      const staffData: Omit<Staff, 'id'> = {
-        name,
-        pin: staffForm.pin,
-        garageId: selectedGarageForDetails.id,
-        role: 'staff'
-      };
-      const created = await firestoreService.addStaff(staffData);
-      if (!created?.id) throw new Error('STAFF_CREATE_MISSING_ID');
-      setStaffList((current) => [
-        ...current.filter((staff) => staff.id !== created.id),
-        { ...staffData, id: created.id },
-      ]);
-      setShowAddStaffModal(false);
-    } catch (error) {
-      console.error('Failed to add Staff.');
-      const { showToast } = useAppStore.getState();
-      const message = error instanceof Error ? error.message : '';
-      const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN';
-      showToast?.(
-        pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.',
-        'error'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteStaff = async (staffId: string) => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      await firestoreService.removeStaff(staffId);
-      setStaffList((current) => current.filter((staff) => staff.id !== staffId));
-      setStaffToDelete(null);
-    } catch {
-      console.error('Failed to delete Staff.');
-      const { showToast } = useAppStore.getState();
-      showToast?.(
-        'تعذر حذف الموظف. يرجى المحاولة مرة أخرى.',
-        'error'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSaveGaragePin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!/^\d{5}$/.test(garagePinInput)) {
-      setPinError('يجب أن يكون الرمز 5 أرقام بالضبط');
-      return;
-    }
-    setIsUpdatingGaragePin(true);
-    setPinError('');
-    try {
-      const pinCheck = await firestoreService.isPinTaken(garagePinInput, selectedGarageForDetails.id);
-      if (pinCheck.taken) {
-        setPinError(`الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
-        setIsUpdatingGaragePin(false);
-        return;
-      }
-      await firestoreService.updateGarage(selectedGarageForDetails.id, { pin: garagePinInput, ownerPin: garagePinInput });
-      await refreshAdminListsAfterMutation();
-      // Update via the setter with a new object instead of mutating the prop.
-      setSelectedGarageForDetails({ ...selectedGarageForDetails, pin: garagePinInput, ownerPin: garagePinInput });
-      setShowEditGaragePinModal(false);
-    } catch (err: unknown) {
-      setPinError(getGaragePinUpdateErrorMessage(err));
-    } finally {
-      setIsUpdatingGaragePin(false);
-    }
-  };
-
   useBodyScrollLock(Boolean(showAddStaffModal || staffToDelete));
 
-
-  const generateNewStaffPin = useCallback(() => {
-    return generateSafePin(staffList.map((staff) => staff.pin));
-  }, [staffList]);
-
   const openAddStaffModal = () => {
-    setStaffForm({ name: '', pin: generateNewStaffPin() });
+    setStaffForm({ name: '', pin: actions.generateNewStaffPin() });
     setShowAddStaffModal(true);
+  };
+
+  // Wire delete: the hook clears the staff list; the view clears its
+  // staffToDelete state to close the confirm modal.
+  const handleDeleteStaff = async (staffId: string) => {
+    await actions.handleDeleteStaff(staffId);
+    setStaffToDelete(null);
   };
 
   return (
@@ -340,16 +161,16 @@ export const AdminGarageDetailsView = memo(({
       </header>
 
       <div className="max-w-5xl mx-auto px-6 space-y-8">
-        {/* Zone 1: Status & Key Performance Stats */}
+        {/* Zone 1: Status & Key Information */}
         <AdminGarageHeroAndStats
           garage={selectedGarageForDetails}
           t={t}
-          isUpdatingLock={isUpdatingLock}
-          onToggleLock={handleToggleLock}
+          isUpdatingLock={actions.isUpdatingLock}
+          onToggleLock={actions.handleToggleLock}
           onOpenEditPin={() => {
             const p = selectedGarageForDetails.pin || selectedGarageForDetails.ownerPin || '';
-            setGaragePinInput(isHashedPin(p) ? '' : p);
-            setPinError('');
+            actions.setGaragePinInput(isHashedPin(p) ? '' : p);
+            actions.setPinError('');
             setShowEditGaragePinModal(true);
           }}
         />
@@ -358,7 +179,7 @@ export const AdminGarageDetailsView = memo(({
         <AdminGarageFinancialsSection
           garage={selectedGarageForDetails}
           t={t}
-            onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
+          onToggleMonthlySubscribers={actions.handleToggleMonthlySubscribers}
         />
         <AdminCreditGrantPanel garage={selectedGarageForDetails} />
 
@@ -367,14 +188,14 @@ export const AdminGarageDetailsView = memo(({
           t={t}
           isZone3Open={isZone3Open}
           setIsZone3Open={setIsZone3Open}
-          rateCheck={rateCheck}
-          hourlyRateInput={hourlyRateInput}
-          setHourlyRateInput={setHourlyRateInput}
-          overnightRateInput={overnightRateInput}
-          setOvernightRateInput={setOvernightRateInput}
-          hasRateChanges={hasRateChanges}
-          isSavingRates={isSavingRates}
-          handleSaveRates={handleSaveRates}
+          rateCheck={actions.rateCheck}
+          hourlyRateInput={actions.hourlyRateInput}
+          setHourlyRateInput={actions.setHourlyRateInput}
+          overnightRateInput={actions.overnightRateInput}
+          setOvernightRateInput={actions.setOvernightRateInput}
+          hasRateChanges={actions.hasRateChanges}
+          isSavingRates={actions.isSavingRates}
+          handleSaveRates={actions.handleSaveRates}
           staffList={staffList}
           openAddStaffModal={openAddStaffModal}
           editingStaffPinId={editingStaffPinId}
@@ -396,20 +217,24 @@ export const AdminGarageDetailsView = memo(({
         setShowAddStaffModal={setShowAddStaffModal}
         staffForm={staffForm}
         setStaffForm={setStaffForm}
-        onAddStaffSubmit={handleAddStaffSubmit}
+        onAddStaffSubmit={(e) => actions.handleAddStaffSubmit(
+          e,
+          staffForm,
+          () => setStaffForm({ name: '', pin: '' }),
+          () => setShowAddStaffModal(false),
+        )}
         staffToDelete={staffToDelete}
         setStaffToDelete={setStaffToDelete}
         onDeleteStaff={handleDeleteStaff}
         showEditGaragePinModal={showEditGaragePinModal}
         setShowEditGaragePinModal={setShowEditGaragePinModal}
-        garagePinInput={garagePinInput}
-        setGaragePinInput={setGaragePinInput}
-        pinError={pinError}
-        setPinError={setPinError}
-        isUpdatingGaragePin={isUpdatingGaragePin}
-        onSaveGaragePin={handleSaveGaragePin}
+        garagePinInput={actions.garagePinInput}
+        setGaragePinInput={actions.setGaragePinInput}
+        pinError={actions.pinError}
+        setPinError={actions.setPinError}
+        isUpdatingGaragePin={actions.isUpdatingGaragePin}
+        onSaveGaragePin={actions.handleSaveGaragePin}
       />
     </div>
   );
 });
-
