@@ -339,6 +339,16 @@ app.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
           throw new Error('SUBSCRIBER_PLATE_IMMUTABLE');
         }
       }
+      // Dates are immutable on the update path. Extending a subscription
+      // requires the /renew endpoint (which debits 5 credits). This closes
+      // the free-renewal loophole where editing endDate forward bypassed
+      // the renewal fee. Only the renew route may move startDate/endDate.
+      if (
+        (subscriberData.startDate !== undefined && subscriberData.startDate !== currentData.startDate) ||
+        (subscriberData.endDate !== undefined && subscriberData.endDate !== currentData.endDate)
+      ) {
+        throw new Error('SUBSCRIBER_DATES_IMMUTABLE');
+      }
       const mergedData = { ...currentData, ...subscriberData };
       const dates = validateDateRange(mergedData.startDate, mergedData.endDate);
       const currentState = subscriberDocumentToState(currentData);
