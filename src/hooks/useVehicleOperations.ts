@@ -413,7 +413,18 @@ export function useVehicleOperations({
     }
   }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
-  // Delete Vehicle
+  // Delete Vehicle — receipt-mode (mirrors check-in/check-out).
+  //
+  // The vehicle stays visible in the list (with the surrounding UI dimmed via
+  // isLoading) until the Worker confirms the deletion. On success we apply the
+  // patch locally and tag it with `_confirmedTransactionUntil` so a stale
+  // Firestore snapshot can't resurrect the deleted vehicle for ~2s. On failure
+  // nothing is mutated, so no rollback path is needed — the user just sees an
+  // error toast and can retry.
+  //
+  // Delete is brought under the SAME transaction lock as check-in/check-out so
+  // a delete can't overlap an in-flight check-in or check-out (previously the
+  // `isTransactionLocked()` guard in those flows did not see delete as locked).
   const handleDeleteVehicle = useCallback(async () => {
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
@@ -435,31 +446,23 @@ export function useVehicleOperations({
       return;
     }
 
-    if (isLoading || deletingVehicleRef.current === selectedVehicle.id) {
+    if (isTransactionLocked() || deletingVehicleRef.current === selectedVehicle.id) {
       return;
     }
 
-    deletingVehicleRef.current = selectedVehicle.id;
-    soundManager.play('checkOut');
-    setShowCheckOutModal(false);
-    setIsLoading(true);
-    setLoadingType('delete');
-
     const vehicleToDelete = selectedVehicle;
-    const previousVehicles = [...vehicles];
-    const previousGarage = garage ? { ...garage } : null;
     const isInside = vehicleToDelete.status === 'inside';
-    
-    // Optimistic deletion: instantly remove from UI and decrement counter
-    setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
-    if (isInside) {
-      setGarage(prev => prev ? {
-        ...prev,
-        carsInside: Math.max(0, (prev.carsInside || 0) - 1)
-      } : prev);
-    }
+
+    deletingVehicleRef.current = vehicleToDelete.id;
+    soundManager.play('checkOut');
+    // Close the checkout modal immediately on submit (same as check-in pattern).
+    // The busy/locked state provides the feedback that the operation is in-flight.
+    setShowCheckOutModal(false);
     setSelectedVehicle(null);
     setNewPlateNumber('');
+    setIsLoading(true);
+    setLoadingType('delete');
+    acquireTransactionLock();
     showToast('جاري حذف اللوحة...', 'info');
 
     try {
@@ -470,33 +473,40 @@ export function useVehicleOperations({
         currentStaff ? currentStaff.name : 'مدير الجراج',
         currentStaff ? currentStaff.id : undefined
       );
-      if (success) {
-        showToast('اللوحة اتمسحت بنجاح', 'success');
-      } else {
-        // Rollback on failure
-        setVehicles(previousVehicles);
-        if (previousGarage) {
-          setGarage(previousGarage);
-        }
-        showToast('فشل في حذف السيارة، جرب تانى', 'error');
+
+      if (!success) {
+        throw new Error('DELETE returned false');
       }
+
+      // Receipt-mode: apply the confirmed patch locally now that the Worker has
+      // committed. The 2-second `_confirmedTransactionUntil` guard prevents a
+      // stale Firestore snapshot from reverting the change before it catches up.
+      setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
+      if (isInside) {
+        setGarage(prev => prev ? {
+          ...prev,
+          carsInside: Math.max(0, (prev.carsInside || 0) - 1),
+          _confirmedTransactionUntil: Date.now() + 2000,
+        } : prev);
+      }
+      showToast('اللوحة اتمسحت بنجاح', 'success');
     } catch (err: any) {
-      // Rollback on error
-      setVehicles(previousVehicles);
-      if (previousGarage) {
-        setGarage(previousGarage);
-      }
       if (err?.message === 'reached_daily_deletion_limit' || err?.message?.includes('reached_daily_deletion_limit')) {
         showToast('وصلت للحد الأقصى للحذف اليوم (3 مرات)', 'error');
       } else {
         showToast('فشل في حذف السيارة، جرب تانى', 'error');
       }
+      // No rollback needed — nothing was mutated before the Worker confirmed.
+      // The vehicle remains in the list and the user can retry.
     } finally {
       deletingVehicleRef.current = null;
+      // Release the lock BEFORE clearing isLoading so the UI stays visibly
+      // disabled for the entire 3s minimum window (matches check-in/check-out).
+      await releaseTransactionLock();
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, currentStaff, showToast, vehicles, setGarage, setVehicles]);
+  }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, setVehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
   return {
     newPlateNumber,
