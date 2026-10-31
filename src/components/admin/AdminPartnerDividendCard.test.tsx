@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AdminPartnerDividendCard } from './AdminPartnerDividendCard';
 
 describe('AdminPartnerDividendCard pitch-style investment projections', () => {
-  it('renders the hero headline, assumptions strip, and trajectory chart (no table)', () => {
+  it('renders the hero headline and assumptions column (no chart, no table)', () => {
     render(<AdminPartnerDividendCard currentActiveGarages={5} />);
 
     // Header
@@ -16,7 +16,7 @@ describe('AdminPartnerDividendCard pitch-style investment projections', () => {
     expect(screen.getByText(/متوسط شهريًا/)).toBeInTheDocument();
     expect(screen.getByText(/جراجات نهاية الفترة/)).toBeInTheDocument();
 
-    // Zone 2: assumptions strip
+    // Zone 2: assumptions column (now on the left in the two-column layout)
     expect(screen.getByRole('heading', { name: 'الافتراضات' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'سيارات/يوم لكل جراج' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'أيام عمل/شهر' })).toBeInTheDocument();
@@ -30,15 +30,15 @@ describe('AdminPartnerDividendCard pitch-style investment projections', () => {
     expect(screen.queryByRole('spinbutton', { name: 'عمولة المندوبين' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'رسوم الدفع والتحويل' })).not.toBeInTheDocument();
 
-    // Zone 3: trajectory chart replaces the table
-    expect(screen.getByRole('img', { name: 'منحنى صافي الربح الشهري' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'منحنى صافي الربح الشهري' })).toBeInTheDocument();
+    // The chart is gone
+    expect(screen.queryByRole('img', { name: 'منحنى صافي الربح الشهري' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'منحنى صافي الربح الشهري' })).not.toBeInTheDocument();
 
     // The table is gone
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByText('الشهر')).not.toBeInTheDocument();
 
-    // Zone 4: how-it's-calculated disclosure exists (collapsed by default)
+    // How-it's-calculated disclosure exists (collapsed by default)
     expect(screen.getByText('كيف تُحسب هذه الأرقام؟')).toBeInTheDocument();
   });
 
