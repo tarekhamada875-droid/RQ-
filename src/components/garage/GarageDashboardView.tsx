@@ -58,6 +58,7 @@ interface GarageDashboardViewProps {
   showSubscribers: boolean;
   setShowSubscribers: (show: boolean) => void;
   isLoading?: boolean;
+  checkoutJustSucceeded?: boolean;
 }
 
 export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
@@ -85,6 +86,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     showSubscribers,
     setShowSubscribers,
     isLoading = false,
+    checkoutJustSucceeded = false,
   } = props;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -98,19 +100,20 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
-  // FIX #4: Track when a checkout is in progress so we can return to the main
-  // dashboard tab when it completes. The checkout modal is rendered outside
-  // this component, but isLoading is passed as a prop. When isLoading
-  // transitions from true→false and we were on the active_vehicles tab (where
-  // checkout is initiated), switch back to main so the user sees the large
-  // inside-car count decrease.
+  // FIX #4: Return to the main dashboard tab only when checkout SUCCEEDS.
+  // If checkout fails, stay on the active-vehicles list so the user can
+  // retry or pick a different car. The checkoutJustSucceeded flag is set
+  // by useVehicleOperations: true on success, false on failure.
   const wasLoadingRef = useRef(false);
   useEffect(() => {
     if (wasLoadingRef.current && !isLoading && activeTab === 'active_vehicles') {
-      setActiveTab('main');
+      if (checkoutJustSucceeded) {
+        setActiveTab('main');
+      }
+      // If checkoutJustSucceeded is false (failure), stay on active_vehicles
     }
     wasLoadingRef.current = isLoading;
-  }, [isLoading, activeTab]);
+  }, [isLoading, activeTab, checkoutJustSucceeded]);
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
