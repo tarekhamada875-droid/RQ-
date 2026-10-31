@@ -419,11 +419,13 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
             scrollContainerRef={scrollContainerRef}
             onClose={() => setActiveTab("main")}
             onCheckOut={(vehicle) => {
+              if (isLoading) return; // block during transaction lock
               closeKeyboard();
               setSelectedVehicle(vehicle);
               setShowCheckOutModal(true);
             }}
             onRegisterNewCar={() => setActiveTab("main")}
+            disabled={isLoading}
           />
         )}
       </main>
