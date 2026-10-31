@@ -326,17 +326,19 @@ input[type="number"]::-webkit-outer-spin-button {
 
 @keyframes credit-debit-fall {
   0% {
-    transform: translateY(-3rem) scale(0.82);
+    transform: translate3d(0, -2.25rem, 0) scale(0.86);
     opacity: 0;
   }
-  14% {
+  12% {
+    transform: translate3d(0, -0.5rem, 0) scale(0.96);
     opacity: 0.95;
   }
   78% {
     opacity: 0.8;
   }
   100% {
-    transform: translateY(calc(100% + 3rem)) scale(1);
+    /* The track is as tall as the card, so the arrow crosses the full card. */
+    transform: translate3d(0, calc(100% + 2.5rem), 0) scale(1.02);
     opacity: 0;
   }
 }
@@ -346,24 +348,57 @@ input[type="number"]::-webkit-outer-spin-button {
   top: 0;
   left: 50%;
   width: 2.5rem;
-  height: 2.5rem;
+  height: 100%;
   margin-left: -1.25rem;
-  animation: credit-debit-fall 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation: credit-debit-fall 1.35s cubic-bezier(0.4, 0, 1, 1) both;
   will-change: transform, opacity;
 }
 
+.credit-debit-arrow-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
 /* 5-arrow center-out pattern (Manus spec).
-   Order: center (0s) → inner pair (0.15s) → outer pair (0.3s).
+   Order: center (0s) → inner pair (0.12s) → outer pair (0.24s).
    Opacity is fully controlled by the animation keyframes — do NOT set
    static opacity here or it will override the animation and freeze. */
 .credit-debit-arrow-center { left: 50%; margin-left: -1.25rem; animation-delay: 0s; }
-.credit-debit-arrow-inner-left { left: 32%; margin-left: -1.25rem; animation-delay: 0.15s; }
-.credit-debit-arrow-inner-right { right: 32%; left: auto; margin-left: 0; animation-delay: 0.15s; }
-.credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.3s; }
-.credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.3s; }
+.credit-debit-arrow-inner-left { left: 32%; margin-left: -1.25rem; animation-delay: 0.12s; }
+.credit-debit-arrow-inner-right { right: 32%; left: auto; margin-left: 0; animation-delay: 0.12s; }
+.credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.24s; }
+.credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.24s; }
+
+@keyframes flip-number-digit-in {
+  0% {
+    transform: perspective(14rem) translate3d(0, 42%, 0) rotateX(-68deg);
+    opacity: 0.15;
+  }
+  68% {
+    transform: perspective(14rem) translate3d(0, -3%, 0) rotateX(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(14rem) translate3d(0, 0, 0) rotateX(0);
+    opacity: 1;
+  }
+}
+
+.flip-number-digit {
+  display: inline-block;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  animation: flip-number-digit-in 480ms cubic-bezier(0.22, 0.68, 0, 1) both;
+  will-change: transform, opacity;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .credit-debit-arrow { animation: none; top: 42%; opacity: 0.85; }
+  /* The red balance/border state remains as a clear non-motion debit cue. */
+  .credit-debit-arrow { display: none; }
+  .flip-number-digit { animation: none; }
 }
 
 /* Freeze dynamic layout properties to isolate composition pipelines entirely within GPU layers */
@@ -387,8 +422,6 @@ input[type="number"]::-webkit-outer-spin-button {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
 }
-
-
 
 
 

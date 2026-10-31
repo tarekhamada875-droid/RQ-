@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 
 interface FlipCardProps {
   value: number;
@@ -8,6 +8,11 @@ interface FlipCardProps {
 
 export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', color = 'default' }) => {
   const digits = value.toString().padStart(size === 'sm' ? 1 : 2, '0').split('');
+  const previousDigitsRef = useRef<string[] | null>(null);
+
+  useEffect(() => {
+    previousDigitsRef.current = digits;
+  }, [value, size]);
 
   return (
     <div 
@@ -15,13 +20,19 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
       dir="ltr"
     >
       {digits.map((digit, index) => (
-        <FlipDigit key={index} digit={digit} size={size} color={color} />
+        <FlipDigit
+          key={`${index}-${digit}`}
+          digit={digit}
+          size={size}
+          color={color}
+          animate={previousDigitsRef.current !== null && previousDigitsRef.current[index] !== digit}
+        />
       ))}
     </div>
   );
 });
 
-const FlipDigit = React.memo(({ digit, size = 'md', color = 'default' }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger' }) => {
+const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', animate }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; animate: boolean }) => {
   const sizeClasses = {
     sm: 'w-8 h-12 rounded-lg',
     md: 'w-14 h-22 rounded-xl sm:w-18 sm:h-28',
@@ -64,7 +75,10 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default' }: { digit
     <div 
       className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
     >
-      <span className={`${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}>
+      <span
+        data-testid="flip-number-digit"
+        className={`${animate ? 'flip-number-digit' : ''} ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
+      >
         {digit}
       </span>
       {/* Subtle center hairline for clean scoreboard card division */}
@@ -74,4 +88,3 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default' }: { digit
 });
 
 FlipDigit.displayName = 'FlipDigit';
-

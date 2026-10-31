@@ -274,6 +274,10 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(arrows[2]).toHaveClass('credit-debit-arrow-inner-right');
     expect(arrows[3]).toHaveClass('credit-debit-arrow-outer-left');
     expect(arrows[4]).toHaveClass('credit-debit-arrow-outer-right');
+    arrows.forEach((track) => {
+      expect(track.tagName.toLowerCase()).toBe('span');
+      expect(track.querySelector('svg')).not.toBeNull();
+    });
   });
 
   it('renders GarageActiveVehiclesList and handles empty state', () => {
