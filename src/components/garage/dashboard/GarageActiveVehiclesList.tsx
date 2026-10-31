@@ -18,6 +18,9 @@ interface GarageActiveVehiclesListProps {
   onClose: () => void;
   onCheckOut: (vehicle: any) => void;
   onRegisterNewCar: () => void;
+  /** When true, all vehicle items are visually dimmed and non-interactive
+   *  (used during the 3-second transaction lock). */
+  disabled?: boolean;
 }
 
 export const GarageActiveVehiclesList = memo(({
@@ -30,6 +33,7 @@ export const GarageActiveVehiclesList = memo(({
   onClose,
   onCheckOut,
   onRegisterNewCar,
+  disabled = false,
 }: GarageActiveVehiclesListProps) => {
   return (
     <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border border-slate-150 dark:border-slate-800 overflow-hidden flex flex-col flex-1 min-h-[400px] md:min-h-[500px] transition-colors w-full shadow-sm">
@@ -65,6 +69,7 @@ export const GarageActiveVehiclesList = memo(({
             key={vehicle.id || vehicle.plateNumber}
             vehicle={vehicle}
             onCheckOut={onCheckOut}
+            disabled={disabled}
           />
         ))}
 
