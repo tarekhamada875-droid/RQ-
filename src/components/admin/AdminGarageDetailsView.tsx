@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { firestoreService } from '../../services';
 import { normalizeDigits, canChangeGarageRates, isHashedPin, generateSafePin } from '../../utils';
-import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { Garage, Staff } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
@@ -33,7 +32,6 @@ interface AdminGarageDetailsViewProps {
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  allGarages?: Garage[];
   onRefreshAdminLists?: () => Promise<void>;
 }
 
@@ -56,7 +54,7 @@ export const AdminGarageDetailsView = memo(({
   setStaffList,
   isLoading,
   setIsLoading,
-  allGarages = [],
+
   onRefreshAdminLists
 }: AdminGarageDetailsViewProps) => {
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -90,17 +88,6 @@ export const AdminGarageDetailsView = memo(({
   const [overnightRateInput, setOvernightRateInput] = useState<string>(String(selectedGarageForDetails.overnightRate || 0));
   const [isSavingRates, setIsSavingRates] = useState(false);
   const [isUpdatingLock, setIsUpdatingLock] = useState(false);
-  const [todayEntriesFromSummary, setTodayEntriesFromSummary] = useState<number | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    setTodayEntriesFromSummary(null);
-    void firestoreService.getDashboardSummary(selectedGarageForDetails.id).then(summary => {
-      if (current && typeof summary.entriesToday === 'number') setTodayEntriesFromSummary(summary.entriesToday);
-    }).catch(() => {});
-    return () => { current = false; };
-  }, [selectedGarageForDetails.id]);
-
   useEffect(() => {
     setHourlyRateInput(String(selectedGarageForDetails.hourlyRate || 0));
     setOvernightRateInput(String(selectedGarageForDetails.overnightRate || 0));
@@ -185,30 +172,6 @@ export const AdminGarageDetailsView = memo(({
       setSelectedGarageForDetails({ ...selectedGarageForDetails, hasMonthlySubscribers: newState });
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  const updateAppStoreGarage = useAppStore(state => state.updateGarage);
-
-  const handleReferredByChange = async (refId: string) => {
-    const refGarage = allGarages.find(g => g.id === refId);
-    try {
-      await firestoreService.updateGarage(selectedGarageForDetails.id, {
-        referredByGarageId: refId || null,
-        referredByGarageName: refGarage ? refGarage.name : null
-      });
-      await refreshAdminListsAfterMutation();
-      const updated: Garage = {
-        ...selectedGarageForDetails,
-        referredByGarageId: refId || undefined,
-        referredByGarageName: refGarage ? refGarage.name : undefined
-      };
-      setSelectedGarageForDetails(updated);
-      if (typeof updateAppStoreGarage === 'function') {
-        updateAppStoreGarage(updated);
-      }
-    } catch (err) {
-      console.error('Failed to update referred garage:', err);
     }
   };
 
@@ -305,17 +268,6 @@ export const AdminGarageDetailsView = memo(({
 
   useBodyScrollLock(Boolean(showAddStaffModal || staffToDelete));
 
-  const today = getCairoDateKey();
-  const isTodayValid = selectedGarageForDetails.lastTransactionDate === today;
-
-  const dailyCount = todayEntriesFromSummary ?? (isTodayValid ? (selectedGarageForDetails.todayCount || 0) : 0);
-  const dailyRevenue = isTodayValid ? (selectedGarageForDetails.todayRevenue || 0) : 0;
-
-  const totalCount = selectedGarageForDetails.totalVehiclesOut || 0;
-  const totalRevenue = selectedGarageForDetails.totalRevenue || 0;
-  const carsInside = typeof selectedGarageForDetails.carsInside === 'number'
-    ? Math.max(0, selectedGarageForDetails.carsInside)
-    : (selectedGarageForDetails.activePlates ? Object.keys(selectedGarageForDetails.activePlates).length : 0);
 
   const generateNewStaffPin = useCallback(() => {
     return generateSafePin(staffList.map((staff) => staff.pin));
@@ -393,11 +345,6 @@ export const AdminGarageDetailsView = memo(({
         <AdminGarageHeroAndStats
           garage={selectedGarageForDetails}
           t={t}
-          carsInside={carsInside}
-          dailyCount={dailyCount}
-          dailyRevenue={dailyRevenue}
-          totalCount={totalCount}
-          totalRevenue={totalRevenue}
           isUpdatingLock={isUpdatingLock}
           onToggleLock={handleToggleLock}
           onOpenEditPin={() => {
@@ -413,8 +360,6 @@ export const AdminGarageDetailsView = memo(({
           garage={selectedGarageForDetails}
           t={t}
             onToggleMonthlySubscribers={handleToggleMonthlySubscribers}
-          allGarages={allGarages}
-          onReferredByChange={handleReferredByChange}
         />
         <AdminCreditGrantPanel garage={selectedGarageForDetails} />
 
