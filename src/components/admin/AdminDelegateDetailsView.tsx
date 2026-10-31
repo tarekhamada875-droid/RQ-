@@ -277,6 +277,9 @@ export const AdminDelegateDetailsView = memo(({
           <AdminDelegateProfileCard 
             delegate={delegate}
             adminLang={adminLang}
+            onPinUpdated={(newPin) => {
+              setSelectedDelegate({ ...delegate, pin: newPin });
+            }}
           />
 
           {/* Stats Grid & Monthly Filter */}
