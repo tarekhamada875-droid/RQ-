@@ -87,6 +87,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
     filteredSubscribers,
     hasMoreSubscribers,
     isLoadingMoreSubscribers,
+    isInitialLoad,
     searchQuery,
     setSearchQuery,
     handleLoadMoreSubscribers,
@@ -168,7 +169,16 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
 
         {/* List */}
         <div className="space-y-3">
-          {filteredSubscribers.length === 0 ? (
+          {isInitialLoad ? (
+            // First-page hydration skeleton. Shown only until the first
+            // Firestore snapshot (or shared subscriber page) lands, so the
+            // user doesn't see a blank list area during initial load.
+            <div className="space-y-3" aria-label="جاري تحميل المشتركين">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+              ))}
+            </div>
+          ) : filteredSubscribers.length === 0 ? (
             <div className="text-center py-12 bg-[#faf9f6] dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
               <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-slate-400 dark:text-slate-500" />

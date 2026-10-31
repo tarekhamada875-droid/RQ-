@@ -24,6 +24,10 @@ export function useSubscriberList(
   const [isLoadingMoreSubscribers, setIsLoadingMoreSubscribers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAuthResolved, setIsAuthResolved] = useState(!!auth.currentUser);
+  // True until the first Firestore snapshot (or shared subscriber page) lands.
+  // Used by SubscribersView to render a skeleton instead of a blank list area
+  // during first-page hydration.
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const hasReceivedSubscriberSnapshotRef = useRef(false);
   const activeGarageIdRef = useRef<string | null>(null);
@@ -46,6 +50,7 @@ export function useSubscriberList(
       setSubscriberCursor(null);
       setHasMoreSubscribers(false);
       setIsLoadingMoreSubscribers(false);
+      setIsInitialLoad(true);
     }
 
     if (subscriberPage) {
@@ -58,6 +63,7 @@ export function useSubscriberList(
       hasReceivedSubscriberSnapshotRef.current = true;
       setSubscriberCursor(subscriberPage.lastDoc);
       setHasMoreSubscribers(subscriberPage.hasMore);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -74,6 +80,7 @@ export function useSubscriberList(
       hasReceivedSubscriberSnapshotRef.current = true;
       setSubscriberCursor(page.lastDoc);
       setHasMoreSubscribers(page.hasMore);
+      setIsInitialLoad(false);
     });
 
     return () => {
@@ -129,6 +136,7 @@ export function useSubscriberList(
     filteredSubscribers,
     hasMoreSubscribers,
     isLoadingMoreSubscribers,
+    isInitialLoad,
     searchQuery,
     setSearchQuery,
     handleLoadMoreSubscribers,
