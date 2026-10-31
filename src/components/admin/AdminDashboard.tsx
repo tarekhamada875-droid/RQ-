@@ -68,7 +68,7 @@ export const AdminDashboard = memo(({
   // `activeTab` includes retired values ('overview' | 'packages' | 'trial_leads' |
   // 'supervisors') so the redirect effect below can detect and migrate them out
   // of older browsers' localStorage. They have no UI surface.
-  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'wallet_settings' | 'partners_calculator'>('app_admin_tab', 'garages');
+  const [activeTab, setActiveTab] = useLocalStorageState<'overview' | 'garages' | 'packages' | 'people' | 'delegates' | 'requests' | 'trial_leads' | 'supervisors' | 'admin-pin' | 'catalog_settings' | 'active_sessions' | 'wallet_settings'>('app_admin_tab', 'garages');
 
   // Older browser storage may point at retired tabs. Normalize these saved values without touching user data.
   React.useEffect(() => {
