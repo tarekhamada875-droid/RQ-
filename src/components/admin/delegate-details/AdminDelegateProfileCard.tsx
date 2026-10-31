@@ -4,15 +4,20 @@ import { Delegate } from '../../../types';
 import { safeDate, formatDisplayPin, normalizeDigits } from '../../../utils';
 import { firestoreService } from '../../../services';
 import { useAdminTranslation } from '../../../utils/adminTranslations';
+import { useAppStore } from '../../../store/appStore';
 
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
   adminLang: 'ar';
+  /** Called after a successful PIN update so the parent can refresh its
+   *  delegate state cleanly (instead of the child mutating the prop). */
+  onPinUpdated?: (newPin: string) => void;
 }
 
 export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> = memo(({
   delegate,
-  adminLang
+  adminLang,
+  onPinUpdated
 }) => {
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [pinInput, setPinInput] = useState(delegate.pin && delegate.pin.length === 64 ? '' : (delegate.pin || ''));
@@ -21,7 +26,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
 
   const handleUpdatePin = async () => {
     if (!/^\d{5}$/.test(pinInput)) {
-      alert('يجب أن يكون الرمز 5 أرقام بالضبط');
+      useAppStore.getState().showToast('يجب أن يكون الرمز 5 أرقام بالضبط', 'error');
       return;
     }
     setIsUpdatingPin(true);
@@ -29,16 +34,19 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       const cleanPin = pinInput.trim();
       const pinCheck = await firestoreService.isPinTaken(cleanPin, delegate.id);
       if (pinCheck.taken) {
-        alert(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
+        useAppStore.getState().showToast(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
         setIsUpdatingPin(false);
         return;
       }
 
       await firestoreService.updateDelegate(delegate.id, { pin: cleanPin });
-      delegate.pin = cleanPin;
+      // Notify the parent of the new pin instead of mutating the prop object
+      // directly. The parent owns the delegate state and will re-render this
+      // card with the updated pin.
+      onPinUpdated?.(cleanPin);
       setIsEditingPin(false);
     } catch {
-      alert('فشل تحديث الرمز');
+      useAppStore.getState().showToast('فشل تحديث الرمز', 'error');
     } finally {
       setIsUpdatingPin(false);
     }
