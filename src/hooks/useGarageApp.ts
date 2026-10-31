@@ -244,8 +244,6 @@ export function useGarageApp() {
     handleDelegateLogin,
     createNewGarage,
     deleteGarage,
-    updateGarageRate,
-    addDelegate,
     removeDelegate,
   } = useAdminAndGarageManagement({
     allGarages,
@@ -376,9 +374,7 @@ export function useGarageApp() {
     handleGarageLogin,
     handleDelegateLogin,
     deleteGarage,
-    updateGarageRate,
     createNewGarage,
-    addDelegate,
     removeDelegate,
   };
   return {
@@ -482,9 +478,7 @@ export function useGarageApp() {
     confirmCheckOut,
     handleDeleteVehicle,
     deleteGarage,
-    updateGarageRate,
     createNewGarage,
-    addDelegate,
     removeDelegate
   };
 }

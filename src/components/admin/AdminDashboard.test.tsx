@@ -53,7 +53,6 @@ vi.mock('./AdminConfirmDialog', () => ({
     : null
 }));
 vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));
-vi.mock('./AdminGarageList', () => ({ AdminGarageList: () => null }));
 
 beforeEach(() => {
   localStorage.clear();

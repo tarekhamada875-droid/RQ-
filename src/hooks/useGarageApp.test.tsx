@@ -13,9 +13,7 @@ const mocks = vi.hoisted(() => ({
   handleGarageLogin: vi.fn(),
   handleDelegateLogin: vi.fn(),
   deleteGarage: vi.fn(),
-  updateGarageRate: vi.fn(),
   createNewGarage: vi.fn(),
-  addDelegate: vi.fn(),
   removeDelegate: vi.fn()
 }));
 
@@ -87,8 +85,6 @@ vi.mock('./useAdminAndGarageManagement', () => ({
     handleDelegateLogin: mocks.handleDelegateLogin,
     createNewGarage: mocks.createNewGarage,
     deleteGarage: mocks.deleteGarage,
-    updateGarageRate: mocks.updateGarageRate,
-    addDelegate: mocks.addDelegate,
     removeDelegate: mocks.removeDelegate
   })
 }));

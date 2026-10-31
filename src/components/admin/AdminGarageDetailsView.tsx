@@ -27,7 +27,6 @@ interface AdminGarageDetailsViewProps {
   setView: (view: any) => void;
   setSelectedGarageForDetails: (garage: Garage | null) => void;
   setShowDeleteConfirm: (show: boolean) => void;
-  updateGarageRate: (garage: Garage, field: keyof Garage, value: number) => Promise<void>;
   staffList: Staff[];
   setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
   isLoading: boolean;
@@ -49,7 +48,6 @@ export const AdminGarageDetailsView = memo(({
   setView,
   setSelectedGarageForDetails,
   setShowDeleteConfirm,
-  updateGarageRate: _updateGarageRate,
   staffList,
   setStaffList,
   isLoading,
