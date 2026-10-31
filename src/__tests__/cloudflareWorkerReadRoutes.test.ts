@@ -148,4 +148,26 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect((await garageResponse.json() as any).data).toMatchObject({ carsInside: 4, activeSubscribersCount: 3, todayEntries: 12 });
   });
 
+  it('GET /api/admin/delegates returns paginated delegates without PIN fields', async () => {
+    // Seed a couple of delegates
+    mockDb.seed('delegates/del-1', { id: 'del-1', name: 'Delegate One', phone: '01011112222', pin: '12345', pinHash: 'hash', createdAt: new Date('2026-10-01') });
+    mockDb.seed('delegates/del-2', { id: 'del-2', name: 'Delegate Two', phone: '01099998888', pin: '67890', pinHash: 'hash', createdAt: new Date('2026-10-02') });
+
+    const res = await api.fetch(new Request('http://localhost/api/admin/delegates?limit=10', {
+      headers: { Authorization: 'Bearer valid-admin-token' }
+    }), workerEnv);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.success).toBe(true);
+    expect(body.delegates).toHaveLength(2);
+    // Ordered by createdAt desc — Delegate Two first
+    expect(body.delegates[0]).toMatchObject({ name: 'Delegate Two' });
+    expect(body.delegates[1]).toMatchObject({ name: 'Delegate One' });
+    // PIN fields must be stripped
+    expect(body.delegates[0]).not.toHaveProperty('pin');
+    expect(body.delegates[0]).not.toHaveProperty('pinHash');
+    expect(body.hasMore).toBe(false);
+    expect(body.nextCursor).toBeNull();
+  });
+
 });
