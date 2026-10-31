@@ -9,7 +9,7 @@ interface UseGarageSyncProps {
   user: any;
   view: string;
   garage: Garage | null;
-  setGarage: (g: Garage | null) => void;
+  setGarage: React.Dispatch<React.SetStateAction<Garage | null>>;
   delegate: any | null;
   currentStaff: Staff | null;
   setDelegate: (d: any | null) => void;
@@ -455,16 +455,29 @@ export function useGarageSync({
           // A callback already queued by the old listener must not replace the
           // active garage after a switch or logout.
           if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
-          // Note: setGarage is typed as (g: Garage | null) => void (not
-          // SetStateAction), so we cannot use a function updater here. The
-          // stale-snapshot guard is handled inside useVehicleOperations via
-          // the _confirmedTransactionUntil timestamp — when a confirmed
-          // transaction sets that field, subsequent snapshot overwrites
-          // within the 2s window preserve credits/carsInside. Since we can't
-          // read current state here, we just apply the snapshot; the guard
-          // works because the confirmed patch is applied AFTER the snapshot
-          // race window has passed.
-          setGarage(updatedGarage);
+
+          // FIX #5: Stale-snapshot guard. After a confirmed transaction, the
+          // Worker response set _confirmedTransactionUntil on the garage state.
+          // During that 2-second window, a stale Firestore snapshot can arrive
+          // and overwrite the just-confirmed credits/carsInside, causing the
+          // "flip then revert then settle" flicker. Here we check the guard
+          // timestamp and merge (preserving credits + carsInside) instead of
+          // overwriting when the guard is active.
+          setGarage((current) => {
+            if (!current) return updatedGarage;
+            const guardUntil = (current as any)._confirmedTransactionUntil;
+            if (!guardUntil || Date.now() > guardUntil) {
+              return updatedGarage; // no active guard → full overwrite
+            }
+            // Guard active: preserve confirmed credits + carsInside, take
+            // everything else from the snapshot.
+            return {
+              ...updatedGarage,
+              credits: current.credits,
+              carsInside: current.carsInside,
+              _confirmedTransactionUntil: guardUntil, // keep the guard alive
+            } as Garage;
+          });
         })
       : () => {};
 

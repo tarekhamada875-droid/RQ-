@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
 import { firestoreService } from '../services';
 import { soundManager } from '../utils/sounds';
+import { generateIdempotencyKey } from '../types/apiContracts';
 import { 
   safeDate, 
   getRawPlate, 
@@ -32,6 +33,9 @@ interface UseVehicleOperationsProps {
   now: Date;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
+  /** Called after a confirmed check-out. Used by the dashboard to return to
+   *  the main view so the user sees the large inside-car count decrease. */
+  onCheckOutComplete?: () => void;
 }
 
 export function useVehicleOperations({
@@ -45,6 +49,7 @@ export function useVehicleOperations({
   now,
   showToast,
   closeKeyboard,
+  onCheckOutComplete,
 }: UseVehicleOperationsProps) {
   const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -64,9 +69,13 @@ export function useVehicleOperations({
   // ── Transaction lock (Manus reliability model) ──────────────────────────
   // A shared, per-garage transaction lock that prevents overlapping check-in
   // and check-out. The lock has a 3-second minimum floor from submission —
-  // even if the Worker responds instantly, controls stay disabled until the
-  // feedback animation has had time to complete. A slow request extends the
-  // lock; the timer does NOT cancel or expire the request.
+  // even if the Worker responds instantly, controls stay disabled (isLoading
+  // stays true) until the feedback animation has had time to complete. A slow
+  // request extends the lock; the timer does NOT cancel or expire the request.
+  //
+  // IMPORTANT: isLoading must stay true for the ENTIRE lock window, not just
+  // the request. The finally block must release the lock BEFORE setting
+  // isLoading false, so the UI stays visibly disabled until the 3s floor ends.
   const MIN_LOCK_MS = 3000;
   const transactionLockUntilRef = useRef<number>(0);
 
@@ -84,7 +93,9 @@ export function useVehicleOperations({
   }, []);
 
   /** Releases the lock, but not before the minimum floor has elapsed. Resolves
-   *  immediately if the floor has passed, otherwise waits the remainder. */
+   *  immediately if the floor has passed, otherwise waits the remainder.
+   *  MUST be awaited BEFORE setting isLoading false, so the UI stays visibly
+   *  disabled for the entire 3s window. */
   const releaseTransactionLock = useCallback(async () => {
     const remaining = transactionLockUntilRef.current - Date.now();
     if (remaining > 0) {
@@ -136,6 +147,13 @@ export function useVehicleOperations({
     setIsLoading(true);
     setLoadingType(type);
     acquireTransactionLock();
+    // FIX #2: close the plate form immediately on submit, before the Worker
+    // call. The form must not remain as a stale/competing visual state. The
+    // busy/locked state (isLoading) provides the feedback that the operation
+    // is in-flight.
+    setShowCheckInModal(false);
+    setNewPlateNumber('');
+
     if (garage.hasMonthlySubscribers) {
       try {
         const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
@@ -148,22 +166,20 @@ export function useVehicleOperations({
           }
         }
       } catch (e) {
+        await releaseTransactionLock();
         setIsLoading(false);
         setLoadingType(null);
-        await releaseTransactionLock();
         showToast('تعذر التحقق من حالة الاشتراك. يرجى المحاولة مرة أخرى.', 'error');
         return;
       }
     }
 
     if (isSubscriber) {
+      await releaseTransactionLock();
       setIsLoading(false);
       setLoadingType(null);
-      await releaseTransactionLock();
       setSubscriberWarningPlate(formatted);
       setShowSubscriberWarning(true);
-      setShowCheckInModal(false);
-      setNewPlateNumber('');
       soundManager.play('error');
       return;
     }
@@ -174,6 +190,11 @@ export function useVehicleOperations({
     const entrantRole = currentStaff ? 'staff' : 'garage';
 
     try {
+      // FIX #6: generate the idempotency key ONCE per transaction attempt.
+      // If the request fails ambiguously (network timeout), the retry will
+      // reuse this same key so the server can return the original committed
+      // result instead of creating a duplicate transaction.
+      const idempotencyKey = generateIdempotencyKey('vehicle_checkin');
       const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
         firestoreService.checkInVehicle(garage.id, {
           plateNumber: formatted,
@@ -183,7 +204,7 @@ export function useVehicleOperations({
           staffId: currentStaff ? currentStaff.id : null,
           staffName: currentStaff ? currentStaff.name : 'مدير الجراج',
           isSubscriber: isSubscriber
-        })
+        }, idempotencyKey)
       );
 
       if (!res.success) {
@@ -207,27 +228,38 @@ export function useVehicleOperations({
         enteredByUid: serverVehicle?.enteredByUid ?? null,
         isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
       };
+
+      // FIX #3: apply vehicle + count FIRST (without credits), so the count
+      // animation completes before the credit-debit arrows begin. Credits are
+      // applied in a second state update after a short delay.
       setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
 
-      const serverGaragePatch: Partial<Garage> = {};
-      if (typeof serverData?.carsInside === 'number') serverGaragePatch.carsInside = serverData.carsInside;
+      const countPatch: Partial<Garage> = {};
+      if (typeof serverData?.carsInside === 'number') countPatch.carsInside = serverData.carsInside;
       if (typeof serverData?.dailyCount === 'number') {
-        serverGaragePatch.todayCount = serverData.dailyCount;
-        serverGaragePatch.lastTransactionDate = typeof serverData.lastTransactionDate === 'string'
+        countPatch.todayCount = serverData.dailyCount;
+        countPatch.lastTransactionDate = typeof serverData.lastTransactionDate === 'string'
           ? serverData.lastTransactionDate
           : getCairoDateKey();
       }
-      if (typeof serverData?.credits === 'number') serverGaragePatch.credits = serverData.credits;
-      if (Object.keys(serverGaragePatch).length > 0) {
-        // Set a 2-second guard window so stale Firestore snapshots can't
-        // revert the just-confirmed credits/carsInside. The subscribeToGarage
-        // listener checks this timestamp and merges instead of overwriting.
-        (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
-        setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
+      if (Object.keys(countPatch).length > 0) {
+        (countPatch as any)._confirmedTransactionUntil = Date.now() + 2000;
+        setGarage(prev => prev ? { ...prev, ...countPatch } : prev);
       }
-      setNewPlateNumber('');
-      setShowCheckInModal(false);
       soundManager.play('checkIn');
+
+      // FIX #3 cont: apply credits AFTER the count animation has started.
+      // The GarageSubscriptionCard triggers the 5-arrow debit animation when
+      // credits decrease. By delaying the credit update, the count finishes
+      // changing before the arrows begin falling.
+      if (typeof serverData?.credits === 'number') {
+        await new Promise<void>((resolve) => setTimeout(resolve, 600));
+        setGarage(prev => prev ? {
+          ...prev,
+          credits: serverData.credits,
+          _confirmedTransactionUntil: Date.now() + 2000,
+        } : prev);
+      }
     } catch (error: any) {
       if (error?.message === 'Operation already in progress') {
         return;
@@ -264,9 +296,11 @@ export function useVehicleOperations({
         showToast(message || 'حدث خطأ أثناء إدخال السيارة، يرجى المحاولة مرة أخرى', 'error');
       }
     } finally {
+      // FIX #1: release the lock BEFORE setting isLoading false, so the UI
+      // stays visibly disabled for the entire 3s minimum window.
+      await releaseTransactionLock();
       setIsLoading(false);
       setLoadingType(null);
-      await releaseTransactionLock();
     }
   }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
@@ -285,13 +319,17 @@ export function useVehicleOperations({
     setLoadingType('checkout');
     acquireTransactionLock();
     try {
+      // FIX #6: generate the idempotency key ONCE per transaction attempt.
+      // See check-in for details.
+      const idempotencyKey = generateIdempotencyKey('vehicle_checkout');
       const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
         firestoreService.checkOutVehicle(
           garage.id,
           vehicleToOut.id,
           cost,
           currentStaff ? currentStaff.name : 'مدير الجراج',
-          currentStaff ? currentStaff.id : undefined
+          currentStaff ? currentStaff.id : undefined,
+          idempotencyKey
         )
       );
 
@@ -308,8 +346,6 @@ export function useVehicleOperations({
       if (typeof res.todayCount === 'number') serverGaragePatch.todayCount = res.todayCount;
       if (typeof res.lastTransactionDate === 'string') serverGaragePatch.lastTransactionDate = res.lastTransactionDate;
       if (Object.keys(serverGaragePatch).length > 0) {
-        // Set a 2-second guard window so stale Firestore snapshots can't
-        // revert the just-confirmed carsInside/revenue. See check-in for details.
         (serverGaragePatch as any)._confirmedTransactionUntil = Date.now() + 2000;
         setGarage(prev => prev ? { ...prev, ...serverGaragePatch } : prev);
       }
@@ -317,6 +353,10 @@ export function useVehicleOperations({
       setSelectedVehicle(null);
       setNewPlateNumber('');
       soundManager.play('checkOut');
+      // FIX #4: return to the main dashboard so the user sees the large
+      // inside-car count decrease. Without this, the active-vehicles list
+      // stays on screen after checkout.
+      onCheckOutComplete?.();
     } catch (error: any) {
       if (error?.message === 'Operation already in progress') {
         return;
@@ -346,15 +386,26 @@ export function useVehicleOperations({
       }
       
       showToast(errMsg, 'error');
-      setShowCheckOutModal(false);
-      setSelectedVehicle(null);
-      setNewPlateNumber('');
+      // FIX #6: on ambiguous/network errors, keep the modal open so the user
+      // can retry with the same context. Only close on definite business
+      // failures (ALREADY_OUTSIDE, VEHICLE_NOT_FOUND, etc.) where retry is
+      // pointless. The error classification above already extracts the
+      // business error code — if we got a business error, close; if it's a
+      // network/transport error, keep the modal open.
+      const isBusinessError = errMsg.includes('تم تسجيل خروجها') || errMsg.includes('لم يتم العثور') || errMsg.includes('مشكلة في البيانات');
+      if (isBusinessError) {
+        setShowCheckOutModal(false);
+        setSelectedVehicle(null);
+        setNewPlateNumber('');
+      }
     } finally {
+      // FIX #1: release the lock BEFORE setting isLoading false, so the UI
+      // stays visibly disabled for the entire 3s minimum window.
+      await releaseTransactionLock();
       setIsLoading(false);
       setLoadingType(null);
-      await releaseTransactionLock();
     }
-  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, selectedVehicle, isLoading, closeKeyboard, currentStaff, showToast, now, setGarage, setVehicles, vehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock, onCheckOutComplete]);
 
   // Delete Vehicle
   const handleDeleteVehicle = useCallback(async () => {

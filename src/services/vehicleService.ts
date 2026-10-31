@@ -76,7 +76,7 @@ function getCairoDayStartTimestamp(date = new Date()): Date {
 }
 
 export const vehicleService = {
-  checkInVehicle: async (garageId: string, vehicleData: any) => {
+  checkInVehicle: async (garageId: string, vehicleData: any, idempotencyKey?: string) => {
     try {
       const data = await apiFetch('/api/vehicles/check-in', {
         method: 'POST',
@@ -87,7 +87,9 @@ export const vehicleService = {
           type: vehicleData.type,
           isSubscriber: vehicleData.isSubscriber,
           staffName: vehicleData.staffName,
-          idempotencyKey: generateIdempotencyKey('vehicle_checkin')
+          // FIX #6: accept a caller-provided idempotency key so retries can
+          // reuse the same key. If none provided, generate a fresh one (legacy).
+          idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkin')
         }
       });
       return { success: true, data: data.data };
@@ -96,7 +98,7 @@ export const vehicleService = {
     }
   },
   
-  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string) => {
+  checkOutVehicle: async (garageId: string, vehicleId: string, _cost: number, staffName?: string, _staffId?: string, idempotencyKey?: string) => {
     try {
       const data = await apiFetch('/api/vehicles/check-out', {
         method: 'POST',
@@ -104,7 +106,9 @@ export const vehicleService = {
           garageId,
           vehicleId,
           staffName,
-          idempotencyKey: generateIdempotencyKey('vehicle_checkout')
+          // FIX #6: accept a caller-provided idempotency key so retries can
+          // reuse the same key. If none provided, generate a fresh one (legacy).
+          idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkout')
         }
       });
       return {
