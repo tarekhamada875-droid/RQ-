@@ -40,8 +40,6 @@ type Mode = 'grant' | 'correction';
 export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
   const [mode, setMode] = useState<Mode>('grant');
   const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -52,9 +50,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
     if (submitting) return;
 
     const rawAmount = Number(amount.trim());
-    const creditAmount = mode === 'grant'
-      ? rawAmount
-      : rawAmount; // correction allows negative
+    const creditAmount = rawAmount; // correction allows negative
 
     if (mode === 'grant') {
       if (!Number.isSafeInteger(creditAmount) || creditAmount < 50 || creditAmount > 2_000) {
@@ -71,19 +67,14 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
       }
     }
 
-    if (!reason.trim() || reason.trim().length > 300) {
-      setError('أدخل سببًا واضحًا (حتى 300 حرف).');
-      setSuccess('');
-      return;
-    }
+    // Auto-generate the audit reason. The Worker requires a non-empty reason
+    // (1-300 chars) for the credit ledger + activity log. The admin no longer
+    // types it manually — the amount + mode is enough context for audit.
+    const reason = mode === 'grant'
+      ? `إضافة رصيد ${creditAmount}`
+      : `تصحيح رصيد ${creditAmount > 0 ? '+' : ''}${creditAmount}`;
 
-    if (mode === 'grant' && !paymentConfirmed) {
-      setError('يجب تأكيد استلام الدفع والتحقق منه قبل إضافة الرصيد.');
-      setSuccess('');
-      return;
-    }
-
-    const intentFingerprint = JSON.stringify([garage.id, mode, creditAmount, reason.trim()]);
+    const intentFingerprint = JSON.stringify([garage.id, mode, creditAmount, reason]);
     const idempotencyKey = idempotencyIntentRef.current?.fingerprint === intentFingerprint
       ? idempotencyIntentRef.current.key
       : (globalThis.crypto?.randomUUID?.() || `${mode}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -94,19 +85,21 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
     setSuccess('');
     try {
       if (mode === 'grant') {
+        // paymentConfirmed is always true — the admin clicking "add balance"
+        // IS the payment confirmation. The checkbox was removed per owner
+        // request; the Worker still requires the field, so we send true.
         await firestoreService.adminGrantGarageCredits(garage.id, {
           amount: creditAmount,
           paymentAmountEgp: creditAmount,
-          reason: reason.trim(),
-          paymentConfirmed,
+          reason,
+          paymentConfirmed: true,
           idempotencyKey
         });
-        setPaymentConfirmed(false);
         setSuccess(`${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`);
       } else {
         await firestoreService.adminCorrectGarageCredits(garage.id, {
           amount: creditAmount,
-          reason: reason.trim(),
+          reason,
           idempotencyKey
         });
         setSuccess(creditAmount >= 0
@@ -114,7 +107,6 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           : `${Math.abs(creditAmount).toLocaleString('en-US')} رصيد تم خصمه كتصحيح.`);
       }
       setAmount('');
-      setReason('');
       idempotencyIntentRef.current = null;
     } catch (cause: any) {
       setError(getCreditGrantErrorMessage(cause));
@@ -177,29 +169,6 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
           className="w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
         />
-        <label htmlFor="credit-reason" className="block text-sm font-bold text-slate-800 dark:text-slate-100">
-          السبب
-        </label>
-        <input
-          id="credit-reason"
-          type="text"
-          maxLength={300}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder={mode === 'grant' ? 'سبب إضافة الرصيد' : 'سبب التصحيح'}
-          className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-        />
-        {mode === 'grant' && (
-          <label className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-100">
-            <input
-              type="checkbox"
-              checked={paymentConfirmed}
-              onChange={(event) => setPaymentConfirmed(event.target.checked)}
-              className="mt-1"
-            />
-            أؤكد أن الدفع الفعلي قد تم استلامه والتحقق منه.
-          </label>
-        )}
         {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}
         <button type="submit" disabled={submitting} className={`w-full rounded-xl px-4 py-3 font-black text-white transition disabled:opacity-50 ${mode === 'grant' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}`}>

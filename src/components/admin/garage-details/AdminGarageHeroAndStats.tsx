@@ -11,8 +11,6 @@ import {
   Loader2,
   Unlock,
   Lock,
-  Clock,
-  CheckCircle2
 } from 'lucide-react';
 import { formatDisplayPin } from '../../../utils';
 import { Garage } from '../../../types';
@@ -20,11 +18,6 @@ import { Garage } from '../../../types';
 interface AdminGarageHeroAndStatsProps {
   garage: Garage;
   t: (key: string) => string;
-  carsInside: number;
-  dailyCount: number;
-  dailyRevenue: number;
-  totalCount: number;
-  totalRevenue: number;
   isUpdatingLock: boolean;
   onToggleLock: () => Promise<void>;
   onOpenEditPin: () => void;
@@ -33,11 +26,6 @@ interface AdminGarageHeroAndStatsProps {
 export const AdminGarageHeroAndStats = memo(({
   garage,
   t,
-  carsInside,
-  dailyCount,
-  dailyRevenue,
-  totalCount,
-  totalRevenue,
   isUpdatingLock,
   onToggleLock,
   onOpenEditPin
@@ -131,51 +119,6 @@ export const AdminGarageHeroAndStats = memo(({
               )}
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Performance Stats Grid - Compact Single Row on Mobile & Desktop */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {/* Metric 1: Cars Inside */}
-        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
-          <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
-            <Car className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="text-[11px] sm:text-xs font-black truncate">{t('بالداخل')}</span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
-            {carsInside}
-          </div>
-          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 truncate">
-            {t('سيارة حالياً')}
-          </p>
-        </div>
-
-        {/* Metric 2: Today */}
-        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
-          <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
-            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-            <span className="text-[11px] sm:text-xs font-black truncate">{t('دخول اليوم')}</span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
-            {dailyCount}
-          </div>
-          <p className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono truncate">
-            {Number(dailyRevenue).toFixed(0)} {t('ج.م')}
-          </p>
-        </div>
-
-        {/* Metric 3: Cumulative */}
-        <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-center shadow-sm flex flex-col justify-center">
-          <div className="flex items-center justify-center gap-1 mb-0.5 text-slate-500 dark:text-slate-400">
-            <CheckCircle2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-            <span className="text-[11px] sm:text-xs font-black truncate">{t('إجمالي الخروج')}</span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono my-0.5 leading-tight">
-            {totalCount}
-          </div>
-          <p className="text-[9px] sm:text-[10px] font-black text-slate-600 dark:text-slate-300 font-mono truncate">
-            {Number(totalRevenue).toFixed(0)} {t('ج.م')}
-          </p>
         </div>
       </div>
     </section>

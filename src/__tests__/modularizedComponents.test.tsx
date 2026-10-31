@@ -108,11 +108,6 @@ describe('Modularized Admin Components Integrity', () => {
       <AdminGarageHeroAndStats
         garage={mockGarage}
         t={(key) => key}
-        carsInside={12}
-        dailyCount={25}
-        dailyRevenue={450}
-        totalCount={320}
-        totalRevenue={6400}
         isUpdatingLock={false}
         onToggleLock={onToggleLock}
         onOpenEditPin={onOpenEditPin}
@@ -122,9 +117,6 @@ describe('Modularized Admin Components Integrity', () => {
     expect(screen.getByText('جراج النصر النموذجي')).toBeDefined();
     expect(screen.getByText('01012345678')).toBeDefined();
     expect(screen.getByText('نشط')).toBeDefined();
-    expect(screen.getByText('12')).toBeDefined();
-    expect(screen.getByText('25')).toBeDefined();
-    expect(screen.getByText('320')).toBeDefined();
 
     // Trigger lock button
     const lockBtn = screen.getByText('إيقاف الخدمة فوراً');
@@ -132,22 +124,18 @@ describe('Modularized Admin Components Integrity', () => {
     expect(onToggleLock).toHaveBeenCalledTimes(1);
   });
 
-  it('renders current non-wallet financial settings and referral options', () => {
+  it('renders current non-wallet financial settings', () => {
     const onToggleMonthly = vi.fn();
-    const onRefChange = vi.fn();
 
     renderWithTheme(
       <AdminGarageFinancialsSection
         garage={mockGarage}
         t={(key) => key}
         onToggleMonthlySubscribers={onToggleMonthly}
-        allGarages={[mockGarage]}
-        onReferredByChange={onRefChange}
       />
     );
 
     expect(screen.getByText('خدمة المشتركين الشهريين / الإيواء')).toBeDefined();
-    expect(screen.getByText('نظام مكافآت الإحالة')).toBeDefined();
     expect(screen.queryByText(/\+1 يوم مجاني/)).toBeNull();
     expect(screen.queryByText(/ج\.م ثابتة تلقائياً/)).toBeNull();
     expect(screen.queryByText('رصيد المحفظة الحالي')).toBeNull();
