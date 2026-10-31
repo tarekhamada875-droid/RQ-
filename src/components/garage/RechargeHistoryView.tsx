@@ -93,19 +93,6 @@ export const RechargeHistoryView = memo(({ garage, onClose, showToast }: Recharg
       </header>
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 sm:p-6 pb-10 overflow-y-auto custom-scrollbar stable-scrollbar">
-        <section className="mb-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#faf9f6] dark:bg-slate-900 px-5 py-4 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>
-              <p className="mt-1 text-3xl font-black font-mono text-slate-900 dark:text-slate-100">
-                {Number(garage.credits ?? 0).toLocaleString('ar-EG')}
-                <span className="mr-2 text-sm font-bold text-slate-500 dark:text-slate-400">رصيد</span>
-              </p>
-            </div>
-            <CircleDollarSign className="h-9 w-9 text-amber-500" aria-hidden="true" />
-          </div>
-        </section>
-
         <div className="space-y-3">
           <h2 className="px-1 text-sm font-black text-slate-700 dark:text-slate-300">عمليات الشحن</h2>
 
