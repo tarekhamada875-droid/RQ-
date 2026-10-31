@@ -242,7 +242,8 @@ export const AdminDelegateDetailsView = memo(({
             delegate.lastSettledAt
           );
           setSettledAtOverride(new Date());
-          delegate.totalRechargedAmount = 0;
+          // Update via the setter instead of mutating the prop.
+          setSelectedDelegate({ ...delegate, totalRechargedAmount: 0 });
         } catch {
           setConfirmDialog({
             isOpen: true,

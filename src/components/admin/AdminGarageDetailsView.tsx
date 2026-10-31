@@ -118,9 +118,13 @@ export const AdminGarageDetailsView = memo(({
         lastRateChangeDate: now,
       });
       await refreshAdminListsAfterMutation();
-      selectedGarageForDetails.hourlyRate = hourly;
-      selectedGarageForDetails.overnightRate = overnight;
-      selectedGarageForDetails.lastRateChangeDate = now;
+      // Update via the setter with a new object instead of mutating the prop.
+      setSelectedGarageForDetails({
+        ...selectedGarageForDetails,
+        hourlyRate: hourly,
+        overnightRate: overnight,
+        lastRateChangeDate: now,
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -251,11 +255,8 @@ export const AdminGarageDetailsView = memo(({
       }
       await firestoreService.updateGarage(selectedGarageForDetails.id, { pin: garagePinInput, ownerPin: garagePinInput });
       await refreshAdminListsAfterMutation();
-      selectedGarageForDetails.pin = garagePinInput;
-      selectedGarageForDetails.ownerPin = garagePinInput;
-      if (typeof setSelectedGarageForDetails === 'function') {
-        setSelectedGarageForDetails({ ...selectedGarageForDetails, pin: garagePinInput, ownerPin: garagePinInput });
-      }
+      // Update via the setter with a new object instead of mutating the prop.
+      setSelectedGarageForDetails({ ...selectedGarageForDetails, pin: garagePinInput, ownerPin: garagePinInput });
       setShowEditGaragePinModal(false);
     } catch (err: unknown) {
       setPinError(getGaragePinUpdateErrorMessage(err));
