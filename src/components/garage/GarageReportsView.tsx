@@ -6,7 +6,8 @@ import {
   CheckCircle2,
   BarChart2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertTriangle
 } from 'lucide-react';
 import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
 import { firestoreService, garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
@@ -85,6 +86,7 @@ interface GarageReportsViewProps {
   staffList: Staff[];
   onClose: () => void;
   onToggleMenu?: () => void;
+  showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const GarageReportsView = memo(({
@@ -92,11 +94,14 @@ export const GarageReportsView = memo(({
   todayExitedVehicles,
   staffList,
   onClose,
+  showToast,
 }: GarageReportsViewProps) => {
   // Manual toggle state
   const [localTodayExitedVehicles, setLocalTodayExitedVehicles] = useState<GarageReportRecord[]>(() => todayExitedVehicles || []);
   const [localGarage, setLocalGarage] = useState<Garage>(() => garage);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
   const [dashboardSummary, setDashboardSummary] = useState<GarageDashboardSummary | null>(null);
   const [isStaffPerformanceCollapsed, setIsStaffPerformanceCollapsed] = useState(false);
@@ -109,10 +114,14 @@ export const GarageReportsView = memo(({
     setLocalGarage(garage);
   }, [garage]);
 
-  // Live direct refresh from Firestore
+  // Live direct refresh from Firestore. Errors are surfaced to the user via
+  // a toast + an inline error card (mirrors RechargeHistoryView's pattern).
+  // Previously the catch was silently swallowed, leaving the user looking at
+  // stale data with no signal that anything had gone wrong.
   const refreshFromFirestore = useCallback(async () => {
     if (!garage?.id) return;
     setIsRefreshing(true);
+    setHasError(false);
     try {
       const [freshGarage, freshSummary] = await Promise.all([
         firestoreService.getGarageById(garage.id),
@@ -122,12 +131,13 @@ export const GarageReportsView = memo(({
       setDashboardSummary(freshSummary);
       setLastRefreshed(new Date());
     } catch {
-      // Refresh is best-effort — the user sees stale data, which is acceptable
-      // for a reports view. No console leak in production.
+      setHasError(true);
+      showToast?.('تعذر تحديث بيانات التقارير. حاول مرة أخرى.', 'error');
     } finally {
       setIsRefreshing(false);
+      setIsInitialLoad(false);
     }
-  }, [garage?.id]);
+  }, [garage?.id, showToast]);
 
   // Always refresh fresh data on mount when opening the reports view
   useEffect(() => {
@@ -216,95 +226,125 @@ export const GarageReportsView = memo(({
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar stable-scrollbar pb-10 bg-slate-50/50 dark:bg-slate-950/20">
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-          {isFreshGarageDashboardSummary(dashboardSummary) && dashboardSummary.report
-            ? 'الإحصاءات اليومية محسوبة من ملخص موثوق ومحدث مباشرة مع كل عملية خروج.'
-            : 'الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.'}
-        </p>
-        
-        {/* Row 1: Grid metrics */}
-        <div className="grid grid-cols-2 gap-3.5">
-          
-          {/* Card: Revenue */}
-          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">إيرادات اليوم</span>
-              <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/40 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
-                <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
-              </div>
+        {/* Initial-load skeleton — shown only on the very first refresh after
+            opening the reports view, so the user doesn't see zeros flash
+            before the Worker confirms the dashboard summary. */}
+        {isInitialLoad ? (
+          <div className="space-y-4" aria-label="جاري تحميل التقارير">
+            <div className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
             </div>
-            <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-              {stats.todayRevenue} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
-            </p>
+            <div className="h-32 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
           </div>
-
-          {/* Card: Departures */}
-          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">مغادرات اليوم</span>
-              <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center text-rose-500 dark:text-rose-400">
-                <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.3]" />
-              </div>
-            </div>
-            <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-              {stats.totalExited} <span className="text-[10px] font-bold text-slate-400">مغادرة</span>
-            </p>
-            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-none">
-              ساعة: {stats.hourlyExited} • مبيت: {stats.overnightExited}
-            </span>
+        ) : hasError ? (
+          <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-5 py-8 text-center">
+            <AlertTriangle className="mx-auto h-10 w-10 text-rose-500" aria-hidden="true" />
+            <p className="mt-3 font-bold text-rose-700 dark:text-rose-300">مش قادرين نحمّل التقارير دلوقتي.</p>
+            <p className="mt-1 text-xs text-rose-600/80 dark:text-rose-400/80">جرّب تحديث الصفحة تاني.</p>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-700 disabled:opacity-40 transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'جاري التحديث...' : 'إعادة المحاولة'}
+            </button>
           </div>
+        ) : (
+          <>
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+              {isFreshGarageDashboardSummary(dashboardSummary) && dashboardSummary.report
+                ? 'الإحصاءات اليومية محسوبة من ملخص موثوق ومحدث مباشرة مع كل عملية خروج.'
+                : 'الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.'}
+            </p>
+            
+            {/* Row 1: Grid metrics */}
+            <div className="grid grid-cols-2 gap-3.5">
+              
+              {/* Card: Revenue */}
+              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">إيرادات اليوم</span>
+                  <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/40 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </div>
+                </div>
+                <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
+                  {stats.todayRevenue} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+                </p>
+              </div>
 
-        </div>
+              {/* Card: Departures */}
+              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">مغادرات اليوم</span>
+                  <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center text-rose-500 dark:text-rose-400">
+                    <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.3]" />
+                  </div>
+                </div>
+                <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
+                  {stats.totalExited} <span className="text-[10px] font-bold text-slate-400">مغادرة</span>
+                </p>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-none">
+                  ساعة: {stats.hourlyExited} • مبيت: {stats.overnightExited}
+                </span>
+              </div>
 
-        {/* Row 2: Staff Shift Performance List */}
-        <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-          <button
-            onClick={handleStaffPerformanceToggle}
-            className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
-          >
-            <div className="flex items-center gap-1.5">
-              <BarChart2 className="w-3.5 h-3.5 text-purple-500" />
-              <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                ورديات الموظفين اليوم
-              </h3>
             </div>
-            <div>
-              {isStaffPerformanceCollapsed ? (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
-              ) : (
-                <ChevronUp className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
-              )}
-            </div>
-          </button>
-          
-          {!isStaffPerformanceCollapsed && (
-            <div className="p-4 py-2 divide-y divide-slate-100 dark:divide-slate-800/50">
-              {stats.staffPerformance.map((staff, idx) => (
-                <div key={staff.name} className="flex items-center justify-between py-2.5 transition-colors">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">#{idx + 1}</span>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">{staff.name}</h4>
-                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">مغادر: {staff.count} سيارة</span>
+
+            {/* Row 2: Staff Shift Performance List */}
+            <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <button
+                onClick={handleStaffPerformanceToggle}
+                className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <BarChart2 className="w-3.5 h-3.5 text-purple-500" />
+                  <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                    ورديات الموظفين اليوم
+                  </h3>
+                </div>
+                <div>
+                  {isStaffPerformanceCollapsed ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
+                  ) : (
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
+                  )}
+                </div>
+              </button>
+              
+              {!isStaffPerformanceCollapsed && (
+                <div className="p-4 py-2 divide-y divide-slate-100 dark:divide-slate-800/50">
+                  {stats.staffPerformance.map((staff, idx) => (
+                    <div key={staff.name} className="flex items-center justify-between py-2.5 transition-colors">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">#{idx + 1}</span>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">{staff.name}</h4>
+                          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">مغادر: {staff.count} سيارة</span>
+                        </div>
+                      </div>
+
+                      <div className="text-left font-mono">
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                          {staff.revenue} ج.م
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ))}
 
-                  <div className="text-left font-mono">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                      {staff.revenue} ج.م
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {stats.staffPerformance.length === 0 && (
-                <div className="text-center py-6 text-slate-400 dark:text-slate-600 font-bold text-[11px]">
-                  لا يوجد معاملات بيع مسجلة لأي موظف اليوم.
+                  {stats.staffPerformance.length === 0 && (
+                    <div className="text-center py-6 text-slate-400 dark:text-slate-600 font-bold text-[11px]">
+                      لا يوجد معاملات بيع مسجلة لأي موظف اليوم.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
       </div>
     </div>

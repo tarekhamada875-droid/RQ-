@@ -83,6 +83,7 @@ export const GarageDashboardOverlays = (props: any) => {
             staffList={staffList}
             onClose={onCloseReports}
             onToggleMenu={onToggleMenu}
+            showToast={showToast}
           />
         </Suspense>
       )}
