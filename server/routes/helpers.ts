@@ -69,6 +69,9 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('SUBSCRIBER_PLATE_IMMUTABLE')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'لا يمكن تعديل رقم لوحة المشترك بعد إنشائه' };
   }
+  if (errMsg.includes('SUBSCRIBER_DATES_IMMUTABLE')) {
+    return { statusCode: 409, code: 'CONFLICT', message: 'لا يمكن تعديل تواريخ الاشتراك من هنا — استخدم زر التجديد لتغيير تاريخ الانتهاء' };
+  }
   if (errMsg.includes('INVALID_MONEY_AMOUNT')) {
     return { statusCode: 422, code: 'INVALID_MONEY_AMOUNT', message: 'قيمة مالية غير صالحة' };
   }

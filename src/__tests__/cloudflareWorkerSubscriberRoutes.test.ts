@@ -535,5 +535,20 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     }), workerEnv);
     expect(immutablePlate.status).toBe(409);
     expect([...mockDb.records.entries()]).toEqual(before);
+
+    // Dates are immutable on the update path — extending a subscription
+    // requires the /renew endpoint (which debits 5 credits). This closes
+    // the free-renewal loophole.
+    const immutableDates = await api.fetch(new Request('http://localhost/api/subscribers/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer valid-admin-token'
+      },
+      body: JSON.stringify({ garageId: testGarageId, subscriberId, updates: { endDate: '2026-12-31' } })
+    }), workerEnv);
+    expect(immutableDates.status).toBe(409);
+    const immutableDatesBody = await immutableDates.json() as any;
+    expect(immutableDatesBody.error).toContain('تواريخ');
   });
 });

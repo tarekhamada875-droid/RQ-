@@ -224,6 +224,7 @@ export const SubscriberModals = ({
                   </div>
                 </div>
   
+                {!editingSubscriber && (
                 <div className="space-y-2 select-none">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pr-1">
                     مدة الاشتراك
@@ -255,6 +256,17 @@ export const SubscriberModals = ({
                     ))}
                   </div>
                 </div>
+                )}
+                {editingSubscriber && (
+                  <div className="space-y-2 select-none">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pr-1">
+                      مدة الاشتراك
+                    </label>
+                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl px-3 py-2.5 border border-slate-100 dark:border-slate-800/50">
+                      لتغيير تاريخ الانتهاء استخدم زر التجديد
+                    </p>
+                  </div>
+                )}
   
                 <div className="grid grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800/50">
                   <div className="space-y-1 text-center">

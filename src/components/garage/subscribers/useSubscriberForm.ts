@@ -242,15 +242,25 @@ export function useSubscriberForm(
       const cleanPlate = getCleanPlate(plateNumber);
       const rawPlate = getRawPlate(plateNumber);
 
-      const subscriberData = {
-        plateNumber: cleanPlate,
-        plateNumberRaw: rawPlate,
-        ownerName,
-        phone,
-        startDate,
-        endDate,
-        garageId: garage.id,
-      };
+      const subscriberData = editingSubscriber
+        ? {
+            // Edit mode: dates are immutable (use the renew button to extend).
+            // Only send the editable fields. The Worker rejects date changes.
+            plateNumber: cleanPlate,
+            plateNumberRaw: rawPlate,
+            ownerName,
+            phone,
+            garageId: garage.id,
+          }
+        : {
+            plateNumber: cleanPlate,
+            plateNumberRaw: rawPlate,
+            ownerName,
+            phone,
+            startDate,
+            endDate,
+            garageId: garage.id,
+          };
 
       if (editingSubscriber) {
         await firestoreService.updateSubscriber(garage.id, editingSubscriber.id, subscriberData);
