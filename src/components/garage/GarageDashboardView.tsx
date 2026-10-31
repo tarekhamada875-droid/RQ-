@@ -8,7 +8,6 @@ import React, {
   useEffect,
   useRef,
   useMemo,
-  useCallback,
   memo,
 } from "react";
 import { Car } from "lucide-react";
@@ -19,9 +18,9 @@ import {
   isLightColor,
   safeDate,
 } from "../../utils";
-import { soundManager } from "../../utils/sounds";
 import { auth } from "../../firebase";
 import { useSystemConfig } from '../../hooks/useSystemConfig';
+import { useRechargeNotification } from '../../hooks/useRechargeNotification';
 import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
@@ -95,9 +94,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [activeTab, setActiveTab] = useState<"main" | "active_vehicles">("main");
   const [itemsPerPage, setItemsPerPage] = useState(15);
   const [isRechargeHistoryOpen, setIsRechargeHistoryOpen] = useState(false);
-  const [hasNewRecharge, setHasNewRecharge] = useState(false);
-  const [latestRechargeLog, setLatestRechargeLog] = useState<any>(null);
-  const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
   // FIX #4: Return to the main dashboard tab only when checkout SUCCEEDS.
@@ -170,90 +166,19 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
 
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
-  useEffect(() => {
-    if (!isAuthenticated || !garage?.id) return;
-    const candidateLogs = (rechargeLogs || []).filter((log: any) => {
-      if (!log) return false;
-      if (log.details?.type === 'use_referral_reward') return false;
-      if (log.plateNumber && String(log.plateNumber).includes('استخدام مكافأة')) return false;
-      return true;
-    });
-
-    const lastAckId = localStorage.getItem(`acknowledged_recharge_${garage.id}`);
-    const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${garage.id}`) || 0);
-    const latest = candidateLogs[0];
-    if (!latest) {
-      setHasNewRecharge(false);
-      setLatestRechargeLog(null);
-      setIsRechargeNotificationOpen(false);
-      return;
-    }
-
-    const logDate = safeDate(latest?.timestamp);
-    const logTime = logDate.getTime();
-    const logId = latest?.id ?? `recharge_${logTime}`;
-    // Use the `now` prop for testability (fake timers control it via the prop),
-    // but `now` is intentionally NOT in this effect's deps array — otherwise
-    // every parent tick would re-run this effect and churn state setters.
-    const diffMs = Math.max(0, (now?.getTime?.() ?? Date.now()) - logTime);
-    const isRecent = diffMs < 15 * 60 * 1000;
-    const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
-
-    if (!isAcknowledged && isRecent) {
-      setHasNewRecharge(true);
-      setLatestRechargeLog(latest);
-      setIsRechargeNotificationOpen(true);
-      if (localStorage.getItem(`dashboard_sound_recharge_${garage.id}`) !== logId) {
-        try {
-          soundManager.play("checkIn");
-        } catch {
-          // Sound playback is best-effort — failures (autoplay policy, missing
-          // audio context) are not actionable for the user and already surfaced
-          // via the visual recharge notification. No console leak in production.
-        }
-        localStorage.setItem(`dashboard_sound_recharge_${garage.id}`, logId);
-      }
-    } else {
-      setHasNewRecharge(false);
-      setLatestRechargeLog(null);
-      setIsRechargeNotificationOpen(false);
-    }
-  }, [garage?.id, isAuthenticated, rechargeLogs, garage?.isTrial]);
-
-  // Auto-close the recharge notification 15 minutes after the log timestamp.
-  // PERF FIX: `now` was previously in the deps array. In production, `now` ticks
-  // every second from the parent, causing this effect to re-run every tick —
-  // clearTimeout + new setTimeout on every tick. The timer still eventually
-  // fired (remainingMs approaches 0), but it churned timers every second.
-  // Now `now` is read once when the notification opens (for the initial
-  // remainingMs), and the timer runs undisturbed until it fires or the user
-  // acknowledges. `now` is still read from the prop for testability.
-  useEffect(() => {
-    if (!isRechargeNotificationOpen || !latestRechargeLog) return;
-
-    const logTime = safeDate(latestRechargeLog.timestamp).getTime();
-    const currentTime = now?.getTime?.() ?? Date.now();
-    const remainingMs = Math.max(0, logTime + 15 * 60 * 1000 - currentTime);
-    const expiryTimer = window.setTimeout(() => {
-      setHasNewRecharge(false);
-      setLatestRechargeLog(null);
-      setIsRechargeNotificationOpen(false);
-    }, remainingMs);
-
-    return () => window.clearTimeout(expiryTimer);
-  }, [isRechargeNotificationOpen, latestRechargeLog]);
-
-  const handleAcknowledgeRecharge = useCallback(() => {
-    if (latestRechargeLog && garage?.id) {
-      localStorage.setItem(`acknowledged_recharge_${garage.id}`, latestRechargeLog.id);
-      const logTime = safeDate(latestRechargeLog.timestamp).getTime();
-      if (logTime > 0) {
-        localStorage.setItem(`acknowledged_recharge_time_${garage.id}`, String(logTime));
-      }
-    }
-    setHasNewRecharge(false);
-    setIsRechargeNotificationOpen(false);
-  }, [garage?.id, latestRechargeLog]);
+  const {
+    hasNewRecharge,
+    latestRechargeLog,
+    isRechargeNotificationOpen,
+    handleAcknowledgeRecharge,
+    clearNewRechargeBadge,
+  } = useRechargeNotification({
+    garageId: garage?.id,
+    isAuthenticated,
+    rechargeLogs,
+    now,
+    isTrial: garage?.isTrial,
+  });
 
   useEffect(() => {
     setItemsPerPage(15);
@@ -448,7 +373,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         onCloseSubscribers={() => setShowSubscribers(false)}
         onCloseRechargeHistory={() => {
           setIsRechargeHistoryOpen(false);
-          setHasNewRecharge(false);
+          clearNewRechargeBadge();
         }}
         onCloseStaffStats={() => setShowStaffStats(false)}
         onCloseReports={() => setIsReportsOpen(false)}
