@@ -54,7 +54,7 @@ describe('DelegateDashboardView garage application access', () => {
   it('shows loading state instead of an empty result while the dashboard loads', () => {
     renderDelegateDashboard(true, { delegateDashboardLoading: true });
 
-    expect(screen.getByRole('status')).toHaveTextContent('جارٍ تحميل بيانات الجراجات');
+    expect(screen.getByRole('status')).toHaveTextContent('جارٍ تحميل جراجاتك');
     expect(screen.queryByText('لا توجد جراجات مطابقة للبحث')).not.toBeInTheDocument();
   });
 
@@ -65,7 +65,7 @@ describe('DelegateDashboardView garage application access', () => {
       onRetryDelegateDashboard
     });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('تعذر تحميل بيانات الجراجات');
+    expect(screen.getByRole('alert')).toHaveTextContent('تعذر تحميل جراجاتك');
     fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
     expect(onRetryDelegateDashboard).toHaveBeenCalledOnce();
     expect(screen.queryByText('لا توجد جراجات مطابقة للبحث')).not.toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('DelegateDashboardView garage application access', () => {
 
   it('shows and opens the application form', () => {
     renderDelegateDashboard();
-    fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
+    fireEvent.click(screen.getByRole('button', { name: 'افتح جراج جديد' }));
 
     expect(screen.getByRole('heading', { name: 'طلب إنشاء جراج جديد' })).toBeInTheDocument();
     expect(screen.getByText('سيتم إرسال الطلب إلى الإدارة للمراجعة، ولن يتم تفعيل الجراج إلا بعد الموافقة.')).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe('DelegateDashboardView garage application access', () => {
 
   it('prevents native submit and preserves the request draft when creation returns false', async () => {
     const { onCreateGarage } = renderDelegateDashboard(false);
-    fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
+    fireEvent.click(screen.getByRole('button', { name: 'افتح جراج جديد' }));
 
     const nameInput = screen.getByPlaceholderText('جراج التوفيق');
     fireEvent.change(nameInput, { target: { value: 'Test garage request draft' } });
@@ -112,7 +112,7 @@ describe('DelegateDashboardView garage application access', () => {
 
   it('closes the request form after successful creation', async () => {
     const { onCreateGarage } = renderDelegateDashboard(true);
-    fireEvent.click(screen.getByRole('button', { name: 'طلب إنشاء جراج' }));
+    fireEvent.click(screen.getByRole('button', { name: 'افتح جراج جديد' }));
 
     const nameInput = screen.getByPlaceholderText('جراج التوفيق');
     fireEvent.change(nameInput, { target: { value: 'Test garage request' } });

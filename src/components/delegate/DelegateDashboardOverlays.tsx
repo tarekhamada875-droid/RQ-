@@ -1,20 +1,35 @@
+import React from 'react';
 import { Loader2, PlusCircle, RefreshCw, X } from 'lucide-react';
+import { Garage } from '../../types';
 import { generateSafePin } from '../../utils';
 
-export const DelegateDashboardOverlays = (props: any) => {
-  const {
-    showAddGarage,
-    setShowAddGarage,
-    onCreateGarage,
-    isTrial,
-    setIsTrial,
-    newGaragePin,
-    pinGenerationsRemaining,
-    allGarages,
-    setNewGaragePin,
-    setPinGenerationsRemaining,
-    isLoading,
-  } = props;
+interface DelegateDashboardOverlaysProps {
+  showAddGarage: boolean;
+  setShowAddGarage: (show: boolean) => void;
+  onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
+  isTrial: boolean;
+  setIsTrial: React.Dispatch<React.SetStateAction<boolean>>;
+  newGaragePin: string;
+  pinGenerationsRemaining: number;
+  allGarages: Garage[];
+  setNewGaragePin: (pin: string) => void;
+  setPinGenerationsRemaining: React.Dispatch<React.SetStateAction<number>>;
+  isLoading: boolean;
+}
+
+export const DelegateDashboardOverlays = ({
+  showAddGarage,
+  setShowAddGarage,
+  onCreateGarage,
+  isTrial,
+  setIsTrial,
+  newGaragePin,
+  pinGenerationsRemaining,
+  allGarages,
+  setNewGaragePin,
+  setPinGenerationsRemaining,
+  isLoading,
+}: DelegateDashboardOverlaysProps) => {
 
   return (
     <>
