@@ -1,8 +1,48 @@
+import React from 'react';
 import { Delete, Phone, Save, Trash2, User, X } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { formatPlateNumber, getCleanPlate, safeDate } from '../../utils';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
+import type { Subscriber } from '../../types';
+
+type Duration = '1w' | '2w' | '1m' | 'custom';
+type RenewType = 'week' | 'two_weeks' | 'month';
+
+interface SubscriberModalsProps {
+  // Add/Edit modal
+  showAddModal: boolean;
+  setShowAddModal: (v: boolean) => void;
+  editingSubscriber: Subscriber | null;
+  plateNumber: string;
+  setPlateNumber: (v: string) => void;
+  ownerName: string;
+  setOwnerName: (v: string) => void;
+  phone: string;
+  setPhone: (v: string) => void;
+  startDate: string;
+  endDate: string;
+  selectedDuration: Duration;
+  setSelectedDuration: (v: Duration) => void;
+  isPlateFocused: boolean;
+  setIsPlateFocused: (v: boolean) => void;
+  handleVirtualKeyPress: (key: string) => void;
+  plateContainerRef: React.RefObject<HTMLDivElement | null>;
+  keypadContainerRef: React.RefObject<HTMLDivElement | null>;
+  isSubmitting: boolean;
+  handleSubmit: (e: React.FormEvent) => void;
+  // Delete confirmation
+  subscriberToDelete: string | null;
+  setSubscriberToDelete: (v: string | null) => void;
+  confirmDelete: () => void;
+  // Renew
+  showRenewModal: boolean;
+  setShowRenewModal: (v: boolean) => void;
+  activeSubscriberForRenew: Subscriber | null;
+  setActiveSubscriberForRenew: (v: Subscriber | null) => void;
+  handleConfirmRenew: (type: RenewType) => void;
+  formatDisplayDate: (dateStr: string) => string;
+}
 
 const parseDateKey = (dateKey: string | any): Date => {
   if (!dateKey) return new Date();
@@ -22,38 +62,37 @@ const formatDateKey = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const SubscriberModals = (props: any) => {
-  const {
-    showAddModal,
-    setShowAddModal,
-    editingSubscriber,
-    plateNumber,
-    setPlateNumber,
-    ownerName,
-    setOwnerName,
-    phone,
-    setPhone,
-    startDate,
-    endDate,
-    selectedDuration,
-    setSelectedDuration,
-    isPlateFocused,
-    setIsPlateFocused,
-    handleVirtualKeyPress,
-    plateContainerRef,
-    keypadContainerRef,
-    isSubmitting,
-    handleSubmit,
-    subscriberToDelete,
-    setSubscriberToDelete,
-    confirmDelete,
-    showRenewModal,
-    setShowRenewModal,
-    activeSubscriberForRenew,
-    setActiveSubscriberForRenew,
-    handleConfirmRenew,
-    formatDisplayDate,
-  } = props;
+export const SubscriberModals = ({
+  showAddModal,
+  setShowAddModal,
+  editingSubscriber,
+  plateNumber,
+  setPlateNumber,
+  ownerName,
+  setOwnerName,
+  phone,
+  setPhone,
+  startDate,
+  endDate,
+  selectedDuration,
+  setSelectedDuration,
+  isPlateFocused,
+  setIsPlateFocused,
+  handleVirtualKeyPress,
+  plateContainerRef,
+  keypadContainerRef,
+  isSubmitting,
+  handleSubmit,
+  subscriberToDelete,
+  setSubscriberToDelete,
+  confirmDelete,
+  showRenewModal,
+  setShowRenewModal,
+  activeSubscriberForRenew,
+  setActiveSubscriberForRenew,
+  handleConfirmRenew,
+  formatDisplayDate,
+}: SubscriberModalsProps) => {
 
   return (
     <>
@@ -199,7 +238,7 @@ export const SubscriberModals = (props: any) => {
                         key={d.id}
                         type="button"
                         onClick={() => {
-                          setSelectedDuration(d.id as any);
+                          setSelectedDuration(d.id as Duration);
                           setIsPlateFocused(false);
                         }}
                         className={`py-3.5 px-2 rounded-2xl border text-center flex flex-col items-center justify-center transition-all ${
