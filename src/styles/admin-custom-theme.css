@@ -1,0 +1,119 @@
+/**
+ * Admin custom-theme color overrides.
+ *
+ * The admin dashboard recolors all emerald-* Tailwind utility classes to
+ * the admin's chosen brand color (set per-admin in system_config). This
+ * file replaces an 80-line inline <style> block that was previously
+ * rendered on every AdminDashboard mount.
+ *
+ * The dynamic color is injected as a CSS custom property on the
+ * .admin-custom-theme container:
+ *   --admin-color       — the brand color (hex)
+ *   --admin-color-text  — the contrast text color (#0f172a or #ffffff)
+ *
+ * Alpha suffixes are composed with color-mix() so the rules stay pure CSS
+ * and don't need JS string interpolation.
+ */
+
+.admin-custom-theme {
+  --admin-color: #10b981;
+  --admin-color-text: #ffffff;
+}
+
+/* Text color overrides */
+.admin-custom-theme .text-emerald-500,
+.admin-custom-theme .text-emerald-600,
+.admin-custom-theme .text-emerald-700,
+.admin-custom-theme .dark\:text-emerald-400,
+.admin-custom-theme .text-emerald-450 {
+  color: var(--admin-color) !important;
+}
+
+/* Solid background overrides */
+.admin-custom-theme .bg-emerald-600,
+.admin-custom-theme .bg-emerald-500,
+.admin-custom-theme .dark\:bg-emerald-600,
+.admin-custom-theme .dark\:bg-emerald-500 {
+  background-color: var(--admin-color) !important;
+  color: var(--admin-color-text) !important;
+}
+
+.admin-custom-theme .bg-emerald-600 *,
+.admin-custom-theme .bg-emerald-500 *,
+.admin-custom-theme .dark\:bg-emerald-600 *,
+.admin-custom-theme .dark\:bg-emerald-500 * {
+  color: var(--admin-color-text) !important;
+}
+
+/* Hover overrides — 90% opacity blend */
+.admin-custom-theme .hover\:bg-emerald-700:hover,
+.admin-custom-theme .bg-emerald-600:hover,
+.admin-custom-theme .bg-emerald-500:hover,
+.admin-custom-theme .dark\:bg-emerald-600:hover,
+.admin-custom-theme .dark\:bg-emerald-500:hover {
+  background-color: color-mix(in srgb, var(--admin-color) 90%, transparent) !important;
+  opacity: 0.95;
+}
+
+/* Tinted backgrounds — ~8% opacity */
+.admin-custom-theme .bg-emerald-50,
+.admin-custom-theme .bg-emerald-50\/30,
+.admin-custom-theme .bg-emerald-50\/50,
+.admin-custom-theme .bg-emerald-100,
+.admin-custom-theme .dark\:bg-emerald-950\/40,
+.admin-custom-theme .dark\:bg-emerald-950\/45,
+.admin-custom-theme .dark\:bg-emerald-950\/10 {
+  background-color: color-mix(in srgb, var(--admin-color) 8%, transparent) !important;
+}
+
+/* Lighter tinted backgrounds — ~10% opacity */
+.admin-custom-theme .bg-emerald-400\/10,
+.admin-custom-theme .dark\:bg-emerald-400\/5,
+.admin-custom-theme .bg-emerald-50\/50 {
+  background-color: color-mix(in srgb, var(--admin-color) 10%, transparent) !important;
+}
+
+/* Border overrides — 50% opacity */
+.admin-custom-theme .border-emerald-500,
+.admin-custom-theme .border-emerald-600,
+.admin-custom-theme .border-emerald-400,
+.admin-custom-theme .border-emerald-300,
+.admin-custom-theme .border-emerald-100,
+.admin-custom-theme .dark\:border-emerald-700\/80,
+.admin-custom-theme .dark\:border-emerald-900\/50 {
+  border-color: color-mix(in srgb, var(--admin-color) 50%, transparent) !important;
+}
+
+/* Light border overrides — ~12% opacity */
+.admin-custom-theme .border-emerald-500\/20,
+.admin-custom-theme .border-emerald-400\/10 {
+  border-color: color-mix(in srgb, var(--admin-color) 12%, transparent) !important;
+}
+
+/* Focus border overrides — full color */
+.admin-custom-theme .focus\:border-emerald-500:focus,
+.admin-custom-theme .focus\:border-emerald-400:focus {
+  border-color: var(--admin-color) !important;
+}
+
+/* Focus ring overrides */
+.admin-custom-theme .focus\:ring-emerald-500:focus,
+.admin-custom-theme .focus\:ring-emerald-400:focus,
+.admin-custom-theme .dark\:focus\:ring-emerald-500:focus {
+  --tw-ring-color: var(--admin-color) !important;
+  border-color: var(--admin-color) !important;
+}
+
+/* Shadow color override — ~10% opacity */
+.admin-custom-theme .shadow-emerald-500\/5 {
+  --tw-shadow-color: color-mix(in srgb, var(--admin-color) 10%, transparent) !important;
+  --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -1px var(--tw-shadow-color) !important;
+}
+
+/* Gradient overrides — ~5% opacity */
+.admin-custom-theme .from-emerald-500\/5,
+.admin-custom-theme .dark\:from-emerald-500\/5 {
+  --tw-gradient-from: color-mix(in srgb, var(--admin-color) 5%, transparent) !important;
+  --tw-gradient-to: transparent !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
