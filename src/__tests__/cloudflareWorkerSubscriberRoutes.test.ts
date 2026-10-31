@@ -405,11 +405,17 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, subscriberId })
     }), workerEnv);
     const getSummary = async () => {
-      const response = await api.fetch(new Request('http://localhost/api/admin/monthly-subscribers-summary', {
-        headers: { Authorization: 'Bearer valid-admin-token' }
-      }), workerEnv);
-      expect(response.status).toBe(200);
-      return (await response.json() as any).data.garagesCount as number;
+      // Count distinct garages that have at least one subscriber document.
+      // (Previously this read the maintained subscriber_summary/global via the
+      // deleted /api/admin/monthly-subscribers-summary endpoint.)
+      const subscriberPaths = [...mockDb.records.keys()].filter((p) => p.includes('/subscribers/'));
+      const garageIds = new Set(
+        subscriberPaths.map((p) => {
+          const match = p.match(/^garages\/([^/]+)\/subscribers\//);
+          return match ? match[1] : null;
+        }).filter(Boolean)
+      );
+      return garageIds.size;
     };
 
     const firstId = await addSubscriber('AB12345');

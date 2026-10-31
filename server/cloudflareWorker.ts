@@ -55,7 +55,6 @@ import {
   maintainedGarageSummaryRef,
   maintainedGarageDailySummaryRef,
   maintainedAdminSummaryRef,
-  maintainedSubscriberSummaryRef,
   writeMaintainedGarageDelta,
   writeMaintainedGarageDailyDelta,
   writeMaintainedAdminDelta,
@@ -299,10 +298,6 @@ registerReadRoutes(workerApp, {
   maintainedGarageSummaryRef,
   maintainedGarageDailySummaryRef,
   isUsableMaintainedSummary,
-  maintainedAdminSummaryRef,
-  maintainedSubscriberSummaryRef,
-  readWorkerFirestorePage,
-  parseFirestorePageRequest,
   maintainedSummaryVersion: MAINTAINED_SUMMARY_VERSION
 });
 
