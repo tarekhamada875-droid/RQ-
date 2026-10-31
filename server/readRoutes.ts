@@ -1,5 +1,5 @@
 import type { WorkerApp, WorkerUser } from './cloudflareWorker';
-import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
+import { lookupSubscriber, safeDateMillis, sanitizeDelegateDoc } from './workerReadHelpers';
 
 export interface RouteDeps {
   getAdminDb: () => any;
@@ -298,6 +298,72 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
     });
   } catch (err: any) {
     console.error('[Worker] Error in garage-summary:', err);
+    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+  }
+});
+
+// Route: GET /api/admin/delegates — paginated delegates list for the admin panel.
+// Restored after PR #531 accidentally deleted it (the audit incorrectly reported
+// no client caller; getAdminDelegatesPage in delegateService.ts calls this).
+// Returns delegates without PIN/hash fields. Admin-only.
+app.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
+  try {
+    const user = c.get('user') as WorkerUser | undefined;
+    if (user?.role !== 'admin') {
+      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
+    }
+    if (!getAdminDb()) {
+      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    }
+
+    // Simple cursor pagination: cursor is base64(`${createdAtMillis},${docId}`).
+    const limitParam = parseInt(c.req.query('limit') || '50', 10);
+    const pageSize = Number.isSafeInteger(limitParam) && limitParam > 0 && limitParam <= 100 ? limitParam : 50;
+    const cursor = c.req.query('cursor') || null;
+
+    let cursorCreatedAt: number | null = null;
+    let cursorId: string | null = null;
+    if (cursor) {
+      try {
+        const decoded = atob(cursor);
+        const commaIdx = decoded.lastIndexOf(',');
+        if (commaIdx > 0) {
+          cursorCreatedAt = Number(decoded.substring(0, commaIdx));
+          cursorId = decoded.substring(commaIdx + 1);
+        }
+      } catch {
+        return c.json({ success: false, error: 'INVALID_PAGE_CURSOR' }, 400);
+      }
+    }
+
+    const delegatesCollection = getAdminDb().collection('delegates');
+    let delegatesQuery = delegatesCollection.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
+    if (cursorCreatedAt !== null && cursorId) {
+      delegatesQuery = delegatesQuery.startAfter(cursorCreatedAt, cursorId);
+    }
+    const delegatesSnapshot = await delegatesQuery.limit(pageSize + 1).get();
+    const docs = delegatesSnapshot.docs || [];
+    const hasMore = docs.length > pageSize;
+    const pageDocs = hasMore ? docs.slice(0, pageSize) : docs;
+    const delegates = pageDocs.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+
+    let nextCursor: string | null = null;
+    if (hasMore && pageDocs.length > 0) {
+      const lastDoc = pageDocs[pageDocs.length - 1];
+      const lastData = lastDoc.data();
+      const lastCreatedAt = safeDateMillis(lastData.createdAt);
+      nextCursor = btoa(`${lastCreatedAt},${lastDoc.id}`);
+    }
+
+    return c.json({
+      success: true,
+      delegates,
+      items: delegates,
+      hasMore,
+      nextCursor
+    });
+  } catch (err: any) {
+    console.error('[Worker Admin] Error in admin delegates:', err);
     return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
   }
 });

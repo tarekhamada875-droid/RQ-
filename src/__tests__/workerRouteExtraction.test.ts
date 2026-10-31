@@ -22,7 +22,8 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'GET /api/system-config',
       'POST /api/admin/update-system-config',
       'POST /api/check-subscriber',
-      'GET /api/garage-summary'
+      'GET /api/garage-summary',
+      'GET /api/admin/delegates'
     ]);
   });
 
@@ -117,7 +118,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       + registrations(subscriberRoutesSource).length
       + registrations(financialRoutesSource).length
       + registrations(garageRoutesSource).length
-    ).toBe(60);
+    ).toBe(61);
   });
 
   it('keeps the global Worker export in the monolith', () => {
