@@ -97,6 +97,20 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [latestRechargeLog, setLatestRechargeLog] = useState<any>(null);
   const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
+
+  // FIX #4: Track when a checkout is in progress so we can return to the main
+  // dashboard tab when it completes. The checkout modal is rendered outside
+  // this component, but isLoading is passed as a prop. When isLoading
+  // transitions from true→false and we were on the active_vehicles tab (where
+  // checkout is initiated), switch back to main so the user sees the large
+  // inside-car count decrease.
+  const wasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading && activeTab === 'active_vehicles') {
+      setActiveTab('main');
+    }
+    wasLoadingRef.current = isLoading;
+  }, [isLoading, activeTab]);
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
