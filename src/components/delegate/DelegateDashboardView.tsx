@@ -80,6 +80,12 @@ export const DelegateDashboardView = memo(({
   const commissionValue = Number.isFinite(Number(delegate.totalCommissionEarned))
     ? Number(delegate.totalCommissionEarned)
     : 0;
+  // Unsettled commission = what the admin still owes the delegate (lifetime
+  // earned minus what the admin has already settled/paid). When the admin
+  // settles the account, this number drops to zero.
+  const unsettledCommission = Number.isFinite(Number(delegate.totalRechargedAmount))
+    ? Math.max(0, Number(delegate.totalRechargedAmount))
+    : 0;
 
   const handleOpenAddGarage = () => {
     const initialPin = generateSafePin(allGarages.map(g => g.pin));
@@ -189,16 +195,33 @@ export const DelegateDashboardView = memo(({
       </header>
 
       <main className="max-w-4xl mx-auto p-4 sm:p-6 w-full flex-1 flex flex-col gap-5 sm:gap-6">
-        {/* HERO — commission number, front and center */}
-        <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900 text-center">
-          <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2">
-            عمولاتك
-          </p>
-          <div className="flex items-baseline justify-center gap-1.5 font-mono leading-none">
-            <FitText minFontSize={28}>
-              {commissionValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
-            </FitText>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400">ج.م</span>
+        {/* HERO — two commission numbers, front and center */}
+        <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900">
+          <div className="grid grid-cols-2 gap-4 text-center">
+            {/* Lifetime commission — everything earned, ever */}
+            <div>
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1.5">
+                إجمالي العمولات
+              </p>
+              <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
+                <FitText minFontSize={20}>
+                  {commissionValue.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                </FitText>
+                <span className="text-sm font-black text-amber-600 dark:text-amber-400">ج.م</span>
+              </div>
+            </div>
+            {/* Unsettled commission — what the admin still owes, hasn't paid yet */}
+            <div className="border-r border-amber-200/60 dark:border-amber-900/60">
+              <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 mb-1.5">
+                غير مُصرف
+              </p>
+              <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
+                <FitText minFontSize={20}>
+                  {unsettledCommission.toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                </FitText>
+                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">ج.م</span>
+              </div>
+            </div>
           </div>
         </div>
 
