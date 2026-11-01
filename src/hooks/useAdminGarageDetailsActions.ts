@@ -115,13 +115,13 @@ export function useAdminGarageDetailsActions({
         overnightRate: overnight,
         lastRateChangeDate: now,
       });
-      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({
         ...garage,
         hourlyRate: hourly,
         overnightRate: overnight,
         lastRateChangeDate: now,
       });
+      void refreshAdminListsAfterMutation();
     } catch (e) {
       console.error(e);
     } finally {
@@ -141,12 +141,12 @@ export function useAdminGarageDetailsActions({
         isLocked: newLocked,
         isSuspended: newLocked
       });
-      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({
         ...garage,
         isLocked: newLocked,
         isSuspended: newLocked
       });
+      void refreshAdminListsAfterMutation();
     } catch (err) {
       console.error('Failed to toggle garage lock:', err);
     } finally {
@@ -159,8 +159,8 @@ export function useAdminGarageDetailsActions({
     const newState = !garage.hasMonthlySubscribers;
     try {
       await firestoreService.updateGarage(garage.id, { hasMonthlySubscribers: newState });
-      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({ ...garage, hasMonthlySubscribers: newState });
+      void refreshAdminListsAfterMutation();
     } catch (e) {
       console.error(e);
     }
@@ -191,8 +191,8 @@ export function useAdminGarageDetailsActions({
         return;
       }
       await firestoreService.updateGarage(garage.id, { pin: garagePinInput, ownerPin: garagePinInput });
-      await refreshAdminListsAfterMutation();
       setSelectedGarageForDetails({ ...garage, pin: garagePinInput, ownerPin: garagePinInput });
+      void refreshAdminListsAfterMutation();
     } catch (err: unknown) {
       setPinError(getGaragePinUpdateErrorMessage(err));
     } finally {
