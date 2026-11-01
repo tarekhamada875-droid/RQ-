@@ -49,7 +49,6 @@ export const DelegateDashboardView = memo(({
   onLoadMoreDelegateGarages
 }: DelegateDashboardViewProps) => {
   const [showAddGarage, setShowAddGarage] = useState(false);
-  const [isTrial, setIsTrial] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
   const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
   const [showSettings, setShowSettings] = useState(false);
@@ -306,8 +305,6 @@ export const DelegateDashboardView = memo(({
         showAddGarage={showAddGarage}
         setShowAddGarage={setShowAddGarage}
         onCreateGarage={onCreateGarage}
-        isTrial={isTrial}
-        setIsTrial={setIsTrial}
         newGaragePin={newGaragePin}
         pinGenerationsRemaining={pinGenerationsRemaining}
         allGarages={allGarages}

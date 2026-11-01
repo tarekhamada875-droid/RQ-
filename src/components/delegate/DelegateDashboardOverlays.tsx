@@ -7,8 +7,6 @@ interface DelegateDashboardOverlaysProps {
   showAddGarage: boolean;
   setShowAddGarage: (show: boolean) => void;
   onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
-  isTrial: boolean;
-  setIsTrial: React.Dispatch<React.SetStateAction<boolean>>;
   newGaragePin: string;
   pinGenerationsRemaining: number;
   allGarages: Garage[];
@@ -21,8 +19,6 @@ export const DelegateDashboardOverlays = ({
   showAddGarage,
   setShowAddGarage,
   onCreateGarage,
-  isTrial,
-  setIsTrial,
   newGaragePin,
   pinGenerationsRemaining,
   allGarages,
@@ -106,75 +102,7 @@ export const DelegateDashboardOverlays = ({
                     </div>
                   </div>
                 </div>
-  
-                {/* Free Trial Toggle */}
-                <div 
-                  id="delegate-trial-toggle-container"
-                  onClick={() => setIsTrial(prev => !prev)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none flex items-center justify-between ${
-                    isTrial 
-                      ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/50 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/5' 
-                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  <div className="space-y-0.5 text-right flex-1 min-w-0 pr-2">
-                    <label className={`text-xs sm:text-sm font-bold block cursor-pointer truncate transition-colors ${
-                      isTrial ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
-                    }`}>
-                      منح 100 رصيد تجربة مجاني
-                    </label>
-                    <span className={`text-[11px] block truncate transition-colors ${
-                      isTrial ? 'text-emerald-600 dark:text-emerald-400/80' : 'text-slate-400 dark:text-slate-400'
-                    }`}>
-                      100 رصيد دخول مجاني للجراج الجديد
-                    </span>
-                  </div>
-  
-                  <div 
-                    className="relative shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                    dir="ltr"
-                  >
-                    <input 
-                      type="checkbox" 
-                      id="delegate-trial-checkbox"
-                      name="isTrial" 
-                      checked={isTrial} 
-                      onChange={(e) => setIsTrial(e.target.checked)} 
-                      className="sr-only" 
-                    />
-                    <input type="hidden" name="isTrial_hidden" value={isTrial ? 'true' : 'false'} />
-                    
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={isTrial}
-                      onClick={() => setIsTrial(prev => !prev)}
-                      className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out relative focus:outline-none flex items-center p-0.5 ${
-                        isTrial ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                    >
-                      <span 
-                        className={`inline-block w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
-                          isTrial ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-  
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">رقم الموبايل (اختياري)</label>
-                  <input 
-                    name="phone" 
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="01xxxxxxxxx" 
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none focus:border-amber-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" 
-                    dir="ltr" 
-                  />
-                </div>
-  
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">رمز الدخول (PIN)</label>
                   <div className="relative">
