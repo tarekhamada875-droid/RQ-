@@ -15,9 +15,10 @@ export type DomainEventType =
   | 'wallet_topup_approved'
   | 'delegate_settled'
   | 'commission_earned'
-  | 'prepaid_credit_grant_paid';
+  | 'prepaid_credit_grant_paid'
+  | 'credit_request_approved';
 
-type AggregateType = 'vehicle' | 'subscriber' | 'delegate' | 'recharge' | 'wallet' | 'credit_grant';
+type AggregateType = 'vehicle' | 'subscriber' | 'delegate' | 'recharge' | 'wallet' | 'credit_grant' | 'credit_request';
 export type EventPayload = Record<string, unknown>;
 
 export interface DelegateSettledPayload extends EventPayload {
@@ -75,7 +76,8 @@ export interface CreateEventParams {
 const EVENT_AGGREGATE_TYPES: Record<DomainEventType, AggregateType> = {
   vehicle_entered: 'vehicle', vehicle_exited: 'vehicle', vehicle_refunded: 'vehicle', vehicle_deleted: 'vehicle',
   subscriber_created: 'subscriber', subscriber_renewed: 'subscriber', subscriber_updated: 'subscriber', subscriber_deleted: 'subscriber',
-  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', delegate_settled: 'delegate', commission_earned: 'delegate', prepaid_credit_grant_paid: 'credit_grant'
+  recharge_approved: 'recharge', wallet_topup_approved: 'wallet', delegate_settled: 'delegate', commission_earned: 'delegate', prepaid_credit_grant_paid: 'credit_grant',
+  credit_request_approved: 'credit_request'
 };
 const SENSITIVE_KEYS = /^(pin|password|token|secret|privatekey|serviceaccount|authorization)$/i;
 
