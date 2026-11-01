@@ -24,6 +24,7 @@ import { registerVehicleRoutes } from './vehicleRoutes';
 import { registerSubscriberRoutes } from './subscriberRoutes';
 import { registerFinancialRoutes } from './financialRoutes';
 import { registerGarageRoutes } from './garageRoutes';
+import { registerCreditRequestRoutes } from './creditRequestRoutes';
 import { sanitizeDelegateDoc } from './workerReadHelpers';
 import {
   startGarageDeletionRoute,
@@ -441,6 +442,18 @@ workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
 });
 
 // All production API routes are implemented directly on the Fetch-native Hono app.
+
+// 11. Credit Request Routes (delegate → admin credit request flow)
+registerCreditRequestRoutes(workerApp, {
+  getAdminDb: () => adminDb,
+  requireWorkerAuth,
+  validateId,
+  validateNumber,
+  grantPaidCredits,
+  materializeCreditLedgerEntry,
+  recordDomainEventInTransaction,
+  parseMoneyAmount
+});
 
 export { workerApp };
 export default {
