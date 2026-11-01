@@ -1,4 +1,4 @@
-import React, { useState, memo, useMemo, useRef, useEffect } from 'react';
+import React, { useState, memo, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Building2,
   PlusCircle,
@@ -9,7 +9,11 @@ import {
   Settings as SettingsIcon,
   FileText,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Coins,
+  X,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
@@ -18,6 +22,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
 import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
+import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -55,7 +60,28 @@ export const DelegateDashboardView = memo(({
   const [showTermsModal, setShowTermsModal] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
-  useBodyScrollLock(Boolean(showAddGarage));
+  // Credit requests — fetched on mount so the delegate sees pending/rejected
+  // badges on their garage cards.
+  const [creditRequests, setCreditRequests] = useState<DelegateCreditRequest[]>([]);
+  const [showCreditRequestModal, setShowCreditRequestModal] = useState(false);
+  const [creditRequestGarage, setCreditRequestGarage] = useState<Garage | null>(null);
+  const [creditRequestAmount, setCreditRequestAmount] = useState('');
+  const [submittingCreditRequest, setSubmittingCreditRequest] = useState(false);
+
+  const refreshCreditRequests = useCallback(async () => {
+    try {
+      const requests = await delegateService.listMyCreditRequests();
+      setCreditRequests(requests);
+    } catch {
+      // Silent — badges just won't show, not a blocking error.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCreditRequests();
+  }, [refreshCreditRequests]);
+
+  useBodyScrollLock(Boolean(showAddGarage || showCreditRequestModal));
 
   const settingsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -92,6 +118,36 @@ export const DelegateDashboardView = memo(({
     setNewGaragePin(initialPin);
     setPinGenerationsRemaining(3);
     setShowAddGarage(true);
+  };
+
+  const handleOpenCreditRequest = (garage: Garage) => {
+    setCreditRequestGarage(garage);
+    setCreditRequestAmount('');
+    setShowCreditRequestModal(true);
+  };
+
+  const handleSubmitCreditRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!creditRequestGarage || submittingCreditRequest) return;
+    const amount = Number(creditRequestAmount.trim());
+    if (!Number.isSafeInteger(amount) || amount < 50 || amount > 2000) return;
+    setSubmittingCreditRequest(true);
+    try {
+      await delegateService.createCreditRequest(creditRequestGarage.id, amount);
+      await refreshCreditRequests();
+      setShowCreditRequestModal(false);
+      setCreditRequestGarage(null);
+      setCreditRequestAmount('');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('PENDING_REQUEST_EXISTS')) {
+        alert('يوجد طلب رصيد قيد المراجعة لهذا الجراج بالفعل');
+      } else {
+        alert('تعذر إرسال طلب الرصيد. حاول مرة أخرى.');
+      }
+    } finally {
+      setSubmittingCreditRequest(false);
+    }
   };
 
   return (
@@ -262,15 +318,18 @@ export const DelegateDashboardView = memo(({
             </div>
           )}
 
-          {/* Garage cards — display only (div, not button) */}
+          {/* Garage cards — tappable to request credits (active garages only) */}
           {myGarages.map(g => {
-            const isPending = g.status === 'pending';
+            const isPendingCreation = g.status === 'pending';
+            // Find the latest credit request for this garage (if any)
+            const latestRequest = creditRequests.find(r => r.garageId === g.id);
+            const hasPendingCreditRequest = latestRequest?.status === 'pending';
+            const hasRejectedCreditRequest = latestRequest?.status === 'rejected';
             return (
               <div
                 key={g.id}
-                role="presentation"
                 className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${
-                  isPending
+                  isPendingCreation
                     ? 'border-dashed border-slate-300 dark:border-slate-800 opacity-75'
                     : 'border-slate-200 dark:border-slate-800'
                 }`}
@@ -284,14 +343,42 @@ export const DelegateDashboardView = memo(({
                   </div>
                 </div>
 
-                {isPending ? (
+                {isPendingCreation ? (
                   <span className="self-start text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                     قيد مراجعة الإنشاء
                   </span>
                 ) : (
-                  <span className="self-start text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                    نشط
-                  </span>
+                  <>
+                    <span className="self-start text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      نشط
+                    </span>
+
+                    {/* Credit request status badges */}
+                    {hasPendingCreditRequest && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                        <Clock className="w-3 h-3" />
+                        طلب رصيد قيد المراجعة ({latestRequest?.amount} ج.م)
+                      </div>
+                    )}
+                    {hasRejectedCreditRequest && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400">
+                        <XCircle className="w-3 h-3" />
+                        تم رفض طلب الرصيد
+                      </div>
+                    )}
+
+                    {/* Request credits button — hidden if a pending request exists */}
+                    {!hasPendingCreditRequest && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreditRequest(g)}
+                        className="self-start inline-flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 transition-colors cursor-pointer"
+                      >
+                        <Coins className="w-3.5 h-3.5" />
+                        طلب رصيد
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             );
@@ -339,6 +426,71 @@ export const DelegateDashboardView = memo(({
         <TermsAndConditionsModal
           onClose={() => setShowTermsModal(false)}
         />
+      )}
+
+      {/* Credit Request Modal */}
+      {showCreditRequestModal && creditRequestGarage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 overflow-y-auto" onClick={() => setShowCreditRequestModal(false)}>
+          <div
+            className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800"
+            onClick={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">طلب رصيد</h2>
+                  <p className="text-xs font-bold text-slate-400">{creditRequestGarage.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreditRequestModal(false)}
+                className="w-9 h-9 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex shrink-0 items-center justify-center transition-colors outline-none cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-right text-xs font-bold leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+              سيتم إرسال طلبك إلى الإدارة للمراجعة. لن يُضاف الرصيد إلا بعد الموافقة.
+            </p>
+
+            <form onSubmit={handleSubmitCreditRequest} className="space-y-4 text-right">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">قيمة الرصيد (50 إلى 2,000)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={creditRequestAmount}
+                  onChange={(e) => setCreditRequestAmount(e.target.value.replace(/\D/g, ''))}
+                  placeholder="100"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg"
+                  dir="ltr"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingCreditRequest}
+                className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-all disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+              >
+                {submittingCreditRequest ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <>
+                    <Coins className="w-4 h-4" />
+                    <span>إرسال الطلب</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

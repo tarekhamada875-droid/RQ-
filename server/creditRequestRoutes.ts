@@ -104,6 +104,51 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
     }
   });
 
+  // ── Delegate lists their own credit requests ─────────────────────────
+  app.get('/api/delegates/credit-requests', requireWorkerAuth, async (c: any) => {
+    try {
+      const user = c.get('user') as WorkerUser | undefined;
+      if (user?.role !== 'delegate') {
+        return c.json({ success: false, error: 'FORBIDDEN: Delegate role required' }, 403);
+      }
+      if (!getAdminDb()) {
+        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+      }
+
+      const delegateId = user.entityId || user.uid;
+      // Return recent requests (pending + recently reviewed). The delegate UI
+      // uses this to show pending/rejected badges on their garage cards.
+      const snap = await getAdminDb()
+        .collection('credit_requests')
+        .where('delegateId', '==', delegateId)
+        .orderBy('createdAt', 'desc')
+        .limit(50)
+        .get();
+
+      const requests = snap.docs.map((doc: any) => {
+        const data = doc.data();
+        // Normalize timestamp for JSON transport
+        const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt instanceof Date ? data.createdAt.getTime() : Date.now());
+        const reviewedAt = data.reviewedAt?.toMillis ? data.reviewedAt.toMillis() : (data.reviewedAt instanceof Date ? data.reviewedAt.getTime() : null);
+        return {
+          id: doc.id,
+          garageId: data.garageId,
+          garageName: data.garageName || '',
+          delegateId: data.delegateId,
+          amount: Number(data.amount || 0),
+          status: data.status || 'pending',
+          createdAt,
+          reviewedAt,
+        };
+      });
+
+      return c.json({ success: true, requests });
+    } catch (err: any) {
+      console.error('[Worker CreditRequest] Error listing delegate requests:', err);
+      return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+    }
+  });
+
   // ── Admin lists pending credit requests ──────────────────────────────
   app.get('/api/admin/credit-requests', requireWorkerAuth, async (c: any) => {
     try {
