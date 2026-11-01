@@ -305,6 +305,25 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
           reviewedBy: callerUid
         });
 
+        // Write an activity_log entry so the garage-side recharge
+        // notification (subscribeToGarageRechargeLogs) picks this up.
+        // Mirrors the direct-grant path in /api/garages/:id/credit-grants.
+        t.set(getAdminDb().collection('activity_logs').doc(), {
+          garageId: requestData.garageId,
+          garageName: garage.name || requestData.garageName || '',
+          staffId: callerUid,
+          staffName: user.displayName || 'Admin',
+          actionType: 'credit_grant',
+          timestamp: now,
+          details: {
+            amount,
+            paymentAmountEgp: amount,
+            reason: `Credit request approved (${amount} EGP for ${garage.name || requestData.garageId})`,
+            ledgerEntryId: entry.value.entryId,
+            source: 'credit_request_approval'
+          }
+        });
+
         recordDomainEventInTransaction(t, getAdminDb(), {
           garageId: requestData.garageId,
           aggregateType: 'credit_request',

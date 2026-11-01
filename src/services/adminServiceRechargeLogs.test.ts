@@ -142,7 +142,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
     const unsubscribeSnapshot = vi.fn();
     const makeDoc = (id: string, timestamp: string) => ({
       id,
-      data: () => ({ garageId: 'garage-latest', actionType: 'recharge', timestamp: new Date(timestamp) }),
+      data: () => ({ garageId: 'garage-latest', actionType: 'credit_grant', timestamp: new Date(timestamp) }),
     });
     firestoreMocks.onSnapshot.mockImplementationOnce((_query, onNext) => {
       onNext({ docs: [
@@ -178,9 +178,9 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
       })
       .mockImplementationOnce((_query, onNext) => {
         onNext({ docs: [
-          makeDoc('oldest-recharge', 'recharge', '2026-10-15T08:00:00.000Z'),
+          makeDoc('oldest-recharge', 'credit_grant', '2026-10-15T08:00:00.000Z'),
           makeDoc('latest-other', 'vehicle_checkin', '2026-10-16T09:00:00.000Z'),
-          makeDoc('latest-recharge', 'recharge', '2026-10-16T08:00:00.000Z'),
+          makeDoc('latest-recharge', 'credit_grant', '2026-10-16T08:00:00.000Z'),
         ] });
         return fallbackUnsubscribe;
       });
