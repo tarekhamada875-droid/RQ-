@@ -10,6 +10,7 @@ const vehicleRoutesSource = readFileSync(resolve(process.cwd(), 'server/vehicleR
 const subscriberRoutesSource = readFileSync(resolve(process.cwd(), 'server/subscriberRoutes.ts'), 'utf8');
 const financialRoutesSource = readFileSync(resolve(process.cwd(), 'server/financialRoutes.ts'), 'utf8');
 const garageRoutesSource = readFileSync(resolve(process.cwd(), 'server/garageRoutes.ts'), 'utf8');
+const creditRequestRoutesSource = readFileSync(resolve(process.cwd(), 'server/creditRequestRoutes.ts'), 'utf8');
 
 function registrations(source: string): string[] {
   return [...source.matchAll(/\b(?:workerApp|app)\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)/g)]
@@ -118,7 +119,8 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       + registrations(subscriberRoutesSource).length
       + registrations(financialRoutesSource).length
       + registrations(garageRoutesSource).length
-    ).toBe(61);
+      + registrations(creditRequestRoutesSource).length
+    ).toBe(65);
   });
 
   it('keeps the global Worker export in the monolith', () => {
