@@ -24,6 +24,7 @@ export interface DelegateCreditRequest {
   garageId: string;
   garageName: string;
   delegateId: string;
+  delegateName: string;
   amount: number;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
