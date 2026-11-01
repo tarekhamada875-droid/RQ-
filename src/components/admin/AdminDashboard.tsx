@@ -141,9 +141,9 @@ export const AdminDashboard = memo(({
   const handleApproveGarage = async (garage: Garage) => {
     try {
       await firestoreService.updateGarage(garage.id, { status: 'approved' });
-      await refreshAdminListsAfterMutation();
       soundManager.play('checkIn');
       showToast?.(`تم قبول وتفعيل جراج "${garage.name}" بنجاح 🚀`, 'success');
+      void refreshAdminListsAfterMutation();
     } catch (error) {
       console.error('Failed to approve garage:', error);
       soundManager.play('error');

@@ -496,7 +496,7 @@ export function useAdminAndGarageManagement({
         showToast(delegate ? 'تم إرسال طلب إنشاء الجراج بنجاح بانتظار موافقة الإدارة' : APP_TEXT.ADMIN.ADD_SUCCESS);
         form.reset();
         closeKeyboard();
-        if (!delegate) await refreshAdminLists();
+        if (!delegate) void refreshAdminLists();
         return true;
       } else {
         showToast(result.error || 'حدث خطأ أثناء إنشاء الجراج', 'error');
