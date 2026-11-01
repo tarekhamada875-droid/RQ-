@@ -79,6 +79,17 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
             </p>
           </div>
 
+          {/* Delegate-specific note — shown to everyone, but contextual for delegates */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-200">
+            <h4 className="text-sm font-black mb-1.5 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-xs">مندوب</span>
+              للمندوبين
+            </h4>
+            <p className="text-[11px] sm:text-xs opacity-90 leading-normal">
+              دورك هو إنشاء جراجات جديدة. تكسب ١٠٠ ج.م كل ٣٠ يومًا لكل جراج أنشأته، عندما يدفع الجراج ٥٠٠ ج.م أو أكثر خلال تلك الفترة. يتم دفع عمولاتك يدويًا من الإدارة.
+            </p>
+          </div>
+
           {/* Article 1 */}
           <section className="space-y-2">
             <div className="flex items-center gap-2 text-slate-900 dark:text-white font-black text-sm">

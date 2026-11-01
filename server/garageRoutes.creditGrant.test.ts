@@ -186,7 +186,7 @@ describe('first paid credit grant delegate commission', () => {
       aggregateType: 'delegate',
       aggregateId: 'delegate-1',
       eventType: 'commission_earned',
-      idempotencyKey: 'first_paid_grant_commission:garage-1',
+      idempotencyKey: 'grant-first:commission',
       payload: {
         delegateId: 'delegate-1',
         commissionAmount: 100,

@@ -1206,7 +1206,18 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       if (garage.billingModel !== 'prepaid_credits') throw new Error('GARAGE_NOT_PREPAID');
       const isFirstPaidGrant = !garage.firstPaidCreditGrantAt;
       const isFirstQualifyingGrant = !garage.firstQualifyingGrantAt && paymentAmountEgp >= 500;
-      const commissionDelegateId = isFirstQualifyingGrant && typeof garage.createdByDelegateId === 'string'
+      // Delegate commission is now a rolling 30-day recurring rule, NOT one-time.
+      // It fires when paymentAmountEgp >= 500 AND (no prior commission OR the last
+      // commission was more than 30 days ago). Capped at 100 EGP per 30-day window
+      // per garage. The referral reward (20 credits to the referrer) stays one-time
+      // — it still only fires on isFirstQualifyingGrant.
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const isQualifyingPayment = paymentAmountEgp >= 500;
+      const lastCommissionGrantAt = garage.lastCommissionGrantAt
+        ? (garage.lastCommissionGrantAt.toMillis ? garage.lastCommissionGrantAt.toMillis() : new Date(garage.lastCommissionGrantAt).getTime())
+        : null;
+      const isCommissionDue = isQualifyingPayment && (lastCommissionGrantAt === null || (Date.now() - lastCommissionGrantAt) >= THIRTY_DAYS_MS);
+      const commissionDelegateId = isCommissionDue && typeof garage.createdByDelegateId === 'string'
         ? garage.createdByDelegateId.trim()
         : '';
       const commissionDelegateRef = commissionDelegateId
@@ -1278,7 +1289,10 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         credits: transition.value.balance,
         totalAdminRevenue: newAdminRevenue,
         ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
-        ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {})
+        ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}),
+        // Update lastCommissionGrantAt so the rolling 30-day window resets.
+        // Only set when commission was actually due this grant.
+        ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
       }, { merge: true });
       t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp });
       recordDomainEventInTransaction(t, getAdminDb(), {
@@ -1304,7 +1318,10 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           eventType: 'commission_earned',
           actorUid: callerUid,
           actorRole: 'admin',
-          idempotencyKey: `first_paid_grant_commission:${garageId}`,
+          // Unique per 30-day window so recurring commissions don't collide
+          // with the first one. Uses the credit-grant's idempotency key as
+          // the base so retries of the same grant don't double-count.
+          idempotencyKey: `${idempotencyKey}:commission`,
           payload: {
             delegateId: commissionDelegateId,
             commissionAmount: 100,
