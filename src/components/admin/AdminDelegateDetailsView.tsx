@@ -3,23 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, memo } from 'react';
-import { Trash2, History, Check } from 'lucide-react';
-import { Delegate, ActivityLog } from '../../types';
-import type { DelegateCommissionHistoryItem, DelegatePaidGrantSummary } from '../../services/delegateService';
+import { useState, memo } from 'react';
+import { Trash2, ChevronRight, Users, Coins, Loader2 } from 'lucide-react';
+import { Delegate } from '../../types';
 import { firestoreService } from '../../services';
-import { safeDate } from '../../utils';
-import { 
-  calculateApprovedCommission, 
-  calculateApprovedRechargeTotal, 
-  getAvailableRequestMonths 
-} from '../../utils/delegateCommissionCalculations';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
-import { AdminDelegateHeader } from './delegate-details/AdminDelegateHeader';
 import { AdminDelegateProfileCard } from './delegate-details/AdminDelegateProfileCard';
-import { AdminDelegateStatsGrid } from './delegate-details/AdminDelegateStatsGrid';
-import { AdminDelegateHistorySection } from './delegate-details/AdminDelegateHistorySection';
 
 interface AdminDelegateDetailsViewProps {
   delegate: Delegate;
@@ -34,248 +24,124 @@ export const AdminDelegateDetailsView = memo(({
   setSelectedDelegate,
   removeDelegate
 }: AdminDelegateDetailsViewProps) => {
-  const [recharges, setRecharges] = useState<ActivityLog[]>([]);
-  const [commissionEvents, setCommissionEvents] = useState<DelegateCommissionHistoryItem[]>([]);
-  const [paidGrantSummary, setPaidGrantSummary] = useState<DelegatePaidGrantSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [historyTotal, setHistoryTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmSettle, setConfirmSettle] = useState(false);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    confirmText?: string;
-    cancelText?: string;
-    type?: 'danger' | 'warning' | 'success';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  });
   const { adminLang } = useTheme();
   const t = useAdminTranslation(adminLang);
 
-  useEffect(() => {
-    let isCurrent = true;
+  const lifetimeCommission = Number(delegate.totalCommissionEarned || 0);
+  const unsettledCommission = settledAtOverride
+    ? 0
+    : Number(delegate.totalRechargedAmount || 0);
+
+  const handleSettleAccount = async () => {
+    setConfirmSettle(false);
     setIsLoading(true);
-    setRecharges([]);
-    setCommissionEvents([]);
-    setHistoryTotal(0);
-    setPaidGrantSummary(null);
-
-    const fetchHistory = async () => {
-      const [grantResult, commissionResult, legacyHistoryResult] = await Promise.allSettled([
-        firestoreService.getDelegatePaidGrantSummary(delegate.id),
-        firestoreService.getDelegateCommissionHistory(delegate.id),
-        firestoreService.getDelegateRecharges(delegate.id)
-      ]);
-      if (!isCurrent) return;
-
-      if (grantResult.status === 'fulfilled') {
-        const summary = grantResult.value;
-        setPaidGrantSummary(summary);
-        const paidGrantLogs = (summary.recentPaidGrants || []).map(grant => ({
-          id: grant.entryId, garageId: grant.garageId, staffId: delegate.id, staffName: delegate.name,
-          actionType: 'credit_grant', plateNumber: grant.garageName || grant.garageId,
-          timestamp: grant.occurredAt, amount: grant.amountEgp, commission: 0
-        } as ActivityLog));
-        const legacyLogs = legacyHistoryResult.status === 'fulfilled' ? legacyHistoryResult.value : [];
-        setRecharges([...legacyLogs, ...paidGrantLogs]);
-        setHistoryTotal(summary.allTimePaidGrantTotalEgp);
-      } else {
-        console.error('Failed to fetch delegate paid grants:', grantResult.reason);
-      }
-
-      if (commissionResult.status === 'fulfilled') {
-        setCommissionEvents(commissionResult.value || []);
-      } else {
-        console.error('Failed to fetch canonical delegate commission history:', commissionResult.reason);
-      }
+    try {
+      await firestoreService.settleDelegateAccount(
+        delegate.id,
+        Number(delegate.totalRechargedAmount || 0),
+        delegate.lastSettledAt
+      );
+      setSettledAtOverride(new Date());
+      setSelectedDelegate({ ...delegate, totalRechargedAmount: 0 });
+    } catch {
+      // Silent — the confirm dialog just closes
+    } finally {
       setIsLoading(false);
-    };
-    void fetchHistory();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [delegate.id]);
+    }
+  };
 
   const handleDelete = async () => {
-    setConfirmDialog({
-      isOpen: true,
-      title: t('سحب الصلاحية'),
-      message: `هل أنت متأكد من سحب صلاحية المندوب "${delegate.name}"؟ لن يتمكن من تسجيل الدخول أو شحن الأرصدة مرة أخرى.`,
-      confirmText: t('تأكيد السحب'),
-      cancelText: t('تراجع'),
-      type: 'danger',
-      onConfirm: async () => {
-        try {
-          await removeDelegate(delegate.id);
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-          setSelectedDelegate(null);
-          setView('admin_dashboard');
-        } catch {
-          setConfirmDialog({
-            isOpen: true,
-            title: t('خطأ'),
-            message: t('فشل سحب الصلاحية. يرجى المحاولة مرة أخرى.'),
-            onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-            confirmText: t('حسناً'),
-            type: 'danger'
-          });
-        }
-      }
-    });
-  };
-
-  const commissionActivityLogs: ActivityLog[] = commissionEvents
-    .filter((event) => event.eventType === 'commission_earned')
-    .map((event) => ({
-      id: event.eventId,
-      garageId: event.garageId || '',
-      staffId: delegate.id,
-      staffName: delegate.name,
-      actionType: 'commission_earned',
-      plateNumber: 'عمولة أول شحن مدفوع',
-      timestamp: event.occurredAt,
-      amount: 0,
-      commission: event.commissionAmount || 0
-    }));
-  const activeDataset: ActivityLog[] = [...recharges, ...commissionActivityLogs]
-    .sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
-
-  // Monthly calculations logic
-  const [selectedMonthKey, setSelectedMonthKey] = useState<string>('current');
-
-  const getCurrentMonthKey = () => {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit' }).format(new Date());
-  };
-
-  const currentMonthKey = getCurrentMonthKey();
-
-  const formatMonthName = (key: string) => {
-    if (key === 'all') return 'جميع الأوقات';
-    if (!key) return '';
-    const [yearStr, monthStr] = key.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10) - 1;
-    const d = new Date(year, month, 1);
-    if (isNaN(d.getTime())) return key;
-    return d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
-  };
-
-  // Include months with either recharge activity or canonical commission events
-  const availableMonths = React.useMemo(() => {
-    return Array.from(new Set([
-      ...getAvailableRequestMonths(activeDataset, currentMonthKey),
-      ...Object.keys(paidGrantSummary?.monthlyPaidGrantTotalsEgp || {})
-    ])).sort().reverse();
-  }, [activeDataset, currentMonthKey, paidGrantSummary]);
-
-  const activeMonthKey = selectedMonthKey === 'current' ? currentMonthKey : selectedMonthKey;
-
-  const effectiveLastSettledAt = settledAtOverride || (delegate.lastSettledAt ? safeDate(delegate.lastSettledAt) : null);
-  const currentCycleDataset = React.useMemo(() => {
-    if (!effectiveLastSettledAt) return activeDataset;
-    return activeDataset.filter(item => {
-      const rawDate = (item as any).resolvedAt || (item as any).createdAt || (item as any).timestamp;
-      return safeDate(rawDate) > effectiveLastSettledAt;
-    });
-  }, [activeDataset, effectiveLastSettledAt]);
-  const selectedPeriodDataset = activeMonthKey === currentMonthKey ? currentCycleDataset : activeDataset;
-
-  const totalRecharged = React.useMemo(() => {
-    if (paidGrantSummary) {
-      if (activeMonthKey === 'all') return paidGrantSummary.allTimePaidGrantTotalEgp;
-      if (activeMonthKey === currentMonthKey) return paidGrantSummary.currentCyclePaidGrantTotalEgp;
-      return paidGrantSummary.monthlyPaidGrantTotalsEgp[activeMonthKey] || 0;
+    setConfirmDelete(false);
+    try {
+      await removeDelegate(delegate.id);
+      setSelectedDelegate(null);
+      setView('admin_dashboard');
+    } catch {
+      // Silent
     }
-    if (activeMonthKey === 'all') {
-      const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-      return Math.max(calculated, historyTotal);
-    }
-    return calculateApprovedRechargeTotal(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, historyTotal, selectedPeriodDataset]);
-
-  const allTimeTotal = React.useMemo(() => {
-    if (paidGrantSummary) return paidGrantSummary.allTimePaidGrantTotalEgp;
-    const calculated = calculateApprovedRechargeTotal(activeDataset, 'all');
-    return Math.max(calculated, historyTotal);
-  }, [activeDataset, historyTotal]);
-
-  const commissionValue = React.useMemo(() => {
-    if (activeMonthKey === 'all') {
-      const calculated = calculateApprovedCommission(activeDataset, 'all');
-      return Math.max(calculated, delegate.totalCommissionEarned || 0);
-    }
-    return calculateApprovedCommission(selectedPeriodDataset, activeMonthKey);
-  }, [activeDataset, activeMonthKey, delegate.totalCommissionEarned, selectedPeriodDataset]);
-
-  const allTimeCommission = React.useMemo(() => {
-    const calculated = calculateApprovedCommission(activeDataset, 'all');
-    return Math.max(calculated, delegate.totalCommissionEarned || 0);
-  }, [activeDataset, delegate.totalCommissionEarned]);
-
-  // This legacy-named field is the Worker-maintained unsettled commission balance,
-  // not gross recharge sales. Fall back to the canonical commission events only when absent.
-  const unsettledCycleTotal = typeof delegate.totalRechargedAmount === 'number'
-    ? delegate.totalRechargedAmount
-    : calculateApprovedCommission(currentCycleDataset, 'all');
-
-  const handleSettleAccount = () => {
-    setConfirmDialog({
-      isOpen: true,
-      title: t('تصفية الحساب يدويًا'),
-      message: `هل أنت متأكد من تصفية الحساب الحالي للمندوب "${delegate.name}"؟ سيتم تسجيل تاريخ التسوية اليدوية مع حفظ كافة السجلات التاريخية.`,
-      confirmText: t('تصفية وتسوية الآن'),
-      cancelText: t('تراجع'),
-      type: 'warning',
-      onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        setIsLoading(true);
-        try {
-          await firestoreService.settleDelegateAccount(
-            delegate.id,
-            Number(delegate.totalRechargedAmount || 0),
-            delegate.lastSettledAt
-          );
-          setSettledAtOverride(new Date());
-          // Update via the setter instead of mutating the prop.
-          setSelectedDelegate({ ...delegate, totalRechargedAmount: 0 });
-        } catch {
-          setConfirmDialog({
-            isOpen: true,
-            title: t('خطأ'),
-            message: t('فشل تصفية حساب المندوب. يرجى المحاولة مرة أخرى.'),
-            onConfirm: () => setConfirmDialog(prev => ({ ...prev, isOpen: false })),
-            confirmText: t('حسناً'),
-            type: 'danger'
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    });
   };
 
   return (
     <div className="h-screen w-full bg-[#faf9f6] dark:bg-slate-950 flex flex-col font-sans text-right" dir="rtl">
-      {/* Header */}
-      <AdminDelegateHeader 
-        delegate={delegate}
-        onBack={() => {
-          setSelectedDelegate(null);
-          setView('admin_dashboard');
-        }}
-        onDelete={handleDelete}
-      />
+      {/* Header — minimal: back + name + delete */}
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedDelegate(null);
+                setView('admin_dashboard');
+              }}
+              className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shrink-0"
+            >
+              <ChevronRight className="w-5 h-5 stroke-[3.5]" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <h1 className="text-base font-black text-slate-900 dark:text-white">{delegate.name}</h1>
+            </div>
+          </div>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+            title={t('سحب الصلاحية')}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
 
       <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 pb-24">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Profile Card */}
-          <AdminDelegateProfileCard 
+        <div className="max-w-2xl mx-auto space-y-5">
+          {/* HERO — two commission numbers (same pattern as delegate's own view) */}
+          <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-6 dark:border-amber-900 dark:from-amber-950/40 dark:to-slate-900">
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1.5">
+                  إجمالي العمولات
+                </p>
+                <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
+                  <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                    {lifetimeCommission.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </span>
+                  <span className="text-sm font-black text-amber-600 dark:text-amber-400">ج.م</span>
+                </div>
+              </div>
+              <div className="border-r border-amber-200/60 dark:border-amber-900/60">
+                <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 mb-1.5">
+                  غير مُصرف
+                </p>
+                <div className="flex items-baseline justify-center gap-1 font-mono leading-none">
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    {unsettledCommission.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </span>
+                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">ج.م</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Settle button — only if there's unsettled commission */}
+          {unsettledCommission > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmSettle(true)}
+              disabled={isLoading}
+              className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coins className="w-5 h-5" />}
+              <span>صرف وتسوية العمولة</span>
+            </button>
+          )}
+
+          {/* Profile card — name, phone, PIN */}
+          <AdminDelegateProfileCard
             delegate={delegate}
             adminLang={adminLang}
             onPinUpdated={(newPin) => {
@@ -283,76 +149,69 @@ export const AdminDelegateDetailsView = memo(({
             }}
           />
 
-          {/* Stats Grid & Monthly Filter */}
-          <AdminDelegateStatsGrid 
-            selectedMonthKey={selectedMonthKey}
-            setSelectedMonthKey={setSelectedMonthKey}
-            currentMonthKey={currentMonthKey}
-            activeMonthKey={activeMonthKey}
-            availableMonths={availableMonths}
-            formatMonthName={formatMonthName}
-            totalRecharged={totalRecharged}
-            allTimeTotal={allTimeTotal}
-            commissionValue={commissionValue}
-            allTimeCommission={allTimeCommission}
-            unsettledCycleTotal={unsettledCycleTotal}
-            effectiveLastSettledAt={effectiveLastSettledAt}
-            onSettleAccount={handleSettleAccount}
-            adminLang={adminLang}
-          />
-
-          {/* History Section */}
-          <AdminDelegateHistorySection 
-            recharges={activeDataset}
-            isLoading={isLoading}
-            adminLang={adminLang}
-          />
+          {/* Delete button at bottom */}
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full py-3 rounded-2xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+          >
+            سحب صلاحية المندوب
+          </button>
         </div>
       </main>
 
-      {/* Confirmation Dialog */}
-      {confirmDialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" dir="rtl">
-          <div 
-            className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-popup-30fps"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-8 text-center">
-              <div className={`w-20 h-20 mx-auto rounded-xl flex items-center justify-center mb-6 ${
-                confirmDialog.type === 'danger' ? 'bg-red-50 text-red-600' : 
-                confirmDialog.type === 'warning' ? 'bg-amber-50 text-amber-600' : 
-                'bg-emerald-50 text-emerald-600'
-              }`}>
-                {confirmDialog.type === 'danger' ? <Trash2 className="w-10 h-10" /> : 
-                 confirmDialog.type === 'warning' ? <History className="w-10 h-10" /> : 
-                 <Check className="w-10 h-10" />}
-              </div>
-              
-              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">{confirmDialog.title}</h3>
-              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
-                {confirmDialog.message}
-              </p>
+      {/* Delete confirm dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80" dir="rtl" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-2">سحب الصلاحية</h3>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
+              هل أنت متأكد من سحب صلاحية المندوب "{delegate.name}"؟ لن يتمكن من تسجيل الدخول مرة أخرى.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-xs cursor-pointer"
+              >
+                تراجع
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs cursor-pointer"
+              >
+                تأكيد السحب
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="flex gap-3">
-                {confirmDialog.cancelText && (
-                  <button
-                    onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all outline-none cursor-pointer"
-                  >
-                    {confirmDialog.cancelText}
-                  </button>
-                )}
-                <button
-                  onClick={confirmDialog.onConfirm}
-                  className={`flex-1 py-4 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all outline-none cursor-pointer ${
-                    confirmDialog.type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 
-                    confirmDialog.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 
-                    'bg-emerald-600 hover:bg-emerald-700'
-                  }`}
-                >
-                  {confirmDialog.confirmText || t('تأكيد')}
-                </button>
-              </div>
+      {/* Settle confirm dialog */}
+      {confirmSettle && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80" dir="rtl" onClick={() => setConfirmSettle(false)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Coins className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-2">تصفية الحساب</h3>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 text-center mb-6 leading-relaxed">
+              هل أنت متأكد من صرف {unsettledCommission.toLocaleString('en-US')} ج.م للمندوب "{delegate.name}"؟ سيتم تسجيل التسوية.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSettle(false)}
+                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-xs cursor-pointer"
+              >
+                تراجع
+              </button>
+              <button
+                onClick={handleSettleAccount}
+                className="flex-1 py-3 bg-amber-600 text-white rounded-xl font-black text-xs cursor-pointer"
+              >
+                تصفية الآن
+              </button>
             </div>
           </div>
         </div>
@@ -362,4 +221,3 @@ export const AdminDelegateDetailsView = memo(({
 });
 
 AdminDelegateDetailsView.displayName = 'AdminDelegateDetailsView';
-
