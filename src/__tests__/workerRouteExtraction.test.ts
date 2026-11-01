@@ -120,7 +120,7 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       + registrations(financialRoutesSource).length
       + registrations(garageRoutesSource).length
       + registrations(creditRequestRoutesSource).length
-    ).toBe(65);
+    ).toBe(66);
   });
 
   it('keeps the global Worker export in the monolith', () => {

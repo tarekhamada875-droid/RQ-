@@ -18,6 +18,18 @@ export interface DelegateDashboardData {
 }
 
 export type DelegateDashboardSection = 'createdGarages' | 'referredGarages';
+
+export interface DelegateCreditRequest {
+  id: string;
+  garageId: string;
+  garageName: string;
+  delegateId: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  reviewedAt: number | null;
+}
+
 export interface DelegateCommissionHistoryItem {
   eventId: string;
   eventType: 'commission_earned' | 'delegate_settled';
@@ -188,6 +200,20 @@ export const delegateService = {
       handleFirestoreError(error, OperationType.LIST, 'activity_logs');
       throw error;
     }
+  },
+
+  // ── Credit requests (delegate → admin) ───────────────────────────────
+  createCreditRequest: async (garageId: string, amount: number): Promise<{ id: string }> => {
+    const res = await apiFetch<{ success: boolean; id: string }>('/api/delegates/credit-requests', {
+      method: 'POST',
+      body: { garageId, amount },
+    });
+    return { id: res.id };
+  },
+
+  listMyCreditRequests: async (): Promise<DelegateCreditRequest[]> => {
+    const res = await apiFetch<{ success: boolean; requests: DelegateCreditRequest[] }>('/api/delegates/credit-requests');
+    return res.requests || [];
   },
 
 };
