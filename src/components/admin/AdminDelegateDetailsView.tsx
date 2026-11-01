@@ -148,14 +148,6 @@ export const AdminDelegateDetailsView = memo(({
               setSelectedDelegate({ ...delegate, pin: newPin });
             }}
           />
-
-          {/* Delete button at bottom */}
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="w-full py-3 rounded-2xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-          >
-            سحب صلاحية المندوب
-          </button>
         </div>
       </main>
 
