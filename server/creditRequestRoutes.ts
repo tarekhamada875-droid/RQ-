@@ -135,6 +135,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
           garageId: data.garageId,
           garageName: data.garageName || '',
           delegateId: data.delegateId,
+          delegateName: data.delegateName || '',
           amount: Number(data.amount || 0),
           status: data.status || 'pending',
           createdAt,
