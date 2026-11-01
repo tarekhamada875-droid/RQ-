@@ -71,7 +71,7 @@ export const adminActivityService = {
       const q = query(
         collection(db, 'activity_logs'),
         where('garageId', '==', garageId),
-        where('actionType', '==', 'recharge'),
+        where('actionType', '==', 'credit_grant'),
         orderBy('timestamp', 'desc'),
         limit(fetchLimit)
       );
@@ -94,7 +94,7 @@ export const adminActivityService = {
           if (isClosed) return;
           const data = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as ActivityLog))
-            .filter(log => log.actionType === 'recharge' || (log.plateNumber && (log.plateNumber.includes('شحن') || log.plateNumber.includes('تفعيل'))));
+            .filter(log => log.actionType === 'credit_grant' || (log.plateNumber && (log.plateNumber.includes('شحن') || log.plateNumber.includes('تفعيل'))));
           data.sort((a, b) => safeDate(b.timestamp).getTime() - safeDate(a.timestamp).getTime());
           callback(data.slice(0, resultLimit));
         }, (fallbackErr) => {
