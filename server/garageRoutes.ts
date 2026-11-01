@@ -218,7 +218,12 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       : 0;
     const now = new Date();
     const billingModel = 'prepaid_credits';
-    const isTrial = sanitized.isTrial === true || sanitized.isTrial === 'true' || sanitized.isTrial === 'on' || sanitized.isTrial === '1';
+    // Trial credits: admin-created garages are approved immediately, so they
+    // get 100 trial credits at creation. Delegate-created garages are pending
+    // and get 0 credits — the 100 trial credits are granted automatically
+    // when the admin approves them later (see /api/garages/update).
+    // The delegate-side trial toggle was removed from the create-garage modal.
+    const isTrial = callerRole === 'admin' || (!createdByDelegateId && !sanitized.createdByDelegateId);
     const trialCreditAmount = isTrial ? 100 : 0;
     const finalDailyCapacity = 0;
     const garageRef = getAdminDb().collection('garages').doc();
@@ -425,6 +430,43 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     }
 
     await getAdminDb().collection('garages').doc(id).update(updates);
+
+    // Trial credits on approval: when an admin approves a pending garage
+    // (status → 'approved'), grant 100 trial credits automatically IF the
+    // garage hasn't already received them. This replaces the delegate-side
+    // trial toggle that was removed from the create-garage modal — the
+    // delegate no longer decides; the credits just happen on approval.
+    if (updates.status === 'approved') {
+      const garageDoc = await getAdminDb().collection('garages').doc(id).get();
+      const garageData = garageDoc.data() || {};
+      if (!garageData.isTrial) {
+        const now = new Date();
+        const trialTransition = grantTrialCredits({
+          balance: Number(garageData.credits || 0),
+          amount: 100,
+          garageId: id,
+          actorUid: user?.uid || 'admin',
+          actorRole: 'admin',
+          reason: 'Trial credits granted on garage approval',
+          occurredAt: now.toISOString(),
+          idempotencyKey: `garage-approve:${id}:trial`,
+        });
+        if (trialTransition.ok !== false) {
+          const trialLedger = materializeCreditLedgerEntry(trialTransition.value.entry);
+          if (trialLedger.ok !== false) {
+            await getAdminDb().doc(`credit_ledger/${trialLedger.value.entryId}`).set({
+              ...trialLedger.value,
+              source: 'garage_approval_trial',
+            });
+            await getAdminDb().collection('garages').doc(id).update({
+              credits: trialTransition.value.balance,
+              isTrial: true,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+    }
 
     // Only mark the admin summary stale when fields that actually affect the
     // summary counters change (isLocked → lockedGarages, status → activeGarages).

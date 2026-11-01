@@ -430,10 +430,8 @@ export function useAdminAndGarageManagement({
       const formData = new FormData(form);
       const data: any = Object.fromEntries(formData.entries());
 
-      const isTrialRaw = formData.get('isTrial') || formData.get('isTrial_hidden');
-      const isTrial = isTrialRaw === 'true' || isTrialRaw === 'on' || isTrialRaw === '1';
-      data.isTrial = isTrial;
-
+      // Trial credits are no longer set at creation — the Worker forces
+      // isTrial: false and grants 100 credits automatically on admin approval.
       data.hasMonthlySubscribers = false;
 
       const isDelegateCreation = Boolean(delegate && delegate.id);
