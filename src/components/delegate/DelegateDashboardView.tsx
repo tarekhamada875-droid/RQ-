@@ -77,8 +77,41 @@ export const DelegateDashboardView = memo(({
     }
   }, []);
 
+  // Initial fetch + 30-second polling (only when the page is visible).
+  // This keeps credit request badges fresh without requiring a manual refresh.
   useEffect(() => {
     void refreshCreditRequests();
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => void refreshCreditRequests(), 30_000);
+    };
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshCreditRequests();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === 'visible') {
+      startPolling();
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [refreshCreditRequests]);
 
   useBodyScrollLock(Boolean(showAddGarage || showCreditRequestModal));

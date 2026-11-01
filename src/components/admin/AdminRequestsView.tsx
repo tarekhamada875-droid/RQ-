@@ -39,8 +39,48 @@ export const AdminRequestsView: React.FC<AdminRequestsViewProps> = ({
     }
   }, []);
 
+  // Initial fetch + 30-second polling (only when the page is visible).
+  // This keeps the admin's credit request list fresh — when a delegate
+  // submits a new request, it appears within 30 seconds without a manual
+  // refresh. Polling stops when the tab is hidden to save reads.
   useEffect(() => {
     void refreshCreditRequests();
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        // Silent refresh — don't flip the loading spinner on polls, only on initial load
+        adminBillingService.listPendingCreditRequests()
+          .then(setCreditRequests)
+          .catch(() => {});
+      }, 30_000);
+    };
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshCreditRequests();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === 'visible') {
+      startPolling();
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [refreshCreditRequests]);
 
   const processGarage = async (garage: Garage, action: 'approve' | 'reject') => {
