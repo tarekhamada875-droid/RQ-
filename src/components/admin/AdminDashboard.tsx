@@ -79,7 +79,7 @@ export const AdminDashboard = memo(({
     else if (activeTab === 'packages') setActiveTab('catalog_settings');
   }, [activeTab, setActiveTab]);
 
-  const [showOverview, setShowOverview] = React.useState<boolean>(false);
+  const [showAddGarageModal, setShowAddGarageModal] = React.useState<boolean>(false);
   const [pinInput, setPinInput] = React.useState<string>('');
   const [garageForm, setGarageForm] = React.useState<{
     name: string;
@@ -201,7 +201,7 @@ export const AdminDashboard = memo(({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useBodyScrollLock(showOverview);
+  useBodyScrollLock(showAddGarageModal);
 
   const handleAddGarage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -209,7 +209,7 @@ export const AdminDashboard = memo(({
       const created = await createNewGarage(e);
       if (!created) return false;
       await refreshAdminListsAfterMutation();
-      setShowOverview(false);
+      setShowAddGarageModal(false);
       return true;
     } catch (err) {
       console.error('Admin garage creation failed:', err);
@@ -279,7 +279,7 @@ export const AdminDashboard = memo(({
       {/* Main Workspace Body */}
       <main 
         ref={mainScrollRef} 
-        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 flex-1 w-full ${showOverview ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 flex-1 w-full ${showAddGarageModal ? 'overflow-hidden' : 'overflow-y-auto'}`}
       >
         <AdminNavigationAndViews
           activeTab={activeTab}
@@ -300,7 +300,7 @@ export const AdminDashboard = memo(({
           }}
           onOpenAddGarage={() => {
             setPinInput('');
-            setShowOverview(true);
+            setShowAddGarageModal(true);
           }}
           adminGarageHasMore={adminGarageHasMore}
           adminDelegateHasMore={adminDelegateHasMore}
@@ -321,8 +321,8 @@ export const AdminDashboard = memo(({
 
       {/* Add Garage Modal */}
       <AdminAddGarageModal
-        isOpen={showOverview}
-        onClose={() => setShowOverview(false)}
+        isOpen={showAddGarageModal}
+        onClose={() => setShowAddGarageModal(false)}
         garageForm={garageForm}
         setGarageForm={setGarageForm}
         pinInput={pinInput}

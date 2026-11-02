@@ -96,7 +96,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('الجراجات')}</span>
             </button>
 
-            {/* Tab 3: Requests */}
+            {/* Tab 2: Requests */}
             <button
               type="button"
               onClick={() => setActiveTab('requests')}
@@ -119,7 +119,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               )}
             </button>
 
-            {/* Tab 5: People (Delegates) */}
+            {/* Tab 3: People (Delegates) */}
             <button
               type="button"
               onClick={() => setActiveTab('people')}
@@ -133,7 +133,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               <span>{t('الأشخاص')}</span>
             </button>
 
-            {/* Tab 7: Settings */}
+            {/* Tab 4: Settings */}
             <button
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
