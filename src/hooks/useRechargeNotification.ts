@@ -112,12 +112,13 @@ export function useRechargeNotification({
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
     }
-  }, [garageId, isAuthenticated, rechargeLogs, isTrial, now]);
+  }, [garageId, isAuthenticated, rechargeLogs, isTrial]);
 
   // Auto-close the notification 15 minutes after the log timestamp.
   // PERF: `now` is read once when the notification opens (for the initial
   // remainingMs), and the timer runs undisturbed until it fires or the user
-  // acknowledges. `now` is still read from the prop for testability.
+  // acknowledges. `now` is NOT in the deps array — including it would
+  // clear and re-create the setTimeout every time the parent's clock ticks.
   useEffect(() => {
     if (!isRechargeNotificationOpen || !latestRechargeLog) return;
 
@@ -131,7 +132,7 @@ export function useRechargeNotification({
     }, remainingMs);
 
     return () => window.clearTimeout(expiryTimer);
-  }, [isRechargeNotificationOpen, latestRechargeLog, now]);
+  }, [isRechargeNotificationOpen, latestRechargeLog]);
 
   const handleAcknowledgeRecharge = useCallback(() => {
     if (latestRechargeLog && garageId) {
