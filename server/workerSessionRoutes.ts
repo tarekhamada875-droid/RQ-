@@ -2,7 +2,7 @@ import type { WorkerApp, WorkerUser } from './cloudflareWorker';
 import { adminDb, adminAuth } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './backendOperatorToken';
 import { cleanPin, verifyPinMatch, verifyDocMatch, migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './utils';
-import { isNewPinFormat, validateNewPin } from './validation';
+import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import { canInvalidateAllSessions } from './domain/authorization';
 import { checkWorkerPinRateLimit, resetWorkerPinRateLimit } from './workerPinRateLimiter';
@@ -304,6 +304,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
 
     const sessionId = typeof credentials.sessionId === 'string' ? credentials.sessionId.trim() : '';
     if (!sessionId) return c.json({ success: false, error: 'SESSION_ID_REQUIRED' }, 400);
+    if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
 
     const expectedRole = credentials.expectedRole;
     if (expectedRole !== undefined && expectedRole !== 'delegate') {
@@ -588,6 +589,7 @@ workerApp.post('/api/auth/claim-admin-session', async (c) => {
     const uid = typeof body.uid === 'string' ? body.uid.trim() : '';
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
     if (!effectiveUid || !uid || !sessionId) return c.json({ success: false, error: 'INVALID_PARAMS' }, 400);
+    if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (uid !== effectiveUid) return c.json({ success: false, error: 'UID_MISMATCH' }, 401);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
     const existing = await adminDb.doc(`admin_sessions/${effectiveUid}`).get();
@@ -694,6 +696,7 @@ workerApp.post('/api/auth/release-session', async (c) => {
     const role = typeof body.role === 'string' ? body.role.trim() : '';
     const entityId = typeof body.entityId === 'string' ? body.entityId.trim() : '';
     if (!verifiedUid || !targetUid || !sessionId || !role) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (role === 'supervisor') return c.json({ success: false, error: 'ROLE_RETIRED' }, 410);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
 
@@ -751,6 +754,7 @@ workerApp.post('/api/auth/release-admin-session', async (c) => {
     const targetUid = typeof body.uid === 'string' ? body.uid.trim() : '';
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId.trim() : '';
     if (!verifiedUid || !targetUid || !sessionId) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
+    if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (verifiedUid !== targetUid || c.get('user')?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
     const rootRef = adminDb.doc(`admin_sessions/${targetUid}`);

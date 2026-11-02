@@ -44,6 +44,10 @@ function createDelegateRoutesHarness() {
     checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
     saveEntityPinInTransaction: vi.fn(),
     writeMaintainedAdminDelta: vi.fn(),
+    validateIdempotencyKey: () => null,
+    createRequestFingerprint: () => 'fingerprint',
+    checkIdempotencyInTransaction: async () => ({ isDuplicate: false }),
+    storeIdempotencyInTransaction: vi.fn(),
     ValidationError: class extends Error {}
   } as any);
 
