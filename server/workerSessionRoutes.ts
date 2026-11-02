@@ -546,6 +546,32 @@ workerApp.post('/api/admin/update-pin', async (c) => {
     if (pinCheck.taken) return c.json({ success: false, error: 'PIN_ALREADY_TAKEN', takenBy: { name: pinCheck.name || '', role: pinCheck.role } }, 400);
     await saveEntityPin('admin_settings', 'auth_pin', normalizedNewPin);
     await adminDb.doc('admin_settings/auth_pin').set({ pin: null, pinLookupHash: null, updatedAt: new Date() }, { merge: true });
+
+    // Invalidate all other admin sessions — the PIN changed, so any other
+    // device that's logged in with the OLD PIN should be kicked out.
+    // The caller (who just changed the PIN) stays logged in.
+    const callerSessionId = (c.req.header('x-session-id') || '').trim();
+    const callerUid = c.get('user')?.uid || '';
+    if (callerSessionId && callerUid) {
+      try {
+        const rootRef = adminDb.doc(`admin_sessions/${callerUid}`);
+        const rootSnap = await rootRef.get();
+        const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
+        const allSessionIds: string[] = Array.isArray(rootData.activeSessionIds) ? rootData.activeSessionIds : [];
+        const otherSessionIds = allSessionIds.filter((id: string) => id !== callerSessionId);
+        for (const otherId of otherSessionIds) {
+          await adminDb.doc(`admin_sessions/${callerUid}/sessions/${otherId}`).set({ isActive: false, lastActive: new Date() }, { merge: true });
+        }
+        if (otherSessionIds.length > 0) {
+          await rootRef.set({ activeSessionIds: [callerSessionId], currentSessionId: callerSessionId }, { merge: true });
+          await adminDb.doc('admin_settings/auth_pin').set({ activeSessionIds: [callerSessionId], currentSessionId: callerSessionId }, { merge: true });
+        }
+      } catch (invalidateErr) {
+        // Non-fatal — the PIN was changed successfully, session cleanup is best-effort.
+        console.error('[Worker Admin] Session invalidation after PIN change failed:', invalidateErr);
+      }
+    }
+
     return c.json({ success: true });
   } catch (error: any) {
     console.error('[Worker Admin] Error updating PIN:', error?.message || 'unknown');
