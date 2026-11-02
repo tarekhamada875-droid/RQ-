@@ -124,7 +124,6 @@ export const adminSubscriberService = {
 
   /**
    * Searches subscribers across ALL garages in a single collectionGroup query.
-   * Replaces the O(N) per-garage loop in PlateLookupModal.
    * Returns subscribers with their parent garageId (extracted from the doc path).
    */
   getSubscribersByPlateAcrossGarages: async (rawPlate: string): Promise<Array<Subscriber & { garageId: string }>> => {

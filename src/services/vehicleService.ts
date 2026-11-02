@@ -243,7 +243,6 @@ export const vehicleService = {
 
   /**
    * Searches across ALL garages in a single collectionGroup query.
-   * Replaces the O(N) per-garage loop in PlateLookupModal.
    * Returns vehicles with their parent garageId (extracted from the doc path).
    */
   getVehiclesByPlateAcrossGarages: async (plateNumberRaw: string): Promise<Array<Vehicle & { garageId: string }>> => {
