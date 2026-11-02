@@ -22,6 +22,34 @@ export interface GarageReportStats {
   staffPerformance: Array<{ name: string; count: number; revenue: number }>;
 }
 
+// Activity-log fallback cap (mirrors vehicleService.TODAY_ACTIVITY_LOG_LIMIT).
+// Exported so tests can pin the warning threshold without hardcoding 200 twice.
+export const REPORTS_ACTIVITY_LOG_LIMIT = 200;
+
+export type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
+
+/**
+ * Decide which notice to show at the top of the reports page.
+ *
+ * - 'fresh_summary'           — authoritative server summary is available.
+ * - 'live_may_be_truncated'   — fallback activity log is in use AND we are at
+ *                               risk of having hit the 200-record cap. This is
+ *                               the only state that warrants alarming the user.
+ * - 'live_ok'                 — fallback activity log is in use but we have
+ *                               all of today's records (fewer than the cap).
+ *                               Crying "might be incomplete" here is dishonest,
+ *                               especially on a quiet morning with 0 exits.
+ */
+export function pickReportsNoticeState(
+  freshSummaryAvailable: boolean,
+  totalExited: number,
+  activityLogLimit: number = REPORTS_ACTIVITY_LOG_LIMIT,
+): ReportsNoticeState {
+  if (freshSummaryAvailable) return 'fresh_summary';
+  if (totalExited >= activityLogLimit) return 'live_may_be_truncated';
+  return 'live_ok';
+}
+
 export function buildGarageReportStats(
   records: GarageReportRecord[],
   staffList: Staff[],
@@ -258,11 +286,29 @@ export const GarageReportsView = memo(({
           </div>
         ) : (
           <>
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-              {isFreshGarageDashboardSummary(dashboardSummary) && dashboardSummary.report
-                ? 'الإحصاءات اليومية محسوبة من ملخص موثوق ومحدث مباشرة مع كل عملية خروج.'
-                : 'الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.'}
-            </p>
+            {(() => {
+              const freshSummaryAvailable = isFreshGarageDashboardSummary(dashboardSummary) && !!dashboardSummary.report;
+              const noticeState = pickReportsNoticeState(freshSummaryAvailable, stats.totalExited);
+              if (noticeState === 'fresh_summary') {
+                return (
+                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold leading-relaxed text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    الإحصاءات اليومية محسوبة من ملخص موثوق ومحدث مباشرة مع كل عملية خروج.
+                  </p>
+                );
+              }
+              if (noticeState === 'live_may_be_truncated') {
+                return (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+                    الإحصاءات اليومية تعتمد على ما يصل إلى 200 سجل من حركات اليوم؛ إذا تجاوز العدد ذلك، فقد لا تشمل كل الحركات.
+                  </p>
+                );
+              }
+              return (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold leading-relaxed text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                  عرض مباشر لحركات اليوم من سجل النشاط. الملخص الموثوق غير متاح مؤقتاً.
+                </p>
+              );
+            })()}
             
             {/* Row 1: Grid metrics */}
             <div className="grid grid-cols-2 gap-3.5">

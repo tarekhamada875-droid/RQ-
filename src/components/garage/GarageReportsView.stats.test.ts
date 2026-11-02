@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGarageReportStats } from './GarageReportsView';
+import { buildGarageReportStats, pickReportsNoticeState, REPORTS_ACTIVITY_LOG_LIMIT } from './GarageReportsView';
 
 describe('buildGarageReportStats', () => {
   it('counts only checkout logs and uses the persisted amount', () => {
@@ -40,5 +40,30 @@ describe('buildGarageReportStats', () => {
 
     expect(stats.totalExited).toBe(0);
     expect(stats.actualCalculatedTodayRevenue).toBe(0);
+  });
+});
+
+describe('pickReportsNoticeState', () => {
+  it('prefers the fresh server summary over the activity-log fallback, regardless of exit count', () => {
+    expect(pickReportsNoticeState(true, 0)).toBe('fresh_summary');
+    expect(pickReportsNoticeState(true, 500)).toBe('fresh_summary');
+  });
+
+  // Regression guard for the "scary yellow warning on a quiet morning" bug:
+  // 0 exits in fallback mode must NOT show the "might be incomplete" warning.
+  it('returns live_ok when the fallback is in use and there are fewer records than the cap', () => {
+    expect(pickReportsNoticeState(false, 0)).toBe('live_ok');
+    expect(pickReportsNoticeState(false, 1)).toBe('live_ok');
+    expect(pickReportsNoticeState(false, REPORTS_ACTIVITY_LOG_LIMIT - 1)).toBe('live_ok');
+  });
+
+  it('returns live_may_be_truncated only when the fallback activity log has reached the cap', () => {
+    expect(pickReportsNoticeState(false, REPORTS_ACTIVITY_LOG_LIMIT)).toBe('live_may_be_truncated');
+    expect(pickReportsNoticeState(false, REPORTS_ACTIVITY_LOG_LIMIT + 50)).toBe('live_may_be_truncated');
+  });
+
+  it('honours a custom activity-log limit', () => {
+    expect(pickReportsNoticeState(false, 49, 50)).toBe('live_ok');
+    expect(pickReportsNoticeState(false, 50, 50)).toBe('live_may_be_truncated');
   });
 });
