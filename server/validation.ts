@@ -259,24 +259,6 @@ export function validatePlate(val: any, fieldName = 'Plate Number'): { plateNumb
 }
 
 /**
- * Validates an enum value against an allowed list
- */
-export function validateEnum<T extends string>(
-  val: any,
-  allowedValues: readonly T[],
-  fieldName = 'Enum'
-): T {
-  if (!val || typeof val !== 'string' || !allowedValues.includes(val as T)) {
-    throw new ValidationError(
-      `Invalid ${fieldName}: must be one of [${allowedValues.join(', ')}]`,
-      `INVALID_${fieldName.toUpperCase()}`,
-      400
-    );
-  }
-  return val as T;
-}
-
-/**
  * Sanitizes request payload by checking and keeping allowed keys only.
  * Throws an error if disallowed unknown keys are injected and rejectUnknown = true.
  */

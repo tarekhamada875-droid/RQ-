@@ -44,10 +44,6 @@ export function computeLookupHash(cleanPinStr: string): string {
   return crypto.scryptSync(cleanPinStr, PIN_LOOKUP_SALT, 32).toString('hex');
 }
 
-export function hashPin(cleanPinStr: string): string {
-  return hashPinWithUniqueSalt(cleanPinStr);
-}
-
 function safeCompare(a: string, b: string): boolean {
   if (!a || !b) return false;
   const bufA = Buffer.from(a.toLowerCase());
