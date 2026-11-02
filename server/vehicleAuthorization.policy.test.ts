@@ -30,7 +30,7 @@ describe('vehicle authorization policy', () => {
     ['suspended', { ...garageIn, isSuspended: true }],
     ['locked and suspended', { ...garageIn, isLocked: true, isSuspended: true }],
   ])('blocks check-in for a %s garage at the decision boundary', (_label, garage) => {
-    expect(decideVehicleCheckIn(garage, { exists: false })).toEqual({
+    expect(decideVehicleCheckIn({ today: '2026-09-25' }, garage, { exists: false })).toEqual({
       ok: false,
       error: 'GARAGE_CHECK_IN_LOCKED',
     });
@@ -45,7 +45,7 @@ describe('vehicle authorization policy', () => {
   });
 
   it('rejects invalid vehicle transitions before any route adapter can write', () => {
-    expect(decideVehicleCheckIn(garageIn, { exists: true, status: 'inside' })).toEqual({
+    expect(decideVehicleCheckIn({ today: '2026-09-25' }, garageIn, { exists: true, status: 'inside' })).toEqual({
       ok: false,
       error: 'VEHICLE_ALREADY_INSIDE',
     });

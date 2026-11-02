@@ -21,6 +21,7 @@ export function garageDocumentToCheckInState(
     isLocked: document.isLocked === true,
     isSuspended: document.isSuspended === true,
     isSubscriberAuthoritative,
+    ...(typeof document.lastTransactionDate === 'string' ? { lastTransactionDate: document.lastTransactionDate } : {}),
   };
 }
 
