@@ -26,4 +26,19 @@ describe('buildGarageReportStats', () => {
 
     expect(stats.actualCalculatedTodayRevenue).toBe(25);
   });
+
+  // Regression guard for the "2900 revenue next to 0 exits" bug: when the
+  // activity log has no checkouts for today, the fallback revenue must be 0,
+  // never the stale `garage.todayRevenue` counter that carries yesterday's
+  // money (and is also bumped by subscriber renewals).
+  it('reports zero revenue when there are no checkout logs, even if a stale garage counter is present', () => {
+    const stats = buildGarageReportStats(
+      [{ id: 'entry-1', actionType: 'check_in', staffName: 'Ali', amount: 0 }],
+      [],
+      { id: 'garage-1', name: 'Manager', todayRevenue: 2900, lastTransactionDate: '2026-11-01' } as any
+    );
+
+    expect(stats.totalExited).toBe(0);
+    expect(stats.actualCalculatedTodayRevenue).toBe(0);
+  });
 });

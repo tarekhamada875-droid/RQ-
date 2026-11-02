@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
 import { firestoreService, garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
-import { getCairoDateKey } from '../../domain/garage/businessDay';
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
 
@@ -167,14 +166,19 @@ export const GarageReportsView = memo(({
     const localStats = buildGarageReportStats(localTodayExitedVehicles, staffList, localGarage);
 
     // Financial calculations
-    const today = getCairoDateKey();
-    const isTodayValid = localGarage.lastTransactionDate === today;
     const freshSummaryIsUsable = isFreshGarageDashboardSummary(dashboardSummary);
     const reportAggregate = freshSummaryIsUsable ? dashboardSummary.report : undefined;
     const effectiveTotalExited = freshSummaryIsUsable ? dashboardSummary.exitsToday : localStats.totalExited;
+    // The garage-doc `todayRevenue` counter is a mixed-purpose accumulator that
+    // subscriber renewals also bump, and the check-in path doesn't reset it on
+    // a new day — so it can carry yesterday's revenue into a fresh day and
+    // disagree with the departures count shown next to it. When the
+    // authoritative server summary is unavailable, derive today's revenue
+    // strictly from the visible checkout activity log so the two numbers
+    // always agree (0 exits → 0 revenue).
     const todayRevenue = freshSummaryIsUsable
       ? dashboardSummary.netRevenue
-      : (localStats.totalExited > 0 ? localStats.actualCalculatedTodayRevenue : (isTodayValid ? (localGarage.todayRevenue || 0) : 0));
+      : localStats.actualCalculatedTodayRevenue;
 
     return {
       totalExited: effectiveTotalExited,
