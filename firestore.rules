@@ -208,6 +208,18 @@ service cloud.firestore {
     // Verification Schema Rules
     // ===============================================================
 
+    // PIN credentials live exclusively in the server-only `private_pins`
+    // collection. Legacy plaintext / hash fields on tenant docs are forbidden
+    // so that a Worker bug can never accidentally re-materialize a readable
+    // PIN on a client-readable document. Null writes are permitted so the
+    // backfill and lazy migration paths can cleanse existing docs.
+    function forbidsLegacyPinFields(data) {
+      return (!('pin' in data) || data.pin == null) &&
+             (!('ownerPin' in data) || data.ownerPin == null) &&
+             (!('adminPin' in data) || data.adminPin == null) &&
+             (!('pinLookupHash' in data) || data.pinLookupHash == null);
+    }
+
     function isValidGarage(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.phone is string && (data.phone.size() == 0 || (data.phone.size() >= 3 && data.phone.size() <= 20)) &&
@@ -215,7 +227,7 @@ service cloud.firestore {
              data.overnightRate is number && data.overnightRate >= 0 &&
              data.createdAt is timestamp &&
              (data.billingModel == 'commission' || data.billingModel == 'subscription') &&
-             (!('pin' in data) || (data.pin == null || (data.pin is string && data.pin.size() >= 4))) &&
+             forbidsLegacyPinFields(data) &&
              (!('currentSessionId' in data) || (data.currentSessionId == null || (data.currentSessionId is string && data.currentSessionId.size() <= 128))) &&
              (!('commissionPerVehicle' in data) || (data.commissionPerVehicle is number && data.commissionPerVehicle >= 0)) &&
              (!('balance' in data) || data.balance is number) &&
@@ -235,7 +247,8 @@ service cloud.firestore {
     }
 
     function isGarageUpdateValid(data) {
-      return (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
+      return forbidsLegacyPinFields(data) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
              (!('phone' in data) || (data.phone is string && (data.phone.size() == 0 || data.phone.size() >= 3))) &&
              (!('hourlyRate' in data) || (data.hourlyRate is number && data.hourlyRate >= 0)) &&
              (!('overnightRate' in data) || (data.overnightRate is number && data.overnightRate >= 0)) &&

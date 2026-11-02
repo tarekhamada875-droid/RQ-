@@ -27,7 +27,8 @@
     "release:smoke": "tsx tools/release-smoke.ts",
     "smoke:worker-artifact": "node tools/worker-artifact-smoke.mjs",
     "maintainability:check": "tsx tools/maintainability-check.ts",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\"",
+    "backfill:null-legacy-pins": "tsx scripts/backfill-null-legacy-pin-fields.ts"
   },
   "dependencies": {
     "firebase": "^12.12.0",
