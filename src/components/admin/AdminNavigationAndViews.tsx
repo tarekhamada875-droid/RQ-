@@ -86,7 +86,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('garages')}
-              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
                 activeTab === 'garages'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -100,7 +100,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('requests')}
-              className={`flex shrink-0 snap-start items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
                 activeTab === 'requests'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -123,7 +123,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('people')}
-              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
                 activeTab === 'people' || activeTab === 'delegates'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -137,7 +137,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
-              className={`flex shrink-0 snap-start items-center gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
                   activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
