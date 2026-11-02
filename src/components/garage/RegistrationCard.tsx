@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, resolveShimmerColor } from '../../utils';
 import { Garage, Vehicle } from '../../types';
@@ -56,6 +56,23 @@ export const RegistrationCard = memo(({
     }
     return map;
   }, [vehicles]);
+
+  // Memoize plate parsing — previously getPlateParts was called 4+ times
+  // and getRawPlate/isPlateValid ran in an inline IIFE on every render
+  // (i.e. on every keystroke into the plate input).
+  const plateParts = useMemo(() => getPlateParts(newPlateNumber), [newPlateNumber]);
+  const rawPlate = useMemo(() => getRawPlate(newPlateNumber), [newPlateNumber]);
+  const isPlateValidMemo = useMemo(() => isPlateValid(newPlateNumber), [newPlateNumber]);
+  const existingVehicleForPlate = useMemo(() => {
+    return (isPlateValidMemo && rawPlate) ? insideVehicleByRawPlate.get(rawPlate) : undefined;
+  }, [isPlateValidMemo, rawPlate, insideVehicleByRawPlate]);
+
+  // Rate display layout — which check-in buttons to show
+  const hourlyPrice = Number(garage?.hourlyRate) || 0;
+  const overnightPrice = Number(garage?.overnightRate) || 0;
+  const showBoth = (hourlyPrice > 0 && overnightPrice > 0) || (hourlyPrice <= 0 && overnightPrice <= 0);
+  const showOnlyHourly = hourlyPrice > 0 && overnightPrice <= 0;
+  const showOnlyOvernight = hourlyPrice <= 0 && overnightPrice > 0;
 
   const handleGuardedCheckIn = (type: 'hourly' | 'overnight') => {
     if (isDebouncing || isLoading) return;
@@ -197,13 +214,13 @@ export const RegistrationCard = memo(({
                       minFontSize={14}
                       className={`font-mono font-black text-slate-950 tracking-tighter text-center ${
                         newPlateNumber 
-                          ? (getPlateParts(newPlateNumber).numbers.length >= 4
+                          ? (plateParts.numbers.length >= 4
                               ? 'text-3xl sm:text-6xl md:text-7xl lg:text-8xl'
                               : 'text-4xl sm:text-7xl md:text-8xl lg:text-9xl') 
                           : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
-                      {getPlateParts(newPlateNumber).numbers}
+                      {plateParts.numbers}
                     </FitText>
                   </div>
 
@@ -216,17 +233,17 @@ export const RegistrationCard = memo(({
                       minFontSize={14}
                       className={`font-black text-slate-950 text-center transition-all duration-150 ${
                         newPlateNumber 
-                          ? (getPlateParts(newPlateNumber).letters.length >= 4
+                          ? (plateParts.letters.length >= 4
                               ? 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl tracking-normal'
                               : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-[0.1em]') 
                           : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
-                      {getPlateParts(newPlateNumber).letters ? (
-                        getPlateParts(newPlateNumber).letters.split('').map((char, idx) => (
+                      {plateParts.letters ? (
+                        plateParts.letters.split('').map((char, idx) => (
                           <span 
                             key={idx} 
-                            className={`inline-block select-none ${getPlateParts(newPlateNumber).letters.length >= 4 ? 'mx-[0.125em]' : 'mx-[0.25em]'}`}
+                            className={`inline-block select-none ${plateParts.letters.length >= 4 ? 'mx-[0.125em]' : 'mx-[0.25em]'}`}
                           >
                             {char}
                           </span>
@@ -241,53 +258,29 @@ export const RegistrationCard = memo(({
                   <div className="absolute bottom-1.5 md:bottom-3 left-1/2 -translate-x-1/2 w-12 md:w-20 h-1 md:h-1.5 bg-blue-600 rounded-full" />
                 )}
               </div>
-            </div>            {(() => {
-              const raw = getRawPlate(newPlateNumber);
-              const isValid = isPlateValid(newPlateNumber);
-
-              // O(1) lookup in the pre-built map instead of O(N) scan per keystroke
-              const existing = (isValid && raw)
-                ? insideVehicleByRawPlate.get(raw)
-                : undefined;
-
-              // 1. If car is inside, ALWAYS allow check-out (even if subscription/balance is out)
-              if (existing) {
-                return (
-                  <div className="overflow-hidden mt-2">
-                    <button 
-                      disabled={isLoading || isDebouncing}
-                      onClick={() => handleGuardedCheckOut(existing)}
-                      className="w-full py-4 md:py-8 bg-red-500 text-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 transition-all outline-none md:scale-[1.01] hover:bg-red-600 active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="text-lg md:text-2xl font-black tracking-tight flex items-center justify-center gap-2">
-                        {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 text-white animate-spin" /> : 'إصدار فاتورة خروج'}
-                      </div>
-                      <span className="text-[10px] md:text-sm opacity-90 font-bold uppercase tracking-widest">السيارة موجودة حالياً بالداخل</span>
-                    </button>
+            </div>
+            {existingVehicleForPlate ? (
+              <div className="overflow-hidden mt-2">
+                <button
+                  disabled={isLoading || isDebouncing}
+                  onClick={() => handleGuardedCheckOut(existingVehicleForPlate)}
+                  className="w-full py-4 md:py-8 bg-red-500 text-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 transition-all outline-none md:scale-[1.01] hover:bg-red-600 active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="text-lg md:text-2xl font-black tracking-tight flex items-center justify-center gap-2">
+                    {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 text-white animate-spin" /> : 'إصدار فاتورة خروج'}
                   </div>
-                );
-              }
-
-              // 2. Normal check-in controls
-              if (isInputFocused || (newPlateNumber && isValid)) {
-                const hourlyPrice = Number(garage?.hourlyRate) || 0;
-                const overnightPrice = Number(garage?.overnightRate) || 0;
-                const hasHourly = hourlyPrice > 0;
-                const hasOvernight = overnightPrice > 0;
-                // If both are enabled or both are zero/unset, show both side-by-side
-                const showBoth = (hasHourly && hasOvernight) || (!hasHourly && !hasOvernight);
-                const showOnlyHourly = hasHourly && !hasOvernight;
-                const showOnlyOvernight = !hasHourly && hasOvernight;
-
-                return (
+                  <span className="text-[10px] md:text-sm opacity-90 font-bold uppercase tracking-widest">السيارة موجودة حالياً بالداخل</span>
+                </button>
+              </div>
+            ) : (isInputFocused || (newPlateNumber && isPlateValidMemo)) ? (
                   <div className="overflow-hidden">
                     <div className="flex gap-4 mt-1">
                       {(showBoth || showOnlyHourly) && (
                         <button 
-                          disabled={!isValid || isLoading || isDebouncing}
+                          disabled={!isPlateValidMemo || isLoading || isDebouncing}
                           onClick={() => handleGuardedCheckIn('hourly')}
                           className={`${showOnlyHourly ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
-                            isValid && !isLoading && !isDebouncing
+                            isPlateValidMemo && !isLoading && !isDebouncing
                               ? 'bg-white dark:bg-slate-900 border-2 md:border-3 border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/80 active:scale-[0.98]' 
                               : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
                           }`}
@@ -296,7 +289,7 @@ export const RegistrationCard = memo(({
                             {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'ساعة'}
                           </div>
                           <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
-                            isValid ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400/70 dark:text-slate-700'
+                            isPlateValidMemo ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400/70 dark:text-slate-700'
                           }`}>
                             <span className="font-mono">{garage?.hourlyRate ?? 0}</span> ج.م / ساعة
                           </span>
@@ -304,10 +297,10 @@ export const RegistrationCard = memo(({
                       )}
                       {(showBoth || showOnlyOvernight) && (
                         <button 
-                          disabled={!isValid || isLoading || isDebouncing}
+                          disabled={!isPlateValidMemo || isLoading || isDebouncing}
                           onClick={() => handleGuardedCheckIn('overnight')}
                           className={`${showOnlyOvernight ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 outline-none transition-all duration-150 ${
-                            isValid && !isLoading && !isDebouncing
+                            isPlateValidMemo && !isLoading && !isDebouncing
                               ? 'bg-emerald-600 dark:bg-emerald-600 border-2 md:border-3 border-emerald-700 dark:border-emerald-500 text-white font-black hover:bg-emerald-700 dark:hover:bg-emerald-600/90 active:scale-[0.98]' 
                               : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
                           }`}
@@ -316,7 +309,7 @@ export const RegistrationCard = memo(({
                             {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : 'مبيت'}
                           </div>
                           <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
-                            isValid ? 'text-slate-950/80 dark:text-slate-950/85' : 'text-slate-400/70 dark:text-slate-700'
+                            isPlateValidMemo ? 'text-slate-950/80 dark:text-slate-950/85' : 'text-slate-400/70 dark:text-slate-700'
                           }`}>
                             <span className="font-mono">{garage?.overnightRate ?? 0}</span> ج.م مبيت
                           </span>
@@ -333,10 +326,7 @@ export const RegistrationCard = memo(({
                       </div>
                     )}
                   </div>
-                );
-              }
-              return null;
-            })()}
+            ) : null}
           </div>
         </div>
     </div>

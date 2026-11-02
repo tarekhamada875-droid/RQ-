@@ -147,6 +147,25 @@
 }
 
 @layer utilities {
+  /* Dark night-grid background: rendered on a fixed-position ::before
+     pseudo-element instead of background-attachment: fixed on the body.
+     Fixed-attachment backgrounds repaint on every scroll frame; a fixed
+     pseudo-element paints once and stays put (GPU-composited). */
+  html.dark::before,
+  body.dark::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: #0d0b06;
+    background-image:
+      linear-gradient(to right, rgba(217, 119, 6, 0.12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(217, 119, 6, 0.12) 1px, transparent 1px),
+      radial-gradient(circle at 50% 100%, rgba(180, 83, 9, 0.25) 0%, rgba(120, 53, 15, 0.1) 45%, #080705 90%);
+    background-size: 28px 28px, 28px 28px, 100% 100%;
+    background-position: 0 0, 0 0, 0 0;
+  }
   html.dark,
   body.dark,
   .dark #root,
@@ -154,13 +173,6 @@
   .dark.theme-logged-in,
   .dark-night-grid {
     background-color: #0d0b06 !important;
-    background-image: 
-      linear-gradient(to right, rgba(217, 119, 6, 0.12) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(217, 119, 6, 0.12) 1px, transparent 1px),
-      radial-gradient(circle at 50% 100%, rgba(180, 83, 9, 0.25) 0%, rgba(120, 53, 15, 0.1) 45%, #080705 90%) !important;
-    background-size: 28px 28px, 28px 28px, 100% 100% !important;
-    background-position: 0 0, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
