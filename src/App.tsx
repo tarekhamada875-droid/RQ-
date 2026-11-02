@@ -24,7 +24,7 @@ export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, vehicleOperations } = app;
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showStaffStats, setShowStaffStats, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
   const { garage, delegate } = app.garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
@@ -59,8 +59,6 @@ export default function App() {
     setShowRecentExitWarning,
     showSubscriberWarning,
     setShowSubscriberWarning,
-    showStaffStats,
-    setShowStaffStats,
     showSubscribers,
     setShowSubscribers,
     setSelectedVehicle,

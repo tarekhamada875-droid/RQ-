@@ -15,8 +15,6 @@ interface BackTrappingProps {
   setShowRecentExitWarning: (val: boolean) => void;
   showSubscriberWarning: boolean;
   setShowSubscriberWarning: (val: boolean) => void;
-  showStaffStats: boolean;
-  setShowStaffStats: (val: boolean) => void;
   showSubscribers: boolean;
   setShowSubscribers: (val: boolean) => void;
   setSelectedVehicle: (vehicle: any | null) => void;

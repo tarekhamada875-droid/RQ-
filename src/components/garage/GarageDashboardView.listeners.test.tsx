@@ -52,7 +52,6 @@ vi.mock('./RechargeHistoryView', () => ({
   ),
 }));
 vi.mock('./modals/RechargeNotificationModal', () => ({ RechargeNotificationModal: () => null }));
-vi.mock('../modals/StaffStatsModal', () => ({ StaffStatsModal: () => null }));
 vi.mock('./GarageReportsView', () => ({ GarageReportsView: () => null }));
 vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));
 vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: () => null }));
@@ -88,14 +87,13 @@ const makeGarage = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const DashboardHarness = ({ now = new Date(), garage = makeGarage() }: { now?: Date; garage?: any }) => {
+const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
   const [showSubscribers, setShowSubscribers] = useState(false);
   return (
     <GarageDashboardView
       garage={garage}
       currentStaff={null}
       isInputFocused={false}
-      now={now}
       vehicles={[]}
       todayTransactions={[]}
       setSelectedVehicle={vi.fn()}
@@ -110,8 +108,6 @@ const DashboardHarness = ({ now = new Date(), garage = makeGarage() }: { now?: D
       onLogout={vi.fn()}
       showToast={vi.fn()}
       staffList={[]}
-      showStaffStats={false}
-      setShowStaffStats={vi.fn()}
       showSubscribers={showSubscribers}
       setShowSubscribers={setShowSubscribers}
     />
@@ -217,18 +213,25 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
   });
 
   it('counts only subscribers expiring today through three days from now using the Cairo business day', async () => {
-    const now = new Date('2026-10-24T12:00:00.000Z');
-    render(<DashboardHarness now={now} />);
+    // The dashboard derives "today" from the wall clock, so pin the system
+    // time (Date only — real timers keep waitFor functional).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-24T12:00:00.000Z'));
+      render(<DashboardHarness />);
 
-    await waitFor(() => expect(subscriberListeners).toHaveLength(1));
-    act(() => subscriberListeners[0].callback([
-      { id: 'expired-yesterday', endDate: '2026-10-23' },
-      { id: 'expires-today', endDate: '2026-10-24' },
-      { id: 'expires-in-three-days', endDate: '2026-10-27' },
-      { id: 'expires-in-four-days', endDate: '2026-10-28' },
-    ], { lastDoc: null, hasMore: false }));
+      await waitFor(() => expect(subscriberListeners).toHaveLength(1));
+      act(() => subscriberListeners[0].callback([
+        { id: 'expired-yesterday', endDate: '2026-10-23' },
+        { id: 'expires-today', endDate: '2026-10-24' },
+        { id: 'expires-in-three-days', endDate: '2026-10-27' },
+        { id: 'expires-in-four-days', endDate: '2026-10-28' },
+      ], { lastDoc: null, hasMore: false }));
 
-    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('2');
+      expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('2');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('expires an unacknowledged recharge notification with a targeted timer', () => {
@@ -237,7 +240,8 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
       const initialNow = new Date('2026-10-19T12:14:00.000Z');
       const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
       const garage = makeGarage();
-      render(<DashboardHarness now={initialNow} garage={garage} />);
+      vi.setSystemTime(initialNow);
+      render(<DashboardHarness garage={garage} />);
       const recharge = {
         id: 'expiring-recharge',
         garageId: garage.id,
