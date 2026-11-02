@@ -477,4 +477,102 @@ describe('CF5 — Cloudflare Worker Vehicle Operational Routes', () => {
     expect(await invalidDateResponse.json()).toMatchObject({ success: false, error: 'INVALID_DATE' });
   });
 
+  it('resets todayRevenue and todayCount on the first check-in of a new day', async () => {
+    // Seed a garage whose last transaction was yesterday, with yesterday's
+    // accumulators still on the garage document. The first check-in of today
+    // must zero todayRevenue and reset todayCount to 1 (this entry).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-02T10:00:00Z')); // 12:00 Cairo
+    try {
+      mockDb.seed(`garages/${testGarageId}`, {
+        name: 'Worker Test Garage',
+        hourlyRate: 10,
+        overnightRate: 50,
+        dailyCapacity: 100,
+        carsInside: 0,
+        todayCount: 17,
+        todayRevenue: 2900,
+        totalRevenue: 2900,
+        totalVehiclesOut: 0,
+        isTrial: false,
+        balanceExpiry: '2099-12-31',
+        lastTransactionDate: '2026-11-01',
+      });
+
+      const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer valid-admin-token',
+          'x-idempotency-key': 'idemp_new_day_checkin_1'
+        },
+        body: JSON.stringify({
+          garageId: testGarageId,
+          plateNumber: 'س ص ع 0001',
+          plateRaw: 'سصع0001',
+          type: 'hourly'
+        })
+      }), workerEnv);
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as any;
+      expect(body.success).toBe(true);
+      // First check-in of a new day must clear yesterday's accumulators.
+      expect(body.data.dailyCount).toBe(1);
+      // The garage document must also be reset.
+      const garageDoc = mockDb.records.get(`garages/${testGarageId}`);
+      expect(garageDoc.todayRevenue).toBe(0);
+      expect(garageDoc.todayCount).toBe(1);
+      expect(garageDoc.lastTransactionDate).toBe('2026-11-02');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('preserves todayRevenue and increments todayCount when checking in on the same day', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-02T10:00:00Z'));
+    try {
+      mockDb.seed(`garages/${testGarageId}`, {
+        name: 'Worker Test Garage',
+        hourlyRate: 10,
+        overnightRate: 50,
+        dailyCapacity: 100,
+        carsInside: 2,
+        todayCount: 5,
+        todayRevenue: 350,
+        totalRevenue: 350,
+        totalVehiclesOut: 0,
+        isTrial: false,
+        balanceExpiry: '2099-12-31',
+        lastTransactionDate: '2026-11-02',
+      });
+
+      const response = await api.fetch(new Request('http://localhost/api/vehicles/check-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer valid-admin-token',
+          'x-idempotency-key': 'idemp_same_day_checkin_1'
+        },
+        body: JSON.stringify({
+          garageId: testGarageId,
+          plateNumber: 'س ص ع 0002',
+          plateRaw: 'سصع0002',
+          type: 'hourly'
+        })
+      }), workerEnv);
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as any;
+      expect(body.success).toBe(true);
+      expect(body.data.dailyCount).toBe(6);
+      const garageDoc = mockDb.records.get(`garages/${testGarageId}`);
+      expect(garageDoc.todayRevenue).toBe(350);
+      expect(garageDoc.todayCount).toBe(6);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 });

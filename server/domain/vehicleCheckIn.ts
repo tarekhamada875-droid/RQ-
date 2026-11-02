@@ -9,12 +9,17 @@ export type VehicleCheckInResult<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: VehicleCheckInError };
 
+export interface VehicleCheckInCommand {
+  readonly today: string;
+}
+
 export interface VehicleCheckInGarageState {
   readonly exists: boolean;
   readonly isDeleting: boolean;
   readonly isLocked: boolean;
   readonly isSuspended: boolean;
   readonly isSubscriberAuthoritative: boolean;
+  readonly lastTransactionDate?: string;
 }
 
 export interface VehicleCheckInVehicleState {
@@ -24,12 +29,11 @@ export interface VehicleCheckInVehicleState {
 
 export interface VehicleCheckInDecision {
   readonly isUnlimited: true;
-  readonly isNewDay: false;
-  readonly used: 0;
-  readonly capacity: 0;
+  readonly isNewDay: boolean;
 }
 
 export function decideVehicleCheckIn(
+  command: VehicleCheckInCommand,
   garage: VehicleCheckInGarageState,
   vehicle: VehicleCheckInVehicleState,
 ): VehicleCheckInResult<VehicleCheckInDecision> {
@@ -43,13 +47,15 @@ export function decideVehicleCheckIn(
     return { ok: false, error: 'VEHICLE_ALREADY_INSIDE' };
   }
 
+  // A new Cairo day begins when the garage's last transaction was on a different
+  // date. The first check-in of the new day must reset the garage-doc today
+  // accumulators (todayRevenue, todayCount) so they don't carry yesterday's
+  // totals into the new day — mirrors decideVehicleCheckOut's logic.
   return {
     ok: true,
     value: {
       isUnlimited: true,
-      isNewDay: false,
-      used: 0,
-      capacity: 0,
+      isNewDay: garage.lastTransactionDate !== command.today,
     },
   };
 }

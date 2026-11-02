@@ -209,9 +209,9 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
       const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
-      const decision = decideVehicleCheckIn(checkInGarage, checkInVehicle);
+      const decision = decideVehicleCheckIn({ today }, checkInGarage, checkInVehicle);
       if (decision.ok === false) throw new Error(decision.error);
-      const { isNewDay, used } = decision.value;
+      const { isNewDay } = decision.value;
       const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || typeof garageData.credits === 'number';
       let creditDebit: any = null;
       if (prepaidCreditsEnabled && !isSubscriberAuthoritative) {
@@ -258,7 +258,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
 
       const garageUpdate: any = {
         carsInside: (garageData.carsInside || 0) + 1,
-        todayCount: isNewDay ? 1 : used + 1,
+        todayCount: isNewDay ? 1 : (garageData.todayCount || 0) + 1,
         todayRevenue: isNewDay ? 0 : (garageData.todayRevenue || 0),
         lastTransactionDate: today
       };
