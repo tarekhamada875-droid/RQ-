@@ -1,4 +1,4 @@
-import { safeDate } from './index';
+import { safeDate } from './dates';
 
 export interface CommissionRequestLike {
   id?: string;
