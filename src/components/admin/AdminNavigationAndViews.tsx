@@ -44,6 +44,7 @@ interface AdminNavigationAndViewsProps {
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
+  onImmediateLogout?: () => void;
 }
 
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
@@ -70,7 +71,8 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   currentAdminPin,
   t,
   showToast,
-  onLogout
+  onLogout,
+  onImmediateLogout,
 }) => {
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -257,7 +259,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           handleRejectGarage={handleRejectGarage}
         />
       ) : activeTab === 'active_sessions' ? (
-        <AdminActiveSessionsView onLogout={onLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
+        <AdminActiveSessionsView onLogout={onLogout} onImmediateLogout={onImmediateLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
       ) : activeTab === 'wallet_settings' ? (
         <AdminWalletSettingsView onBack={() => setActiveTab('catalog_settings')} t={t} />
       ) : activeTab === 'admin-pin' ? (

@@ -31,6 +31,7 @@ interface AdminDashboardProps {
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
   delegates: Delegate[];
   onLogout: () => void;
+  onImmediateLogout?: () => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -51,6 +52,7 @@ export const AdminDashboard = memo(({
   setSelectedDelegateForDetails,
   delegates,
   onLogout,
+  onImmediateLogout,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -313,6 +315,7 @@ export const AdminDashboard = memo(({
           t={t}
           showToast={showToast}
           onLogout={onLogout}
+          onImmediateLogout={onImmediateLogout}
         />
       </main>
 

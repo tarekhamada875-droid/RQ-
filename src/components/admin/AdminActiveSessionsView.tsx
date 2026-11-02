@@ -4,6 +4,7 @@ import { ActiveSession, sessionService } from '../../services/sessionService';
 
 interface AdminActiveSessionsViewProps {
   onLogout: () => void;
+  onImmediateLogout?: () => void;
   onBack: () => void;
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -30,7 +31,7 @@ function errorMessage(error: unknown): string {
   return 'تعذر تحميل جلسات الأجهزة أو تحديثها';
 }
 
-export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onBack, t, showToast }) => {
+export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = ({ onLogout, onImmediateLogout, onBack, t, showToast }) => {
   const [sessions, setSessions] = React.useState<ActiveSession[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [busySession, setBusySession] = React.useState<string | null>(null);
@@ -60,7 +61,11 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
     try {
       const result = await sessionService.revokeActiveSession(session.id);
       if (result.wasCurrent || session.isCurrent) {
-        onLogout();
+        // The session is already revoked server-side. Call handleLogout
+        // directly (bypass the PIN confirm modal) — the user already
+        // confirmed via window.confirm above.
+        if (onImmediateLogout) onImmediateLogout();
+        else onLogout();
         return;
       }
       setSessions((current) => current.filter((entry) => entry.id !== session.id));
