@@ -27,7 +27,6 @@ vi.mock('./useLocalStorage', () => ({
       app_staff: null,
       app_selected_garage_details: null,
       app_selected_delegate_details: null,
-      app_show_staff_stats: false,
       app_show_subscribers: false
     };
     return [values[key] ?? initial, mocks.setters.get(key)];

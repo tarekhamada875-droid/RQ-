@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { RechargeHistoryView } from "./RechargeHistoryView";
-import { StaffStatsModal } from "../modals/StaffStatsModal";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
@@ -20,7 +19,6 @@ interface GarageDashboardOverlaysProps {
   rechargeLogs: ActivityLog[];
   isRechargeLogsLoading: boolean;
   subscriberPage: SharedSubscriberPage | null;
-  isStaffStatsOpen: boolean;
   isReportsOpen: boolean;
   isAppearanceOpen: boolean;
   showTermsModal: boolean;
@@ -28,7 +26,6 @@ interface GarageDashboardOverlaysProps {
   onToggleMenu: () => void;
   onCloseSubscribers: () => void;
   onCloseRechargeHistory: () => void;
-  onCloseStaffStats: () => void;
   onCloseReports: () => void;
   onCloseAppearance: () => void;
   onCloseTerms: () => void;
@@ -36,7 +33,6 @@ interface GarageDashboardOverlaysProps {
   staffList: Staff[];
   vehiclesInside: Vehicle[];
   todayExitedVehicles: Vehicle[];
-  now: Date;
   isRechargeNotificationOpen: boolean;
   rechargeLog: ActivityLog | null;
   onCloseRechargeNotification: () => void;
@@ -50,7 +46,6 @@ export const GarageDashboardOverlays = ({
   rechargeLogs,
   isRechargeLogsLoading,
   subscriberPage,
-  isStaffStatsOpen,
   isReportsOpen,
   isAppearanceOpen,
   showTermsModal,
@@ -58,7 +53,6 @@ export const GarageDashboardOverlays = ({
   onToggleMenu,
   onCloseSubscribers,
   onCloseRechargeHistory,
-  onCloseStaffStats,
   onCloseReports,
   onCloseAppearance,
   onCloseTerms,
@@ -66,7 +60,6 @@ export const GarageDashboardOverlays = ({
   staffList,
   vehiclesInside,
   todayExitedVehicles,
-  now,
   isRechargeNotificationOpen,
   rechargeLog,
   onCloseRechargeNotification,
@@ -94,16 +87,6 @@ export const GarageDashboardOverlays = ({
       )}
       {isRechargeHistoryOpen && (
         <RechargeHistoryView garage={garage} onClose={onCloseRechargeHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={rechargeLogs} sharedIsLoading={isRechargeLogsLoading} />
-      )}
-      {isStaffStatsOpen && !currentStaff && (
-        <StaffStatsModal
-          staffList={staffList}
-          vehiclesInside={vehiclesInside}
-          todayExitedVehicles={todayExitedVehicles}
-          onClose={onCloseStaffStats}
-          now={now}
-          onToggleMenu={onToggleMenu}
-        />
       )}
       {isReportsOpen && !currentStaff && (
         <Suspense fallback={null}>

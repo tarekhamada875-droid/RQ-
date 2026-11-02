@@ -37,7 +37,6 @@ interface GarageDashboardViewProps {
   garage: Garage;
   currentStaff: Staff | null;
   isInputFocused: boolean;
-  now?: Date;
   vehicles?: Vehicle[];
   todayTransactions?: Vehicle[];
   setSelectedVehicle: (vehicle: Vehicle | null) => void;
@@ -52,8 +51,6 @@ interface GarageDashboardViewProps {
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
   staffList: Staff[];
-  showStaffStats: boolean;
-  setShowStaffStats: (show: boolean) => void;
   showSubscribers: boolean;
   setShowSubscribers: (show: boolean) => void;
   isLoading?: boolean;
@@ -65,7 +62,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     garage,
     currentStaff,
     isInputFocused,
-    now,
     vehicles = [],
     todayTransactions = [],
     setSelectedVehicle,
@@ -80,8 +76,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     onLogout,
     showToast,
     staffList,
-    showStaffStats,
-    setShowStaffStats,
     showSubscribers,
     setShowSubscribers,
     isLoading = false,
@@ -126,10 +120,8 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     isRechargeHistoryOpen,
     shouldSubscribeToSubscribers,
   });
-  // Use a stable Cairo date key instead of the raw `now` Date object.
-  // `now` ticks every second/minute from the parent, but expiry is day-granular —
-  // recomputing on every tick was pure waste.
-  const todayCairoKey = getCairoDateKey(now ?? new Date());
+  // Use a stable Cairo date key instead of a raw ticking Date object.
+  const todayCairoKey = getCairoDateKey(new Date());
   const expiringSubscribersCount = useMemo(() => {
     const todayUtc = Date.parse(`${todayCairoKey}T00:00:00Z`);
     return subscriberPage.subscribers.filter((subscriber) => {
@@ -176,7 +168,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     garageId: garage?.id,
     isAuthenticated,
     rechargeLogs,
-    now,
     isTrial: garage?.isTrial,
   });
 
@@ -225,7 +216,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     setShowSubscribers(target === "subscribers");
     setIsReportsOpen(target === "reports");
     setIsRechargeHistoryOpen(target === "history");
-    setShowStaffStats(target === "staff");
     setIsAppearanceOpen(target === "appearance");
     setShowTermsModal(target === "terms");
   };
@@ -364,7 +354,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         rechargeLogs={rechargeLogs}
         isRechargeLogsLoading={isRechargeLoading}
         subscriberPage={subscriberPage}
-        isStaffStatsOpen={showStaffStats}
         isReportsOpen={isReportsOpen}
         isAppearanceOpen={isAppearanceOpen}
         showTermsModal={showTermsModal}
@@ -375,7 +364,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
           setIsRechargeHistoryOpen(false);
           clearNewRechargeBadge();
         }}
-        onCloseStaffStats={() => setShowStaffStats(false)}
         onCloseReports={() => setIsReportsOpen(false)}
         onCloseAppearance={() => setIsAppearanceOpen(false)}
         onCloseTerms={() => setShowTermsModal(false)}
@@ -383,7 +371,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         staffList={staffList}
         vehiclesInside={vehicles}
         todayExitedVehicles={todayTransactions}
-        now={now}
         isRechargeNotificationOpen={isRechargeNotificationOpen}
         rechargeLog={latestRechargeLog}
         onCloseRechargeNotification={handleAcknowledgeRecharge}
