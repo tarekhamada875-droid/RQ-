@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo, useRef } from 'react';
 import { Users, Plus, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { Garage, Subscriber } from '../../types';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
@@ -100,23 +100,36 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   // stable across renders within the same day).
   const todayDateObj = useMemo(() => parseDateKey(getCairoDateKey()), []);
 
-  const getStatus = (endStr: string): SubscriberStatus => {
+  // Cached per endDate string so the `status` prop handed to SubscriberCard is
+  // referentially stable across renders. Without this, the ≤3-days branch
+  // allocated a fresh object per subscriber per render, which defeated the
+  // card's React.memo boundary and re-rendered the whole list every time.
+  const statusCacheRef = useRef(new Map<string, SubscriberStatus>());
+
+  const getStatus = useCallback((endStr: string): SubscriberStatus => {
+    const cached = statusCacheRef.current.get(endStr);
+    if (cached) return cached;
+
     const end = parseDateKey(endStr);
     const diffTime = end.getTime() - todayDateObj.getTime();
     const diffDays = Math.ceil(diffTime / 86400000);
 
-    if (diffDays < 0) return STATUS_EXPIRED;
-    if (diffDays === 0) return STATUS_EXPIRES_TODAY;
-    if (diffDays <= 3)
-      return {
+    let status: SubscriberStatus;
+    if (diffDays < 0) status = STATUS_EXPIRED;
+    else if (diffDays === 0) status = STATUS_EXPIRES_TODAY;
+    else if (diffDays <= 3)
+      status = {
         label: `ينتهي بعد ${diffDays} أيام`,
         color: EXPIRING_COLOR,
         isAlert: true,
         isExpired: false,
         alertMessage: `تنبيه: متبقي ${diffDays} أيام فقط على انتهاء الاشتراك الشهري.`,
       };
-    return STATUS_ACTIVE;
-  };
+    else status = STATUS_ACTIVE;
+
+    statusCacheRef.current.set(endStr, status);
+    return status;
+  }, [todayDateObj]);
 
   return (
     <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">

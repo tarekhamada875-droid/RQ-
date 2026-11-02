@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Users, ChevronRight, Car } from 'lucide-react';
 import { Staff, Vehicle } from '../../types';
 import { safeDate } from '../../utils';
@@ -19,23 +19,41 @@ export const StaffStatsModal: React.FC<StaffStatsModalProps> = memo(({
   onClose,
   now
 }) => {
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
+  // Day-granular start-of-day timestamp. The parent's `now` ticks, but the
+  // numeric value only changes at midnight, so the memoized downstream work
+  // (vehicle filter, count map) runs once per data change, not once per tick.
+  const startOfDayTime = useMemo(() => {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, [now]);
 
-  const allTodayVehicles = [...vehiclesInside, ...todayExitedVehicles].filter(v => {
-    const entryDate = v.entryTime ? safeDate(v.entryTime) : null;
-    return entryDate && entryDate >= startOfDay;
-  });
+  const allTodayVehicles = useMemo(() =>
+    [...vehiclesInside, ...todayExitedVehicles].filter(v => {
+      const entryDate = v.entryTime ? safeDate(v.entryTime) : null;
+      return entryDate && entryDate.getTime() >= startOfDayTime;
+    }), [vehiclesInside, todayExitedVehicles, startOfDayTime]);
+
+  // Single O(N+M) counting pass. Previously each staff row re-filtered the
+  // full vehicle list (O(staff × vehicles)) on every render.
+  const staffCounts = useMemo(() => {
+    const knownStaffNames = new Set(staffList.map(s => s.name?.trim()).filter(Boolean));
+    const counts = new Map<string, number>();
+    let unassignedCount = 0;
+    for (const v of allTodayVehicles) {
+      const rawName = (v.staffName || '').trim();
+      if (!rawName || rawName === 'مدير الجراج' || !knownStaffNames.has(rawName)) {
+        unassignedCount++;
+      } else {
+        counts.set(rawName, (counts.get(rawName) || 0) + 1);
+      }
+    }
+    return { unassignedCount, counts };
+  }, [staffList, allTodayVehicles]);
 
   const getStaffStats = (staffName: string) => {
-    if (staffName === 'مدير الجراج') {
-      const knownStaffNames = new Set(staffList.map(s => s.name?.trim()).filter(Boolean));
-      return allTodayVehicles.filter(v => {
-        const rawName = (v.staffName || '').trim();
-        return !rawName || rawName === 'مدير الجراج' || !knownStaffNames.has(rawName);
-      }).length;
-    }
-    return allTodayVehicles.filter(v => (v.staffName || '').trim() === staffName.trim()).length;
+    if (staffName === 'مدير الجراج') return staffCounts.unassignedCount;
+    return staffCounts.counts.get(staffName.trim()) || 0;
   };
 
   const resolveMonogram = (name: string): string => {

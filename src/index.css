@@ -437,3 +437,73 @@ input[type="number"]::-webkit-outer-spin-button {
 
 
 
+
+/* ── BorderShimmer (SMIL → CSS compositor sweep) ─────────────────────────────
+   The sweep layer translates -100% → 100% of its own height on the compositor;
+   three ring-masked children clip it to a border glow, mirroring the original
+   SVG strokes (8 / 4.5 / 2.5px centered on a 1px-inset path ⇒ 5 / 3.25 / 2.25px
+   visible from the edge) at 0.15 / 0.35 / 1.0 opacity, and the original
+   gradient stops (0% → 0, 35% → 0.2, 50% → 1, 65% → 0.2, 100% → 0). */
+@keyframes border-shimmer-sweep {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(100%); }
+}
+
+@keyframes border-shimmer-sweep-alternate-first {
+  0%   { transform: translateY(-100%); }
+  50%, 100% { transform: translateY(100%); }
+}
+
+@keyframes border-shimmer-sweep-alternate-second {
+  0%, 50% { transform: translateY(100%); }
+  100% { transform: translateY(-100%); }
+}
+
+.border-shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.border-shimmer-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  will-change: transform;
+  backface-visibility: hidden;
+  animation: border-shimmer-sweep 4s linear infinite;
+}
+
+.border-shimmer-sweep--alternate-first {
+  animation-name: border-shimmer-sweep-alternate-first;
+}
+
+.border-shimmer-sweep--alternate-second {
+  animation-name: border-shimmer-sweep-alternate-second;
+}
+
+.border-shimmer-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 35%,
+    var(--shimmer-color, #10b981) 50%,
+    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 65%,
+    transparent 100%
+  );
+  /* Punch the middle out so only the border ring shows. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.border-shimmer-ring--glow { padding: 5px; opacity: 0.15; }
+.border-shimmer-ring--halo { padding: 3.25px; opacity: 0.35; }
+.border-shimmer-ring--core { padding: 2.25px; }

@@ -133,7 +133,7 @@ export const RegistrationCard = memo(({
           : 'border-slate-200 dark:border-slate-800'
       } ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
     >
-      <BorderShimmer isActive={shimmerActive} rx={32} ry={32} color={activeShimmerColor} />
+      <BorderShimmer isActive={shimmerActive} color={activeShimmerColor} />
       <div className="relative">
 
           <div className="flex flex-col gap-3 relative z-10">
