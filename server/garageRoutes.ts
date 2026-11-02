@@ -774,6 +774,16 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Cannot add staff to this garage' }, 403);
     }
 
+    // Idempotency: a retried staff/create (e.g. after a network blip) must not
+    // create a duplicate staff entity. The key is optional but recommended.
+    const idempotencyKey = validateIdempotencyKey(
+      body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
+    );
+    let requestFingerprint: string | null = null;
+    if (idempotencyKey) {
+      requestFingerprint = createRequestFingerprint({ name, phone, garageId, role });
+    }
+
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(pin);
 
@@ -791,7 +801,16 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const staffRef = getAdminDb().collection('staff').doc();
     const staffId = staffRef.id;
 
+    let resultData: Record<string, any> = { success: true, id: staffId };
+
     await getAdminDb().runTransaction(async (t: any) => {
+      if (idempotencyKey && requestFingerprint) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/staff/create', user?.uid, requestFingerprint);
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || resultData;
+          return;
+        }
+      }
       await saveEntityPinInTransaction(t, 'staff', staffId, normPin);
       t.set(staffRef, {
         name: normName.trim(),
@@ -801,9 +820,12 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
         permissions: permissions || {},
         createdAt: new Date()
       });
+      if (idempotencyKey && requestFingerprint) {
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/staff/create', user?.uid, requestFingerprint);
+      }
     });
 
-    return c.json({ success: true, id: staffId });
+    return c.json(resultData);
   } catch (e: any) {
     console.error('[Worker Staff] Error in create:', e);
     if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);
@@ -979,6 +1001,16 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'RETIRED_DELEGATE_FIELD', field: retiredField }, 400);
     }
     const { name, phone, pin } = body;
+
+    // Idempotency: a retried delegates/create must not create a duplicate.
+    const idempotencyKey = validateIdempotencyKey(
+      body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
+    );
+    let requestFingerprint: string | null = null;
+    if (idempotencyKey) {
+      requestFingerprint = createRequestFingerprint({ name, phone });
+    }
+
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPhone = phone ? String(phone).trim() : '';
     const normPin = validateNewPin(pin);
@@ -997,7 +1029,16 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
     const delRef = getAdminDb().collection('delegates').doc();
     const delId = delRef.id;
 
+    let resultData: Record<string, any> = { success: true, id: delId };
+
     await getAdminDb().runTransaction(async (t: any) => {
+      if (idempotencyKey && requestFingerprint) {
+        const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/delegates/create', user?.uid, requestFingerprint);
+        if (duplicate.isDuplicate) {
+          resultData = duplicate.cachedResult || resultData;
+          return;
+        }
+      }
       await saveEntityPinInTransaction(t, 'delegates', delId, normPin);
       t.set(delRef, {
         name: normName.trim(),
@@ -1007,9 +1048,12 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
         createdAt: new Date()
       });
       writeMaintainedAdminDelta(t, { totalDelegates: 1 });
+      if (idempotencyKey && requestFingerprint) {
+        storeIdempotencyInTransaction(t, idempotencyKey, resultData, '/api/delegates/create', user?.uid, requestFingerprint);
+      }
     });
 
-    return c.json({ success: true, id: delId });
+    return c.json(resultData);
   } catch (e: any) {
     console.error('[Worker Delegate] Error in create:', e);
     if (e?.message === 'PIN_ALREADY_TAKEN') return c.json({ success: false, error: 'PIN_ALREADY_TAKEN' }, 409);

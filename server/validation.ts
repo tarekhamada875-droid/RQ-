@@ -311,3 +311,22 @@ export function validateIdempotencyKey(key: any): string | null {
   }
   return trimmed;
 }
+
+/**
+ * Validates a client-supplied session ID.
+ *
+ * Session IDs are generated client-side (crypto.randomUUID preferred, with
+ * 'sess_' and 'fallback_session_' prefixes as legacy/fallback formats). The
+ * server rejects predictable or malformed values to prevent session fixation.
+ * Accepts any alphanumeric + hyphen/underscore string between 8 and 128 chars.
+ */
+export function isValidSessionId(sid: any): boolean {
+  if (typeof sid !== 'string') return false;
+  const trimmed = sid.trim();
+  if (trimmed.length < 8 || trimmed.length > 128) return false;
+  // Reject values containing whitespace, path separators, or control chars.
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return false;
+  return true;
+}
+
+
