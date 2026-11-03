@@ -3,7 +3,6 @@ import { Garage, Vehicle, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
-import { useServerTime } from './useServerTime';
 import { useToast } from './toast';
 import { useGarageInput } from './garageInput';
 import { soundManager } from '../utils/sounds';
@@ -83,7 +82,6 @@ export function useGarageApp() {
 
   const { closeKeyboard } = useGarageInput();
 
-  const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
 
   const { showToast: contextShowToast } = useToast();
@@ -220,7 +218,6 @@ export function useGarageApp() {
     setVehicles,
     todayTransactions,
     isOnline,
-    now,
     showToast,
     closeKeyboard,
   });
@@ -287,7 +284,6 @@ export function useGarageApp() {
     closeKeyboard,
     isOnline,
     showOfflineScreen,
-    now,
   };
   const garageData = {
     garage,
@@ -420,7 +416,6 @@ export function useGarageApp() {
     setSubscriberWarningPlate,
     pendingCheckInType,
     setPendingCheckInType,
-    now,
     isOnline,
     showOfflineScreen,
     delegateGarages,

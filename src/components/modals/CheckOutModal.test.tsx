@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { CheckOutModal } from './CheckOutModal';
+import { ServerTimeProvider } from '../../hooks/serverTimeContext';
+
+const now = new Date('2026-10-15T12:00:00.000Z');
+
+vi.mock('../../hooks/serverTimeContext', () => ({
+  ServerTimeProvider: ({ children }: any) => children,
+  useServerTimeNow: () => now,
+}));
 
 vi.mock('motion/react', async () => {
   const { createElement, Fragment } = await import('react');
@@ -15,7 +23,6 @@ vi.mock('../ui/EgyptianPlate', () => ({
 }));
 
 const makeProps = (minutesSinceEntry = 60) => {
-  const now = new Date('2026-10-15T12:00:00.000Z');
   return {
     selectedVehicle: {
       id: 'vehicle-1',
@@ -59,7 +66,7 @@ afterEach(() => {
 describe('CheckOutModal icon actions', () => {
   it('gives the two side actions distinct names and preserves left-side checkout confirmation', () => {
     const props = makeProps();
-    render(<CheckOutModal {...props} />);
+    render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
 
     const leftButton = screen.getByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيسر' });
     const rightButton = screen.getByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيمن' });
@@ -76,14 +83,14 @@ describe('CheckOutModal icon actions', () => {
   });
 
   it('preserves the right-side confirmation action', () => {
-    render(<CheckOutModal {...makeProps()} />);
+    render(<ServerTimeProvider><CheckOutModal {...makeProps()} /></ServerTimeProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيمن' }));
     expect(screen.getByRole('button', { name: 'تأكيد خروج السيارة ABC 123' })).toBeInTheDocument();
   });
 
   it('keeps one delete action visible during the five-minute entry-error window', () => {
     const props = makeProps(2);
-    render(<CheckOutModal {...props} />);
+    render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
 
     screen.getAllByRole('button').forEach((button) => expect(button).toHaveAccessibleName());
     fireEvent.click(screen.getByRole('button', { name: 'إغلاق' }));
@@ -100,7 +107,7 @@ describe('CheckOutModal icon actions', () => {
     props.selectedVehicle.staffId = 'garage-1';
     props.selectedVehicle.enteredByEntityId = 'garage-1';
     props.selectedVehicle.enteredByRole = 'garage';
-    render(<CheckOutModal {...props} />);
+    render(<ServerTimeProvider><CheckOutModal {...props} /></ServerTimeProvider>);
 
     expect(screen.getByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeInTheDocument();
   });
@@ -109,18 +116,18 @@ describe('CheckOutModal icon actions', () => {
     const otherStaffProps = makeProps(2);
     otherStaffProps.selectedVehicle.enteredByEntityId = 'staff-2';
     otherStaffProps.selectedVehicle.staffId = 'staff-2';
-    const { rerender } = render(<CheckOutModal {...otherStaffProps} />);
+    const { rerender } = render(<ServerTimeProvider><CheckOutModal {...otherStaffProps} /></ServerTimeProvider>);
     expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
 
     const legacyProps = makeProps(2);
     delete legacyProps.selectedVehicle.enteredByEntityId;
     delete legacyProps.selectedVehicle.enteredByRole;
-    rerender(<CheckOutModal {...legacyProps} />);
+    rerender(<ServerTimeProvider><CheckOutModal {...legacyProps} /></ServerTimeProvider>);
     expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
   });
 
   it('hides the delete action after the five-minute entry-error window', () => {
-    render(<CheckOutModal {...makeProps(6)} />);
+    render(<ServerTimeProvider><CheckOutModal {...makeProps(6)} /></ServerTimeProvider>);
 
     expect(screen.queryByRole('button', { name: 'حذف السيارة (خطأ إدخال)' })).toBeNull();
   });

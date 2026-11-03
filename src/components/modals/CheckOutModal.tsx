@@ -4,6 +4,7 @@ import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
 import { safeDate, calculateCost, formatEntryTimeParts } from '../../utils';
+import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { Vehicle, Garage, Staff } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
@@ -14,7 +15,6 @@ interface CheckOutModalProps {
   currentStaff?: Staff | null;
   isLoading: boolean;
   loadingType: string | null;
-  now: Date;
   onConfirm: () => void | Promise<void>;
   onDelete: () => void;
   onCancel: () => void;
@@ -26,11 +26,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   currentStaff,
   isLoading,
   loadingType,
-  now,
   onConfirm,
   onDelete,
   onCancel
 }) => {
+  const now = useServerTimeNow();
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
   const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5-minute entry-error correction window
