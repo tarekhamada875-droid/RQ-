@@ -37,6 +37,7 @@ interface DelegateDashboardViewProps {
   delegateDashboardError?: boolean;
   onRetryDelegateDashboard?: () => void;
   onLoadMoreDelegateGarages?: () => void;
+  delegateBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const DelegateDashboardView = memo(({
@@ -51,7 +52,8 @@ export const DelegateDashboardView = memo(({
   delegateDashboardLoading = false,
   delegateDashboardError = false,
   onRetryDelegateDashboard,
-  onLoadMoreDelegateGarages
+  onLoadMoreDelegateGarages,
+  delegateBackHandlerRef,
 }: DelegateDashboardViewProps) => {
   const [showAddGarage, setShowAddGarage] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
@@ -67,6 +69,22 @@ export const DelegateDashboardView = memo(({
   const [creditRequestGarage, setCreditRequestGarage] = useState<Garage | null>(null);
   const [creditRequestAmount, setCreditRequestAmount] = useState('');
   const [submittingCreditRequest, setSubmittingCreditRequest] = useState(false);
+
+  // Register the delegate-level back handler so the App-level useBackTrapping
+  // hook can close delegate modals when the phone back button is pressed.
+  // Priority: creditRequest → addGarage → terms → settings dropdown.
+  useEffect(() => {
+    delegateBackHandlerRef.current = () => {
+      if (showCreditRequestModal) { setShowCreditRequestModal(false); setCreditRequestGarage(null); return true; }
+      if (showAddGarage) { setShowAddGarage(false); return true; }
+      if (showTermsModal) { setShowTermsModal(false); return true; }
+      if (showSettings) { setShowSettings(false); return true; }
+      return false;
+    };
+    return () => {
+      delegateBackHandlerRef.current = null;
+    };
+  }, [delegateBackHandlerRef, showCreditRequestModal, showAddGarage, showTermsModal, showSettings]);
 
   const refreshCreditRequests = useCallback(async () => {
     try {

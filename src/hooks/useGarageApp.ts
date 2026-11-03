@@ -94,9 +94,21 @@ export function useGarageApp() {
   // false if no overlay was open.
   const garageBackHandlerRef = useRef<(() => boolean) | null>(null);
 
-  // Same pattern for admin-level modals (Add Garage, Export). AdminDashboard
-  // populates this ref with a function that closes its topmost modal.
+  // Same pattern for admin-level modals (Add Garage, Export, Appearance,
+  // ConfirmDialog, settings sub-tabs). AdminDashboard populates this ref.
   const adminBackHandlerRef = useRef<(() => boolean) | null>(null);
+
+  // Delegate-level modals (Add Garage, Credit Request, Terms).
+  const delegateBackHandlerRef = useRef<(() => boolean) | null>(null);
+
+  // Admin garage-details modals (Add Staff, Delete Staff, Edit PIN).
+  // Must be checked BEFORE the priority-3 admin_garage_details → admin_dashboard
+  // fallthrough, otherwise back exits the whole sub-page instead of closing
+  // the in-page modal.
+  const adminGarageDetailsBackHandlerRef = useRef<(() => boolean) | null>(null);
+
+  // Admin delegate-details confirm dialogs (Delete, Settle).
+  const adminDelegateDetailsBackHandlerRef = useRef<(() => boolean) | null>(null);
 
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
@@ -321,6 +333,9 @@ export function useGarageApp() {
     now,
     garageBackHandlerRef,
     adminBackHandlerRef,
+    delegateBackHandlerRef,
+    adminGarageDetailsBackHandlerRef,
+    adminDelegateDetailsBackHandlerRef,
   };
   const garageData = {
     garage,

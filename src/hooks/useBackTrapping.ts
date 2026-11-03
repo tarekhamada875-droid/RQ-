@@ -22,34 +22,40 @@ interface BackTrappingProps {
   setSelectedDelegateForDetails: (delegate: any | null) => void;
   setRecentVehicle: (vehicle: any | null) => void;
   setSubscriberWarningPlate: (plate: string) => void;
-  /** Ref to a function that closes the topmost garage-level overlay
-   * (reports, recharge history, appearance, terms). Returns true if an
-   * overlay was closed, false if none was open. Populated by
-   * GarageDashboardView. */
+  /** Garage-level overlays (reports, recharge history, appearance, terms,
+   * active-vehicles tab, recharge notification, menu drawer). */
   garageBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
-  /** Ref to a function that closes the topmost admin-level modal
-   * (Add Garage, Export). Returns true if a modal was closed, false if
-   * none was open. Populated by AdminDashboard. */
+  /** Admin-level modals (Add Garage, Export, Appearance, ConfirmDialog,
+   * settings sub-tabs: admin-pin, active_sessions, wallet_settings). */
   adminBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
+  /** Delegate-level modals (Add Garage, Credit Request, Terms). */
+  delegateBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
+  /** Admin garage-details modals (Add Staff, Delete Staff, Edit PIN).
+   * Must be checked BEFORE the admin_garage_details → admin_dashboard
+   * fallthrough so back closes the in-page modal instead of exiting. */
+  adminGarageDetailsBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
+  /** Admin delegate-details confirm dialogs (Delete, Settle). */
+  adminDelegateDetailsBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 /**
  * Mobile back-button navigation.
  *
  * Priority order (first match wins):
- * 1. App-level modals → close the topmost modal
- * 2. Garage-level overlays (via garageBackHandlerRef) → close the topmost
- * 3. Admin sub-pages (admin_garage_details, admin_delegate_details) → go to admin_dashboard
- * 4. Main dashboards (garage, admin_dashboard, delegate_dashboard) → show logout confirm
- * 5. Login screens → do nothing (don't exit the app)
+ * 1. App-level modals (logout, check-out, check-in, delete, warnings)
+ * 2. View-specific overlays via refs:
+ *    a. garageBackHandlerRef — garage overlays + active-vehicles + notifications
+ *    b. adminBackHandlerRef — admin modals + settings sub-tabs
+ *    c. delegateBackHandlerRef — delegate modals
+ *    d. adminGarageDetailsBackHandlerRef — garage-details modals (before exit!)
+ *    e. adminDelegateDetailsBackHandlerRef — delegate-details confirms (before exit!)
+ * 3. Admin sub-pages → go to admin_dashboard
+ * 4. Main dashboards → show logout confirm
+ * 5. Login → do nothing
  *
- * The history trap prevents the browser from navigating away / exiting the PWA
- * on the first back press. Instead, the back press is intercepted and the
- * appropriate navigation action is performed.
+ * The history trap (3-deep) prevents rapid back presses from exiting the PWA.
  */
 export function useBackTrapping(props: BackTrappingProps) {
-  // Keep the latest props in a ref so the popstate handler always sees fresh
-  // state without needing to re-bind the event listener on every state change.
   const propsRef = useRef(props);
   propsRef.current = props;
 
@@ -57,9 +63,7 @@ export function useBackTrapping(props: BackTrappingProps) {
     const handleBack = (): void => {
       const p = propsRef.current;
 
-      // 1. App-level modals (check-out first — it's the most "in-progress")
-      //    Logout confirm is here too: if it's open, back closes it (doesn't
-      //    re-trigger it or exit).
+      // 1. App-level modals (logout confirm first; then check-out, check-in, etc.)
       if (p.showLogoutConfirm) { p.setShowLogoutConfirm(false); return; }
       if (p.showCheckOutModal) { p.setShowCheckOutModal(false); return; }
       if (p.showCheckInModal) { p.setShowCheckInModal(false); p.setSelectedVehicle(null); return; }
@@ -67,18 +71,28 @@ export function useBackTrapping(props: BackTrappingProps) {
       if (p.showRecentExitWarning) { p.setShowRecentExitWarning(false); p.setRecentVehicle(null); return; }
       if (p.showSubscriberWarning) { p.setShowSubscriberWarning(false); p.setSubscriberWarningPlate(''); return; }
 
-      // 2. Garage-level overlays (subscribers is at the App level; the rest
-      //    live inside GarageDashboardView and are reachable via the ref)
+      // 2. View-specific overlays via refs. Each ref returns true if it closed
+      //    something. Try them in order; first one that closes wins.
+      // 2a. Garage overlays (subscribers is at App level; rest via ref)
       if (p.showSubscribers) { p.setShowSubscribers(false); return; }
       if (p.garageBackHandlerRef.current) {
-        const closed = p.garageBackHandlerRef.current();
-        if (closed) return;
+        if (p.garageBackHandlerRef.current()) return;
       }
-
-      // 2b. Admin-level modals (Add Garage, Export) — reachable via ref
+      // 2b. Admin modals + settings sub-tabs
       if (p.adminBackHandlerRef.current) {
-        const closed = p.adminBackHandlerRef.current();
-        if (closed) return;
+        if (p.adminBackHandlerRef.current()) return;
+      }
+      // 2c. Delegate modals
+      if (p.delegateBackHandlerRef.current) {
+        if (p.delegateBackHandlerRef.current()) return;
+      }
+      // 2d. Admin garage-details modals — MUST come before priority 3 exit
+      if (p.adminGarageDetailsBackHandlerRef.current) {
+        if (p.adminGarageDetailsBackHandlerRef.current()) return;
+      }
+      // 2e. Admin delegate-details confirms — MUST come before priority 3 exit
+      if (p.adminDelegateDetailsBackHandlerRef.current) {
+        if (p.adminDelegateDetailsBackHandlerRef.current()) return;
       }
 
       // 3. Admin sub-pages → go back to admin dashboard
@@ -95,10 +109,7 @@ export function useBackTrapping(props: BackTrappingProps) {
     };
 
     const handlePopState = (): void => {
-      // Re-push MULTIPLE trap entries so rapid back presses don't exhaust
-      // the history stack and exit the PWA. On Android Chrome, a single
-      // pushState can be outpaced by fast back presses; a 3-deep buffer
-      // gives the handler time to intercept each press.
+      // 3-deep buffer so rapid back presses don't exhaust the history stack.
       try {
         window.history.pushState({ trapped: true }, '');
         window.history.pushState({ trapped: true }, '');
@@ -109,7 +120,6 @@ export function useBackTrapping(props: BackTrappingProps) {
       handleBack();
     };
 
-    // Push the initial trap entries on mount (3-deep buffer).
     try {
       window.history.pushState({ trapped: true }, '');
       window.history.pushState({ trapped: true }, '');

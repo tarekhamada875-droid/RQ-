@@ -108,25 +108,8 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Register the garage-level back handler so the App-level useBackTrapping
-  // hook can close garage overlays and sub-tabs when the phone back button is
-  // pressed. Priority: terms → appearance → reports → rechargeHistory →
-  // active_vehicles tab → main tab. Returns true if something was closed.
-  useEffect(() => {
-    props.garageBackHandlerRef.current = () => {
-      if (showTermsModal) { setShowTermsModal(false); return true; }
-      if (isAppearanceOpen) { setIsAppearanceOpen(false); return true; }
-      if (isReportsOpen) { setIsReportsOpen(false); return true; }
-      if (isRechargeHistoryOpen) { setIsRechargeHistoryOpen(false); return true; }
-      // If on the active-vehicles tab, go back to the main tab instead of
-      // showing logout confirmation.
-      if (activeTab === 'active_vehicles') { setActiveTab('main'); return true; }
-      return false;
-    };
-    return () => {
-      props.garageBackHandlerRef.current = null;
-    };
-  }, [props.garageBackHandlerRef, showTermsModal, isAppearanceOpen, isReportsOpen, isRechargeHistoryOpen, activeTab]);
+  // (back handler registration moved below — needs isRechargeNotificationOpen
+  //  and isMenuOpen which are defined later in the component)
 
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +175,26 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     rechargeLogs,
     isTrial: garage?.isTrial,
   });
+
+  // Register the garage-level back handler so the App-level useBackTrapping
+  // hook can close garage overlays and sub-tabs when the phone back button is
+  // pressed. Priority: rechargeNotification → menu → terms → appearance →
+  // reports → rechargeHistory → active_vehicles tab. Returns true if closed.
+  useEffect(() => {
+    props.garageBackHandlerRef.current = () => {
+      if (isRechargeNotificationOpen) { handleAcknowledgeRecharge(); return true; }
+      if (isMenuOpen) { setIsMenuOpen(false); return true; }
+      if (showTermsModal) { setShowTermsModal(false); return true; }
+      if (isAppearanceOpen) { setIsAppearanceOpen(false); return true; }
+      if (isReportsOpen) { setIsReportsOpen(false); return true; }
+      if (isRechargeHistoryOpen) { setIsRechargeHistoryOpen(false); return true; }
+      if (activeTab === 'active_vehicles') { setActiveTab('main'); return true; }
+      return false;
+    };
+    return () => {
+      props.garageBackHandlerRef.current = null;
+    };
+  }, [props.garageBackHandlerRef, isRechargeNotificationOpen, handleAcknowledgeRecharge, isMenuOpen, showTermsModal, isAppearanceOpen, isReportsOpen, isRechargeHistoryOpen, activeTab]);
 
   useEffect(() => {
     setItemsPerPage(15);
