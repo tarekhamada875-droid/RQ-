@@ -12,6 +12,7 @@ import React, {
 } from "react";
 import { Car } from "lucide-react";
 import { useBackHandler } from "../../hooks/backHandler";
+import { useGarageInput } from "../../hooks/garageInput";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
 import {
@@ -37,7 +38,6 @@ type ToastType = 'success' | 'error' | 'info';
 interface GarageDashboardViewProps {
   garage: Garage;
   currentStaff: Staff | null;
-  isInputFocused: boolean;
   vehicles?: Vehicle[];
   todayTransactions?: Vehicle[];
   setSelectedVehicle: (vehicle: Vehicle | null) => void;
@@ -45,10 +45,7 @@ interface GarageDashboardViewProps {
   closeKeyboard: () => void;
   newPlateNumber: string;
   setNewPlateNumber: (value: string) => void;
-  setIsInputFocused: (focused: boolean) => void;
-  plateInputRef: React.RefObject<HTMLInputElement>;
   handleCheckIn: (type: 'hourly' | 'overnight', bypassWarning?: boolean) => void;
-  inputRef: React.RefObject<HTMLDivElement>;
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
   staffList: Staff[];
@@ -62,7 +59,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const {
     garage,
     currentStaff,
-    isInputFocused,
     vehicles = [],
     todayTransactions = [],
     setSelectedVehicle,
@@ -70,10 +66,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     closeKeyboard,
     newPlateNumber,
     setNewPlateNumber,
-    setIsInputFocused,
-    plateInputRef,
     handleCheckIn,
-    inputRef,
     onLogout,
     showToast,
     staffList,
@@ -82,6 +75,9 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     isLoading = false,
     checkoutJustSucceeded = false,
   } = props;
+
+  // Input refs + focus state come from GarageInputProvider (context, not props)
+  const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme } = useTheme();

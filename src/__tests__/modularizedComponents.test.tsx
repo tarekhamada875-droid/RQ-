@@ -9,6 +9,7 @@ import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
+import { GarageInputProvider } from '../hooks/garageInput';
 import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
@@ -294,10 +295,10 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
 
   it('renders GarageDashboardView orchestrator with plate registration and menu drawer triggers', () => {
     renderWithTheme(
+      <GarageInputProvider>
       <GarageDashboardView
         garage={mockGarage}
         currentStaff={null}
-        isInputFocused={false}
         vehicles={[]}
         todayTransactions={[]}
         setSelectedVehicle={vi.fn()}
@@ -305,16 +306,14 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         closeKeyboard={vi.fn()}
         newPlateNumber=""
         setNewPlateNumber={vi.fn()}
-        setIsInputFocused={vi.fn()}
-        plateInputRef={{ current: null } as any}
         handleCheckIn={vi.fn()}
-        inputRef={{ current: null } as any}
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
       />
+      </GarageInputProvider>
     );
 
     // Garage name is in header
@@ -328,10 +327,10 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     const depletedGarage = { ...mockGarage, billingModel: 'prepaid_credits' as const, credits: 0 };
 
     renderWithTheme(
+      <GarageInputProvider>
       <GarageDashboardView
         garage={depletedGarage}
         currentStaff={null}
-        isInputFocused={false}
         vehicles={[]}
         todayTransactions={[]}
         setSelectedVehicle={vi.fn()}
@@ -339,16 +338,14 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         closeKeyboard={vi.fn()}
         newPlateNumber=""
         setNewPlateNumber={vi.fn()}
-        setIsInputFocused={vi.fn()}
-        plateInputRef={{ current: null } as any}
         handleCheckIn={vi.fn()}
-        inputRef={{ current: null } as any}
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
       />
+      </GarageInputProvider>
     );
 
     // The persistent balance card (with "آخر رصيد" badge) is gone
