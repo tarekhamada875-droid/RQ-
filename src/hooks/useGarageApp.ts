@@ -4,8 +4,8 @@ import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useServerTime } from './useServerTime';
+import { useToast } from './toast';
 import { soundManager } from '../utils/sounds';
-import { useAppStore } from '../store/appStore';
 
 import { useGarageSession } from './useGarageSession';
 import { useVehicleOperations } from './useVehicleOperations';
@@ -80,7 +80,6 @@ export function useGarageApp() {
 
   const [showSubscribers, setShowSubscribers] = useLocalStorageState<boolean>('app_show_subscribers', false);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const plateInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -88,12 +87,12 @@ export function useGarageApp() {
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', silent: boolean = false) => {
-    if (type === 'error' && !silent) soundManager.play('error');
-    setToast({ message, type });
-    useAppStore.getState().showToast(message, type as any);
-    setTimeout(() => setToast(null), 3000);
-  }, []);
+  const { showToast: contextShowToast } = useToast();
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success', _silent: boolean = false) => {
+    if (type === 'error') soundManager.play('error');
+    contextShowToast(message, type);
+  }, [contextShowToast]);
 
   const closeKeyboard = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) {
@@ -293,8 +292,6 @@ export function useGarageApp() {
     setShowSubscribers,
     isInputFocused,
     setIsInputFocused,
-    toast,
-    setToast,
     showToast,
     closeKeyboard,
     plateInputRef,
@@ -427,8 +424,6 @@ export function useGarageApp() {
     currentStaff,
     setCurrentStaff,
     sessionId,
-    toast,
-    setToast,
     showRecentExitWarning,
     setShowRecentExitWarning,
     recentVehicle,
