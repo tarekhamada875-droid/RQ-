@@ -89,6 +89,7 @@ const makeGarage = (overrides: Record<string, unknown> = {}) => ({
 
 const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
   const [showSubscribers, setShowSubscribers] = useState(false);
+  const garageBackHandlerRef = useRef<(() => boolean) | null>(null);
   return (
     <GarageDashboardView
       garage={garage}
@@ -110,6 +111,7 @@ const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
       staffList={[]}
       showSubscribers={showSubscribers}
       setShowSubscribers={setShowSubscribers}
+      garageBackHandlerRef={garageBackHandlerRef}
     />
   );
 };

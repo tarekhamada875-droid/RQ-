@@ -314,6 +314,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         staffList={[]}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
+        garageBackHandlerRef={{ current: null } as any}
       />
     );
 
@@ -348,6 +349,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         staffList={[]}
         showSubscribers={false}
         setShowSubscribers={vi.fn()}
+        garageBackHandlerRef={{ current: null } as any}
       />
     );
 

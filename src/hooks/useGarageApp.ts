@@ -32,7 +32,7 @@ export function useGarageApp() {
   }, []);
 
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
-  const [view, setView] = useLocalStorageState<'login' | 'garage' | 'admin_login' | 'admin_dashboard' | 'admin_garage_details' | 'admin_delegate_details' | 'delegate_login' | 'delegate_dashboard' | 'staff_stats'>('app_view', 'login');
+  const [view, setView] = useLocalStorageState<'login' | 'garage' | 'admin_login' | 'admin_dashboard' | 'admin_garage_details' | 'admin_delegate_details' | 'delegate_login' | 'delegate_dashboard'>('app_view', 'login');
 
   // Hash Navigation Support
   useEffect(() => {
@@ -86,6 +86,13 @@ export function useGarageApp() {
 
   const plateInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
+
+  // Garage-level overlays (reports, recharge history, appearance, terms) live
+  // inside GarageDashboardView, but the back-button hook is at the App level.
+  // This ref lets GarageDashboardView register a "close topmost overlay" handler
+  // that the back-button hook can call. Returns true if an overlay was closed,
+  // false if no overlay was open.
+  const garageBackHandlerRef = useRef<(() => boolean) | null>(null);
 
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
@@ -308,6 +315,7 @@ export function useGarageApp() {
     isOnline,
     showOfflineScreen,
     now,
+    garageBackHandlerRef,
   };
   const garageData = {
     garage,

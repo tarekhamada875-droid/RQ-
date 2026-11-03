@@ -24,7 +24,7 @@ export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, vehicleOperations } = app;
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, garageBackHandlerRef } = navigationUi;
   const { garage, delegate } = app.garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
@@ -66,6 +66,7 @@ export default function App() {
     setSelectedDelegateForDetails,
     setRecentVehicle,
     setSubscriberWarningPlate,
+    garageBackHandlerRef,
   });
 
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري إنهاء الجلسة...</p></div>;
