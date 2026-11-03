@@ -9,6 +9,7 @@ import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../se
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
 import { useBackHandler } from '../../hooks/backHandler';
+import { AdminProvider } from '../../hooks/adminContext';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
@@ -291,6 +292,17 @@ export const AdminDashboard = memo(({
         ref={mainScrollRef} 
         className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 flex-1 w-full ${showAddGarageModal ? 'overflow-hidden' : 'overflow-y-auto'}`}
       >
+        <AdminProvider value={{
+          adminGarageHasMore,
+          adminDelegateHasMore,
+          adminListsLoading,
+          adminListsError,
+          onLoadMoreAdminGarages: onLoadMoreAdminGarages ?? (() => Promise.resolve()),
+          onLoadMoreAdminDelegates: onLoadMoreAdminDelegates ?? (() => Promise.resolve()),
+          onRefreshAdminLists: onRefreshAdminLists ?? (() => Promise.resolve()),
+          setSelectedGarageForDetails,
+          setSelectedDelegateForDetails,
+        }}>
         <AdminNavigationAndViews
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -312,13 +324,6 @@ export const AdminDashboard = memo(({
             setPinInput('');
             setShowAddGarageModal(true);
           }}
-          adminGarageHasMore={adminGarageHasMore}
-          adminDelegateHasMore={adminDelegateHasMore}
-          adminListsLoading={adminListsLoading}
-          adminListsError={adminListsError}
-          onLoadMoreAdminGarages={onLoadMoreAdminGarages}
-          onLoadMoreAdminDelegates={onLoadMoreAdminDelegates}
-          onRefreshAdminLists={onRefreshAdminLists}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
           t={t}
@@ -328,6 +333,7 @@ export const AdminDashboard = memo(({
           showExportModal={showExportModal}
           setShowExportModal={setShowExportModal}
         />
+        </AdminProvider>
       </main>
 
       {/* Add Garage Modal */}
