@@ -10,6 +10,7 @@ import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
 import { useBackHandler } from '../../hooks/backHandler';
 import { AdminProvider } from '../../hooks/adminContext';
+import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
@@ -32,8 +33,6 @@ interface AdminDashboardProps {
   setSelectedGarageForDetails: (garage: Garage | null) => void;
   setSelectedDelegateForDetails: (delegate: Delegate | null) => void;
   delegates: Delegate[];
-  onLogout: () => void;
-  onImmediateLogout?: () => void;
   adminGarageHasMore?: boolean;
   adminDelegateHasMore?: boolean;
   adminListsLoading?: boolean;
@@ -52,8 +51,6 @@ export const AdminDashboard = memo(({
   setSelectedGarageForDetails,
   setSelectedDelegateForDetails,
   delegates,
-  onLogout,
-  onImmediateLogout,
   adminGarageHasMore = false,
   adminDelegateHasMore = false,
   adminListsLoading = false,
@@ -65,6 +62,9 @@ export const AdminDashboard = memo(({
 }: AdminDashboardProps) => {
 
   // Localized states to encapsulate admin view and prevent global App re-renders
+  const { handleInitiateLogout, handleLogout } = useSession();
+  const onLogout = handleInitiateLogout;
+  const onImmediateLogout = () => handleLogout(true);
   const systemConfig = useSystemConfig();
   const [adminSearch, setAdminSearch] = React.useState<string>('');
   // `activeTab` includes retired values ('overview' | 'packages' | 'trial_leads' |

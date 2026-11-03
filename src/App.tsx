@@ -18,6 +18,7 @@ import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
 import { useBackHandler } from './hooks/backHandler';
 import { VehicleOpsProvider } from './hooks/vehicleOpsContext';
+import { SessionProvider } from './hooks/sessionContext';
 import { useToast } from './hooks/toast';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { AppRoutes } from './components/app/AppRoutes';
@@ -82,6 +83,7 @@ export default function App() {
 
   const isLoggedIn = Boolean(view && view !== 'login');
   return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
+    <SessionProvider value={session}>
     <VehicleOpsProvider value={vehicleOperations}>
     <ErrorBoundary>
       <NetworkStatusBanner />
@@ -92,5 +94,6 @@ export default function App() {
       </Suspense>
     </ErrorBoundary>
     </VehicleOpsProvider>
+    </SessionProvider>
   </div>;
 }

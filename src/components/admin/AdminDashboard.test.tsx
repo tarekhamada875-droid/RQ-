@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { FormEvent } from 'react';
 import { AdminDashboard } from './AdminDashboard';
 import { firestoreService } from '../../services';
+import { SessionProvider } from '../../hooks/sessionContext';
+import type { SessionContextValue } from '../../hooks/sessionContext';
 
 const { deleteGarageWithRecoveryMock, garageDeletionFailureMessageMock } = vi.hoisted(() => ({
   deleteGarageWithRecoveryMock: vi.fn(),
@@ -70,12 +72,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const mockSession: SessionContextValue = {
+  user: null,
+  setUser: vi.fn(),
+  isAuthReady: true,
+  sessionId: 'test-session',
+  isSessionReady: true,
+  currentStaff: null,
+  setCurrentStaff: vi.fn(),
+  showLogoutConfirm: false,
+  setShowLogoutConfirm: vi.fn(),
+  isLoggingOut: false,
+  handleLogout: vi.fn().mockResolvedValue(undefined),
+  handleInitiateLogout: vi.fn(),
+};
+
+const renderDashboard = (ui: React.ReactElement) =>
+  render(<SessionProvider value={mockSession}>{ui}</SessionProvider>);
+
 const renderDashboardForGarageCreation = (
   createNewGarage: (event: FormEvent<HTMLFormElement>) => Promise<boolean>,
   showToast = vi.fn(),
   onRefreshAdminLists = vi.fn().mockResolvedValue(undefined),
 ) => {
-  render(
+  renderDashboard(
     <AdminDashboard
       allGarages={[]}
       isLoading={false}
@@ -84,7 +104,6 @@ const renderDashboardForGarageCreation = (
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      onLogout={vi.fn()}
       showToast={showToast}
       onRefreshAdminLists={onRefreshAdminLists}
     />,
@@ -107,7 +126,7 @@ const submitAddGarageDraft = () => {
 };
 
 it('keeps the Admin interface right-to-left', () => {
-  render(
+  renderDashboard(
     <AdminDashboard
       allGarages={[]}
       isLoading={false}
@@ -116,7 +135,6 @@ it('keeps the Admin interface right-to-left', () => {
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      onLogout={vi.fn()}
     />,
   );
 
@@ -127,7 +145,7 @@ it('resets a saved retired trial leads tab to Garages without touching other sav
   localStorage.setItem('app_admin_tab', 'trial_leads');
   localStorage.setItem('unrelated-setting', 'keep-me');
 
-  render(
+  renderDashboard(
     <AdminDashboard
       allGarages={[]}
       isLoading={false}
@@ -136,7 +154,6 @@ it('resets a saved retired trial leads tab to Garages without touching other sav
       setSelectedGarageForDetails={vi.fn()}
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
-      onLogout={vi.fn()}
     />,
   );
 
@@ -149,7 +166,7 @@ it('resets a saved retired trial leads tab to Garages without touching other sav
 
 describe('AdminDashboard garage actions', () => {
   it('does not fetch a second garage page when opening the garage tab', async () => {
-    render(
+    renderDashboard(
       <AdminDashboard
         allGarages={[{ id: 'garage-1', name: 'Already loaded garage' } as any]}
         isLoading={false}
@@ -158,7 +175,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        onLogout={vi.fn()}
       />,
     );
 
@@ -225,7 +241,7 @@ describe('AdminDashboard garage actions', () => {
 
   it('refreshes paginated Admin lists after a successful garage approval', async () => {
     const onRefreshAdminLists = vi.fn().mockResolvedValue(undefined);
-    render(
+    renderDashboard(
       <AdminDashboard
         allGarages={[{ id: 'pending-1', name: 'Pending Garage', status: 'pending' } as any]}
         isLoading={false}
@@ -234,7 +250,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        onLogout={vi.fn()}
         onRefreshAdminLists={onRefreshAdminLists}
       />,
     );
@@ -248,7 +263,7 @@ describe('AdminDashboard garage actions', () => {
   it('refreshes paginated Admin lists after a successful pending-garage rejection', async () => {
     deleteGarageWithRecoveryMock.mockResolvedValue({ ok: true });
     const onRefreshAdminLists = vi.fn().mockResolvedValue(undefined);
-    render(
+    renderDashboard(
       <AdminDashboard
         allGarages={[{ id: 'pending-1', name: 'Pending Garage', status: 'pending' } as any]}
         isLoading={false}
@@ -257,7 +272,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        onLogout={vi.fn()}
         onRefreshAdminLists={onRefreshAdminLists}
       />,
     );
@@ -277,7 +291,7 @@ describe('AdminDashboard garage actions', () => {
       error: new Error('RATE_LIMIT_EXCEEDED')
     });
     const showToast = vi.fn();
-    render(
+    renderDashboard(
       <AdminDashboard
         allGarages={[{ id: 'pending-1', name: 'Pending Garage' } as any]}
         isLoading={false}
@@ -286,7 +300,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedGarageForDetails={vi.fn()}
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
-        onLogout={vi.fn()}
       showToast={showToast}
       />
     );
