@@ -3,6 +3,7 @@ import { LoginView } from '../auth/LoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import type { GarageAppState } from '../../hooks/useGarageApp';
+import { DelegateDashboardProvider } from '../../hooks/delegateDashboardContext';
 import { logDiagnostic } from '../../utils/authDiagnosticLogger';
 
 const AdminDashboardLazy = lazyWithRetry(() => import('../admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -46,7 +47,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
 
   if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} onLogout={handleInitiateLogout} onImmediateLogout={() => handleLogout(true)} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} showToast={showToast} /></ErrorBoundary>;
 
-  if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} delegatePagination={delegatePagination} delegateListsLoading={delegateListsLoading} delegateListsError={delegateListsError} delegateDashboardLoading={delegateDashboardLoading} delegateDashboardError={delegateDashboardError} onRetryDelegateDashboard={retryDelegateDashboard} onLoadMoreDelegateGarages={loadMoreDelegateGarages} /></ErrorBoundary>;
+  if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardProvider value={{ delegatePagination, delegateListsLoading: !!delegateListsLoading, delegateListsError: !!delegateListsError, delegateDashboardLoading: !!delegateDashboardLoading, delegateDashboardError: !!delegateDashboardError, onRetryDelegateDashboard: retryDelegateDashboard, onLoadMoreDelegateGarages: loadMoreDelegateGarages }}><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} /></DelegateDashboardProvider></ErrorBoundary>;
 
   if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setShowDeleteConfirm={navigationUi.setShowDeleteConfirm} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
 

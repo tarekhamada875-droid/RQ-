@@ -10,6 +10,21 @@ vi.mock('../../hooks/useSystemConfig', () => ({ useSystemConfig: () => ({}) }));
 vi.mock('../ui/FitText', () => ({ FitText: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: () => null }));
 
+// Default mock for the delegate dashboard context
+const delegateDashboardMock = {
+  delegatePagination: undefined,
+  delegateListsLoading: false,
+  delegateListsError: false,
+  delegateDashboardLoading: false,
+  delegateDashboardError: false,
+  onRetryDelegateDashboard: undefined,
+  onLoadMoreDelegateGarages: undefined,
+};
+vi.mock('../../hooks/delegateDashboardContext', () => ({
+  DelegateDashboardProvider: ({ children }: any) => children,
+  useDelegateDashboard: () => delegateDashboardMock,
+}));
+
 afterEach(() => cleanup());
 
 function renderDelegateDashboard(
@@ -26,6 +41,17 @@ function renderDelegateDashboard(
     };
   } = {}
 ) {
+  // Update the mock with test-specific values
+  Object.assign(delegateDashboardMock, {
+    delegateDashboardLoading: false,
+    delegateDashboardError: false,
+    delegateListsError: false,
+    onRetryDelegateDashboard: undefined,
+    onLoadMoreDelegateGarages: undefined,
+    delegatePagination: undefined,
+    ...dashboardState,
+  });
+
   const delegate = {
     id: 'delegate_1',
     name: 'Test Delegate',
@@ -43,7 +69,6 @@ function renderDelegateDashboard(
       onLogout={vi.fn()}
       onCreateGarage={onCreateGarage}
       isLoading={false}
-      {...dashboardState}
     />
   );
 
