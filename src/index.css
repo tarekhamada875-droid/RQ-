@@ -522,11 +522,3 @@ input[type="number"]::-webkit-outer-spin-button {
 .border-shimmer-ring--glow { padding: 5px; opacity: 0.15; }
 .border-shimmer-ring--halo { padding: 3.25px; opacity: 0.35; }
 .border-shimmer-ring--core { padding: 2.25px; }
-
-/* Compact variant for small elements (digit tiles, badges).
-   Halves the ring padding so the glow stays subtle and doesn't
-   consume the whole element's edge. Slightly lower opacity because
-   small elements need less glow to read as "active." */
-.border-shimmer--compact .border-shimmer-ring--glow { padding: 2.5px; opacity: 0.12; }
-.border-shimmer--compact .border-shimmer-ring--halo { padding: 1.5px; opacity: 0.30; }
-.border-shimmer--compact .border-shimmer-ring--core { padding: 1px; }
