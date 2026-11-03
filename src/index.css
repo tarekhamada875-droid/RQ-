@@ -438,15 +438,25 @@ input[type="number"]::-webkit-outer-spin-button {
 
 
 
-/* ── BorderShimmer (SMIL → CSS compositor sweep) ─────────────────────────────
-   The sweep layer translates -100% → 100% of its own height on the compositor;
-   three ring-masked children clip it to a border glow, mirroring the original
+/* ── BorderShimmer (perimeter trace) ───────────────────────────────────────
+   A single bright "comet" arc travels around the rectangle's perimeter:
+     0° (top center) → 90° (right center) → 180° (bottom center) → 270° (left center) → 360°.
+   Three ring-masked children clip it to a border glow, mirroring the original
    SVG strokes (8 / 4.5 / 2.5px centered on a 1px-inset path ⇒ 5 / 3.25 / 2.25px
-   visible from the edge) at 0.15 / 0.35 / 1.0 opacity, and the original
-   gradient stops (0% → 0, 35% → 0.2, 50% → 1, 65% → 0.2, 100% → 0). */
-@keyframes border-shimmer-sweep {
-  from { transform: translateY(-100%); }
-  to   { transform: translateY(100%); }
+   visible from the edge) at 0.15 / 0.35 / 1.0 opacity.
+   The conic-gradient `from` angle is animated via the registered custom
+   property --shimmer-angle; @property registration lets the browser
+   interpolate the angle smoothly between frames (supported in Chrome 85+,
+   Safari 16.4+, Firefox 128+ — universal on modern mobile browsers as of 2026). */
+@property --shimmer-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: true;
+}
+
+@keyframes border-shimmer-trace {
+  from { --shimmer-angle: 0deg; }
+  to   { --shimmer-angle: 360deg; }
 }
 
 @keyframes border-shimmer-sweep-alternate-first {
@@ -472,9 +482,7 @@ input[type="number"]::-webkit-outer-spin-button {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  will-change: transform;
-  backface-visibility: hidden;
-  animation: border-shimmer-sweep 4s linear infinite;
+  animation: border-shimmer-trace 4s linear infinite;
 }
 
 .border-shimmer-sweep--alternate-first {
@@ -489,13 +497,20 @@ input[type="number"]::-webkit-outer-spin-button {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 35%,
-    var(--shimmer-color, #10b981) 50%,
-    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 65%,
-    transparent 100%
+  /* One bright comet arc (~90° peak) sweeps around the perimeter.
+     Background angles are absolute (0° = top center, rotating clockwise),
+     so the bright head moves: top → right → bottom → left → top.
+     On a tall rectangle the bright head naturally lingers longer on the
+     long vertical edges (more arc length per pixel of perimeter), which
+     matches the desired "trace the rectangle" feel. */
+  background-image: conic-gradient(
+    from var(--shimmer-angle, 0deg),
+    transparent 0deg,
+    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 30deg,
+    var(--shimmer-color, #10b981) 45deg,
+    color-mix(in srgb, var(--shimmer-color, #10b981) 20%, transparent) 60deg,
+    transparent 90deg,
+    transparent 360deg
   );
   /* Punch the middle out so only the border ring shows. */
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
