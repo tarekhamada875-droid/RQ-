@@ -94,6 +94,10 @@ export function useGarageApp() {
   // false if no overlay was open.
   const garageBackHandlerRef = useRef<(() => boolean) | null>(null);
 
+  // Same pattern for admin-level modals (Add Garage, Export). AdminDashboard
+  // populates this ref with a function that closes its topmost modal.
+  const adminBackHandlerRef = useRef<(() => boolean) | null>(null);
+
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
 
@@ -316,6 +320,7 @@ export function useGarageApp() {
     showOfflineScreen,
     now,
     garageBackHandlerRef,
+    adminBackHandlerRef,
   };
   const garageData = {
     garage,

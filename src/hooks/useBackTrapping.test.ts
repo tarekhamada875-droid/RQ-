@@ -47,6 +47,7 @@ describe('useBackTrapping priority', () => {
       setRecentVehicle: vi.fn(),
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
+      adminBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -79,6 +80,7 @@ describe('useBackTrapping priority', () => {
       setRecentVehicle: vi.fn(),
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
+      adminBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -111,6 +113,7 @@ describe('useBackTrapping priority', () => {
       setRecentVehicle: vi.fn(),
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
+      adminBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -143,6 +146,7 @@ describe('useBackTrapping priority', () => {
       setRecentVehicle: vi.fn(),
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: garageHandler },
+      adminBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -175,6 +179,7 @@ describe('useBackTrapping priority', () => {
       setRecentVehicle: vi.fn(),
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
+      adminBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();

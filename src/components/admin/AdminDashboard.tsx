@@ -41,6 +41,7 @@ interface AdminDashboardProps {
   onRefreshAdminLists?: () => Promise<void>;
   currentAdminPin: string;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
+  adminBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const AdminDashboard = memo(({
@@ -61,7 +62,8 @@ export const AdminDashboard = memo(({
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
   currentAdminPin,
-  showToast
+  showToast,
+  adminBackHandlerRef,
 }: AdminDashboardProps) => {
 
   // Localized states to encapsulate admin view and prevent global App re-renders
@@ -80,6 +82,22 @@ export const AdminDashboard = memo(({
   }, [activeTab, setActiveTab]);
 
   const [showAddGarageModal, setShowAddGarageModal] = React.useState<boolean>(false);
+  const [showExportModal, setShowExportModal] = React.useState<boolean>(false);
+
+  // Register the admin-level back handler so the App-level useBackTrapping
+  // hook can close admin modals (Add Garage, Export) when the phone back
+  // button is pressed. Returns true if a modal was closed.
+  React.useEffect(() => {
+    adminBackHandlerRef.current = () => {
+      if (showAddGarageModal) { setShowAddGarageModal(false); return true; }
+      if (showExportModal) { setShowExportModal(false); return true; }
+      return false;
+    };
+    return () => {
+      adminBackHandlerRef.current = null;
+    };
+  }, [adminBackHandlerRef, showAddGarageModal, showExportModal]);
+
   const [pinInput, setPinInput] = React.useState<string>('');
   const [garageForm, setGarageForm] = React.useState<{
     name: string;
@@ -316,6 +334,8 @@ export const AdminDashboard = memo(({
           showToast={showToast}
           onLogout={onLogout}
           onImmediateLogout={onImmediateLogout}
+          showExportModal={showExportModal}
+          setShowExportModal={setShowExportModal}
         />
       </main>
 
