@@ -27,6 +27,10 @@ interface BackTrappingProps {
    * overlay was closed, false if none was open. Populated by
    * GarageDashboardView. */
   garageBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
+  /** Ref to a function that closes the topmost admin-level modal
+   * (Add Garage, Export). Returns true if a modal was closed, false if
+   * none was open. Populated by AdminDashboard. */
+  adminBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 /**
@@ -65,6 +69,12 @@ export function useBackTrapping(props: BackTrappingProps) {
       if (p.showSubscribers) { p.setShowSubscribers(false); return; }
       if (p.garageBackHandlerRef.current) {
         const closed = p.garageBackHandlerRef.current();
+        if (closed) return;
+      }
+
+      // 2b. Admin-level modals (Add Garage, Export) — reachable via ref
+      if (p.adminBackHandlerRef.current) {
+        const closed = p.adminBackHandlerRef.current();
         if (closed) return;
       }
 

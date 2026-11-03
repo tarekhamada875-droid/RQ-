@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Garage, Delegate } from '../../types';
 import {
   Car,
@@ -45,6 +45,8 @@ interface AdminNavigationAndViewsProps {
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
   onImmediateLogout?: () => void;
+  showExportModal: boolean;
+  setShowExportModal: (show: boolean) => void;
 }
 
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
@@ -73,9 +75,9 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showToast,
   onLogout,
   onImmediateLogout,
+  showExportModal,
+  setShowExportModal,
 }) => {
-  const [showExportModal, setShowExportModal] = useState(false);
-
   return (
     <>
       {/* Top Navigation Bar with Horizontal Scrolling */}
