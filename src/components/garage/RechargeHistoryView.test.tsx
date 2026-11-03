@@ -11,6 +11,12 @@ const billingMocks = vi.hoisted(() => ({
 
 vi.mock('../../services', () => ({
   firestoreService: serviceMocks,
+  garageService: serviceMocks,
+  garageDeletionService: serviceMocks,
+  vehicleService: serviceMocks,
+  delegateService: serviceMocks,
+  adminService: serviceMocks,
+  authService: serviceMocks,
 }));
 
 vi.mock('../../services/adminBillingService', () => ({

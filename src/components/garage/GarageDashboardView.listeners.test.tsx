@@ -21,7 +21,15 @@ const serviceMocks = vi.hoisted(() => ({
   subscribeToSubscribers: vi.fn(),
 }));
 
-vi.mock('../../services', () => ({ firestoreService: serviceMocks }));
+vi.mock('../../services', () => ({
+  firestoreService: serviceMocks,
+  garageService: serviceMocks,
+  garageDeletionService: serviceMocks,
+  vehicleService: serviceMocks,
+  delegateService: serviceMocks,
+  adminService: serviceMocks,
+  authService: serviceMocks,
+}));
 vi.mock('../../firebase', () => ({
   auth: {
     currentUser: { uid: 'garage-owner-test' },

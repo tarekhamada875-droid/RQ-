@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Coins, Wrench } from 'lucide-react';
 import { Garage } from '../../types';
-import { firestoreService } from '../../services';
+import { adminService } from '../../services';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -91,7 +91,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         // paymentConfirmed is always true — the admin clicking "add balance"
         // IS the payment confirmation. The checkbox was removed per owner
         // request; the Worker still requires the field, so we send true.
-        await firestoreService.adminGrantGarageCredits(garage.id, {
+        await adminService.adminGrantGarageCredits(garage.id, {
           amount: creditAmount,
           paymentAmountEgp: creditAmount,
           reason,
@@ -100,7 +100,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         });
         setSuccess(`${creditAmount.toLocaleString('en-US')} رصيد تمت إضافته.`);
       } else {
-        await firestoreService.adminCorrectGarageCredits(garage.id, {
+        await adminService.adminCorrectGarageCredits(garage.id, {
           amount: creditAmount,
           reason,
           idempotencyKey

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Key, Check, Loader2 } from 'lucide-react';
 import { normalizeDigits } from '../../utils';
-import { firestoreService } from '../../services';
+import { adminService, authService } from '../../services';
 import { apiFetch } from '../../api/apiClient';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
@@ -81,14 +81,14 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
     setIsSavingAdminPin(true);
     try {
-      const pinCheck = await firestoreService.isPinTaken(newPin);
+      const pinCheck = await authService.isPinTaken(newPin);
       if (pinCheck.taken) {
         setAdminPinError(`${t('هذا الرمز السري مستخدم بالفعل في حساب آخر:')} (${pinCheck.name} - ${pinCheck.role})`);
         setIsSavingAdminPin(false);
         return;
       }
 
-      await firestoreService.updateAdminPin(newPin, attempt);
+      await adminService.updateAdminPin(newPin, attempt);
       setAdminPinSuccess(t('تم تغيير رمز الدخول بنجاح.'));
       setCurrentPinAttempt('');
       setNewAdminPinValue('');

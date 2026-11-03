@@ -9,9 +9,7 @@ const { apiFetch, isPinTaken, updateAdminPin } = vi.hoisted(() => ({
 }));
 
 vi.mock('../api/apiClient', () => ({ apiFetch }));
-vi.mock('../services', () => ({
-  firestoreService: { isPinTaken, updateAdminPin },
-}));
+vi.mock('../services', () => { const _svc = { isPinTaken, updateAdminPin }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 describe('AdminPinSettingsView five-digit PIN change', () => {
   beforeEach(() => {

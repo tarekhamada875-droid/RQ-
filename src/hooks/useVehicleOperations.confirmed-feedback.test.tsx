@@ -2,17 +2,15 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import type { Garage, Vehicle } from '../types';
-import { firestoreService } from '../services';
+import { vehicleService } from '../services';
 import { useVehicleOperations } from './useVehicleOperations';
 import { ServerTimeProvider } from './serverTimeContext';
 
-vi.mock('../services', () => ({
-  firestoreService: {
+vi.mock('../services', () => { const _svc = {
     checkInVehicle: vi.fn(),
     checkOutVehicle: vi.fn(),
     getSubscriberByPlateOnce: vi.fn(),
-  },
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 vi.mock('../utils/sounds', () => ({
   soundManager: { play: vi.fn() },
@@ -74,7 +72,7 @@ function renderOperations(initialGarage: Garage, initialVehicles: Vehicle[] = []
 describe('useVehicleOperations confirmed feedback', () => {
   it('does not show check-in vehicle/count/credit changes before Worker confirmation', async () => {
     const deferred = createDeferred<any>();
-    vi.mocked(firestoreService.checkInVehicle).mockReturnValue(deferred.promise);
+    vi.mocked(vehicleService.checkInVehicle).mockReturnValue(deferred.promise);
     const plate = 'س ج ط 1 2 3 4';
     const { result } = renderOperations(createGarage());
 
@@ -138,7 +136,7 @@ describe('useVehicleOperations confirmed feedback', () => {
       entryTime: new Date('2026-10-30T17:00:00.000Z'),
     } as Vehicle;
     const deferred = createDeferred<any>();
-    vi.mocked(firestoreService.checkOutVehicle).mockReturnValue(deferred.promise);
+    vi.mocked(vehicleService.checkOutVehicle).mockReturnValue(deferred.promise);
     const { result } = renderOperations(
       createGarage({ carsInside: 1, todayCount: 1, todayRevenue: 10, totalVehiclesOut: 0, totalRevenue: 100 }),
       [insideVehicle],

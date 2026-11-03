@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { firestoreService } from '../services';
+import { adminService } from '../services';
 import type { SubscriberPageInfo } from '../services/adminService';
 import type { ActivityLog, Subscriber } from '../types';
 
@@ -74,7 +74,7 @@ export function useGarageDashboardLiveData({
       }
     }, 1500);
 
-    const unsubscribe = firestoreService.subscribeToGarageRechargeLogs(
+    const unsubscribe = adminService.subscribeToGarageRechargeLogs(
       garageId,
       (logs) => {
         if (!active) return;
@@ -115,7 +115,7 @@ export function useGarageDashboardLiveData({
       garageId,
     });
 
-    const unsubscribe = firestoreService.subscribeToSubscribers(garageId, (subscribers, page) => {
+    const unsubscribe = adminService.subscribeToSubscribers(garageId, (subscribers, page) => {
       if (!active) return;
       setSubscriberState({
         garageId,

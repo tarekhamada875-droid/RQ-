@@ -4,7 +4,7 @@
  */
 
 import React, { memo } from 'react';
-import { firestoreService } from '../../services';
+import { adminService, garageService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
@@ -153,7 +153,7 @@ export const AdminDashboard = memo(({
 
   const handleApproveGarage = async (garage: Garage) => {
     try {
-      await firestoreService.updateGarage(garage.id, { status: 'approved' });
+      await garageService.updateGarage(garage.id, { status: 'approved' });
       soundManager.play('checkIn');
       showToast?.(`تم قبول وتفعيل جراج "${garage.name}" بنجاح 🚀`, 'success');
       void refreshAdminListsAfterMutation();
@@ -373,7 +373,7 @@ export const AdminDashboard = memo(({
           onUpdateAdminColor={async (color) => {
             setLocalAdminColor(color);
             try {
-              await firestoreService.updateSystemConfig({ adminColor: color });
+              await adminService.updateSystemConfig({ adminColor: color });
             } catch (err) {
               console.warn('Failed to save adminColor to Firestore:', err);
             }

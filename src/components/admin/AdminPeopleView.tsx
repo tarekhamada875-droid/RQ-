@@ -13,7 +13,7 @@ import {
   Loader2,
   Briefcase
 } from 'lucide-react';
-import { firestoreService } from '../../services';
+import { authService, delegateService } from '../../services';
 import { generateSafePin, normalizeDigits, formatDisplayPin } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
@@ -60,13 +60,13 @@ export const AdminPeopleView = memo(({
 
     setIsSubmittingDelegate(true);
     try {
-      const pinCheck = await firestoreService.isPinTaken(cleanPin);
+      const pinCheck = await authService.isPinTaken(cleanPin);
       if (pinCheck.taken) {
         setDelegatePinError(`هذا الرمز السري مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`);
         setIsSubmittingDelegate(false);
         return;
       }
-      await firestoreService.addDelegate({
+      await delegateService.addDelegate({
         name: cleanName,
         phone: cleanPhone,
         pin: cleanPin,

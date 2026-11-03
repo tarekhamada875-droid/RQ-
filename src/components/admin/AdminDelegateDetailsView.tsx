@@ -7,7 +7,7 @@ import { useState, memo } from 'react';
 import { useBackHandler } from '../../hooks/backHandler';
 import { Trash2, ChevronRight, Users, Coins, Loader2 } from 'lucide-react';
 import { Delegate } from '../../types';
-import { firestoreService } from '../../services';
+import { delegateService } from '../../services';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 import { AdminDelegateProfileCard } from './delegate-details/AdminDelegateProfileCard';
@@ -46,7 +46,7 @@ export const AdminDelegateDetailsView = memo(({
     setConfirmSettle(false);
     setIsLoading(true);
     try {
-      await firestoreService.settleDelegateAccount(
+      await delegateService.settleDelegateAccount(
         delegate.id,
         Number(delegate.totalRechargedAmount || 0),
         delegate.lastSettledAt

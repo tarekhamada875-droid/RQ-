@@ -6,11 +6,9 @@ const { getActivityLogsSinceMock } = vi.hoisted(() => ({
   getActivityLogsSinceMock: vi.fn()
 }));
 
-vi.mock('../../services', () => ({
-  firestoreService: {
+vi.mock('../../services', () => { const _svc = {
     getActivityLogsSince: getActivityLogsSinceMock
-  }
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 import { ActivityLogExportModal } from './ActivityLogExportModal';
 

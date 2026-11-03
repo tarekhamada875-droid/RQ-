@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
-import { firestoreService } from '../services';
+import { adminService, vehicleService } from '../services';
 import { soundManager } from '../utils/sounds';
 import { useServerTimeNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
@@ -160,7 +160,7 @@ export function useVehicleOperations({
 
     if (garage.hasMonthlySubscribers) {
       try {
-        const subData = await firestoreService.getSubscriberByPlateOnce(garage.id, raw);
+        const subData = await adminService.getSubscriberByPlateOnce(garage.id, raw);
         if (subData && subData.endDate) {
           const end = safeDate(subData.endDate);
           const today = new Date();
@@ -200,7 +200,7 @@ export function useVehicleOperations({
       // result instead of creating a duplicate transaction.
       const idempotencyKey = generateIdempotencyKey('vehicle_checkin');
       const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
-        firestoreService.checkInVehicle(garage.id, {
+        vehicleService.checkInVehicle(garage.id, {
           plateNumber: formatted,
           plateNumberRaw: raw,
           type: type,
@@ -328,7 +328,7 @@ export function useVehicleOperations({
       // See check-in for details.
       const idempotencyKey = generateIdempotencyKey('vehicle_checkout');
       const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
-        firestoreService.checkOutVehicle(
+        vehicleService.checkOutVehicle(
           garage.id,
           vehicleToOut.id,
           cost,
@@ -466,7 +466,7 @@ export function useVehicleOperations({
     showToast('جاري حذف اللوحة...', 'info');
 
     try {
-      const success = await firestoreService.deleteVehicle(
+      const success = await vehicleService.deleteVehicle(
         garage.id,
         vehicleToDelete.id,
         todayYMD,

@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { Garage } from '../types';
-import { firestoreService } from '../services';
+import { delegateService, garageService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { authService } from '../services/authService';
@@ -462,7 +462,7 @@ export function useAdminAndGarageManagement({
       // the garage created by the original request.
       if (!isRetry) {
         const pin = ((data.pin as string) || '').trim();
-        const pinCheck = await firestoreService.isPinTaken(pin);
+        const pinCheck = await authService.isPinTaken(pin);
         if (pinCheck.taken) {
           showToast(`هذا الرمز السري (PIN) مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
           setIsLoading(false);
@@ -483,7 +483,7 @@ export function useAdminAndGarageManagement({
         ? previousAttempt.idempotencyKey
         : (globalThis.crypto?.randomUUID?.() || `garage-create-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       garageCreationAttemptRef.current = { fingerprint: requestFingerprint, idempotencyKey };
-      const result = await firestoreService.createGarage(data, idempotencyKey);
+      const result = await garageService.createGarage(data, idempotencyKey);
 
       if (result.success) {
         if (garageCreationAttemptRef.current?.idempotencyKey === idempotencyKey) garageCreationAttemptRef.current = null;
@@ -538,10 +538,8 @@ export function useAdminAndGarageManagement({
     }
   }, [isLoading, isOnline, closeKeyboard, showToast, setSelectedGarageForDetails, setView, setIsLoading, setShowDeleteConfirm, setGarageDeletionProgress, refreshAdminLists]);
 
-
-
   const removeDelegate = useCallback(async (id: string) => {
-    await firestoreService.removeDelegate(id);
+    await delegateService.removeDelegate(id);
     await refreshAdminLists();
   }, [refreshAdminLists]);
 

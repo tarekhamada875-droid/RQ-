@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { firestoreService } from '../services';
+import { adminService, authService, garageService } from '../services';
 import { normalizeDigits, canChangeGarageRates, generateSafePin } from '../utils';
 import type { Garage, Staff } from '../types';
 import { useAppStore } from '../store/appStore';
@@ -110,7 +110,7 @@ export function useAdminGarageDetailsActions({
     setIsSavingRates(true);
     try {
       const now = new Date();
-      await firestoreService.updateGarage(garage.id, {
+      await garageService.updateGarage(garage.id, {
         hourlyRate: hourly,
         overnightRate: overnight,
         lastRateChangeDate: now,
@@ -137,7 +137,7 @@ export function useAdminGarageDetailsActions({
     setIsUpdatingLock(true);
     try {
       const newLocked = !garage.isLocked;
-      await firestoreService.updateGarage(garage.id, {
+      await garageService.updateGarage(garage.id, {
         isLocked: newLocked,
         isSuspended: newLocked
       });
@@ -158,7 +158,7 @@ export function useAdminGarageDetailsActions({
   const handleToggleMonthlySubscribers = async () => {
     const newState = !garage.hasMonthlySubscribers;
     try {
-      await firestoreService.updateGarage(garage.id, { hasMonthlySubscribers: newState });
+      await garageService.updateGarage(garage.id, { hasMonthlySubscribers: newState });
       setSelectedGarageForDetails({ ...garage, hasMonthlySubscribers: newState });
       void refreshAdminListsAfterMutation();
     } catch (e) {
@@ -184,13 +184,13 @@ export function useAdminGarageDetailsActions({
     setIsUpdatingGaragePin(true);
     setPinError('');
     try {
-      const pinCheck = await firestoreService.isPinTaken(garagePinInput, garage.id);
+      const pinCheck = await authService.isPinTaken(garagePinInput, garage.id);
       if (pinCheck.taken) {
         setPinError(`الرمز مستخدم بالفعل لدى (${pinCheck.name})`);
         setIsUpdatingGaragePin(false);
         return;
       }
-      await firestoreService.updateGarage(garage.id, { pin: garagePinInput, ownerPin: garagePinInput });
+      await garageService.updateGarage(garage.id, { pin: garagePinInput, ownerPin: garagePinInput });
       setSelectedGarageForDetails({ ...garage, pin: garagePinInput, ownerPin: garagePinInput });
       void refreshAdminListsAfterMutation();
     } catch (err: unknown) {
@@ -212,7 +212,7 @@ export function useAdminGarageDetailsActions({
     if (!name || !staffForm.pin) return;
     setIsLoading(true);
     try {
-      const pinCheck = await firestoreService.isPinTaken(staffForm.pin);
+      const pinCheck = await authService.isPinTaken(staffForm.pin);
       if (pinCheck.taken) {
         const { showToast } = useAppStore.getState();
         showToast?.('الرمز مستخدم بالفعل', 'error');
@@ -224,7 +224,7 @@ export function useAdminGarageDetailsActions({
         garageId: garage.id,
         role: 'staff'
       };
-      const created = await firestoreService.addStaff(staffData);
+      const created = await adminService.addStaff(staffData);
       if (!created?.id) throw new Error('STAFF_CREATE_MISSING_ID');
       setStaffList((current) => [
         ...current.filter((staff) => staff.id !== created.id),
@@ -250,7 +250,7 @@ export function useAdminGarageDetailsActions({
     if (isLoading) return;
     setIsLoading(true);
     try {
-      await firestoreService.removeStaff(staffId);
+      await adminService.removeStaff(staffId);
       setStaffList((current) => current.filter((staff) => staff.id !== staffId));
     } catch {
       console.error('Failed to delete Staff.');

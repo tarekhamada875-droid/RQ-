@@ -9,16 +9,14 @@ const mocks = vi.hoisted(() => ({
   deleteSubscriber: vi.fn()
 }));
 
-vi.mock('../../services', () => ({
-  firestoreService: {
+vi.mock('../../services', () => { const _svc = {
     subscribeToSubscribers: mocks.subscribe,
     getMoreSubscribers: mocks.getMore,
     addSubscriber: vi.fn(),
     updateSubscriber: vi.fn(),
     deleteSubscriber: mocks.deleteSubscriber,
     renewSubscriber: vi.fn()
-  }
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 vi.mock('../../firebase', () => ({
   auth: {

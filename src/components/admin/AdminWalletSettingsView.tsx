@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
-import { firestoreService } from '../../services';
+import { adminService } from '../../services';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
@@ -62,7 +62,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
     }
     setIsSaving(true);
     try {
-      await firestoreService.updateSystemConfig({ paymentWalletNumber: trimmed });
+      await adminService.updateSystemConfig({ paymentWalletNumber: trimmed });
       setOriginalWalletNumber(trimmed);
       setSaveSuccess(t('تم حفظ رقم محفظة الدفع بنجاح.'));
     } catch (err: any) {

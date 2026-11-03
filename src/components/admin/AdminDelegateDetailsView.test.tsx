@@ -9,7 +9,15 @@ const serviceMocks = vi.hoisted(() => ({
   updateDelegate: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../services', () => ({ firestoreService: serviceMocks }));
+vi.mock('../../services', () => ({
+  firestoreService: serviceMocks,
+  garageService: serviceMocks,
+  garageDeletionService: serviceMocks,
+  vehicleService: serviceMocks,
+  delegateService: serviceMocks,
+  adminService: serviceMocks,
+  authService: serviceMocks,
+}));
 
 import { AdminDelegateDetailsView } from './AdminDelegateDetailsView';
 
