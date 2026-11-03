@@ -105,17 +105,21 @@ import { useGarageApp } from './useGarageApp';
 
 afterEach(() => cleanup());
 
-describe('useGarageApp grouped contract', () => {
-  it('returns five stable groups while preserving flat aliases and handler identity', () => {
+describe('useGarageApp composition root', () => {
+  it('returns exactly five stable groups (no flat aliases)', () => {
     const { result } = renderHook(() => useGarageApp(), { wrapper: ({ children }) => <ToastProvider><GarageInputProvider><ServerTimeProvider>{children}</ServerTimeProvider></GarageInputProvider></ToastProvider> });
     const app = result.current;
 
-    expect(Object.keys(app).filter((key) => ['session', 'navigationUi', 'garageData', 'vehicleOperations', 'adminManagement'].includes(key))).toHaveLength(5);
-    expect(app.session.handleLogout).toBe(app.handleLogout);
-    expect(app.session.setUser).toBe(app.setUser);
-    expect(app.navigationUi.setView).toBe(app.setView);
-    expect(app.garageData.setGarage).toBe(app.setGarage);
-    expect(app.vehicleOperations.handleCheckIn).toBe(app.handleCheckIn);
-    expect(app.adminManagement.handleGarageLogin).toBe(app.handleGarageLogin);
+    // Exactly 5 keys, all of which are the named buckets.
+    expect(Object.keys(app).sort()).toEqual(
+      ['adminManagement', 'garageData', 'navigationUi', 'session', 'vehicleOperations'].sort(),
+    );
+
+    // Each bucket exposes its expected handler identity.
+    expect(typeof app.session.handleLogout).toBe('function');
+    expect(typeof app.navigationUi.setView).toBe('function');
+    expect(typeof app.garageData.setGarage).toBe('function');
+    expect(typeof app.vehicleOperations.handleCheckIn).toBe('function');
+    expect(typeof app.adminManagement.handleGarageLogin).toBe('function');
   });
 });

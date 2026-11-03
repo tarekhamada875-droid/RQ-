@@ -1,9 +1,11 @@
 import { Suspense } from 'react';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import { firestoreService } from '../../services';
-import type { GarageAppState } from '../../hooks/useGarageApp';
 import { useVehicleOps } from '../../hooks/vehicleOpsContext';
 import { useSession } from '../../hooks/sessionContext';
+import { useNavigationUi } from '../../hooks/navigationUiContext';
+import { useGarageData } from '../../hooks/garageDataContext';
+import { useAdminMutations } from '../../hooks/adminMutationsContext';
 
 const CheckInModal = lazyWithRetry(() => import('../modals/CheckInModal').then(m => ({ default: m.CheckInModal })));
 const CheckOutModal = lazyWithRetry(() => import('../modals/CheckOutModal').then(m => ({ default: m.CheckOutModal })));
@@ -13,14 +15,14 @@ const RecentExitWarningModal = lazyWithRetry(() => import('../modals/RecentExitW
 const LogoutConfirmModal = lazyWithRetry(() => import('../modals/LogoutConfirmModal').then(m => ({ default: m.LogoutConfirmModal })));
 const SubscriberWarningModal = lazyWithRetry(() => import('../modals/SubscriberWarningModal').then(m => ({ default: m.SubscriberWarningModal })));
 
-interface AppOverlaysProps {
-  app: GarageAppState;
-}
-
-export function AppOverlays({ app }: AppOverlaysProps) {
-  const { navigationUi, adminManagement } = app;
-  const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = navigationUi;
-  const { garage, delegate } = app.garageData;
+/**
+ * All overlays (modals, dialogs) for the app. Reads shared state via
+ * context hooks (useSession, useNavigationUi, useGarageData, useVehicleOps,
+ * useAdminMutations) — no `app` prop.
+ */
+export function AppOverlays() {
+  const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = useNavigationUi();
+  const { garage, delegate } = useGarageData();
   const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = useSession();
   const activeIdentity = view === 'garage'
     ? (currentStaff?.id ? `staff:${currentStaff.id}` : garage?.id ? `garage:${garage.id}` : 'garage:pending')
@@ -31,7 +33,7 @@ export function AppOverlays({ app }: AppOverlaysProps) {
         : `view:${view}`;
   const logoutAttemptScope = `${activeIdentity}:session:${sessionId}`;
   const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = useVehicleOps();
-  const { deleteGarage } = adminManagement;
+  const { deleteGarage } = useAdminMutations();
 
   return <Suspense fallback={null}>
     {showCheckInModal && garage && <CheckInModal newPlateNumber={newPlateNumber} garage={garage} isLoading={isLoading} loadingType={loadingType} onCheckIn={handleCheckIn} onCancel={() => setShowCheckInModal(false)} />}
