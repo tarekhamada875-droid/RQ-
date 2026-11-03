@@ -157,6 +157,7 @@ describe('Modularized Admin Components Integrity', () => {
         setStaffList={vi.fn()}
         isLoading={false}
         setIsLoading={vi.fn()}
+        adminGarageDetailsBackHandlerRef={{ current: null } as any}
       />
     );
 
@@ -188,6 +189,7 @@ describe('Modularized Admin Components Integrity', () => {
           setStaffList={setStaffList}
           isLoading={isLoading}
           setIsLoading={setIsLoading}
+          adminGarageDetailsBackHandlerRef={{ current: null } as any}
         />
       );
     };

@@ -31,6 +31,7 @@ interface AdminGarageDetailsViewProps {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
   onRefreshAdminLists?: () => Promise<void>;
+  adminGarageDetailsBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const AdminGarageDetailsView = memo(({
@@ -42,7 +43,8 @@ export const AdminGarageDetailsView = memo(({
   setStaffList,
   isLoading,
   setIsLoading,
-  onRefreshAdminLists
+  onRefreshAdminLists,
+  adminGarageDetailsBackHandlerRef,
 }: AdminGarageDetailsViewProps) => {
   // ── UI toggle state (stays in the view) ──────────────────────────────
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -51,6 +53,23 @@ export const AdminGarageDetailsView = memo(({
   const [showMenu, setShowMenu] = useState(false);
   const [isZone3Open, setIsZone3Open] = useState(false);
   const [showEditGaragePinModal, setShowEditGaragePinModal] = useState(false);
+
+  // Register back handler for admin garage-details modals. MUST be checked
+  // before the priority-3 exit (admin_garage_details → admin_dashboard) so
+  // back closes the in-page modal instead of leaving the whole sub-page.
+  // Priority: editPin → deleteStaff confirm → addStaff → menu dropdown.
+  useEffect(() => {
+    adminGarageDetailsBackHandlerRef.current = () => {
+      if (showEditGaragePinModal) { setShowEditGaragePinModal(false); return true; }
+      if (staffToDelete) { setStaffToDelete(null); return true; }
+      if (showAddStaffModal) { setShowAddStaffModal(false); return true; }
+      if (showMenu) { setShowMenu(false); return true; }
+      return false;
+    };
+    return () => {
+      adminGarageDetailsBackHandlerRef.current = null;
+    };
+  }, [adminGarageDetailsBackHandlerRef, showEditGaragePinModal, staffToDelete, showAddStaffModal, showMenu]);
 
   // Inline staff-PIN editing state — purely visual; the actual updateStaff
   // call lives in AdminGarageSettingsSection.

@@ -48,6 +48,9 @@ describe('useBackTrapping priority', () => {
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
       adminBackHandlerRef: { current: null },
+      delegateBackHandlerRef: { current: null },
+      adminGarageDetailsBackHandlerRef: { current: null },
+      adminDelegateDetailsBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -81,6 +84,9 @@ describe('useBackTrapping priority', () => {
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
       adminBackHandlerRef: { current: null },
+      delegateBackHandlerRef: { current: null },
+      adminGarageDetailsBackHandlerRef: { current: null },
+      adminDelegateDetailsBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -114,6 +120,9 @@ describe('useBackTrapping priority', () => {
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
       adminBackHandlerRef: { current: null },
+      delegateBackHandlerRef: { current: null },
+      adminGarageDetailsBackHandlerRef: { current: null },
+      adminDelegateDetailsBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -147,6 +156,9 @@ describe('useBackTrapping priority', () => {
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: garageHandler },
       adminBackHandlerRef: { current: null },
+      delegateBackHandlerRef: { current: null },
+      adminGarageDetailsBackHandlerRef: { current: null },
+      adminDelegateDetailsBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();
@@ -180,6 +192,9 @@ describe('useBackTrapping priority', () => {
       setSubscriberWarningPlate: vi.fn(),
       garageBackHandlerRef: { current: null },
       adminBackHandlerRef: { current: null },
+      delegateBackHandlerRef: { current: null },
+      adminGarageDetailsBackHandlerRef: { current: null },
+      adminDelegateDetailsBackHandlerRef: { current: null },
     };
     const { fireBack } = renderBackTrapping(props);
     fireBack();

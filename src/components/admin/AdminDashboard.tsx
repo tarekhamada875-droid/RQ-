@@ -83,20 +83,7 @@ export const AdminDashboard = memo(({
 
   const [showAddGarageModal, setShowAddGarageModal] = React.useState<boolean>(false);
   const [showExportModal, setShowExportModal] = React.useState<boolean>(false);
-
-  // Register the admin-level back handler so the App-level useBackTrapping
-  // hook can close admin modals (Add Garage, Export) when the phone back
-  // button is pressed. Returns true if a modal was closed.
-  React.useEffect(() => {
-    adminBackHandlerRef.current = () => {
-      if (showAddGarageModal) { setShowAddGarageModal(false); return true; }
-      if (showExportModal) { setShowExportModal(false); return true; }
-      return false;
-    };
-    return () => {
-      adminBackHandlerRef.current = null;
-    };
-  }, [adminBackHandlerRef, showAddGarageModal, showExportModal]);
+  // (admin back handler moved below — needs confirmDialog + showAppearanceSettings)
 
   const [pinInput, setPinInput] = React.useState<string>('');
   const [garageForm, setGarageForm] = React.useState<{
@@ -135,6 +122,32 @@ export const AdminDashboard = memo(({
     message: '',
     onConfirm: () => {},
   });
+
+  // Register the admin-level back handler so the App-level useBackTrapping
+  // hook can close admin modals + settings sub-tabs when the phone back button
+  // is pressed. Priority: confirmDialog → appearance → addGarage → export →
+  // settings sub-tabs (admin-pin, active_sessions, wallet_settings).
+  React.useEffect(() => {
+    adminBackHandlerRef.current = () => {
+      if (confirmDialog.isOpen) {
+        confirmDialog.onCancel?.();
+        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+        return true;
+      }
+      if (showAppearanceSettings) { setShowAppearanceSettings(false); return true; }
+      if (showAddGarageModal) { setShowAddGarageModal(false); return true; }
+      if (showExportModal) { setShowExportModal(false); return true; }
+      if (activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings') {
+        setActiveTab('catalog_settings');
+        return true;
+      }
+      return false;
+    };
+    return () => {
+      adminBackHandlerRef.current = null;
+    };
+  }, [adminBackHandlerRef, confirmDialog, showAppearanceSettings, showAddGarageModal, showExportModal, activeTab, setActiveTab]);
+
   const { theme, adminLang } = useTheme();
   const resolvedAdminColor = resolveShimmerColor(adminColor, theme);
   const t = useAdminTranslation(adminLang);
