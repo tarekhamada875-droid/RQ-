@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, memo, useEffect } from 'react';
+import { useState, memo } from 'react';
+import { useBackHandler } from '../../hooks/backHandler';
 import { Trash2, ChevronRight, Users, Coins, Loader2 } from 'lucide-react';
 import { Delegate } from '../../types';
 import { firestoreService } from '../../services';
@@ -16,7 +17,6 @@ interface AdminDelegateDetailsViewProps {
   setView: (view: any) => void;
   setSelectedDelegate: (delegate: Delegate | null) => void;
   removeDelegate: (id: string) => Promise<any>;
-  adminDelegateDetailsBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const AdminDelegateDetailsView = memo(({
@@ -24,26 +24,15 @@ export const AdminDelegateDetailsView = memo(({
   setView,
   setSelectedDelegate,
   removeDelegate,
-  adminDelegateDetailsBackHandlerRef,
 }: AdminDelegateDetailsViewProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSettle, setConfirmSettle] = useState(false);
   const [settledAtOverride, setSettledAtOverride] = useState<Date | null>(null);
 
-  // Register back handler for admin delegate-details confirm dialogs.
-  // MUST be checked before the priority-3 exit so back closes the dialog
-  // instead of leaving the whole sub-page.
-  useEffect(() => {
-    adminDelegateDetailsBackHandlerRef.current = () => {
-      if (confirmSettle) { setConfirmSettle(false); return true; }
-      if (confirmDelete) { setConfirmDelete(false); return true; }
-      return false;
-    };
-    return () => {
-      adminDelegateDetailsBackHandlerRef.current = null;
-    };
-  }, [adminDelegateDetailsBackHandlerRef, confirmSettle, confirmDelete]);
+  // ── Back-handler registrations ──────────────────────────────────────
+  useBackHandler(() => { setConfirmSettle(false); return true; }, confirmSettle);
+  useBackHandler(() => { setConfirmDelete(false); return true; }, confirmDelete);
 
   const { adminLang } = useTheme();
   const t = useAdminTranslation(adminLang);

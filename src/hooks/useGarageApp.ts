@@ -87,29 +87,6 @@ export function useGarageApp() {
   const plateInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
 
-  // Garage-level overlays (reports, recharge history, appearance, terms) live
-  // inside GarageDashboardView, but the back-button hook is at the App level.
-  // This ref lets GarageDashboardView register a "close topmost overlay" handler
-  // that the back-button hook can call. Returns true if an overlay was closed,
-  // false if no overlay was open.
-  const garageBackHandlerRef = useRef<(() => boolean) | null>(null);
-
-  // Same pattern for admin-level modals (Add Garage, Export, Appearance,
-  // ConfirmDialog, settings sub-tabs). AdminDashboard populates this ref.
-  const adminBackHandlerRef = useRef<(() => boolean) | null>(null);
-
-  // Delegate-level modals (Add Garage, Credit Request, Terms).
-  const delegateBackHandlerRef = useRef<(() => boolean) | null>(null);
-
-  // Admin garage-details modals (Add Staff, Delete Staff, Edit PIN).
-  // Must be checked BEFORE the priority-3 admin_garage_details → admin_dashboard
-  // fallthrough, otherwise back exits the whole sub-page instead of closing
-  // the in-page modal.
-  const adminGarageDetailsBackHandlerRef = useRef<(() => boolean) | null>(null);
-
-  // Admin delegate-details confirm dialogs (Delete, Settle).
-  const adminDelegateDetailsBackHandlerRef = useRef<(() => boolean) | null>(null);
-
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
 
@@ -331,11 +308,6 @@ export function useGarageApp() {
     isOnline,
     showOfflineScreen,
     now,
-    garageBackHandlerRef,
-    adminBackHandlerRef,
-    delegateBackHandlerRef,
-    adminGarageDetailsBackHandlerRef,
-    adminDelegateDetailsBackHandlerRef,
   };
   const garageData = {
     garage,

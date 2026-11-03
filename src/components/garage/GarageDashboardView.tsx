@@ -11,6 +11,7 @@ import React, {
   memo,
 } from "react";
 import { Car } from "lucide-react";
+import { useBackHandler } from "../../hooks/backHandler";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
 import {
@@ -55,7 +56,6 @@ interface GarageDashboardViewProps {
   setShowSubscribers: (show: boolean) => void;
   isLoading?: boolean;
   checkoutJustSucceeded?: boolean;
-  garageBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
@@ -176,25 +176,16 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     isTrial: garage?.isTrial,
   });
 
-  // Register the garage-level back handler so the App-level useBackTrapping
-  // hook can close garage overlays and sub-tabs when the phone back button is
-  // pressed. Priority: rechargeNotification → menu → terms → appearance →
-  // reports → rechargeHistory → active_vehicles tab. Returns true if closed.
-  useEffect(() => {
-    props.garageBackHandlerRef.current = () => {
-      if (isRechargeNotificationOpen) { handleAcknowledgeRecharge(); return true; }
-      if (isMenuOpen) { setIsMenuOpen(false); return true; }
-      if (showTermsModal) { setShowTermsModal(false); return true; }
-      if (isAppearanceOpen) { setIsAppearanceOpen(false); return true; }
-      if (isReportsOpen) { setIsReportsOpen(false); return true; }
-      if (isRechargeHistoryOpen) { setIsRechargeHistoryOpen(false); return true; }
-      if (activeTab === 'active_vehicles') { setActiveTab('main'); return true; }
-      return false;
-    };
-    return () => {
-      props.garageBackHandlerRef.current = null;
-    };
-  }, [props.garageBackHandlerRef, isRechargeNotificationOpen, handleAcknowledgeRecharge, isMenuOpen, showTermsModal, isAppearanceOpen, isReportsOpen, isRechargeHistoryOpen, activeTab]);
+  // ── Back-handler registrations ──────────────────────────────────────
+  // Each overlay/sub-tab self-registers via useBackHandler. The stack handles
+  // priority automatically — the most recently opened overlay is on top.
+  useBackHandler(() => { handleAcknowledgeRecharge(); return true; }, isRechargeNotificationOpen);
+  useBackHandler(() => { setIsMenuOpen(false); return true; }, isMenuOpen);
+  useBackHandler(() => { setShowTermsModal(false); return true; }, showTermsModal);
+  useBackHandler(() => { setIsAppearanceOpen(false); return true; }, isAppearanceOpen);
+  useBackHandler(() => { setIsReportsOpen(false); return true; }, isReportsOpen);
+  useBackHandler(() => { setIsRechargeHistoryOpen(false); return true; }, isRechargeHistoryOpen);
+  useBackHandler(() => { setActiveTab('main'); return true; }, activeTab === 'active_vehicles');
 
   useEffect(() => {
     setItemsPerPage(15);

@@ -31,7 +31,6 @@ const renderDetails = (delegate: Delegate = mockDelegate) => render(
       setView={vi.fn()}
       setSelectedDelegate={vi.fn()}
       removeDelegate={vi.fn().mockResolvedValue(undefined)}
-      adminDelegateDetailsBackHandlerRef={{ current: null } as any}
     />
   </ThemeProvider>
 );

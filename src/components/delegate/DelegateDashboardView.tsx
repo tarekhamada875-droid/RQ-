@@ -1,4 +1,5 @@
 import React, { useState, memo, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useBackHandler } from '../../hooks/backHandler';
 import {
   Building2,
   PlusCircle,
@@ -37,7 +38,6 @@ interface DelegateDashboardViewProps {
   delegateDashboardError?: boolean;
   onRetryDelegateDashboard?: () => void;
   onLoadMoreDelegateGarages?: () => void;
-  delegateBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const DelegateDashboardView = memo(({
@@ -53,7 +53,6 @@ export const DelegateDashboardView = memo(({
   delegateDashboardError = false,
   onRetryDelegateDashboard,
   onLoadMoreDelegateGarages,
-  delegateBackHandlerRef,
 }: DelegateDashboardViewProps) => {
   const [showAddGarage, setShowAddGarage] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
@@ -70,21 +69,11 @@ export const DelegateDashboardView = memo(({
   const [creditRequestAmount, setCreditRequestAmount] = useState('');
   const [submittingCreditRequest, setSubmittingCreditRequest] = useState(false);
 
-  // Register the delegate-level back handler so the App-level useBackTrapping
-  // hook can close delegate modals when the phone back button is pressed.
-  // Priority: creditRequest → addGarage → terms → settings dropdown.
-  useEffect(() => {
-    delegateBackHandlerRef.current = () => {
-      if (showCreditRequestModal) { setShowCreditRequestModal(false); setCreditRequestGarage(null); return true; }
-      if (showAddGarage) { setShowAddGarage(false); return true; }
-      if (showTermsModal) { setShowTermsModal(false); return true; }
-      if (showSettings) { setShowSettings(false); return true; }
-      return false;
-    };
-    return () => {
-      delegateBackHandlerRef.current = null;
-    };
-  }, [delegateBackHandlerRef, showCreditRequestModal, showAddGarage, showTermsModal, showSettings]);
+  // ── Back-handler registrations ──────────────────────────────────────
+  useBackHandler(() => { setShowCreditRequestModal(false); setCreditRequestGarage(null); return true; }, showCreditRequestModal);
+  useBackHandler(() => { setShowAddGarage(false); return true; }, showAddGarage);
+  useBackHandler(() => { setShowTermsModal(false); return true; }, showTermsModal);
+  useBackHandler(() => { setShowSettings(false); return true; }, showSettings);
 
   const refreshCreditRequests = useCallback(async () => {
     try {

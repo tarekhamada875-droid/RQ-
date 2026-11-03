@@ -8,6 +8,7 @@ import { firestoreService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
 import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
+import { useBackHandler } from '../../hooks/backHandler';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
@@ -41,7 +42,6 @@ interface AdminDashboardProps {
   onRefreshAdminLists?: () => Promise<void>;
   currentAdminPin: string;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
-  adminBackHandlerRef: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const AdminDashboard = memo(({
@@ -63,7 +63,6 @@ export const AdminDashboard = memo(({
   onRefreshAdminLists,
   currentAdminPin,
   showToast,
-  adminBackHandlerRef,
 }: AdminDashboardProps) => {
 
   // Localized states to encapsulate admin view and prevent global App re-renders
@@ -123,30 +122,12 @@ export const AdminDashboard = memo(({
     onConfirm: () => {},
   });
 
-  // Register the admin-level back handler so the App-level useBackTrapping
-  // hook can close admin modals + settings sub-tabs when the phone back button
-  // is pressed. Priority: confirmDialog → appearance → addGarage → export →
-  // settings sub-tabs (admin-pin, active_sessions, wallet_settings).
-  React.useEffect(() => {
-    adminBackHandlerRef.current = () => {
-      if (confirmDialog.isOpen) {
-        confirmDialog.onCancel?.();
-        setConfirmDialog((d) => ({ ...d, isOpen: false }));
-        return true;
-      }
-      if (showAppearanceSettings) { setShowAppearanceSettings(false); return true; }
-      if (showAddGarageModal) { setShowAddGarageModal(false); return true; }
-      if (showExportModal) { setShowExportModal(false); return true; }
-      if (activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings') {
-        setActiveTab('catalog_settings');
-        return true;
-      }
-      return false;
-    };
-    return () => {
-      adminBackHandlerRef.current = null;
-    };
-  }, [adminBackHandlerRef, confirmDialog, showAppearanceSettings, showAddGarageModal, showExportModal, activeTab, setActiveTab]);
+  // ── Back-handler registrations ──────────────────────────────────────
+  useBackHandler(() => { confirmDialog.onCancel?.(); setConfirmDialog((d) => ({ ...d, isOpen: false })); return true; }, confirmDialog.isOpen);
+  useBackHandler(() => { setShowAppearanceSettings(false); return true; }, showAppearanceSettings);
+  useBackHandler(() => { setShowAddGarageModal(false); return true; }, showAddGarageModal);
+  useBackHandler(() => { setShowExportModal(false); return true; }, showExportModal);
+  useBackHandler(() => { setActiveTab('catalog_settings'); return true; }, activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings');
 
   const { theme, adminLang } = useTheme();
   const resolvedAdminColor = resolveShimmerColor(adminColor, theme);
