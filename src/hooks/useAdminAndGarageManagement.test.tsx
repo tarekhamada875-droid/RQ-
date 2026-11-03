@@ -67,8 +67,6 @@ const createProps = () => ({
   delegate: null,
   loginPhone: '12345678',
   setLoginPhone: vi.fn(),
-  setAdminPin: vi.fn(),
-  setActiveAdminPin: vi.fn(),
   setUser: vi.fn(),
   setGarage: vi.fn(),
   setDelegate: vi.fn(),

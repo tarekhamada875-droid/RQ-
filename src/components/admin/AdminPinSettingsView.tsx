@@ -6,13 +6,11 @@ import { apiFetch } from '../../api/apiClient';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
 interface AdminPinSettingsViewProps {
-  currentAdminPin?: string;
   onCancel: () => void;
   t: (key: string) => string;
 }
 
 export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
-  currentAdminPin: _currentAdminPin,
   onCancel,
   t,
 }) => {

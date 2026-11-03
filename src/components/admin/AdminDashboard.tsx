@@ -40,7 +40,6 @@ interface AdminDashboardProps {
   onLoadMoreAdminGarages?: () => Promise<void>;
   onLoadMoreAdminDelegates?: () => Promise<void>;
   onRefreshAdminLists?: () => Promise<void>;
-  currentAdminPin: string;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -61,7 +60,6 @@ export const AdminDashboard = memo(({
   onLoadMoreAdminGarages,
   onLoadMoreAdminDelegates,
   onRefreshAdminLists,
-  currentAdminPin,
   showToast,
 }: AdminDashboardProps) => {
 
@@ -323,7 +321,6 @@ export const AdminDashboard = memo(({
           onRefreshAdminLists={onRefreshAdminLists}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-          currentAdminPin={currentAdminPin}
           t={t}
           showToast={showToast}
           onLogout={onLogout}

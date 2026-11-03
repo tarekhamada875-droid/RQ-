@@ -70,8 +70,6 @@ export function useGarageApp() {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [todayTransactions, setTodayTransactions] = useState<Vehicle[]>([]);
-  const [adminPin, setAdminPin] = useState<string>('');
-  const [activeAdminPin, setActiveAdminPin] = useState<string>('');
 
   const [loginPhone, setLoginPhone] = useState<string>('');
 
@@ -189,11 +187,9 @@ export function useGarageApp() {
   // that still call useAppStore.getState().showToast(...).
 
   // Admin PIN Sync — removed.
-  // The previous onSnapshot on admin_settings/auth_pin was dead code:
-  // the pin field was moved to private_pins (hashed), so this listener
-  // always returned '' and wasted Firestore reads continuously while
-  // the admin was logged in. activeAdminPin is now always '' and
-  // currentAdminPin is ignored by AdminPinSettingsView.
+  // (Previous adminPin/activeAdminPin state removed — was dead code.
+  //  The pin field moved to private_pins; the state was always '' and
+  //  ignored by AdminPinSettingsView.)
 
 
   // 3. Vehicle Operations Hook
@@ -249,8 +245,6 @@ export function useGarageApp() {
     delegate,
     loginPhone,
     setLoginPhone,
-    setAdminPin,
-    setActiveAdminPin,
     setUser,
     setGarage,
     setDelegate,
@@ -365,9 +359,6 @@ export function useGarageApp() {
     handleDeleteVehicle,
   };
   const adminManagement = {
-    adminPin,
-    setAdminPin,
-    activeAdminPin,
     handleGarageLogin,
     handleDelegateLogin,
     deleteGarage,
@@ -395,9 +386,6 @@ export function useGarageApp() {
     vehicles,
     todayTransactions,
     allGarages,
-    adminPin,
-    setAdminPin,
-    activeAdminPin,
     loginPhone,
     setLoginPhone,
     showCheckInModal,
