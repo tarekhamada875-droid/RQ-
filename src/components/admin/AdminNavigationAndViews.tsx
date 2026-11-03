@@ -1,5 +1,6 @@
 import React from 'react';
 import { Garage, Delegate } from '../../types';
+import { useAdmin } from '../../hooks/adminContext';
 import {
   Car,
   Users,
@@ -23,13 +24,6 @@ interface AdminNavigationAndViewsProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
   delegates: Delegate[];
-  adminGarageHasMore?: boolean;
-  adminDelegateHasMore?: boolean;
-  adminListsLoading?: boolean;
-  adminListsError?: boolean;
-  onLoadMoreAdminGarages?: () => Promise<void>;
-  onLoadMoreAdminDelegates?: () => Promise<void>;
-  onRefreshAdminLists?: () => Promise<void>;
   pendingGarages: Garage[];
   approvedGarages: Garage[];
   displayedGarages: Garage[];
@@ -52,13 +46,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   activeTab,
   setActiveTab,
   delegates,
-  adminGarageHasMore = false,
-  adminDelegateHasMore = false,
-  adminListsLoading = false,
-  adminListsError = false,
-  onLoadMoreAdminGarages,
-  onLoadMoreAdminDelegates,
-  onRefreshAdminLists,
   pendingGarages,
   approvedGarages,
   displayedGarages,
@@ -76,6 +63,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showExportModal,
   setShowExportModal,
 }) => {
+  const { adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, onLoadMoreAdminGarages, onLoadMoreAdminDelegates, onRefreshAdminLists } = useAdmin();
   return (
     <>
       {/* Top Navigation Bar with Horizontal Scrolling */}
