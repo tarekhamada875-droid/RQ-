@@ -24,6 +24,7 @@ import { FitText } from '../ui/FitText';
 import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
+import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -31,13 +32,6 @@ interface DelegateDashboardViewProps {
   onLogout: () => void;
   onCreateGarage: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
   isLoading: boolean;
-  delegatePagination?: Record<'createdGarages' | 'referredGarages', { hasMore: boolean; nextCursor: string | null }>;
-  delegateListsLoading?: boolean;
-  delegateListsError?: boolean;
-  delegateDashboardLoading?: boolean;
-  delegateDashboardError?: boolean;
-  onRetryDelegateDashboard?: () => void;
-  onLoadMoreDelegateGarages?: () => void;
 }
 
 export const DelegateDashboardView = memo(({
@@ -46,14 +40,8 @@ export const DelegateDashboardView = memo(({
   onLogout,
   onCreateGarage,
   isLoading,
-  delegatePagination,
-  delegateListsLoading = false,
-  delegateListsError = false,
-  delegateDashboardLoading = false,
-  delegateDashboardError = false,
-  onRetryDelegateDashboard,
-  onLoadMoreDelegateGarages,
 }: DelegateDashboardViewProps) => {
+  const { delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, onRetryDelegateDashboard, onLoadMoreDelegateGarages } = useDelegateDashboard();
   const [showAddGarage, setShowAddGarage] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
   const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
