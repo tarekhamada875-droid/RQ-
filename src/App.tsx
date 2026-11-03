@@ -16,6 +16,7 @@ import { NetworkStatusBanner } from './components/NetworkStatusBanner';
 import { logDiagnostic } from './utils/authDiagnosticLogger';
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
+import { useBackHandler } from './hooks/backHandler';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
@@ -24,7 +25,7 @@ export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, vehicleOperations } = app;
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, garageBackHandlerRef, adminBackHandlerRef, delegateBackHandlerRef, adminGarageDetailsBackHandlerRef, adminDelegateDetailsBackHandlerRef } = navigationUi;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
   const { garage, delegate } = app.garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
@@ -44,33 +45,28 @@ export default function App() {
     }
   }, [isLoading, isAuthReady, view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, setView]);
 
+  // ── Back-handler registrations ──────────────────────────────────────
+  // Each App-level modal registers itself via useBackHandler. When the phone
+  // back button is pressed, the stack is popped top-to-bottom — the topmost
+  // (most recently opened) modal closes first. No props, no refs, no drilling.
+  useBackHandler(() => { setShowLogoutConfirm(false); return true; }, showLogoutConfirm);
+  useBackHandler(() => { setShowCheckOutModal(false); return true; }, showCheckOutModal);
+  useBackHandler(() => { setShowCheckInModal(false); setSelectedVehicle(null); return true; }, showCheckInModal);
+  useBackHandler(() => { setShowDeleteConfirm(false); return true; }, showDeleteConfirm);
+  useBackHandler(() => { setShowRecentExitWarning(false); setRecentVehicle(null); return true; }, showRecentExitWarning);
+  useBackHandler(() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); return true; }, showSubscriberWarning);
+  useBackHandler(() => { setShowSubscribers(false); return true; }, showSubscribers);
+  // Admin sub-pages: back returns to admin dashboard.
+  useBackHandler(() => { setView('admin_dashboard'); setSelectedGarageForDetails(null); return true; }, view === 'admin_garage_details');
+  useBackHandler(() => { setView('admin_dashboard'); setSelectedDelegateForDetails(null); return true; }, view === 'admin_delegate_details');
+
   useBackTrapping({
     view,
     setView,
-    showCheckInModal,
-    setShowCheckInModal,
-    showCheckOutModal,
-    setShowCheckOutModal,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
     showLogoutConfirm,
     setShowLogoutConfirm,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    showSubscriberWarning,
-    setShowSubscriberWarning,
-    showSubscribers,
-    setShowSubscribers,
-    setSelectedVehicle,
     setSelectedGarageForDetails,
     setSelectedDelegateForDetails,
-    setRecentVehicle,
-    setSubscriberWarningPlate,
-    garageBackHandlerRef,
-    adminBackHandlerRef,
-    delegateBackHandlerRef,
-    adminGarageDetailsBackHandlerRef,
-    adminDelegateDetailsBackHandlerRef,
   });
 
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري إنهاء الجلسة...</p></div>;

@@ -43,7 +43,6 @@ function renderDelegateDashboard(
       onLogout={vi.fn()}
       onCreateGarage={onCreateGarage}
       isLoading={false}
-      delegateBackHandlerRef={{ current: null } as any}
       {...dashboardState}
     />
   );
