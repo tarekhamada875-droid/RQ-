@@ -1,4 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
+import { BorderShimmer } from '../garage/BorderShimmer';
 
 interface FlipCardProps {
   value: number;
@@ -76,9 +77,10 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', animate }
   const colors = colorClasses[color];
 
   return (
-    <div 
+    <div
       className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
     >
+      <BorderShimmer isActive={true} color="#f59e0b" size="compact" dur="3.5s" />
       <span
         data-testid="flip-number-digit"
         className={`${animate ? 'flip-number-digit' : ''} ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
