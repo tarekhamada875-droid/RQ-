@@ -16,7 +16,15 @@ const serviceMocks = vi.hoisted(() => ({
   getAdminDelegatesPage: vi.fn(async () => ({ delegates: [], lastDoc: null, hasMore: false }))
 }));
 
-vi.mock('../services', () => ({ firestoreService: serviceMocks }));
+vi.mock('../services', () => ({
+  firestoreService: serviceMocks,
+  garageService: serviceMocks,
+  garageDeletionService: serviceMocks,
+  vehicleService: serviceMocks,
+  delegateService: serviceMocks,
+  adminService: serviceMocks,
+  authService: serviceMocks,
+}));
 vi.mock('../utils', () => ({
   throttleSnapshot: (callback: (...args: any[]) => void) =>
     Object.assign(callback, { cancel: vi.fn() })

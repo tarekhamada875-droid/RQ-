@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { FormEvent } from 'react';
 import { AdminDashboard } from './AdminDashboard';
-import { firestoreService } from '../../services';
+import { garageDeletionService, garageService } from '../../services';
 import { SessionProvider } from '../../hooks/sessionContext';
 import type { SessionContextValue } from '../../hooks/sessionContext';
 
@@ -11,13 +11,11 @@ const { deleteGarageWithRecoveryMock, garageDeletionFailureMessageMock } = vi.ho
   garageDeletionFailureMessageMock: vi.fn()
 }));
 
-vi.mock('../../services', () => ({
-  firestoreService: {
+vi.mock('../../services', () => { const _svc = {
     getAdminGaragesPage: vi.fn(),
     updateGarage: vi.fn(),
     deleteGarage: vi.fn(),
-  },
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 vi.mock('../../services/garageDeletionService', () => ({
   deleteGarageWithRecovery: deleteGarageWithRecoveryMock,
   garageDeletionFailureMessage: garageDeletionFailureMessageMock
@@ -59,7 +57,7 @@ vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: (
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
-  vi.mocked(firestoreService.getAdminGaragesPage).mockResolvedValue({
+  vi.mocked(garageService.getAdminGaragesPage).mockResolvedValue({
     garages: [],
     lastDoc: null,
     hasMore: false,
@@ -181,7 +179,7 @@ describe('AdminDashboard garage actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open garages' }));
 
     expect(await screen.findByText('Already loaded garage')).toBeInTheDocument();
-    expect(firestoreService.getAdminGaragesPage).not.toHaveBeenCalled();
+    expect(garageService.getAdminGaragesPage).not.toHaveBeenCalled();
   });
 
   it('preserves every add-garage draft value when creation returns false', async () => {
@@ -257,7 +255,7 @@ describe('AdminDashboard garage actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approve pending garage' }));
 
     await waitFor(() => expect(onRefreshAdminLists).toHaveBeenCalledOnce());
-    expect(firestoreService.updateGarage).toHaveBeenCalledWith('pending-1', { status: 'approved' });
+    expect(garageService.updateGarage).toHaveBeenCalledWith('pending-1', { status: 'approved' });
   });
 
   it('refreshes paginated Admin lists after a successful pending-garage rejection', async () => {
@@ -309,6 +307,6 @@ describe('AdminDashboard garage actions', () => {
 
     await waitFor(() => expect(showToast).toHaveBeenCalledWith('تم إرسال طلبات حذف كثيرة. انتظر دقيقة قبل المحاولة مجدداً.', 'error'));
     expect(deleteGarageWithRecoveryMock).toHaveBeenCalledWith('pending-1');
-    expect(firestoreService.deleteGarage).not.toHaveBeenCalled();
+    expect(garageDeletionService.deleteGarage).not.toHaveBeenCalled();
   });
 });

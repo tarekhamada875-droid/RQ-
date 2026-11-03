@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { firestoreService } from '../../../services';
+import { adminService } from '../../../services';
 import { auth } from '../../../firebase';
 import type { Subscriber } from '../../../types';
 import { normalizeArabicSearch, safeDate } from '../../../utils';
@@ -71,7 +71,7 @@ export function useSubscriberList(
     setSubscribers([]);
     setSubscriberCursor(null);
     setHasMoreSubscribers(false);
-    const unsub = firestoreService.subscribeToSubscribers(garageId, (data, page) => {
+    const unsub = adminService.subscribeToSubscribers(garageId, (data, page) => {
       setSubscribers((current) =>
         hasReceivedSubscriberSnapshotRef.current
           ? mergeSubscriberPages(current, data)
@@ -108,7 +108,7 @@ export function useSubscriberList(
     const requestedCursor = subscriberCursor;
     setIsLoadingMoreSubscribers(true);
     try {
-      const page = await firestoreService.getMoreSubscribers(requestedGarageId, requestedCursor);
+      const page = await adminService.getMoreSubscribers(requestedGarageId, requestedCursor);
       if (
         requestGeneration !== subscriberRequestGenerationRef.current ||
         activeGarageIdRef.current !== requestedGarageId

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
-import { firestoreService } from '../../services';
+import { authService } from '../../services';
 import { useVehicleOps } from '../../hooks/vehicleOpsContext';
 import { useSession } from '../../hooks/sessionContext';
 import { useNavigationUi } from '../../hooks/navigationUiContext';
@@ -42,6 +42,6 @@ export function AppOverlays() {
     {showDeleteConfirm && selectedVehicle && <DeleteVehicleConfirmModal vehicle={selectedVehicle} isLoading={isLoading} onConfirm={handleDeleteVehicle} onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }} />}
     {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); handleCheckIn(pendingCheckInType); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); setNewPlateNumber(''); }} />}
     {showSubscriberWarning && subscriberWarningPlate && <SubscriberWarningModal plateNumber={subscriberWarningPlate} onConfirm={() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); }} />}
-    {showLogoutConfirm && <LogoutConfirmModal key={logoutAttemptScope} attemptScope={logoutAttemptScope} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={firestoreService.verifyAdminPinForLogout} />}
+    {showLogoutConfirm && <LogoutConfirmModal key={logoutAttemptScope} attemptScope={logoutAttemptScope} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={authService.verifyAdminPinForLogout} />}
   </Suspense>;
 }

@@ -10,7 +10,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
-import { firestoreService, garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
+import { garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
 
@@ -151,7 +151,7 @@ export const GarageReportsView = memo(({
     setHasError(false);
     try {
       const [freshGarage, freshSummary] = await Promise.all([
-        firestoreService.getGarageById(garage.id),
+        garageService.getGarageById(garage.id),
         garageService.getDashboardSummary(garage.id).catch(() => null)
       ]);
       if (freshGarage) setLocalGarage(freshGarage);

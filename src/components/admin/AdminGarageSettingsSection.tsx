@@ -1,5 +1,5 @@
 import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash2, Users } from 'lucide-react';
-import { firestoreService } from '../../services';
+import { adminService, authService } from '../../services';
 import { formatDisplayPin, normalizeDigits } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useAppStore } from '../../store/appStore';
@@ -220,13 +220,13 @@ export const AdminGarageSettingsSection = ({
                                     }
                                     setIsUpdatingStaffPin(true);
                                     try {
-                                      const pinCheck = await firestoreService.isPinTaken(editingStaffPinValue, s.id);
+                                      const pinCheck = await authService.isPinTaken(editingStaffPinValue, s.id);
                                       if (pinCheck.taken) {
                                         useAppStore.getState().showToast(t('الرمز مستخدم بالفعل'), 'error');
                                         setIsUpdatingStaffPin(false);
                                         return;
                                       }
-                                      await firestoreService.updateStaff(s.id, { pin: editingStaffPinValue });
+                                      await adminService.updateStaff(s.id, { pin: editingStaffPinValue });
                                       s.pin = editingStaffPinValue;
                                       setEditingStaffPinId(null);
                                     } catch (err) {

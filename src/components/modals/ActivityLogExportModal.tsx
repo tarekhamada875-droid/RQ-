@@ -15,7 +15,7 @@ import {
   AlertCircle,
   FileSpreadsheet
 } from 'lucide-react';
-import { firestoreService } from '../../services';
+import { adminService } from '../../services';
 import { safeDate } from '../../utils';
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
@@ -153,7 +153,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
       }
 
       // Query logs from Firestore
-      const logs = await firestoreService.getActivityLogsSince(sinceDate);
+      const logs = await adminService.getActivityLogsSince(sinceDate);
 
       if (!logs || logs.length === 0) {
         setErrorMessage(t('لا توجد عمليات مسجلة في هذه الفترة'));

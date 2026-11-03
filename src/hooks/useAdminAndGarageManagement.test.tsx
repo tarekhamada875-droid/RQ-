@@ -2,7 +2,8 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { deleteGarageWithRecovery } from '../services/garageDeletionService';
-import { firestoreService } from '../services';
+import { authService } from '../services/authService';
+import { delegateService, garageService } from '../services';
 
 const mocks = vi.hoisted(() => ({
   authenticateUserCredentials: vi.fn(),
@@ -20,19 +21,23 @@ const mocks = vi.hoisted(() => ({
   logDiagnostic: vi.fn()
 }));
 
-vi.mock('../services', () => ({ firestoreService: {
+vi.mock('../services', () => { const _svc = {
   updateGarage: vi.fn().mockResolvedValue(undefined),
   createGarage: vi.fn().mockResolvedValue({ success: true, id: 'garage-created' }),
   isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
+  authenticateUserCredentials: mocks.authenticateUserCredentials,
   addDelegate: vi.fn().mockResolvedValue({ id: 'delegate-1' }),
   removeDelegate: vi.fn().mockResolvedValue(undefined)
-} }));
+}; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 vi.mock('../services/garageDeletionService', () => ({
   deleteGarageWithRecovery: vi.fn(),
   garageDeletionFailureMessage: vi.fn()
 }));
 vi.mock('../services/authService', () => ({
-  authService: { authenticateUserCredentials: mocks.authenticateUserCredentials }
+  authService: {
+    authenticateUserCredentials: mocks.authenticateUserCredentials,
+    isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
+  }
 }));
 vi.mock('../firebase', () => ({
   auth: { currentUser: mocks.currentUser },
@@ -60,7 +65,6 @@ const createSnapshot = (exists: boolean, garageData: Record<string, unknown> = {
   id: 'garage-1',
   data: vi.fn(() => garageData)
 });
-
 
 const createProps = () => ({
   allGarages: [],
@@ -106,11 +110,11 @@ beforeEach(() => {
   mocks.claimEntitySession.mockReset();
   mocks.signInAnonymously.mockReset();
   mocks.logDiagnostic.mockReset();
-  vi.mocked(firestoreService.updateGarage).mockReset().mockResolvedValue(undefined);
-  vi.mocked(firestoreService.createGarage).mockReset().mockResolvedValue({ success: true, id: 'garage-created' });
-  vi.mocked(firestoreService.isPinTaken).mockReset().mockResolvedValue({ taken: false } as any);
-  vi.mocked(firestoreService.addDelegate).mockReset().mockResolvedValue({ id: 'delegate-1' });
-  vi.mocked(firestoreService.removeDelegate).mockReset().mockResolvedValue(undefined);
+  vi.mocked(garageService.updateGarage).mockReset().mockResolvedValue(undefined);
+  vi.mocked(garageService.createGarage).mockReset().mockResolvedValue({ success: true, id: 'garage-created' });
+  vi.mocked(authService.isPinTaken).mockReset().mockResolvedValue({ taken: false } as any);
+  vi.mocked(delegateService.addDelegate).mockReset().mockResolvedValue({ id: 'delegate-1' });
+  vi.mocked(delegateService.removeDelegate).mockReset().mockResolvedValue(undefined);
   vi.mocked(deleteGarageWithRecovery).mockReset().mockResolvedValue({ ok: true });
 });
 
@@ -121,7 +125,7 @@ afterEach(() => {
 
 describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
   it('reuses the same idempotency key when retrying an ambiguous garage creation result', async () => {
-    vi.mocked(firestoreService.createGarage)
+    vi.mocked(garageService.createGarage)
       .mockResolvedValueOnce({ success: false, error: 'NETWORK_TIMEOUT' })
       .mockResolvedValueOnce({ success: true, id: 'garage-created' });
     const props = createProps();
@@ -149,12 +153,12 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
       await result.current.createNewGarage(event);
     });
 
-    expect(firestoreService.createGarage).toHaveBeenCalledTimes(2);
-    const firstKey = vi.mocked(firestoreService.createGarage).mock.calls[0][1];
-    const secondKey = vi.mocked(firestoreService.createGarage).mock.calls[1][1];
+    expect(garageService.createGarage).toHaveBeenCalledTimes(2);
+    const firstKey = vi.mocked(garageService.createGarage).mock.calls[0][1];
+    const secondKey = vi.mocked(garageService.createGarage).mock.calls[1][1];
     expect(firstKey).toEqual(expect.any(String));
     expect(secondKey).toBe(firstKey);
-    expect(firestoreService.isPinTaken).toHaveBeenCalledTimes(1);
+    expect(authService.isPinTaken).toHaveBeenCalledTimes(1);
     expect(props.refreshAdminLists).toHaveBeenCalledOnce();
   });
 
@@ -196,7 +200,7 @@ describe('useAdminAndGarageManagement staff login garage read (FE-004)', () => {
     await act(async () => {
       await result.current.removeDelegate('delegate-1');
     });
-    expect(firestoreService.removeDelegate).toHaveBeenCalledWith('delegate-1');
+    expect(delegateService.removeDelegate).toHaveBeenCalledWith('delegate-1');
     expect(props.refreshAdminLists).toHaveBeenCalledTimes(1);
   });
 

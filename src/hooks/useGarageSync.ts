@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { Garage, Vehicle, Staff } from '../types';
-import { firestoreService } from '../services';
+import { adminService, delegateService, garageService, vehicleService } from '../services';
 import { throttleSnapshot } from '../utils';
 
 interface UseGarageSyncProps {
@@ -149,7 +149,7 @@ export function useGarageSync({
       });
     }, 150);
 
-    const unsub = firestoreService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
+    const unsub = vehicleService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
       // Unsubscribe normally stops future snapshots, but an already queued callback
       // can still arrive after the garage/session changes. Never forward it.
       if (!active) return;
@@ -168,7 +168,7 @@ export function useGarageSync({
       return;
     }
     let active = true;
-    const unsub = firestoreService.subscribeToTodayTransactions(garage.id, (completedTransactions, error) => {
+    const unsub = vehicleService.subscribeToTodayTransactions(garage.id, (completedTransactions, error) => {
       // Unsubscription cannot retract a callback that is already queued.
       if (!active) return;
       if (error) {
@@ -188,7 +188,7 @@ export function useGarageSync({
     const requestGeneration = ++staffLoadGenerationRef.current;
     const ownerKey = dataOwnerKey;
     try {
-      const staff = await firestoreService.getStaffByGarageOnce(garageId);
+      const staff = await adminService.getStaffByGarageOnce(garageId);
       if (
         requestGeneration !== staffLoadGenerationRef.current ||
         previousDataOwnerKeyRef.current !== ownerKey
@@ -227,7 +227,7 @@ export function useGarageSync({
     setAdminListsLoading(true);
     if (reset) setAdminListsError(false);
     try {
-      const page = await firestoreService.getAdminGaragesPage(50, reset ? null : adminGarageCursorRef.current);
+      const page = await garageService.getAdminGaragesPage(50, reset ? null : adminGarageCursorRef.current);
       if (requestVersion !== adminGarageRequestVersionRef.current) return;
       setAllGarages((previous) => {
         const rows = reset ? page.garages : [...previous, ...page.garages];
@@ -256,7 +256,7 @@ export function useGarageSync({
     setAdminListsLoading(true);
     if (reset) setAdminListsError(false);
     try {
-      const page = await firestoreService.getAdminDelegatesPage(50, reset ? null : adminDelegateCursorRef.current);
+      const page = await delegateService.getAdminDelegatesPage(50, reset ? null : adminDelegateCursorRef.current);
       if (requestVersion !== adminDelegateRequestVersionRef.current) return;
       setDelegates((previous) => {
         const rows = reset ? page.delegates : [...previous, ...page.delegates];
@@ -330,7 +330,7 @@ export function useGarageSync({
       if (dashboardRequestInFlight) return;
       dashboardRequestInFlight = true;
       try {
-        const data = await firestoreService.getDashboardData(delegateId);
+        const data = await delegateService.getDashboardData(delegateId);
         if (
           cancelled ||
           delegateDashboardGenerationRef.current !== requestGeneration ||
@@ -411,7 +411,7 @@ export function useGarageSync({
     delegatePageLoadingRef.current[section] = true;
     setDelegateListsLoading(true);
     try {
-      const nextPage = await firestoreService.getDashboardDataPage(delegateId, section, page.nextCursor);
+      const nextPage = await delegateService.getDashboardDataPage(delegateId, section, page.nextCursor);
       if (
         requestGeneration !== delegateDashboardGenerationRef.current ||
         delegateDashboardOwnerRef.current !== delegateId
@@ -451,7 +451,7 @@ export function useGarageSync({
     let garageSubscriptionCurrent = true;
     const subscribedGarageId = view === 'garage' ? garage?.id : undefined;
     const unsubCurrentGarage = subscribedGarageId
-      ? firestoreService.subscribeToGarage(subscribedGarageId, (updatedGarage) => {
+      ? garageService.subscribeToGarage(subscribedGarageId, (updatedGarage) => {
           // A callback already queued by the old listener must not replace the
           // active garage after a switch or logout.
           if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
@@ -501,8 +501,8 @@ export function useGarageSync({
     const fetchSpecificData = async () => {
       try {
         const [staffData, garageData] = await Promise.all([
-          firestoreService.getStaffByGarageOnce(garageId),
-          firestoreService.getGarageById(garageId)
+          adminService.getStaffByGarageOnce(garageId),
+          garageService.getGarageById(garageId)
         ]);
         if (cancelled) return;
         setStaffList(staffData);
@@ -522,7 +522,6 @@ export function useGarageSync({
     if (!delegate) return [];
     return allGarages.filter(g => g.createdByDelegateId === delegate.id || g.referrerId === delegate.id);
   }, [allGarages, delegate]);
-
 
   return {
     allGarages,

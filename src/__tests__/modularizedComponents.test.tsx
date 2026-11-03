@@ -29,7 +29,7 @@ import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSub
 import { GarageActiveVehiclesList } from '../components/garage/dashboard/GarageActiveVehiclesList';
 import { AdminGarageHeroAndStats } from '../components/admin/garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from '../components/admin/garage-details/AdminGarageFinancialsSection';
-import { firestoreService } from '../services';
+import { adminService, authService } from '../services';
 import type { Garage, Staff } from '../types';
 
 // Mock audio soundManager
@@ -40,8 +40,7 @@ vi.mock('../utils/sounds', () => ({
 }));
 
 // Mock firestoreService
-vi.mock('../services', () => ({
-  firestoreService: {
+vi.mock('../services', () => { const _svc = {
     updateGarage: vi.fn().mockResolvedValue(true),
     getGarageById: vi.fn().mockResolvedValue(null),
     getDashboardSummary: vi.fn().mockResolvedValue({ entriesToday: 0 }),
@@ -54,8 +53,7 @@ vi.mock('../services', () => ({
       cb({ adminColor: '#10b981' });
       return () => {};
     }),
-  },
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 // Mock firebase auth
 vi.mock('../firebase', () => ({
@@ -185,9 +183,9 @@ describe('Modularized Admin Components Integrity', () => {
   });
 
   it('updates the visible Staff list immediately after successful create and delete', async () => {
-    vi.mocked(firestoreService.isPinTaken).mockResolvedValueOnce({ taken: false });
-    vi.mocked(firestoreService.addStaff).mockResolvedValueOnce({ id: 'staff_test_refresh' });
-    vi.mocked(firestoreService.removeStaff).mockResolvedValueOnce(undefined);
+    vi.mocked(authService.isPinTaken).mockResolvedValueOnce({ taken: false });
+    vi.mocked(adminService.addStaff).mockResolvedValueOnce({ id: 'staff_test_refresh' });
+    vi.mocked(adminService.removeStaff).mockResolvedValueOnce(undefined);
 
     const TestHarness = () => {
       const [staffList, setStaffList] = React.useState<Staff[]>([]);
@@ -213,7 +211,7 @@ describe('Modularized Admin Components Integrity', () => {
     fireEvent.click(screen.getByText('تأكيد الإضافة'));
 
     expect(await screen.findByText('H Staff Probe')).toBeDefined();
-    expect(firestoreService.addStaff).toHaveBeenCalledWith(expect.objectContaining({
+    expect(adminService.addStaff).toHaveBeenCalledWith(expect.objectContaining({
       name: 'H Staff Probe',
       garageId: mockGarage.id,
       role: 'staff',
@@ -222,7 +220,7 @@ describe('Modularized Admin Components Integrity', () => {
 
     fireEvent.click(screen.getByTitle('حذف الموظف'));
     fireEvent.click(screen.getByText('تأكيد الحذف'));
-    await waitFor(() => expect(firestoreService.removeStaff).toHaveBeenCalledWith('staff_test_refresh'));
+    await waitFor(() => expect(adminService.removeStaff).toHaveBeenCalledWith('staff_test_refresh'));
     await waitFor(() => expect(screen.queryByText('H Staff Probe')).toBeNull());
   });
 });
@@ -357,7 +355,6 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     expect(screen.getByText('رصيدك خلص')).toBeInTheDocument();
   });
 });
-
 
 describe('Arabic-only shared interface', () => {
   it('renders landscape tariff labels and currency only in Arabic', () => {

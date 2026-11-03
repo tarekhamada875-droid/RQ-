@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { firestoreService } from '../../../services';
+import { adminService } from '../../../services';
 import type { Subscriber, Garage } from '../../../types';
 import { getCleanPlate, getRawPlate } from '../../../utils';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
@@ -212,7 +212,7 @@ export function useSubscriberForm(
         endDate: formatDateKey(newEndDate),
       };
 
-      await firestoreService.renewSubscriber(garage.id, activeSubscriberForRenew.id, newDates);
+      await adminService.renewSubscriber(garage.id, activeSubscriberForRenew.id, newDates);
 
       const label = type === 'week' ? 'أسبوع' : type === 'two_weeks' ? 'أسبوعين' : 'شهر واحد';
       showToast(`تم تجديد الاشتراك بنجاح لمدة ${label}`, 'success');
@@ -263,11 +263,11 @@ export function useSubscriberForm(
           };
 
       if (editingSubscriber) {
-        await firestoreService.updateSubscriber(garage.id, editingSubscriber.id, subscriberData);
+        await adminService.updateSubscriber(garage.id, editingSubscriber.id, subscriberData);
         showToast('تم تحديث بيانات المشترك بنجاح', 'success');
       } else {
         try {
-          await firestoreService.addSubscriber(garage.id, subscriberData);
+          await adminService.addSubscriber(garage.id, subscriberData);
           showToast('تمت إضافة المشترك بنجاح', 'success');
           clearDraft();
         } catch (error: any) {
@@ -313,7 +313,7 @@ export function useSubscriberForm(
   const confirmDelete = async () => {
     if (!subscriberToDelete) return;
     try {
-      await firestoreService.deleteSubscriber(garage.id, subscriberToDelete);
+      await adminService.deleteSubscriber(garage.id, subscriberToDelete);
       showToast('تم حذف المشترك بنجاح', 'success');
     } catch {
       showToast('حدث خطأ أثناء الحذف', 'error');

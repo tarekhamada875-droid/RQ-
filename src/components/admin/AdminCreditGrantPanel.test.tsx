@@ -1,14 +1,12 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AdminCreditGrantPanel } from './AdminCreditGrantPanel';
-import { firestoreService } from '../../services';
+import { adminService } from '../../services';
 
-vi.mock('../../services', () => ({
-  firestoreService: {
+vi.mock('../../services', () => { const _svc = {
     adminGrantGarageCredits: vi.fn(async () => ({})),
     adminCorrectGarageCredits: vi.fn(async () => ({})),
-  },
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subscription' };
 const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits', credits: 0 };
@@ -44,7 +42,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '١٠٠' } });
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
-    await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 100,
       paymentAmountEgp: 100,
       paymentConfirmed: true,
@@ -52,7 +50,7 @@ describe('AdminCreditGrantPanel', () => {
   });
 
   it('reuses the same idempotency key when retrying an ambiguous failed grant', async () => {
-    vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
+    vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
 
@@ -61,16 +59,16 @@ describe('AdminCreditGrantPanel', () => {
     expect(screen.queryByText('NETWORK_ERROR')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
-    await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledTimes(2));
 
-    const firstCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[0][1];
-    const retryCommand = vi.mocked(firestoreService.adminGrantGarageCredits).mock.calls[1][1];
+    const firstCommand = vi.mocked(adminService.adminGrantGarageCredits).mock.calls[0][1];
+    const retryCommand = vi.mocked(adminService.adminGrantGarageCredits).mock.calls[1][1];
     expect(retryCommand.idempotencyKey).toBe(firstCommand.idempotencyKey);
     expect(await screen.findByRole('status')).toHaveTextContent('100 رصيد تمت إضافته.');
   });
 
   it('shows Arabic guidance when the server returns an English error code', async () => {
-    vi.mocked(firestoreService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
+    vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
@@ -84,7 +82,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل عددًا صحيحًا من 50 إلى 2,000/);
-    expect(firestoreService.adminGrantGarageCredits).not.toHaveBeenCalled();
+    expect(adminService.adminGrantGarageCredits).not.toHaveBeenCalled();
   });
 
   it('submits the grant immediately with auto-generated reason and paymentConfirmed=true', async () => {
@@ -92,7 +90,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
-    await waitFor(() => expect(firestoreService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+    await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: 100,
       paymentAmountEgp: 100,
       reason: 'إضافة رصيد 100',
@@ -110,7 +108,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
-    expect(firestoreService.adminCorrectGarageCredits).not.toHaveBeenCalled();
+    expect(adminService.adminCorrectGarageCredits).not.toHaveBeenCalled();
   });
 
   it('rejects zero in correction mode — only deductions allowed', async () => {
@@ -120,7 +118,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
-    expect(firestoreService.adminCorrectGarageCredits).not.toHaveBeenCalled();
+    expect(adminService.adminCorrectGarageCredits).not.toHaveBeenCalled();
   });
 
   it('applies a negative deduction in correction mode with auto-generated reason', async () => {
@@ -129,7 +127,7 @@ describe('AdminCreditGrantPanel', () => {
     fireEvent.change(screen.getByLabelText(/قيمة الخصم/i), { target: { value: '-50' } });
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
-    await waitFor(() => expect(firestoreService.adminCorrectGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
+    await waitFor(() => expect(adminService.adminCorrectGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
       amount: -50,
       reason: 'خصم رصيد -50',
     })));

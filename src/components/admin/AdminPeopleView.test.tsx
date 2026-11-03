@@ -1,15 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AdminPeopleView } from './AdminPeopleView';
-import { firestoreService } from '../../services';
+import { authService, delegateService } from '../../services';
 import { ApiError } from '../../api/apiClient';
 
-vi.mock('../../services', () => ({
-  firestoreService: {
+vi.mock('../../services', () => { const _svc = {
     isPinTaken: vi.fn(),
     addDelegate: vi.fn(),
-  },
-}));
+  }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 const themeMock = vi.hoisted(() => ({ adminLang: 'ar' as 'ar' | 'en' }));
 
@@ -20,12 +18,12 @@ vi.mock('../../utils/ThemeContext', () => ({
 beforeEach(() => {
   themeMock.adminLang = 'ar';
   vi.clearAllMocks();
-  vi.mocked(firestoreService.isPinTaken).mockResolvedValue({ taken: false });
+  vi.mocked(authService.isPinTaken).mockResolvedValue({ taken: false });
 });
 
 describe('AdminPeopleView delegate creation', () => {
   it('reports server failures without blaming the internet connection', async () => {
-    vi.mocked(firestoreService.addDelegate).mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', {
+    vi.mocked(delegateService.addDelegate).mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', {
       status: 500,
       correlationId: 'delegate-ref-500',
     }));
@@ -48,7 +46,7 @@ describe('AdminPeopleView delegate creation', () => {
   });
 
   it('uses the connection message only for actual network failures', async () => {
-    vi.mocked(firestoreService.addDelegate).mockRejectedValueOnce(new ApiError('NETWORK_ERROR', { code: 'NETWORK_ERROR' }));
+    vi.mocked(delegateService.addDelegate).mockRejectedValueOnce(new ApiError('NETWORK_ERROR', { code: 'NETWORK_ERROR' }));
     render(
       <AdminPeopleView
         delegates={[]}
@@ -68,7 +66,7 @@ describe('AdminPeopleView delegate creation', () => {
   });
 
   it('does not create a delegate when the PIN availability check fails', async () => {
-    vi.mocked(firestoreService.isPinTaken).mockRejectedValueOnce(new ApiError('NETWORK_ERROR', { code: 'NETWORK_ERROR' }));
+    vi.mocked(authService.isPinTaken).mockRejectedValueOnce(new ApiError('NETWORK_ERROR', { code: 'NETWORK_ERROR' }));
     render(
       <AdminPeopleView
         delegates={[]}
@@ -85,10 +83,9 @@ describe('AdminPeopleView delegate creation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();
-    expect(firestoreService.addDelegate).not.toHaveBeenCalled();
+    expect(delegateService.addDelegate).not.toHaveBeenCalled();
   });
 });
-
 
 describe('AdminPeopleView Arabic-only interface', () => {
   it('keeps Arabic labels and right-to-left layout even when a legacy English preference exists', () => {

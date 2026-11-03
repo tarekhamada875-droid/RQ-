@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { firestoreService } from '../services';
+import { adminService } from '../services';
 import type { SystemConfig } from '../types';
 
 let cachedConfig: SystemConfig | null = null;
@@ -8,7 +8,7 @@ let unsubSingleton: (() => void) | null = null;
 
 function subscribeSingleton() {
   if (unsubSingleton) return;
-  unsubSingleton = firestoreService.subscribeToSystemConfig((c) => {
+  unsubSingleton = adminService.subscribeToSystemConfig((c) => {
     cachedConfig = c;
     listeners.forEach((l) => l(c));
   });

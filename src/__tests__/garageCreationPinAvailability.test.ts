@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { firestoreService } from '../services';
+import { authService, garageService } from '../services';
 
 describe('Garage Creation PIN Availability & Validation', () => {
   beforeEach(() => {
@@ -78,24 +78,24 @@ describe('Garage Creation PIN Availability & Validation', () => {
 
   test('allows newly generated unique PIN and confirms availability', async () => {
     const uniquePin = '59281';
-    const check = await firestoreService.isPinTaken(uniquePin);
+    const check = await authService.isPinTaken(uniquePin);
     expect(check.taken).toBe(false);
   });
 
   test('detects already taken PIN correctly with role information', async () => {
     const adminPin = '88888';
-    const checkAdmin = await firestoreService.isPinTaken(adminPin);
+    const checkAdmin = await authService.isPinTaken(adminPin);
     expect(checkAdmin.taken).toBe(true);
     expect(checkAdmin.role).toContain('الآدمن');
 
     const garagePin = '11223';
-    const checkGarage = await firestoreService.isPinTaken(garagePin);
+    const checkGarage = await authService.isPinTaken(garagePin);
     expect(checkGarage.taken).toBe(true);
     expect(checkGarage.name).toBe('جراج التحرير');
   });
 
   test('successfully creates garage when PIN is unique', async () => {
-    const result = await firestoreService.createGarage({
+    const result = await garageService.createGarage({
       name: 'جراج النصر الجديد',
       phone: '01099999999',
       hourlyRate: 15,
@@ -109,7 +109,7 @@ describe('Garage Creation PIN Availability & Validation', () => {
   });
 
   test('rejects garage creation when PIN is already taken', async () => {
-    const result = await firestoreService.createGarage({
+    const result = await garageService.createGarage({
       name: 'جراج مكرر',
       phone: '0108888888888',
       hourlyRate: 15,

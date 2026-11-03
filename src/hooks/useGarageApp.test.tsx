@@ -99,7 +99,7 @@ vi.mock('./useGarageSync', () => ({
     loadMoreAdminGarages: vi.fn(), loadMoreAdminDelegates: vi.fn(), refreshAdminLists: vi.fn()
   })
 }));
-vi.mock('../services', () => ({ firestoreService: { subscribeToAdminPin: vi.fn(() => vi.fn()) } }));
+vi.mock('../services', () => { const _svc = { subscribeToAdminPin: vi.fn(() => vi.fn()) }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
 import { useGarageApp } from './useGarageApp';
 

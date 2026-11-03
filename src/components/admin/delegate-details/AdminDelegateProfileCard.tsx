@@ -2,7 +2,7 @@ import React, { memo, useState } from 'react';
 import { Phone, Calendar, Lock, Check, Loader2 } from 'lucide-react';
 import { Delegate } from '../../../types';
 import { safeDate, formatDisplayPin, normalizeDigits } from '../../../utils';
-import { firestoreService } from '../../../services';
+import { authService, delegateService } from '../../../services';
 import { useAdminTranslation } from '../../../utils/adminTranslations';
 import { useAppStore } from '../../../store/appStore';
 
@@ -32,14 +32,14 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
     setIsUpdatingPin(true);
     try {
       const cleanPin = pinInput.trim();
-      const pinCheck = await firestoreService.isPinTaken(cleanPin, delegate.id);
+      const pinCheck = await authService.isPinTaken(cleanPin, delegate.id);
       if (pinCheck.taken) {
         useAppStore.getState().showToast(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
         setIsUpdatingPin(false);
         return;
       }
 
-      await firestoreService.updateDelegate(delegate.id, { pin: cleanPin });
+      await delegateService.updateDelegate(delegate.id, { pin: cleanPin });
       // Notify the parent of the new pin instead of mutating the prop object
       // directly. The parent owns the delegate state and will re-render this
       // card with the updated pin.

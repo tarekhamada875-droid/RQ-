@@ -4,7 +4,7 @@ vi.mock('../api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/apiClient')>();
   return { ...actual, apiFetch: apiFetchMock };
 });
-import { firestoreService } from '../services';
+import { garageDeletionService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
 
 vi.mock('../firebase', () => ({
@@ -38,7 +38,7 @@ describe('v167 - Garage Deletion', () => {
       retryable: false
     });
 
-    await expect(firestoreService.getGarageDeletionStatus('garage 1')).resolves.toEqual({
+    await expect(garageDeletionService.getGarageDeletionStatus('garage 1')).resolves.toEqual({
       status: 'running',
       phase: 'deleting',
       processedRecords: 17,
@@ -53,7 +53,7 @@ describe('v167 - Garage Deletion', () => {
       Object.assign(new Error('DELETION_JOB_NOT_FOUND'), { code: 'DELETION_JOB_NOT_FOUND' })
     );
 
-    await expect(firestoreService.getGarageDeletionStatus('test_garage')).resolves.toEqual({
+    await expect(garageDeletionService.getGarageDeletionStatus('test_garage')).resolves.toEqual({
       status: 'not_started',
       processedRecords: 0,
       errorCode: null,
@@ -65,7 +65,7 @@ describe('v167 - Garage Deletion', () => {
   it('starts a deletion job, advances bounded server steps, and reports only server progress', async () => {
     const progressLog: any[] = [];
 
-    await firestoreService.deleteGarage('test_garage', (progress) => {
+    await garageDeletionService.deleteGarage('test_garage', (progress) => {
       progressLog.push(progress);
     });
 
