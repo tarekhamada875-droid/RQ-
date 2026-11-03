@@ -5,6 +5,9 @@ interface BorderShimmerProps {
   color?: string;
   dur?: string;
   mode?: 'continuous' | 'alternate-first' | 'alternate-second';
+  /** 'default' = 5/3.25/2.25px ring padding (large cards).
+   *  'compact' = 2.5/1.5/1px ring padding (small elements like digit tiles). */
+  size?: 'default' | 'compact';
 }
 
 /**
@@ -26,11 +29,12 @@ export const BorderShimmer: React.FC<BorderShimmerProps> = memo(({
   color = '#10b981',
   dur = '4.0s',
   mode = 'continuous',
+  size = 'default',
 }) => {
   if (!isActive) return null;
 
   return (
-    <div className="border-shimmer" aria-hidden="true">
+    <div className={`border-shimmer${size === 'compact' ? ' border-shimmer--compact' : ''}`} aria-hidden="true">
       <div
         className={`border-shimmer-sweep${mode !== 'continuous' ? ` border-shimmer-sweep--${mode}` : ''}`}
         style={{ '--shimmer-color': color, animationDuration: dur } as React.CSSProperties}
