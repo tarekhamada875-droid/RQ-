@@ -13,6 +13,7 @@ import React, {
 import { Car } from "lucide-react";
 import { useBackHandler } from "../../hooks/backHandler";
 import { useGarageInput } from "../../hooks/garageInput";
+import { useVehicleOps } from "../../hooks/vehicleOpsContext";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
 import {
@@ -40,19 +41,12 @@ interface GarageDashboardViewProps {
   currentStaff: Staff | null;
   vehicles?: Vehicle[];
   todayTransactions?: Vehicle[];
-  setSelectedVehicle: (vehicle: Vehicle | null) => void;
-  setShowCheckOutModal: (show: boolean) => void;
   closeKeyboard: () => void;
-  newPlateNumber: string;
-  setNewPlateNumber: (value: string) => void;
-  handleCheckIn: (type: 'hourly' | 'overnight', bypassWarning?: boolean) => void;
   onLogout: () => void;
   showToast: (message: string, type?: ToastType) => void;
   staffList: Staff[];
   showSubscribers: boolean;
   setShowSubscribers: (show: boolean) => void;
-  isLoading?: boolean;
-  checkoutJustSucceeded?: boolean;
 }
 
 export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
@@ -61,20 +55,16 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     currentStaff,
     vehicles = [],
     todayTransactions = [],
-    setSelectedVehicle,
-    setShowCheckOutModal,
     closeKeyboard,
-    newPlateNumber,
-    setNewPlateNumber,
-    handleCheckIn,
     onLogout,
     showToast,
     staffList,
     showSubscribers,
     setShowSubscribers,
-    isLoading = false,
-    checkoutJustSucceeded = false,
   } = props;
+
+  // Vehicle operations come from VehicleOpsProvider (context, not props)
+  const { setSelectedVehicle, setShowCheckOutModal, newPlateNumber, setNewPlateNumber, handleCheckIn, isLoading, checkoutJustSucceeded } = useVehicleOps();
 
   // Input refs + focus state come from GarageInputProvider (context, not props)
   const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();

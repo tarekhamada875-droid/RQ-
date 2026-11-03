@@ -17,6 +17,7 @@ import { logDiagnostic } from './utils/authDiagnosticLogger';
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
 import { useBackHandler } from './hooks/backHandler';
+import { VehicleOpsProvider } from './hooks/vehicleOpsContext';
 import { useToast } from './hooks/toast';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { AppRoutes } from './components/app/AppRoutes';
@@ -81,6 +82,7 @@ export default function App() {
 
   const isLoggedIn = Boolean(view && view !== 'login');
   return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
+    <VehicleOpsProvider value={vehicleOperations}>
     <ErrorBoundary>
       <NetworkStatusBanner />
       {toast && <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"><div onClick={() => setToast()} role="alert" className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"><div className="flex min-w-0 flex-1 items-start gap-3"><div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>{toast.type === 'error' ? <XCircle className="w-5 h-5 stroke-[2.5]" /> : <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />}</div><div className="min-w-0 flex-1 text-center" dir="rtl"><p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">{toast.message}</p></div></div><button type="button" onClick={(event) => { event.stopPropagation(); setToast(); }} className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors" title="إغلاق"><X className="w-4 h-4" /></button></div></div>}
@@ -89,5 +91,6 @@ export default function App() {
         <AppRoutes app={app} />
       </Suspense>
     </ErrorBoundary>
+    </VehicleOpsProvider>
   </div>;
 }
