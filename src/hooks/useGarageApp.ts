@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Garage, Vehicle, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useServerTime } from './useServerTime';
 import { useToast } from './toast';
+import { useGarageInput } from './garageInput';
 import { soundManager } from '../utils/sounds';
 
 import { useGarageSession } from './useGarageSession';
@@ -79,10 +80,8 @@ export function useGarageApp() {
   const [garageDeletionProgress, setGarageDeletionProgress] = useState<GarageDeletionProgress | null>(null);
 
   const [showSubscribers, setShowSubscribers] = useLocalStorageState<boolean>('app_show_subscribers', false);
-  const [isInputFocused, setIsInputFocused] = useState(false);
 
-  const plateInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLDivElement>(null);
+  const { closeKeyboard } = useGarageInput();
 
   const { now } = useServerTime();
   const { isOnline, showOfflineScreen } = useOnlineStatus();
@@ -94,13 +93,7 @@ export function useGarageApp() {
     contextShowToast(message, type);
   }, [contextShowToast]);
 
-  const closeKeyboard = useCallback(() => {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    setIsInputFocused(false);
-  }, []);
-
+  // closeKeyboard comes from GarageInputProvider (via garageInput above)
   // Warm up AudioContext on first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
@@ -290,12 +283,8 @@ export function useGarageApp() {
     garageDeletionProgress,
     showSubscribers,
     setShowSubscribers,
-    isInputFocused,
-    setIsInputFocused,
     showToast,
     closeKeyboard,
-    plateInputRef,
-    inputRef,
     isOnline,
     showOfflineScreen,
     now,
@@ -393,7 +382,6 @@ export function useGarageApp() {
     setSelectedVehicle,
     newPlateNumber,
     setNewPlateNumber,
-    plateInputRef,
     isLoading,
     setIsLoading,
     loadingType,
@@ -410,8 +398,6 @@ export function useGarageApp() {
     setShowLogoutConfirm,
     showSubscribers,
     setShowSubscribers,
-    isInputFocused,
-    setIsInputFocused,
     staffList,
     setStaffList,
     delegatePagination,
@@ -437,7 +423,6 @@ export function useGarageApp() {
     now,
     isOnline,
     showOfflineScreen,
-    inputRef,
     delegateGarages,
     adminGarageHasMore,
     adminDelegateHasMore,

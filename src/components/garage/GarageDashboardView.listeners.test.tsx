@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GarageInputProvider } from '../../hooks/garageInput';
 
 const serviceMocks = vi.hoisted(() => ({
   subscribeToGarageRechargeLogs: vi.fn(),
@@ -90,10 +91,10 @@ const makeGarage = (overrides: Record<string, unknown> = {}) => ({
 const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
   const [showSubscribers, setShowSubscribers] = useState(false);
   return (
+    <GarageInputProvider>
     <GarageDashboardView
       garage={garage}
       currentStaff={null}
-      isInputFocused={false}
       vehicles={[]}
       todayTransactions={[]}
       setSelectedVehicle={vi.fn()}
@@ -101,16 +102,14 @@ const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
       closeKeyboard={vi.fn()}
       newPlateNumber=""
       setNewPlateNumber={vi.fn()}
-      setIsInputFocused={vi.fn()}
-      plateInputRef={useRef(null)}
       handleCheckIn={vi.fn()}
-      inputRef={useRef(null)}
       onLogout={vi.fn()}
       showToast={vi.fn()}
       staffList={[]}
       showSubscribers={showSubscribers}
       setShowSubscribers={setShowSubscribers}
     />
+    </GarageInputProvider>
   );
 };
 

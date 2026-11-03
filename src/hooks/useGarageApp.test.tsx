@@ -1,6 +1,7 @@
 import { cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from './toast';
+import { GarageInputProvider } from './garageInput';
 
 const mocks = vi.hoisted(() => ({
   setters: new Map<string, ReturnType<typeof vi.fn>>(),
@@ -105,7 +106,7 @@ afterEach(() => cleanup());
 
 describe('useGarageApp grouped contract', () => {
   it('returns five stable groups while preserving flat aliases and handler identity', () => {
-    const { result } = renderHook(() => useGarageApp(), { wrapper: ({ children }) => <ToastProvider>{children}</ToastProvider> });
+    const { result } = renderHook(() => useGarageApp(), { wrapper: ({ children }) => <ToastProvider><GarageInputProvider>{children}</GarageInputProvider></ToastProvider> });
     const app = result.current;
 
     expect(Object.keys(app).filter((key) => ['session', 'navigationUi', 'garageData', 'vehicleOperations', 'adminManagement'].includes(key))).toHaveLength(5);

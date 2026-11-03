@@ -22,7 +22,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
   const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
   const { isLoading, setIsLoading, newPlateNumber, setNewPlateNumber, setSelectedVehicle, handleCheckIn, setShowCheckOutModal, checkoutJustSucceeded } = vehicleOperations;
   const { handleGarageLogin, createNewGarage, removeDelegate } = adminManagement;
-  const { loginPhone, setLoginPhone, showToast, closeKeyboard, isInputFocused, setIsInputFocused, plateInputRef, inputRef, showSubscribers, setShowSubscribers } = navigationUi;
+  const { loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers } = navigationUi;
 
   logDiagnostic('RENDER_VIEW_EVALUATED', { view, isAuthReady, isLoading });
 
@@ -55,7 +55,7 @@ export function AppRoutes({ app }: AppRoutesProps) {
     return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={navigationUi.setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
   }
 
-  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} isInputFocused={isInputFocused} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} setSelectedVehicle={setSelectedVehicle} setShowCheckOutModal={setShowCheckOutModal} closeKeyboard={closeKeyboard} newPlateNumber={newPlateNumber} setNewPlateNumber={setNewPlateNumber} setIsInputFocused={setIsInputFocused} plateInputRef={plateInputRef} handleCheckIn={handleCheckIn} inputRef={inputRef} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} isLoading={isLoading} checkoutJustSucceeded={checkoutJustSucceeded} /></ErrorBoundary>;
+  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} setSelectedVehicle={setSelectedVehicle} setShowCheckOutModal={setShowCheckOutModal} closeKeyboard={closeKeyboard} newPlateNumber={newPlateNumber} setNewPlateNumber={setNewPlateNumber} handleCheckIn={handleCheckIn} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} isLoading={isLoading} checkoutJustSucceeded={checkoutJustSucceeded} /></ErrorBoundary>;
 
   return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }
