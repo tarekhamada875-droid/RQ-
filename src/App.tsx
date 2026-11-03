@@ -17,6 +17,7 @@ import { logDiagnostic } from './utils/authDiagnosticLogger';
 import { useGarageApp } from './hooks/useGarageApp';
 import { useBackTrapping } from './hooks/useBackTrapping';
 import { useBackHandler } from './hooks/backHandler';
+import { useToast } from './hooks/toast';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
@@ -25,7 +26,8 @@ export default function App() {
   const app = useGarageApp();
   const { session, navigationUi, vehicleOperations } = app;
   const { isAuthReady, isSessionReady, isLoggingOut, currentStaff, showLogoutConfirm, setShowLogoutConfirm } = session;
-  const { view, setView, showOfflineScreen, isLandscapeMobile, toast, setToast, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
+  const { toast, clearToast: setToast } = useToast();
   const { garage, delegate } = app.garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
@@ -81,7 +83,7 @@ export default function App() {
   return <div className={`w-full h-full bg-[#faf9f6] dark:bg-transparent transition-colors ${isLoggedIn ? 'theme-logged-in' : ''}`} style={{ '--theme-accent-color': resolvedColor } as React.CSSProperties}>
     <ErrorBoundary>
       <NetworkStatusBanner />
-      {toast && <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"><div onClick={() => setToast(null)} role="alert" className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"><div className="flex min-w-0 flex-1 items-start gap-3"><div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>{toast.type === 'error' ? <XCircle className="w-5 h-5 stroke-[2.5]" /> : <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />}</div><div className="min-w-0 flex-1 text-center" dir="rtl"><p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">{toast.message}</p></div></div><button type="button" onClick={(event) => { event.stopPropagation(); setToast(null); }} className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors" title="إغلاق"><X className="w-4 h-4" /></button></div></div>}
+      {toast && <div className="fixed top-4 left-4 right-4 z-[300] flex justify-center pointer-events-none animate-slide-down"><div onClick={() => setToast()} role="alert" className="pointer-events-auto max-w-md w-full bg-slate-900/95 dark:bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3.5 px-4 shadow-xl flex items-start justify-between gap-3 backdrop-blur-md cursor-pointer transition-all active:scale-95"><div className="flex min-w-0 flex-1 items-start gap-3"><div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>{toast.type === 'error' ? <XCircle className="w-5 h-5 stroke-[2.5]" /> : <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />}</div><div className="min-w-0 flex-1 text-center" dir="rtl"><p className="text-xs sm:text-sm font-bold text-slate-100 leading-relaxed break-words whitespace-normal text-center">{toast.message}</p></div></div><button type="button" onClick={(event) => { event.stopPropagation(); setToast(); }} className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors" title="إغلاق"><X className="w-4 h-4" /></button></div></div>}
       <AppOverlays app={app} />
       <Suspense fallback={<div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" /><p className="text-slate-600 dark:text-slate-300 font-bold text-xs animate-pulse">جاري تحميل الصفحة...</p></div>}>
         <AppRoutes app={app} />
