@@ -109,21 +109,24 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Register the garage-level back handler so the App-level useBackTrapping
-  // hook can close garage overlays (reports, recharge history, appearance,
-  // terms) when the phone back button is pressed. Priority: terms → appearance
-  // → reports → rechargeHistory. Returns true if an overlay was closed.
+  // hook can close garage overlays and sub-tabs when the phone back button is
+  // pressed. Priority: terms → appearance → reports → rechargeHistory →
+  // active_vehicles tab → main tab. Returns true if something was closed.
   useEffect(() => {
     props.garageBackHandlerRef.current = () => {
       if (showTermsModal) { setShowTermsModal(false); return true; }
       if (isAppearanceOpen) { setIsAppearanceOpen(false); return true; }
       if (isReportsOpen) { setIsReportsOpen(false); return true; }
       if (isRechargeHistoryOpen) { setIsRechargeHistoryOpen(false); return true; }
+      // If on the active-vehicles tab, go back to the main tab instead of
+      // showing logout confirmation.
+      if (activeTab === 'active_vehicles') { setActiveTab('main'); return true; }
       return false;
     };
     return () => {
       props.garageBackHandlerRef.current = null;
     };
-  }, [props.garageBackHandlerRef, showTermsModal, isAppearanceOpen, isReportsOpen, isRechargeHistoryOpen]);
+  }, [props.garageBackHandlerRef, showTermsModal, isAppearanceOpen, isReportsOpen, isRechargeHistoryOpen, activeTab]);
 
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);

@@ -58,6 +58,9 @@ export function useBackTrapping(props: BackTrappingProps) {
       const p = propsRef.current;
 
       // 1. App-level modals (check-out first — it's the most "in-progress")
+      //    Logout confirm is here too: if it's open, back closes it (doesn't
+      //    re-trigger it or exit).
+      if (p.showLogoutConfirm) { p.setShowLogoutConfirm(false); return; }
       if (p.showCheckOutModal) { p.setShowCheckOutModal(false); return; }
       if (p.showCheckInModal) { p.setShowCheckInModal(false); p.setSelectedVehicle(null); return; }
       if (p.showDeleteConfirm) { p.setShowDeleteConfirm(false); return; }
@@ -92,9 +95,13 @@ export function useBackTrapping(props: BackTrappingProps) {
     };
 
     const handlePopState = (): void => {
-      // Re-push the trap so the browser doesn't navigate away on the next
-      // back press. Then run the back handler.
+      // Re-push MULTIPLE trap entries so rapid back presses don't exhaust
+      // the history stack and exit the PWA. On Android Chrome, a single
+      // pushState can be outpaced by fast back presses; a 3-deep buffer
+      // gives the handler time to intercept each press.
       try {
+        window.history.pushState({ trapped: true }, '');
+        window.history.pushState({ trapped: true }, '');
         window.history.pushState({ trapped: true }, '');
       } catch {
         /* ignore */
@@ -102,8 +109,14 @@ export function useBackTrapping(props: BackTrappingProps) {
       handleBack();
     };
 
-    // Push the initial trap entry on mount.
-    window.history.pushState({ trapped: true }, '');
+    // Push the initial trap entries on mount (3-deep buffer).
+    try {
+      window.history.pushState({ trapped: true }, '');
+      window.history.pushState({ trapped: true }, '');
+      window.history.pushState({ trapped: true }, '');
+    } catch {
+      /* ignore */
+    }
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
