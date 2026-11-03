@@ -14,6 +14,24 @@ import { useGarageSync } from './useGarageSync';
 
 const CURRENT_VERSION = '1.0.4';
 
+/**
+ * Composition root for the app's shared state.
+ *
+ * Wires together the four sub-hooks (session, sync, vehicle ops, admin
+ * mutations) and returns them grouped into five buckets, each of which
+ * is exposed to the component tree via a React context provider wired
+ * in `App.tsx`:
+ *
+ *   - session          → SessionProvider          (PR 8)
+ *   - navigationUi     → NavigationUiProvider     (PR 9)
+ *   - garageData      → GarageDataProvider        (PR 9)
+ *   - vehicleOperations → VehicleOpsProvider      (PR 5)
+ *   - adminManagement → AdminMutationsProvider    (PR 9)
+ *
+ * Per the "Solid Before Launch" plan, the flat return-key aliases that
+ * used to be here (~100 keys) have been removed — every consumer now
+ * reads via the appropriate `use*()` context hook instead.
+ */
 export function useGarageApp() {
   // Clear App Cache upon Version Updates
   useEffect(() => {
@@ -21,7 +39,7 @@ export function useGarageApp() {
       const savedVersion = localStorage.getItem('app_version');
       if (savedVersion && savedVersion !== CURRENT_VERSION) {
         localStorage.setItem('app_version', CURRENT_VERSION);
-        localStorage.removeItem('app_view'); 
+        localStorage.removeItem('app_view');
         window.location.reload();
       } else if (!savedVersion) {
         localStorage.setItem('app_version', CURRENT_VERSION);
@@ -91,11 +109,10 @@ export function useGarageApp() {
     contextShowToast(message, type);
   }, [contextShowToast]);
 
-  // closeKeyboard comes from GarageInputProvider (via garageInput above)
   // Warm up AudioContext on first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
-      soundManager.resume(); 
+      soundManager.resume();
       document.removeEventListener('click', handleFirstInteraction);
       document.removeEventListener('touchstart', handleFirstInteraction);
     };
@@ -108,18 +125,7 @@ export function useGarageApp() {
   }, []);
 
   // 1. Session and Auth Hook
-  const {
-    user,
-    setUser,
-    isAuthReady,
-    sessionId,
-    isSessionReady,
-    showLogoutConfirm,
-    setShowLogoutConfirm,
-    isLoggingOut,
-    handleLogout,
-    handleInitiateLogout,
-  } = useGarageSession({
+  const sessionHook = useGarageSession({
     view,
     setView,
     garage,
@@ -131,31 +137,17 @@ export function useGarageApp() {
     showToast,
   });
 
+  const session = {
+    ...sessionHook,
+    currentStaff,
+    setCurrentStaff,
+  };
+
   // 2. Data Sync Hook
-  const {
-    allGarages,
-    delegates,
-    staffList,
-    setStaffList,
-    delegatePagination,
-    delegateListsLoading,
-    delegateListsError,
-    delegateDashboardLoading,
-    delegateDashboardError,
-    retryDelegateDashboard,
-    loadMoreDelegateGarages,
-    delegateGarages,
-    adminGarageHasMore,
-    adminDelegateHasMore,
-    adminListsLoading,
-    adminListsError,
-    loadMoreAdminGarages,
-    loadMoreAdminDelegates,
-    refreshAdminLists,
-  } = useGarageSync({
-    isSessionReady,
-    isAuthReady,
-    user,
+  const syncData = useGarageSync({
+    isSessionReady: session.isSessionReady,
+    isAuthReady: session.isAuthReady,
+    user: session.user,
     view,
     garage,
     setGarage,
@@ -169,48 +161,8 @@ export function useGarageApp() {
     showToast,
   });
 
-  // App-store mirror writes removed — these two useEffects copied the entire
-  // allGarages/delegates arrays into the Zustand store on every Firestore
-  // snapshot, but zero components subscribe to store.garages or store.delegates.
-  // The only store subscriber is updateGarage (a function reference), and the
-  // store's showToast is a no-op retained for backward-compat with callers
-  // that still call useAppStore.getState().showToast(...).
-
-  // Admin PIN Sync — removed.
-  // (Previous adminPin/activeAdminPin state removed — was dead code.
-  //  The pin field moved to private_pins; the state was always '' and
-  //  ignored by AdminPinSettingsView.)
-
-
   // 3. Vehicle Operations Hook
-  const {
-    newPlateNumber,
-    setNewPlateNumber,
-    selectedVehicle,
-    setSelectedVehicle,
-    showCheckInModal,
-    setShowCheckInModal,
-    showCheckOutModal,
-    setShowCheckOutModal,
-    isLoading,
-    setIsLoading,
-    loadingType,
-    setLoadingType,
-    checkoutJustSucceeded,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    recentVehicle,
-    setRecentVehicle,
-    showSubscriberWarning,
-    setShowSubscriberWarning,
-    subscriberWarningPlate,
-    setSubscriberWarningPlate,
-    pendingCheckInType,
-    setPendingCheckInType,
-    handleCheckIn,
-    confirmCheckOut,
-    handleDeleteVehicle,
-  } = useVehicleOperations({
+  const vehicleOperations = useVehicleOperations({
     garage,
     setGarage,
     currentStaff,
@@ -222,49 +174,29 @@ export function useGarageApp() {
     closeKeyboard,
   });
 
-  // 5. Admin and Garage Management Hook
-  const {
-    handleGarageLogin,
-    handleDelegateLogin,
-    createNewGarage,
-    deleteGarage,
-    removeDelegate,
-  } = useAdminAndGarageManagement({
-    allGarages,
+  // 4. Admin and Garage Management Hook
+  const adminManagement = useAdminAndGarageManagement({
+    allGarages: syncData.allGarages,
     delegate,
     loginPhone,
     setLoginPhone,
-    setUser,
+    setUser: session.setUser,
     setGarage,
     setDelegate,
     setCurrentStaff,
     setSelectedGarageForDetails,
     setView,
-    setIsLoading,
+    setIsLoading: vehicleOperations.setIsLoading,
     setShowDeleteConfirm,
     setGarageDeletionProgress,
-    sessionId,
+    sessionId: session.sessionId,
     isOnline,
-    isLoading,
+    isLoading: vehicleOperations.isLoading,
     closeKeyboard,
     showToast,
-    refreshAdminLists,
+    refreshAdminLists: syncData.refreshAdminLists,
   });
 
-  const session = {
-    user,
-    setUser,
-    isAuthReady,
-    isSessionReady,
-    sessionId,
-    currentStaff,
-    setCurrentStaff,
-    showLogoutConfirm,
-    setShowLogoutConfirm,
-    isLoggingOut,
-    handleLogout,
-    handleInitiateLogout,
-  };
   const navigationUi = {
     isLandscapeMobile,
     view,
@@ -285,159 +217,23 @@ export function useGarageApp() {
     isOnline,
     showOfflineScreen,
   };
+
   const garageData = {
+    ...syncData,
     garage,
     setGarage,
     delegate,
     setDelegate,
-    delegates,
     vehicles,
     todayTransactions,
-    allGarages,
-    staffList,
-    setStaffList,
-    delegatePagination,
-    delegateListsLoading,
-    delegateListsError,
-    delegateDashboardLoading,
-    delegateDashboardError,
-    retryDelegateDashboard,
-    loadMoreDelegateGarages,
-    delegateGarages,
-    adminGarageHasMore,
-    adminDelegateHasMore,
-    adminListsLoading,
-    adminListsError,
-    loadMoreAdminGarages,
-    loadMoreAdminDelegates,
-    refreshAdminLists,
   };
-  const vehicleOperations = {
-    newPlateNumber,
-    setNewPlateNumber,
-    selectedVehicle,
-    setSelectedVehicle,
-    showCheckInModal,
-    setShowCheckInModal,
-    showCheckOutModal,
-    setShowCheckOutModal,
-    isLoading,
-    setIsLoading,
-    loadingType,
-    setLoadingType,
-    checkoutJustSucceeded,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    recentVehicle,
-    setRecentVehicle,
-    showSubscriberWarning,
-    setShowSubscriberWarning,
-    subscriberWarningPlate,
-    setSubscriberWarningPlate,
-    pendingCheckInType,
-    setPendingCheckInType,
-    handleCheckIn,
-    confirmCheckOut,
-    handleDeleteVehicle,
-  };
-  const adminManagement = {
-    handleGarageLogin,
-    handleDelegateLogin,
-    deleteGarage,
-    createNewGarage,
-    removeDelegate,
-  };
+
   return {
     session,
     navigationUi,
     garageData,
     vehicleOperations,
     adminManagement,
-    user,
-    setUser,
-    isAuthReady,
-    isSessionReady,
-    isLandscapeMobile,
-    view,
-    setView,
-    garage,
-    setGarage,
-    delegate,
-    setDelegate,
-    delegates,
-    vehicles,
-    todayTransactions,
-    allGarages,
-    loginPhone,
-    setLoginPhone,
-    showCheckInModal,
-    setShowCheckInModal,
-    showCheckOutModal,
-    setShowCheckOutModal,
-    selectedVehicle,
-    setSelectedVehicle,
-    newPlateNumber,
-    setNewPlateNumber,
-    isLoading,
-    setIsLoading,
-    loadingType,
-    setLoadingType,
-    checkoutJustSucceeded,
-    selectedGarageForDetails,
-    setSelectedGarageForDetails,
-    selectedDelegateForDetails,
-    setSelectedDelegateForDetails,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
-    garageDeletionProgress,
-    showLogoutConfirm,
-    setShowLogoutConfirm,
-    showSubscribers,
-    setShowSubscribers,
-    staffList,
-    setStaffList,
-    delegatePagination,
-    delegateListsLoading,
-    delegateListsError,
-    delegateDashboardLoading,
-    delegateDashboardError,
-    retryDelegateDashboard,
-    loadMoreDelegateGarages,
-    currentStaff,
-    setCurrentStaff,
-    sessionId,
-    showRecentExitWarning,
-    setShowRecentExitWarning,
-    recentVehicle,
-    setRecentVehicle,
-    showSubscriberWarning,
-    setShowSubscriberWarning,
-    subscriberWarningPlate,
-    setSubscriberWarningPlate,
-    pendingCheckInType,
-    setPendingCheckInType,
-    isOnline,
-    showOfflineScreen,
-    delegateGarages,
-    adminGarageHasMore,
-    adminDelegateHasMore,
-    adminListsLoading,
-    adminListsError,
-    loadMoreAdminGarages,
-    loadMoreAdminDelegates,
-    refreshAdminLists,
-    showToast,
-    handleLogout,
-    handleInitiateLogout,
-    closeKeyboard,
-    handleGarageLogin,
-    handleDelegateLogin,
-    handleCheckIn,
-    confirmCheckOut,
-    handleDeleteVehicle,
-    deleteGarage,
-    createNewGarage,
-    removeDelegate
   };
 }
 

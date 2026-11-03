@@ -2,9 +2,12 @@ import { useEffect } from 'react';
 import { LoginView } from '../auth/LoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
-import type { GarageAppState } from '../../hooks/useGarageApp';
 import { DelegateDashboardProvider } from '../../hooks/delegateDashboardContext';
 import { useSession } from '../../hooks/sessionContext';
+import { useNavigationUi } from '../../hooks/navigationUiContext';
+import { useGarageData } from '../../hooks/garageDataContext';
+import { useVehicleOps } from '../../hooks/vehicleOpsContext';
+import { useAdminMutations } from '../../hooks/adminMutationsContext';
 import { logDiagnostic } from '../../utils/authDiagnosticLogger';
 
 const AdminDashboardLazy = lazyWithRetry(() => import('../admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -13,18 +16,17 @@ const AdminGarageDetailsLazy = lazyWithRetry(() => import('../admin/AdminGarageD
 const AdminDelegateDetailsLazy = lazyWithRetry(() => import('../admin/AdminDelegateDetailsView').then(m => ({ default: m.AdminDelegateDetailsView })));
 const GarageDashboardLazy = lazyWithRetry(() => import('../garage/GarageDashboardView').then(m => ({ default: m.GarageDashboardView })));
 
-interface AppRoutesProps {
-  app: GarageAppState;
-}
-
-export function AppRoutes({ app }: AppRoutesProps) {
-  const { navigationUi, garageData, vehicleOperations, adminManagement } = app;
-  const { view, setView, selectedGarageForDetails, selectedDelegateForDetails } = navigationUi;
+/**
+ * Picks the top-level view based on the current `view` state. All shared
+ * state is read via context hooks (useSession, useNavigationUi,
+ * useGarageData, useVehicleOps, useAdminMutations) — no `app` prop.
+ */
+export function AppRoutes() {
+  const { view, setView, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails, loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers, setShowDeleteConfirm } = useNavigationUi();
   const { isAuthReady, currentStaff, handleInitiateLogout } = useSession();
-  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists } = garageData;
-  const { isLoading, setIsLoading } = vehicleOperations;
-  const { handleGarageLogin, createNewGarage, removeDelegate } = adminManagement;
-  const { loginPhone, setLoginPhone, showToast, closeKeyboard, showSubscribers, setShowSubscribers } = navigationUi;
+  const { garage, delegate, delegates, allGarages, delegateGarages, staffList, setStaffList, delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages, adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, loadMoreAdminGarages, loadMoreAdminDelegates, refreshAdminLists, vehicles, todayTransactions } = useGarageData();
+  const { isLoading, setIsLoading } = useVehicleOps();
+  const { handleGarageLogin, createNewGarage, removeDelegate } = useAdminMutations();
 
   logDiagnostic('RENDER_VIEW_EVALUATED', { view, isAuthReady, isLoading });
 
@@ -46,18 +48,18 @@ export function AppRoutes({ app }: AppRoutesProps) {
 
   if (view === 'login' || view === 'admin_login' || view === 'delegate_login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 
-  if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setSelectedDelegateForDetails={navigationUi.setSelectedDelegateForDetails} delegates={delegates} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} showToast={showToast} /></ErrorBoundary>;
+  if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setSelectedDelegateForDetails={setSelectedDelegateForDetails} delegates={delegates} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} showToast={showToast} /></ErrorBoundary>;
 
   if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardProvider value={{ delegatePagination, delegateListsLoading: !!delegateListsLoading, delegateListsError: !!delegateListsError, delegateDashboardLoading: !!delegateDashboardLoading, delegateDashboardError: !!delegateDashboardError, onRetryDelegateDashboard: retryDelegateDashboard, onLoadMoreDelegateGarages: loadMoreDelegateGarages }}><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} /></DelegateDashboardProvider></ErrorBoundary>;
 
-  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={navigationUi.setSelectedGarageForDetails} setShowDeleteConfirm={navigationUi.setShowDeleteConfirm} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
+  if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setShowDeleteConfirm={setShowDeleteConfirm} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
 
   if (view === 'admin_delegate_details' && selectedDelegateForDetails) {
     const liveDelegate = delegates.find(d => d.id === selectedDelegateForDetails.id) || selectedDelegateForDetails;
-    return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={navigationUi.setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
+    return <ErrorBoundary><AdminDelegateDetailsLazy delegate={liveDelegate} setView={setView} setSelectedDelegate={setSelectedDelegateForDetails} removeDelegate={removeDelegate} /></ErrorBoundary>;
   }
 
-  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} vehicles={app.garageData.vehicles} todayTransactions={app.garageData.todayTransactions} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
+  if (view === 'garage' && garage) return <ErrorBoundary><GarageDashboardLazy garage={garage} currentStaff={currentStaff} vehicles={vehicles} todayTransactions={todayTransactions} closeKeyboard={closeKeyboard} onLogout={handleInitiateLogout} showToast={showToast} staffList={staffList} showSubscribers={showSubscribers} setShowSubscribers={setShowSubscribers} /></ErrorBoundary>;
 
   return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 }
