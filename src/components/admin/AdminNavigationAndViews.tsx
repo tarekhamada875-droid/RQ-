@@ -40,7 +40,6 @@ interface AdminNavigationAndViewsProps {
   onOpenAddGarage?: () => void;
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
-  currentAdminPin: string;
   t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
@@ -70,7 +69,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   onOpenAddGarage,
   handleApproveGarage,
   handleRejectGarage,
-  currentAdminPin,
   t,
   showToast,
   onLogout,
@@ -266,7 +264,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         <AdminWalletSettingsView onBack={() => setActiveTab('catalog_settings')} t={t} />
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
-          currentAdminPin={currentAdminPin}
           onCancel={() => setActiveTab('catalog_settings')}
           t={t}
         />

@@ -85,7 +85,6 @@ const renderDashboardForGarageCreation = (
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
       onLogout={vi.fn()}
-      currentAdminPin=""
       showToast={showToast}
       onRefreshAdminLists={onRefreshAdminLists}
     />,
@@ -118,7 +117,6 @@ it('keeps the Admin interface right-to-left', () => {
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
       onLogout={vi.fn()}
-      currentAdminPin=""
     />,
   );
 
@@ -139,7 +137,6 @@ it('resets a saved retired trial leads tab to Garages without touching other sav
       setSelectedDelegateForDetails={vi.fn()}
       delegates={[]}
       onLogout={vi.fn()}
-      currentAdminPin=""
     />,
   );
 
@@ -162,7 +159,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
         onLogout={vi.fn()}
-          currentAdminPin=""
       />,
     );
 
@@ -239,7 +235,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
         onLogout={vi.fn()}
-        currentAdminPin=""
         onRefreshAdminLists={onRefreshAdminLists}
       />,
     );
@@ -263,7 +258,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
         onLogout={vi.fn()}
-        currentAdminPin=""
         onRefreshAdminLists={onRefreshAdminLists}
       />,
     );
@@ -293,7 +287,6 @@ describe('AdminDashboard garage actions', () => {
         setSelectedDelegateForDetails={vi.fn()}
         delegates={[]}
         onLogout={vi.fn()}
-          currentAdminPin=""
       showToast={showToast}
       />
     );

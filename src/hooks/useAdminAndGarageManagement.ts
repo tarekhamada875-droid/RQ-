@@ -17,8 +17,6 @@ interface UseAdminAndGarageManagementProps {
   delegate: any | null;
   loginPhone: string;
   setLoginPhone: (s: string) => void;
-  setAdminPin: (s: string) => void;
-  setActiveAdminPin: (s: string) => void;
   setUser: (u: any) => void;
   setGarage: (g: Garage | null) => void;
   setDelegate: (d: any | null) => void;
@@ -41,8 +39,6 @@ export function useAdminAndGarageManagement({
   delegate,
   loginPhone,
   setLoginPhone,
-  setAdminPin,
-  setActiveAdminPin,
   setUser,
   setGarage,
   setDelegate,
@@ -271,10 +267,8 @@ export function useAdminAndGarageManagement({
       }
 
       setLoginPhone('');
-      setAdminPin('');
 
       if (role === 'admin') {
-        setActiveAdminPin(cleanInput);
         setView('admin_dashboard');
       } else if (role === 'delegate') {
         setDelegate(cleanAccount);
@@ -307,7 +301,7 @@ export function useAdminAndGarageManagement({
     } finally {
       setIsLoading(false);
     }
-  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setAdminPin, setActiveAdminPin, setUser, setIsLoading]);
+  }, [isOnline, loginPhone, closeKeyboard, sessionId, showToast, setView, setGarage, setDelegate, setCurrentStaff, setLoginPhone, setUser, setIsLoading]);
 
   const handleDelegateLogin = useCallback(async (pin: string) => {
     if (!isOnline) {
