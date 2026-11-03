@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { CheckOutModal } from './CheckOutModal';
+import { ServerTimeProvider } from '../../hooks/serverTimeContext';
 import type { Garage, Vehicle } from '../../types';
 
 beforeAll(() => {
@@ -38,17 +39,18 @@ describe('CheckOutModal confirmation guard', () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
 
     render(
+      <ServerTimeProvider>
       <CheckOutModal
         selectedVehicle={vehicle}
         garage={garage}
         currentStaff={null}
         isLoading={false}
         loadingType={null}
-        now={new Date('2026-10-30T18:00:00.000Z')}
         onConfirm={onConfirm}
         onDelete={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
+      </ServerTimeProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'بدء تأكيد خروج السيارة من الجانب الأيسر' }));

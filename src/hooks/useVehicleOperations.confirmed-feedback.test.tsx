@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { Garage, Vehicle } from '../types';
 import { firestoreService } from '../services';
 import { useVehicleOperations } from './useVehicleOperations';
+import { ServerTimeProvider } from './serverTimeContext';
 
 vi.mock('../services', () => ({
   firestoreService: {
@@ -49,7 +50,6 @@ function createGarage(overrides: Partial<Garage> = {}): Garage {
 function renderOperations(initialGarage: Garage, initialVehicles: Vehicle[] = []) {
   const showToast = vi.fn();
   const closeKeyboard = vi.fn();
-  const now = new Date('2026-10-30T18:00:00.000Z');
 
   const hook = renderHook(() => {
     const [garage, setGarage] = useState<Garage | null>(initialGarage);
@@ -62,12 +62,11 @@ function renderOperations(initialGarage: Garage, initialVehicles: Vehicle[] = []
       setVehicles,
       todayTransactions: [],
       isOnline: true,
-      now,
       showToast,
       closeKeyboard,
     });
     return { garage, vehicles, ...operations };
-  });
+  }, { wrapper: ({ children }) => <ServerTimeProvider>{children}</ServerTimeProvider> });
 
   return { ...hook, showToast };
 }

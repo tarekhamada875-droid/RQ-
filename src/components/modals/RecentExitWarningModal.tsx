@@ -2,21 +2,21 @@ import React, { memo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Vehicle } from '../../types';
 import { getDuration } from '../../utils';
+import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface RecentExitWarningModalProps {
   vehicle: Vehicle;
-  now: Date;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 export const RecentExitWarningModal: React.FC<RecentExitWarningModalProps> = memo(({
   vehicle,
-  now,
   onConfirm,
   onCancel
 }) => {
+  const now = useServerTimeNow();
   useBodyScrollLock();
 
   return (

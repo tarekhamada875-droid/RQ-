@@ -17,7 +17,7 @@ interface AppOverlaysProps {
 
 export function AppOverlays({ app }: AppOverlaysProps) {
   const { navigationUi, vehicleOperations, session, adminManagement } = app;
-  const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress, now } = navigationUi;
+  const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = navigationUi;
   const { garage, delegate } = app.garageData;
   const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
   const activeIdentity = view === 'garage'
@@ -33,10 +33,10 @@ export function AppOverlays({ app }: AppOverlaysProps) {
 
   return <Suspense fallback={null}>
     {showCheckInModal && garage && <CheckInModal newPlateNumber={newPlateNumber} garage={garage} isLoading={isLoading} loadingType={loadingType} onCheckIn={handleCheckIn} onCancel={() => setShowCheckInModal(false)} />}
-    {showCheckOutModal && selectedVehicle && garage && <CheckOutModal selectedVehicle={selectedVehicle} garage={garage} currentStaff={currentStaff} isLoading={isLoading} loadingType={loadingType} now={now} onConfirm={confirmCheckOut} onDelete={handleDeleteVehicle} onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }} />}
+    {showCheckOutModal && selectedVehicle && garage && <CheckOutModal selectedVehicle={selectedVehicle} garage={garage} currentStaff={currentStaff} isLoading={isLoading} loadingType={loadingType} onConfirm={confirmCheckOut} onDelete={handleDeleteVehicle} onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }} />}
     {showDeleteConfirm && view === 'admin_garage_details' && selectedGarageForDetails && <DeleteGarageConfirmModal garage={selectedGarageForDetails} isLoading={isLoading} progress={garageDeletionProgress} onConfirm={() => deleteGarage(selectedGarageForDetails)} onCancel={() => setShowDeleteConfirm(false)} />}
     {showDeleteConfirm && selectedVehicle && <DeleteVehicleConfirmModal vehicle={selectedVehicle} isLoading={isLoading} onConfirm={handleDeleteVehicle} onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }} />}
-    {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} now={now} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); handleCheckIn(pendingCheckInType); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); setNewPlateNumber(''); }} />}
+    {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); handleCheckIn(pendingCheckInType); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); setNewPlateNumber(''); }} />}
     {showSubscriberWarning && subscriberWarningPlate && <SubscriberWarningModal plateNumber={subscriberWarningPlate} onConfirm={() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); }} />}
     {showLogoutConfirm && <LogoutConfirmModal key={logoutAttemptScope} attemptScope={logoutAttemptScope} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={firestoreService.verifyAdminPinForLogout} />}
   </Suspense>;

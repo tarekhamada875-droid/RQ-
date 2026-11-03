@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
 import { firestoreService } from '../services';
 import { soundManager } from '../utils/sounds';
+import { useServerTimeNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { 
   safeDate, 
@@ -30,7 +31,6 @@ interface UseVehicleOperationsProps {
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   todayTransactions: Vehicle[];
   isOnline: boolean;
-  now: Date;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   closeKeyboard: () => void;
   /** Called after a confirmed check-out. Used by the dashboard to return to
@@ -46,11 +46,11 @@ export function useVehicleOperations({
   setVehicles,
   todayTransactions,
   isOnline,
-  now,
   showToast,
   closeKeyboard,
   onCheckOutComplete,
 }: UseVehicleOperationsProps) {
+  const now = useServerTimeNow();
   const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showCheckInModal, setShowCheckInModal] = useState<boolean>(false);
