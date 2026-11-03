@@ -3,6 +3,7 @@ import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import { firestoreService } from '../../services';
 import type { GarageAppState } from '../../hooks/useGarageApp';
 import { useVehicleOps } from '../../hooks/vehicleOpsContext';
+import { useSession } from '../../hooks/sessionContext';
 
 const CheckInModal = lazyWithRetry(() => import('../modals/CheckInModal').then(m => ({ default: m.CheckInModal })));
 const CheckOutModal = lazyWithRetry(() => import('../modals/CheckOutModal').then(m => ({ default: m.CheckOutModal })));
@@ -17,10 +18,10 @@ interface AppOverlaysProps {
 }
 
 export function AppOverlays({ app }: AppOverlaysProps) {
-  const { navigationUi, session, adminManagement } = app;
+  const { navigationUi, adminManagement } = app;
   const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = navigationUi;
   const { garage, delegate } = app.garageData;
-  const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
+  const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = useSession();
   const activeIdentity = view === 'garage'
     ? (currentStaff?.id ? `staff:${currentStaff.id}` : garage?.id ? `garage:${garage.id}` : 'garage:pending')
     : view === 'delegate_dashboard'
