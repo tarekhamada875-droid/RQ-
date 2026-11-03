@@ -10,6 +10,19 @@ import { ThemeProvider } from '../utils/ThemeContext';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
 import { GarageInputProvider } from '../hooks/garageInput';
+
+vi.mock('../hooks/vehicleOpsContext', () => ({
+  VehicleOpsProvider: ({ children }: any) => children,
+  useVehicleOps: () => ({
+    setSelectedVehicle: vi.fn(),
+    setShowCheckOutModal: vi.fn(),
+    newPlateNumber: '',
+    setNewPlateNumber: vi.fn(),
+    handleCheckIn: vi.fn(),
+    isLoading: false,
+    checkoutJustSucceeded: false,
+  }),
+}));
 import { LandscapeMobileView } from '../components/layout/LandscapeMobileView';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { GarageSubscriptionCard } from '../components/garage/dashboard/GarageSubscriptionCard';
@@ -301,12 +314,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         currentStaff={null}
         vehicles={[]}
         todayTransactions={[]}
-        setSelectedVehicle={vi.fn()}
-        setShowCheckOutModal={vi.fn()}
         closeKeyboard={vi.fn()}
-        newPlateNumber=""
-        setNewPlateNumber={vi.fn()}
-        handleCheckIn={vi.fn()}
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}
@@ -333,12 +341,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
         currentStaff={null}
         vehicles={[]}
         todayTransactions={[]}
-        setSelectedVehicle={vi.fn()}
-        setShowCheckOutModal={vi.fn()}
         closeKeyboard={vi.fn()}
-        newPlateNumber=""
-        setNewPlateNumber={vi.fn()}
-        handleCheckIn={vi.fn()}
         onLogout={vi.fn()}
         showToast={vi.fn()}
         staffList={[]}

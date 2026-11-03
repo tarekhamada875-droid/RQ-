@@ -3,6 +3,19 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GarageInputProvider } from '../../hooks/garageInput';
 
+vi.mock('../../hooks/vehicleOpsContext', () => ({
+  VehicleOpsProvider: ({ children }: any) => children,
+  useVehicleOps: () => ({
+    setSelectedVehicle: vi.fn(),
+    setShowCheckOutModal: vi.fn(),
+    newPlateNumber: '',
+    setNewPlateNumber: vi.fn(),
+    handleCheckIn: vi.fn(),
+    isLoading: false,
+    checkoutJustSucceeded: false,
+  }),
+}));
+
 const serviceMocks = vi.hoisted(() => ({
   subscribeToGarageRechargeLogs: vi.fn(),
   subscribeToSubscribers: vi.fn(),
@@ -97,12 +110,7 @@ const DashboardHarness = ({ garage = makeGarage() }: { garage?: any }) => {
       currentStaff={null}
       vehicles={[]}
       todayTransactions={[]}
-      setSelectedVehicle={vi.fn()}
-      setShowCheckOutModal={vi.fn()}
       closeKeyboard={vi.fn()}
-      newPlateNumber=""
-      setNewPlateNumber={vi.fn()}
-      handleCheckIn={vi.fn()}
       onLogout={vi.fn()}
       showToast={vi.fn()}
       staffList={[]}

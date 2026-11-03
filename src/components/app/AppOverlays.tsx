@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import { firestoreService } from '../../services';
 import type { GarageAppState } from '../../hooks/useGarageApp';
+import { useVehicleOps } from '../../hooks/vehicleOpsContext';
 
 const CheckInModal = lazyWithRetry(() => import('../modals/CheckInModal').then(m => ({ default: m.CheckInModal })));
 const CheckOutModal = lazyWithRetry(() => import('../modals/CheckOutModal').then(m => ({ default: m.CheckOutModal })));
@@ -16,7 +17,7 @@ interface AppOverlaysProps {
 }
 
 export function AppOverlays({ app }: AppOverlaysProps) {
-  const { navigationUi, vehicleOperations, session, adminManagement } = app;
+  const { navigationUi, session, adminManagement } = app;
   const { view, selectedGarageForDetails, setShowDeleteConfirm, showDeleteConfirm, garageDeletionProgress } = navigationUi;
   const { garage, delegate } = app.garageData;
   const { currentStaff, sessionId, showLogoutConfirm, setShowLogoutConfirm, handleLogout } = session;
@@ -28,7 +29,7 @@ export function AppOverlays({ app }: AppOverlaysProps) {
         ? 'admin:auth-pin'
         : `view:${view}`;
   const logoutAttemptScope = `${activeIdentity}:session:${sessionId}`;
-  const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = vehicleOperations;
+  const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = useVehicleOps();
   const { deleteGarage } = adminManagement;
 
   return <Suspense fallback={null}>
