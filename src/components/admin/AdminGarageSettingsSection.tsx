@@ -2,7 +2,7 @@ import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash
 import { adminService, authService } from '../../services';
 import { formatDisplayPin, normalizeDigits } from '../../utils';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
-import { useAppStore } from '../../store/appStore';
+import { useToast } from '../../hooks/toast';
 import type { Staff } from '../../types';
 
 export const isValidStaffPin = (pin: string): boolean => /^\d{5}$/.test(pin);
@@ -58,6 +58,7 @@ export const AdminGarageSettingsSection = ({
   setIsUpdatingStaffPin,
   setStaffToDelete,
 }: AdminGarageSettingsSectionProps) => {
+  const { showToast } = useToast();
 
   return (
     <>
@@ -215,14 +216,14 @@ export const AdminGarageSettingsSection = ({
                                 <button
                                   onClick={async () => {
                                     if (!isValidStaffPin(editingStaffPinValue)) {
-                                      useAppStore.getState().showToast(t('رمز دخول الموظف يجب أن يتكون من 5 أرقام بالضبط.'), 'error');
+                                      showToast('رمز دخول الموظف يجب أن يتكون من 5 أرقام بالضبط.', 'error');
                                       return;
                                     }
                                     setIsUpdatingStaffPin(true);
                                     try {
                                       const pinCheck = await authService.isPinTaken(editingStaffPinValue, s.id);
                                       if (pinCheck.taken) {
-                                        useAppStore.getState().showToast(t('الرمز مستخدم بالفعل'), 'error');
+                                        showToast('الرمز مستخدم بالفعل', 'error');
                                         setIsUpdatingStaffPin(false);
                                         return;
                                       }
@@ -240,7 +241,7 @@ export const AdminGarageSettingsSection = ({
                                         const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
                                         message = `${t('حدث خطأ في الخادم أثناء تحديث رمز الموظف.')}${suffix}`;
                                       }
-                                      useAppStore.getState().showToast(message, 'error');
+                                      showToast(message, 'error');
                                     } finally {
                                       setIsUpdatingStaffPin(false);
                                     }

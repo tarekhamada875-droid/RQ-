@@ -25,6 +25,7 @@ import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
+import { useToast } from '../../hooks/toast';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -42,6 +43,7 @@ export const DelegateDashboardView = memo(({
   isLoading,
 }: DelegateDashboardViewProps) => {
   const { delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, onRetryDelegateDashboard, onLoadMoreDelegateGarages } = useDelegateDashboard();
+  const { showToast } = useToast();
   const [showAddGarage, setShowAddGarage] = useState(false);
   const [newGaragePin, setNewGaragePin] = useState('');
   const [pinGenerationsRemaining, setPinGenerationsRemaining] = useState(3);
@@ -169,9 +171,9 @@ export const DelegateDashboardView = memo(({
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('PENDING_REQUEST_EXISTS')) {
-        alert('يوجد طلب رصيد قيد المراجعة لهذا الجراج بالفعل');
+        showToast('يوجد طلب رصيد قيد المراجعة لهذا الجراج بالفعل', 'error');
       } else {
-        alert('تعذر إرسال طلب الرصيد. حاول مرة أخرى.');
+        showToast('تعذر إرسال طلب الرصيد. حاول مرة أخرى.', 'error');
       }
     } finally {
       setSubmittingCreditRequest(false);

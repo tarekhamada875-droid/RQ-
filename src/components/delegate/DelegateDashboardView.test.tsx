@@ -7,6 +7,9 @@ vi.mock('../../utils/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() })
 }));
 vi.mock('../../hooks/useSystemConfig', () => ({ useSystemConfig: () => ({}) }));
+vi.mock('../../hooks/toast', () => ({
+  useToast: () => ({ showToast: vi.fn(), toast: null, clearToast: vi.fn() })
+}));
 vi.mock('../ui/FitText', () => ({ FitText: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: () => null }));
 

@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ThemeProvider } from '../utils/ThemeContext';
+import { ToastProvider } from '../hooks/toast';
 import { AdminGarageDetailsView } from '../components/admin/AdminGarageDetailsView';
 import { GarageDashboardView } from '../components/garage/GarageDashboardView';
 import { GarageInputProvider } from '../hooks/garageInput';
@@ -108,7 +109,7 @@ const mockGarage: Garage = {
 };
 
 const renderWithTheme = (ui: React.ReactElement) => {
-  return render(<ThemeProvider>{ui}</ThemeProvider>);
+  return render(<ThemeProvider><ToastProvider>{ui}</ToastProvider></ThemeProvider>);
 };
 
 describe('Modularized Admin Components Integrity', () => {
@@ -262,7 +263,7 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     const deductedGarage = { ...initialGarage, credits: 13 };
     const { rerender } = renderWithTheme(<GarageSubscriptionCard garage={initialGarage} />);
 
-    rerender(<ThemeProvider><GarageSubscriptionCard garage={deductedGarage} /></ThemeProvider>);
+    rerender(<ThemeProvider><ToastProvider><GarageSubscriptionCard garage={deductedGarage} /></ToastProvider></ThemeProvider>);
 
     expect(screen.getByTestId('credit-debit-feedback')).toBeDefined();
     const arrows = screen.getAllByTestId('credit-debit-arrow');
