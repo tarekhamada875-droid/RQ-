@@ -131,15 +131,15 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
               return (
                 <li
                   key={grant.id || grant.entryId}
-                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 shadow-sm"
+                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5 shadow-sm text-center"
                 >
                   <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                     {formatDate(timestamp)}
                   </p>
-                  <p className="mt-2 text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
+                  <p className="mt-3 text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
                     +{amount.toLocaleString('ar-EG')} رصيد
                   </p>
-                  <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300">
+                  <p className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300">
                     الرصيد بعد الشحن: <span className="font-mono text-slate-900 dark:text-slate-100">{balanceAfter.toLocaleString('ar-EG')}</span>
                   </p>
                 </li>
