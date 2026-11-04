@@ -13,7 +13,6 @@ import { AdminProvider } from '../../hooks/adminContext';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { useAdminTranslation } from '../../utils/adminTranslations';
 import { normalizeArabicSearch, normalizeDigits } from '../../utils/plates';
 import { resolveShimmerColor, isLightColor } from '../../utils/colors';
 import { sortGaragesNewestFirst } from '../../utils/dates';
@@ -130,9 +129,9 @@ export const AdminDashboard = memo(({
   useBackHandler(() => { setShowExportModal(false); return true; }, showExportModal);
   useBackHandler(() => { setActiveTab('catalog_settings'); return true; }, activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings');
 
-  const { theme, adminLang } = useTheme();
+  const { theme, } = useTheme();
   const resolvedAdminColor = resolveShimmerColor(adminColor, theme);
-  const t = useAdminTranslation(adminLang);
+  
 
   const menuRef = React.useRef<HTMLDivElement>(null);
   const mainScrollRef = React.useRef<HTMLElement>(null);
@@ -286,7 +285,6 @@ export const AdminDashboard = memo(({
         onOpenAppearanceSettings={() => setShowAppearanceSettings(true)}
         onLogout={onLogout}
         menuRef={menuRef}
-        t={t}
       />
 
       {/* Main Workspace Body */}
@@ -328,7 +326,6 @@ export const AdminDashboard = memo(({
           }}
           handleApproveGarage={handleApproveGarage}
           handleRejectGarage={handleRejectGarage}
-          t={t}
           showToast={showToast}
           onLogout={onLogout}
           onImmediateLogout={onImmediateLogout}
@@ -349,7 +346,6 @@ export const AdminDashboard = memo(({
         allGarages={allGarages}
         isLoading={isLoading}
         onSubmit={handleAddGarage}
-        t={t}
       />
 
       {/* Custom Confirmation Dialog */}

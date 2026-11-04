@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verifyScryptHash, verifySingleFieldValue, hashPinWithUniqueSalt } from '../../server/utils';
+import { verifyScryptHash, verifySingleFieldValue, hashPinWithUniqueSalt } from '../../server/pinCrypto';
 
 describe('Phase 02: Server Security Hardening & Session Boundaries', () => {
   describe('Constant-Time & Timing-Safe PIN Verification', () => {

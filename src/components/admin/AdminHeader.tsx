@@ -16,7 +16,6 @@ interface AdminHeaderProps {
   onOpenAppearanceSettings: () => void;
   onLogout: () => void;
   menuRef: React.RefObject<HTMLDivElement>;
-  t: (key: string) => string;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -27,7 +26,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   onOpenAppearanceSettings,
   onLogout,
   menuRef,
-  t,
 }) => {
   const handleBack = () => {
     if (['admin-pin', 'active_sessions'].includes(activeTab)) {
@@ -56,7 +54,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   handleBack();
                 }}
                 className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
-                title={t('رجوع')}
+                title={'رجوع'}
               >
                 <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
               </button>
@@ -65,7 +63,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               <Shield className="w-6 h-6 stroke-[3]" />
             </div>
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight leading-tight">
-              {t('لوحة تحكم النظام')}
+              {'لوحة تحكم النظام'}
             </h1>
           </div>
           <div className="flex items-center gap-4 relative" ref={menuRef}>
@@ -100,7 +98,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         </div>
                         <div className="flex flex-col text-right">
                           <span className="text-mobile-wrap text-sm font-black text-slate-900 dark:text-slate-100 max-w-[150px] leading-snug">
-                            {t('مالك النظام')}
+                            {'مالك النظام'}
                           </span>
                         </div>
                       </div>
@@ -131,7 +129,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
                           <Sliders className="w-4 h-4 text-amber-400 dark:text-slate-950" />
                         </div>
-                        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{t('إعدادات المظهر')}</span>
+                        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{'إعدادات المظهر'}</span>
                       </div>
                     </button>
                   </div>
@@ -147,7 +145,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                       className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-black text-sm outline-none cursor-pointer"
                     >
                       <LogOut className="w-5 h-5 rotate-180" />
-                      <span>{t('تسجيل الخروج')}</span>
+                      <span>{'تسجيل الخروج'}</span>
                     </button>
                   </div>
                 </div>

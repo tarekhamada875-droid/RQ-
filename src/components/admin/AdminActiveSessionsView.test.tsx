@@ -45,7 +45,7 @@ beforeEach(() => {
 
 describe('AdminActiveSessionsView', () => {
   it('renders the current and remote sessions after loading', async () => {
-    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} t={(key) => key} />);
+    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} />);
 
     expect(await screen.findByText('هذا الجهاز')).toBeInTheDocument();
     expect(screen.getByText('جهاز مسجّل')).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('AdminActiveSessionsView', () => {
       revokedSession: remoteSessionId,
       wasCurrent: false
     });
-    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} t={(key) => key} showToast={showToast} />);
+    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} showToast={showToast} />);
 
     const revokeButtons = await screen.findAllByRole('button', { name: 'إلغاء الجلسة' });
     fireEvent.click(revokeButtons[0]);
@@ -77,7 +77,7 @@ describe('AdminActiveSessionsView', () => {
       revokedSession: currentSessionId,
       wasCurrent: true
     });
-    render(<AdminActiveSessionsView onLogout={onLogout} onBack={vi.fn()} t={(key) => key} />);
+    render(<AdminActiveSessionsView onLogout={onLogout} onBack={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'تسجيل الخروج' }));
 
@@ -90,7 +90,7 @@ describe('AdminActiveSessionsView', () => {
 describe('AdminActiveSessionsView Arabic-only interface', () => {
   it('keeps Arabic copy and right-to-left layout when a legacy English preference exists', async () => {
     themeMock.adminLang = 'en';
-    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} t={(key) => key} />);
+    render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} />);
 
     expect(await screen.findByText('هذا الجهاز')).toBeInTheDocument();
     expect(screen.getByText('جهاز مسجّل')).toBeInTheDocument();

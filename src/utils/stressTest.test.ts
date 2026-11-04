@@ -18,8 +18,6 @@ import {
   filterRequestsByMonth,
   CommissionRequestLike
 } from './delegateCommissionCalculations';
-import { useAdminTranslation } from './adminTranslations';
-
 describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () => {
   it('Stress Test 1: High Volume Plate Normalization & Utilities (5,000 Heavy Operations)', () => {
     const arabicLetters = ['أ', 'ب', 'ج', 'د', 'س', 'ص', 'ع', 'م', 'ن', 'هـ', 'و', 'ي'];
@@ -139,18 +137,18 @@ describe('High-Load & Stress Testing Suite (اختبار الإجهاد)', () =>
     expect(strDuration).toBeLessThan(500);
   });
 
-  it('Stress Test 5: High-Frequency Admin Translation Lookups (100,000 Calls)', () => {
-    const tAr = useAdminTranslation('ar');
+  it('Stress Test 5: High-Frequency Arabic String Access (100,000 Calls)', () => {
     const keys = ['المدير العام', 'الجراجات', 'سعر الساعة', 'المشتركين', 'إضافة جراج جديد', 'تسجيل خروج'];
 
     const startTime = performance.now();
     for (let i = 0; i < 100000; i++) {
       const key = keys[i % keys.length];
-      tAr(key);
+      // Direct string access — adminTranslations identity function was removed.
+      void key;
     }
     const duration = performance.now() - startTime;
 
-    // 100,000 translation lookups should complete in under 200ms
+    // 100,000 string accesses should complete in under 200ms
     expect(duration).toBeLessThan(200);
   });
 });

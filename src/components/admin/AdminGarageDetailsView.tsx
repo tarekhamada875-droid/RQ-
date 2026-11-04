@@ -12,9 +12,7 @@ import {
 } from 'lucide-react';
 import { isHashedPin } from '../../utils/pins';;
 import { Garage, Staff } from '../../types';
-import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
-import { useAdminTranslation } from '../../utils/adminTranslations';
 import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
 import { useToast } from '../../hooks/toast';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
@@ -66,8 +64,8 @@ export const AdminGarageDetailsView = memo(({
   const [editingStaffPinValue, setEditingStaffPinValue] = useState<string>('');
   const [isUpdatingStaffPin, setIsUpdatingStaffPin] = useState(false);
 
-  const { adminLang } = useTheme();
-  const t = useAdminTranslation(adminLang);
+  
+  
 
   // ── Actions + business state (extracted to hook) ─────────────────────
   const { showToast } = useToast();
@@ -124,14 +122,14 @@ export const AdminGarageDetailsView = memo(({
                 setShowDeleteConfirm(false);
               }}
               className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
-              title={t('رجوع')}
+              title={'رجوع'}
             >
               <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
             </button>
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-white leading-tight">{selectedGarageForDetails.name}</h1>
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                {t('تفاصيل وإدارة الجراج')} • <span className="font-mono text-[10px]">المعرّف: {selectedGarageForDetails.id}</span>
+                {'تفاصيل وإدارة الجراج'} • <span className="font-mono text-[10px]">المعرّف: {selectedGarageForDetails.id}</span>
               </p>
             </div>
           </div>
@@ -161,7 +159,7 @@ export const AdminGarageDetailsView = memo(({
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 rounded-xl transition-colors text-xs font-bold"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>{t('حذف الجراج')}</span>
+                    <span>{'حذف الجراج'}</span>
                   </button>
                 </div>
               </>
@@ -174,7 +172,6 @@ export const AdminGarageDetailsView = memo(({
         {/* Zone 1: Status & Key Information */}
         <AdminGarageHeroAndStats
           garage={selectedGarageForDetails}
-          t={t}
           isUpdatingLock={actions.isUpdatingLock}
           onToggleLock={actions.handleToggleLock}
           onOpenEditPin={() => {
@@ -188,14 +185,12 @@ export const AdminGarageDetailsView = memo(({
         {/* Zone 2: Subscription, Financials & Recharge */}
         <AdminGarageFinancialsSection
           garage={selectedGarageForDetails}
-          t={t}
           onToggleMonthlySubscribers={actions.handleToggleMonthlySubscribers}
         />
         <AdminCreditGrantPanel garage={selectedGarageForDetails} />
 
         {/* Zone 3: Operations & Staff Management */}
         <AdminGarageSettingsSection
-          t={t}
           isZone3Open={isZone3Open}
           setIsZone3Open={setIsZone3Open}
           rateCheck={actions.rateCheck}
@@ -221,7 +216,6 @@ export const AdminGarageDetailsView = memo(({
       {/* Modals */}
       <AdminGarageModals
         garage={selectedGarageForDetails}
-        t={t}
         isLoading={isLoading}
         showAddStaffModal={showAddStaffModal}
         setShowAddStaffModal={setShowAddStaffModal}

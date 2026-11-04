@@ -5,12 +5,10 @@ import { safeDate } from '../../../utils/dates';
 import { formatDisplayPin } from '../../../utils/pins';
 import { normalizeDigits } from '../../../utils/plates';
 import { authService, delegateService } from '../../../services';
-import { useAdminTranslation } from '../../../utils/adminTranslations';
 import { useToast } from '../../../hooks/toast';
 
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
-  adminLang: 'ar';
   /** Called after a successful PIN update so the parent can refresh its
    *  delegate state cleanly (instead of the child mutating the prop). */
   onPinUpdated?: (newPin: string) => void;
@@ -18,13 +16,12 @@ interface AdminDelegateProfileCardProps {
 
 export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> = memo(({
   delegate,
-  adminLang,
   onPinUpdated
 }) => {
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [pinInput, setPinInput] = useState(delegate.pin && delegate.pin.length === 64 ? '' : (delegate.pin || ''));
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
-  const t = useAdminTranslation(adminLang);
+  
   const { showToast } = useToast();
 
   const handleUpdatePin = async () => {
@@ -93,7 +90,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                   }}
                   className="text-xs font-bold text-slate-400 px-1 hover:underline"
                 >
-                  {t('إلغاء')}
+                  {'إلغاء'}
                 </button>
               </div>
             ) : (
@@ -102,14 +99,14 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                 className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 text-sm font-black transition-all hover:bg-blue-100 dark:hover:bg-blue-900/40 cursor-pointer"
               >
                 <Lock className="w-4 h-4" />
-                <span>{t('الرمز:')} {formatDisplayPin(delegate.pin)}</span>
-                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-bold underline mr-1 hover:text-blue-600">{t('تعديل')}</span>
+                <span>{'الرمز:'} {formatDisplayPin(delegate.pin)}</span>
+                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-bold underline mr-1 hover:text-blue-600">{'تعديل'}</span>
               </button>
             )}
           </div>
           <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 transition-colors">
             <Calendar className="w-4 h-4" />
-            <span>{t('تاريخ الانضمام:')} {delegate.createdAt ? safeDate(delegate.createdAt).toLocaleDateString('ar-EG') : t('غير معروف')}</span>
+            <span>{'تاريخ الانضمام:'} {delegate.createdAt ? safeDate(delegate.createdAt).toLocaleDateString('ar-EG') : 'غير معروف'}</span>
           </div>
         </div>
       </div>

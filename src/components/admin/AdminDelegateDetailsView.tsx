@@ -9,7 +9,6 @@ import { Trash2, ChevronRight, Users, Coins, Loader2 } from 'lucide-react';
 import { Delegate } from '../../types';
 import { delegateService } from '../../services';
 import { useTheme } from '../../utils/ThemeContext';
-import { useAdminTranslation } from '../../utils/adminTranslations';
 import { AdminDelegateProfileCard } from './delegate-details/AdminDelegateProfileCard';
 
 interface AdminDelegateDetailsViewProps {
@@ -34,8 +33,8 @@ export const AdminDelegateDetailsView = memo(({
   useBackHandler(() => { setConfirmSettle(false); return true; }, confirmSettle);
   useBackHandler(() => { setConfirmDelete(false); return true; }, confirmDelete);
 
-  const { adminLang } = useTheme();
-  const t = useAdminTranslation(adminLang);
+  const {  } = useTheme();
+  
 
   const lifetimeCommission = Number(delegate.totalCommissionEarned || 0);
   const unsettledCommission = settledAtOverride
@@ -96,7 +95,7 @@ export const AdminDelegateDetailsView = memo(({
           <button
             onClick={() => setConfirmDelete(true)}
             className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-            title={t('سحب الصلاحية')}
+            title={'سحب الصلاحية'}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -149,7 +148,7 @@ export const AdminDelegateDetailsView = memo(({
           {/* Profile card — name, phone, PIN */}
           <AdminDelegateProfileCard
             delegate={delegate}
-            adminLang={adminLang}
+           
             onPinUpdated={(newPin) => {
               setSelectedDelegate({ ...delegate, pin: newPin });
             }}

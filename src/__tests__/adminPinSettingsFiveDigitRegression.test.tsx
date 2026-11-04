@@ -20,7 +20,7 @@ describe('AdminPinSettingsView five-digit PIN change', () => {
   });
 
   it('allows a five-digit new PIN without browser minlength validation blocking submission', async () => {
-    render(<AdminPinSettingsView onCancel={vi.fn()} t={(key) => key} />);
+    render(<AdminPinSettingsView onCancel={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText('رمز الدخول الحالي'), {
       target: { value: '88899' },

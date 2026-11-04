@@ -7,12 +7,10 @@ import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailu
 
 interface AdminPinSettingsViewProps {
   onCancel: () => void;
-  t: (key: string) => string;
 }
 
 export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
   onCancel,
-  t,
 }) => {
   const [isAdminPinVerified, setIsAdminPinVerified] = useState<boolean>(false);
   const [currentPinAttempt, setCurrentPinAttempt] = useState<string>('');
@@ -31,7 +29,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (attempt.length < 5) {
-      setAdminPinError(t('أدخل رمز الدخول الحالي للمتابعة.'));
+      setAdminPinError('أدخل رمز الدخول الحالي للمتابعة.');
       return;
     }
 
@@ -45,17 +43,17 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       if (data && data.valid) {
         setIsAdminPinVerified(true);
       } else {
-        setAdminPinError(t('رمز الدخول الحالي غير صحيح.'));
+        setAdminPinError('رمز الدخول الحالي غير صحيح.');
       }
     } catch (error) {
       const failure = classifyApiFailure(error);
       const reference = getApiFailureReference(error);
-      if (failure === 'network') setAdminPinError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
-      else if (failure === 'timeout') setAdminPinError(t('انتهت مهلة التحقق من رمز الدخول. حاول مرة أخرى.'));
+      if (failure === 'network') setAdminPinError('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
+      else if (failure === 'timeout') setAdminPinError('انتهت مهلة التحقق من رمز الدخول. حاول مرة أخرى.');
       else if (failure === 'server') {
-        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
-        setAdminPinError(`${t('حدث خطأ في الخادم أثناء التحقق من رمز الدخول.')}${suffix}`);
-      } else setAdminPinError(t('تعذر التحقق من رمز الدخول. حاول مرة أخرى.'));
+        const suffix = reference ? ` (${'رقم التتبع'}: ${reference})` : '';
+        setAdminPinError(`${'حدث خطأ في الخادم أثناء التحقق من رمز الدخول.'}${suffix}`);
+      } else setAdminPinError('تعذر التحقق من رمز الدخول. حاول مرة أخرى.');
     } finally {
       setIsVerifyingCurrent(false);
     }
@@ -70,12 +68,12 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     const attempt = normalizeDigits(currentPinAttempt).replace(/\D/g, '');
 
     if (!/^\d{5}$/.test(newPin)) {
-      setAdminPinError(t('رمز الدخول الجديد يجب أن يتكون من 5 أرقام بالضبط.'));
+      setAdminPinError('رمز الدخول الجديد يجب أن يتكون من 5 أرقام بالضبط.');
       return;
     }
 
     if (newPin === attempt) {
-      setAdminPinError(t('رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.'));
+      setAdminPinError('رمز الدخول الجديد يجب أن يكون مختلفاً عن الرمز الحالي.');
       return;
     }
 
@@ -83,13 +81,13 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
     try {
       const pinCheck = await authService.isPinTaken(newPin);
       if (pinCheck.taken) {
-        setAdminPinError(`${t('هذا الرمز السري مستخدم بالفعل في حساب آخر:')} (${pinCheck.name} - ${pinCheck.role})`);
+        setAdminPinError(`${'هذا الرمز السري مستخدم بالفعل في حساب آخر:'} (${pinCheck.name} - ${pinCheck.role})`);
         setIsSavingAdminPin(false);
         return;
       }
 
       await adminService.updateAdminPin(newPin, attempt);
-      setAdminPinSuccess(t('تم تغيير رمز الدخول بنجاح.'));
+      setAdminPinSuccess('تم تغيير رمز الدخول بنجاح.');
       setCurrentPinAttempt('');
       setNewAdminPinValue('');
       setIsAdminPinVerified(false);
@@ -103,13 +101,13 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
       const knownPinError = ['الرمز مستخدم بالفعل', 'رمز الدخول الحالي مطلوب', 'رمز الدخول الحالي غير صحيح'].includes(error?.message);
       const failure = classifyApiFailure(error);
       const reference = getApiFailureReference(error);
-      if (knownPinError) setAdminPinError(t(error.message));
-      else if (failure === 'network') setAdminPinError(t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.'));
-      else if (failure === 'timeout') setAdminPinError(t('انتهت مهلة تغيير رمز الدخول. تحقق من التغيير قبل إعادة المحاولة.'));
+      if (knownPinError) setAdminPinError(error.message);
+      else if (failure === 'network') setAdminPinError('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
+      else if (failure === 'timeout') setAdminPinError('انتهت مهلة تغيير رمز الدخول. تحقق من التغيير قبل إعادة المحاولة.');
       else if (failure === 'server') {
-        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
-        setAdminPinError(`${t('حدث خطأ في الخادم أثناء تغيير رمز الدخول.')}${suffix}`);
-      } else setAdminPinError(t('تعذر تغيير رمز الدخول. حاول مرة أخرى.'));
+        const suffix = reference ? ` (${'رقم التتبع'}: ${reference})` : '';
+        setAdminPinError(`${'حدث خطأ في الخادم أثناء تغيير رمز الدخول.'}${suffix}`);
+      } else setAdminPinError('تعذر تغيير رمز الدخول. حاول مرة أخرى.');
     } finally {
       setIsSavingAdminPin(false);
     }
@@ -128,10 +126,10 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 <Shield className="w-7 h-7 text-red-600 dark:text-red-400 stroke-[2.5]" />
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                {t('التحقق من الهوية')}
+                {'التحقق من الهوية'}
               </h2>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-                {t('أدخل رمز الدخول الحالي للمتابعة')}
+                {'أدخل رمز الدخول الحالي للمتابعة'}
               </p>
             </div>
 
@@ -147,7 +145,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                     setCurrentPinAttempt(val);
                   }}
                   maxLength={10}
-                  aria-label={t("رمز الدخول الحالي")}
+                  aria-label={"رمز الدخول الحالي"}
                   required
                   placeholder="••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 dark:focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.3em] font-mono"
@@ -166,7 +164,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   ) : (
                     <Check className="w-5 h-5 stroke-[3]" />
                   )}
-                  <span>{t('تأكيد ودخول')}</span>
+                  <span>{'تأكيد ودخول'}</span>
                 </button>
                 <button
                   type="button"
@@ -180,7 +178,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   }}
                   className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center"
                 >
-                  {t('رجوع')}
+                  {'رجوع'}
                 </button>
               </div>
               {adminPinError && (
@@ -198,10 +196,10 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                 <Key className="w-7 h-7 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                {t('رمز دخول الآدمن')}
+                {'رمز دخول الآدمن'}
               </h2>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-                {t('أدخل رمز دخول جديداً (5 أرقام)')}
+                {'أدخل رمز دخول جديداً (5 أرقام)'}
               </p>
             </div>
 
@@ -218,7 +216,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   }}
                   maxLength={5}
                   minLength={5}
-                  aria-label={t("رمز الدخول الجديد")}
+                  aria-label={"رمز الدخول الجديد"}
                   required
                   placeholder="•••••"
                   className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.3em] font-mono"
@@ -235,12 +233,12 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   {isSavingAdminPin ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>{t('جارٍ الحفظ...')}</span>
+                      <span>{'جارٍ الحفظ...'}</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-5 h-5 stroke-[3]" />
-                      <span>{t('حفظ رمز الدخول')}</span>
+                      <span>{'حفظ رمز الدخول'}</span>
                     </>
                   )}
                 </button>
@@ -254,7 +252,7 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
                   }}
                   className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center"
                 >
-                  {t('رجوع')}
+                  {'رجوع'}
                 </button>
               </div>
               {adminPinError && (

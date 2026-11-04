@@ -17,7 +17,6 @@ import { Garage } from '../../../types';
 
 interface AdminGarageHeroAndStatsProps {
   garage: Garage;
-  t: (key: string) => string;
   isUpdatingLock: boolean;
   onToggleLock: () => Promise<void>;
   onOpenEditPin: () => void;
@@ -25,7 +24,6 @@ interface AdminGarageHeroAndStatsProps {
 
 export const AdminGarageHeroAndStats = memo(({
   garage,
-  t,
   isUpdatingLock,
   onToggleLock,
   onOpenEditPin
@@ -53,7 +51,7 @@ export const AdminGarageHeroAndStats = memo(({
                     ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
                     : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
                 }`}>
-                  {garage.isLocked ? t('معطل') : t('نشط')}
+                  {garage.isLocked ? 'معطل' : 'نشط'}
                 </span>
               </div>
 
@@ -68,7 +66,7 @@ export const AdminGarageHeroAndStats = memo(({
                 {/* Owner PIN quick view / edit */}
                 <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                   <Key className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[10px] text-slate-500">{t('رمز المالك:')}</span>
+                  <span className="text-[10px] text-slate-500">{'رمز المالك:'}</span>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
                       {formatDisplayPin(garage.pin || garage.ownerPin)}
@@ -82,7 +80,7 @@ export const AdminGarageHeroAndStats = memo(({
                       }}
                       className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold cursor-pointer"
                     >
-                      {t('تعديل')}
+                      {'تعديل'}
                     </button>
                   </div>
                 </div>
@@ -104,17 +102,17 @@ export const AdminGarageHeroAndStats = memo(({
               {isUpdatingLock ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t('جاري المعالجة...')}</span>
+                  <span>{'جاري المعالجة...'}</span>
                 </>
               ) : garage.isLocked ? (
                 <>
                   <Unlock className="w-4 h-4" />
-                  <span>{t('تفعيل الجراج الآن')}</span>
+                  <span>{'تفعيل الجراج الآن'}</span>
                 </>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>{t('إيقاف الخدمة فوراً')}</span>
+                  <span>{'إيقاف الخدمة فوراً'}</span>
                 </>
               )}
             </button>

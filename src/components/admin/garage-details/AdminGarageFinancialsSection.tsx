@@ -4,13 +4,11 @@ import { Garage } from '../../../types';
 
 interface AdminGarageFinancialsSectionProps {
   garage: Garage;
-  t: (key: string) => string;
   onToggleMonthlySubscribers: () => Promise<void>;
 }
 
 export const AdminGarageFinancialsSection = memo(({
   garage,
-  t,
   onToggleMonthlySubscribers,
 }: AdminGarageFinancialsSectionProps) => {
   return (
@@ -19,10 +17,10 @@ export const AdminGarageFinancialsSection = memo(({
         <div className="space-y-1">
           <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <span>{t('خدمة المشتركين الشهريين / الإيواء')}</span>
+            <span>{'خدمة المشتركين الشهريين / الإيواء'}</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-bold">
-            {t('يتيح هذا الخيار إدارة المشتركين الشهريين دون رسوم اشتراك منفصلة؛ ويتم تطبيق قواعد الرصيد المعتمدة على دخول المركبات العادية.')}
+            {'يتيح هذا الخيار إدارة المشتركين الشهريين دون رسوم اشتراك منفصلة؛ ويتم تطبيق قواعد الرصيد المعتمدة على دخول المركبات العادية.'}
           </p>
         </div>
         <button

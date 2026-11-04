@@ -17,9 +17,6 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services';
 import { safeDate } from '../../utils/dates';;
-import { useTheme } from '../../utils/ThemeContext';
-import { useAdminTranslation } from '../../utils/adminTranslations';
-
 interface ActivityLogExportModalProps {
   onClose: () => void;
 }
@@ -126,8 +123,8 @@ function getAmountContent(log: any): string | number {
 }
 
 export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps) => {
-  const { adminLang } = useTheme();
-  const t = useAdminTranslation(adminLang);
+  
+  
 
   const [period, setPeriod] = useState<ExportPeriod>('today');
   const [isExporting, setIsExporting] = useState(false);
@@ -156,7 +153,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
       const logs = await adminService.getActivityLogsSince(sinceDate);
 
       if (!logs || logs.length === 0) {
-        setErrorMessage(t('لا توجد عمليات مسجلة في هذه الفترة'));
+        setErrorMessage('لا توجد عمليات مسجلة في هذه الفترة');
         setIsExporting(false);
         return;
       }
@@ -206,7 +203,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      setSuccessMessage(`${t('تم تصدير وتحميل الملف بنجاح')} (${logs.length} ${t('سجل')})`);
+      setSuccessMessage(`${'تم تصدير وتحميل الملف بنجاح'} (${logs.length} ${'سجل'})`);
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -232,10 +229,10 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight">
-                {t('تصدير سجل العمليات والنشاطات')}
+                {'تصدير سجل العمليات والنشاطات'}
               </h3>
               <p className="text-[11px] font-bold text-slate-400">
-                {t('تحميل سجل النشاط (CSV)')}
+                {'تحميل سجل النشاط (CSV)'}
               </p>
             </div>
           </div>
@@ -252,7 +249,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
         {/* Content */}
         <div className="p-6 space-y-5">
           <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-            {t('اختر الفترة الزمنية المراد تحميل سجلاتها:')}
+            {'اختر الفترة الزمنية المراد تحميل سجلاتها:'}
           </p>
 
           <div className="grid grid-cols-1 gap-2.5">
@@ -270,7 +267,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${period === 'hour' ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                   <Clock className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-black">{t('آخر ساعة')}</span>
+                <span className="text-xs font-black">{'آخر ساعة'}</span>
               </div>
               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${period === 'hour' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 dark:border-slate-600'}`}>
                 {period === 'hour' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -291,7 +288,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${period === 'today' ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                   <Calendar className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-black">{t('اليوم')}</span>
+                <span className="text-xs font-black">{'اليوم'}</span>
               </div>
               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${period === 'today' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 dark:border-slate-600'}`}>
                 {period === 'today' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -312,7 +309,7 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${period === 'week' ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                   <CalendarDays className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-black">{t('آخر 7 أيام')}</span>
+                <span className="text-xs font-black">{'آخر 7 أيام'}</span>
               </div>
               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${period === 'week' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 dark:border-slate-600'}`}>
                 {period === 'week' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -345,12 +342,12 @@ export const ActivityLogExportModal = ({ onClose }: ActivityLogExportModalProps)
             {isExporting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('جاري تجهيز وتصدير ملف CSV...')}</span>
+                <span>{'جاري تجهيز وتصدير ملف CSV...'}</span>
               </>
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>{t('تحميل الملف')}</span>
+                <span>{'تحميل الملف'}</span>
               </>
             )}
           </button>

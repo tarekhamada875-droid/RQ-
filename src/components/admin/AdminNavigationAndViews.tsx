@@ -34,7 +34,6 @@ interface AdminNavigationAndViewsProps {
   onOpenAddGarage?: () => void;
   handleApproveGarage: (g: Garage) => Promise<void>;
   handleRejectGarage: (g: Garage) => Promise<void>;
-  t: (key: string) => string;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
   onImmediateLogout?: () => void;
@@ -56,7 +55,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   onOpenAddGarage,
   handleApproveGarage,
   handleRejectGarage,
-  t,
   showToast,
   onLogout,
   onImmediateLogout,
@@ -81,7 +79,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <Car className={`w-4 h-4 ${activeTab === 'garages' ? 'text-current' : 'text-amber-500'}`} />
-              <span>{t('الجراجات')}</span>
+              <span>{'الجراجات'}</span>
             </button>
 
             {/* Tab 2: Requests */}
@@ -95,7 +93,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <Zap className={`w-4 h-4 ${activeTab === 'requests' ? 'text-current' : 'text-rose-500'}`} />
-              <span>{t('الطلبات والمراجعات')}</span>
+              <span>{'الطلبات والمراجعات'}</span>
               {pendingGarages.length > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
                   activeTab === 'requests'
@@ -118,7 +116,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <Users className={`w-4 h-4 ${(activeTab === 'people' || activeTab === 'delegates') ? 'text-current' : 'text-indigo-500'}`} />
-              <span>{t('الأشخاص')}</span>
+              <span>{'الأشخاص'}</span>
             </button>
 
             {/* Tab 4: Settings */}
@@ -132,7 +130,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               }`}
             >
               <SettingsIcon className={`w-4 h-4 ${(activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings') ? 'text-current' : 'text-sky-500'}`} />
-              <span>{t('الإعدادات')}</span>
+              <span>{'الإعدادات'}</span>
             </button>
           </div>
         </div>
@@ -159,13 +157,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{t('تصدير سجل النشاط')}</h3>
+                <h3 className="font-black text-slate-900 dark:text-white text-base">{'تصدير سجل النشاط'}</h3>
                 <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
                   <Download className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>{t('تحميل سجل النشاط بصيغة CSV')}</span>
+                <span>{'تحميل سجل النشاط بصيغة CSV'}</span>
                 <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
@@ -180,13 +178,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{t('رمز دخول الآدمن')}</h3>
+                <h3 className="font-black text-slate-900 dark:text-white text-base">{'رمز دخول الآدمن'}</h3>
                 <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
                   <Key className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>{t('تحديث رمز الحماية السري')}</span>
+                <span>{'تحديث رمز الحماية السري'}</span>
                 <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
@@ -238,7 +236,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           setAdminSearch={setAdminSearch}
           onSelectGarage={onSelectGarage}
           onOpenAddGarage={onOpenAddGarage || (() => {})}
-          t={t}
         />
       ) : activeTab === 'requests' ? (
         <AdminRequestsView
@@ -247,13 +244,12 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           handleRejectGarage={handleRejectGarage}
         />
       ) : activeTab === 'active_sessions' ? (
-        <AdminActiveSessionsView onLogout={onLogout} onImmediateLogout={onImmediateLogout} onBack={() => setActiveTab('catalog_settings')} t={t} showToast={showToast} />
+        <AdminActiveSessionsView onLogout={onLogout} onImmediateLogout={onImmediateLogout} onBack={() => setActiveTab('catalog_settings')} showToast={showToast} />
       ) : activeTab === 'wallet_settings' ? (
-        <AdminWalletSettingsView onBack={() => setActiveTab('catalog_settings')} t={t} />
+        <AdminWalletSettingsView onBack={() => setActiveTab('catalog_settings')} />
       ) : activeTab === 'admin-pin' ? (
         <AdminPinSettingsView
           onCancel={() => setActiveTab('catalog_settings')}
-          t={t}
         />
       ) : null}
 

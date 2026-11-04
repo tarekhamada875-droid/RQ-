@@ -5,7 +5,6 @@ import { adminService } from '../../services';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
-  t: (key: string) => string;
 }
 
 /**
@@ -16,7 +15,7 @@ interface AdminWalletSettingsViewProps {
  * This screen does NOT require PIN re-verification — setting a wallet number is not a
  * security-sensitive operation like changing the admin PIN. The admin is already authenticated.
  */
-export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = ({ onBack, t }) => {
+export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = ({ onBack }) => {
   const [paymentWalletNumber, setPaymentWalletNumber] = useState<string>('');
   const [originalWalletNumber, setOriginalWalletNumber] = useState<string>('');
   const [saveError, setSaveError] = useState<string>('');
@@ -49,24 +48,24 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
     setSaveSuccess('');
     const trimmed = paymentWalletNumber.trim();
     if (!trimmed) {
-      setSaveError(t('أدخل رقم محفظة الدفع أولاً.'));
+      setSaveError('أدخل رقم محفظة الدفع أولاً.');
       return;
     }
     if (trimmed.length > 120) {
-      setSaveError(t('رقم المحفظة طويل جداً.'));
+      setSaveError('رقم المحفظة طويل جداً.');
       return;
     }
     if (trimmed === originalWalletNumber) {
-      setSaveSuccess(t('لم يتم تغيير الرقم.'));
+      setSaveSuccess('لم يتم تغيير الرقم.');
       return;
     }
     setIsSaving(true);
     try {
       await adminService.updateSystemConfig({ paymentWalletNumber: trimmed });
       setOriginalWalletNumber(trimmed);
-      setSaveSuccess(t('تم حفظ رقم محفظة الدفع بنجاح.'));
+      setSaveSuccess('تم حفظ رقم محفظة الدفع بنجاح.');
     } catch (err: any) {
-      setSaveError(t('تعذّر حفظ رقم المحفظة. حاول مرة أخرى.'));
+      setSaveError('تعذّر حفظ رقم المحفظة. حاول مرة أخرى.');
     } finally {
       setIsSaving(false);
     }
@@ -84,10 +83,10 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
             <Wallet className="w-7 h-7 text-amber-600 dark:text-amber-400 stroke-[2.5]" />
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-            {t('رقم محفظة الدفع')}
+            {'رقم محفظة الدفع'}
           </h2>
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 max-w-md mx-auto text-balance">
-            {t('يُعرض لأصحاب الجراجات عند نفاد رصيدهم ليعرفوا أين يرسلون الدفع')}
+            {'يُعرض لأصحاب الجراجات عند نفاد رصيدهم ليعرفوا أين يرسلون الدفع'}
           </p>
         </div>
 
@@ -99,7 +98,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
           <form onSubmit={handleSave} className="space-y-6 relative z-10">
             <div className="space-y-3">
               <label htmlFor="payment-wallet-number" className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                {t('رقم المحفظة (فودافون كاش / إنستاباي / محفظة بنكية)')}
+                {'رقم المحفظة (فودافون كاش / إنستاباي / محفظة بنكية)'}
               </label>
               <input
                 id="payment-wallet-number"
@@ -112,15 +111,15 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                   setSaveSuccess('');
                 }}
                 maxLength={120}
-                aria-label={t('رقم محفظة الدفع')}
+                aria-label={'رقم محفظة الدفع'}
                 required
-                placeholder={t('01012345678 / Instapay / محفظة')}
+                placeholder={'01012345678 / Instapay / محفظة'}
                 className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
                 dir="ltr"
                 autoFocus
               />
               <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center font-semibold">
-                {t('سيظهر هذا الرقم لكل أصحاب الجراجات عند نفاد رصيدهم')}
+                {'سيظهر هذا الرقم لكل أصحاب الجراجات عند نفاد رصيدهم'}
               </p>
             </div>
 
@@ -133,12 +132,12 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 {isSaving ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>{t('جاري الحفظ...')}</span>
+                    <span>{'جاري الحفظ...'}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-5 h-5 stroke-[3]" />
-                    <span>{t('حفظ رقم المحفظة')}</span>
+                    <span>{'حفظ رقم المحفظة'}</span>
                   </>
                 )}
               </button>
@@ -148,7 +147,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
-                <span>{t('رجوع')}</span>
+                <span>{'رجوع'}</span>
               </button>
             </div>
 
