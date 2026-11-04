@@ -26,7 +26,7 @@ interface GarageDashboardHeaderAndDrawerProps {
   isMenuOpen: boolean;
   setIsMenuOpen: (open: boolean) => void;
   expiringSubscribersCount: number;
-  hasNewRecharge: boolean;
+  hasNewCreditGrant: boolean;
   onNavigateOverlay: (overlay: string) => void;
   onLogout: () => void;
 }
@@ -38,7 +38,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
   isMenuOpen,
   setIsMenuOpen,
   expiringSubscribersCount,
-  hasNewRecharge,
+  hasNewCreditGrant,
   onNavigateOverlay,
   onLogout,
 }: GarageDashboardHeaderAndDrawerProps) => {
@@ -66,7 +66,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                     : 'bg-slate-900 dark:bg-slate-800 text-white border-slate-900 dark:border-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700'
                 }`}
               >
-                {(expiringSubscribersCount > 0 || hasNewRecharge) && !isMenuOpen && (
+                {(expiringSubscribersCount > 0 || hasNewCreditGrant) && !isMenuOpen && (
                   <span
                     className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
                       expiringSubscribersCount > 0 ? 'bg-red-500' : 'bg-emerald-500'
@@ -170,7 +170,7 @@ export const GarageDashboardHeaderAndDrawer = memo(({
                       </div>
                       <span className="font-bold text-sm">تاريخ الشحن</span>
                     </div>
-                    {hasNewRecharge && (
+                    {hasNewCreditGrant && (
                       <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white text-xs font-black">جديد</span>
                     )}
                   </button>

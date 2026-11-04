@@ -5,7 +5,7 @@ import { adminBillingService } from '../../services/adminBillingService';
 import { safeDate } from '../../utils';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
-interface RechargeHistoryViewProps {
+interface CreditGrantHistoryViewProps {
   garage: Garage;
   onClose: () => void;
   showToast?: (msg: string, type?: 'success' | 'error') => void;
@@ -35,7 +35,7 @@ const formatDate = (timestamp: unknown) => safeDate(timestamp).toLocaleDateStrin
 // Time display is hidden from user-facing screens per Q89D.
 // Server timestamps remain authoritative internally for billing and audit.
 
-export const RechargeHistoryView = memo(({ garage, onClose, showToast }: RechargeHistoryViewProps) => {
+export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: CreditGrantHistoryViewProps) => {
   const [grants, setGrants] = useState<CreditGrantRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);

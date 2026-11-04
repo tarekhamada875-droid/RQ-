@@ -8,7 +8,7 @@ describe('Garage Recharge Notification Behavior', () => {
     localStorage.clear();
   });
 
-  it('1. Triggers recharge notification when a new unacknowledged recharge is received', () => {
+  it('1. Triggers credit grant notification when a new unacknowledged credit grant is received', () => {
     const rechargeLog = {
       id: 'log_recharge_999',
       garageId,
@@ -18,7 +18,7 @@ describe('Garage Recharge Notification Behavior', () => {
       timestamp: new Date()
     };
 
-    const isAcknowledged = localStorage.getItem(`acknowledged_recharge_${garageId}`) === rechargeLog.id;
+    const isAcknowledged = localStorage.getItem(`acknowledged_credit_grant_${garageId}`) === rechargeLog.id;
     const diffMs = Date.now() - safeDate(rechargeLog.timestamp).getTime();
     const isRecent = diffMs < 7 * 24 * 60 * 60 * 1000;
 
@@ -41,18 +41,18 @@ describe('Garage Recharge Notification Behavior', () => {
     };
 
     // User acknowledges by clicking "تمام"
-    localStorage.setItem(`acknowledged_recharge_${garageId}`, rechargeLog.id);
+    localStorage.setItem(`acknowledged_credit_grant_${garageId}`, rechargeLog.id);
 
-    const isAcknowledged = localStorage.getItem(`acknowledged_recharge_${garageId}`) === rechargeLog.id;
+    const isAcknowledged = localStorage.getItem(`acknowledged_credit_grant_${garageId}`) === rechargeLog.id;
     const shouldShowModal = !isAcknowledged;
     expect(shouldShowModal).toBe(false);
   });
 
-  it('3. Re-triggers notification when a fresh new recharge arrives with a new ID', () => {
+  it('3. Re-triggers notification when a fresh new credit grant arrives with a new ID', () => {
     // Old recharge acknowledged
-    localStorage.setItem(`acknowledged_recharge_${garageId}`, 'log_recharge_old_111');
+    localStorage.setItem(`acknowledged_credit_grant_${garageId}`, 'log_recharge_old_111');
 
-    // Admin executes new recharge
+    // Admin executes new credit grant
     const newRechargeLog = {
       id: 'log_recharge_new_222',
       garageId,
@@ -61,7 +61,7 @@ describe('Garage Recharge Notification Behavior', () => {
       timestamp: new Date()
     };
 
-    const isAcknowledged = localStorage.getItem(`acknowledged_recharge_${garageId}`) === newRechargeLog.id;
+    const isAcknowledged = localStorage.getItem(`acknowledged_credit_grant_${garageId}`) === newRechargeLog.id;
     expect(isAcknowledged).toBe(false);
   });
 });

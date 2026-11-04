@@ -143,7 +143,7 @@ export const GarageReportsView = memo(({
   }, [garage]);
 
   // Live direct refresh from Firestore. Errors are surfaced to the user via
-  // a toast + an inline error card (mirrors RechargeHistoryView's pattern).
+  // a toast + an inline error card (mirrors CreditGrantHistoryView's pattern).
   // Previously the catch was silently swallowed, leaving the user looking at
   // stale data with no signal that anything had gone wrong.
   const refreshFromFirestore = useCallback(async () => {

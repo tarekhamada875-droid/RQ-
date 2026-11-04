@@ -48,7 +48,7 @@ vi.mock('../services', () => { const _svc = {
     isPinTaken: vi.fn().mockResolvedValue({ taken: false }),
     addStaff: vi.fn().mockResolvedValue({ id: 'staff_test_1' }),
     removeStaff: vi.fn().mockResolvedValue(undefined),
-    subscribeToGarageRechargeLogs: vi.fn(() => () => {}),
+    subscribeToCreditGrantLogs: vi.fn(() => () => {}),
     subscribeToSubscribers: vi.fn(() => () => {}),
     subscribeToSystemConfig: vi.fn((cb) => {
       cb({ adminColor: '#10b981' });

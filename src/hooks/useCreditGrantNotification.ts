@@ -3,10 +3,10 @@ import type { ActivityLog } from '../types';
 import { safeDate } from '../utils';
 import { soundManager } from '../utils/sounds';
 
-interface UseRechargeNotificationArgs {
+interface UseCreditGrantNotificationArgs {
   garageId: string | undefined;
   isAuthenticated: boolean;
-  rechargeLogs: ActivityLog[];
+  creditGrantLogs: ActivityLog[];
   /** Used for testability (fake timers control it via the prop). Intentionally
    *  NOT in any effect's deps array — `now` ticks every second from the parent,
    *  and re-running the detection effect on every tick would churn state. */
@@ -16,68 +16,68 @@ interface UseRechargeNotificationArgs {
   isTrial?: boolean;
 }
 
-interface UseRechargeNotificationResult {
-  /** Whether there is an unacknowledged recharge in the last 15 minutes. */
-  hasNewRecharge: boolean;
-  /** The most recent unacknowledged recharge log, or null. */
-  latestRechargeLog: ActivityLog | null;
-  /** Whether the recharge notification modal is currently open. */
-  isRechargeNotificationOpen: boolean;
+interface UseCreditGrantNotificationResult {
+  /** Whether there is an unacknowledged credit grant in the last 15 minutes. */
+  hasNewCreditGrant: boolean;
+  /** The most recent unacknowledged credit grant log, or null. */
+  latestCreditGrantLog: ActivityLog | null;
+  /** Whether the credit grant notification modal is currently open. */
+  isCreditGrantNotificationOpen: boolean;
   /** Acknowledge the current recharge: persists id + timestamp to localStorage
    *  and closes the modal. Called by the notification modal's close button
-   *  and by the recharge-history overlay's close handler. */
-  handleAcknowledgeRecharge: () => void;
+   *  and by the credit-grant-history overlay's close handler. */
+  handleAcknowledgeCreditGrant: () => void;
   /** Clear the new-recharge badge without persisting an ack. Used when the
-   *  user opens the recharge-history overlay (so the badge stops pulsing)
+   *  user opens the credit-grant-history overlay (so the badge stops pulsing)
    *  without acknowledging the specific recharge. */
-  clearNewRechargeBadge: () => void;
+  clearNewCreditGrantBadge: () => void;
 }
 
 /** Detection window: a recharge is "new" if it landed within the last 15
  *  minutes and hasn't been acknowledged. Matches the auto-close timer. */
-const RECHARGE_RECENT_WINDOW_MS = 15 * 60 * 1000;
+const CREDIT_GRANT_RECENT_WINDOW_MS = 15 * 60 * 1000;
 
 /**
  * Recharge-notification state machine for the garage dashboard.
  *
  * Extracted from GarageDashboardView (was ~85 lines inline). Owns:
- *   - detection of an unacknowledged recent recharge from the live feed
+ *   - detection of an unacknowledged recent credit grant from the live feed
  *   - one-shot sound playback per recharge id
  *   - 15-minute auto-close timer keyed off the log timestamp
  *   - localStorage-backed acknowledgement (id + timestamp, so older
  *     recharges don't re-notify if the id changes shape)
  *
- * The hook does NOT own the recharge-history overlay's open/close state —
+ * The hook does NOT own the credit-grant-history overlay's open/close state —
  * that stays in the dashboard so the overlay can be opened independently
  * of whether a notification is showing.
  */
-export function useRechargeNotification({
+export function useCreditGrantNotification({
   garageId,
   isAuthenticated,
-  rechargeLogs,
+  creditGrantLogs,
   now,
   isTrial,
-}: UseRechargeNotificationArgs): UseRechargeNotificationResult {
-  const [hasNewRecharge, setHasNewRecharge] = useState(false);
-  const [latestRechargeLog, setLatestRechargeLog] = useState<ActivityLog | null>(null);
-  const [isRechargeNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
+}: UseCreditGrantNotificationArgs): UseCreditGrantNotificationResult {
+  const [hasNewCreditGrant, setHasNewRecharge] = useState(false);
+  const [latestCreditGrantLog, setLatestRechargeLog] = useState<ActivityLog | null>(null);
+  const [isCreditGrantNotificationOpen, setIsRechargeNotificationOpen] = useState(false);
 
-  // Detection: scan the live recharge feed for an unacknowledged entry from
+  // Detection: scan the live credit grant feed for an unacknowledged entry from
   // the last 15 minutes. Filters out referral-reward entries (those aren't
   // "you got money" notifications). `now` is read for testability but is
   // intentionally NOT in the deps array — every parent tick would re-run
   // this effect and churn the state setters.
   useEffect(() => {
     if (!isAuthenticated || !garageId) return;
-    const candidateLogs = (rechargeLogs || []).filter((log: any) => {
+    const candidateLogs = (creditGrantLogs || []).filter((log: any) => {
       if (!log) return false;
       if (log.details?.type === 'use_referral_reward') return false;
       if (log.plateNumber && String(log.plateNumber).includes('استخدام مكافأة')) return false;
       return true;
     });
 
-    const lastAckId = localStorage.getItem(`acknowledged_recharge_${garageId}`);
-    const lastAckTime = Number(localStorage.getItem(`acknowledged_recharge_time_${garageId}`) || 0);
+    const lastAckId = localStorage.getItem(`acknowledged_credit_grant_${garageId}`);
+    const lastAckTime = Number(localStorage.getItem(`acknowledged_credit_grant_time_${garageId}`) || 0);
     const latest = candidateLogs[0];
     if (!latest) {
       setHasNewRecharge(false);
@@ -90,29 +90,29 @@ export function useRechargeNotification({
     const logTime = logDate.getTime();
     const logId = latest?.id ?? `recharge_${logTime}`;
     const diffMs = Math.max(0, (now?.getTime?.() ?? Date.now()) - logTime);
-    const isRecent = diffMs < RECHARGE_RECENT_WINDOW_MS;
+    const isRecent = diffMs < CREDIT_GRANT_RECENT_WINDOW_MS;
     const isAcknowledged = lastAckId === logId || (lastAckTime > 0 && logTime <= lastAckTime);
 
     if (!isAcknowledged && isRecent) {
       setHasNewRecharge(true);
       setLatestRechargeLog(latest);
       setIsRechargeNotificationOpen(true);
-      if (localStorage.getItem(`dashboard_sound_recharge_${garageId}`) !== logId) {
+      if (localStorage.getItem(`dashboard_sound_credit_grant_${garageId}`) !== logId) {
         try {
           soundManager.play("checkIn");
         } catch {
           // Sound playback is best-effort — failures (autoplay policy, missing
           // audio context) are not actionable for the user and already surfaced
-          // via the visual recharge notification. No console leak in production.
+          // via the visual credit grant notification. No console leak in production.
         }
-        localStorage.setItem(`dashboard_sound_recharge_${garageId}`, logId);
+        localStorage.setItem(`dashboard_sound_credit_grant_${garageId}`, logId);
       }
     } else {
       setHasNewRecharge(false);
       setLatestRechargeLog(null);
       setIsRechargeNotificationOpen(false);
     }
-  }, [garageId, isAuthenticated, rechargeLogs, isTrial]);
+  }, [garageId, isAuthenticated, creditGrantLogs, isTrial]);
 
   // Auto-close the notification 15 minutes after the log timestamp.
   // PERF: `now` is read once when the notification opens (for the initial
@@ -120,11 +120,11 @@ export function useRechargeNotification({
   // acknowledges. `now` is NOT in the deps array — including it would
   // clear and re-create the setTimeout every time the parent's clock ticks.
   useEffect(() => {
-    if (!isRechargeNotificationOpen || !latestRechargeLog) return;
+    if (!isCreditGrantNotificationOpen || !latestCreditGrantLog) return;
 
-    const logTime = safeDate(latestRechargeLog.timestamp).getTime();
+    const logTime = safeDate(latestCreditGrantLog.timestamp).getTime();
     const currentTime = now?.getTime?.() ?? Date.now();
-    const remainingMs = Math.max(0, logTime + RECHARGE_RECENT_WINDOW_MS - currentTime);
+    const remainingMs = Math.max(0, logTime + CREDIT_GRANT_RECENT_WINDOW_MS - currentTime);
     const expiryTimer = window.setTimeout(() => {
       setHasNewRecharge(false);
       setLatestRechargeLog(null);
@@ -132,29 +132,29 @@ export function useRechargeNotification({
     }, remainingMs);
 
     return () => window.clearTimeout(expiryTimer);
-  }, [isRechargeNotificationOpen, latestRechargeLog]);
+  }, [isCreditGrantNotificationOpen, latestCreditGrantLog]);
 
-  const handleAcknowledgeRecharge = useCallback(() => {
-    if (latestRechargeLog && garageId) {
-      localStorage.setItem(`acknowledged_recharge_${garageId}`, latestRechargeLog.id);
-      const logTime = safeDate(latestRechargeLog.timestamp).getTime();
+  const handleAcknowledgeCreditGrant = useCallback(() => {
+    if (latestCreditGrantLog && garageId) {
+      localStorage.setItem(`acknowledged_credit_grant_${garageId}`, latestCreditGrantLog.id);
+      const logTime = safeDate(latestCreditGrantLog.timestamp).getTime();
       if (logTime > 0) {
-        localStorage.setItem(`acknowledged_recharge_time_${garageId}`, String(logTime));
+        localStorage.setItem(`acknowledged_credit_grant_time_${garageId}`, String(logTime));
       }
     }
     setHasNewRecharge(false);
     setIsRechargeNotificationOpen(false);
-  }, [garageId, latestRechargeLog]);
+  }, [garageId, latestCreditGrantLog]);
 
-  const clearNewRechargeBadge = useCallback(() => {
+  const clearNewCreditGrantBadge = useCallback(() => {
     setHasNewRecharge(false);
   }, []);
 
   return {
-    hasNewRecharge,
-    latestRechargeLog,
-    isRechargeNotificationOpen,
-    handleAcknowledgeRecharge,
-    clearNewRechargeBadge,
+    hasNewCreditGrant,
+    latestCreditGrantLog,
+    isCreditGrantNotificationOpen,
+    handleAcknowledgeCreditGrant,
+    clearNewCreditGrantBadge,
   };
 }

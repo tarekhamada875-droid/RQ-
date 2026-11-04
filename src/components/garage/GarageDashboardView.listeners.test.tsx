@@ -17,7 +17,7 @@ vi.mock('../../hooks/vehicleOpsContext', () => ({
 }));
 
 const serviceMocks = vi.hoisted(() => ({
-  subscribeToGarageRechargeLogs: vi.fn(),
+  subscribeToCreditGrantLogs: vi.fn(),
   subscribeToSubscribers: vi.fn(),
 }));
 
@@ -48,10 +48,10 @@ vi.mock('./SmartActionPrompt', () => ({ SmartActionPrompt: () => null }));
 vi.mock('./dashboard/GarageSubscriptionCard', () => ({ GarageSubscriptionCard: () => null }));
 vi.mock('./dashboard/GarageActiveVehiclesList', () => ({ GarageActiveVehiclesList: () => null }));
 vi.mock('./dashboard/GarageDashboardHeaderAndDrawer', () => ({
-  GarageDashboardHeaderAndDrawer: ({ onNavigateOverlay, expiringSubscribersCount, hasNewRecharge }: any) => (
+  GarageDashboardHeaderAndDrawer: ({ onNavigateOverlay, expiringSubscribersCount, hasNewCreditGrant }: any) => (
     <header>
       <output data-testid="expiring-subscriber-badge">{expiringSubscribersCount}</output>
-      <output data-testid="recharge-badge">{String(hasNewRecharge)}</output>
+      <output data-testid="recharge-badge">{String(hasNewCreditGrant)}</output>
       <button type="button" onClick={() => onNavigateOverlay('subscribers')}>Open subscribers</button>
       <button type="button" onClick={() => onNavigateOverlay('history')}>Open recharge history</button>
     </header>
@@ -65,15 +65,15 @@ vi.mock('./SubscribersView', () => ({
     </section>
   ),
 }));
-vi.mock('./RechargeHistoryView', () => ({
-  RechargeHistoryView: ({ sharedLogs, onClose }: any) => (
-    <section data-testid="recharge-history-overlay">
+vi.mock('./CreditGrantHistoryView', () => ({
+  CreditGrantHistoryView: ({ sharedLogs, onClose }: any) => (
+    <section data-testid="credit-grant-history-overlay">
       <output data-testid="overlay-recharge-ids">{sharedLogs.map((log: any) => log.id).join(',')}</output>
       <button type="button" onClick={onClose}>Close history</button>
     </section>
   ),
 }));
-vi.mock('./modals/RechargeNotificationModal', () => ({ RechargeNotificationModal: () => null }));
+vi.mock('./modals/CreditGrantNotificationModal', () => ({ CreditGrantNotificationModal: () => null }));
 vi.mock('./GarageReportsView', () => ({ GarageReportsView: () => null }));
 vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));
 vi.mock('../modals/TermsAndConditionsModal', () => ({ TermsAndConditionsModal: () => null }));
@@ -134,7 +134,7 @@ beforeEach(() => {
   localStorage.clear();
   rechargeListeners = [];
   subscriberListeners = [];
-  serviceMocks.subscribeToGarageRechargeLogs.mockImplementation((_garageId, callback, limit) => {
+  serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback, limit) => {
     const unsubscribe = vi.fn();
     const listener = { callback, limit, active: true, unsubscribe };
     unsubscribe.mockImplementation(() => { listener.active = false; });
@@ -249,7 +249,7 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     }
   });
 
-  it('expires an unacknowledged recharge notification with a targeted timer', () => {
+  it('expires an unacknowledged credit grant notification with a targeted timer', () => {
     vi.useFakeTimers();
     try {
       const initialNow = new Date('2026-10-19T12:14:00.000Z');

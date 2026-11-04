@@ -40,7 +40,7 @@ vi.mock('../utils', () => ({
 import { adminService } from './adminService';
 import { listenerTracker } from '../utils/listenerTracker';
 
-describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
+describe('adminService.subscribeToCreditGrantLogs cleanup (FE-005)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     firestoreMocks.onSnapshot.mockReset();
@@ -70,7 +70,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
         return fallbackUnsub;
       });
 
-    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-1', callback);
+    const unsubscribe = adminService.subscribeToCreditGrantLogs('garage-1', callback);
     expect(listenerTracker.getActiveListenerCount()).toBe(1);
 
     failPrimary?.(new Error('missing composite index'));
@@ -108,7 +108,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
           return fallbackUnsub;
         });
 
-      const unsubscribe = adminService.subscribeToGarageRechargeLogs(`garage-${cycle}`, callback);
+      const unsubscribe = adminService.subscribeToCreditGrantLogs(`garage-${cycle}`, callback);
       failPrimary?.(new Error('missing composite index'));
       unsubscribe();
       emitFallback?.({ docs: [] });
@@ -127,7 +127,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
     firestoreMocks.onSnapshot.mockImplementationOnce(() => primaryUnsub);
     const callback = vi.fn();
 
-    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-normal', callback);
+    const unsubscribe = adminService.subscribeToCreditGrantLogs('garage-normal', callback);
     expect(listenerTracker.getActiveListenerCount()).toBe(1);
 
     unsubscribe();
@@ -153,7 +153,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
       return unsubscribeSnapshot;
     });
 
-    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-latest', callback, 1);
+    const unsubscribe = adminService.subscribeToCreditGrantLogs('garage-latest', callback, 1);
 
     expect(firestoreMocks.orderBy).toHaveBeenCalledWith('timestamp', 'desc');
     expect(firestoreMocks.limit).toHaveBeenCalledWith(1);
@@ -185,7 +185,7 @@ describe('adminService.subscribeToGarageRechargeLogs cleanup (FE-005)', () => {
         return fallbackUnsubscribe;
       });
 
-    const unsubscribe = adminService.subscribeToGarageRechargeLogs('garage-fallback', callback, 1);
+    const unsubscribe = adminService.subscribeToCreditGrantLogs('garage-fallback', callback, 1);
     failPrimary?.(new Error('missing composite index'));
 
     expect(firestoreMocks.orderBy).toHaveBeenCalledTimes(2);

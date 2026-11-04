@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const serviceMocks = vi.hoisted(() => ({
-  subscribeToGarageRechargeLogs: vi.fn(),
+  subscribeToCreditGrantLogs: vi.fn(),
 }));
 
 const billingMocks = vi.hoisted(() => ({
@@ -23,14 +23,14 @@ vi.mock('../../services/adminBillingService', () => ({
   adminBillingService: billingMocks,
 }));
 
-import { RechargeHistoryView } from './RechargeHistoryView';
+import { CreditGrantHistoryView } from './CreditGrantHistoryView';
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
 
-describe('RechargeHistoryView credit grants', () => {
+describe('CreditGrantHistoryView credit grants', () => {
   it('renders only admin credit grants from the scoped ledger', async () => {
     billingMocks.getGarageCreditLedger.mockResolvedValue([
       { id: 'grant-1', kind: 'paid_grant', amount: 100, balanceAfter: 100, totalBalanceAfter: 474, occurredAt: new Date('2026-10-20T16:45:00.000Z') },
@@ -39,7 +39,7 @@ describe('RechargeHistoryView credit grants', () => {
     ]);
 
     render(
-      <RechargeHistoryView
+      <CreditGrantHistoryView
         garage={{ id: 'garage-recharge-test', dailyCapacity: 20, billingModel: 'prepaid_credits', credits: 15 } as any}
         onClose={vi.fn()}
       />,
@@ -49,7 +49,7 @@ describe('RechargeHistoryView credit grants', () => {
     expect(screen.getByText('+١٠٠ رصيد')).toBeTruthy();
     expect(screen.getByText('٤٧٤')).toBeTruthy();
     expect(screen.queryByText(/خصم|هدية/)).toBeNull();
-    expect(serviceMocks.subscribeToGarageRechargeLogs).not.toHaveBeenCalled();
+    expect(serviceMocks.subscribeToCreditGrantLogs).not.toHaveBeenCalled();
     expect(billingMocks.getGarageCreditLedger).toHaveBeenCalledWith('garage-recharge-test');
   });
 });

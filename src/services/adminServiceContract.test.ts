@@ -54,7 +54,7 @@ describe('adminService facade contract', () => {
       'rejectCreditRequest',
       'removeStaff',
       'renewSubscriber',
-      'subscribeToGarageRechargeLogs',
+      'subscribeToCreditGrantLogs',
       'subscribeToSubscribers',
       'subscribeToSystemConfig',
       'updateAdminPin',
