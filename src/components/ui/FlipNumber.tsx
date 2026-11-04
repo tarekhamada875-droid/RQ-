@@ -88,7 +88,7 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDi
     >
       <span
         data-testid="flip-number-digit"
-        className={`${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
+        className={`${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight -translate-y-1`}
       >
         {displayChar}
       </span>
