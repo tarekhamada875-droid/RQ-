@@ -3,6 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Union type for Firestore timestamp values as they arrive in the client.
+ *
+ * Firestore can deliver timestamps in several shapes depending on the SDK
+ * version, whether the value was read via `onSnapshot` vs `getDoc`, and
+ * whether it was serialized through the Worker API (which returns ISO strings).
+ *
+ * The runtime safety net is `safeDate()` in `utils/dates.ts` — it handles
+ * all of these shapes and never throws. This type exists so TypeScript can
+ * catch accidental field accesses on values that aren't actually timestamps.
+ */
+export type FirestoreTimestamp =
+  | Date
+  | { seconds: number; nanoseconds?: number }
+  | { toDate: () => Date }
+  | string
+  | number
+  | null;
+
 export type EntityRole = 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
 
 
@@ -15,16 +34,16 @@ export interface Garage {
   ownerPin?: string;
   hourlyRate: number;
   overnightRate: number;
-  createdAt: any; // Timestamp
+  createdAt: FirestoreTimestamp;
   currentSessionId?: string | null;
-  lastActive?: any; // Timestamp
+  lastActive?: FirestoreTimestamp;
   billingModel?: 'subscription' | 'prepaid_credits';
   /** Single prepaid credit balance (paid + referral + trial merged as of 2026-10-29). */
   credits?: number;
   isLocked?: boolean;
   isSuspended?: boolean;
   lockReason?: string;
-  lastRateChangeDate?: any; // Timestamp or ISO date of last rate modification
+  lastRateChangeDate?: FirestoreTimestamp;
   totalAdminRevenue?: number;
   totalRevenue?: number;
   totalVehiclesOut?: number;
@@ -60,7 +79,7 @@ export interface Staff {
   garageId: string;
   role: 'staff';
   currentSessionId?: string | null;
-  lastActive?: any; // Timestamp
+  lastActive?: FirestoreTimestamp;
 }
 
 export interface Delegate {
@@ -72,12 +91,12 @@ export interface Delegate {
   isActive?: boolean;
   garageCount?: number;
   currentSessionId?: string | null;
-  lastActive?: any; // Timestamp
-  createdAt: any;
+  lastActive?: FirestoreTimestamp;
+  createdAt: FirestoreTimestamp;
   /** Legacy-named Worker balance for unsettled delegate commission; not gross recharge sales. */
   totalRechargedAmount?: number;
   totalCommissionEarned?: number;
-  lastSettledAt?: any; // Timestamp
+  lastSettledAt?: FirestoreTimestamp;
 }
 
 export interface ActivityLog {
@@ -87,7 +106,7 @@ export interface ActivityLog {
   staffName: string;
   actionType: 'check_in' | 'check_out' | 'recharge' | 'credit_grant' | 'delete_refund' | 'commission_earned' | 'credit_correction' | 'credit_referral_award';
   plateNumber: string;
-  timestamp: any;
+  timestamp: FirestoreTimestamp;
   amount?: number;
   commission?: number;
   packageId?: string;
@@ -117,15 +136,15 @@ export interface Subscriber {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   garageId: string;
-  createdAt: any;
+  createdAt: FirestoreTimestamp;
 }
 
 export interface Vehicle {
   id: string;
   plateNumber: string;
   plateNumberRaw: string;
-  entryTime: any;
-  exitTime?: any;
+  entryTime: FirestoreTimestamp;
+  exitTime?: FirestoreTimestamp;
   type: 'hourly' | 'overnight';
   garageId: string;
   status: 'inside' | 'outside';
@@ -143,8 +162,7 @@ export interface SystemConfig {
   supportPhone?: string;
   adminColor?: string; // Persisted admin accent/shimmer color
   paymentWalletNumber?: string; // Wallet number shown to garage owners when credits are exhausted
-  updatedAt?: any;
+  updatedAt?: FirestoreTimestamp;
 }
 
 export * from './types/apiContracts';
-
