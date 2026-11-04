@@ -56,7 +56,7 @@ describe('CreditGrantHistoryView credit grants', () => {
     expect(billingMocks.getGarageCreditLedger).toHaveBeenCalledWith('garage-recharge-test');
   });
 
-  it('shows current balance in the summary header even with no grants', async () => {
+  it('renders empty state when there are no grants', async () => {
     billingMocks.getGarageCreditLedger.mockResolvedValue([]);
 
     render(
@@ -66,37 +66,11 @@ describe('CreditGrantHistoryView credit grants', () => {
       />,
     );
 
-    // Summary header is always rendered (anchors the page even when empty)
-    expect(await screen.findByText('الرصيد الحالي')).toBeTruthy();
-    expect(screen.getByText('٠')).toBeTruthy();
-    // Empty-state message
-    expect(screen.getByText('لسه مفيش شحن مسجل للجراج ده.')).toBeTruthy();
+    expect(await screen.findByText('لسه مفيش شحن مسجل للجراج ده.')).toBeTruthy();
+    expect(screen.getByText('لما تطلب شحن رصيد، هيظهر هنا.')).toBeTruthy();
   });
 
-  it('shows total recharged and grant count in summary when grants exist', async () => {
-    billingMocks.getGarageCreditLedger.mockResolvedValue([
-      { id: 'g1', kind: 'paid_grant', amount: 100, totalBalanceAfter: 100, occurredAt: new Date('2026-10-20T16:45:00.000Z') },
-      { id: 'g2', kind: 'paid_grant', amount: 200, totalBalanceAfter: 300, occurredAt: new Date('2026-10-21T16:45:00.000Z') },
-      { id: 'g3', kind: 'paid_grant', amount: 60, totalBalanceAfter: 360, occurredAt: new Date('2026-10-22T16:45:00.000Z') },
-    ]);
-
-    render(
-      <CreditGrantHistoryView
-        garage={{ id: 'g', credits: 250 } as any}
-        onClose={vi.fn()}
-      />,
-    );
-
-    // Total = 100 + 200 + 60 = 360 (matches the third grant's balance-after too)
-    expect(await screen.findByText(/إجمالي الشحنات/)).toBeTruthy();
-    // ٣٦٠ appears in summary total AND in the third grant's balance-after row
-    expect(screen.getAllByText('٣٦٠').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('٢٥٠')).toBeTruthy(); // current balance
-    // Count = 3
-    expect(screen.getByText(/٣ عملية شحن/)).toBeTruthy();
-  });
-
-  it('does not render the removed "تم الشحن" badge or redundant titles', async () => {
+  it('does not render the removed "تم الشحن" badge, card title, or section header', async () => {
     billingMocks.getGarageCreditLedger.mockResolvedValue([
       { id: 'grant-1', kind: 'paid_grant', amount: 100, totalBalanceAfter: 474, occurredAt: new Date('2026-10-20T16:45:00.000Z') },
     ]);
@@ -109,11 +83,15 @@ describe('CreditGrantHistoryView credit grants', () => {
     );
 
     expect(await screen.findByText('+١٠٠ رصيد')).toBeTruthy();
-    // Status badge — every row is paid_grant so it's pure noise, removed
+    // Status badge — every row is paid_grant, status never varies, removed
     expect(screen.queryByText('تم الشحن')).toBeNull();
     // Card title — every row is a recharge, removed
     expect(screen.queryByText('شحن رصيد')).toBeNull();
     // Section header — the list is obviously operations, removed
     expect(screen.queryByText('عمليات الشحن')).toBeNull();
+    // v2 summary card — duplicated dashboard data, removed in v3
+    expect(screen.queryByText('الرصيد الحالي')).toBeNull();
+    expect(screen.queryByText(/إجمالي الشحنات/)).toBeNull();
+    expect(screen.queryByText(/عملية شحن/)).toBeNull();
   });
 });
