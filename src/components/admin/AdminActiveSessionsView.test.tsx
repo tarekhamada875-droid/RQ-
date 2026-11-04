@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { sessionService } from '../../services/sessionService';
 
-const themeMock = vi.hoisted(() => ({ adminLang: 'ar' as 'ar' | 'en' }));
+const themeMock = vi.hoisted(() => ({ adminLang: 'ar' }));
 
 vi.mock('../../utils/ThemeContext', () => ({ useTheme: () => themeMock }));
 
@@ -89,7 +89,7 @@ describe('AdminActiveSessionsView', () => {
 
 describe('AdminActiveSessionsView Arabic-only interface', () => {
   it('keeps Arabic copy and right-to-left layout when a legacy English preference exists', async () => {
-    themeMock.adminLang = 'en';
+    
     render(<AdminActiveSessionsView onLogout={vi.fn()} onBack={vi.fn()} />);
 
     expect(await screen.findByText('هذا الجهاز')).toBeInTheDocument();

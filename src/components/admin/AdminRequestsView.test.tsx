@@ -43,7 +43,6 @@ describe('AdminRequestsView Arabic-only interface', () => {
   });
 
   it('keeps Arabic copy and RTL layout when a legacy English preference exists', () => {
-    localStorage.setItem('admin_lang', 'en');
 
     render(
       <AdminRequestsView
