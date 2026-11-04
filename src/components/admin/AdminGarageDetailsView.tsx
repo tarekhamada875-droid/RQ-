@@ -16,6 +16,7 @@ import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 import { useAdminGarageDetailsActions } from '../../hooks/useAdminGarageDetailsActions';
+import { useToast } from '../../hooks/toast';
 import { AdminGarageSettingsSection } from './AdminGarageSettingsSection';
 import { AdminGarageHeroAndStats } from './garage-details/AdminGarageHeroAndStats';
 import { AdminGarageFinancialsSection } from './garage-details/AdminGarageFinancialsSection';
@@ -69,6 +70,7 @@ export const AdminGarageDetailsView = memo(({
   const t = useAdminTranslation(adminLang);
 
   // ── Actions + business state (extracted to hook) ─────────────────────
+  const { showToast } = useToast();
   const actions = useAdminGarageDetailsActions({
     garage: selectedGarageForDetails,
     setSelectedGarageForDetails,
@@ -77,6 +79,7 @@ export const AdminGarageDetailsView = memo(({
     isLoading,
     setIsLoading,
     onRefreshAdminLists,
+    showToast,
   });
 
   // ── Menu click-outside ───────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Delegate } from '../../types';
 import { ThemeProvider } from '../../utils/ThemeContext';
+import { ToastProvider } from '../../hooks/toast';
 
 const serviceMocks = vi.hoisted(() => ({
   settleDelegateAccount: vi.fn().mockResolvedValue(undefined),
@@ -34,12 +35,14 @@ const mockDelegate: Delegate = {
 
 const renderDetails = (delegate: Delegate = mockDelegate) => render(
   <ThemeProvider>
+    <ToastProvider>
     <AdminDelegateDetailsView
       delegate={delegate}
       setView={vi.fn()}
       setSelectedDelegate={vi.fn()}
       removeDelegate={vi.fn().mockResolvedValue(undefined)}
     />
+    </ToastProvider>
   </ThemeProvider>
 );
 

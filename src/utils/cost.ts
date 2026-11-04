@@ -40,13 +40,6 @@ export const calculateCost = (vehicle: any, garage: any, referenceNow?: Date): n
     return Math.round(total * 100) / 100;
   }
 
-  // FALLBACK for old offline vehicles (If everything is missing or returns now)
-  // Ensure we charge at least 1 hour if it's hourly, unless it's genuinely new
-  if (type === 'hourly' && (diffMs <= 2000)) {
-     // If it's old (has an ID but no times found), assume at least one hour
-     if (vehicle.id && !vehicle.id.startsWith('temp_')) return garage.hourlyRate || 0;
-  }
-
   if (type === 'hourly') {
     const hourlyRate = garage.hourlyRate || 0;
     const hours = Math.ceil(diffMs / MS_PER_HOUR);

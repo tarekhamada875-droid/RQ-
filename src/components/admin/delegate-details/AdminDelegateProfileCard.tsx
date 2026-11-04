@@ -4,7 +4,7 @@ import { Delegate } from '../../../types';
 import { safeDate, formatDisplayPin, normalizeDigits } from '../../../utils';
 import { authService, delegateService } from '../../../services';
 import { useAdminTranslation } from '../../../utils/adminTranslations';
-import { useAppStore } from '../../../store/appStore';
+import { useToast } from '../../../hooks/toast';
 
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
@@ -23,10 +23,11 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
   const [pinInput, setPinInput] = useState(delegate.pin && delegate.pin.length === 64 ? '' : (delegate.pin || ''));
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
   const t = useAdminTranslation(adminLang);
+  const { showToast } = useToast();
 
   const handleUpdatePin = async () => {
     if (!/^\d{5}$/.test(pinInput)) {
-      useAppStore.getState().showToast('يجب أن يكون الرمز 5 أرقام بالضبط', 'error');
+      showToast('يجب أن يكون الرمز 5 أرقام بالضبط', 'error');
       return;
     }
     setIsUpdatingPin(true);
@@ -34,7 +35,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       const cleanPin = pinInput.trim();
       const pinCheck = await authService.isPinTaken(cleanPin, delegate.id);
       if (pinCheck.taken) {
-        useAppStore.getState().showToast(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
+        showToast(`هذا الرمز مستخدم بالفعل في حساب آخر: (${pinCheck.name} - ${pinCheck.role})`, 'error');
         setIsUpdatingPin(false);
         return;
       }
@@ -46,7 +47,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
       onPinUpdated?.(cleanPin);
       setIsEditingPin(false);
     } catch {
-      useAppStore.getState().showToast('فشل تحديث الرمز', 'error');
+      showToast('فشل تحديث الرمز', 'error');
     } finally {
       setIsUpdatingPin(false);
     }

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminService, authService, garageService } from '../services';
 import { normalizeDigits, canChangeGarageRates, generateSafePin } from '../utils';
 import type { Garage, Staff } from '../types';
-import { useAppStore } from '../store/appStore';
 
 export function getGaragePinUpdateErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
@@ -21,6 +20,7 @@ interface UseAdminGarageDetailsActionsArgs {
   isLoading: boolean;
   setIsLoading: (b: boolean) => void;
   onRefreshAdminLists?: () => Promise<void>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 interface UseAdminGarageDetailsActionsResult {
@@ -74,6 +74,7 @@ export function useAdminGarageDetailsActions({
   isLoading,
   setIsLoading,
   onRefreshAdminLists,
+  showToast,
 }: UseAdminGarageDetailsActionsArgs): UseAdminGarageDetailsActionsResult {
   // ── Rates ────────────────────────────────────────────────────────────
   const [hourlyRateInput, setHourlyRateInput] = useState<string>(String(garage.hourlyRate || 0));
@@ -214,8 +215,7 @@ export function useAdminGarageDetailsActions({
     try {
       const pinCheck = await authService.isPinTaken(staffForm.pin);
       if (pinCheck.taken) {
-        const { showToast } = useAppStore.getState();
-        showToast?.('الرمز مستخدم بالفعل', 'error');
+        showToast('الرمز مستخدم بالفعل', 'error');
         return;
       }
       const staffData: Omit<Staff, 'id'> = {
@@ -234,10 +234,9 @@ export function useAdminGarageDetailsActions({
       closeModal();
     } catch (error) {
       console.error('Failed to add Staff.');
-      const { showToast } = useAppStore.getState();
       const message = error instanceof Error ? error.message : '';
       const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN';
-      showToast?.(
+      showToast(
         pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.',
         'error'
       );
@@ -254,8 +253,7 @@ export function useAdminGarageDetailsActions({
       setStaffList((current) => current.filter((staff) => staff.id !== staffId));
     } catch {
       console.error('Failed to delete Staff.');
-      const { showToast } = useAppStore.getState();
-      showToast?.('تعذر حذف الموظف. يرجى المحاولة مرة أخرى.', 'error');
+      showToast('تعذر حذف الموظف. يرجى المحاولة مرة أخرى.', 'error');
     } finally {
       setIsLoading(false);
     }

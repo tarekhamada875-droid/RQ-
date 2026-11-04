@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Smartphone } from 'lucide-react';
 import { Garage } from '../../types';
+import { formatArabicDigits } from '../../utils';
 
 interface LandscapeMobileViewProps {
   garage: Garage | null;
@@ -23,7 +24,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
               {/* Dynamic Fluid Value containment using viewport heights to lock structural clipping */}
               <div className="flex flex-col items-center justify-center w-full mt-1">
                 <span className="font-mono font-black tracking-tighter text-slate-950 dark:text-[#ffd43b] leading-none select-none text-[38vh] sm:text-[44vh]">
-                  {garage.hourlyRate}
+                  {formatArabicDigits(garage.hourlyRate)}
                 </span>
                 <span className="font-mono font-black text-xs sm:text-sm uppercase tracking-widest text-slate-950 dark:text-[#ffd43b] opacity-80 mt-1">
                   جنيه مصري
@@ -42,7 +43,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
               
               <div className="flex flex-col items-center justify-center w-full mt-1">
                 <span className="font-mono font-black tracking-tighter text-slate-950 dark:text-[#ffd43b] leading-none select-none text-[38vh] sm:text-[44vh]">
-                  {garage.overnightRate}
+                  {formatArabicDigits(garage.overnightRate)}
                 </span>
                 <span className="font-mono font-black text-xs sm:text-sm uppercase tracking-widest text-slate-950 dark:text-[#ffd43b] opacity-80 mt-1">
                   جنيه مصري
