@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { formatArabicDigits } from '../../utils';
+import { formatArabicDigits } from '../../utils/plates';;
 
 interface FlipCardProps {
   value: number;

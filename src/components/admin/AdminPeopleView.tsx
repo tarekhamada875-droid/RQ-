@@ -14,7 +14,8 @@ import {
   Briefcase
 } from 'lucide-react';
 import { authService, delegateService } from '../../services';
-import { generateSafePin, normalizeDigits, formatDisplayPin } from '../../utils';
+import { generateSafePin, formatDisplayPin } from '../../utils/pins';
+import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 
 interface AdminPeopleViewProps {

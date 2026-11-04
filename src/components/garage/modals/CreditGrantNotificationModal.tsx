@@ -1,7 +1,7 @@
 import React from 'react';
 import { X as XIcon, Gift, Zap, Sparkles } from 'lucide-react';
 import { ActivityLog } from '../../../types';
-import { safeDate } from '../../../utils';
+import { safeDate } from '../../../utils/dates';;
 
 interface CreditGrantNotificationModalProps {
   isOpen: boolean;

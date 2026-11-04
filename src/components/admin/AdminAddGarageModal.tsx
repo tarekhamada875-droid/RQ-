@@ -8,7 +8,8 @@ import {
 import { Garage } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
-import { generateSafePin, normalizeDigits } from '../../utils';
+import { generateSafePin } from '../../utils/pins';
+import { normalizeDigits } from '../../utils/plates';
 
 interface AdminAddGarageModalProps {
   isOpen: boolean;

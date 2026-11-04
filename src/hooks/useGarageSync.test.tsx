@@ -29,7 +29,7 @@ vi.mock('../services', () => ({
   authService: serviceMocks,
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../utils/storage', () => ({
   throttleSnapshot: (callback: (...args: any[]) => void) => {
     const throttled = callback as typeof callback & { cancel: ReturnType<typeof vi.fn> };
     throttled.cancel = vi.fn();

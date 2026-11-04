@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
 import { apiFetch } from '../api/apiClient';
-import { safeDate } from '../utils';
+import { safeDate } from '../utils/dates';;
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 const TODAY_ACTIVITY_LOG_LIMIT = 200;

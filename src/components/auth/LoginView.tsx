@@ -6,7 +6,7 @@
 import React, { memo } from 'react';
 import { ChevronRight, Delete } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
-import { normalizeDigits } from '../../utils';
+import { normalizeDigits } from '../../utils/plates';;
 
 interface LoginViewProps {
   loginPhone: string;

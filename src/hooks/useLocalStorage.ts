@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getStorage } from '../utils';
+import { getStorage } from '../utils/storage';;
 
 export function useLocalStorageState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const defaultValueRef = useRef(defaultValue);

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminService, authService, garageService } from '../services';
-import { normalizeDigits, canChangeGarageRates, generateSafePin } from '../utils';
+import { normalizeDigits } from '../utils/plates';
+import { canChangeGarageRates } from '../utils/businessRules';
+import { generateSafePin } from '../utils/pins';
 import type { Garage, Staff } from '../types';
 
 export function getGaragePinUpdateErrorMessage(error: unknown): string {

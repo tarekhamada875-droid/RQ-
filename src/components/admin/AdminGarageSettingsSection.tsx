@@ -1,6 +1,7 @@
 import { Check, CheckCircle2, ChevronDown, Clock, Loader2, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { adminService, authService } from '../../services';
-import { formatDisplayPin, normalizeDigits } from '../../utils';
+import { formatDisplayPin } from '../../utils/pins';
+import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useToast } from '../../hooks/toast';
 import type { Staff } from '../../types';

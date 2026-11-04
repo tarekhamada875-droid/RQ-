@@ -2,7 +2,8 @@ import React from 'react';
 import { Delete, Phone, Save, Trash2, User, X } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
-import { formatPlateNumber, getCleanPlate, safeDate } from '../../utils';
+import { formatPlateNumber, getCleanPlate } from '../../utils/plates';
+import { safeDate } from '../../utils/dates';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import type { Subscriber } from '../../types';
 

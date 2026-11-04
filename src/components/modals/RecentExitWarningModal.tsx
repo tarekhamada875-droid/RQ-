@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Vehicle } from '../../types';
-import { getDuration } from '../../utils';
+import { getDuration } from '../../utils/dates';;
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 

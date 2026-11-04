@@ -10,14 +10,12 @@ import {
   isPlateValid,
   normalizePhone,
   formatPlateNumber,
-  getDuration,
-  calculateCost,
-  isSessionActive,
-  generateSafePin,
-  resolveShimmerColor,
-  isLightColor,
-  throttleSnapshot,
-} from './index';
+} from './plates';
+import { getDuration, isSessionActive } from './dates';
+import { calculateCost } from './cost';
+import { generateSafePin } from './pins';
+import { resolveShimmerColor, isLightColor } from './colors';
+import { throttleSnapshot } from './storage';
 
 describe('Normalization & String Utilities Edge Cases', () => {
   it('handles mixed eastern and western digits accurately', () => {

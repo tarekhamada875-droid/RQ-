@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
-import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, resolveShimmerColor, formatArabicDigits } from '../../utils';
+import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
+import { resolveShimmerColor } from '../../utils/colors';
 import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { BorderShimmer } from './BorderShimmer';

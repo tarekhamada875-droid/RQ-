@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { adminService } from '../../../services';
 import type { Subscriber, Garage } from '../../../types';
-import { getCleanPlate, getRawPlate } from '../../../utils';
+import { getCleanPlate, getRawPlate } from '../../../utils/plates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 
 const parseDateKey = (dateKey: string | any): Date => {

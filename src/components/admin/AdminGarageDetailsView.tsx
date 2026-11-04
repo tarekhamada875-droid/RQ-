@@ -10,7 +10,7 @@ import {
   Trash2,
   MoreVertical
 } from 'lucide-react';
-import { isHashedPin } from '../../utils';
+import { isHashedPin } from '../../utils/pins';;
 import { Garage, Staff } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';

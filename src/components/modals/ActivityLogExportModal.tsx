@@ -16,7 +16,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { adminService } from '../../services';
-import { safeDate } from '../../utils';
+import { safeDate } from '../../utils/dates';;
 import { useTheme } from '../../utils/ThemeContext';
 import { useAdminTranslation } from '../../utils/adminTranslations';
 

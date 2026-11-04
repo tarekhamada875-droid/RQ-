@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Smartphone } from 'lucide-react';
 import { Garage } from '../../types';
-import { formatArabicDigits } from '../../utils';
+import { formatArabicDigits } from '../../utils/plates';;
 
 interface LandscapeMobileViewProps {
   garage: Garage | null;

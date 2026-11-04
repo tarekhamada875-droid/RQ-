@@ -9,7 +9,7 @@ import {
   Loader2,
   Key
 } from 'lucide-react';
-import { normalizeDigits } from '../../../utils';
+import { normalizeDigits } from '../../../utils/plates';;
 import { Garage, Staff } from '../../../types';
 
 interface AdminGarageModalsProps {

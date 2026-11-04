@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { adminService } from '../../../services';
 import { auth } from '../../../firebase';
 import type { Subscriber } from '../../../types';
-import { normalizeArabicSearch, safeDate } from '../../../utils';
+import { safeDate } from '../../../utils/dates';
+import { normalizeArabicSearch } from '../../../utils/plates';
 import type { SharedSubscriberPage } from '../../../hooks/useGarageDashboardLiveData';
 import type { SubscriberPageCursor } from '../../../services/adminService';
 

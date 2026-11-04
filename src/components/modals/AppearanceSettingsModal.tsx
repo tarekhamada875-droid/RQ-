@@ -3,7 +3,7 @@ import { ChevronRight, Sun, Moon, Check } from 'lucide-react';
 import { useTheme } from '../../utils/ThemeContext';
 import { soundManager } from '../../utils/sounds';
 import { Garage, Staff } from '../../types';
-import { isLightColor, resolveShimmerColor } from '../../utils';
+import { isLightColor, resolveShimmerColor } from '../../utils/colors';
 
 interface AppearanceSettingsModalProps {
   garage?: Garage | null;

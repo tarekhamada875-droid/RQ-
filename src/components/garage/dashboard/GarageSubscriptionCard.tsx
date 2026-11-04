@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowDown } from 'lucide-react';
 import { Garage } from '../../../types';
-import { formatArabicDigits } from '../../../utils';
+import { formatArabicDigits } from '../../../utils/plates';;
 
 interface GarageSubscriptionCardProps {
   garage: Garage;

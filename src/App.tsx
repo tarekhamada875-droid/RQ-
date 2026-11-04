@@ -5,7 +5,7 @@
 
 import { useEffect, Suspense } from 'react';
 import { CheckCircle2, XCircle, X } from 'lucide-react';
-import { resolveShimmerColor } from './utils';
+import { resolveShimmerColor } from './utils/colors';
 import { useTheme } from './utils/ThemeContext';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { useSystemConfig } from './hooks/useSystemConfig';

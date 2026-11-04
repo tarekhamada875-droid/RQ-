@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { formatArabicDigits } from '../../utils';
+import { formatArabicDigits } from '../../utils/plates';;
 
 interface LicensePlateKeyboardProps {
   onKeyPress: (key: string) => void;

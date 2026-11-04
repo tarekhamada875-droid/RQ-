@@ -12,7 +12,7 @@ import {
   Unlock,
   Lock,
 } from 'lucide-react';
-import { formatDisplayPin } from '../../../utils';
+import { formatDisplayPin } from '../../../utils/pins';;
 import { Garage } from '../../../types';
 
 interface AdminGarageHeroAndStatsProps {

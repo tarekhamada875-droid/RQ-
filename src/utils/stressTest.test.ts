@@ -8,10 +8,10 @@ import {
   getPlateParts,
   isPlateValid,
   normalizePhone,
-  calculateCost,
-  getDuration,
-  generateSafePin,
-} from './index';
+} from './plates';
+import { getDuration } from './dates';
+import { calculateCost } from './cost';
+import { generateSafePin } from './pins';
 import {
   calculateApprovedCommission,
   calculateApprovedRechargeTotal,
