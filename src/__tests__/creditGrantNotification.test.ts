@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { safeDate } from '../utils';
+import { safeDate } from '../utils/dates';;
 
 describe('Garage Recharge Notification Behavior', () => {
   const garageId = 'test_garage_notification_101';

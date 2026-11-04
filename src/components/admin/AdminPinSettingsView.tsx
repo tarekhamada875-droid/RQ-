@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Key, Check, Loader2 } from 'lucide-react';
-import { normalizeDigits } from '../../utils';
+import { normalizeDigits } from '../../utils/plates';;
 import { adminService, authService } from '../../services';
 import { apiFetch } from '../../api/apiClient';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';

@@ -1,6 +1,6 @@
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { safeDate } from '../utils';
+import { safeDate } from '../utils/dates';;
 import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
 

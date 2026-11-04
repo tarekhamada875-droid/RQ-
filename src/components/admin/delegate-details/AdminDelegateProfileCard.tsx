@@ -1,7 +1,9 @@
 import React, { memo, useState } from 'react';
 import { Phone, Calendar, Lock, Check, Loader2 } from 'lucide-react';
 import { Delegate } from '../../../types';
-import { safeDate, formatDisplayPin, normalizeDigits } from '../../../utils';
+import { safeDate } from '../../../utils/dates';
+import { formatDisplayPin } from '../../../utils/pins';
+import { normalizeDigits } from '../../../utils/plates';
 import { authService, delegateService } from '../../../services';
 import { useAdminTranslation } from '../../../utils/adminTranslations';
 import { useToast } from '../../../hooks/toast';

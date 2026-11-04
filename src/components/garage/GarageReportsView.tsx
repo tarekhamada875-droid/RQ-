@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
 import { garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
-import { formatArabicDigits } from '../../utils';
+import { formatArabicDigits } from '../../utils/plates';;
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
 

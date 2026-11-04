@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useRef } from 'react';
 import { Users, Plus, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { Garage, Subscriber } from '../../types';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
-import { safeDate } from '../../utils';
+import { safeDate } from '../../utils/dates';;
 import { SubscriberModals } from './SubscriberModals';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { SharedSubscriberPage } from '../../hooks/useGarageDashboardLiveData';

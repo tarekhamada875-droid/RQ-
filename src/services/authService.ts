@@ -1,5 +1,5 @@
 import { auth } from '../firebase';
-import { normalizeDigits } from '../utils';
+import { normalizeDigits } from '../utils/plates';;
 import { releaseEntitySession, getCanonicalSessionId } from './authSessionService';
 import { apiFetch } from '../api/apiClient';
 

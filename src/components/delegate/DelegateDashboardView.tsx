@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { Garage, Delegate } from '../../types';
 import { useTheme } from '../../utils/ThemeContext';
-import { generateSafePin, sortGaragesNewestFirst } from '../../utils';
+import { generateSafePin } from '../../utils/pins';
+import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
 import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';

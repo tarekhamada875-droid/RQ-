@@ -9,7 +9,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import type { Delegate, Garage, ActivityLog } from '../types';
-import { safeDate } from '../utils';
+import { safeDate } from '../utils/dates';;
 
 export interface DelegateDashboardData {
   delegate: Delegate;

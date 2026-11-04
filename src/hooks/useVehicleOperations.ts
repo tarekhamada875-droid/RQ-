@@ -4,12 +4,9 @@ import { adminService, vehicleService } from '../services';
 import { soundManager } from '../utils/sounds';
 import { useServerTimeNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
-import { 
-  safeDate, 
-  getRawPlate, 
-  formatPlateNumber, 
-  calculateCost
-} from '../utils';
+import { calculateCost } from '../utils/cost';
+import { safeDate } from '../utils/dates';
+import { getRawPlate, formatPlateNumber } from '../utils/plates';;
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
 const pendingOperations = new Set<string>();
