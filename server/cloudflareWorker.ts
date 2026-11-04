@@ -49,7 +49,8 @@ import {
 import { PinRateLimiterNamespace } from './workerPinRateLimiter';
 
 // Extracted modules (split from this file in the round-18 refactor).
-import { requireWorkerAuth, registerSessionRoutes } from './workerSessionRoutes';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { registerSessionRoutes } from './workerSessionRoutes';
 import { registerFoundationRoutes } from './workerFoundationRoutes';
 import {
   MAINTAINED_SUMMARY_VERSION,
