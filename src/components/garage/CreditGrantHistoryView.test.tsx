@@ -45,11 +45,43 @@ describe('CreditGrantHistoryView credit grants', () => {
       />,
     );
 
-    expect(await screen.findByText('شحن رصيد')).toBeTruthy();
-    expect(screen.getByText('+١٠٠ رصيد')).toBeTruthy();
-    expect(screen.getByText('٤٧٤')).toBeTruthy();
+    expect(await screen.findByText('+١٠٠ رصيد')).toBeTruthy();
+    expect(screen.getByText(/٤٧٤/)).toBeTruthy();
     expect(screen.queryByText(/خصم|هدية/)).toBeNull();
     expect(serviceMocks.subscribeToCreditGrantLogs).not.toHaveBeenCalled();
     expect(billingMocks.getGarageCreditLedger).toHaveBeenCalledWith('garage-recharge-test');
+  });
+
+  it('shows current balance and empty hint when there are no grants', async () => {
+    billingMocks.getGarageCreditLedger.mockResolvedValue([]);
+
+    render(
+      <CreditGrantHistoryView
+        garage={{ id: 'garage-empty', credits: 0 } as any}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('الرصيد الحالي')).toBeTruthy();
+    expect(screen.getByText('٠')).toBeTruthy();
+    expect(screen.getByText('لسه مفيش شحن مسجل')).toBeTruthy();
+  });
+
+  it('does not render the removed "تم الشحن" status badge', async () => {
+    billingMocks.getGarageCreditLedger.mockResolvedValue([
+      { id: 'grant-1', kind: 'paid_grant', amount: 100, totalBalanceAfter: 474, occurredAt: new Date('2026-10-20T16:45:00.000Z') },
+    ]);
+
+    render(
+      <CreditGrantHistoryView
+        garage={{ id: 'g', credits: 474 } as any}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('+١٠٠ رصيد')).toBeTruthy();
+    expect(screen.queryByText('تم الشحن')).toBeNull();
+    expect(screen.queryByText('شحن رصيد')).toBeNull();
+    expect(screen.queryByText('عمليات الشحن')).toBeNull();
   });
 });
