@@ -142,7 +142,7 @@ export function useGarageSync({
           // Keep if it's a recent optimistic entry (< 5s old) with a plain Date entryTime
           const entryMs = v.entryTime instanceof Date
             ? v.entryTime.getTime()
-            : v.entryTime?.toDate ? v.entryTime.toDate().getTime() : 0;
+            : (v.entryTime && typeof v.entryTime === 'object' && 'toDate' in v.entryTime && typeof v.entryTime.toDate === 'function') ? v.entryTime.toDate().getTime() : 0;
           return entryMs > 0 && (now - entryMs) < 5000;
         });
         return [...optimisticKeep, ...activeVehicles];
