@@ -38,6 +38,4 @@ export const adminBillingService = {
       method: 'POST',
     });
   },
-
-  // getFinancialReport: removed. Dead code — no admin UI calls this.
 };

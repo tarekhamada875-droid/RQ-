@@ -152,10 +152,4 @@ export const authService = {
       console.error('[AuthService] Error releasing delegate session:', e);
     }
   },
-
-  // claimDelegateSession: removed. Dead code — nobody calls this.
-  // Delegate session claiming goes through claimEntitySession directly.
-
-
-
 };

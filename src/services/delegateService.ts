@@ -117,11 +117,6 @@ export const delegateService = {
     }
   },
 
-  subscribeToDelegates: (_callback: (delegates: Delegate[]) => void) => {
-    // Removed: dead code. Nobody calls this. The admin uses getAdminDelegatesPage (paginated API).
-    return () => {};
-  },
-
   getAdminDelegatesPage: async (pageSize = 50, lastDocRef: string | null = null): Promise<DelegatePage> => {
     try {
       const params = new URLSearchParams({ limit: String(pageSize) });
