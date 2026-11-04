@@ -120,7 +120,7 @@ describe('Modularized Admin Components Integrity', () => {
     renderWithTheme(
       <AdminGarageHeroAndStats
         garage={mockGarage}
-        t={(key) => key}
+       
         isUpdatingLock={false}
         onToggleLock={onToggleLock}
         onOpenEditPin={onOpenEditPin}
@@ -143,7 +143,7 @@ describe('Modularized Admin Components Integrity', () => {
     renderWithTheme(
       <AdminGarageFinancialsSection
         garage={mockGarage}
-        t={(key) => key}
+       
         onToggleMonthlySubscribers={onToggleMonthly}
       />
     );

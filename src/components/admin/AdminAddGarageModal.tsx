@@ -35,7 +35,6 @@ interface AdminAddGarageModalProps {
   allGarages: Garage[];
   isLoading: boolean;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<boolean>;
-  t: (key: string) => string;
 }
 
 export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
@@ -48,7 +47,6 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   allGarages,
   isLoading,
   onSubmit,
-  t,
 }) => {
   const [localForm, setLocalForm] = useState({
     name: '',
@@ -98,14 +96,14 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <Plus className="w-5 h-5 stroke-[3]" />
             </div>
             <div className="text-right">
-              <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight">{t('إضافة جراج جديد')}</h3>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{t('تسجيل جراج جديد وتحديد التعريفة')}</p>
+              <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight">{'إضافة جراج جديد'}</h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{'تسجيل جراج جديد وتحديد التعريفة'}</p>
             </div>
           </div>
           <IconButton
             type="button"
             onClick={onClose}
-            aria-label={t('إغلاق')}
+            aria-label={'إغلاق'}
             className="w-8 h-8 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg flex shrink-0 items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors outline-none cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -125,11 +123,11 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               const hourlyNum = Number(localForm.hourlyRate) || 0;
               const overnightNum = Number(localForm.overnightRate) || 0;
               if (!/^\d{5}$/.test(localPin)) {
-                setErrorMessage(t('رمز الدخول يجب أن يكون 5 أرقام'));
+                setErrorMessage('رمز الدخول يجب أن يكون 5 أرقام');
                 return;
               }
               if (hourlyNum <= 0 && overnightNum <= 0) {
-                setErrorMessage(t('يجب إدخال سعر الساعة أو سعر المبيت على الأقل'));
+                setErrorMessage('يجب إدخال سعر الساعة أو سعر المبيت على الأقل');
                 return;
               }
               setGarageForm({ ...localForm, isTrial: true });
@@ -156,18 +154,18 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <div className="flex items-center gap-2.5 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-xl">
               <Gift className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 leading-snug">
-                {t('يُمنح 100 رصيد تجربة مجاني تلقائيًا عند الإنشاء')}
+                {'يُمنح 100 رصيد تجربة مجاني تلقائيًا عند الإنشاء'}
               </p>
             </div>
 
             {/* Section 1: Identity */}
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label htmlFor="admin-add-garage-name" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('اسم الجراج')}</label>
+                <label htmlFor="admin-add-garage-name" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'اسم الجراج'}</label>
                 <input
                   name="name"
                   id="admin-add-garage-name"
-                  placeholder={t('اسم الجراج...')}
+                  placeholder={'اسم الجراج...'}
                   value={localForm.name}
                   onChange={(e) => setLocalForm(prev => ({ ...prev, name: e.target.value }))}
                   required
@@ -175,7 +173,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 />
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="admin-add-garage-phone" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('رقم الموبايل (اختياري)')}</label>
+                <label htmlFor="admin-add-garage-phone" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'رقم الموبايل (اختياري)'}</label>
                 <input
                   name="phone"
                   id="admin-add-garage-phone"
@@ -193,7 +191,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
             {/* Section 2: Pricing */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('التعريفة')}</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'التعريفة'}</span>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <input
@@ -201,7 +199,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     id="admin-add-garage-hourly-rate"
                     type="text"
                     inputMode="numeric"
-                    aria-label={t('سعر الساعة')}
+                    aria-label={'سعر الساعة'}
                     placeholder="10 ج.م"
                     value={localForm.hourlyRate}
                     onChange={(e) => {
@@ -217,7 +215,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     id="admin-add-garage-overnight-rate"
                     type="text"
                     inputMode="numeric"
-                    aria-label={t('سعر المبيت')}
+                    aria-label={'سعر المبيت'}
                     placeholder="50 ج.م"
                     value={localForm.overnightRate}
                     onChange={(e) => {
@@ -232,7 +230,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
 
             {/* Section 3: Access PIN */}
             <div className="space-y-1.5">
-              <label htmlFor="admin-add-garage-pin" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{t('رمز الدخول')}</label>
+              <label htmlFor="admin-add-garage-pin" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'رمز الدخول'}</label>
               <div className="relative">
                 <input
                   name="pin"
@@ -260,9 +258,9 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     setLocalPin(newPin);
                     setPinInput(newPin);
                   }}
-                  aria-label={t('توليد رقم سري عشوائي')}
+                  aria-label={'توليد رقم سري عشوائي'}
                   className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                  title={t('توليد رقم سري عشوائي')}
+                  title={'توليد رقم سري عشوائي'}
                 >
                   <RefreshCw className="w-4 h-4 mx-auto" strokeWidth={2} />
                 </IconButton>
@@ -272,7 +270,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             {/* Section 4: Referral (optional) */}
             <div className="space-y-1.5">
               <label htmlFor="admin-add-garage-referrer" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                {t('الجراج المُرشِّح (اختياري)')}
+                {'الجراج المُرشِّح (اختياري)'}
               </label>
               <select
                 name="referredByGarageId"
@@ -280,10 +278,10 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                 className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-all"
                 dir="rtl"
               >
-                <option value="">{t('بدون ترشيح / مباشر')}</option>
+                <option value="">{'بدون ترشيح / مباشر'}</option>
                 {allGarages.filter(g => g.status !== 'pending').map(g => (
                   <option key={g.id} value={g.id}>
-                    {g.name} ({g.phone || t('بدون هاتف')})
+                    {g.name} ({g.phone || 'بدون هاتف'})
                   </option>
                 ))}
               </select>
@@ -298,7 +296,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               {isLoading ? <Spinner /> : (
                 <>
                   <Plus className="w-4 h-4" />
-                  <span>{t('حفظ وإضافة الجراج')}</span>
+                  <span>{'حفظ وإضافة الجراج'}</span>
                 </>
               )}
             </button>

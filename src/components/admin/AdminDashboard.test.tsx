@@ -25,9 +25,6 @@ vi.mock('../../hooks/useSystemConfig', () => ({ useSystemConfig: () => null }));
 vi.mock('../../utils/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', adminLang: 'ar', setAdminLang: vi.fn() }),
 }));
-vi.mock('../../utils/adminTranslations', () => ({
-  useAdminTranslation: () => (key: string) => key,
-}));
 
 vi.mock('./AdminHeader', () => ({ AdminHeader: () => null }));
 vi.mock('./AdminNavigationAndViews', () => ({

@@ -14,7 +14,6 @@ import { Garage, Staff } from '../../../types';
 
 interface AdminGarageModalsProps {
   garage: Garage;
-  t: (key: string) => string;
   isLoading: boolean;
   // Add Staff Modal
   showAddStaffModal: boolean;
@@ -39,7 +38,6 @@ interface AdminGarageModalsProps {
 
 export const AdminGarageModals = memo(({
   garage,
-  t,
   isLoading,
   showAddStaffModal,
   setShowAddStaffModal,
@@ -64,14 +62,14 @@ export const AdminGarageModals = memo(({
       {showAddStaffModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl p-6 animate-popup-30fps">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('إضافة موظف جديد')}</h3>
-            <p className="text-xs text-slate-400 font-bold mb-5">{t('أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.')}</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{'إضافة موظف جديد'}</h3>
+            <p className="text-xs text-slate-400 font-bold mb-5">{'أدخل اسم الموظف وسيتم استخدام الرمز الظاهر لتسجيل الدخول.'}</p>
 
             <form onSubmit={onAddStaffSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{t('اسم الموظف')}</label>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'اسم الموظف'}</label>
                 <input
-                  placeholder={t('مثال: أحمد محمد')}
+                  placeholder={'مثال: أحمد محمد'}
                   value={staffForm.name}
                   autoFocus
                   onChange={e => setStaffForm(prev => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
@@ -80,7 +78,7 @@ export const AdminGarageModals = memo(({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{t('الرمز السري')}</label>
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'الرمز السري'}</label>
                 <div className="w-full p-4 bg-slate-900 rounded-xl text-center border border-slate-800">
                   <span className="text-3xl font-black text-emerald-400 tracking-[0.25em] font-mono">{staffForm.pin}</span>
                 </div>
@@ -95,10 +93,10 @@ export const AdminGarageModals = memo(({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                      <span>{t('جاري الإضافة...')}</span>
+                      <span>{'جاري الإضافة...'}</span>
                     </>
                   ) : (
-                    <span>{t('تأكيد الإضافة')}</span>
+                    <span>{'تأكيد الإضافة'}</span>
                   )}
                 </button>
                 <button
@@ -107,7 +105,7 @@ export const AdminGarageModals = memo(({
                   onClick={() => setShowAddStaffModal(false)}
                   className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {t('إلغاء')}
+                  {'إلغاء'}
                 </button>
               </div>
             </form>
@@ -122,9 +120,9 @@ export const AdminGarageModals = memo(({
             <div className="w-14 h-14 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-7 h-7" />
             </div>
-            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-2">{t('حذف الموظف؟')}</h3>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mb-2">{'حذف الموظف؟'}</h3>
             <p className="text-xs text-slate-400 font-bold mb-6">
-              {t('هل أنت متأكد من حذف الموظف')} <span className="text-slate-900 dark:text-white font-black">"{staffToDelete.name}"</span>؟
+              {'هل أنت متأكد من حذف الموظف'} <span className="text-slate-900 dark:text-white font-black">"{staffToDelete.name}"</span>؟
             </p>
 
             <div className="flex gap-3">
@@ -136,10 +134,10 @@ export const AdminGarageModals = memo(({
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                    <span>{t('جاري الحذف...')}</span>
+                    <span>{'جاري الحذف...'}</span>
                   </>
                 ) : (
-                  <span>{t('تأكيد الحذف')}</span>
+                  <span>{'تأكيد الحذف'}</span>
                 )}
               </button>
               <button
@@ -147,7 +145,7 @@ export const AdminGarageModals = memo(({
                 onClick={() => setStaffToDelete(null)}
                 className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
               >
-                {t('إلغاء')}
+                {'إلغاء'}
               </button>
             </div>
           </div>
@@ -174,7 +172,7 @@ export const AdminGarageModals = memo(({
             </div>
 
             <h3 className="text-lg font-black text-slate-900 dark:text-white text-center mb-1">
-              {t('تعديل رمز المالك')}
+              {'تعديل رمز المالك'}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 text-center font-bold mb-6">
               {garage.name}
@@ -184,7 +182,7 @@ export const AdminGarageModals = memo(({
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                    {t('رمز الدخول الجديد (5 أرقام):')}
+                    {'رمز الدخول الجديد (5 أرقام):'}
                   </label>
                   <input
                     type="text"
@@ -218,10 +216,10 @@ export const AdminGarageModals = memo(({
                   {isUpdatingGaragePin ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                      <span>{t('جاري الحفظ...')}</span>
+                      <span>{'جاري الحفظ...'}</span>
                     </>
                   ) : (
-                    <span>{t('حفظ الرمز')}</span>
+                    <span>{'حفظ الرمز'}</span>
                   )}
                 </button>
                 <button
@@ -230,7 +228,7 @@ export const AdminGarageModals = memo(({
                   onClick={() => setShowEditGaragePinModal(false)}
                   className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
                 >
-                  {t('إلغاء')}
+                  {'إلغاء'}
                 </button>
               </div>
             </form>

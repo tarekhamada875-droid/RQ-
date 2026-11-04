@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
 import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
-import { calculateVehicleCost } from './utils';
+import { calculateVehicleCost } from './domain/vehicleCost';
 
 const command = { today: '2026-09-24', cost: 125.5 };
 

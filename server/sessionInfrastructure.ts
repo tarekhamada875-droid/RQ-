@@ -15,7 +15,8 @@
 import type { WorkerUser } from './cloudflareWorker';
 import { adminDb, adminAuth } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './backendOperatorToken';
-import { cleanPin, verifyPinMatch, verifyDocMatch, migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './utils';
+import { cleanPin, verifyPinMatch, verifyDocMatch } from './pinCrypto';
+import { migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import { canInvalidateAllSessions } from './domain/authorization';

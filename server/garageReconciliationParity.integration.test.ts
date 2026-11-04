@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from '../src/__tests__/mockFirestore';
-import { saveEntityPin } from './utils';
+import { saveEntityPin } from './pinRepository';
 
 const mockDb = new MockFirestore();
 

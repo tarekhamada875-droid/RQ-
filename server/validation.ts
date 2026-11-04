@@ -1,4 +1,4 @@
-import { normalizeDigits } from './utils';
+import { normalizeDigits } from './pinCrypto';
 
 export interface ValidationOptions {
   min?: number;

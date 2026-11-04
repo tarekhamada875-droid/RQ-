@@ -15,7 +15,6 @@ interface RateCheck {
 }
 
 interface AdminGarageSettingsSectionProps {
-  t: (key: string) => string;
   isZone3Open: boolean;
   setIsZone3Open: (open: boolean) => void;
   rateCheck: RateCheck;
@@ -38,7 +37,6 @@ interface AdminGarageSettingsSectionProps {
 }
 
 export const AdminGarageSettingsSection = ({
-  t,
   isZone3Open,
   setIsZone3Open,
   rateCheck,
@@ -75,13 +73,13 @@ export const AdminGarageSettingsSection = ({
                   <Settings className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  {t('الإعدادات والتعريفة وطاقم العمل')}
+                  {'الإعدادات والتعريفة وطاقم العمل'}
                 </h3>
               </div>
   
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400">
-                  {isZone3Open ? t('إخفاء') : t('عرض')}
+                  {isZone3Open ? 'إخفاء' : 'عرض'}
                 </span>
                 <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isZone3Open ? 'rotate-180' : ''}`} />
               </div>
@@ -94,13 +92,13 @@ export const AdminGarageSettingsSection = ({
                 <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 space-y-4">
                   <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <Settings className="w-4 h-4 text-emerald-600" />
-                    <span>{t('تعريفة أسعار الركنة')}</span>
+                    <span>{'تعريفة أسعار الركنة'}</span>
                   </h4>
   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-400 text-center">
-                        {t('سعر الساعة (ج.م)')}
+                        {'سعر الساعة (ج.م)'}
                       </label>
                       <input 
                         type="text" 
@@ -117,7 +115,7 @@ export const AdminGarageSettingsSection = ({
                     </div>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-400 text-center">
-                        {t('سعر المبيت (ج.م)')}
+                        {'سعر المبيت (ج.م)'}
                       </label>
                       <input 
                         type="text" 
@@ -138,12 +136,12 @@ export const AdminGarageSettingsSection = ({
                     <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-amber-300 text-xs font-bold">
                       <Clock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                       <span>
-                        {t('تعديل التعريفة مقفل: مسموح بتعديل السعر مرة واحدة كل 30 يوماً. متبقي')} <strong className="font-mono text-amber-900 dark:text-amber-100 px-1">{rateCheck.daysRemaining}</strong> {t('يوم للإتاحة القادمة.')}
+                        {'تعديل التعريفة مقفل: مسموح بتعديل السعر مرة واحدة كل 30 يوماً. متبقي'} <strong className="font-mono text-amber-900 dark:text-amber-100 px-1">{rateCheck.daysRemaining}</strong> {'يوم للإتاحة القادمة.'}
                       </span>
                     </div>
                   ) : (
                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">
-                      {t('ملاحظة: السعر الجديد يُطبق على جميع العمليات فوراً، وتُقفل إمكانية التعديل لمدة 30 يوماً.')}
+                      {'ملاحظة: السعر الجديد يُطبق على جميع العمليات فوراً، وتُقفل إمكانية التعديل لمدة 30 يوماً.'}
                     </p>
                   )}
   
@@ -160,12 +158,12 @@ export const AdminGarageSettingsSection = ({
                     {isSavingRates ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>{t('جاري حفظ التعديل...')}</span>
+                        <span>{'جاري حفظ التعديل...'}</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>{t('حفظ تعديل التعريفة')}</span>
+                        <span>{'حفظ تعديل التعريفة'}</span>
                       </>
                     )}
                   </button>
@@ -176,7 +174,7 @@ export const AdminGarageSettingsSection = ({
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
                       <Users className="w-4 h-4 text-emerald-600" />
-                      <span>{t('طاقم عمل الجراج (الموظفين)')}</span>
+                      <span>{'طاقم عمل الجراج (الموظفين)'}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 font-mono">
                         {staffList.length}
                       </span>
@@ -186,7 +184,7 @@ export const AdminGarageSettingsSection = ({
                       className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{t('إضافة موظف')}</span>
+                      <span>{'إضافة موظف'}</span>
                     </button>
                   </div>
   
@@ -235,12 +233,12 @@ export const AdminGarageSettingsSection = ({
                                       console.error(err);
                                       const failure = classifyApiFailure(err);
                                       const reference = getApiFailureReference(err);
-                                      let message = t('تعذر تحديث رمز الموظف. حاول مرة أخرى.');
-                                      if (failure === 'network') message = t('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');
-                                      else if (failure === 'timeout') message = t('انتهت مهلة تحديث رمز الموظف. تحقق من التغيير قبل إعادة المحاولة.');
+                                      let message = 'تعذر تحديث رمز الموظف. حاول مرة أخرى.';
+                                      if (failure === 'network') message = 'تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.';
+                                      else if (failure === 'timeout') message = 'انتهت مهلة تحديث رمز الموظف. تحقق من التغيير قبل إعادة المحاولة.';
                                       else if (failure === 'server') {
-                                        const suffix = reference ? ` (${t('رقم التتبع')}: ${reference})` : '';
-                                        message = `${t('حدث خطأ في الخادم أثناء تحديث رمز الموظف.')}${suffix}`;
+                                        const suffix = reference ? ` (${'رقم التتبع'}: ${reference})` : '';
+                                        message = `${'حدث خطأ في الخادم أثناء تحديث رمز الموظف.'}${suffix}`;
                                       }
                                       showToast(message, 'error');
                                     } finally {
@@ -256,12 +254,12 @@ export const AdminGarageSettingsSection = ({
                                   onClick={() => setEditingStaffPinId(null)}
                                   className="text-[10px] text-slate-400 hover:underline px-0.5"
                                 >
-                                  {t('إلغاء')}
+                                  {'إلغاء'}
                                 </button>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] text-slate-400">{t('الرمز:')}</span>
+                                <span className="text-[10px] text-slate-400">{'الرمز:'}</span>
                                 <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-mono font-black">
                                   {formatDisplayPin(s.pin)}
                                 </span>
@@ -272,7 +270,7 @@ export const AdminGarageSettingsSection = ({
                                   }}
                                   className="text-[10px] text-emerald-600 hover:underline font-bold"
                                 >
-                                  {t('تعديل')}
+                                  {'تعديل'}
                                 </button>
                               </div>
                             )}
@@ -282,7 +280,7 @@ export const AdminGarageSettingsSection = ({
                         <button 
                           onClick={() => setStaffToDelete(s)} 
                           className="w-8 h-8 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg flex items-center justify-center hover:bg-rose-100 transition-colors cursor-pointer"
-                          title={t('حذف الموظف')}
+                          title={'حذف الموظف'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -291,7 +289,7 @@ export const AdminGarageSettingsSection = ({
   
                     {staffList.length === 0 && (
                       <div className="text-center py-4 text-xs text-slate-400 font-bold">
-                        {t('لا يوجد موظفين مسجلين لهذا الجراج')}
+                        {'لا يوجد موظفين مسجلين لهذا الجراج'}
                       </div>
                     )}
                   </div>

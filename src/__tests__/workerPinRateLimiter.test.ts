@@ -15,7 +15,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
 
 import { api } from '../../server/api';
 installDefaultWorkerTestSessionHeaders(api, mockDb);
-import { computeLookupHash, hashPinWithUniqueSalt } from '../../server/utils';
+import { computeLookupHash, hashPinWithUniqueSalt } from '../../server/pinCrypto';
 
 class MemoryStorage {
   private readonly values = new Map<string, unknown>();
