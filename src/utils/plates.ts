@@ -18,6 +18,27 @@ export const normalizeDigits = (val: string): string => {
   });
 };
 
+/**
+ * Convert Western digits (0-9) to Arabic-Indic digits (٠-٩) for display.
+ *
+ * Used ONLY in the garage interface (plate display, plate keyboard, cars-inside
+ * counter, rate displays) so uneducated staff see the same digits they see on
+ * real Egyptian license plates — no mental translation needed.
+ *
+ * The data layer (Firestore, Worker API, PINs, phones, money) stays Western.
+ * Conversion is purely display-time. The reverse operation is `normalizeDigits`.
+ *
+ * Passes through non-digit characters unchanged (Arabic letters, punctuation,
+ * spaces, symbols all stay as-is). Only ASCII 0-9 are mapped.
+ */
+export const formatArabicDigits = (val: string | number | null | undefined): string => {
+  if (val == null) return '';
+  const str = typeof val === 'number' ? String(val) : val;
+  if (!str) return '';
+  // ASCII '0' = code 48, Arabic-Indic ٠ = U+0660 = code 1632. Offset = 1584.
+  return str.replace(/[0-9]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 1584));
+};
+
 export const normalizeLetters = (val: string): string => {
   if (!val) return '';
   return val

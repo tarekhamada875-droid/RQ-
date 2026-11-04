@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
-import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, resolveShimmerColor } from '../../utils';
+import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, resolveShimmerColor, formatArabicDigits } from '../../utils';
 import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { BorderShimmer } from './BorderShimmer';
@@ -220,7 +220,7 @@ export const RegistrationCard = memo(({
                           : 'text-2xl sm:text-4xl md:text-5xl text-slate-300 font-sans font-normal'
                       }`}
                     >
-                      {plateParts.numbers}
+                      {formatArabicDigits(plateParts.numbers)}
                     </FitText>
                   </div>
 
@@ -291,7 +291,7 @@ export const RegistrationCard = memo(({
                           <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
                             isPlateValidMemo ? 'text-slate-500 dark:text-slate-300' : 'text-slate-400/70 dark:text-slate-700'
                           }`}>
-                            <span className="font-mono">{garage?.hourlyRate ?? 0}</span> ج.م / ساعة
+                            <span className="font-mono">{formatArabicDigits(garage?.hourlyRate ?? 0)}</span> ج.م / ساعة
                           </span>
                         </button>
                       )}
@@ -311,7 +311,7 @@ export const RegistrationCard = memo(({
                           <span className={`text-[10px] md:text-xs font-black tracking-widest whitespace-nowrap ${
                             isPlateValidMemo ? 'text-slate-950/80 dark:text-slate-950/85' : 'text-slate-400/70 dark:text-slate-700'
                           }`}>
-                            <span className="font-mono">{garage?.overnightRate ?? 0}</span> ج.م مبيت
+                            <span className="font-mono">{formatArabicDigits(garage?.overnightRate ?? 0)}</span> ج.م مبيت
                           </span>
                         </button>
                       )}

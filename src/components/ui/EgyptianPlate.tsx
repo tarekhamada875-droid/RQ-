@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { FitText } from './FitText';
+import { formatArabicDigits } from '../../utils';
 
 interface EgyptianPlateProps {
   plateNumber: string;
@@ -72,7 +73,7 @@ export const EgyptianPlate: React.FC<EgyptianPlateProps> = memo(({
         {/* Numbers Section (Left side) */}
         <div className="flex-1 h-full min-w-0 flex justify-center items-center px-1">
           <FitText minFontSize={size === 'sm' ? 7 : size === 'md' ? 14 : 24} className="font-mono font-black text-slate-900 tracking-tighter text-center">
-            {numbers}
+            {formatArabicDigits(numbers)}
           </FitText>
         </div>
         

@@ -53,7 +53,9 @@ describe('RegistrationCard accessible plate input', () => {
     const setNewPlateNumber = vi.fn();
     renderRegistrationCard({ isInputFocused: true, setNewPlateNumber });
 
-    fireEvent.click(screen.getByRole('button', { name: '1' }));
+    // Number keys display Arabic-Indic digits (٠-٩) for uneducated staff readability,
+    // but the value sent to setNewPlateNumber is still Western (0-9) for storage.
+    fireEvent.click(screen.getByRole('button', { name: '١' }));
 
     expect(setNewPlateNumber).toHaveBeenCalledWith('1');
   });

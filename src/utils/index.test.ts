@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   normalizeDigits,
+  formatArabicDigits,
   normalizeLetters,
   normalizeArabicSearch,
   getCleanPlate,
@@ -22,6 +23,38 @@ describe('Normalization & String Utilities Edge Cases', () => {
   it('handles mixed eastern and western digits accurately', () => {
     expect(normalizeDigits('١2٣4٥6٧8٩0')).toBe('1234567890');
     expect(normalizeDigits('  ١٢٣  ')).toBe('  123  ');
+  });
+
+  it('formatArabicDigits converts Western digits to Arabic-Indic for display', () => {
+    // Basic conversion
+    expect(formatArabicDigits('123')).toBe('١٢٣');
+    expect(formatArabicDigits('0')).toBe('٠');
+    expect(formatArabicDigits('9876543210')).toBe('٩٨٧٦٥٤٣٢١٠');
+  });
+
+  it('formatArabicDigits passes through non-digit characters unchanged', () => {
+    // Arabic letters stay as-is
+    expect(formatArabicDigits('ابج123')).toBe('ابج١٢٣');
+    // Spaces, symbols, Latin letters, punctuation preserved
+    expect(formatArabicDigits('abc 123 !@#')).toBe('abc ١٢٣ !@#');
+    // Already-Arabic digits stay Arabic (no double-conversion)
+    expect(formatArabicDigits('١٢٣')).toBe('١٢٣');
+  });
+
+  it('formatArabicDigits handles numbers, null, empty, and undefined', () => {
+    expect(formatArabicDigits(42)).toBe('٤٢');
+    expect(formatArabicDigits(0)).toBe('٠');
+    expect(formatArabicDigits('')).toBe('');
+    expect(formatArabicDigits(null)).toBe('');
+    expect(formatArabicDigits(undefined)).toBe('');
+  });
+
+  it('formatArabicDigits is the display-side inverse of normalizeDigits', () => {
+    // Round-trip: Western → Arabic (display) → Western (storage)
+    const original = '1234567890';
+    const displayed = formatArabicDigits(original);
+    const restored = normalizeDigits(displayed);
+    expect(restored).toBe(original);
   });
 
   it('normalizes all variations of Arabic letters consistently', () => {

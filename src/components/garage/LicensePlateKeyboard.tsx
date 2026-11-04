@@ -1,4 +1,5 @@
 import React, { memo, useMemo } from 'react';
+import { formatArabicDigits } from '../../utils';
 
 interface LicensePlateKeyboardProps {
   onKeyPress: (key: string) => void;
@@ -57,7 +58,7 @@ const KeyButton = memo(({ char, isNumber, className = "", isSelected, isDisabled
           : 'bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 active:bg-slate-100 dark:active:bg-slate-700 border-[0.5px] border-slate-200 dark:border-slate-700/60'
       } ${isDisabled ? 'opacity-25 cursor-not-allowed' : 'opacity-100'} ${className}`}
     >
-      {char}
+      {isNumber ? formatArabicDigits(char) : char}
     </button>
   );
 });

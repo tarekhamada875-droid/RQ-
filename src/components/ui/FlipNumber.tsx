@@ -1,12 +1,18 @@
 import React, { memo, useEffect, useRef } from 'react';
+import { formatArabicDigits } from '../../utils';
 
 interface FlipCardProps {
   value: number;
   size?: 'sm' | 'md' | 'lg';
   color?: 'default' | 'success' | 'danger';
+  /** Digit display format. Defaults to 'western' (0-9).
+   *  Pass 'arabic' for the garage interface where uneducated staff read
+   *  Arabic-Indic digits (٠-٩) matching real Egyptian license plates.
+   *  Storage/value stays Western internally; only the rendered char changes. */
+  displayDigits?: 'western' | 'arabic';
 }
 
-export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', color = 'default' }) => {
+export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', color = 'default', displayDigits = 'western' }) => {
   // Show only the digits that exist — no leading-zero padding. A count of 3
   // renders as "3", not "03". The counter grows/shrinks in width as the digit
   // count changes (9 -> 10 adds a slot, 10 -> 9 removes one), which is the
@@ -19,8 +25,8 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
   }, [value, size]);
 
   return (
-    <div 
-      className={`flex gap-1.5 sm:gap-2 items-center justify-center ${size === 'sm' ? 'p-1' : 'p-2'}`} 
+    <div
+      className={`flex gap-1.5 sm:gap-2 items-center justify-center ${size === 'sm' ? 'p-1' : 'p-2'}`}
       dir="ltr"
     >
       {digits.map((digit, index) => (
@@ -29,6 +35,7 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
           digit={digit}
           size={size}
           color={color}
+          displayDigits={displayDigits}
           animate={previousDigitsRef.current !== null && previousDigitsRef.current[index] !== digit}
         />
       ))}
@@ -36,7 +43,7 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
   );
 });
 
-const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', animate }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; animate: boolean }) => {
+const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDigits = 'western', animate }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; displayDigits?: 'western' | 'arabic'; animate: boolean }) => {
   const sizeClasses = {
     sm: 'w-8 h-12 rounded-lg',
     md: 'w-14 h-22 rounded-xl sm:w-18 sm:h-28',
@@ -74,16 +81,17 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', animate }
   };
 
   const colors = colorClasses[color];
+  const displayChar = displayDigits === 'arabic' ? formatArabicDigits(digit) : digit;
 
   return (
-    <div 
+    <div
       className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
     >
       <span
         data-testid="flip-number-digit"
         className={`${animate ? 'flip-number-digit' : ''} ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
       >
-        {digit}
+        {displayChar}
       </span>
       {/* Subtle center hairline for clean scoreboard card division */}
       <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] ${colors.sep} pointer-events-none opacity-40`} />

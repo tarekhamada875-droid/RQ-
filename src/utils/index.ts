@@ -24,6 +24,7 @@ export {
 
 export {
   normalizeDigits,
+  formatArabicDigits,
   normalizeLetters,
   normalizeArabicSearch,
   getCleanPlate,
