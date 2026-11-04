@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ActivityLog } from '../types';
-import { safeDate } from '../utils/dates';;
+import { safeDate } from '../utils/dates';
 import { soundManager } from '../utils/sounds';
 
 interface UseCreditGrantNotificationArgs {

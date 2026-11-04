@@ -4,7 +4,7 @@ import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { Spinner } from '../ui/Spinner';
 import { APP_TEXT } from '../../constants';
 import { Garage } from '../../types';
-import { formatPlateNumber } from '../../utils/plates';;
+import { formatPlateNumber } from '../../utils/plates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CheckInModalProps {

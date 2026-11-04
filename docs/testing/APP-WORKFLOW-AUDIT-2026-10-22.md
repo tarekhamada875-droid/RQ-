@@ -4,6 +4,8 @@
 
 This is a **read-only audit** of the app at commit `690907b` on `main`. The working tree was clean before the audit. No source code, production data, deployment, PR, or commit was changed.
 
+> **Note on evidence pointers (added post-cleanup):** File paths and line numbers in the `Evidence:` lines below reflect the codebase **as it existed at commit `690907b` on 2026-10-22**. Several referenced files were subsequently deleted as part of the post-audit cleanup wave (PRs #596–#605), including `src/store/appStore.ts` (deleted in #597) and `src/utils/index.ts` (deleted in #604). If a path no longer resolves, consult `git show 690907b:<path>` to read the file at audit time. The findings themselves remain valid as a historical record.
+
 The review traced shared authentication/session behavior and the Admin, Garage owner, Delegate, and Staff journeys. It found several confirmed workflow and state-consistency defects, plus risks that need targeted tests or a product decision. The important conclusion is that some apparent Admin problems are actually caused by **shared state/session code**: fixing only the Admin screen would leave the same behavior in other roles, and could create new regressions.
 
 The right order is to establish reliable session/role ownership and prevent old asynchronous work from updating a new role’s screen; then repair role-specific workflows; then complete language coverage and address optional service/security contracts. Each bounded change should have cross-role tests before merge. This audit does not restart the skipped broad Reliability/Scale or legacy-data-cleanup workstreams and does not recommend speculative performance optimization.

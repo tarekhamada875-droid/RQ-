@@ -17,7 +17,7 @@ import { useVehicleOps } from "../../hooks/vehicleOpsContext";
 import { FlipNumber } from "../ui/FlipNumber";
 import { useTheme } from "../../utils/ThemeContext";
 import { resolveShimmerColor, isLightColor } from '../../utils/colors';
-import { safeDate } from '../../utils/dates';;
+import { safeDate } from '../../utils/dates';
 import { auth } from "../../firebase";
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useCreditGrantNotification } from '../../hooks/useCreditGrantNotification';

@@ -45,4 +45,18 @@ describe('vehicle check-out characterization', () => {
     expect(calculateVehicleCost({ type: 'hourly', entryTime: '2026-09-24T10:00:00.000Z' }, { hourlyRate: 10, overnightRate: 100 }, now)).toBe(20);
     expect(calculateVehicleCost({ type: 'overnight', entryTime: '2026-09-23T12:00:00.000Z' }, { hourlyRate: 10, overnightRate: 100 }, now)).toBe(100);
   });
+
+  it('returns 0 for falsy entryTime (null/undefined/0/"") — parity with client calculateCost', () => {
+    // Regression: previously `new Date(null)` produced epoch (1970-01-01),
+    // passed the isNaN check, and the function returned a huge cost.
+    // The client treats falsy entryTime as "use now" → 0 via grace period.
+    // The server must agree: falsy entryTime means "no entry recorded" → 0.
+    const now = Date.parse('2026-09-24T12:00:00.000Z');
+    const garage = { hourlyRate: 10, overnightRate: 100 };
+    expect(calculateVehicleCost({ type: 'hourly', entryTime: null }, garage, now)).toBe(0);
+    expect(calculateVehicleCost({ type: 'hourly', entryTime: undefined }, garage, now)).toBe(0);
+    expect(calculateVehicleCost({ type: 'hourly', entryTime: 0 }, garage, now)).toBe(0);
+    expect(calculateVehicleCost({ type: 'hourly', entryTime: '' }, garage, now)).toBe(0);
+    expect(calculateVehicleCost({ type: 'overnight', entryTime: null }, garage, now)).toBe(0);
+  });
 });

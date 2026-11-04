@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, X, Building2, ClipboardList, Loader2, Coins } from 'lucide-react';
 import { Garage } from '../../types';
-import { safeDate } from '../../utils/dates';;
+import { safeDate } from '../../utils/dates';
 import { adminBillingService } from '../../services/adminBillingService';
 import type { DelegateCreditRequest } from '../../services/delegateService';
 

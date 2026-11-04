@@ -2,7 +2,7 @@ import { useEffect, useState, memo } from 'react';
 import { ChevronRight, CircleDollarSign } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminBillingService } from '../../services/adminBillingService';
-import { safeDate } from '../../utils/dates';;
+import { safeDate } from '../../utils/dates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CreditGrantHistoryViewProps {
