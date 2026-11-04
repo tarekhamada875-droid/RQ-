@@ -384,86 +384,9 @@ input[type="number"]::-webkit-outer-spin-button {
 .credit-debit-arrow-outer-left { left: 14%; margin-left: -1.25rem; animation-delay: 0.24s; }
 .credit-debit-arrow-outer-right { right: 14%; left: auto; margin-left: 0; animation-delay: 0.24s; }
 
-/* ── FlipNumber split-flap animation (Option B) ──────────────────────────
-   Only the TOP HALF of the digit card flips — like a departure board tile.
-   The bottom half stays static and switches old→new at the midpoint when
-   the top is edge-on (invisible).
-
-   4 layers per digit card (only present during animation):
-     .flip-old-bottom  — old digit, clipped to bottom half. Visible 0-0.3s.
-     .flip-new-bottom  — new digit, clipped to bottom half. Visible 0.3s+.
-     .flip-old-top     — old digit, clipped to top half. Rotates 0°→90° (falls away).
-     .flip-new-top     — new digit, clipped to top half. Rotates -90°→0° (falls in, 0.3s delay).
-
-   Timeline:
-     0.0s → 0.3s: old top rotates 0°→90° (falls away). Old bottom visible. New layers hidden.
-     0.3s (midpoint): old top at 90° (edge-on, invisible). Bottom switches old→new. New top starts at -90°.
-     0.3s → 0.6s: new top rotates -90°→0° (falls in). New bottom visible. Old layers invisible.
-     0.6s: done. New top at 0°, new bottom visible = full new digit.
-*/
-.flip-half {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-/* Clip to show only the top or bottom half of the full-height digit */
-.flip-top { clip-path: inset(0 0 50% 0); }
-.flip-bottom { clip-path: inset(50% 0 0 0); }
-
-/* Old bottom: visible at start, disappears at midpoint (0.3s = 50% of 0.6s) */
-.flip-old-bottom {
-  animation: flip-bottom-old-fade 0.6s linear forwards;
-}
-@keyframes flip-bottom-old-fade {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-/* New bottom: hidden at start, appears at midpoint */
-.flip-new-bottom {
-  opacity: 0;
-  animation: flip-bottom-new-fade 0.6s linear forwards;
-}
-@keyframes flip-bottom-new-fade {
-  0%, 49% { opacity: 0; }
-  50%, 100% { opacity: 1; }
-}
-
-/* Old top: rotates 0° → 90° (falls forward/away), 0.3s.
-   transform-origin at center bottom = the card's midline (the hinge). */
-.flip-old-top {
-  transform-origin: center 50%;
-  animation: flip-top-old-fall 0.3s cubic-bezier(0.4, 0, 0.7, 1) forwards;
-}
-@keyframes flip-top-old-fall {
-  0% { transform: rotateX(0deg); }
-  100% { transform: rotateX(90deg); }
-}
-
-/* New top: starts at -90° (edge-on, invisible, "above" the card).
-   After 0.3s delay, rotates -90° → 0° (falls into place), 0.3s. */
-.flip-new-top {
-  transform-origin: center 50%;
-  transform: rotateX(-90deg);
-  animation: flip-top-new-fall 0.3s cubic-bezier(0.3, 0, 0.4, 1) 0.3s forwards;
-}
-@keyframes flip-top-new-fall {
-  0% { transform: rotateX(-90deg); }
-  100% { transform: rotateX(0deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   /* The red balance/border state remains as a clear non-motion debit cue. */
   .credit-debit-arrow { display: none; }
-  .flip-old-top, .flip-new-top, .flip-old-bottom, .flip-new-bottom { animation: none; }
-  .flip-old-top, .flip-old-bottom { opacity: 0; }
-  .flip-new-top { transform: rotateX(0deg); }
-  .flip-new-bottom { opacity: 1; }
 }
 
 /* Freeze dynamic layout properties to isolate composition pipelines entirely within GPU layers */
