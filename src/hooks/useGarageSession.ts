@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -14,7 +14,6 @@ import {
 import { authService } from '../services/authService';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 import { listenerTracker } from '../utils/listenerTracker';
-import { signOut } from 'firebase/auth';
 
 // A malformed persisted entity must not be mistaken for a session still hydrating.
 const hasValidStoredEntity = (key: string): boolean => {

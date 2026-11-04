@@ -1,9 +1,9 @@
 import React from 'react';
-import { useOnlineGuard } from '../hooks/useOnlineGuard';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { WifiOff } from 'lucide-react';
 
 export const NetworkStatusBanner: React.FC = () => {
-  const isOnline = useOnlineGuard();
+  const { isOnline } = useOnlineStatus();
 
   if (isOnline) return null;
 

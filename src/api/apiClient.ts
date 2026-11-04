@@ -14,7 +14,13 @@ export interface ApiSuccessEnvelope<T> {
   [key: string]: unknown;
 }
 
-export interface ApiErrorEnvelope {
+/**
+ * Loose error shape parsed from unknown server responses.
+ * All fields optional because we can't trust the server to always send them.
+ * Distinct from the strict ApiErrorEnvelope in types/apiContracts.ts which
+ * represents the contract the server promises to follow.
+ */
+export interface ParsedApiError {
   success?: false;
   code?: string;
   error?: string;
@@ -28,13 +34,13 @@ export class ApiError extends Error {
   readonly code?: string;
   readonly status: number;
   readonly correlationId?: string;
-  readonly envelope: ApiErrorEnvelope;
+  readonly envelope: ParsedApiError;
 
   constructor(message: string, details: {
     code?: string;
     status?: number;
     correlationId?: string;
-    envelope?: ApiErrorEnvelope;
+    envelope?: ParsedApiError;
     cause?: unknown;
   } = {}) {
     super(message, { cause: details.cause });
@@ -183,7 +189,7 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
     });
   }
 
-  const envelope = isRecord(result) ? result as ApiErrorEnvelope : {};
+  const envelope = isRecord(result) ? result as ParsedApiError : {};
   const errorCode = typeof envelope.code === 'string' ? envelope.code : undefined;
   const errorMessage = typeof envelope.error === 'string' ? envelope.error : '';
   const isSessionTerminated = response.status === 401 ||
