@@ -5,10 +5,6 @@ import { listenerTracker } from '../utils/listenerTracker';
 import type { ActivityLog } from '../types';
 
 export const adminActivityService = {
-  // addActivityLog: removed. The /api/activity-logs/add endpoint always
-  // returns 403 (SERVER_GENERATED_ONLY) and nobody calls this function.
-
-
   getActivityLogsSince: async (sinceDate: Date, maxCount = 2000): Promise<ActivityLog[]> => {
     const boundedMaxCount = Math.min(Math.max(Math.floor(maxCount) || 1, 1), 5000);
     try {
@@ -34,10 +30,6 @@ export const adminActivityService = {
       return logs.filter(log => safeDate(log.timestamp).getTime() >= sinceMs);
     }
   },
-
-
-  // getPaginatedActivityLogs: removed. Dead code — nobody calls this.
-  // Activity logs are loaded via the Worker API and subscribeToGarageRechargeLogs.
 
   subscribeToGarageRechargeLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/recharge_logs`);
@@ -126,7 +118,6 @@ export const adminActivityService = {
     }
   },
 
-
   getSystemLogsByPlateOnce: async (rawPlate: string): Promise<ActivityLog[]> => {
     try {
       const q = query(
@@ -144,6 +135,4 @@ export const adminActivityService = {
       return [];
     }
   },
-
-  // Announcements
 };

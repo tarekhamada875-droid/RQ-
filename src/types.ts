@@ -141,18 +141,6 @@ export interface Vehicle {
 export interface SystemConfig {
   id?: string;
   supportPhone?: string;
-  monthlySubscribersSurchargePercent?: number;
-  referralFeePerRenewal?: number; // fallback e.g. 100
-  delegateMonthlyCommission?: number; // Monthly delegate commission per garage (e.g. 100 EGP)
-  delegatePackageCommissions?: {
-    daily?: number; // 1 day
-    weekly?: number; // 7 days
-    biweekly?: number; // 15 days
-    monthly?: number; // 30 days
-    [key: string]: number | undefined;
-  };
-  isMaintenanceMode?: boolean;
-  maintenanceMessage?: string;
   adminColor?: string; // Persisted admin accent/shimmer color
   paymentWalletNumber?: string; // Wallet number shown to garage owners when credits are exhausted
   updatedAt?: any;

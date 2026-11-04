@@ -4,9 +4,6 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Staff } from '../types';
 
 export const adminCoreService = {
-  // getAdminSummary: removed. Dead code — nobody calls this.
-  // The admin overview tab doesn't display summary stats.
-
   // Staff
 
   addStaff: async (data: Omit<Staff, 'id'>) => {
@@ -67,19 +64,6 @@ export const adminCoreService = {
   },
 
 
-  subscribeToGarageStaff: (_garageId: string, _callback: (staff: Staff[]) => void) => {
-    // Removed: dead code. Nobody calls this. Staff are loaded via the Worker API.
-    return () => {};
-  },
-
-
-  subscribeToAdminPin: (_callback: (pin: string) => void) => {
-    // Removed: dead code. The pin field was moved to private_pins (hashed),
-    // so this onSnapshot always returned ''. Nobody calls this anymore.
-    return () => {};
-  },
-
-
   updateAdminPin: async (newPin: string, currentPin?: string): Promise<void> => {
     try {
       await apiFetch('/api/admin/update-pin', {
@@ -100,8 +84,4 @@ export const adminCoreService = {
       throw error;
     }
   },
-
-
-
-  // Packages Management
 };

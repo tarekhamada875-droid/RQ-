@@ -3,6 +3,15 @@ import { collection, collectionGroup, query, where, onSnapshot, getDocs, orderBy
 import { db } from '../firebase';
 import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
+import { apiFetch } from '../api/apiClient';
+import { safeDate } from '../utils';
+import { generateIdempotencyKey } from '../types/apiContracts';
+
+const TODAY_ACTIVITY_LOG_LIMIT = 200;
+const TODAY_REPORT_ACTION = 'check_out';
+
+type TodayActivityLogSource = 'live' | 'one-shot';
+type TodayActivityLogCallback = (logs: any[], error?: Error) => void;
 
 const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.docs
   .map((doc: any) => ({ id: doc.id, ...doc.data() }))
@@ -13,15 +22,6 @@ const mapTodayTransactions = (snapshot: any, today: string): any[] => snapshot.d
     return byTimestamp || String(a.id).localeCompare(String(b.id));
   })
   .slice(0, TODAY_ACTIVITY_LOG_LIMIT);
-import { apiFetch } from '../api/apiClient';
-import { safeDate } from '../utils';
-import { generateIdempotencyKey } from '../types/apiContracts';
-
-const TODAY_ACTIVITY_LOG_LIMIT = 200;
-const TODAY_REPORT_ACTION = 'check_out';
-
-type TodayActivityLogSource = 'live' | 'one-shot';
-type TodayActivityLogCallback = (logs: any[], error?: Error) => void;
 
 function isMissingActivityLogIndexError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
