@@ -240,7 +240,8 @@ describe('Modularized Garage Dashboard Components Integrity', () => {
     const creditGarage = { ...mockGarage, billingModel: 'prepaid_credits', credits: 15 } as any;
 
     renderWithTheme(<GarageSubscriptionCard garage={creditGarage} />);
-    expect(screen.getByText('15')).toBeDefined();
+    // Credit balance displays Arabic-Indic digits (١٥) per garage-interface UX rule.
+    expect(screen.getByText('١٥')).toBeDefined();
     // The per-bucket breakdown has been retired with the single-bucket model.
     expect(screen.queryByText(/Paid: 12/)).toBeNull();
   });
