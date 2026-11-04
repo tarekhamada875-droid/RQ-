@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGarageDashboardLiveData } from './useGarageDashboardLiveData';
 
 const serviceMocks = vi.hoisted(() => ({
-  subscribeToGarageRechargeLogs: vi.fn(),
+  subscribeToCreditGrantLogs: vi.fn(),
   subscribeToSubscribers: vi.fn(),
 }));
 
@@ -36,15 +36,15 @@ const createSubscriber = (id: string) => ({
 const baseOptions = {
   garageId: 'garage-1',
   isAuthenticated: true,
-  isRechargeHistoryOpen: false,
+  isCreditGrantHistoryOpen: false,
   shouldSubscribeToSubscribers: true,
 };
 
 beforeEach(() => {
   vi.useFakeTimers();
-  serviceMocks.subscribeToGarageRechargeLogs.mockReset();
+  serviceMocks.subscribeToCreditGrantLogs.mockReset();
   serviceMocks.subscribeToSubscribers.mockReset();
-  serviceMocks.subscribeToGarageRechargeLogs.mockImplementation(() => vi.fn());
+  serviceMocks.subscribeToCreditGrantLogs.mockImplementation(() => vi.fn());
   serviceMocks.subscribeToSubscribers.mockImplementation(() => vi.fn());
 });
 
@@ -61,7 +61,7 @@ describe('useGarageDashboardLiveData', () => {
     const unsubscribeRecharge = vi.fn();
     const unsubscribeSubscribers = vi.fn();
 
-    serviceMocks.subscribeToGarageRechargeLogs.mockImplementation((_garageId, callback) => {
+    serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback) => {
       rechargeCallback = callback;
       return unsubscribeRecharge;
     });
@@ -75,8 +75,8 @@ describe('useGarageDashboardLiveData', () => {
       { initialProps: baseOptions },
     );
 
-    expect(serviceMocks.subscribeToGarageRechargeLogs).toHaveBeenCalledTimes(1);
-    expect(serviceMocks.subscribeToGarageRechargeLogs).toHaveBeenLastCalledWith(
+    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenCalledTimes(1);
+    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenLastCalledWith(
       'garage-1', expect.any(Function), 1, expect.any(Function),
     );
     expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
@@ -89,7 +89,7 @@ describe('useGarageDashboardLiveData', () => {
       });
     });
 
-    expect(result.current.rechargeLogs).toEqual([createRechargeLog('recent')]);
+    expect(result.current.creditGrantLogs).toEqual([createRechargeLog('recent')]);
     expect(result.current.subscriberPage).toMatchObject({
       garageId: 'garage-1',
       subscribers: [createSubscriber('first')],
@@ -98,10 +98,10 @@ describe('useGarageDashboardLiveData', () => {
       hasSnapshot: true,
     });
 
-    rerender({ ...baseOptions, isRechargeHistoryOpen: true });
+    rerender({ ...baseOptions, isCreditGrantHistoryOpen: true });
     expect(unsubscribeRecharge).toHaveBeenCalledTimes(1);
-    expect(serviceMocks.subscribeToGarageRechargeLogs).toHaveBeenCalledTimes(2);
-    expect(serviceMocks.subscribeToGarageRechargeLogs).toHaveBeenLastCalledWith(
+    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenCalledTimes(2);
+    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenLastCalledWith(
       'garage-1', expect.any(Function), 50, expect.any(Function),
     );
     expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
@@ -132,7 +132,7 @@ describe('useGarageDashboardLiveData', () => {
   it('does not accept callbacks from a previous garage after switching garages', () => {
     const callbacks: Array<(logs: any[]) => void> = [];
     const subscriberCallbacks: Array<(subscribers: any[], page: any) => void> = [];
-    serviceMocks.subscribeToGarageRechargeLogs.mockImplementation((_garageId, callback) => {
+    serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback) => {
       callbacks.push(callback);
       return vi.fn();
     });
@@ -156,7 +156,7 @@ describe('useGarageDashboardLiveData', () => {
       });
     });
 
-    expect(result.current.rechargeLogs.map(({ id }) => id)).toEqual(['current']);
+    expect(result.current.creditGrantLogs.map(({ id }) => id)).toEqual(['current']);
     expect(result.current.subscriberPage).toMatchObject({
       garageId: 'garage-2',
       subscribers: [{ id: 'current', garageId: 'garage-2' }],

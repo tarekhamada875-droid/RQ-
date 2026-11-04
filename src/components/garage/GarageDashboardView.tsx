@@ -23,7 +23,7 @@ import {
 } from "../../utils";
 import { auth } from "../../firebase";
 import { useSystemConfig } from '../../hooks/useSystemConfig';
-import { useRechargeNotification } from '../../hooks/useRechargeNotification';
+import { useCreditGrantNotification } from '../../hooks/useCreditGrantNotification';
 import { RegistrationCard } from "./RegistrationCard";
 import { GarageDashboardOverlays } from "./GarageDashboardOverlays";
 import { SmartActionPrompt } from "./SmartActionPrompt";
@@ -74,7 +74,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const shimmerColor = resolveShimmerColor(garage?.shimmerColor, theme);
   const [activeTab, setActiveTab] = useState<"main" | "active_vehicles">("main");
   const [itemsPerPage, setItemsPerPage] = useState(15);
-  const [isRechargeHistoryOpen, setIsRechargeHistoryOpen] = useState(false);
+  const [isCreditGrantHistoryOpen, setIsCreditGrantHistoryOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
   // FIX #4: Return to the main dashboard tab only when checkout SUCCEEDS.
@@ -94,7 +94,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // (back handler registration moved below — needs isRechargeNotificationOpen
+  // (back handler registration moved below — needs isCreditGrantNotificationOpen
   //  and isMenuOpen which are defined later in the component)
 
   const observerTargetRef = useRef<HTMLDivElement | null>(null);
@@ -105,10 +105,10 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const shouldSubscribeToSubscribers = Boolean(
     garage?.hasMonthlySubscribers && (!currentStaff || showSubscribers),
   );
-  const { rechargeLogs, isRechargeLoading, subscriberPage } = useGarageDashboardLiveData({
+  const { creditGrantLogs, isCreditGrantLoading, subscriberPage } = useGarageDashboardLiveData({
     garageId,
     isAuthenticated,
-    isRechargeHistoryOpen,
+    isCreditGrantHistoryOpen,
     shouldSubscribeToSubscribers,
   });
   // Use a stable Cairo date key instead of a raw ticking Date object.
@@ -150,27 +150,27 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const isLockedOrSuspended = garage?.isLocked || garage?.isSuspended || false;
 
   const {
-    hasNewRecharge,
-    latestRechargeLog,
-    isRechargeNotificationOpen,
-    handleAcknowledgeRecharge,
-    clearNewRechargeBadge,
-  } = useRechargeNotification({
+    hasNewCreditGrant,
+    latestCreditGrantLog,
+    isCreditGrantNotificationOpen,
+    handleAcknowledgeCreditGrant,
+    clearNewCreditGrantBadge,
+  } = useCreditGrantNotification({
     garageId: garage?.id,
     isAuthenticated,
-    rechargeLogs,
+    creditGrantLogs,
     isTrial: garage?.isTrial,
   });
 
   // ── Back-handler registrations ──────────────────────────────────────
   // Each overlay/sub-tab self-registers via useBackHandler. The stack handles
   // priority automatically — the most recently opened overlay is on top.
-  useBackHandler(() => { handleAcknowledgeRecharge(); return true; }, isRechargeNotificationOpen);
+  useBackHandler(() => { handleAcknowledgeCreditGrant(); return true; }, isCreditGrantNotificationOpen);
   useBackHandler(() => { setIsMenuOpen(false); return true; }, isMenuOpen);
   useBackHandler(() => { setShowTermsModal(false); return true; }, showTermsModal);
   useBackHandler(() => { setIsAppearanceOpen(false); return true; }, isAppearanceOpen);
   useBackHandler(() => { setIsReportsOpen(false); return true; }, isReportsOpen);
-  useBackHandler(() => { setIsRechargeHistoryOpen(false); return true; }, isRechargeHistoryOpen);
+  useBackHandler(() => { setIsCreditGrantHistoryOpen(false); return true; }, isCreditGrantHistoryOpen);
   useBackHandler(() => { setActiveTab('main'); return true; }, activeTab === 'active_vehicles');
 
   useEffect(() => {
@@ -217,7 +217,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     setIsMenuOpen(false);
     setShowSubscribers(target === "subscribers");
     setIsReportsOpen(target === "reports");
-    setIsRechargeHistoryOpen(target === "history");
+    setIsCreditGrantHistoryOpen(target === "history");
     setIsAppearanceOpen(target === "appearance");
     setShowTermsModal(target === "terms");
   };
@@ -245,7 +245,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         isMenuOpen={isMenuOpen}
         setIsMenuOpen={setIsMenuOpen}
         expiringSubscribersCount={expiringSubscribersCount}
-        hasNewRecharge={hasNewRecharge}
+        hasNewCreditGrant={hasNewCreditGrant}
         onNavigateOverlay={handleNavigateOverlay}
         onLogout={onLogout}
       />
@@ -352,9 +352,9 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         garage={garage}
         isLocked={isLockedOrSuspended}
         isSubscribersOpen={showSubscribers}
-        isRechargeHistoryOpen={isRechargeHistoryOpen}
-        rechargeLogs={rechargeLogs}
-        isRechargeLogsLoading={isRechargeLoading}
+        isCreditGrantHistoryOpen={isCreditGrantHistoryOpen}
+        creditGrantLogs={creditGrantLogs}
+        isCreditGrantLogsLoading={isCreditGrantLoading}
         subscriberPage={subscriberPage}
         isReportsOpen={isReportsOpen}
         isAppearanceOpen={isAppearanceOpen}
@@ -362,9 +362,9 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         showToast={showToast}
         onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
         onCloseSubscribers={() => setShowSubscribers(false)}
-        onCloseRechargeHistory={() => {
-          setIsRechargeHistoryOpen(false);
-          clearNewRechargeBadge();
+        onCloseCreditGrantHistory={() => {
+          setIsCreditGrantHistoryOpen(false);
+          clearNewCreditGrantBadge();
         }}
         onCloseReports={() => setIsReportsOpen(false)}
         onCloseAppearance={() => setIsAppearanceOpen(false)}
@@ -373,9 +373,9 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         staffList={staffList}
         vehiclesInside={vehicles}
         todayExitedVehicles={todayTransactions}
-        isRechargeNotificationOpen={isRechargeNotificationOpen}
-        rechargeLog={latestRechargeLog}
-        onCloseRechargeNotification={handleAcknowledgeRecharge}
+        isCreditGrantNotificationOpen={isCreditGrantNotificationOpen}
+        creditGrantLog={latestCreditGrantLog}
+        onCloseCreditGrantNotification={handleAcknowledgeCreditGrant}
       />
     </div>
   );

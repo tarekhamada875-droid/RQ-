@@ -31,8 +31,8 @@ export const adminActivityService = {
     }
   },
 
-  subscribeToGarageRechargeLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
-    const trackerUnsub = listenerTracker.register(`garages/${garageId}/recharge_logs`);
+  subscribeToCreditGrantLogs: (garageId: string, callback: (logs: ActivityLog[]) => void, limitCount = 50, onError?: (err: any) => void) => {
+    const trackerUnsub = listenerTracker.register(`garages/${garageId}/credit_grant_logs`);
     let primaryUnsub: (() => void) | undefined;
     let fallbackUnsub: (() => void) | undefined;
     let isClosed = false;

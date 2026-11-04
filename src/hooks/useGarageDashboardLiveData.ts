@@ -9,7 +9,7 @@ export interface SharedSubscriberPage extends SubscriberPageInfo {
   hasSnapshot: boolean;
 }
 
-interface RechargeState {
+interface CreditGrantState {
   garageId: string | null;
   logs: ActivityLog[];
   isLoading: boolean;
@@ -17,7 +17,7 @@ interface RechargeState {
 
 interface SubscriberState extends SharedSubscriberPage {}
 
-const EMPTY_RECHARGE_STATE: RechargeState = {
+const EMPTY_CREDIT_GRANT_STATE: CreditGrantState = {
   garageId: null,
   logs: [],
   isLoading: false,
@@ -35,32 +35,32 @@ const EMPTY_SUBSCRIBER_PAGE: SharedSubscriberPage = {
 export interface UseGarageDashboardLiveDataOptions {
   garageId?: string;
   isAuthenticated: boolean;
-  isRechargeHistoryOpen: boolean;
+  isCreditGrantHistoryOpen: boolean;
   shouldSubscribeToSubscribers: boolean;
 }
 
 /**
- * Owns the garage dashboard's live recharge and first subscriber-page data.
+ * Owns the garage dashboard's live credit grant and first subscriber-page data.
  * Overlays receive these snapshots as props instead of opening duplicate listeners.
  */
 export function useGarageDashboardLiveData({
   garageId,
   isAuthenticated,
-  isRechargeHistoryOpen,
+  isCreditGrantHistoryOpen,
   shouldSubscribeToSubscribers,
 }: UseGarageDashboardLiveDataOptions) {
-  const [rechargeState, setRechargeState] = useState<RechargeState>(EMPTY_RECHARGE_STATE);
+  const [creditGrantState, setCreditGrantState] = useState<CreditGrantState>(EMPTY_CREDIT_GRANT_STATE);
   const [subscriberState, setSubscriberState] = useState<SubscriberState>(EMPTY_SUBSCRIBER_PAGE);
 
   useEffect(() => {
     if (!garageId || !isAuthenticated) {
-      setRechargeState({ garageId: garageId ?? null, logs: [], isLoading: false });
+      setCreditGrantState({ garageId: garageId ?? null, logs: [], isLoading: false });
       return;
     }
 
     let active = true;
     let receivedInitialSnapshot = false;
-    setRechargeState((current) => ({
+    setCreditGrantState((current) => ({
       garageId,
       logs: current.garageId === garageId ? current.logs : [],
       isLoading: true,
@@ -68,26 +68,26 @@ export function useGarageDashboardLiveData({
 
     const loadingTimeout = setTimeout(() => {
       if (active && !receivedInitialSnapshot) {
-        setRechargeState((current) => current.garageId === garageId
+        setCreditGrantState((current) => current.garageId === garageId
           ? { ...current, isLoading: false }
           : current);
       }
     }, 1500);
 
-    const unsubscribe = adminService.subscribeToGarageRechargeLogs(
+    const unsubscribe = adminService.subscribeToCreditGrantLogs(
       garageId,
       (logs) => {
         if (!active) return;
         receivedInitialSnapshot = true;
         clearTimeout(loadingTimeout);
-        setRechargeState({ garageId, logs, isLoading: false });
+        setCreditGrantState({ garageId, logs, isLoading: false });
       },
-      isRechargeHistoryOpen ? 50 : 1,
+      isCreditGrantHistoryOpen ? 50 : 1,
       () => {
         if (!active) return;
         receivedInitialSnapshot = true;
         clearTimeout(loadingTimeout);
-        setRechargeState((current) => current.garageId === garageId
+        setCreditGrantState((current) => current.garageId === garageId
           ? { ...current, isLoading: false }
           : current);
       },
@@ -98,7 +98,7 @@ export function useGarageDashboardLiveData({
       clearTimeout(loadingTimeout);
       unsubscribe();
     };
-  }, [garageId, isAuthenticated, isRechargeHistoryOpen]);
+  }, [garageId, isAuthenticated, isCreditGrantHistoryOpen]);
 
   useEffect(() => {
     if (!garageId || !isAuthenticated || !shouldSubscribeToSubscribers) {
@@ -132,11 +132,11 @@ export function useGarageDashboardLiveData({
     };
   }, [garageId, isAuthenticated, shouldSubscribeToSubscribers]);
 
-  const rechargeLogs = isAuthenticated && rechargeState.garageId === garageId
-    ? rechargeState.logs
+  const creditGrantLogs = isAuthenticated && creditGrantState.garageId === garageId
+    ? creditGrantState.logs
     : EMPTY_RECHARGE_LOGS;
-  const isRechargeLoading = Boolean(
-    isAuthenticated && garageId && (rechargeState.garageId !== garageId || rechargeState.isLoading),
+  const isCreditGrantLoading = Boolean(
+    isAuthenticated && garageId && (creditGrantState.garageId !== garageId || creditGrantState.isLoading),
   );
 
   const subscriberPage = useMemo(() => {
@@ -154,8 +154,8 @@ export function useGarageDashboardLiveData({
   }, [garageId, isAuthenticated, shouldSubscribeToSubscribers, subscriberState]);
 
   return {
-    rechargeLogs,
-    isRechargeLoading,
+    creditGrantLogs,
+    isCreditGrantLoading,
     subscriberPage,
   };
 }

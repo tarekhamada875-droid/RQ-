@@ -3,49 +3,49 @@ import { X as XIcon, Gift, Zap, Sparkles } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils';
 
-interface RechargeNotificationModalProps {
+interface CreditGrantNotificationModalProps {
   isOpen: boolean;
-  rechargeLog: ActivityLog | null;
+  creditGrantLog: ActivityLog | null;
   onClose: () => void;
 }
 
-export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps> = ({
+export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModalProps> = ({
   isOpen,
-  rechargeLog,
+  creditGrantLog,
   onClose
 }) => {
-  if (!isOpen || !rechargeLog) return null;
+  if (!isOpen || !creditGrantLog) return null;
 
-  const details = rechargeLog.details as Record<string, any> | undefined;
+  const details = creditGrantLog.details as Record<string, any> | undefined;
 
   // Claim/usage logs must NEVER display as an incoming gift notification
-  if (details?.type === 'use_referral_reward' || rechargeLog.plateNumber?.includes('استخدام مكافأة')) {
+  if (details?.type === 'use_referral_reward' || creditGrantLog.plateNumber?.includes('استخدام مكافأة')) {
     return null;
   }
   
   const isReferralReward =
     details?.type === 'referral_reward' ||
-    rechargeLog.packageId === 'referral_reward' ||
-    (Boolean(rechargeLog.plateNumber && rechargeLog.plateNumber.includes('مكافأة إحالة')) && !rechargeLog.plateNumber?.includes('استخدام'));
+    creditGrantLog.packageId === 'referral_reward' ||
+    (Boolean(creditGrantLog.plateNumber && creditGrantLog.plateNumber.includes('مكافأة إحالة')) && !creditGrantLog.plateNumber?.includes('استخدام'));
 
-  const rawPkgName = String(details?.packageName || rechargeLog.plateNumber || '');
+  const rawPkgName = String(details?.packageName || creditGrantLog.plateNumber || '');
   const isTrial =
     Boolean(details?.isTrial) ||
-    rechargeLog.packageId === 'trial' ||
+    creditGrantLog.packageId === 'trial' ||
     rawPkgName.includes('تجريب') ||
     rawPkgName.includes('تجريبية');
 
   const referredGarageName =
     details?.referredGarageName ||
-    (rechargeLog.plateNumber ? rechargeLog.plateNumber.replace(/^مكافأة إحالة من\s*/, '').split('—')[0].trim() : 'جراج صديق');
+    (creditGrantLog.plateNumber ? creditGrantLog.plateNumber.replace(/^مكافأة إحالة من\s*/, '').split('—')[0].trim() : 'جراج صديق');
 
   const cleanPackageName =
     rawPkgName
       .replace(/^(شحن باقة:|شحن باقة\s*|تفعيل الباقة:|تفعيل\s*|شحن رصيد الجراج)/gi, '')
       .trim() || (isTrial ? 'الباقة التجريبية' : 'الباقة');
 
-  const formattedDate = rechargeLog.timestamp
-    ? safeDate(rechargeLog.timestamp).toLocaleDateString('ar-EG', {
+  const formattedDate = creditGrantLog.timestamp
+    ? safeDate(creditGrantLog.timestamp).toLocaleDateString('ar-EG', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -67,9 +67,9 @@ export const RechargeNotificationModal: React.FC<RechargeNotificationModalProps>
     ? 'تم تفعيل الفترة التجريبية المجانية لبدء الاستخدام فوراً'
     : 'تم تحديث رصيد الاشتراك بنجاح';
 
-  const displayAmount = isTrial || !rechargeLog.amount
+  const displayAmount = isTrial || !creditGrantLog.amount
     ? 'مجاناً (فترة تجريبية)'
-    : `${rechargeLog.amount} ج.م`;
+    : `${creditGrantLog.amount} ج.م`;
 
   return (
     <div

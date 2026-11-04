@@ -19,7 +19,7 @@ const makeProps = () => ({
   visibleAnnouncement: null,
   onOpenAnnouncement: vi.fn(),
   expiringSubscribersCount: 2,
-  hasNewRecharge: false,
+  hasNewCreditGrant: false,
   onNavigateOverlay: vi.fn(),
   onLogout: vi.fn(),
 });

@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
-import { RechargeHistoryView } from "./RechargeHistoryView";
+import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
 import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
-import { RechargeNotificationModal } from "./modals/RechargeNotificationModal";
+import { CreditGrantNotificationModal } from "./modals/CreditGrantNotificationModal";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
 import type { ActivityLog, Garage, Staff, Vehicle } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
@@ -15,9 +15,9 @@ interface GarageDashboardOverlaysProps {
   garage: Garage;
   isLocked: boolean;
   isSubscribersOpen: boolean;
-  isRechargeHistoryOpen: boolean;
-  rechargeLogs: ActivityLog[];
-  isRechargeLogsLoading: boolean;
+  isCreditGrantHistoryOpen: boolean;
+  creditGrantLogs: ActivityLog[];
+  isCreditGrantLogsLoading: boolean;
   subscriberPage: SharedSubscriberPage | null;
   isReportsOpen: boolean;
   isAppearanceOpen: boolean;
@@ -25,7 +25,7 @@ interface GarageDashboardOverlaysProps {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onToggleMenu: () => void;
   onCloseSubscribers: () => void;
-  onCloseRechargeHistory: () => void;
+  onCloseCreditGrantHistory: () => void;
   onCloseReports: () => void;
   onCloseAppearance: () => void;
   onCloseTerms: () => void;
@@ -33,18 +33,18 @@ interface GarageDashboardOverlaysProps {
   staffList: Staff[];
   vehiclesInside: Vehicle[];
   todayExitedVehicles: Vehicle[];
-  isRechargeNotificationOpen: boolean;
-  rechargeLog: ActivityLog | null;
-  onCloseRechargeNotification: () => void;
+  isCreditGrantNotificationOpen: boolean;
+  creditGrantLog: ActivityLog | null;
+  onCloseCreditGrantNotification: () => void;
 }
 
 export const GarageDashboardOverlays = ({
   garage,
   isLocked,
   isSubscribersOpen,
-  isRechargeHistoryOpen,
-  rechargeLogs,
-  isRechargeLogsLoading,
+  isCreditGrantHistoryOpen,
+  creditGrantLogs,
+  isCreditGrantLogsLoading,
   subscriberPage,
   isReportsOpen,
   isAppearanceOpen,
@@ -52,7 +52,7 @@ export const GarageDashboardOverlays = ({
   showToast,
   onToggleMenu,
   onCloseSubscribers,
-  onCloseRechargeHistory,
+  onCloseCreditGrantHistory,
   onCloseReports,
   onCloseAppearance,
   onCloseTerms,
@@ -60,9 +60,9 @@ export const GarageDashboardOverlays = ({
   staffList,
   vehiclesInside,
   todayExitedVehicles,
-  isRechargeNotificationOpen,
-  rechargeLog,
-  onCloseRechargeNotification,
+  isCreditGrantNotificationOpen,
+  creditGrantLog,
+  onCloseCreditGrantNotification,
 }: GarageDashboardOverlaysProps) => {
 
   return (
@@ -85,8 +85,8 @@ export const GarageDashboardOverlays = ({
       {isSubscribersOpen && garage?.hasMonthlySubscribers && (
         <SubscribersView garage={garage} onClose={onCloseSubscribers} showToast={showToast} onToggleMenu={onToggleMenu} subscriberPage={subscriberPage} />
       )}
-      {isRechargeHistoryOpen && (
-        <RechargeHistoryView garage={garage} onClose={onCloseRechargeHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={rechargeLogs} sharedIsLoading={isRechargeLogsLoading} />
+      {isCreditGrantHistoryOpen && (
+        <CreditGrantHistoryView garage={garage} onClose={onCloseCreditGrantHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={creditGrantLogs} sharedIsLoading={isCreditGrantLogsLoading} />
       )}
       {isReportsOpen && !currentStaff && (
         <Suspense fallback={null}>
@@ -105,7 +105,7 @@ export const GarageDashboardOverlays = ({
         <AppearanceSettingsModal garage={garage} currentStaff={currentStaff} onClose={onCloseAppearance} showToast={showToast} onToggleMenu={onToggleMenu} />
       )}
       {showTermsModal && <TermsAndConditionsModal onClose={onCloseTerms} />}
-      <RechargeNotificationModal isOpen={isRechargeNotificationOpen && !!rechargeLog} rechargeLog={rechargeLog} onClose={onCloseRechargeNotification} />
+      <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
     </>
   );
 };
