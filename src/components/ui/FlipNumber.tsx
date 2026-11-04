@@ -50,9 +50,9 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDi
   };
 
   const fontClasses = {
-    sm: 'text-2xl',
-    md: 'text-5xl sm:text-6xl',
-    lg: 'text-7xl md:text-[8rem] [@media(max-height:500px)]:text-5xl [@media(max-width:280px)]:text-4xl'
+    sm: 'text-3xl',
+    md: 'text-6xl sm:text-7xl',
+    lg: 'text-8xl md:text-[9rem] [@media(max-height:500px)]:text-6xl [@media(max-width:280px)]:text-5xl'
   };
 
   const colorClasses = {
