@@ -9,7 +9,7 @@ vi.mock('../../services', () => { const _svc = {
     addDelegate: vi.fn(),
   }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
-const themeMock = vi.hoisted(() => ({ adminLang: 'ar' as 'ar' | 'en' }));
+const themeMock = vi.hoisted(() => ({ adminLang: 'ar' }));
 
 vi.mock('../../utils/ThemeContext', () => ({
   useTheme: () => themeMock,
@@ -89,7 +89,7 @@ describe('AdminPeopleView delegate creation', () => {
 
 describe('AdminPeopleView Arabic-only interface', () => {
   it('keeps Arabic labels and right-to-left layout even when a legacy English preference exists', () => {
-    themeMock.adminLang = 'en';
+    
 
     render(
       <AdminPeopleView
