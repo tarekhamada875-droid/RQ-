@@ -18,30 +18,30 @@
   "billing": {
     "model": "prepaid credits only",
     "authority": "Worker/API",
-    "balances": [
-      "paid",
-      "referral",
-      "trial"
-    ],
+    "balance": "single `credits` field on the garage document (collapsed from the previous three-bucket model on 2026-10-29)",
     "ledgerKinds": [
       "paid_grant",
       "referral_award",
       "trial_grant",
       "regular_entry_debit",
       "subscriber_renewal_debit",
-      "correction_restore"
+      "correction_delta"
     ],
     "rules": [
-      "A new trial grants exactly 100 trial credits.",
-      "Trial credits are tracked separately and are not cash revenue.",
-      "A regular vehicle entry consumes one eligible credit.",
+      "Each garage has a single credit balance stored as the `credits` field.",
+      "1 EGP = 1 credit. Admin credit grants are 50–2,000 EGP per operation.",
+      "A new trial grants exactly 100 credits (added to the single balance as a `trial_grant` ledger entry). Trial credits are not cash revenue.",
+      "A regular vehicle entry consumes 1 credit per car at check-in.",
+      "Subscriber renewal debits 5 credits per renewal from the single balance.",
       "Credit grants, debits, restores, referrals, and commissions must be transactional, idempotent, and auditable.",
-      "Delegate commission is exactly 100 EGP once per garage, triggered by its first successful paid credit grant."
+      "Delegate commission is exactly 100 EGP once per garage, triggered by its first successful paid credit grant (≥ 500 EGP)."
     ],
     "retired": [
+      "Three-bucket credit balances (creditBalance: { paid, referral, trial }) — replaced by the single `credits` field on 2026-10-29",
       "Garage-level subscription billing",
       "Duration, capacity, weekly, or monthly garage packages",
       "Legacy recharge requests and owner-wallet top-ups",
+      "Payment references on credit grants — removed on 2026-10-29",
       "The old two-free-day trial",
       "Legacy commission paths"
     ]
@@ -87,22 +87,14 @@
         "entryId",
         "garageId",
         "kind",
-        "bucket",
         "amount",
         "balanceBefore",
         "balanceAfter",
-        "totalBalanceAfter",
         "actorUid",
         "actorRole",
         "reason",
-        "reference",
         "occurredAt",
         "idempotencyKey"
-      ],
-      "buckets": [
-        "paid",
-        "referral",
-        "trial"
       ],
       "source": "server/domain/prepaidCreditLedger.ts"
     },

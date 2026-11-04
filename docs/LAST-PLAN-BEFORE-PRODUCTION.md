@@ -25,7 +25,6 @@
 - Admin credit grants: 50–2,000 EGP per operation.
 - Delegate commission: 100 EGP once per garage, only on the first qualifying grant (≥ 500 EGP).
 - Referral award: 20 credits to the referring garage on the referred garage's first qualifying grant.
-- Payment references: unique per garage (not globally).
 - Sessions: maximum 24 hours.
 - Time hidden from user-facing screens.
 - Arabic-only UI, RTL layout.
