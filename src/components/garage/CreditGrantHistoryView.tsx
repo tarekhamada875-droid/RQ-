@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminBillingService } from '../../services/adminBillingService';
@@ -33,18 +33,22 @@ const formatDate = (timestamp: unknown) => safeDate(timestamp).toLocaleDateStrin
 });
 
 /**
- * Bank-statement layout — one row per grant.
+ * v2: cards-with-substance layout.
  *
- * Each row carries 3 facts and nothing else:
- *   [date small]   [+amount رصيد large green]   [balance-after small]
+ * Stripped (still gone, was pure noise):
+ *   - Section header "عمليات الشحن" — the list is obviously operations.
+ *   - Page subtitle — title alone is self-explanatory.
+ *   - Card title "شحن رصيد" on every row — every row IS a recharge.
+ *   - Green "تم الشحن" badge — every entry is paid_grant; status never varies.
  *
- * Removed as redundant:
- *   - Section header "عمليات الشحن" (the list is obviously operations)
- *   - Page subtitle (title alone is self-explanatory)
- *   - Card title "شحن رصيد" (every row IS a recharge)
- *   - Green "تم الشحن" badge (every entry is filtered to kind=paid_grant;
- *     status never varies, so the badge adds zero information)
- *   - "الرصيد بعد الشحن:" verbose label (position + tiny "بعد" prefix carries it)
+ * Restored (was over-stripped in v1):
+ *   - Card structure (subtle border, not heavy chrome) so each row has visual weight.
+ *   - Full label "الرصيد بعد الشحن:" so the balance number isn't cryptic.
+ *
+ * New (didn't exist in either version):
+ *   - Summary header at top: current balance (large) + total recharged + count.
+ *     Fills the empty space with meaningful info, not decoration. Even with 1 entry,
+ *     the page reads as "complete" because the summary anchors it.
  */
 export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: CreditGrantHistoryViewProps) => {
   const [grants, setGrants] = useState<CreditGrantRecord[]>([]);
@@ -85,6 +89,12 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
 
   const currentBalance = Number(garage.credits ?? 0);
 
+  const summary = useMemo(() => {
+    const total = grants.reduce((sum, g) => sum + Number(g.amount || 0), 0);
+    const count = grants.length;
+    return { total, count };
+  }, [grants]);
+
   return (
     <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
@@ -103,27 +113,39 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
       </header>
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 sm:p-6 pb-10 overflow-y-auto custom-scrollbar stable-scrollbar">
+        {/* Summary header — anchors the page even when there are few entries */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5 mb-4">
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>
+          <p className="mt-1 text-4xl font-black font-mono text-slate-900 dark:text-slate-100 leading-none">
+            {currentBalance.toLocaleString('ar-EG')}
+          </p>
+          {!isLoading && !hasError && grants.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-500 dark:text-slate-400 flex-wrap">
+              <span>إجمالي الشحنات: <span className="font-mono text-slate-900 dark:text-slate-100">{summary.total.toLocaleString('ar-EG')}</span> رصيد</span>
+              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+              <span>{summary.count.toLocaleString('ar-EG')} عملية شحن</span>
+            </div>
+          )}
+        </div>
+
         {isLoading ? (
-          <div className="space-y-2" aria-label="جاري تحميل سجل الشحن">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-900 animate-pulse" />
+          <div className="space-y-3" aria-label="جاري تحميل سجل الشحن">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
             ))}
           </div>
         ) : hasError ? (
-          <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-5 py-8 text-center">
+          <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-5 py-8 text-center">
             <p className="font-bold text-rose-700 dark:text-rose-300">مش قادرين نعرض سجل الشحن دلوقتي.</p>
             <p className="mt-1 text-xs text-rose-600/80 dark:text-rose-400/80">جرّب تفتح الصفحة تاني.</p>
           </div>
         ) : grants.length === 0 ? (
-          <div className="px-1 py-12 text-center">
-            <p className="text-4xl font-black font-mono text-slate-900 dark:text-slate-100">
-              {currentBalance.toLocaleString('ar-EG')}
-            </p>
-            <p className="mt-2 text-sm font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-600">لسه مفيش شحن مسجل</p>
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 px-5 py-10 text-center">
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">لسه مفيش شحن مسجل للجراج ده.</p>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">لما تطلب شحن رصيد، هيظهر هنا.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="space-y-3">
             {grants.map((grant) => {
               const amount = Number(grant.amount || 0);
               const balanceAfter = Number(grant.totalBalanceAfter ?? grant.balanceAfter ?? 0);
@@ -132,17 +154,17 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
               return (
                 <li
                   key={grant.id || grant.entryId}
-                  className="flex items-baseline gap-3 py-3.5"
+                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 shadow-sm"
                 >
-                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500 shrink-0">
+                  <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                     {formatDate(timestamp)}
-                  </span>
-                  <span className="flex-1 text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
+                  </p>
+                  <p className="mt-2 text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
                     +{amount.toLocaleString('ar-EG')} رصيد
-                  </span>
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
-                    بعد {balanceAfter.toLocaleString('ar-EG')}
-                  </span>
+                  </p>
+                  <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300">
+                    الرصيد بعد الشحن: <span className="font-mono text-slate-900 dark:text-slate-100">{balanceAfter.toLocaleString('ar-EG')}</span>
+                  </p>
                 </li>
               );
             })}
