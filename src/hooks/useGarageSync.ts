@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { Garage, Vehicle, Staff } from '../types';
 import { adminService, delegateService, garageService, vehicleService } from '../services';
-import { throttleSnapshot } from '../utils/storage';;
+import { throttleSnapshot } from '../utils/storage';
 
 interface UseGarageSyncProps {
   isSessionReady: boolean;

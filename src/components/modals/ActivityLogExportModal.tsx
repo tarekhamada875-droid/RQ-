@@ -16,7 +16,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { adminService } from '../../services';
-import { safeDate } from '../../utils/dates';;
+import { safeDate } from '../../utils/dates';
 interface ActivityLogExportModalProps {
   onClose: () => void;
 }

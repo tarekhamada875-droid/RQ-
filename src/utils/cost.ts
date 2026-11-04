@@ -3,9 +3,9 @@ import { safeDate } from './dates';
 /**
  * Client-side vehicle cost calculation.
  *
- * Mirrors server/utils.ts calculateVehicleCost() — keep the two in sync
- * if either changes. The server is authoritative at checkout; this function
- * is used for live cost previews in the UI.
+ * Mirrors server/domain/vehicleCost.ts calculateVehicleCost() — keep the
+ * two in sync if either changes. The server is authoritative at checkout;
+ * this function is used for live cost previews in the UI.
  */
 
 const MS_PER_HOUR = 3600000;

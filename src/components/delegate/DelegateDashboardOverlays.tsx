@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, PlusCircle, RefreshCw, X } from 'lucide-react';
 import { Garage } from '../../types';
-import { generateSafePin } from '../../utils/pins';;
+import { generateSafePin } from '../../utils/pins';
 
 interface DelegateDashboardOverlaysProps {
   showAddGarage: boolean;

@@ -6,7 +6,7 @@ import { useServerTimeNow } from './serverTimeContext';
 import { generateIdempotencyKey } from '../types/apiContracts';
 import { calculateCost } from '../utils/cost';
 import { safeDate } from '../utils/dates';
-import { getRawPlate, formatPlateNumber } from '../utils/plates';;
+import { getRawPlate, formatPlateNumber } from '../utils/plates';
 import { getCairoDateKey } from '../domain/garage/businessDay';
 
 const pendingOperations = new Set<string>();

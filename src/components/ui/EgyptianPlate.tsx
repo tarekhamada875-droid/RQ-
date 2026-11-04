@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { FitText } from './FitText';
-import { formatArabicDigits } from '../../utils/plates';;
+import { formatArabicDigits } from '../../utils/plates';
 
 interface EgyptianPlateProps {
   plateNumber: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatPlateNumber, getPlateParts, getRawPlate } from '../utils/plates';;
+import { formatPlateNumber, getPlateParts, getRawPlate } from '../utils/plates';
 
 describe('duplication refactor domain contracts', () => {
   describe('Arabic plate contracts', () => {
