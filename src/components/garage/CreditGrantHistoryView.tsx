@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, memo } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminBillingService } from '../../services/adminBillingService';
@@ -33,22 +33,22 @@ const formatDate = (timestamp: unknown) => safeDate(timestamp).toLocaleDateStrin
 });
 
 /**
- * v2: cards-with-substance layout.
+ * v3: cards without the summary header.
  *
- * Stripped (still gone, was pure noise):
- *   - Section header "عمليات الشحن" — the list is obviously operations.
- *   - Page subtitle — title alone is self-explanatory.
- *   - Card title "شحن رصيد" on every row — every row IS a recharge.
- *   - Green "تم الشحن" badge — every entry is paid_grant; status never varies.
+ * Owner feedback after v2: "I don't like this — it will add more unnecessary
+ * reads and it is already on the main screen." The summary card duplicated
+ * the current balance that the dashboard already shows, and computing
+ * total+count was a needless re-derivation from data the user already has.
  *
- * Restored (was over-stripped in v1):
- *   - Card structure (subtle border, not heavy chrome) so each row has visual weight.
- *   - Full label "الرصيد بعد الشحن:" so the balance number isn't cryptic.
+ * So: drop the summary card. Keep the per-row card structure (which the
+ * owner approved visually) with the full "الرصيد بعد الشحن:" label.
  *
- * New (didn't exist in either version):
- *   - Summary header at top: current balance (large) + total recharged + count.
- *     Fills the empty space with meaningful info, not decoration. Even with 1 entry,
- *     the page reads as "complete" because the summary anchors it.
+ * Removed (still gone — pure noise):
+ *   - Section header "عمليات الشحن"
+ *   - Page subtitle
+ *   - Card title "شحن رصيد" on every row
+ *   - Green "تم الشحن" badge (status never varies)
+ *   - Summary header card (duplicated dashboard data, v2 misstep)
  */
 export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: CreditGrantHistoryViewProps) => {
   const [grants, setGrants] = useState<CreditGrantRecord[]>([]);
@@ -87,14 +87,6 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
     };
   }, [garage.id, showToast]);
 
-  const currentBalance = Number(garage.credits ?? 0);
-
-  const summary = useMemo(() => {
-    const total = grants.reduce((sum, g) => sum + Number(g.amount || 0), 0);
-    const count = grants.length;
-    return { total, count };
-  }, [grants]);
-
   return (
     <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
@@ -113,21 +105,6 @@ export const CreditGrantHistoryView = memo(({ garage, onClose, showToast }: Cred
       </header>
 
       <main className="flex-1 w-full max-w-2xl mx-auto p-4 sm:p-6 pb-10 overflow-y-auto custom-scrollbar stable-scrollbar">
-        {/* Summary header — anchors the page even when there are few entries */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5 mb-4">
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400">الرصيد الحالي</p>
-          <p className="mt-1 text-4xl font-black font-mono text-slate-900 dark:text-slate-100 leading-none">
-            {currentBalance.toLocaleString('ar-EG')}
-          </p>
-          {!isLoading && !hasError && grants.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-500 dark:text-slate-400 flex-wrap">
-              <span>إجمالي الشحنات: <span className="font-mono text-slate-900 dark:text-slate-100">{summary.total.toLocaleString('ar-EG')}</span> رصيد</span>
-              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-              <span>{summary.count.toLocaleString('ar-EG')} عملية شحن</span>
-            </div>
-          )}
-        </div>
-
         {isLoading ? (
           <div className="space-y-3" aria-label="جاري تحميل سجل الشحن">
             {[1, 2, 3].map((item) => (
