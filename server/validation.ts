@@ -1,3 +1,5 @@
+import { normalizeDigits } from './utils';
+
 export interface ValidationOptions {
   min?: number;
   max?: number;
@@ -31,18 +33,7 @@ export function validateNewPin(val: any, fieldName = 'PIN'): string {
     throw new ValidationError(`${fieldName} is required`, 'INVALID_PIN', 400);
   }
 
-  const normalized = String(val)
-    .trim()
-    .replace(/[٠۰]/g, '0')
-    .replace(/[١۱]/g, '1')
-    .replace(/[٢۲]/g, '2')
-    .replace(/[٣۳]/g, '3')
-    .replace(/[٤۴]/g, '4')
-    .replace(/[٥۵]/g, '5')
-    .replace(/[٦۶]/g, '6')
-    .replace(/[٧۷]/g, '7')
-    .replace(/[٨۸]/g, '8')
-    .replace(/[٩۹]/g, '9');
+  const normalized = normalizeDigits(String(val).trim());
 
   if (!new RegExp(`^\\d{${NEW_PIN_LENGTH}}$`).test(normalized)) {
     throw new ValidationError(
