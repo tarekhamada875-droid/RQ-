@@ -10,6 +10,9 @@ const vehicleRoutesSource = readFileSync(resolve(process.cwd(), 'server/vehicleR
 const subscriberRoutesSource = readFileSync(resolve(process.cwd(), 'server/subscriberRoutes.ts'), 'utf8');
 const financialRoutesSource = readFileSync(resolve(process.cwd(), 'server/financialRoutes.ts'), 'utf8');
 const garageRoutesSource = readFileSync(resolve(process.cwd(), 'server/garageRoutes.ts'), 'utf8');
+const staffRoutesSource = readFileSync(resolve(process.cwd(), 'server/staffRoutes.ts'), 'utf8');
+const delegateRoutesSource = readFileSync(resolve(process.cwd(), 'server/delegateRoutes.ts'), 'utf8');
+const creditGrantRoutesSource = readFileSync(resolve(process.cwd(), 'server/creditGrantRoutes.ts'), 'utf8');
 const creditRequestRoutesSource = readFileSync(resolve(process.cwd(), 'server/creditRequestRoutes.ts'), 'utf8');
 
 function registrations(source: string): string[] {
@@ -98,13 +101,19 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       'POST /api/garages/dashboard-summary/rebuild',
       'POST /api/garages/rebuild-projections',
       'GET /api/garages/:id/dashboard-summary',
-      'GET /api/garages/:id',
+      'GET /api/garages/:id'
+    ]);
+    expect(registrations(staffRoutesSource)).toEqual([
       'POST /api/staff/create',
       'POST /api/staff/update',
-      'POST /api/staff/delete',
+      'POST /api/staff/delete'
+    ]);
+    expect(registrations(delegateRoutesSource)).toEqual([
       'POST /api/delegates/create',
       'POST /api/delegates/update',
-      'POST /api/delegates/delete',
+      'POST /api/delegates/delete'
+    ]);
+    expect(registrations(creditGrantRoutesSource)).toEqual([
       'POST /api/people/update-pin',
       'POST /api/garages/:id/credit-grants',
       'POST /api/garages/:id/credit-corrections',
@@ -119,6 +128,9 @@ describe('Cross-F1 Worker route extraction inventory', () => {
       + registrations(subscriberRoutesSource).length
       + registrations(financialRoutesSource).length
       + registrations(garageRoutesSource).length
+      + registrations(staffRoutesSource).length
+      + registrations(delegateRoutesSource).length
+      + registrations(creditGrantRoutesSource).length
       + registrations(creditRequestRoutesSource).length
     ).toBe(66);
   });
