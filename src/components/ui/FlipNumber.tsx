@@ -33,6 +33,7 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
         <FlipDigit
           key={`${index}-${digit}`}
           digit={digit}
+          previousDigit={previousDigitsRef.current?.[index] ?? null}
           size={size}
           color={color}
           displayDigits={displayDigits}
@@ -43,7 +44,7 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
   );
 });
 
-const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDigits = 'western', animate }: { digit: string; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; displayDigits?: 'western' | 'arabic'; animate: boolean }) => {
+const FlipDigit = React.memo(({ digit, previousDigit, size = 'md', color = 'default', displayDigits = 'western', animate }: { digit: string; previousDigit: string | null; size?: 'sm' | 'md' | 'lg'; color?: 'default' | 'success' | 'danger'; displayDigits?: 'western' | 'arabic'; animate: boolean }) => {
   const sizeClasses = {
     sm: 'w-8 h-12 rounded-lg',
     md: 'w-14 h-22 rounded-xl sm:w-18 sm:h-28',
@@ -81,18 +82,35 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDi
   };
 
   const colors = colorClasses[color];
-  const displayChar = displayDigits === 'arabic' ? formatArabicDigits(digit) : digit;
+  const formatFn = displayDigits === 'arabic' ? formatArabicDigits : (s: string) => s;
+  // When animating, front face shows the old digit, back face shows the new one.
+  // When not animating (or no previous digit), both faces show the current digit.
+  const frontChar = formatFn(previousDigit ?? digit);
+  const backChar = formatFn(digit);
 
   return (
     <div
       className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
     >
-      <span
-        data-testid="flip-number-digit"
-        className={`${animate ? 'flip-number-digit' : ''} ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
-      >
-        {displayChar}
-      </span>
+      {/* 3D flip container: perspective + two faced card */}
+      <div className="flip-3d-container">
+        <div className={`flip-3d-inner${animate ? ' flipping' : ''}`}>
+          {/* Front face — visible at 0°. Shows old digit during flip. */}
+          <span
+            className={`flip-3d-face flip-3d-front ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
+          >
+            {frontChar}
+          </span>
+          {/* Back face — pre-rotated 180°, visible after flip. Shows new digit.
+              data-testid stays here so tests find the CURRENT digit value. */}
+          <span
+            data-testid="flip-number-digit"
+            className={`flip-3d-face flip-3d-back ${animate ? 'flip-number-digit' : ''} ${colors.text} ${fontClasses[size]} font-black font-mono leading-none tracking-tight`}
+          >
+            {backChar}
+          </span>
+        </div>
+      </div>
       {/* Subtle center hairline for clean scoreboard card division */}
       <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] ${colors.sep} pointer-events-none opacity-40`} />
     </div>
