@@ -294,7 +294,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                   className="mb-4 md:mb-10 [@media(max-height:500px)]:mb-2 cursor-pointer w-full flex justify-center"
                 >
                   <div className="relative flex flex-col items-center w-full px-4 md:px-8">
-                    <FlipNumber value={garage?.carsInside || 0} size="lg" />
+                    <FlipNumber value={garage?.carsInside || 0} size="lg" displayDigits="arabic" />
                   </div>
                 </div>
 

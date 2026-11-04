@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
 import { garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
+import { formatArabicDigits } from '../../utils';
 
 export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
 
@@ -322,7 +323,7 @@ export const GarageReportsView = memo(({
                   </div>
                 </div>
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-                  {stats.todayRevenue} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
+                  {formatArabicDigits(stats.todayRevenue)} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
                 </p>
               </div>
 
@@ -335,10 +336,10 @@ export const GarageReportsView = memo(({
                   </div>
                 </div>
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-                  {stats.totalExited} <span className="text-[10px] font-bold text-slate-400">مغادرة</span>
+                  {formatArabicDigits(stats.totalExited)} <span className="text-[10px] font-bold text-slate-400">مغادرة</span>
                 </p>
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-none">
-                  ساعة: {stats.hourlyExited} • مبيت: {stats.overnightExited}
+                  ساعة: {formatArabicDigits(stats.hourlyExited)} • مبيت: {formatArabicDigits(stats.overnightExited)}
                 </span>
               </div>
 
