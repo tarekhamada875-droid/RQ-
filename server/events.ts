@@ -140,7 +140,15 @@ function validateEventParams(params: CreateEventParams): void {
   if (params.eventType === 'prepaid_credit_grant_paid') {
     const amount = params.payload.amount;
     const creditAmount = params.payload.creditAmount;
-    if (!Number.isSafeInteger(creditAmount) || Number(creditAmount) < 1 || amount !== creditAmount || typeof params.payload.creditLedgerEntryId !== 'string' || !params.payload.creditLedgerEntryId) {
+    // Both must be positive safe integers. The legacy 1:1 equality check
+    // (`amount !== creditAmount`) was removed when the configurable creditRate
+    // was introduced — now `creditAmount = round(amount × creditRate)` and
+    // they legitimately differ when rate ≠ 1. The credit-grant route is the
+    // authoritative source of the rate-aware computation; the event validator
+    // only checks shape, not the rate relationship.
+    if (!Number.isSafeInteger(creditAmount) || Number(creditAmount) < 1
+        || !Number.isSafeInteger(amount) || Number(amount) < 1
+        || typeof params.payload.creditLedgerEntryId !== 'string' || !params.payload.creditLedgerEntryId) {
       throw new Error('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
     }
   }

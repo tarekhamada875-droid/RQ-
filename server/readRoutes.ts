@@ -13,11 +13,12 @@ export interface RouteDeps {
   maintainedSummaryVersion: number;
 }
 
-const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber'] as const;
+const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber', 'creditRate'] as const;
 
 const DEFAULT_SYSTEM_CONFIG = {
   adminColor: '#10b981',
-  paymentWalletNumber: ''
+  paymentWalletNumber: '',
+  creditRate: 1
 };
 
 function projectSystemConfig(config: Record<string, any>): Record<string, any> {
@@ -113,6 +114,12 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
         throw new ValidationError('Invalid adminColor', 'INVALID_ADMIN_COLOR', 400);
       }
       updatePayload.adminColor = body.adminColor.trim();
+    }
+    if (body.creditRate !== undefined) {
+      // Allow 0.01 to 1000. Below 0.01 is effectively free; above 1000 is nonsensical.
+      // Integer 1 (default) preserves the legacy 1 EGP = 1 credit behavior.
+      const rate = validateNumber(body.creditRate, 'creditRate', { min: 0.01, max: 1000 });
+      updatePayload.creditRate = rate;
     }
 
 

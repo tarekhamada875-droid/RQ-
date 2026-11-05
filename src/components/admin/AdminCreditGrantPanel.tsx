@@ -10,6 +10,8 @@ const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   IDEMPOTENCY_KEY_REQUIRED: 'تعذر التحقق من الطلب. يرجى المحاولة مرة أخرى.',
   CREDIT_AMOUNT_REQUIRED: 'أدخل قيمة الرصيد المراد إضافته.',
   PAYMENT_AMOUNT_MUST_MATCH_CREDITS: 'يجب أن يساوي مبلغ الدفع قيمة الرصيد المراد إضافته.',
+  INVALID_CREDIT_RATE_CONFIG: 'سعر الصرف المُعد غير صالح. راجع إعدادات سعر الصرف.',
+  CREDIT_AMOUNT_BELOW_MINIMUM: 'القيمة المُدخلة صغيرة جدًا مقابل سعر الصرف الحالي. أدخل قيمة أكبر أو راجع سعر الصرف.',
   GARAGE_NOT_FOUND: 'الجراج المطلوب غير موجود.',
   GARAGE_NOT_PREPAID: 'إدارة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.',
   INVALID_CREDIT_AMOUNT: 'قيمة الرصيد غير صالحة.',

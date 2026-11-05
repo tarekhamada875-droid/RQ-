@@ -175,8 +175,22 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
       const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
       let amount: number;
-      amount = validateNumber(sanitized.amount, 'amount', { min: 50, max: 2_000, integerOnly: true });
-      if (paymentAmountEgp !== amount) throw new Error('PAYMENT_AMOUNT_MUST_MATCH_CREDITS');
+      // ── Credit rate ────────────────────────────────────────────────────────
+      // 1 EGP = N credits where N = creditRate (default 1).
+      // The client-sent `amount` field is ignored — the server is authoritative
+      // for the EGP→credit conversion so the admin UI doesn't need to know the
+      // rate. The client only sends paymentAmountEgp; credits are derived.
+      const configSnap = await t.get(getAdminDb().doc('system_config/global'));
+      const configData = configSnap.exists ? (configSnap.data() || {}) : {};
+      const creditRate = Number(configData.creditRate ?? 1);
+      if (!Number.isFinite(creditRate) || creditRate <= 0) {
+        throw new Error('INVALID_CREDIT_RATE_CONFIG');
+      }
+      amount = Math.round(paymentAmountEgp * creditRate);
+      if (!Number.isSafeInteger(amount) || amount < 1) {
+        // EGP × rate rounded to less than 1 credit — rate is too low for this amount.
+        throw new Error('CREDIT_AMOUNT_BELOW_MINIMUM');
+      }
       const currentBalance = Number(garage.credits ?? 0);
       const transition = grantPaidCredits({ balance: currentBalance, amount, garageId, actorUid: callerUid, actorRole: 'admin', reason, occurredAt: new Date().toISOString(), idempotencyKey });
       if (transition.ok === false) throw new Error(transition.error);

@@ -94,13 +94,54 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect([...mockDb.records.keys()].filter((path) => path.startsWith('activity_logs/'))).toHaveLength(2);
   });
 
-  it('rejects mismatched EGP and credit amounts before any balance or audit write', async () => {
-    const response = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, paymentAmountEgp: 101, idempotencyKey: 'bill07-mismatch' }) }));
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ success: false, error: 'PAYMENT_AMOUNT_MUST_MATCH_CREDITS' });
-    expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBe(14);
-    expect([...mockDb.records.keys()].filter((path) => path.startsWith('credit_ledger/'))).toHaveLength(0);
-    expect([...mockDb.records.keys()].filter((path) => path.includes('/events/'))).toHaveLength(0);
+  it('applies the configured creditRate when granting credits (rate=2 → 2x credits)', async () => {
+    // Seed a custom creditRate of 2 (1 EGP = 2 credits)
+    mockDb.seed('system_config/global', { creditRate: 2 });
+    // Send 100 EGP. Server should derive credits = round(100 × 2) = 200.
+    const response = await api.fetch(new Request(endpoint, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        amount: 100,            // legacy field, ignored by server
+        paymentAmountEgp: 100,  // authoritative input
+        paymentConfirmed: true,
+        reason: 'Verified prepaid credit payment',
+        idempotencyKey: 'bill07-rate-2x'
+      })
+    }));
+    const body = await response.json() as any;
+    expect(response.status).toBe(200);
+    // Server grants 200 credits (100 EGP × rate 2), balance = 14 + 200 = 214
+    expect(body.data).toMatchObject({ garageId, amount: 200, paymentAmountEgp: 100, balance: 214 });
+    expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBe(214);
+    // totalAdminRevenue tracks EGP, not credits
+    expect(mockDb.records.get(`garages/${garageId}`)?.totalAdminRevenue).toBe(100);
+    // Ledger entry records both: amount (credits) = 200, paymentAmountEgp = 100
+    const entries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('credit_ledger/'));
+    expect(entries[0][1]).toMatchObject({ kind: 'paid_grant', amount: 200, paymentAmountEgp: 100, balanceBefore: 14, balanceAfter: 214 });
+    // Event records both EGP and credit amount (they differ when rate ≠ 1)
+    const paymentEvents = [...mockDb.records.entries()].filter(([path, value]: [string, any]) => path.startsWith(`garages/${garageId}/events/`) && value.eventType === 'prepaid_credit_grant_paid');
+    expect(paymentEvents[0][1]).toMatchObject({ payload: { amount: 100, creditAmount: 200 } });
+  });
+
+  it('uses default rate of 1 when system_config has no creditRate field (backward compat)', async () => {
+    // No system_config doc seeded — server should default creditRate to 1
+    const response = await api.fetch(new Request(endpoint, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        amount: 100,
+        paymentAmountEgp: 100,
+        paymentConfirmed: true,
+        reason: 'Verified prepaid credit payment',
+        idempotencyKey: 'bill07-default-rate'
+      })
+    }));
+    const body = await response.json() as any;
+    expect(response.status).toBe(200);
+    // 100 EGP × rate 1 = 100 credits. Balance = 14 + 100 = 114.
+    expect(body.data).toMatchObject({ amount: 100, paymentAmountEgp: 100, balance: 114 });
+    expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBe(114);
   });
 
   it('awards 20 referral credits once on the first paid grant and keeps a distinct auditable record', async () => {
@@ -146,12 +187,18 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBeUndefined();
   });
 
-  it('rejects invalid amounts, missing money confirmation values, and mixed template/manual input', async () => {
+  it('rejects invalid paymentAmountEgp values (server derives credits from EGP, ignores legacy amount field)', async () => {
     const post = (body: any) => api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...grantBody, ...body }) }));
-    expect((await post({ amount: 1.5 })).status).toBe(400);
-    expect((await post({ paymentAmountEgp: undefined })).status).toBe(400);
-
-    expect((await post({ amount: 0 })).status).toBe(400);
+    // Legacy `amount` field is now ignored by the server (credits are derived from paymentAmountEgp × creditRate).
+    // Sending amount: 1.5 or amount: 0 with a valid paymentAmountEgp no longer fails — the grant succeeds.
+    // The new validation surface is paymentAmountEgp itself:
+    expect((await post({ paymentAmountEgp: undefined })).status).toBe(400); // missing
+    expect((await post({ paymentAmountEgp: 1.5 })).status).toBe(400);      // not an integer
+    expect((await post({ paymentAmountEgp: 0 })).status).toBe(400);         // below min (50)
+    expect((await post({ paymentAmountEgp: 49 })).status).toBe(400);        // below min (50)
+    expect((await post({ paymentAmountEgp: 2001 })).status).toBe(400);      // above max (2000)
+    // Sanity: a valid 100 EGP grant still succeeds (the success case is covered in detail above).
+    expect((await post({ paymentAmountEgp: 100, idempotencyKey: 'bill07-valid-100' })).status).toBe(200);
   });
 
   it('keeps the payment amount in Admin history only, never exposing it to the garage user', async () => {

@@ -56,10 +56,17 @@ describe('domain event money invariants', () => {
     expect(writes).toBe(0);
   });
 
-  it('rejects paid-credit events where the EGP amount and credit count differ', () => {
+  it('allows paid-credit events where EGP and credit count differ (rate≠1) but rejects malformed shape', () => {
     const fixture = eventFixtures.find((candidate) => candidate.eventType === 'prepaid_credit_grant_paid')!;
-    expect(() => writeEvent(fixture, { ...fixture.payload, creditAmount: 9 })).toThrow('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
+    // With configurable creditRate, creditAmount = round(amount × rate) can differ from amount.
+    // E.g., amount=100 EGP, rate=2 → creditAmount=200. This is now valid.
+    expect(() => writeEvent(fixture, { ...fixture.payload, creditAmount: 200 })).not.toThrow();
+    // Shape validation still enforced: empty creditLedgerEntryId rejected
     expect(() => writeEvent(fixture, { ...fixture.payload, creditLedgerEntryId: '' })).toThrow('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
+    // Shape validation: non-integer creditAmount rejected
+    expect(() => writeEvent(fixture, { ...fixture.payload, creditAmount: 1.5 })).toThrow('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
+    // Shape validation: zero creditAmount rejected
+    expect(() => writeEvent(fixture, { ...fixture.payload, creditAmount: 0 })).toThrow('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
   });
 
   it.each([['originalAmount', -1], ['discountAmount', Number.NaN], ['commission', 1.239]] as const)(
