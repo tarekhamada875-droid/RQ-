@@ -67,11 +67,17 @@ export const garageService = {
     }
   },
 
-  subscribeToGarage: (garageId: string, callback: (garage: Garage) => void) => {
+  subscribeToGarage: (
+    garageId: string,
+    callback: (garage: Garage, metadata?: { fromCache: boolean; hasPendingWrites: boolean }) => void
+  ) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}`);
     const unsub = onSnapshot(doc(db, 'garages', garageId), (snapshot) => {
       if (snapshot.exists()) {
-        callback({ id: snapshot.id, ...snapshot.data() } as Garage);
+        callback(
+          { id: snapshot.id, ...snapshot.data() } as Garage,
+          { fromCache: snapshot.metadata.fromCache, hasPendingWrites: snapshot.metadata.hasPendingWrites }
+        );
       }
     }, (err) => handleFirestoreError(err, OperationType.GET, `garages/${garageId}`));
 

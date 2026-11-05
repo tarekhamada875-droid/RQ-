@@ -147,7 +147,10 @@ export const vehicleService = {
     }
   },
 
-  subscribeToActiveVehicles: (garageId: string, callback: (vehicles: Vehicle[]) => void) => {
+  subscribeToActiveVehicles: (
+    garageId: string,
+    callback: (vehicles: Vehicle[], metadata?: { fromCache: boolean; hasPendingWrites: boolean }) => void
+  ) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/active_vehicles`);
     const q = query(
       collection(db, `garages/${garageId}/vehicles`),
@@ -156,7 +159,10 @@ export const vehicleService = {
     const unsub = onSnapshot(q, (snapshot) => {
       const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vehicle));
       vehicles.sort((a, b) => safeDate(b.entryTime).getTime() - safeDate(a.entryTime).getTime());
-      callback(vehicles);
+      callback(
+        vehicles,
+        { fromCache: snapshot.metadata.fromCache, hasPendingWrites: snapshot.metadata.hasPendingWrites }
+      );
     });
 
     return () => {
