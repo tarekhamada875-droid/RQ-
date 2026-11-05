@@ -162,6 +162,13 @@ export interface SystemConfig {
   supportPhone?: string;
   adminColor?: string; // Persisted admin accent/shimmer color
   paymentWalletNumber?: string; // Wallet number shown to garage owners when credits are exhausted
+  /**
+   * EGP-to-credit conversion rate. Default 1 (1 EGP = 1 credit).
+   * When admin grants paymentAmountEgp, garage receives paymentAmountEgp × creditRate credits.
+   * Example: rate=2 → 100 EGP buys 200 credits. rate=0.5 → 100 EGP buys 50 credits.
+   * Applies to NEW grants only — past ledger entries are immutable.
+   */
+  creditRate?: number;
   updatedAt?: FirestoreTimestamp;
 }
 

@@ -83,7 +83,8 @@ describe('CF3 — Cloudflare Worker HTTP Foundation', () => {
       expect(body.success).toBe(true);
       expect(body.config).toEqual({
         adminColor: '#123456',
-        paymentWalletNumber: ''
+        paymentWalletNumber: '',
+        creditRate: 1
       });
     }
   });
