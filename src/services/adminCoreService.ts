@@ -14,7 +14,7 @@ export const adminCoreService = {
       });
       return { id: res.id };
     } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
+      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       throw error;
@@ -30,7 +30,7 @@ export const adminCoreService = {
         body: { id, ...otherFields, ...(data.pin ? { pin: data.pin } : {}) }
       });
     } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
+      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       handleFirestoreError(error, OperationType.UPDATE, `staff/${id}`);
@@ -72,7 +72,7 @@ export const adminCoreService = {
       });
     } catch (error: any) {
       console.error('[AdminService] updateAdminPin error:', error);
-      if (error.message === 'PIN_ALREADY_TAKEN') {
+      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       if (error.message === 'CURRENT_PIN_REQUIRED') {

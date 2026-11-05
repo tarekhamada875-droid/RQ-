@@ -85,7 +85,28 @@ export async function processGarageDeletionStep(
       const page = await transaction.get(queries[collectionIndex].limit(GARAGE_DELETE_PAGE_SIZE));
       if (page.empty) continue;
 
-      for (const document of page.docs) transaction.delete(document.ref);
+      for (const document of page.docs) {
+        // Permanent PIN retirement: when bulk-deleting a private_pins doc
+        // (garage deletion), also write a retired_pins entry so that PIN
+        // can never be reused. Per "used once, never again" policy,
+        // entity deletion has NO grace period — the PIN is always retired.
+        const docPath: string = document.ref.path || '';
+        if (docPath.startsWith('private_pins/')) {
+          const pinData: any = document.data() || {};
+          const lookupHash: string = typeof pinData.pinLookupHash === 'string' ? pinData.pinLookupHash : '';
+          if (lookupHash) {
+            const retiredRef = adminDb.doc(`retired_pins/${lookupHash}`);
+            transaction.set(retiredRef, {
+              lookupHash,
+              lastEntityId: pinData.entityId || garageId,
+              lastEntityType: pinData.entityType || 'garages',
+              retiredAt: now,
+              updatedAt: now,
+            }, { merge: true });
+          }
+        }
+        transaction.delete(document.ref);
+      }
       const nextProcessedRecords = processedRecords + page.docs.length;
       transaction.set(jobRef, {
         status: 'running',
