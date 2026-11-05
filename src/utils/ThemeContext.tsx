@@ -47,10 +47,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error('Failed to save theme in localStorage', e);
     }
 
-    // Update browser theme-color meta tag for perfect status bar/address bar integration
+    // Update browser theme-color meta tag for the system status bar.
+    // ALWAYS black regardless of light/dark theme — this is the bar at the
+    // top of the screen showing time/battery/signal. Solid black with white
+    // icons gives maximum contrast and avoids the "transparent" look where
+    // the status bar blends into the cream app background in light mode.
     const metaThemeColor = window.document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', theme === 'dark' ? '#000000' : '#faf9f6');
+      metaThemeColor.setAttribute('content', '#000000');
     }
 
     // Remove disable-transitions after browser renders the color update in 1 frame
