@@ -231,13 +231,13 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">سعر الصرف</h3>
+                <h3 className="font-black text-slate-900 dark:text-white text-base">سعر الرصيد</h3>
                 <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
                   <Coins className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>عدد الرصيد لكل جنيه يدفعه الجراج</span>
+                <span>كم جنيه يدفع الجراج مقابل رصيد واحد</span>
                 <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
               </div>
             </div>
