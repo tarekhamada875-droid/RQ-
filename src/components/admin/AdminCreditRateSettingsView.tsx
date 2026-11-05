@@ -8,35 +8,51 @@ interface AdminCreditRateSettingsViewProps {
 }
 
 /**
- * Admin-only screen for setting the EGP-per-credit price.
+ * Admin-only screen for setting the EGP-per-credit price (global, all garages).
  *
- * Owner-facing input: "How many EGP does 1 credit cost?"
- *   - Type 1    → 1 credit costs 1 EGP        (default, legacy behavior)
- *   - Type 0.75 → 1 credit costs 0.75 EGP     (cheaper credits → more credits per EGP)
- *   - Type 2    → 1 credit costs 2 EGP         (premium credits → fewer credits per EGP)
+ * Owner-facing question: "How many EGP does 1 credit cost?"
+ * The admin picks ONE of five presets — no free-form typing, no inversion
+ * math, no decimals to mis-enter. Each preset shows a live preview of what
+ * 100 EGP buys, so the consequence of each choice is visible before saving.
+ *
+ *   0.5 EGP/credit → 100 EGP buys 200 credits  (cheapest credits)
+ *   1   EGP/credit → 100 EGP buys 100 credits  (default, legacy)
+ *   2   EGP/credit → 100 EGP buys  50 credits
+ *   5   EGP/credit → 100 EGP buys  20 credits
+ *  10   EGP/credit → 100 EGP buys  10 credits  (premium credits)
  *
  * Storage: the server stores `creditRate` = credits-per-EGP (the inverse).
  *   creditRate = 1 / egpPerCredit
- *   Examples: egpPerCredit=1 → creditRate=1; egpPerCredit=0.75 → creditRate=1.333...
- *
- * The UI inverts on load (creditRate → egpPerCredit) and on save
- * (egpPerCredit → creditRate). The backend logic is unchanged — it still
+ * The UI converts on load and on save; backend logic is unchanged — it still
  * computes `credits = round(paymentAmountEgp × creditRate)`.
  *
- * Default rate is 1 (1 EGP = 1 credit, the legacy behavior).
  * When admin changes the rate, only NEW credit grants use the new rate.
  * Existing balances and past ledger entries are immutable.
- *
- * The rate is global — applies to all garages.
  *
  * This screen does NOT require PIN re-verification — setting a rate is not a
  * security-sensitive operation. The admin is already authenticated.
  */
+
+const PRESETS: readonly number[] = [0.5, 1, 2, 5, 10];
+
+const PREVIEW_EGP = 100;
+
+function creditsForEgp(egpPerCredit: number, egp: number): number {
+  if (!(egpPerCredit > 0)) return 0;
+  return Math.round(egp / egpPerCredit);
+}
+
+function rateToEgpPerCredit(creditRate: number | undefined | null): number {
+  const r = Number(creditRate ?? 1);
+  if (!Number.isFinite(r) || r <= 0) return 1;
+  return 1 / r;
+}
+
 export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewProps> = ({ onBack }) => {
-  // egpPerCredit is what the user types and sees.
-  // creditRate (stored on the server) = 1 / egpPerCredit.
-  const [egpPerCredit, setEgpPerCredit] = useState<string>('');
-  const [originalEgpPerCredit, setOriginalEgpPerCredit] = useState<string>('');
+  // What the user picks (EGP-per-credit). Null until a preset is selected.
+  const [selectedEgpPerCredit, setSelectedEgpPerCredit] = useState<number | null>(null);
+  // What's currently persisted (EGP-per-credit). Null until loaded.
+  const [currentEgpPerCredit, setCurrentEgpPerCredit] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -48,18 +64,24 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
       try {
         const data = await apiFetch<{ success?: boolean; config?: { creditRate?: number } }>('/api/system-config');
         if (!cancelled && data?.success && data.config) {
-          const storedRate = data.config.creditRate ?? 1; // credits-per-EGP
-          const egpPerCreditVal = storedRate > 0 ? (1 / storedRate) : 1;
-          // Display with up to 4 decimal places, stripped of trailing zeros
-          const display = String(Number(egpPerCreditVal.toFixed(4)));
-          setEgpPerCredit(display);
-          setOriginalEgpPerCredit(display);
+          const egpPerCredit = rateToEgpPerCredit(data.config.creditRate);
+          setCurrentEgpPerCredit(egpPerCredit);
+          // If current value matches a preset, pre-select it. Otherwise leave
+          // unselected so the admin must explicitly pick a preset to save.
+          if (PRESETS.includes(egpPerCredit)) {
+            setSelectedEgpPerCredit(egpPerCredit);
+          }
+        } else if (!cancelled) {
+          // No config yet → default rate is 1 EGP/credit.
+          setCurrentEgpPerCredit(1);
+          setSelectedEgpPerCredit(1);
         }
       } catch (err) {
         console.warn('Failed to load creditRate:', err);
-        // Default: 1 EGP per credit
-        setEgpPerCredit('1');
-        setOriginalEgpPerCredit('1');
+        if (!cancelled) {
+          setCurrentEgpPerCredit(1);
+          setSelectedEgpPerCredit(1);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -67,46 +89,34 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
     return () => { cancelled = true; };
   }, []);
 
-  // Live preview: how many credits does 100 EGP buy at the current EGP-per-credit price?
-  const egpPerCreditNum = Number(egpPerCredit) || 0;
-  const previewEgp = 100;
-  // credits = round(EGP / egpPerCredit) = round(EGP × creditRate)
-  const previewCredits = egpPerCreditNum > 0 ? Math.round(previewEgp / egpPerCreditNum) : 0;
+  const isCustomCurrent =
+    currentEgpPerCredit !== null && !PRESETS.includes(currentEgpPerCredit);
+
+  const hasChanges =
+    selectedEgpPerCredit !== null &&
+    (currentEgpPerCredit === null || selectedEgpPerCredit !== currentEgpPerCredit);
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaveError('');
     setSaveSuccess('');
 
-    const trimmed = egpPerCredit.trim();
-    const egpVal = Number(trimmed);
-
-    if (!trimmed || !Number.isFinite(egpVal) || egpVal <= 0) {
-      setSaveError('أدخل سعر صرف صحيح (أكبر من صفر).');
+    if (selectedEgpPerCredit === null) {
+      setSaveError('اختر أحد الخيارات أولاً.');
       return;
     }
-    // egpPerCredit bounds: 0.001 EGP/credit (very cheap) to 10000 EGP/credit (very expensive)
-    // This inverts to creditRate bounds of 0.0001 to 1000 (matching server validation).
-    if (egpVal < 0.001) {
-      setSaveError('السعر لا يمكن أن يكون أقل من 0.001 جنيه لكل رصيد.');
-      return;
-    }
-    if (egpVal > 10000) {
-      setSaveError('السعر لا يمكن أن يكون أكبر من 10000 جنيه لكل رصيد.');
-      return;
-    }
-    if (trimmed === originalEgpPerCredit) {
+    if (!hasChanges) {
       setSaveSuccess('لم يتم تغيير السعر.');
       return;
     }
 
-    // Convert to creditRate (credits-per-EGP) for the server
-    const creditRate = 1 / egpVal;
+    // Convert to creditRate (credits-per-EGP) for the server.
+    const creditRate = 1 / selectedEgpPerCredit;
 
     setIsSaving(true);
     try {
       await adminService.updateSystemConfig({ creditRate });
-      setOriginalEgpPerCredit(trimmed);
+      setCurrentEgpPerCredit(selectedEgpPerCredit);
       setSaveSuccess('تم حفظ سعر الصرف بنجاح.');
     } catch (err: any) {
       setSaveError('تعذّر حفظ السعر. حاول مرة أخرى.');
@@ -114,8 +124,6 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
       setIsSaving(false);
     }
   };
-
-  const hasChanges = egpPerCredit.trim() !== originalEgpPerCredit;
 
   return (
     <div className="max-w-2xl mx-auto font-sans" dir="rtl">
@@ -140,47 +148,75 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
           </div>
         ) : (
           <form onSubmit={handleSave} className="space-y-6 relative z-10">
+            {isCustomCurrent && (
+              <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 px-5 py-3 text-center">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                  {'السعر الحالي مخصص: '}
+                  <span className="font-mono text-amber-900 dark:text-amber-100 px-1">
+                    {currentEgpPerCredit} ج.م/رصيد
+                  </span>
+                  {' — اختر أحد الخيارات أدناه لتحديد سعر قياسي.'}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <label htmlFor="credit-rate" className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
-                {'السعر (جنيه لكل رصيد)'}
-              </label>
-              <input
-                id="credit-rate"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.001"
-                max="10000"
-                value={egpPerCredit}
-                onChange={(e) => {
-                  setEgpPerCredit(e.target.value);
-                  setSaveError('');
-                  setSaveSuccess('');
-                }}
-                aria-label={'سعر الرصيد'}
-                required
-                className="w-full text-center text-2xl font-mono font-black p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
-                autoFocus
-              />
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center font-semibold">
-                {'الافتراضي: 1 (1 جنيه = 1 رصيد). السعر الجديد ينطبق على الشحنات الجديدة فقط.'}
-              </p>
-            </div>
+              <fieldset>
+                <legend className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-3 text-center">
+                  {'الخيارات المتاحة'}
+                </legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label={'سعر الرصيد'}>
+                  {PRESETS.map((egpPerCredit) => {
+                    const isSelected = selectedEgpPerCredit === egpPerCredit;
+                    const isCurrent = currentEgpPerCredit === egpPerCredit;
+                    const previewCredits = creditsForEgp(egpPerCredit, PREVIEW_EGP);
+                    return (
+                      <button
+                        type="button"
+                        key={egpPerCredit}
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => {
+                          setSelectedEgpPerCredit(egpPerCredit);
+                          setSaveError('');
+                          setSaveSuccess('');
+                        }}
+                        className={`relative w-full p-4 rounded-2xl border-2 transition-all cursor-pointer text-right flex flex-col gap-2 ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-md'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-emerald-400 dark:hover:border-emerald-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`font-mono font-black text-lg ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>
+                            {egpPerCredit}
+                            <span className="text-xs font-bold mr-1">ج.م/رصيد</span>
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              {'الحالي'}
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">
+                          {PREVIEW_EGP.toLocaleString('ar-EG')} ج.م ←{' '}
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {previewCredits.toLocaleString('ar-EG')} رصيد
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
 
-            {/* Live preview */}
-            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-5 py-4 text-center">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                {'معاينة'}
-              </p>
-              <p className="font-mono text-base font-black text-slate-900 dark:text-white">
-                {previewEgp.toLocaleString('ar-EG')} جنيه ← <span className="text-emerald-600 dark:text-emerald-400">{previewCredits.toLocaleString('ar-EG')} رصيد</span>
-              </p>
-            </div>
-
-            {/* Quick reference */}
-            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 px-5 py-3 text-center">
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold leading-relaxed">
-                {'أمثلة: 1 جنيه = رصيد عادي · 0.75 = رصيد أرخص · 2 = رصيد أغلى'}
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center font-semibold leading-relaxed">
+                {'السعر الجديد ينطبق على الشحنات الجديدة فقط. الأرصدة الحالية وسجل العمليات السابق لا يتأثران.'}
               </p>
             </div>
 
