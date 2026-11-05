@@ -223,7 +223,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
     mockDb.seed('credit_ledger/referral-1', { kind: 'referral_award', bucket: 'referral', amount: 20, occurredAt });
     mockDb.seed('credit_ledger/entry-1', { kind: 'regular_entry_debit', bucket: 'paid', amount: 1, occurredAt });
     mockDb.seed('credit_ledger/entry-2', { kind: 'regular_entry_debit', bucket: 'referral', amount: 1, occurredAt });
-    mockDb.seed('credit_ledger/renewal-1', { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 5, occurredAt });
+    mockDb.seed('credit_ledger/renewal-1', { kind: 'subscriber_renewal_debit', bucket: 'paid', amount: 2, occurredAt });
     mockDb.seed('credit_ledger/restore-1', { kind: 'correction_restore', bucket: 'referral', amount: 1, occurredAt });
     mockDb.seed('credit_ledger/end-boundary', { kind: 'paid_grant', bucket: 'paid', amount: 100, paymentAmountEgp: 100, occurredAt: '2026-02-01T00:00:00.000Z' });
 
@@ -244,7 +244,7 @@ describe('CF7 — Cloudflare Worker Financial, Recharge & Reporting Routes', () 
         regularEntryDebitCount: 2,
         regularEntryCreditsConsumed: 2,
         subscriberRenewalCount: 1,
-        subscriberRenewalCreditsConsumed: 5,
+        subscriberRenewalCreditsConsumed: 2,
         correctionRestoreCount: 1,
         restoredCredits: 1,
       }

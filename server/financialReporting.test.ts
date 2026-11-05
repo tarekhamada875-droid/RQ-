@@ -87,7 +87,7 @@ describe('financial reporting projections', () => {
       { kind: 'referral_award', amount: 20, occurredAt: '2026-09-18T08:01:00.000Z' },
       { kind: 'regular_entry_debit', amount: 1, occurredAt: '2026-09-18T08:02:00.000Z' },
       { kind: 'regular_entry_debit', amount: 1, occurredAt: '2026-09-18T08:03:00.000Z' },
-      { kind: 'subscriber_renewal_debit', amount: 5, occurredAt: '2026-09-18T08:04:00.000Z' },
+      { kind: 'subscriber_renewal_debit', amount: 2, occurredAt: '2026-09-18T08:04:00.000Z' },
       { kind: 'correction_restore', amount: 1, occurredAt: '2026-09-18T08:05:00.000Z' },
       { kind: 'regular_entry_debit', amount: 0.5, occurredAt: '2026-09-18T08:06:00.000Z' },
       { kind: 'paid_grant', amount: 200, occurredAt: '2026-09-19T00:00:00.000Z' },
@@ -108,7 +108,7 @@ describe('financial reporting projections', () => {
       regularEntryDebitCount: 2,
       regularEntryCreditsConsumed: 2,
       subscriberRenewalCount: 1,
-      subscriberRenewalCreditsConsumed: 5,
+      subscriberRenewalCreditsConsumed: 2,
       correctionRestoreCount: 1,
       restoredCredits: 1,
     });
