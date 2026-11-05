@@ -211,7 +211,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
 
       // A retried renewal may arrive without an idempotency key. Once the requested
       // date range is already persisted, treat it as a no-op rather than debiting
-      // the same five credits again (and overwriting the deterministic ledger ID).
+      // the same two credits again (and overwriting the deterministic ledger ID).
       if (
         prepaidCreditsEnabled
         && currentState.startDate === dates.startDate
@@ -229,7 +229,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         const renewalKey = idempotencyKey || `subscriber-renewal:${subscriberId}:${dates.startDate}:${dates.endDate}`;
         const creditResult = debitSubscriberRenewal({
           balance: Number(garageData.credits ?? 0),
-          amount: 5,
+          amount: 2,
           garageId: validatedGarageId,
           actorUid: user?.uid || 'system',
           actorRole: callerRole,
@@ -242,7 +242,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         if (materialized.ok === false) throw new Error(materialized.error);
         creditDebit = { ...creditResult.value, entry: materialized.value };
         t.set(getAdminDb().doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
-        // Subscriber renewal = 5 EGP garage revenue (the garage collected 5 EGP from the subscriber).
+        // Subscriber renewal = 2 EGP garage revenue (the garage collected 2 EGP from the subscriber).
         // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
         const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;
