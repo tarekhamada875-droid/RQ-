@@ -67,6 +67,25 @@ export function useGarageSync({
   const delegateDashboardGenerationRef = useRef(0);
   // Packages state removed — feature retired by owner.
 
+  // ── Initial sync gate (fixes reopen-refresh race) ────────────────────
+  // The dashboard can render from persisted localStorage state as soon as
+  // `isSessionReady` flips true, but Firestore listeners have NOT yet
+  // delivered their first fresh (non-cached) snapshot. If the user starts
+  // a check-in/out during that brief window, optimistic UI writes can be
+  // clobbered by stale cached snapshots or by a queued first-snapshot
+  // that pre-dates the user's write. To kill that race entirely, we gate
+  // the dashboard on `isInitialSyncComplete`: it flips true only after
+  // BOTH `subscribeToGarage` AND `subscribeToActiveVehicles` have
+  // delivered at least one non-cached snapshot, OR after a 10-second
+  // timeout (so a flaky network cannot permanently lock the user out).
+  // Only the garage view is gated — admin/delegate views use different
+  // listeners and are not affected by the original race.
+  const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
+  const garageFreshSnapshotReceivedRef = useRef(false);
+  const vehiclesFreshSnapshotReceivedRef = useRef(false);
+  const initialSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INITIAL_SYNC_TIMEOUT_MS = 10_000;
+
   // Keep transient garage data tied to the active role/entity, not just the shared garage ID.
   const isAdminView = view === 'admin_dashboard' || view.startsWith('admin_');
   const dataOwnerKey = `${isSessionReady ? 'ready' : 'unready'}:` + (view === 'garage'
@@ -116,6 +135,17 @@ export function useGarageSync({
       isSessionReady && isAuthReady && view === 'delegate_dashboard' && Boolean(delegate?.id && user?.uid)
     );
     setDelegateDashboardError(false);
+
+    // Reset initial-sync gate on owner/view/garage change. The new view needs
+    // its own first-fresh-snapshot from its own listeners before it can be
+    // considered safe to interact with.
+    garageFreshSnapshotReceivedRef.current = false;
+    vehiclesFreshSnapshotReceivedRef.current = false;
+    setIsInitialSyncComplete(false);
+    if (initialSyncTimeoutRef.current) {
+      clearTimeout(initialSyncTimeoutRef.current);
+      initialSyncTimeoutRef.current = null;
+    }
   }, [dataOwnerKey]);
 
   // Subscribe to Active Vehicles
@@ -124,8 +154,13 @@ export function useGarageSync({
       return;
     }
     let active = true;
+    // Closure variable so the throttled callback can read the latest
+    // `fromCache` value without changing throttleSnapshot's single-arg
+    // signature.
+    let latestFromCache = false;
     const throttledVehicleUpdate = throttleSnapshot((activeVehicles: Vehicle[]) => {
       if (!active) return;
+      const fromCache = latestFromCache;
       // Merge: preserve optimistic vehicles that the server snapshot hasn't
       // confirmed yet. An optimistic vehicle (added during check-in) has an
       // entryTime that is a plain Date, not a Firestore Timestamp. If the
@@ -134,27 +169,58 @@ export function useGarageSync({
       // drop it). This prevents the "flip then disappear then reappear" flicker
       // where the throttled snapshot overwrites the optimistic update before
       // the server confirms it.
+      //
+      // CACHED-snapshot rule: if `fromCache === true`, the snapshot may be
+      // stale (queued before the user's write committed). In that case we
+      // ALWAYS keep optimistic vehicles regardless of age — the next fresh
+      // snapshot is the only thing allowed to retire them.
       setVehicles((current) => {
         const serverIds = new Set(activeVehicles.map((v) => v.id));
         const now = Date.now();
         const optimisticKeep = current.filter((v) => {
           if (serverIds.has(v.id)) return false; // server has it, let server win
-          // Keep if it's a recent optimistic entry (< 5s old) with a plain Date entryTime
+          if (fromCache) return true; // stale snapshot — never drop optimistic vehicles
+          // Fresh snapshot still doesn't have the optimistic vehicle. Keep it
+          // only if it's < 5s old (recent optimistic entry). Recognize Date,
+          // Firestore Timestamp (toDate), AND ISO string (returned by Worker).
           const entryMs = v.entryTime instanceof Date
             ? v.entryTime.getTime()
             : (v.entryTime && typeof v.entryTime === 'object' && 'toDate' in v.entryTime && typeof v.entryTime.toDate === 'function') ? v.entryTime.toDate().getTime() : 0;
-          return entryMs > 0 && (now - entryMs) < 5000;
+          const entryMsFromString = typeof v.entryTime === 'string' ? Date.parse(v.entryTime) : 0;
+          const finalEntryMs = entryMs > 0 ? entryMs : entryMsFromString;
+          return finalEntryMs > 0 && (now - finalEntryMs) < 5000;
         });
         return [...optimisticKeep, ...activeVehicles];
       });
     }, 150);
 
-    const unsub = vehicleService.subscribeToActiveVehicles(garage.id, (activeVehicles) => {
+    const unsub = vehicleService.subscribeToActiveVehicles(garage.id, (activeVehicles, metadata) => {
       // Unsubscribe normally stops future snapshots, but an already queued callback
       // can still arrive after the garage/session changes. Never forward it.
       if (!active) return;
+      latestFromCache = metadata?.fromCache ?? false;
+      if (!latestFromCache && !vehiclesFreshSnapshotReceivedRef.current) {
+        vehiclesFreshSnapshotReceivedRef.current = true;
+        // Check if both listeners have delivered fresh data → flip the gate.
+        if (garageFreshSnapshotReceivedRef.current) {
+          setIsInitialSyncComplete(true);
+          if (initialSyncTimeoutRef.current) {
+            clearTimeout(initialSyncTimeoutRef.current);
+            initialSyncTimeoutRef.current = null;
+          }
+        }
+      }
       throttledVehicleUpdate(activeVehicles);
     });
+    // 10-second safety timeout: if Firestore cannot deliver a fresh snapshot
+    // (e.g. flaky network at reopen), unlock the dashboard anyway so the user
+    // is not permanently blocked from working.
+    if (!initialSyncTimeoutRef.current) {
+      initialSyncTimeoutRef.current = setTimeout(() => {
+        setIsInitialSyncComplete(true);
+        initialSyncTimeoutRef.current = null;
+      }, INITIAL_SYNC_TIMEOUT_MS);
+    }
     return () => {
       active = false;
       throttledVehicleUpdate.cancel();
@@ -451,31 +517,62 @@ export function useGarageSync({
     let garageSubscriptionCurrent = true;
     const subscribedGarageId = view === 'garage' ? garage?.id : undefined;
     const unsubCurrentGarage = subscribedGarageId
-      ? garageService.subscribeToGarage(subscribedGarageId, (updatedGarage) => {
+      ? garageService.subscribeToGarage(subscribedGarageId, (updatedGarage, metadata) => {
           // A callback already queued by the old listener must not replace the
           // active garage after a switch or logout.
           if (!garageSubscriptionCurrent || updatedGarage?.id !== subscribedGarageId) return;
 
-          // FIX #5: Stale-snapshot guard. After a confirmed transaction, the
-          // Worker response set _confirmedTransactionUntil on the garage state.
+          const fromCache = metadata?.fromCache ?? false;
+          // Track first-fresh-snapshot delivery for the initial-sync gate.
+          if (!fromCache && !garageFreshSnapshotReceivedRef.current) {
+            garageFreshSnapshotReceivedRef.current = true;
+            if (vehiclesFreshSnapshotReceivedRef.current) {
+              setIsInitialSyncComplete(true);
+              if (initialSyncTimeoutRef.current) {
+                clearTimeout(initialSyncTimeoutRef.current);
+                initialSyncTimeoutRef.current = null;
+              }
+            }
+          }
+
+          // Stale-snapshot guard. After a confirmed transaction, the Worker
+          // response set `_confirmedTransactionUntil` on the garage state.
           // During that 2-second window, a stale Firestore snapshot can arrive
-          // and overwrite the just-confirmed credits/carsInside, causing the
-          // "flip then revert then settle" flicker. Here we check the guard
-          // timestamp and merge (preserving credits + carsInside) instead of
-          // overwriting when the guard is active.
+          // and overwrite the just-confirmed fields, causing the "flip then
+          // revert then settle" flicker.
+          //
+          // CACHED-snapshot rule: if `fromCache === true`, the snapshot is
+          // from the local cache and may be stale (queued before the user's
+          // write committed, or cached from a prior session). In that case we
+          // ALWAYS merge (preserve confirmed fields) regardless of the 2s
+          // guard — cached snapshots are never authoritative.
           setGarage((current) => {
             if (!current) return updatedGarage;
             const guardUntil = (current as any)._confirmedTransactionUntil;
-            if (!guardUntil || Date.now() > guardUntil) {
-              return updatedGarage; // no active guard → full overwrite
+            const guardActive = guardUntil && Date.now() <= guardUntil;
+            if (!guardActive && !fromCache) {
+              return updatedGarage; // fresh snapshot, no active guard → full overwrite
             }
-            // Guard active: preserve confirmed credits + carsInside, take
-            // everything else from the snapshot.
-            return {
-              ...updatedGarage,
+            // Either (a) guard active, or (b) cached snapshot — preserve
+            // confirmed counters. For cached snapshots, also preserve the
+            // daily-rolling stats (todayCount, todayRevenue, etc.) since those
+            // are exactly the fields that visibly flicker when a stale cached
+            // snapshot overwrites a just-confirmed transaction.
+            const preserved: Partial<Garage> = {
               credits: current.credits,
               carsInside: current.carsInside,
-              _confirmedTransactionUntil: guardUntil, // keep the guard alive
+            };
+            if (fromCache) {
+              (preserved as any).todayCount = current.todayCount;
+              (preserved as any).todayRevenue = current.todayRevenue;
+              (preserved as any).totalRevenue = current.totalRevenue;
+              (preserved as any).totalVehiclesOut = current.totalVehiclesOut;
+              (preserved as any).lastTransactionDate = current.lastTransactionDate;
+            }
+            return {
+              ...updatedGarage,
+              ...preserved,
+              _confirmedTransactionUntil: guardUntil, // keep the guard alive if it was active
             } as Garage;
           });
         })
@@ -546,5 +643,6 @@ export function useGarageSync({
     loadMoreDelegateGarages,
     loadGarageData,
     delegateGarages,
+    isInitialSyncComplete,
   };
 }

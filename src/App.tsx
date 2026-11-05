@@ -79,8 +79,16 @@ export default function App() {
   if (isLoggingOut) return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري إنهاء الجلسة...</p></div>;
   if (isLandscapeMobile) return <LandscapeMobileView garage={view === 'garage' ? garage : null} />;
   if (showOfflineScreen) return <OfflineView />;
-  if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady)) {
-    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : 'APP_WAITING_FOR_SESSION_READY', { isAuthReady, isSessionReady, view });
+  // Initial-sync gate (fixes the reopen-refresh race): for the garage view
+  // only, keep the loading screen up until both Firestore listeners have
+  // delivered their first fresh (non-cached) snapshot, OR the 10s safety
+  // timeout in useGarageSync fires. This prevents the user from starting a
+  // check-in/out during the brief window where stale cached snapshots could
+  // clobber optimistic UI writes. Admin/delegate views are not gated — they
+  // use different listeners and were never affected by the race.
+  const waitingForInitialSync = view === 'garage' && !garageData.isInitialSyncComplete;
+  if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady) || waitingForInitialSync) {
+    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSync ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
     return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري تحميل البيانات...</p></div>;
   }
 
