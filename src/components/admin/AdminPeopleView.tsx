@@ -83,7 +83,7 @@ export const AdminPeopleView = memo(({
       const errorMessage = err instanceof Error ? err.message : '';
       const failure = classifyApiFailure(err);
       const reference = getApiFailureReference(err);
-      if (errorMessage === 'الرمز مستخدم بالفعل' || errorMessage === 'PIN_ALREADY_TAKEN') {
+      if (errorMessage === 'الرمز مستخدم بالفعل' || errorMessage === 'PIN_ALREADY_TAKEN' || errorMessage === 'PIN_PREVIOUSLY_USED') {
         setDelegatePinError('الرمز مستخدم بالفعل');
       } else if (failure === 'network') {
         setDelegatePinError('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.');

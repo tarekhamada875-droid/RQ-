@@ -63,6 +63,9 @@ export function mapDomainErrorToStatus(err: any): { statusCode: number; code: st
   if (errMsg.includes('PIN_ALREADY_TAKEN')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'رمز PIN مستخدم بالفعل، يرجى اختيار رمز آخر' };
   }
+  if (errMsg.includes('PIN_PREVIOUSLY_USED')) {
+    return { statusCode: 409, code: 'CONFLICT', message: 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.' };
+  }
   if (errMsg.includes('SUBSCRIBER_ALREADY_EXISTS')) {
     return { statusCode: 409, code: 'CONFLICT', message: 'هذا المشترك مسجل بالفعل' };
   }

@@ -471,6 +471,10 @@ service cloud.firestore {
       allow read, write: if false; // Server-only
     }
 
+    match /retired_pins/{docId} {
+      allow read, write: if false; // Server-only — permanent PIN history
+    }
+
     match /supervisors/{supervisorId} {
       // Role retirement is non-destructive: keep existing records but deny client access.
       allow read, write: if false;

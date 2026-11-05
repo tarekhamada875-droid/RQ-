@@ -98,7 +98,7 @@ export const delegateService = {
       });
       return { id: res.id };
     } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
+      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       throw error;
@@ -141,7 +141,7 @@ export const delegateService = {
         });
       }
     } catch (error: any) {
-      if (error.message === 'PIN_ALREADY_TAKEN') {
+      if (error.message === 'PIN_ALREADY_TAKEN' || error.message === 'PIN_PREVIOUSLY_USED') {
         throw new Error('الرمز مستخدم بالفعل', { cause: error });
       }
       handleFirestoreError(error, OperationType.UPDATE, `delegates/${id}`);

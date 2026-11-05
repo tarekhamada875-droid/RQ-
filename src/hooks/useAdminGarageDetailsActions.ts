@@ -10,6 +10,9 @@ export function getGaragePinUpdateErrorMessage(error: unknown): string {
   if (message === 'PIN_ALREADY_TAKEN' || message === 'الرمز مستخدم بالفعل') {
     return 'الرمز مستخدم بالفعل';
   }
+  if (message === 'PIN_PREVIOUSLY_USED' || message === 'الرمز مستخدم سابقًا') {
+    return 'هذا الرمز مستخدم سابقًا ولا يمكن إعادة استخدامه. يرجى اختيار رمز آخر.';
+  }
   if (message && /[\u0600-\u06FF]/.test(message)) return message;
   return 'تعذر تحديث رمز دخول الجراج. يرجى المحاولة مرة أخرى.';
 }
@@ -237,7 +240,7 @@ export function useAdminGarageDetailsActions({
     } catch (error) {
       console.error('Failed to add Staff.');
       const message = error instanceof Error ? error.message : '';
-      const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN';
+      const pinAlreadyTaken = message === 'الرمز مستخدم بالفعل' || message === 'PIN_ALREADY_TAKEN' || message === 'PIN_PREVIOUSLY_USED';
       showToast(
         pinAlreadyTaken ? 'الرمز مستخدم بالفعل' : 'تعذر إضافة الموظف. يرجى المحاولة مرة أخرى.',
         'error'

@@ -102,7 +102,7 @@ export const garageService = {
 
       return { success: true, id: json.id };
     } catch (err: any) {
-      if (err.message === 'PIN_ALREADY_TAKEN') {
+      if (err.message === 'PIN_ALREADY_TAKEN' || err.message === 'PIN_PREVIOUSLY_USED') {
         // Fallback or detailed error handled by server, we can match and format
         return { success: false, error: 'رمز الدخول مستخدم بالفعل' };
       }

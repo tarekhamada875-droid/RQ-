@@ -4,6 +4,18 @@
  * Extracted from server/utils.ts (Wave 6a). Contains all Firestore
  * read/write operations for the private_pins and pin_reservations
  * collections. Depends on pinCrypto.ts for hashing and verification.
+ *
+ * Permanent retirement ("used once, never again"):
+ *   When a PIN is changed or its owning entity is deleted, the old PIN is
+ *   NOT freed for reuse. Instead, a doc is written to the `retired_pins`
+ *   collection keyed by `lookupHash`. Any future attempt to assign that
+ *   PIN (or check its availability) will fail with `PIN_PREVIOUSLY_USED`.
+ *
+ *   5-minute typo grace: when a PIN is CHANGED (not deleted), the old PIN
+ *   is only retired if it was active for > 5 minutes. This prevents a
+ *   typo'd PIN from being permanently burned if the admin catches it
+ *   immediately. Entity DELETION has no grace period — the PIN is always
+ *   retired.
  */
 import { adminDb } from './firebaseAdmin';
 import {
@@ -12,6 +24,34 @@ import {
   verifyDocMatch,
   verifyPinMatch,
 } from './pinCrypto';
+
+/** Minimum active lifetime before a PIN is permanently retired on change. */
+const PIN_RETIREMENT_GRACE_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Write a `retired_pins/{lookupHash}` doc inside an existing transaction.
+ * Idempotent — uses `set` with merge so re-running is safe.
+ */
+function retirePinInTransaction(
+  transaction: any,
+  lookupHash: string,
+  lastEntityId: string,
+  lastEntityType: string,
+  now: Date
+): void {
+  if (!lookupHash) return;
+  const retiredRef = adminDb.doc(`retired_pins/${lookupHash}`);
+  transaction.set(retiredRef, {
+    lookupHash,
+    lastEntityId,
+    lastEntityType,
+    retiredAt: now,
+    // updatedAt kept in sync so future rotations of the SAME PIN (which
+    // shouldn't happen because retired is forever) at least have a sane
+    // last-touch timestamp.
+    updatedAt: now,
+  }, { merge: true });
+}
 
 export async function saveEntityPinInTransaction(
   transaction: any,
@@ -27,12 +67,20 @@ export async function saveEntityPinInTransaction(
   const pinDocId = collName === 'admin_settings' ? 'auth_pin' : docId;
   const privateRef = adminDb.doc(`private_pins/${pinDocId}`);
   const newReservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
+  const retiredRef = adminDb.doc(`retired_pins/${lookupHash}`);
   const privateSnap = await transaction.get(privateRef);
   const newReservationSnap = await transaction.get(newReservationRef);
+  const retiredSnap = await transaction.get(retiredRef);
   const existingReservation = newReservationSnap.exists ? newReservationSnap.data() || {} : null;
 
+  // 1. Active-PIN collision — another entity currently holds this PIN.
   if (existingReservation && (existingReservation.entityType !== collName || existingReservation.entityId !== pinDocId)) {
     throw new Error('PIN_ALREADY_TAKEN');
+  }
+  // 2. Retired-PIN collision — this PIN was used by some entity in the past
+  //    (changed away or entity deleted). Permanent — never reuse.
+  if (retiredSnap.exists) {
+    throw new Error('PIN_PREVIOUSLY_USED');
   }
 
   const oldLookupHash = privateSnap.exists ? privateSnap.data()?.pinLookupHash : null;
@@ -43,14 +91,28 @@ export async function saveEntityPinInTransaction(
     oldReservationSnap = await transaction.get(oldReservationRef);
   }
 
+  const now = new Date();
+
   if (oldReservationSnap?.exists) {
     const oldReservation = oldReservationSnap.data() || {};
     if (oldReservation.entityType === collName && oldReservation.entityId === pinDocId) {
+      // Retire the old PIN before deleting its reservation. 5-minute grace:
+      // if the old PIN was set less than 5 minutes ago, skip retirement so
+      // typo'd PINs aren't permanently burned.
+      const oldUpdatedAt = oldReservation.updatedAt;
+      const oldUpdatedMs = oldUpdatedAt?.toMillis
+        ? oldUpdatedAt.toMillis()
+        : (oldUpdatedAt instanceof Date
+            ? oldUpdatedAt.getTime()
+            : (typeof oldUpdatedAt === 'string' ? Date.parse(oldUpdatedAt) : 0));
+      const ageMs = oldUpdatedMs > 0 ? (now.getTime() - oldUpdatedMs) : 0;
+      if (ageMs >= PIN_RETIREMENT_GRACE_MS) {
+        retirePinInTransaction(transaction, oldLookupHash, pinDocId, collName, now);
+      }
       transaction.delete(oldReservationRef);
     }
   }
 
-  const now = new Date();
   transaction.set(newReservationRef, {
     lookupHash,
     entityType: collName,
@@ -85,6 +147,15 @@ export async function deleteEntityPinInTransaction(
   if (lookupHash) {
     reservationRef = adminDb.doc(`pin_reservations/${lookupHash}`);
     reservationSnap = await transaction.get(reservationRef);
+  }
+
+  const now = new Date();
+
+  // Entity deletion: ALWAYS retire the PIN. No grace period — the entity is
+  // going away, so its PIN must be permanently retired per the
+  // "used once, never again" policy.
+  if (lookupHash) {
+    retirePinInTransaction(transaction, lookupHash, docId, collName, now);
   }
 
   if (reservationSnap?.exists) {
@@ -219,7 +290,7 @@ export async function checkPinAvailabilityAcrossAll(
 ): Promise<{
   taken: boolean;
   role?: string;
-  roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage';
+  roleKey?: 'admin' | 'supervisor' | 'delegate' | 'staff' | 'garage' | 'retired';
   name?: string;
   accountId?: string;
   account?: any;
@@ -237,10 +308,25 @@ export async function checkPinAvailabilityAcrossAll(
     { name: 'garages', roleKey: 'garage', label: 'صاحب جراج' }
   ];
 
-  const [adminPinStored, ...collectionResults] = await Promise.all([
+  const lookupHash = computeLookupHash(normPin);
+
+  const [adminPinStored, retiredSnap, ...collectionResults] = await Promise.all([
     getAdminPin(),
+    adminDb ? adminDb.doc(`retired_pins/${lookupHash}`).get() : Promise.resolve(null),
     ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin))
   ]);
+
+  // Permanent retirement check — this PIN was used by some entity in the
+  // past and is forever blocked from reuse.
+  if (retiredSnap && retiredSnap.exists) {
+    return {
+      taken: true,
+      role: 'رمز مستخدم سابقاً',
+      roleKey: 'retired',
+      name: 'رمز مستخدم سابقاً',
+      accountId: 'retired'
+    };
+  }
 
   if (adminPinStored && verifyPinMatch(normPin, adminPinStored).matches) {
     if (!excludeId || excludeId !== 'auth_pin') {
