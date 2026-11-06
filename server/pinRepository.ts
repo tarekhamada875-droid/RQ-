@@ -21,6 +21,8 @@ import { adminDb } from './firebaseAdmin';
 import {
   hashPinWithUniqueSalt,
   computeLookupHash,
+  computeLegacyLookupHash,
+  isPinLookupSaltMigrated,
   verifyDocMatch,
   verifyPinMatch,
 } from './pinCrypto';
@@ -232,6 +234,11 @@ export async function getAdminPin(): Promise<string> {
 
 export async function queryAccountWherePin(collName: string, normPin: string): Promise<Array<{ id: string; data: any; isLegacyMatch: boolean }>> {
   const lookupHash = computeLookupHash(normPin);
+  // Audit N22: when the operator has migrated PIN_LOOKUP_SALT, existing
+  // private_pins docs have pinLookupHash computed with the LEGACY salt.
+  // Lookups by the active salt would miss them. Fall back to the legacy
+  // salt for read lookups so existing PINs continue to verify.
+  const legacyLookupHash = isPinLookupSaltMigrated() ? computeLegacyLookupHash(normPin) : null;
   const matches: Array<{ id: string; data: any; isLegacyMatch: boolean }> = [];
   const seenIds = new Set<string>();
 
@@ -240,27 +247,33 @@ export async function queryAccountWherePin(collName: string, normPin: string): P
       throw new Error('ADMIN_SDK_NOT_INITIALIZED');
     }
 
-    const privSnap = await adminDb.collection('private_pins')
-      .where('entityType', '==', collName)
-      .where('pinLookupHash', '==', lookupHash)
-      .limit(5)
-      .get();
+    // Try the active salt first; if no matches and migration is in
+    // progress, try the legacy salt.
+    const lookupHashesToTry = legacyLookupHash ? [lookupHash, legacyLookupHash] : [lookupHash];
 
-    for (const privDoc of privSnap.docs) {
-      const privData = privDoc.data() || {};
-      const entityId = privData.entityId || privDoc.id;
-      const check = verifyDocMatch(normPin, privData);
-      if (check.matches && !seenIds.has(entityId)) {
-        seenIds.add(entityId);
-        const entitySnap = await adminDb.collection(collName).doc(entityId).get();
-        if (entitySnap.exists) {
-          matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check.isLegacy });
+    for (const tryHash of lookupHashesToTry) {
+      const privSnap = await adminDb.collection('private_pins')
+        .where('entityType', '==', collName)
+        .where('pinLookupHash', '==', tryHash)
+        .limit(5)
+        .get();
+
+      for (const privDoc of privSnap.docs) {
+        const privData = privDoc.data() || {};
+        const entityId = privData.entityId || privDoc.id;
+        const check = verifyDocMatch(normPin, privData);
+        if (check.matches && !seenIds.has(entityId)) {
+          seenIds.add(entityId);
+          const entitySnap = await adminDb.collection(collName).doc(entityId).get();
+          if (entitySnap.exists) {
+            matches.push({ id: entityId, data: entitySnap.data(), isLegacyMatch: check.isLegacy });
+          }
         }
       }
-    }
 
-    if (matches.length > 0) {
-      return matches;
+      if (matches.length > 0) {
+        return matches;
+      }
     }
 
   } catch (e) {
@@ -309,16 +322,21 @@ export async function checkPinAvailabilityAcrossAll(
   ];
 
   const lookupHash = computeLookupHash(normPin);
+  // Audit N22: when the salt has been migrated, retired_pins docs may have
+  // been written with the legacy salt. Check both paths so a previously-
+  // retired PIN can't be silently reused just because the salt changed.
+  const legacyLookupHash = isPinLookupSaltMigrated() ? computeLegacyLookupHash(normPin) : null;
 
-  const [adminPinStored, retiredSnap, ...collectionResults] = await Promise.all([
+  const [adminPinStored, retiredSnap, retiredLegacySnap, ...collectionResults] = await Promise.all([
     getAdminPin(),
     adminDb ? adminDb.doc(`retired_pins/${lookupHash}`).get() : Promise.resolve(null),
+    (adminDb && legacyLookupHash) ? adminDb.doc(`retired_pins/${legacyLookupHash}`).get() : Promise.resolve(null),
     ...collectionsToCheck.map((coll) => queryAccountWherePin(coll.name, normPin))
   ]);
 
   // Permanent retirement check — this PIN was used by some entity in the
-  // past and is forever blocked from reuse.
-  if (retiredSnap && retiredSnap.exists) {
+  // past and is forever blocked from reuse. Either salt-path counts.
+  if ((retiredSnap && retiredSnap.exists) || (retiredLegacySnap && retiredLegacySnap.exists)) {
     return {
       taken: true,
       role: 'رمز مستخدم سابقاً',

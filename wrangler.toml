@@ -22,3 +22,12 @@ new_sqlite_classes = ["PinRateLimiterDurableObject"]
 # - FIREBASE_SERVICE_ACCOUNT_JSON
 # - BACKEND_OPERATOR_TOKEN
 # - ALLOWED_ORIGINS
+# - PIN_LOOKUP_SALT (audit N22, Phase 1, 2026-11-06):
+#     Optional but recommended. Set to a fresh `openssl rand -hex 32`
+#     (64 hex chars = 32 bytes) value via `wrangler secret put
+#     PIN_LOOKUP_SALT`. When set, NEW pinLookupHash values are computed
+#     with this salt instead of the legacy hardcoded value in
+#     server/pinCrypto.ts. EXISTING PIN lookups fall back to the legacy
+#     salt automatically (see pinRepository.queryAccountWherePin and
+#     checkPinAvailabilityAcrossAll). To complete the migration, the
+#     operator can force-rotate all existing PINs after deploy.

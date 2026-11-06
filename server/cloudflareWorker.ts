@@ -180,6 +180,24 @@ workerApp.use('*', async (c, next) => {
     // Initialize Firebase Admin explicitly and dynamically with c.env bindings
     initializeFirebaseAdmin(c.env);
     configuredAllowedOrigins = c.env.ALLOWED_ORIGINS || '';
+
+    // Propagate the PIN_LOOKUP_SALT secret binding (audit N22, Phase 1,
+    // 2026-11-06) onto globalThis so pinCrypto.ts can read it without a
+    // circular import on the WorkerEnv type. pinCrypto.computeLookupHash
+    // resolves this lazily on first use; if unset, it falls back to the
+    // legacy hardcoded salt (preserving backward compat with existing
+    // pinLookupHash values in the DB). Operator migrates by running
+    // `wrangler secret put PIN_LOOKUP_SALT` with a fresh `openssl rand
+    // -hex 32` value, then optionally force-rotating existing PINs.
+    if (typeof globalThis !== 'undefined') {
+      const envSalt = (c.env as any).PIN_LOOKUP_SALT;
+      if (typeof envSalt === 'string' && envSalt.length >= 16) {
+        (globalThis as any).__RQ_PIN_LOOKUP_SALT__ = envSalt;
+      } else if ((globalThis as any).__RQ_PIN_LOOKUP_SALT__ !== undefined) {
+        // Clear stale value if the env var was removed.
+        delete (globalThis as any).__RQ_PIN_LOOKUP_SALT__;
+      }
+    }
   }
   await next();
 });
