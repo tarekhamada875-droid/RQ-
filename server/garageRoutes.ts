@@ -421,6 +421,18 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
       }
     }
 
+    // NOTE (audit N3, 2026-11-06): `lastRateChangeDate` is intentionally NOT
+    // in allowedKeys. The server sets it authoritatively below when rates
+    // change, ignoring any client-supplied value. The previous version
+    // silently dropped any client-supplied `lastRateChangeDate` (because
+    // it wasn't in allowedKeys) but ALSO didn't enforce the 30-day cooldown
+    // server-side — so a client could bypass the cooldown by sending a
+    // tampered `lastRateChangeDate: new Date(0)` (which was ignored) AND
+    // calling the API directly with new rates (which the server happily
+    // accepted without checking the existing lastRateChangeDate in the
+    // garage doc). The cooldown was client-side only. Now it's enforced
+    // server-side inside the transaction below.
+
     // Atomic garage update + trial-credit grant on approval.
     //
     // Previously: the `update(updates)` and the trial-credits grant
@@ -435,11 +447,48 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     // the same transaction, no concurrent approval can re-grant.
     //
     // Audit ref: Phase 0 / N8 (consolidated audit, 2026-11-06).
+    const RATE_CHANGE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
     const now = new Date();
+    // Detect a rate-change request: admin is updating hourlyRate and/or
+    // overnightRate to a different value than what's stored.
+    const isRateChangeRequest =
+      ('hourlyRate' in updates && updates.hourlyRate !== undefined) ||
+      ('overnightRate' in updates && updates.overnightRate !== undefined);
     await getAdminDb().runTransaction(async (t: any) => {
       const garageRef = getAdminDb().collection('garages').doc(id);
       const garageSnap = await t.get(garageRef);
       const garageData = garageSnap.data() || {};
+
+      // Server-side 30-day rate-change cooldown (audit N3).
+      // The client-side check in src/utils/businessRules.ts is advisory;
+      // this is the authoritative enforcement. Reading lastRateChangeDate
+      // from the doc (NOT from the request body) is what makes the cooldown
+      // tamper-proof.
+      if (isRateChangeRequest) {
+        const storedLastChange = garageData.lastRateChangeDate;
+        let lastChangeMs: number | null = null;
+        if (storedLastChange) {
+          if (typeof storedLastChange === 'object' && storedLastChange && typeof (storedLastChange as any).toMillis === 'function') {
+            lastChangeMs = (storedLastChange as any).toMillis();
+          } else if (storedLastChange instanceof Date) {
+            lastChangeMs = storedLastChange.getTime();
+          } else if (typeof storedLastChange === 'string' || typeof storedLastChange === 'number') {
+            const parsed = Date.parse(String(storedLastChange));
+            lastChangeMs = Number.isFinite(parsed) ? parsed : null;
+          }
+        }
+        if (lastChangeMs !== null && (now.getTime() - lastChangeMs) < RATE_CHANGE_COOLDOWN_MS) {
+          const daysRemaining = Math.ceil((RATE_CHANGE_COOLDOWN_MS - (now.getTime() - lastChangeMs)) / (24 * 60 * 60 * 1000));
+          const err = new Error('RATE_CHANGE_COOLDOWN_ACTIVE');
+          (err as any).statusCode = 409;
+          (err as any).daysRemaining = Math.max(1, daysRemaining);
+          (err as any).nextAllowedDate = new Date(lastChangeMs + RATE_CHANGE_COOLDOWN_MS).toISOString();
+          throw err;
+        }
+        // Stamp the rate-change timestamp authoritatively — server-side
+        // only, never client-supplied.
+        updates.lastRateChangeDate = now;
+      }
 
       // Apply the field updates the admin requested. Use t.update (not
       // t.set with merge) so that a missing garage doc throws the
@@ -492,7 +541,19 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     return c.json({ success: true });
   } catch (err: any) {
     console.error('[Worker Garage] Error updating garage:', err);
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+    // Surface the rate-change cooldown as a 409 with structured details so
+    // the client can show "days remaining" / "next allowed date" without
+    // parsing error strings.
+    if (err?.message === 'RATE_CHANGE_COOLDOWN_ACTIVE') {
+      return c.json({
+        success: false,
+        error: 'RATE_CHANGE_COOLDOWN_ACTIVE',
+        daysRemaining: err.daysRemaining,
+        nextAllowedDate: err.nextAllowedDate,
+      }, 409);
+    }
+    const status = err?.statusCode && Number.isFinite(err.statusCode) ? err.statusCode : 500;
+    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, status);
   }
 });
 

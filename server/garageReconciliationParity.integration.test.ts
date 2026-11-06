@@ -723,11 +723,59 @@ describe('garage update Hono contract', () => {
     const persisted = structuredClone(mockDb.records.get(`garages/${targetId}`));
     const updatedAt = persisted.updatedAt;
     delete persisted.updatedAt;
+    // Audit N3 (Phase 0): when hourlyRate and/or overnightRate is updated,
+    // the server stamps lastRateChangeDate authoritatively (server-side
+    // only, ignoring any client-supplied value). The test's allowedFields
+    // includes hourlyRate and overnightRate, so persisted.lastRateChangeDate
+    // should be a Date.
+    const persistedLastRateChangeDate = persisted.lastRateChangeDate;
+    delete persisted.lastRateChangeDate;
     expect(persisted).toEqual({ ...initial, ...allowedFields });
     expect(persisted).not.toHaveProperty('unapprovedField');
     expect(persisted).not.toHaveProperty('id');
     expect(updatedAt instanceof Date).toBe(true);
+    expect(persistedLastRateChangeDate instanceof Date).toBe(true);
 
+  });
+
+  it('enforces server-side 30-day rate-change cooldown ignoring client-supplied lastRateChangeDate (audit N3)', async () => {
+    // Seed a garage with lastRateChangeDate = 5 days ago.
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    mockDb.clear();
+    mockDb.seed(`garages/${targetId}`, {
+      name: 'Cooldown Test Garage',
+      hourlyRate: 10,
+      overnightRate: 50,
+      lastRateChangeDate: fiveDaysAgo,
+    });
+
+    // Client attempts to change rates AND supplies a tampered
+    // lastRateChangeDate = unix epoch in an attempt to bypass the cooldown.
+    // The server must ignore the tampered value and use the doc's stored
+    // lastRateChangeDate to compute the cooldown.
+    const hono = await callHonoGarageUpdate('valid-admin-token', {
+      id: targetId,
+      hourlyRate: 15,
+      overnightRate: 60,
+      lastRateChangeDate: new Date(0), // <-- attacker-controlled, must be ignored
+    });
+
+    // 5 days ago < 30-day cooldown → 409 Conflict.
+    expect(hono.status).toBe(409);
+    const body = await hono.json() as any;
+    expect(body.success).toBe(false);
+    expect(body.error).toBe('RATE_CHANGE_COOLDOWN_ACTIVE');
+    expect(body.daysRemaining).toBeGreaterThanOrEqual(25);
+    expect(body.daysRemaining).toBeLessThanOrEqual(26); // 25-26 days depending on exact ms
+    expect(body.nextAllowedDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+
+    // The garage doc must be unchanged — no writes.
+    const persisted = mockDb.records.get(`garages/${targetId}`);
+    expect(persisted?.hourlyRate).toBe(10);
+    expect(persisted?.overnightRate).toBe(50);
+    // The stored lastRateChangeDate must be the original 5-days-ago value,
+    // NOT the tampered epoch NOR a fresh `now`.
+    expect(persisted?.lastRateChangeDate).toEqual(fiveDaysAgo);
   });
 
   it('rejects retired garage billing fields without writing', async () => {
