@@ -98,22 +98,10 @@ service cloud.firestore {
              get(/databases/$(database)/documents/admin_sessions/$(request.auth.uid)).data.isActive == true;
     }
 
-    function isAdminPin(pin) {
-      return pin is string && (
-        exists(/databases/$(database)/documents/admin_settings/auth_pin) && pin == get(/databases/$(database)/documents/admin_settings/auth_pin).data.pin
-      );
-    }
-
 
     function isDelegate() {
       return isSignedIn() && exists(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/delegate_sessions/$(request.auth.uid)).data.isActive == true;
-    }
-
-    function isGarageDeleting(garageId) {
-      return exists(/databases/$(database)/documents/garages/$(garageId)) &&
-             'isDeleting' in get(/databases/$(database)/documents/garages/$(garageId)).data &&
-             get(/databases/$(database)/documents/garages/$(garageId)).data.isDeleting == true;
     }
 
     function isGarageOwner(garageId) {
@@ -130,15 +118,6 @@ service cloud.firestore {
          get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
          exists(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)) &&
          get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId)
-      );
-    }
-
-    function isGarageOwnerOrStaff() {
-      return isSignedIn() && (
-        (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true) ||
-        (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true)
       );
     }
 
@@ -170,20 +149,6 @@ service cloud.firestore {
              get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == staffId;
     }
 
-    function isOwnerDeleter(garageId, vehicleData) {
-      return isSignedIn() && (
-        (exists(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.entityId == garageId &&
-         get(/databases/$(database)/documents/garage_sessions/$(request.auth.uid)).data.isActive == true &&
-         vehicleData.staffId == null) ||
-        (exists(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.isActive == true &&
-         get(/databases/$(database)/documents/staff/$(get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId)).data.garageId == garageId &&
-         vehicleData.staffId is string &&
-         get(/databases/$(database)/documents/staff_sessions/$(request.auth.uid)).data.entityId == vehicleData.staffId)
-      );
-    }
-
     function incoming() {
       return request.resource.data;
     }
@@ -192,213 +157,10 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isRateLimited(operationId) {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)) &&
-        (request.time.toMillis() - get(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.lastOperationAt.toMillis()) < 5000;
-    }
-
-    function hasRateLimitReservation(operationId) {
-      return isSignedIn() &&
-        getAfter(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.keys().hasOnly(['lastOperationAt']) &&
-        getAfter(/databases/$(database)/documents/admin_rate_limits/$(request.auth.uid)/operations/$(operationId)).data.lastOperationAt == request.time;
-    }
-
     // ===============================================================
     // Verification Schema Rules
     // ===============================================================
 
-    // PIN credentials live exclusively in the server-only `private_pins`
-    // collection. Legacy plaintext / hash fields on tenant docs are forbidden
-    // so that a Worker bug can never accidentally re-materialize a readable
-    // PIN on a client-readable document. Null writes are permitted so the
-    // backfill and lazy migration paths can cleanse existing docs.
-    function forbidsLegacyPinFields(data) {
-      return (!('pin' in data) || data.pin == null) &&
-             (!('ownerPin' in data) || data.ownerPin == null) &&
-             (!('adminPin' in data) || data.adminPin == null) &&
-             (!('pinLookupHash' in data) || data.pinLookupHash == null);
-    }
-
-    function isValidGarage(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.phone is string && (data.phone.size() == 0 || (data.phone.size() >= 3 && data.phone.size() <= 20)) &&
-             data.hourlyRate is number && data.hourlyRate >= 0 &&
-             data.overnightRate is number && data.overnightRate >= 0 &&
-             data.createdAt is timestamp &&
-             (data.billingModel == 'commission' || data.billingModel == 'subscription') &&
-             forbidsLegacyPinFields(data) &&
-             (!('currentSessionId' in data) || (data.currentSessionId == null || (data.currentSessionId is string && data.currentSessionId.size() <= 128))) &&
-             (!('commissionPerVehicle' in data) || (data.commissionPerVehicle is number && data.commissionPerVehicle >= 0)) &&
-             (!('balance' in data) || data.balance is number) &&
-             (!('isLocked' in data) || data.isLocked is bool) &&
-             (!('isDeleting' in data) || data.isDeleting is bool) &&
-             (!('dailyRefundCount' in data) || data.dailyRefundCount is number) &&
-             (!('lastRefundDate' in data) || data.lastRefundDate is string) &&
-             (!('recentExits' in data) || data.recentExits is list) &&
-             (!('lastTransactionDate' in data) || data.lastTransactionDate is string) &&
-             (!('lastRechargeDate' in data) || data.lastRechargeDate is timestamp) &&
-             (!('activePlates' in data) || data.activePlates is map) &&
-             (!('referredByGarageId' in data) || data.referredByGarageId == null || (data.referredByGarageId is string && isValidId(data.referredByGarageId))) &&
-             (!('referredByGarageName' in data) || data.referredByGarageName == null || data.referredByGarageName is string) &&
-             (!('referralRewardClaimed' in data) || data.referralRewardClaimed is bool) &&
-             (!('totalReferralRewardDays' in data) || data.totalReferralRewardDays is number) &&
-             (!('totalGaragesReferredCount' in data) || data.totalGaragesReferredCount is number);
-    }
-
-    function isGarageUpdateValid(data) {
-      return forbidsLegacyPinFields(data) &&
-             (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
-             (!('phone' in data) || (data.phone is string && (data.phone.size() == 0 || data.phone.size() >= 3))) &&
-             (!('hourlyRate' in data) || (data.hourlyRate is number && data.hourlyRate >= 0)) &&
-             (!('overnightRate' in data) || (data.overnightRate is number && data.overnightRate >= 0)) &&
-             (!('balance' in data) || data.balance is number) &&
-             (!('isLocked' in data) || data.isLocked is bool) &&
-             (!('carsInside' in data) || (data.carsInside is number && data.carsInside >= 0)) &&
-             (!('carsInsideCount' in data) || (data.carsInsideCount is int && data.carsInsideCount >= 0)) &&
-             (!('activeVehicles' in data) || data.activeVehicles is list) &&
-             (!('lastUpdated' in data) || data.lastUpdated is string || data.lastUpdated is timestamp) &&
-             (!('isTrial' in data) || data.isTrial is bool) &&
-             (!('dailyCapacity' in data) || data.dailyCapacity is number) &&
-             (!('hasMonthlySubscribers' in data) || data.hasMonthlySubscribers is bool) &&
-             (!('totalAdminRevenue' in data) || data.totalAdminRevenue is number) &&
-             (!('activePlates' in data) || data.activePlates is map) &&
-             (!('recentExits' in data) || data.recentExits is list) &&
-             (!('lastTransactionDate' in data) || data.lastTransactionDate is string) &&
-             (!('lastRechargeDate' in data) || data.lastRechargeDate is timestamp) &&
-             (!('lastRechargeAmount' in data) || data.lastRechargeAmount is number) &&
-             (!('lastRechargePackageName' in data) || data.lastRechargePackageName == null || data.lastRechargePackageName is string) &&
-             (!('lastReferralRewardAt' in data) || data.lastReferralRewardAt == null || data.lastReferralRewardAt is timestamp) &&
-             (!('activePackageName' in data) || data.activePackageName == null || data.activePackageName is string) &&
-             (!('packageName' in data) || data.packageName == null || data.packageName is string) &&
-             (!('billingModel' in data) || data.billingModel == null || data.billingModel is string) &&
-             (!('totalRevenue' in data) || (data.totalRevenue is number && data.totalRevenue >= 0)) &&
-             (!('totalVehiclesOut' in data) || (data.totalVehiclesOut is number && data.totalVehiclesOut >= 0)) &&
-             (!('todayRevenue' in data) || (data.todayRevenue is number && data.todayRevenue >= 0)) &&
-             (!('todayCount' in data) || (data.todayCount is number && data.todayCount >= 0)) &&
-             (!('dailyRefundCount' in data) || data.dailyRefundCount is number) &&
-             (!('lastRefundDate' in data) || data.lastRefundDate is string) &&
-             (!('dailyDeletionCount' in data) || data.dailyDeletionCount is number) &&
-             (!('lastDeletionDate' in data) || data.lastDeletionDate is string) &&
-             (!('lastGiftMonth' in data) || data.lastGiftMonth is string) &&
-             (!('currentSessionId' in data) || data.currentSessionId == null || (data.currentSessionId is string && data.currentSessionId.size() <= 128)) &&
-             (!('shimmerColor' in data) || data.shimmerColor is string) &&
-             (!('lastActive' in data) || data.lastActive == null || data.lastActive is timestamp) &&
-             (!('referredByGarageId' in data) || data.referredByGarageId == null || (data.referredByGarageId is string && isValidId(data.referredByGarageId))) &&
-             (!('referredByGarageName' in data) || data.referredByGarageName == null || data.referredByGarageName is string) &&
-             (!('referralRewardClaimed' in data) || data.referralRewardClaimed is bool) &&
-             (!('totalReferralRewardDays' in data) || data.totalReferralRewardDays is number) &&
-             (!('totalGaragesReferredCount' in data) || data.totalGaragesReferredCount is number) &&
-             (!('referralRewardAwardedAt' in data) || data.referralRewardAwardedAt == null || data.referralRewardAwardedAt is timestamp) &&
-             (!('lastReferralClaimAt' in data) || data.lastReferralClaimAt == null || data.lastReferralClaimAt is timestamp) &&
-             (!('balanceExpiry' in data) || data.balanceExpiry == null || data.balanceExpiry is timestamp) &&
-             (!('dailyCapacity' in data) || data.dailyCapacity is number) &&
-             (!('isDeleting' in data) || data.isDeleting is bool) &&
-             (!('isLocked' in data) || data.isLocked is bool);
-    }
-
-    function isValidVehicle(data) {
-      return data.plateNumber is string && data.plateNumber.size() > 0 && data.plateNumber.size() <= 20 &&
-             data.entryTime is timestamp &&
-             data.type in ['hourly', 'overnight'] &&
-             data.garageId is string && isValidId(data.garageId) &&
-             data.status in ['inside', 'outside'] &&
-             data.plateNumberRaw is string && data.plateNumberRaw.size() <= 20 &&
-             (!('totalCost' in data) || (data.totalCost is number && data.totalCost >= 0)) &&
-             (!('exitTime' in data) || data.exitTime is timestamp) &&
-             (!('isSubscriber' in data) || data.isSubscriber is bool) &&
-             (!('staffId' in data) || data.staffId == null || (data.staffId is string && isValidId(data.staffId))) &&
-             (!('staffName' in data) || (data.staffName is string && data.staffName.size() <= 100));
-    }
-
-    function isValidVehicleCreate(garageId, vehicleId) {
-      return incoming().keys().hasOnly([
-               'id', 'plate', 'plateNumber', 'plateNumberRaw', 'entryTime',
-               'type', 'garageId', 'status', 'staffId', 'staffName', 'isSubscriber'
-             ]) &&
-             incoming().id == vehicleId &&
-             incoming().plate == incoming().plateNumber &&
-             incoming().plateNumberRaw == vehicleId &&
-             incoming().garageId == garageId &&
-             incoming().entryTime == request.time &&
-             incoming().status == 'inside' &&
-             isValidVehicle(incoming());
-    }
-
-    function isValidVehicleUpdate(garageId, vehicleId) {
-      return existing().garageId == garageId &&
-             incoming().garageId == garageId &&
-             (!('id' in existing()) || incoming().id == existing().id) &&
-             incoming().plateNumberRaw == vehicleId &&
-             (
-               (existing().status == 'inside' &&
-                incoming().status == 'outside' &&
-                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'exitTime', 'totalCost']) &&
-                incoming().exitTime == request.time &&
-                incoming().totalCost is number && incoming().totalCost >= 0) ||
-               (existing().status == 'outside' &&
-                incoming().status == 'inside' &&
-                incoming().diff(existing()).affectedKeys().hasOnly([
-                  'plate', 'plateNumber', 'plateNumberRaw', 'entryTime', 'type',
-                  'status', 'staffId', 'staffName', 'isSubscriber', 'exitTime', 'totalCost'
-                ]) &&
-                incoming().entryTime == request.time &&
-                incoming().plate == incoming().plateNumber &&
-                !('exitTime' in incoming()) &&
-                !('totalCost' in incoming()))
-             ) &&
-             isValidVehicle(incoming());
-    }
-
-    function isValidActivityLog(data) {
-      return data.keys().hasAll(['garageId', 'staffName', 'actionType', 'plateNumber', 'timestamp']) &&
-             data.garageId is string && isValidId(data.garageId) &&
-             data.staffName is string && data.staffName.size() <= 100 &&
-             data.actionType in ['check_in', 'check_out', 'recharge', 'delete_refund', 'commission_payment'] &&
-             data.plateNumber is string && data.plateNumber.size() <= 150 &&
-             data.timestamp is timestamp &&
-             (!('staffId' in data) || data.staffId == null || (data.staffId is string && isValidId(data.staffId))) &&
-             (!('amount' in data) || data.amount is number) &&
-             (!('packageId' in data) || data.packageId == null || data.packageId is string) &&
-             (!('details' in data) || data.details is map) &&
-             (!('garageName' in data) || data.garageName == null || data.garageName is string);
-    }
-
-
-    function isValidRechargeRequest(data) {
-      return data.keys().hasAll(['garageId', 'garageName', 'delegateId', 'delegateName', 'packageId', 'packageName', 'status', 'createdAt']) &&
-             data.garageId is string && isValidId(data.garageId) &&
-             data.delegateId is string && isValidId(data.delegateId) &&
-             data.status in ['pending', 'approved', 'rejected'] &&
-             data.createdAt is timestamp &&
-             (('revenueAmount' in data && data.revenueAmount is number) || ('amount' in data && data.amount is number));
-    }
-
-    function isValidPackage(data) {
-      return data.keys().hasAll(['name', 'price', 'catalogType', 'creditQuantity']) &&
-             data.keys().hasOnly(['name', 'price', 'catalogType', 'creditQuantity', 'isActive', 'createdAt']) &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-             data.price is int && data.price > 0 &&
-             data.catalogType == 'credit_bundle' &&
-             data.creditQuantity is int && data.creditQuantity > 0 && data.creditQuantity <= 1000000 &&
-             data.price == data.creditQuantity &&
-             (!('isActive' in data) || data.isActive is bool) &&
-             (!('createdAt' in data) || data.createdAt is timestamp);
-    }
-
-    function canRefreshOwnSession() {
-      return incoming().diff(existing()).affectedKeys().hasOnly(['lastActive']) &&
-             incoming().lastActive is timestamp;
-    }
-
-    // Session validation helpers
-    function isValidSessionDoc(data, expectedRole) {
-      return data.uid == request.auth.uid &&
-             data.role == expectedRole &&
-             data.entityId is string && data.entityId.size() > 0 &&
-             data.sessionId is string && data.sessionId.size() > 0 &&
-             data.isActive is bool;
-    }
 
     // ===============================================================
     // Cryptographic Secure Sessions Mapping Rules (Server-Authoritative Only)
