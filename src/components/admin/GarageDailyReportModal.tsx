@@ -129,31 +129,6 @@ function getAmountContent(log: any): string | number {
   return '';
 }
 
-function formatCairoTimestamp(date: Date): string {
-  if (isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
-    timeZone: 'Africa/Cairo',
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  }).format(date);
-}
-
-function formatCairoDateOnly(date: Date): string {
-  if (isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
-    timeZone: 'Africa/Cairo',
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date);
-}
-
 export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportModalProps) => {
   const { showToast } = useToast();
   const today = useMemo(() => {
@@ -259,49 +234,12 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
         return;
       }
 
-      // Generate CSV with a clean, professional layout:
-      //   1. Title section — garage name + report date + summary
-      //   2. Blank separator row
-      //   3. Column headers
-      //   4. One row per activity log (with index #)
-      //   5. Blank separator row
-      //   6. Totals row at the bottom
-      const reportDate = new Date(`${dateId}T12:00:00+02:00`);
-      const formattedReportDate = formatCairoDateOnly(reportDate);
-
-      // Compute summary from the logs themselves (we don't read daily_stats).
-      let totalRevenue = 0;
-      let entriesCount = 0;
-      let exitsCount = 0;
-      for (const log of logs) {
-        const action = log.actionType || (log as any).action;
-        const amount = typeof log.amount === 'number' ? log.amount : 0;
-        if (action === 'check_in') entriesCount += 1;
-        if (action === 'check_out') {
-          exitsCount += 1;
-          totalRevenue += amount;
-        }
-      }
-
-      const rows: string[] = [];
-
-      // Title section
-      rows.push([escapeCsv('تقرير جراج'), escapeCsv(garage.name || 'جراج')].join(','));
-      rows.push([escapeCsv('التاريخ'), escapeCsv(formattedReportDate)].join(','));
-      rows.push([escapeCsv('إجمالي العمليات'), escapeCsv(logs.length)].join(','));
-      rows.push([escapeCsv('إجمالي الدخول'), escapeCsv(entriesCount)].join(','));
-      rows.push([escapeCsv('إجمالي الخروج'), escapeCsv(exitsCount)].join(','));
-      rows.push([escapeCsv('إيراد اليوم (ج.م)'), escapeCsv(totalRevenue)].join(','));
-      rows.push([escapeCsv('تم إنشاء التقرير'), escapeCsv(formatCairoTimestamp(new Date()))].join(','));
-
-      // Blank separator
-      rows.push('');
-
-      // Column headers
+      // Pure clean table — just headers + rows. The garage name + date are
+      // already in the filename, so they don't need to be inside the file.
+      // This keeps the CSV maximally sortable/filterable in Excel.
       const headers = ['#', 'التوقيت', 'نوع العملية', 'المستخدم', 'اللوحة/التفاصيل', 'المبلغ (ج.م)'];
-      rows.push(headers.map(escapeCsv).join(','));
+      const rows: string[] = [headers.map(escapeCsv).join(',')];
 
-      // Activity log rows
       logs.forEach((log, index) => {
         const ts = safeDate(log.timestamp);
         const tsStr = isNaN(ts.getTime()) ? '' : new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
@@ -318,19 +256,6 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
         const amount = getAmountContent(log);
         rows.push([index + 1, tsStr, actionLabel, user, detail, amount].map(escapeCsv).join(','));
       });
-
-      // Blank separator before totals
-      rows.push('');
-
-      // Totals row
-      rows.push([
-        escapeCsv(''),
-        escapeCsv(''),
-        escapeCsv('الإجمالي'),
-        escapeCsv(''),
-        escapeCsv(''),
-        escapeCsv(totalRevenue),
-      ].join(','));
 
       const csvContent = '\uFEFF' + rows.join('\r\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
