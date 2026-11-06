@@ -54,6 +54,106 @@ function escapeCsv(val: any): string {
   return `"${str}"`;
 }
 
+/**
+ * Translate raw actionType codes (e.g. 'check_in', 'subscriber_renewal_debit')
+ * to human-readable Arabic labels. Mirrors the labels that were previously
+ * shown in the now-removed ActivityLogExportModal.
+ */
+function getActionLabel(action?: string): string {
+  switch (action) {
+    case 'check_in':
+      return 'تسجيل دخول سيارة';
+    case 'check_out':
+      return 'تسجيل خروج سيارة';
+    case 'recharge':
+      return 'شحن رصيد';
+    case 'delete_refund':
+      return 'حذف سيارة مع استرداد';
+    case 'commission_earned':
+      return 'استحقاق عمولة';
+    case 'credit_grant':
+      return 'منح رصيد';
+    case 'prepaid_credit_grant_paid':
+      return 'منح رصيد مدفوع';
+    case 'trial_grant':
+      return 'منح رصيد تجريبي';
+    case 'referral_award':
+    case 'credit_referral_award':
+      return 'مكافأة إحالة';
+    case 'regular_entry_debit':
+      return 'خصم رصيد لدخول سيارة';
+    case 'subscriber_renewal_debit':
+      return 'خصم رصيد لتجديد مشترك';
+    case 'correction_restore':
+    case 'credit_correction':
+      return 'تعديل رصيد';
+    case 'vehicle_refunded':
+      return 'استرداد مبلغ';
+    case 'garage_delete':
+      return 'حذف جراج';
+    default:
+      return action ? 'عملية أخرى' : '';
+  }
+}
+
+function getDetailsContent(log: any): string {
+  const action = log.actionType || log.action;
+  if (action === 'check_in' || action === 'check_out') {
+    return log.plateNumber || '';
+  }
+  if (action === 'delete_refund') {
+    const raw = log.plateNumber || (typeof log.details === 'string' ? log.details : '');
+    return raw.replace(/^مسح لوحة:\s*/, '');
+  }
+  if (action === 'recharge') {
+    if (log.details && typeof log.details === 'object' && log.details.packageName) {
+      const days = log.details.durationDays ? ` — ${log.details.durationDays} يوم` : '';
+      return `${log.details.packageName}${days}`;
+    }
+    if (typeof log.details === 'string' && log.details.trim()) {
+      return log.details;
+    }
+    return log.plateNumber || '';
+  }
+  if (typeof log.details === 'string' && log.details.trim()) {
+    return log.details.replace(/^مسح لوحة:\s*/, '');
+  }
+  return log.plateNumber || '';
+}
+
+function getAmountContent(log: any): string | number {
+  const val = typeof log.amount === 'number' ? log.amount : (typeof log.totalFee === 'number' ? log.totalFee : null);
+  if (val !== null && val !== undefined && val > 0) {
+    return val;
+  }
+  return '';
+}
+
+function formatCairoTimestamp(date: Date): string {
+  if (isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date);
+}
+
+function formatCairoDateOnly(date: Date): string {
+  if (isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(date);
+}
+
 export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportModalProps) => {
   const { showToast } = useToast();
   const today = useMemo(() => {
@@ -159,20 +259,79 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
         return;
       }
 
-      // Generate CSV
-      const headers = ['التوقيت', 'العملية', 'المستخدم', 'اللوحة/التفاصيل', 'المبلغ'];
-      const rows = [headers.map(escapeCsv).join(',')];
+      // Generate CSV with a clean, professional layout:
+      //   1. Title section — garage name + report date + summary
+      //   2. Blank separator row
+      //   3. Column headers
+      //   4. One row per activity log (with index #)
+      //   5. Blank separator row
+      //   6. Totals row at the bottom
+      const reportDate = new Date(`${dateId}T12:00:00+02:00`);
+      const formattedReportDate = formatCairoDateOnly(reportDate);
+
+      // Compute summary from the logs themselves (we don't read daily_stats).
+      let totalRevenue = 0;
+      let entriesCount = 0;
+      let exitsCount = 0;
       for (const log of logs) {
+        const action = log.actionType || (log as any).action;
+        const amount = typeof log.amount === 'number' ? log.amount : 0;
+        if (action === 'check_in') entriesCount += 1;
+        if (action === 'check_out') {
+          exitsCount += 1;
+          totalRevenue += amount;
+        }
+      }
+
+      const rows: string[] = [];
+
+      // Title section
+      rows.push([escapeCsv('تقرير جراج'), escapeCsv(garage.name || 'جراج')].join(','));
+      rows.push([escapeCsv('التاريخ'), escapeCsv(formattedReportDate)].join(','));
+      rows.push([escapeCsv('إجمالي العمليات'), escapeCsv(logs.length)].join(','));
+      rows.push([escapeCsv('إجمالي الدخول'), escapeCsv(entriesCount)].join(','));
+      rows.push([escapeCsv('إجمالي الخروج'), escapeCsv(exitsCount)].join(','));
+      rows.push([escapeCsv('إيراد اليوم (ج.م)'), escapeCsv(totalRevenue)].join(','));
+      rows.push([escapeCsv('تم إنشاء التقرير'), escapeCsv(formatCairoTimestamp(new Date()))].join(','));
+
+      // Blank separator
+      rows.push('');
+
+      // Column headers
+      const headers = ['#', 'التوقيت', 'نوع العملية', 'المستخدم', 'اللوحة/التفاصيل', 'المبلغ (ج.م)'];
+      rows.push(headers.map(escapeCsv).join(','));
+
+      // Activity log rows
+      logs.forEach((log, index) => {
         const ts = safeDate(log.timestamp);
         const tsStr = isNaN(ts.getTime()) ? '' : new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
-          timeZone: 'Africa/Cairo', hour: '2-digit', minute: '2-digit', hour12: true, day: 'numeric', month: 'numeric'
+          timeZone: 'Africa/Cairo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+          day: 'numeric',
+          month: 'numeric',
         }).format(ts);
-        const action = log.actionType || (log as any).action || '';
+        const actionLabel = getActionLabel(log.actionType || (log as any).action);
         const user = log.staffName || (log as any).operatorName || 'النظام';
-        const detail = log.plateNumber || (typeof log.details === 'string' ? log.details : '') || '';
-        const amount = typeof log.amount === 'number' && log.amount > 0 ? log.amount : '';
-        rows.push([tsStr, action, user, detail, amount].map(escapeCsv).join(','));
-      }
+        const detail = getDetailsContent(log);
+        const amount = getAmountContent(log);
+        rows.push([index + 1, tsStr, actionLabel, user, detail, amount].map(escapeCsv).join(','));
+      });
+
+      // Blank separator before totals
+      rows.push('');
+
+      // Totals row
+      rows.push([
+        escapeCsv(''),
+        escapeCsv(''),
+        escapeCsv('الإجمالي'),
+        escapeCsv(''),
+        escapeCsv(''),
+        escapeCsv(totalRevenue),
+      ].join(','));
+
       const csvContent = '\uFEFF' + rows.join('\r\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
