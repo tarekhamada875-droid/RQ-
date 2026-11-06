@@ -1,5 +1,5 @@
 import type { WorkerApp } from './cloudflareWorker';
-import { adminDb, adminAuth } from './firebaseAdmin';
+import { adminDb, adminAuth, isFirebaseAdminInitialized } from './firebaseAdmin';
 
 /**
  * Foundation routes: /api/health, /api/version.
@@ -53,12 +53,17 @@ function authorizeSpikeEndpoint(c: any): Response | null {
 export function registerFoundationRoutes(workerApp: WorkerApp): void {
   // Foundation Routes
   workerApp.get('/api/health', (c) => {
+    // Use isFirebaseAdminInitialized() for an honest check — the previous
+    // `!!(adminDb && adminAuth)` was always true because adminDb/adminAuth
+    // are always-truthy Proxies (audit N1, 2026-11-06). Health checks
+    // reported green even when the SDK was genuinely down.
+    const adminSdkReady = isFirebaseAdminInitialized();
     return c.json({
-      status: 'ok',
+      status: adminSdkReady ? 'ok' : 'degraded',
       runtime: 'cloudflare-worker',
       timestamp: new Date().toISOString(),
       environment: c.env?.ENVIRONMENT || 'production',
-      adminSdk: !!(adminDb && adminAuth),
+      adminSdk: adminSdkReady,
       version: c.env?.WORKER_VERSION || process.env.WORKER_VERSION || '1.0.0',
       commitSha: c.env?.WORKER_COMMIT_SHA || process.env.WORKER_COMMIT_SHA || 'unknown'
     });

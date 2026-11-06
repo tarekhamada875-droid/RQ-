@@ -327,5 +327,26 @@ export function initializeFirebaseAdmin(env?: WorkerEnv): void {
   activeAuth = new FirebaseAuthRest(config.projectId);
 }
 
-export const adminDb: any = new Proxy({}, { get(_target, property) { if (!activeDb) initializeFirebaseAdmin(); const value = (activeDb as any)?.[property]; return typeof value === 'function' ? value.bind(activeDb) : value; } });
-export const adminAuth: any = new Proxy({}, { get(_target, property) { if (!activeAuth) initializeFirebaseAdmin(); const value = (activeAuth as any)?.[property]; return typeof value === 'function' ? value.bind(activeAuth) : value; } });
+export const adminDb: any = new Proxy({}, { get(_target, property) {
+  if (!activeDb) initializeFirebaseAdmin();
+  if (!activeDb) throw new Error('ADMIN_SDK_NOT_INITIALIZED');
+  const value = (activeDb as any)[property];
+  return typeof value === 'function' ? value.bind(activeDb) : value;
+} });
+export const adminAuth: any = new Proxy({}, { get(_target, property) {
+  if (!activeAuth) initializeFirebaseAdmin();
+  if (!activeAuth) throw new Error('ADMIN_SDK_NOT_INITIALIZED');
+  const value = (activeAuth as any)[property];
+  return typeof value === 'function' ? value.bind(activeAuth) : value;
+} });
+
+/**
+ * Returns true if the Firebase Admin SDK REST client is initialized and
+ * ready to serve requests. Mirrors the same export in firebaseAdmin.ts.
+ * Production builds alias firebaseAdmin → firebaseWorkerAdmin, so this
+ * file must export the same surface.
+ */
+export function isFirebaseAdminInitialized(): boolean {
+  if (!activeDb) initializeFirebaseAdmin();
+  return Boolean(activeDb && activeAuth);
+}

@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('./firebaseAdmin', () => ({
   adminDb: { doc: () => ({ set: async () => undefined }) },
   adminAuth: { verifyIdToken: async () => ({ uid: 'hono-synthetic-user', role: 'admin' }) },
-  firebaseConfig: {}
+  firebaseConfig: {},
+  isFirebaseAdminInitialized: () => true
 }));
 
 import api from './api';
