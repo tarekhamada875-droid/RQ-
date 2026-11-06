@@ -92,6 +92,7 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
     validateNumber: (value: any) => Number(value),
     ValidationError: class extends Error {},
     validateNewPin: (value: any) => value,
+    normalizePhone: (value: any) => String(value || '').trim(),
     validateIdempotencyKey: (value: any) => value,
     computeLookupHash: () => 'pin-hash',
     checkPinAvailabilityAcrossAll: async () => ({ taken: false }),

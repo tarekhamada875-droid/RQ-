@@ -13,6 +13,7 @@ export function registerDelegateRoutes(app: WorkerApp, deps: GarageRouteDeps): v
     requireWorkerAuth,
     ValidationError,
     validateNewPin,
+    normalizePhone,
     validateIdempotencyKey,
     validateId,
     validateString,
@@ -50,7 +51,12 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
     }
 
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
-    const normPhone = phone ? String(phone).trim() : '';
+    // Audit N9 (Phase 1, 2026-11-06): normalize phone consistently with the
+    // client's normalizePhone (keeps `+`, strips other non-digits). This
+    // ensures delegates created via direct API calls (without client-side
+    // normalization) are stored in the same canonical form that the login
+    // lookup uses.
+    const normPhone = phone ? normalizePhone(phone) : '';
     const normPin = validateNewPin(pin);
 
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);

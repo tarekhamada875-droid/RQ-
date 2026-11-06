@@ -75,8 +75,13 @@ export function validateId(val: any, fieldName = 'ID', required = true): string 
     throw new ValidationError(`${fieldName} exceeds maximum length of 128 characters`, `${fieldName.toUpperCase()}_TOO_LONG`, 400);
   }
 
-  // Prevent path traversal or script injection
-  const safeIdRegex = /^[a-zA-Z0-9_.:@\s-]+$/;
+  // Prevent path traversal or script injection.
+  // Audit N10 (Phase 1, 2026-11-06): removed `\s` from the regex. Whitespace
+  // (including newlines, tabs) in IDs caused inconsistent doc refs across
+  // reads (some code paths trim, others don't) and made log analysis
+  // difficult. Also a security concern: a garageId containing `\n` could
+  // be used to inject log entries or confuse downstream parsers.
+  const safeIdRegex = /^[a-zA-Z0-9_.:@-]+$/;
   if (!safeIdRegex.test(trimmed)) {
     throw new ValidationError(`Invalid characters in ${fieldName}`, `INVALID_CHARS_${fieldName.toUpperCase()}`, 400);
   }

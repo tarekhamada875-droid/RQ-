@@ -16,6 +16,7 @@ export interface GarageRouteDeps {
   validateNumber: GarageRouteDependency;
   ValidationError: new (...args: any[]) => any;
   validateNewPin: GarageRouteDependency;
+  normalizePhone: GarageRouteDependency;
   validateIdempotencyKey: GarageRouteDependency;
   computeLookupHash: GarageRouteDependency;
   checkPinAvailabilityAcrossAll: GarageRouteDependency;
@@ -393,8 +394,13 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
     const body = await c.req.json().catch(() => ({}));
-    const { id, ...data } = body || {};
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    const { id: rawId, ...data } = body || {};
+    // Audit N11 (Phase 1, 2026-11-06): validate the id using validateId
+    // (rejects whitespace, path-traversal chars, >128 chars). Previously
+    // just checked truthiness — an attacker could send id with special
+    // characters that would reach Firestore doc paths.
+    const id = validateId(rawId, 'garageId', true);
+    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const retiredUpdateFields = new Set([
       'billingModel', 'commissionPerVehicle', 'monthlySubscriptionFee', 'dailyCapacity', 'capacity', 'allowMonthlySubscribers',
@@ -821,8 +827,12 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
 
 app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
   try {
-    const id = c.req.param('id');
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    // Audit N11 (Phase 1, 2026-11-06): validate the id param using
+    // validateId (same as POST /api/garages/:id/reconcile at line 771).
+    // Previously this route just checked truthiness, allowing IDs with
+    // whitespace or path-traversal characters to reach Firestore.
+    const id = validateId(c.req.param('id'), 'garageId', true);
+    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const user = c.get('user');
     if (!decideGarageScope(user, id)) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
