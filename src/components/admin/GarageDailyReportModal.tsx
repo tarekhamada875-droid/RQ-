@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import {
-  X, Calendar, ChevronLeft, ChevronRight, Loader2, AlertCircle
+  X, Download, Calendar, ChevronLeft, ChevronRight, Loader2, AlertCircle
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -214,7 +214,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                 تقرير يومي — {garage.name || 'جراج'}
               </h3>
               <p className="text-[11px] font-bold text-slate-400">
-                اختر التاريخ لتحميل سجل العمليات (CSV)
+                اختر التاريخ ثم اضغط زر التحميل
               </p>
             </div>
           </div>
@@ -269,7 +269,6 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                   disabled={isFuture || isExporting}
                   onClick={() => {
                     setSelectedDate(day.dateId);
-                    void handleDownloadCSV(day.dateId);
                   }}
                   className={`aspect-square rounded-lg text-xs font-black transition-all ${
                     isSelected
@@ -304,11 +303,40 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
           )}
 
           {/* Hint */}
-          {!isExporting && !exportError && (
+          {!isExporting && !exportError && !selectedDate && (
             <p className="mt-4 text-[11px] text-slate-400 dark:text-slate-500 text-center font-bold leading-relaxed">
-              اضغط على أي يوم لتحميل سجل العمليات في ملف CSV مباشرةً
+              اختر يوماً من التقويم أولاً
             </p>
           )}
+          {selectedDate && !isExporting && !exportError && (
+            <p className="mt-4 text-[11px] text-emerald-600 dark:text-emerald-400 text-center font-bold leading-relaxed font-mono" dir="ltr">
+              التاريخ المختار: {selectedDate}
+            </p>
+          )}
+
+          {/* Download button */}
+          <button
+            type="button"
+            onClick={() => selectedDate && void handleDownloadCSV(selectedDate)}
+            disabled={!selectedDate || isExporting}
+            className={`mt-4 w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${
+              selectedDate && !isExporting
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-98 cursor-pointer'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+            }`}
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>جاري التحميل...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>تحميل سجل اليوم (CSV)</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
