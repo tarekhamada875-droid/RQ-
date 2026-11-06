@@ -73,7 +73,10 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const rateLimitStartedAt = Date.now();
     let pinLimit: Awaited<ReturnType<typeof checkWorkerPinRateLimit>>;
     try {
-      pinLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
+      // Audit N2 (Phase 1, 2026-11-06): pass normalizedPin so the per-target-PIN
+      // bucket is also checked. This caps the rate at which any specific PIN
+      // value can be probed regardless of botnet size.
+      pinLimit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp, normalizedPin);
     } catch (error: any) {
       console.error('[Worker Auth] PIN rate limiter unavailable:', error?.message || 'unknown');
       return c.json({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' }, 503);
@@ -116,7 +119,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
         transaction.set(deviceSecurityRef, sessionData, { merge: true });
         writeSessionIndex(transaction, sessionData);
       });
-      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp);
+      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp, normalizedPin);
       return c.json({ success: true, role: 'delegate', accountId: delegate.id, account: { id: delegate.id, ...account }, sessionClaimed: true });
     }
 
@@ -197,7 +200,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const rawCorrelationId = String(c.get('correlationId') || '');
     const correlationId = /^[A-Za-z0-9._:-]{1,128}$/.test(rawCorrelationId) ? rawCorrelationId : 'invalid';
     const limiterResetStartedAt = Date.now();
-    const limiterResetPromise = resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp)
+    const limiterResetPromise = resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp, normalizedPin)
       .then(() => {
         console.info('[Worker Auth] verify-pin limiter reset complete', {
           correlationId,
@@ -255,10 +258,10 @@ workerApp.post('/api/auth/verify-admin-pin', async (c) => {
     const normalizedPin = cleanPin(body.pin);
     if (!normalizedPin) return c.json({ valid: false });
     const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
-    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
+    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp, normalizedPin);
     if (limit.allowed === false) return c.json({ valid: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: limit.resetAt }, 429);
     const check = verifyPinMatch(normalizedPin, await getAdminPin());
-    if (check.matches) await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
+    if (check.matches) await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp, normalizedPin);
     return c.json({ valid: check.matches });
   } catch (error: any) {
     console.error('[Worker Auth] Error verifying admin PIN:', error?.message || 'unknown');
@@ -270,12 +273,13 @@ workerApp.post('/api/auth/check-pin-availability', async (c) => {
   const authResult = await requireWorkerAuth(c, async () => undefined);
   if (authResult instanceof Response) return authResult;
   try {
-    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
-    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp);
-    if (limit.allowed === false) return c.json({ taken: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: limit.resetAt }, 429);
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const normalizedPin = cleanPin(body.pin);
     if (!normalizedPin) return c.json({ taken: false });
+    const clientIp = c.req.header('cf-connecting-ip') || 'unknown';
+    // Audit N2: pass normalizedPin so the per-target-PIN bucket is checked.
+    const limit = await checkWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, c.get('user')?.uid || '', clientIp, normalizedPin);
+    if (limit.allowed === false) return c.json({ taken: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: limit.resetAt }, 429);
     const result = await checkPinAvailabilityAcrossAll(normalizedPin, typeof body.excludeId === 'string' ? body.excludeId : undefined);
     return c.json({ taken: Boolean(result.taken) });
   } catch (error: any) {
