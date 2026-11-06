@@ -1,6 +1,18 @@
 export const WORKER_PIN_RATE_LIMIT_WINDOW_MS = 60_000;
 export const WORKER_PIN_ACCOUNT_MAX_ATTEMPTS = 10;
-export const WORKER_PIN_IP_MAX_ATTEMPTS = 30;
+// Audit N2 (Phase 1, 2026-11-06): tightened from 30 to 5 attempts/min per IP.
+// The previous 30/min limit meant a 30-IP botnet could try 900 PINs/min,
+// covering the 100k 5-digit PIN space in ~2 hours. At 5/min/IP, a 30-IP
+// botnet covers it in ~11 hours — and the per-target limit below makes
+// botnet size irrelevant for targeting a specific PIN.
+export const WORKER_PIN_IP_MAX_ATTEMPTS = 5;
+// NEW (audit N2): per-target-PIN rate limit. Even if an attacker has many
+// IPs, they can only try a SPECIFIC PIN value this many times per minute
+// globally. This caps the online brute-force rate for any single target
+// PIN regardless of botnet size. Set generously (15/min) so a legit user
+// who typos the same PIN 3-4 times in a row isn't blocked, but a botnet
+// hammering one PIN is throttled.
+export const WORKER_PIN_TARGET_MAX_ATTEMPTS = 15;
 
 interface DurableObjectStorageLike {
   get<T>(key: string): Promise<T | undefined>;
@@ -104,7 +116,7 @@ export class PinRateLimiterDurableObject {
   }
 }
 
-export async function hashPinRateLimitBucket(scope: 'account' | 'ip', value: string): Promise<string> {
+export async function hashPinRateLimitBucket(scope: 'account' | 'ip' | 'target_pin', value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${scope}:${value}`));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -122,18 +134,43 @@ async function callLimiter(namespace: PinRateLimiterNamespace, bucket: string, c
   return body;
 }
 
+/**
+ * Checks the rate-limit buckets for a PIN verify attempt.
+ *
+ * Three buckets are checked (in order of decreasing cost-to-attacker):
+ *   1. account (per-uid): 10/min — caps repeated attempts from one
+ *      anonymous uid. Attackers can mint unlimited uids from one IP,
+ *      so this alone is insufficient (audit N2).
+ *   2. ip (per-client-IP): 5/min — the primary defense. A 30-IP botnet
+ *      can still try 150 PINs/min total, but only 5 per individual IP.
+ *   3. target_pin (per-hashed-PIN): 15/min globally — caps the rate at
+ *      which any SPECIFIC PIN value can be probed, regardless of how
+ *      many IPs the attacker has. This makes botnet size irrelevant
+ *      for targeting a single PIN (audit N2).
+ *
+ * Returns `{allowed: false, resetAt}` if ANY bucket is exhausted.
+ */
 export async function checkWorkerPinRateLimit(
   namespace: PinRateLimiterNamespace | undefined,
   verifiedUid: string,
   clientIp: string,
-): Promise<{ allowed: true } | { allowed: false; resetAt?: number }> {
+  normalizedPin?: string,
+): Promise<{ allowed: true } | { allowed: false; resetAt?: number; bucket?: 'account' | 'ip' | 'target_pin' }> {
   if (!namespace) throw new Error('PIN_RATE_LIMITER_UNAVAILABLE');
   const accountBucket = await hashPinRateLimitBucket('account', verifiedUid);
   const ipBucket = await hashPinRateLimitBucket('ip', clientIp || 'unknown');
   const accountResult = await callLimiter(namespace, accountBucket, { action: 'check', maxAttempts: WORKER_PIN_ACCOUNT_MAX_ATTEMPTS });
-  if (accountResult.allowed === false) return { allowed: false, resetAt: accountResult.resetAt };
+  if (accountResult.allowed === false) return { allowed: false, resetAt: accountResult.resetAt, bucket: 'account' };
   const ipResult = await callLimiter(namespace, ipBucket, { action: 'check', maxAttempts: WORKER_PIN_IP_MAX_ATTEMPTS });
-  if (ipResult.allowed === false) return { allowed: false, resetAt: ipResult.resetAt };
+  if (ipResult.allowed === false) return { allowed: false, resetAt: ipResult.resetAt, bucket: 'ip' };
+  // Audit N2: per-target-PIN bucket. Only checked when a normalized PIN
+  // is available (the verify-pin route has it; some other callers like
+  // check-pin-availability may not).
+  if (normalizedPin) {
+    const targetBucket = await hashPinRateLimitBucket('target_pin', normalizedPin);
+    const targetResult = await callLimiter(namespace, targetBucket, { action: 'check', maxAttempts: WORKER_PIN_TARGET_MAX_ATTEMPTS });
+    if (targetResult.allowed === false) return { allowed: false, resetAt: targetResult.resetAt, bucket: 'target_pin' };
+  }
   return { allowed: true };
 }
 
@@ -141,12 +178,21 @@ export async function resetWorkerPinRateLimit(
   namespace: PinRateLimiterNamespace | undefined,
   verifiedUid: string,
   clientIp: string,
+  normalizedPin?: string,
 ): Promise<void> {
   if (!namespace) throw new Error('PIN_RATE_LIMITER_UNAVAILABLE');
   const accountBucket = await hashPinRateLimitBucket('account', verifiedUid);
   const ipBucket = await hashPinRateLimitBucket('ip', clientIp || 'unknown');
-  await Promise.all([
+  const buckets = [
     callLimiter(namespace, accountBucket, { action: 'reset' }),
     callLimiter(namespace, ipBucket, { action: 'reset' }),
-  ]);
+  ];
+  // Audit N2: also reset the target-PIN bucket on successful auth, so a
+  // legit user who finally gets the right PIN doesn't leave a half-full
+  // bucket that throttles them next time they typo it.
+  if (normalizedPin) {
+    const targetBucket = await hashPinRateLimitBucket('target_pin', normalizedPin);
+    buckets.push(callLimiter(namespace, targetBucket, { action: 'reset' }));
+  }
+  await Promise.all(buckets);
 }

@@ -109,14 +109,15 @@ describe('Worker PIN rate limiter', () => {
       env: Record<string, unknown> = { PIN_RATE_LIMITER: limiter },
       executionContext?: unknown,
       authToken = 'valid-admin-token',
-      expectedRole?: 'delegate'
+      expectedRole?: 'delegate',
+      clientIp: string = '198.51.100.20'
     ) {
       return api.fetch(new Request('http://localhost/api/auth/verify-pin', {
         method: 'POST',
         headers: {
           authorization: `Bearer ${authToken}`,
           'content-type': 'application/json',
-          'cf-connecting-ip': '198.51.100.20'
+          'cf-connecting-ip': clientIp
         },
         body: JSON.stringify({ pin, sessionId, ...(expectedRole ? { expectedRole } : {}) })
       }), env, executionContext as any);
@@ -140,15 +141,61 @@ describe('Worker PIN rate limiter', () => {
       expect(await response.json()).toMatchObject({ success: false, error: 'RATE_LIMITER_UNAVAILABLE' });
     });
 
-    it('enforces the account bucket before PIN lookup', async () => {
-      for (let attempt = 1; attempt <= 10; attempt += 1) {
+    it('enforces the IP bucket before PIN lookup (audit N2: 5/min/IP)', async () => {
+      // Audit N2 (Phase 1, 2026-11-06): the IP bucket was tightened from
+      // 30 to 5 attempts/min. This test was previously called "enforces
+      // the account bucket before PIN lookup" and expected 10 successes
+      // before denial. Now the IP bucket (5) is the binding constraint,
+      // not the account bucket (10).
+      for (let attempt = 1; attempt <= 5; attempt += 1) {
         const response = await verifyPin('87654321', `failed-${attempt}`);
         expect(response.status).toBe(200);
       }
 
-      const denied = await verifyPin('87654321', 'failed-11');
+      // 6th attempt from the same IP is denied by the IP bucket.
+      const denied = await verifyPin('87654321', 'failed-6');
       expect(denied.status).toBe(429);
       expect(await denied.json()).toMatchObject({ success: false, error: 'RATE_LIMIT_EXCEEDED' });
+    });
+
+    it('enforces the per-target-PIN bucket regardless of IP/account (audit N2)', async () => {
+      // Audit N2 (Phase 1, 2026-11-06): the per-target-PIN bucket caps the
+      // rate at which any specific PIN value can be probed. Even with a
+      // fresh anonymous uid (so the account bucket is reset) AND a fresh
+      // IP (so the IP bucket is reset), the 16th attempt at the SAME PIN
+      // is denied.
+      //
+      // To isolate the target-PIN bucket, each attempt uses a distinct
+      // garage-token (so a distinct uid → fresh account bucket) and a
+      // distinct IP (so a fresh IP bucket).
+      const freshPin = '99999';
+      for (let attempt = 1; attempt <= 15; attempt += 1) {
+        const response = await verifyPin(
+          freshPin,
+          `target-test-${attempt}`,
+          { PIN_RATE_LIMITER: limiter },
+          undefined,
+          `valid-garage-token-target-${attempt}`, // distinct uid per attempt
+          undefined,
+          `192.0.2.${attempt}` // distinct IP per attempt
+        );
+        // All 15 should return 200 (PIN is wrong, but rate-limit allows).
+        expect(response.status).toBe(200);
+      }
+
+      // 16th attempt with yet another fresh uid + IP — denied by target-PIN bucket.
+      const denied = await verifyPin(
+        freshPin,
+        `target-test-16`,
+        { PIN_RATE_LIMITER: limiter },
+        undefined,
+        `valid-garage-token-target-16`,
+        undefined,
+        `192.0.2.16`
+      );
+      expect(denied.status).toBe(429);
+      const deniedBody = await denied.json();
+      expect(deniedBody).toMatchObject({ success: false, error: 'RATE_LIMIT_EXCEEDED' });
     });
 
     it('resets account and IP buckets only after a successful session claim', async () => {
@@ -322,9 +369,11 @@ describe('Worker PIN rate limiter', () => {
       expect(await rotated.json()).toEqual({ success: true });
     });
 
-    it('rate-limits repeated PIN availability checks before lookup', async () => {
+    it('rate-limits repeated PIN availability checks before lookup (audit N2: 5/min/IP)', async () => {
+      // Audit N2 (Phase 1, 2026-11-06): IP bucket tightened from 30 to 5.
+      // Previously 10 calls succeeded before denial; now 5 succeed.
       const responses: Response[] = [];
-      for (let index = 0; index < 10; index += 1) {
+      for (let index = 0; index < 5; index += 1) {
         responses.push(await postAuth('/api/auth/check-pin-availability', { pin: String(10_000_000 + index) }));
       }
       const denied = await postAuth('/api/auth/check-pin-availability', { pin: '87654321' });
