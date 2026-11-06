@@ -105,6 +105,46 @@
         { "fieldPath": "actionType", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "credit_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "garageId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "credit_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "delegateId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "credit_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "private_pins",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pin_reservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
