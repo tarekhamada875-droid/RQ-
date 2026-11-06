@@ -90,7 +90,7 @@ describe('useVehicleOperations confirmed feedback', () => {
     expect(result.current.vehicles).toEqual([]);
     expect(result.current.garage?.carsInside).toBe(0);
     expect(result.current.garage?.credits).toBe(5);
-    // FIX #2: the plate form closes immediately on submit (before Worker
+    // the plate form closes immediately on submit (before Worker
     // confirms). The busy/locked state (isLoading) provides the feedback.
     expect(result.current.newPlateNumber).toBe('');
     expect(result.current.showCheckInModal).toBe(false);

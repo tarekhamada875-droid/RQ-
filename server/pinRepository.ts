@@ -1,9 +1,9 @@
 /**
  * PIN repository — Firestore CRUD operations for PIN credentials.
  *
- * Extracted from server/utils.ts (Wave 6a). Contains all Firestore
- * read/write operations for the private_pins and pin_reservations
- * collections. Depends on pinCrypto.ts for hashing and verification.
+ * Contains all Firestore read/write operations for the private_pins and
+ * pin_reservations collections. Depends on pinCrypto.ts for hashing and
+ * verification.
  *
  * Permanent retirement ("used once, never again"):
  *   When a PIN is changed or its owning entity is deleted, the old PIN is

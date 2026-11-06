@@ -3,19 +3,18 @@
  * client-readable tenant documents.
  *
  * Background:
- *   PR #408 ("P4.2: remove legacy PIN verification") removed every code path
- *   that reads plaintext / legacy-hash PIN fields from tenant docs. PIN
- *   credentials now live exclusively in the server-only `private_pins`
- *   collection (denied to clients via firestore.rules). However, the legacy
- *   fields (`pin`, `ownerPin`, `adminPin`, `pinLookupHash`) were never purged
- *   from existing docs — they sit there as data residue. A garage owner who
- *   `get`s their own `garages/{id}` doc can still read the old plaintext PIN,
- *   which may be reused on other services.
+ *   The legacy PIN verification code path was removed. PIN credentials now
+ *   live exclusively in the server-only `private_pins` collection (denied
+ *   to clients via firestore.rules). However, the legacy fields (`pin`,
+ *   `ownerPin`, `adminPin`, `pinLookupHash`) were never purged from
+ *   existing docs — they sit there as data residue. A garage owner who
+ *   `get`s their own `garages/{id}` doc can still read the old plaintext
+ *   PIN, which may be reused on other services.
  *
- *   The lazy migration in `migratePinToHash` (server/utils.ts) only cleanses
- *   a doc when that user next logs in. Users who haven't logged in since
- *   PR #408 still have plaintext PINs exposed. This script proactively
- *   cleanses ALL tenant docs in one sweep.
+ *   The lazy migration in `migratePinToHash` (server/pinRepository.ts)
+ *   only cleanses a doc when that user next logs in. Users who haven't
+ *   logged in since the migration still have plaintext PINs exposed.
+ *   This script proactively cleanses ALL tenant docs in one sweep.
  *
  * Safety:
  *   - Per-doc: only nulls fields that exist. Skips docs that are already clean.
