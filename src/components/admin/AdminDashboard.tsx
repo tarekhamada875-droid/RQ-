@@ -81,7 +81,6 @@ export const AdminDashboard = memo(({
   }, [activeTab, setActiveTab]);
 
   const [showAddGarageModal, setShowAddGarageModal] = React.useState<boolean>(false);
-  const [showExportModal, setShowExportModal] = React.useState<boolean>(false);
   // (admin back handler moved below — needs confirmDialog + showAppearanceSettings)
 
   const [pinInput, setPinInput] = React.useState<string>('');
@@ -126,7 +125,6 @@ export const AdminDashboard = memo(({
   useBackHandler(() => { confirmDialog.onCancel?.(); setConfirmDialog((d) => ({ ...d, isOpen: false })); return true; }, confirmDialog.isOpen);
   useBackHandler(() => { setShowAppearanceSettings(false); return true; }, showAppearanceSettings);
   useBackHandler(() => { setShowAddGarageModal(false); return true; }, showAddGarageModal);
-  useBackHandler(() => { setShowExportModal(false); return true; }, showExportModal);
   useBackHandler(() => { setActiveTab('catalog_settings'); return true; }, activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports');
 
   const { theme, } = useTheme();
@@ -329,8 +327,6 @@ export const AdminDashboard = memo(({
           showToast={showToast}
           onLogout={onLogout}
           onImmediateLogout={onImmediateLogout}
-          showExportModal={showExportModal}
-          setShowExportModal={setShowExportModal}
         />
         </AdminProvider>
       </main>
