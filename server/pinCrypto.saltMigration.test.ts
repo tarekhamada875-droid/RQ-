@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 
 // Note: pinCrypto reads PIN_LOOKUP_SALT from globalThis.__RQ_PIN_LOOKUP_SALT__
 // (set by the Worker middleware) or process.env.PIN_LOOKUP_SALT (Node dev).
