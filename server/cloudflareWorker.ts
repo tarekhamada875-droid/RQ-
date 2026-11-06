@@ -5,7 +5,7 @@ import { withTraceContext } from './operationTrace';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { parseMoneyAmount } from './money';
-import { computeLookupHash } from './pinCrypto';
+import { computeLookupHash, normalizePhone } from './pinCrypto';
 import { saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, checkPinAvailabilityAcrossAll } from './pinRepository';
 import { calculateVehicleCost } from './domain/vehicleCost';
 import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, sanitizePayload, ValidationError } from './validation';
@@ -415,6 +415,7 @@ registerGarageRoutes(workerApp, {
   validateNumber,
   ValidationError,
   validateNewPin,
+  normalizePhone,
   validateIdempotencyKey,
   computeLookupHash,
   checkPinAvailabilityAcrossAll,

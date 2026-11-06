@@ -15,7 +15,7 @@
 import type { WorkerUser } from './cloudflareWorker';
 import { adminDb, adminAuth } from './firebaseAdmin';
 import { isValidBackendOperatorToken } from './backendOperatorToken';
-import { cleanPin, verifyPinMatch, verifyDocMatch } from './pinCrypto';
+import { cleanPin, normalizePhone, verifyPinMatch, verifyDocMatch } from './pinCrypto';
 import { migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
@@ -290,6 +290,7 @@ export {
 // Re-export all imports that the route handlers also need
 export {
   cleanPin,
+  normalizePhone,
   verifyPinMatch,
   verifyDocMatch,
   migratePinToHash,

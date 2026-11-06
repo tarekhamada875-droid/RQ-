@@ -15,6 +15,7 @@ import {
   workerSessionDefinition,
   sessionIndexPath,
   cleanPin,
+  normalizePhone,
   verifyPinMatch,
   verifyDocMatch,
   migratePinToHash,
@@ -89,7 +90,11 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     // Preserve the legacy Delegate phone-plus-PIN migration path. When a phone
     // is supplied, scope the lookup to that delegate instead of falling back to
     // a global PIN search.
-    const normalizedPhone = cleanPin(credentials.phone);
+    // Audit N9 (Phase 1, 2026-11-06): use normalizePhone (keeps `+`) instead
+    // of cleanPin (strips all non-digits). The client's normalizePhone in
+    // src/utils/plates.ts:128 also keeps `+`, so a delegate who registered
+    // with `+20 100 123 4567` can now log in.
+    const normalizedPhone = normalizePhone(credentials.phone);
     if (normalizedPhone) {
       const delegateDocs = await queryDelegatesWherePhone(normalizedPhone);
       const delegateMatches = delegateDocs

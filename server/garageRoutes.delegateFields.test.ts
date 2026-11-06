@@ -40,6 +40,7 @@ function createDelegateRoutesHarness() {
     canManageDelegates: (user: any) => user?.role === 'admin',
     validateString: (value: any) => value,
     validateNewPin: (value: any) => value,
+    normalizePhone: (value: any) => String(value || '').trim(),
     validateId: (value: any) => value,
     checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
     saveEntityPinInTransaction: vi.fn(),

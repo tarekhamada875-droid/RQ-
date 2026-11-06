@@ -24,6 +24,25 @@ export function cleanPin(raw: any): string {
   return normalizeDigits(String(raw || '')).replace(/\D/g, '');
 }
 
+/**
+ * Normalizes a phone number for storage and lookup. Keeps the leading `+`
+ * (if present) and digits only — strips spaces, dashes, parens, etc.
+ *
+ * Audit ref: Phase 1 / N9 (consolidated audit, 2026-11-06).
+ *
+ * The previous delegate-login path used `cleanPin(credentials.phone)` which
+ * strips ALL non-digits including `+`. This meant a delegate who registered
+ * with `+20 100 123 4567` (normalized by the client's `normalizePhone` to
+ * `+201001234567`) could not log in, because the server's `cleanPin` would
+ * produce `201001234567` (no `+`) and the lookup would miss the stored doc.
+ *
+ * Now both client (`src/utils/plates.ts:normalizePhone`) and server use
+ * the same rule: keep `+` and digits, strip everything else.
+ */
+export function normalizePhone(raw: any): string {
+  return normalizeDigits(String(raw || '').trim()).replace(/[^\d+]/g, '');
+}
+
 // ── PIN lookup salt ────────────────────────────────────────────────────────
 //
 // Audit ref: Phase 1 / N22 (consolidated audit, 2026-11-06).

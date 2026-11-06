@@ -831,11 +831,13 @@ describe('garage update Hono contract', () => {
   it('enforces Hono Admin validation, missing-garage, and authorization-order contracts', async () => {
     const honoMissingId = await callHonoGarageUpdate('valid-admin-token', {});
     expect(honoMissingId.status).toBe(400);
-    expect(await honoMissingId.json()).toEqual({ success: false, error: 'INVALID_REQUEST' });
+    // Audit N11 (Phase 1, 2026-11-06): validateId now produces a specific
+    // 'garageId is required' error instead of generic 'INVALID_REQUEST'.
+    expect(await honoMissingId.json()).toEqual({ success: false, error: 'garageId is required' });
 
     const honoNullBody = await callHonoGarageUpdate('valid-admin-token', null);
     expect(honoNullBody.status).toBe(400);
-    expect(await honoNullBody.json()).toEqual({ success: false, error: 'INVALID_REQUEST' });
+    expect(await honoNullBody.json()).toEqual({ success: false, error: 'garageId is required' });
 
     const honoMissingGarage = await callHonoGarageUpdate('valid-admin-token', { id: 'missing-update-target', name: 'Missing target' });
     expect(honoMissingGarage.status).toBe(500);

@@ -42,6 +42,7 @@ function createGarageRouteHarness() {
     validateNumber: (value: unknown) => value,
     ValidationError: class extends Error {},
     validateNewPin: (value: unknown) => value,
+    normalizePhone: (value: unknown) => String(value || '').trim(),
     validateIdempotencyKey: (value: unknown) => value,
     computeLookupHash: () => 'pin-lookup-hash',
     checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
