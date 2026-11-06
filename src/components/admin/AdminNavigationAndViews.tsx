@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Wallet,
   Coins,
-  Download,
   CalendarDays
 } from 'lucide-react';
 import { AdminPeopleView } from './AdminPeopleView';
@@ -22,7 +21,6 @@ import { AdminActiveSessionsView } from './AdminActiveSessionsView';
 import { AdminWalletSettingsView } from './AdminWalletSettingsView';
 import { AdminCreditRateSettingsView } from './AdminCreditRateSettingsView';
 import { AdminDailyGarageReportsView } from './AdminDailyGarageReportsView';
-import { ActivityLogExportModal } from '../modals/ActivityLogExportModal';
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -41,8 +39,6 @@ interface AdminNavigationAndViewsProps {
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onLogout: () => void;
   onImmediateLogout?: () => void;
-  showExportModal: boolean;
-  setShowExportModal: (show: boolean) => void;
 }
 
 export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = ({
@@ -62,8 +58,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
   showToast,
   onLogout,
   onImmediateLogout,
-  showExportModal,
-  setShowExportModal,
 }) => {
   const { adminGarageHasMore, adminDelegateHasMore, adminListsLoading, adminListsError, onLoadMoreAdminGarages, onLoadMoreAdminDelegates, onRefreshAdminLists } = useAdmin();
   return (
@@ -154,24 +148,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
       ) : activeTab === 'catalog_settings' ? (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-            {/* Export Activity Logs (CSV) */}
-            <div
-              id="btn_export_activity_logs"
-              onClick={() => setShowExportModal(true)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900 dark:text-white text-base">{'تصدير سجل النشاط'}</h3>
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
-                  <Download className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
-                <span>{'تحميل سجل النشاط بصيغة CSV'}</span>
-                <ChevronRight className={`w-4 h-4 text-slate-400 group-hover:text-emerald-500 rotate-180`} />
-              </div>
-            </div>
-
             {/* Add New Garage — removed from Settings; the Garages tab already
                 has an "إضافة جراج جديد" button (AdminGaragesTabView), making
                 this card redundant. */}
@@ -294,12 +270,6 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onCancel={() => setActiveTab('catalog_settings')}
         />
       ) : null}
-
-      {showExportModal && (
-        <ActivityLogExportModal
-          onClose={() => setShowExportModal(false)}
-        />
-      )}
     </>
   );
 };
