@@ -87,7 +87,7 @@ export const vehicleService = {
           type: vehicleData.type,
           isSubscriber: vehicleData.isSubscriber,
           staffName: vehicleData.staffName,
-          // FIX #6: accept a caller-provided idempotency key so retries can
+          // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkin')
         }
@@ -106,7 +106,7 @@ export const vehicleService = {
           garageId,
           vehicleId,
           staffName,
-          // FIX #6: accept a caller-provided idempotency key so retries can
+          // accept a caller-provided idempotency key so retries can
           // reuse the same key. If none provided, generate a fresh one (legacy).
           idempotencyKey: idempotencyKey || generateIdempotencyKey('vehicle_checkout')
         }

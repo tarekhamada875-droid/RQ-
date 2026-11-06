@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 /**
  * Authentication & Session Security Layer Rules Verification
- * Verifies rules logic against the 12 Security Scenarios defined in FIX #1.
+ * Verifies rules logic against the 12 Security Scenarios defined below.
  */
 
 // Simulated Firestore Rules Engine based directly on firestore.rules
@@ -167,7 +167,7 @@ const evaluateFirestoreRule = ({
   return { allowed: false, code: 'PERMISSION_DENIED' };
 };
 
-describe('FIX #1: Top 12 Security Rebuild Test Scenarios', () => {
+describe('Top 12 Security Rebuild Test Scenarios', () => {
   const mockDbState: Record<string, any> = {
     'garages/garage-A': { name: 'Garage A', phone: '01000000001' },
     'garages/garage-B': { name: 'Garage B', phone: '01000000002' },

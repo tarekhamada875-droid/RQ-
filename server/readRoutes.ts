@@ -310,9 +310,8 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
 });
 
 // Route: GET /api/admin/delegates — paginated delegates list for the admin panel.
-// Restored after PR #531 accidentally deleted it (the audit incorrectly reported
-// no client caller; getAdminDelegatesPage in delegateService.ts calls this).
 // Returns delegates without PIN/hash fields. Admin-only.
+// Called by getAdminDelegatesPage in delegateService.ts.
 app.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user') as WorkerUser | undefined;

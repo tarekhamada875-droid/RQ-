@@ -74,7 +74,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const [isCreditGrantHistoryOpen, setIsCreditGrantHistoryOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
-  // FIX #4: Return to the main dashboard tab only when checkout SUCCEEDS.
+  // Return to the main dashboard tab only when checkout SUCCEEDS.
   // If checkout fails, stay on the active-vehicles list so the user can
   // retry or pick a different car. The checkoutJustSucceeded flag is set
   // by useVehicleOperations: true on success, false on failure.

@@ -148,7 +148,7 @@ export function useVehicleOperations({
     setIsLoading(true);
     setLoadingType(type);
     acquireTransactionLock();
-    // FIX #2: close the plate form immediately on submit, before the Worker
+    // close the plate form immediately on submit, before the Worker
     // call. The form must not remain as a stale/competing visual state. The
     // busy/locked state (isLoading) provides the feedback that the operation
     // is in-flight.
@@ -191,7 +191,7 @@ export function useVehicleOperations({
     const entrantRole = currentStaff ? 'staff' : 'garage';
 
     try {
-      // FIX #6: generate the idempotency key ONCE per transaction attempt.
+      // generate the idempotency key ONCE per transaction attempt.
       // If the request fails ambiguously (network timeout), the retry will
       // reuse this same key so the server can return the original committed
       // result instead of creating a duplicate transaction.
@@ -230,7 +230,7 @@ export function useVehicleOperations({
         isSubscriber: serverVehicle?.isSubscriber ?? isSubscriber
       };
 
-      // FIX #3: apply vehicle + count FIRST (without credits), so the count
+      // apply vehicle + count FIRST (without credits), so the count
       // animation completes before the credit-debit arrows begin. Credits are
       // applied in a second state update after a short delay.
       setVehicles(prev => [newVehicleObj, ...prev.filter(v => v.id !== raw)]);
@@ -249,7 +249,7 @@ export function useVehicleOperations({
       }
       soundManager.play('checkIn');
 
-      // FIX #3 cont: apply credits AFTER the count animation has started.
+      // apply credits AFTER the count animation has started.
       // The GarageSubscriptionCard triggers the 5-arrow debit animation when
       // credits decrease. By delaying the credit update, the count finishes
       // changing before the arrows begin falling.
@@ -297,7 +297,7 @@ export function useVehicleOperations({
         showToast(message || 'حدث خطأ أثناء إدخال السيارة، يرجى المحاولة مرة أخرى', 'error');
       }
     } finally {
-      // FIX #1: release the lock BEFORE setting isLoading false, so the UI
+      // release the lock BEFORE setting isLoading false, so the UI
       // stays visibly disabled for the entire 3s minimum window.
       await releaseTransactionLock();
       setIsLoading(false);
@@ -321,7 +321,7 @@ export function useVehicleOperations({
     acquireTransactionLock();
     setCheckoutJustSucceeded(false); // reset before attempt
     try {
-      // FIX #6: generate the idempotency key ONCE per transaction attempt.
+      // generate the idempotency key ONCE per transaction attempt.
       // See check-in for details.
       const idempotencyKey = generateIdempotencyKey('vehicle_checkout');
       const res = await withAsyncLock(`checkout-${garage.id}-${vehicleToOut.id}`, () =>
@@ -356,7 +356,7 @@ export function useVehicleOperations({
       setNewPlateNumber('');
       soundManager.play('checkOut');
       setCheckoutJustSucceeded(true);
-      // FIX #4: return to the main dashboard so the user sees the large
+      // return to the main dashboard so the user sees the large
       // inside-car count decrease. Without this, the active-vehicles list
       // stays on screen after checkout.
       onCheckOutComplete?.();
@@ -389,7 +389,7 @@ export function useVehicleOperations({
       }
       
       showToast(errMsg, 'error');
-      // FIX #6: on ambiguous/network errors, keep the modal open so the user
+      // on ambiguous/network errors, keep the modal open so the user
       // can retry with the same context. Only close on definite business
       // failures (ALREADY_OUTSIDE, VEHICLE_NOT_FOUND, etc.) where retry is
       // pointless. The error classification above already extracts the
@@ -402,7 +402,7 @@ export function useVehicleOperations({
         setNewPlateNumber('');
       }
     } finally {
-      // FIX #1: release the lock BEFORE setting isLoading false, so the UI
+      // release the lock BEFORE setting isLoading false, so the UI
       // stays visibly disabled for the entire 3s minimum window.
       await releaseTransactionLock();
       setIsLoading(false);
