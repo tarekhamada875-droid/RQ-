@@ -52,8 +52,39 @@ export class ApiError extends Error {
   }
 }
 
+// Production backend API base URL.
+//
+// Audit ref: Phase 0 / N6 (consolidated audit, 2026-11-06).
+//
+// SECURITY NOTE: this default points at a personal Cloudflare Worker
+// subdomain (`rq.tarekhamada875.workers.dev`). If that account is suspended,
+// sold, or compromised, the entire production fleet stops working or could
+// be MITM'd. To migrate to a project-owned domain, set the
+// `VITE_BACKEND_API_URL` environment variable at build time (Cloudflare Pages
+// → Project → Settings → Environment variables) and rebuild — the variable
+// takes precedence over this default. See `getApiUrl()` below.
+//
+// TODO(operator): pick a project-owned domain (e.g. api.rq.app) and set
+// VITE_BACKEND_API_URL to it; remove this fallback once Pages env var is in
+// place for all environments.
 export const DEFAULT_BACKEND_API_URL = 'https://rq.tarekhamada875.workers.dev';
 export const DEFAULT_API_TIMEOUT_MS = 15000;
+
+// Surface a one-time console warning in production if the default URL is
+// being used — so the operator can see the personal-account dependency
+// in browser dev tools without grepping source.
+if (typeof window !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env
+    && import.meta.env.PROD
+    && !(import.meta.env.VITE_BACKEND_API_URL || '').trim()
+    && !((window.location?.hostname || '').toLowerCase() === 'localhost'
+         || (window.location?.hostname || '').toLowerCase() === '127.0.0.1')) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[RQ] API requests are using the default Worker URL (rq.tarekhamada875.workers.dev). ' +
+    'Set VITE_BACKEND_API_URL to a project-owned domain to remove this personal-account dependency. ' +
+    'See audit Phase 0 / N6.'
+  );
+}
 
 export const getApiUrl = (endpoint: string): string => {
   if (!endpoint.startsWith('/api')) return endpoint;
