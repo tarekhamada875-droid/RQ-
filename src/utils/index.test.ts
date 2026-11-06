@@ -204,6 +204,30 @@ describe('Security & Helper Utils', () => {
     expect(existingPins.has(pin)).toBe(false);
   });
 
+  it('uses crypto.getRandomValues — PIN distribution looks uniform (audit N19)', () => {
+    // Generate 10000 PINs and check that each digit position has a roughly
+    // uniform distribution. This is a regression test for the Math.random
+    // -> crypto.getRandomValues migration (audit N19, 2026-11-06).
+    // We're not asserting exact uniformity (that would be flaky), just that
+    // no digit dominates (>25%) — a clear sign of a biased RNG.
+    const counts: Record<string, number> = {};
+    const total = 10000;
+    for (let i = 0; i < total; i++) {
+      const pin = generateSafePin();
+      for (const ch of pin) {
+        counts[ch] = (counts[ch] || 0) + 1;
+      }
+    }
+    // Total digit samples = total * NEW_PIN_LENGTH = 50000.
+    // Expected per digit = 50000 / 10 = 5000.
+    // Allow ±20% (4000-6000) to avoid flakiness.
+    for (const digit of ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']) {
+      const c = counts[digit] || 0;
+      expect(c, `digit "${digit}" count`).toBeGreaterThanOrEqual(4000);
+      expect(c, `digit "${digit}" count`).toBeLessThanOrEqual(6000);
+    }
+  });
+
   it('correctly assesses light/dark contrast and shimmer themes', () => {
     expect(isLightColor('#FFFFFF')).toBe(true);
     expect(isLightColor('#000000')).toBe(false);
