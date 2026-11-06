@@ -54,13 +54,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     }
   };
 
-  const isGenerating = false;
-  const generationProgress = 100;
-
-  const loadingStatus = React.useMemo(() => {
-    return 'جاري الإصدار...';
-  }, []);
-
   const [isLargeScreen, setIsLargeScreen] = React.useState(false);
   React.useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)');
@@ -91,16 +84,13 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   }, []);
 
   const modalHeight = React.useMemo(() => {
-    if (isGenerating) {
-      return isLargeScreen ? 380 : 320;
-    }
     if (isLargeScreen) {
       if (confirmingSide) return 520;
       return isInitialMinute ? 740 : 774;
     }
     if (confirmingSide) return 360;
     return isInitialMinute ? 580 : 520;
-  }, [isGenerating, confirmingSide, isInitialMinute, isLargeScreen]);
+  }, [confirmingSide, isInitialMinute, isLargeScreen]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -167,7 +157,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
         {/* Action Buttons Layer */}
         <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
           <AnimatePresence>
-            {!confirmingSide && !isGenerating ? (
+            {!confirmingSide ? (
               <>
                 {/* Left Button */}
                 {!isInitialMinute && (
@@ -250,50 +240,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               }}
               className="flex-1 flex flex-col items-center overflow-y-auto scrollbar-hide max-h-[calc(92vh-90px)] max-h-[calc(92dvh-90px)] w-full px-1"
             >
-              {isGenerating ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-6 sm:py-8 w-full">
-                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center mb-6">
-                    {/* SVG circular loader */}
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      {/* Underlay */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        className="stroke-slate-100 dark:stroke-slate-800/80 fill-none"
-                        strokeWidth="6"
-                      />
-                      {/* Progress Circle */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        className="stroke-red-500 dark:stroke-red-500 fill-none transition-all duration-75"
-                        strokeWidth="6"
-                        strokeLinecap="round"
-                        strokeDasharray={2 * Math.PI * 42}
-                        strokeDashoffset={2 * Math.PI * 42 * (1 - generationProgress / 100)}
-                      />
-                    </svg>
-                    {/* Centered Percentage */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 font-mono">
-                        {generationProgress}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Status Texts */}
-                  <div className="text-center px-4">
-                    <h3 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight transition-all">
-                      {loadingStatus}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold mt-1.5 uppercase tracking-wider">
-                      يرجى الانتظار أثناء حساب الفاتورة
-                    </p>
-                  </div>
-                </div>
-              ) : (
                 <>
                   {!selectedVehicle.isSubscriber && diffMs < 300000 ? null : (
                 <div className="flex flex-col items-center justify-center mt-2 sm:mt-4 md:mt-6 h-20 sm:h-32 md:h-36 mb-2 sm:mb-4 shrink-0">
@@ -458,7 +404,6 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               </div>
 
                 </>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
