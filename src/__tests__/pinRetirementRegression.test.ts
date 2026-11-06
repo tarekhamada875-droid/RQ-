@@ -7,7 +7,8 @@ vi.mock('../../server/firebaseAdmin', () => ({
   get adminDb() { return mockDb; },
   adminAuth: mockAdminAuth,
   firebaseConfig: {},
-  initializeFirebaseAdmin: () => {}
+  initializeFirebaseAdmin: () => {},
+  isFirebaseAdminInitialized: () => true,
 }));
 
 import { api } from '../../server/api';

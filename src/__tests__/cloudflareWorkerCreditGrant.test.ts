@@ -2,7 +2,8 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 const mockDb = new MockFirestore();
 vi.mock('../../server/firebaseAdmin', () => ({
-  get adminDb() { return mockDb; }, adminAuth: mockAdminAuth, firebaseConfig: {}, initializeFirebaseAdmin: () => {}
+  get adminDb() { return mockDb; }, adminAuth: mockAdminAuth, firebaseConfig: {}, initializeFirebaseAdmin: () => {},
+  isFirebaseAdminInitialized: () => true,
 }));
 import { api } from '../../server/api';
 installDefaultWorkerTestSessionHeaders(api, mockDb);

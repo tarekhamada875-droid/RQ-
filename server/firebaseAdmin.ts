@@ -78,29 +78,63 @@ export function initializeFirebaseAdmin(env?: any) {
   }
 }
 
-// Proxied exports so that any access dynamically checks if initialized and resolves correctly
+// Proxied exports so that any access dynamically checks if initialized and resolves correctly.
+//
+// Implementation note (audit N1, 2026-11-06): the previous version returned
+// `undefined` from the Proxy's get trap when activeDb was null. Combined with
+// the Proxy itself being always-truthy, this meant every `if (!getAdminDb())`
+// guard was dead code (Proxy is truthy, so the guard never fired), and every
+// `getAdminDb().collection(...)` call crashed with an unhelpful
+// `TypeError: Cannot read properties of undefined` instead of the intended
+// `ADMIN_SDK_NOT_INITIALIZED` 500.
+//
+// Now: when activeDb is null after lazy-init, any property access throws an
+// explicit `ADMIN_SDK_NOT_INITIALIZED` Error. The global error handler in
+// cloudflareWorker.ts catches this and returns a clean 500 with that code.
+// Callers that still want a non-throwing check can use `isFirebaseAdminInitialized()`.
+class AdminSdkNotInitializedError extends Error {
+  constructor() {
+    super('ADMIN_SDK_NOT_INITIALIZED');
+    this.name = 'AdminSdkNotInitializedError';
+  }
+}
+
+function ensureInitialized(target: 'adminDb' | 'adminAuth'): void {
+  if (target === 'adminDb' ? activeDb : activeAuth) return;
+  initializeFirebaseAdmin();
+  if (target === 'adminDb' ? !activeDb : !activeAuth) {
+    throw new AdminSdkNotInitializedError();
+  }
+}
+
 export const adminDb: any = new Proxy({}, {
   get(_target, prop) {
-    if (!activeDb) {
-      initializeFirebaseAdmin();
-    }
-    if (!activeDb) {
-      return undefined;
-    }
-    const value = activeDb[prop];
+    ensureInitialized('adminDb');
+    const value = (activeDb as any)[prop];
     return typeof value === 'function' ? value.bind(activeDb) : value;
   }
 });
 
 export const adminAuth: any = new Proxy({}, {
   get(_target, prop) {
-    if (!activeAuth) {
-      initializeFirebaseAdmin();
-    }
-    if (!activeAuth) {
-      return undefined;
-    }
-    const value = activeAuth[prop];
+    ensureInitialized('adminAuth');
+    const value = (activeAuth as any)[prop];
     return typeof value === 'function' ? value.bind(activeAuth) : value;
   }
 });
+
+/**
+ * Returns true if the Firebase Admin SDK is initialized and ready to serve
+ * requests. Use this for honest health checks and for guards that prefer a
+ * boolean over throwing.
+ *
+ * The traditional `if (!getAdminDb())` and `if (!adminDb)` guards remain
+ * no-ops (the Proxy is always truthy) for backwards compatibility — but
+ * any actual property access on adminDb/adminAuth will throw
+ * `ADMIN_SDK_NOT_INITIALIZED` if the SDK is genuinely down, which the global
+ * error handler maps to a clean 500.
+ */
+export function isFirebaseAdminInitialized(): boolean {
+  if (!activeDb) initializeFirebaseAdmin();
+  return Boolean(activeDb && activeAuth);
+}
