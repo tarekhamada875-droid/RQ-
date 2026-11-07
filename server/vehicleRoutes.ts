@@ -16,6 +16,7 @@ import { authorizeVehicleGarageScope } from './domain/authorization';
 import { debitRegularEntry, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
 import { writeMaintainedGarageDelta, writeMaintainedGarageDailyDelta } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
+import { getCairoDateKey } from './projections';
 import { applyCheckoutReportDelta, emptyDailyReportAggregate } from './reportAggregate';
 
 const SUPPORTED_VEHICLE_TYPES = new Set(['hourly', 'overnight']);
@@ -83,7 +84,6 @@ function cairoDateRange(dateId: string): { start: Date; end: Date } | null {
   return end && end.getTime() > start.getTime() ? { start, end } : null;
 }
 
-
 export function registerVehicleRoutes(app: WorkerApp): void {
 // 7. Vehicle Operations & Operational Flow (CF5)
 
@@ -121,7 +121,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     const entrantEntityId = user?.entityId;
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
 
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const today = getCairoDateKey(new Date());
     const requestFingerprint = createRequestFingerprint({ garageId, plateNumber, plateRaw, type: vehicleType });
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
@@ -349,7 +349,6 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     const requestFingerprint = createRequestFingerprint({ garageId, vehicleId });
 
-    const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const operationId = createOperationId(garageId, idempotencyKey || undefined);
 
     let checkoutResult: any = { cost: 0 };
@@ -365,7 +364,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
       const garageRef = adminDb.doc(`garages/${garageId}`);
       let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
-      const today = getCairoDateKey();
+      const today = getCairoDateKey(new Date());
       const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
 
       let [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
@@ -560,7 +559,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       operation: 'delete',
       refundAmount: 0
     });
-    const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
     await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
@@ -573,7 +571,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         );
         if (duplicate.isDuplicate) return;
       }
-      const todayYMD = getCairoDateKey();
+      const todayYMD = getCairoDateKey(new Date());
       const operationId = createOperationId(garageId, idempotencyKey || undefined);
       const garageRef = adminDb.doc(`garages/${garageId}`);
       let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
@@ -646,7 +644,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       if (vehicleData.status === 'inside' && vehicleData.entryTime) {
         const entryTime = vehicleData.entryTime.toDate ? vehicleData.entryTime.toDate() : new Date(vehicleData.entryTime);
         if (!isNaN(entryTime.getTime())) {
-          const entryDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(entryTime);
+          const entryDateKey = getCairoDateKey(entryTime);
           enteredToday = entryDateKey === todayYMD;
         }
       }
@@ -771,7 +769,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
 
 app.post('/api/vehicles/delete', requireWorkerAuth, handleVehicleDeleteOrRefund);
 
-
 // Route 5: GET /api/vehicles/inside
 app.get('/api/vehicles/inside', requireWorkerAuth, async (c) => {
   try {
@@ -823,7 +820,7 @@ app.get('/api/vehicles/history', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
 
-    const dateQuery = c.req.query('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const dateQuery = c.req.query('date') || getCairoDateKey(new Date());
     const dateRange = cairoDateRange(dateQuery);
     if (!dateRange) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
     const limitQuery = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
