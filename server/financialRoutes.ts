@@ -1,68 +1,35 @@
 import type { WorkerApp } from './cloudflareWorker';
+import { enforceWorkerFinancialRateLimit, readWorkerFirestorePage } from './cloudflareWorker';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { validateId, validateIdempotencyKey } from './validation';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { recordDomainEventInTransaction } from './events';
+import { parseFirestorePageRequest } from './firestorePagination';
+import { canViewFinancialReport } from './domain/authorization';
+import { createFinancialReportAccumulator, finishFinancialReport, addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement } from './financialReporting';
+import { sanitizeDelegateDoc } from './workerReadHelpers';
 import { getCairoDateKey, getCairoDayBounds } from './projections';
 import { parseMoneyAmount } from './money';
 
-export type FinancialRouteDependency = (...args: any[]) => any;
-
-export interface FinancialRouteDeps {
-  getAdminDb: () => any;
-  requireWorkerAuth: FinancialRouteDependency;
-  enforceWorkerFinancialRateLimit: FinancialRouteDependency;
-  validateId: FinancialRouteDependency;
-  validateIdempotencyKey: FinancialRouteDependency;
-  checkIdempotencyInTransaction: FinancialRouteDependency;
-  createRequestFingerprint: FinancialRouteDependency;
-  storeIdempotencyInTransaction: FinancialRouteDependency;
-  recordDomainEventInTransaction: FinancialRouteDependency;
-  parseFirestorePageRequest: FinancialRouteDependency;
-  readWorkerFirestorePage: FinancialRouteDependency;
-  sanitizeDelegateDoc: FinancialRouteDependency;
-  canViewFinancialReport: FinancialRouteDependency;
-  addFinancialReportCreditLedgerEntry: FinancialRouteDependency;
-  addFinancialReportEvent: FinancialRouteDependency;
-  addFinancialReportSettlement: FinancialRouteDependency;
-  createFinancialReportAccumulator: FinancialRouteDependency;
-  finishFinancialReport: FinancialRouteDependency;
-}
-
-export function registerFinancialRoutes(app: WorkerApp, deps: FinancialRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    enforceWorkerFinancialRateLimit,
-    validateId,
-    validateIdempotencyKey,
-    checkIdempotencyInTransaction,
-    createRequestFingerprint,
-    storeIdempotencyInTransaction,
-    recordDomainEventInTransaction,
-    parseFirestorePageRequest,
-    readWorkerFirestorePage,
-    sanitizeDelegateDoc,
-    canViewFinancialReport,
-    addFinancialReportCreditLedgerEntry,
-    addFinancialReportEvent,
-    addFinancialReportSettlement,
-    createFinancialReportAccumulator,
-    finishFinancialReport
-  } = deps;
+export function registerFinancialRoutes(app: WorkerApp): void {
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
 
 // Handler 7: Delegate Commission Earnings & Dashboard (GET /api/delegate/commission-earnings & GET /api/delegates/dashboard)
 const handleDelegateDashboard = async (c: any) => {
   try {
     const user = c.get('user');
-    if (user?.role !== 'delegate' || !user.entityId || !getAdminDb()) {
+    if (user?.role !== 'delegate' || !user.entityId || !adminDb) {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
 
     const delegateId = user.entityId;
-    const delegateRef = getAdminDb().collection('delegates').doc(delegateId);
+    const delegateRef = adminDb.collection('delegates').doc(delegateId);
     const delegateSnap = await delegateRef.get();
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
     const section = c.req.query('section');
-    const garagesCollection = getAdminDb().collection('garages');
+    const garagesCollection = adminDb.collection('garages');
     const childQuery = (name: string) => name === 'createdGarages'
       ? garagesCollection.where('createdByDelegateId', '==', delegateId)
       : garagesCollection.where('referrerId', '==', delegateId);
@@ -128,18 +95,18 @@ const handleSettleDelegateAccount = async (c: any) => {
     }
     const body = await c.req.json().catch(() => ({}));
     const id = body.id || body.delegateId;
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     if (!idempotencyKey) return c.json({ success: false, error: 'IDEMPOTENCY_KEY_REQUIRED' }, 400);
     const requestFingerprint = createRequestFingerprint({ id });
-    const delRef = getAdminDb().collection('delegates').doc(id);
+    const delRef = adminDb.collection('delegates').doc(id);
     const now = new Date();
     let previousTotal = 0;
     let settlementId = '';
     let duplicateResult: any = null;
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/delegates/settle-account', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -154,7 +121,7 @@ const handleSettleDelegateAccount = async (c: any) => {
       if (!Number.isFinite(previousTotal) || previousTotal <= 0) {
         throw new Error('NO_UNSETTLED_COMMISSION');
       }
-      const settlementRef = getAdminDb().collection('settlements').doc();
+      const settlementRef = adminDb.collection('settlements').doc();
       settlementId = settlementRef.id;
       t.set(settlementRef, {
         settlementId,
@@ -171,7 +138,7 @@ const handleSettleDelegateAccount = async (c: any) => {
         totalRechargedAmount: 0,
         updatedAt: now
       });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId: 'global',
         aggregateType: 'delegate',
         aggregateId: id,
@@ -222,17 +189,17 @@ app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorke
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     let delegateId: string;
     try {
       delegateId = validateId(c.req.param('id'), 'id', true);
     } catch {
       return c.json({ success: false, error: 'INVALID_DELEGATE_ID' }, 400);
     }
-    const delegateSnap = await getAdminDb().collection('delegates').doc(delegateId).get();
+    const delegateSnap = await adminDb.collection('delegates').doc(delegateId).get();
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
-    const snapshot = await getAdminDb().collectionGroup('events')
+    const snapshot = await adminDb.collectionGroup('events')
       .where('payload.delegateId', '==', delegateId)
       .where('eventType', 'in', ['commission_earned', 'delegate_settled'])
       .get();
@@ -276,7 +243,7 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     let delegateId: string;
     try {
@@ -285,7 +252,7 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
       return c.json({ success: false, error: 'INVALID_DELEGATE_ID' }, 400);
     }
 
-    const delegateSnap = await getAdminDb().collection('delegates').doc(delegateId).get();
+    const delegateSnap = await adminDb.collection('delegates').doc(delegateId).get();
     if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
     const settledValue = delegateSnap.data()?.lastSettledAt;
@@ -325,8 +292,8 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
     let subrequestCount = 0;
     let truncated = false;
 
-    const garageCollection = getAdminDb().collection('garages');
-    const creditLedgerCollection = getAdminDb().collection('credit_ledger');
+    const garageCollection = adminDb.collection('garages');
+    const creditLedgerCollection = adminDb.collection('credit_ledger');
     const garageScope = `delegate-paid-grants:${delegateId}:garages`;
     let garageCursor: string | undefined;
     let hasMoreGarages = true;
@@ -377,8 +344,8 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
             // amountEgp !== creditAmount equality). See A2 for details.
             if (creditAmount === null || creditAmount <= 0 || amountEgp === null || amountEgp <= 0) continue;
 
-            const rawOccurredAt = entry.occurredAt && typeof entry.occurredAt === 'object' && typeof entry.occurredAt.toDate === 'function'
-              ? entry.occurredAt.toDate()
+            const rawOccurredAt = entry.occurredAt && typeof entry.occurredAt === 'object' && typeof (entry.occurredAt as any).toDate === 'function'
+              ? (entry.occurredAt as any).toDate()
               : entry.occurredAt;
             const occurredDate = rawOccurredAt instanceof Date ? rawOccurredAt : new Date(rawOccurredAt);
             if (!Number.isFinite(occurredDate.getTime())) continue;
@@ -464,7 +431,7 @@ const handleFinancialSummaryReport = async (c: any) => {
     if (!canViewFinancialReport(user)) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const requestedStart = c.req.query('start');
     const requestedEnd = c.req.query('end');
@@ -509,9 +476,9 @@ const handleFinancialSummaryReport = async (c: any) => {
     // records, whose settledAt field is a Firestore Timestamp/Date.
     const eventStartAt = startAt.toISOString();
     const eventEndAt = endAt.toISOString();
-    let eventsQuery: any = getAdminDb().collectionGroup('events');
-    let settlementsQuery: any = getAdminDb().collection('settlements');
-    let creditLedgerQuery: any = getAdminDb().collection('credit_ledger');
+    let eventsQuery: any = adminDb.collectionGroup('events');
+    let settlementsQuery: any = adminDb.collection('settlements');
+    let creditLedgerQuery: any = adminDb.collection('credit_ledger');
     eventsQuery = eventsQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
     settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
     if (!delegateId) creditLedgerQuery = creditLedgerQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);

@@ -1,5 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Mock the modules that financialRoutes imports directly.
+vi.mock('./firebaseAdmin', () => ({
+  adminDb: {
+    collection: vi.fn(),
+    doc: vi.fn(),
+    collectionGroup: vi.fn(),
+  },
+}));
+vi.mock('./sessionInfrastructure', () => ({
+  requireWorkerAuth: vi.fn((_c, next) => next()),
+  sessionIndexPath: () => '',
+}));
+vi.mock('./cloudflareWorker', () => ({
+  enforceWorkerFinancialRateLimit: vi.fn((_c, next) => next()),
+  readWorkerFirestorePage: vi.fn(),
+}));
+
 import { registerFinancialRoutes } from './financialRoutes';
+import { adminDb } from './firebaseAdmin';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -39,26 +58,18 @@ function createHarness(options: { delegateExists?: boolean; events?: any[] } = {
       return query;
     }
   };
-  registerFinancialRoutes(app, {
-    getAdminDb: () => db,
-    requireWorkerAuth: vi.fn(),
-    enforceWorkerFinancialRateLimit: vi.fn(),
-    validateId: (value: string) => value,
-    validateIdempotencyKey: vi.fn(),
-    checkIdempotencyInTransaction: vi.fn(),
-    createRequestFingerprint: vi.fn(),
-    storeIdempotencyInTransaction: vi.fn(),
-    recordDomainEventInTransaction: vi.fn(),
-    parseFirestorePageRequest: vi.fn(),
-    readWorkerFirestorePage: vi.fn(),
-    sanitizeDelegateDoc: (value: any) => value,
-    canViewFinancialReport: (user: any) => user?.role === 'admin',
-    addFinancialReportCreditLedgerEntry: vi.fn(),
-    addFinancialReportEvent: vi.fn(),
-    addFinancialReportSettlement: vi.fn(),
-    createFinancialReportAccumulator: vi.fn(),
-    finishFinancialReport: vi.fn()
-  } as any);
+
+  // Wire the mocked adminDb to return our test db
+  (adminDb.collection as any).mockImplementation((name: string) => db.collection(name));
+  (adminDb.doc as any).mockImplementation((path: string) => {
+    const parts = path.split('/');
+    const coll = parts[0];
+    const id = parts[1];
+    return db.collection(coll).doc(id);
+  });
+  (adminDb.collectionGroup as any).mockImplementation((name: string) => db.collectionGroup(name));
+
+  registerFinancialRoutes(app);
 
   return { route: routes.get('GET /api/delegates/:id/commission-history')! };
 }
