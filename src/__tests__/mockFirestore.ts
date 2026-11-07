@@ -11,6 +11,58 @@ export class MockDocumentSnapshot {
   }
 }
 
+// Audit A1 (Phase 3, 2026-11-06): apply FieldValue.increment transforms
+// during mock merge/update writes, mirroring real Firestore semantics.
+//
+// The real firebase-admin SDK's FieldValue.increment(n) returns a
+// NumericIncrementTransform instance (with an `operand` property). The
+// worker-side firebaseWorkerAdmin.ts's FieldValue.increment(n) returns
+// the sentinel {__op:'increment', value:n}. Both shapes are recognized
+// here so the mock works for both dev (real SDK) and the alias-target's
+// shape (which never reaches the mock in tests, but is recognized for
+// defensive symmetry).
+//
+// Before this helper, the mock persisted the transform object as a
+// literal map — so isUsableMaintainedSummary got NaN and the O(1)
+// maintained-summary fast path silently never worked in dev. A test
+// (cloudflareWorkerSubscriberRoutes.test.ts:445-448) even papered over
+// this by unwrapping __op manually. That workaround is no longer needed.
+function applyFieldTransforms(data: any, existing: any): any {
+  if (!data || typeof data !== 'object') return data;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (isIncrementTransform(value)) {
+      const operand = extractIncrementOperand(value);
+      const current = Number(existing?.[key] ?? 0);
+      result[key] = Number.isFinite(current) ? current + operand : operand;
+    } else {
+      // Pass through everything else as-is (no recursion — avoids
+      // mutating plain nested objects that don't contain transforms).
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function isIncrementTransform(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  // Real SDK shape: NumericIncrementTransform { operand: number }
+  // (constructor.name === 'NumericIncrementTransform')
+  if (value instanceof Date) return false;
+  const ctorName = (value as any)?.constructor?.name;
+  if (ctorName === 'NumericIncrementTransform') return true;
+  // Worker-shim sentinel shape: { __op: 'increment', value: number }
+  if ((value as any)?.__op === 'increment' && typeof (value as any)?.value === 'number') return true;
+  return false;
+}
+
+function extractIncrementOperand(value: unknown): number {
+  const v = value as any;
+  if (typeof v?.operand === 'number') return v.operand;
+  if (typeof v?.value === 'number') return v.value;
+  return 0;
+}
+
 export class MockDocumentReference {
   constructor(
     public readonly id: string,
@@ -28,7 +80,8 @@ export class MockDocumentReference {
     this.db.documentWriteCount += 1;
     if (options?.merge) {
       const existing = this.db.records.get(this.path) || {};
-      this.db.records.set(this.path, { ...existing, ...data });
+      const transformed = applyFieldTransforms(data, existing);
+      this.db.records.set(this.path, { ...existing, ...transformed });
     } else {
       this.db.records.set(this.path, data);
     }
@@ -40,7 +93,8 @@ export class MockDocumentReference {
     if (existing === undefined) {
       throw new Error(`Document not found: ${this.path}`);
     }
-    this.db.records.set(this.path, { ...existing, ...data });
+    const transformed = applyFieldTransforms(data, existing);
+    this.db.records.set(this.path, { ...existing, ...transformed });
   }
 
   async delete() {
@@ -263,7 +317,8 @@ export class MockFirestore {
           this.documentWriteCount += 1;
           if (options?.merge) {
             const existing = this.records.get(ref.path) || {};
-            this.records.set(ref.path, { ...existing, ...data });
+            const transformed = applyFieldTransforms(data, existing);
+            this.records.set(ref.path, { ...existing, ...transformed });
           } else {
             this.records.set(ref.path, data);
           }
@@ -274,7 +329,8 @@ export class MockFirestore {
           if (existing === undefined) {
             throw new Error(`Document not found: ${ref.path}`);
           }
-          this.records.set(ref.path, { ...existing, ...data });
+          const transformed = applyFieldTransforms(data, existing);
+          this.records.set(ref.path, { ...existing, ...transformed });
         },
         delete: (ref: MockDocumentReference) => {
           this.documentWriteCount += 1;

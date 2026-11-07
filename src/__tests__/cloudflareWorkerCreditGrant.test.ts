@@ -4,6 +4,7 @@ const mockDb = new MockFirestore();
 vi.mock('../../server/firebaseAdmin', () => ({
   get adminDb() { return mockDb; }, adminAuth: mockAdminAuth, firebaseConfig: {}, initializeFirebaseAdmin: () => {},
   isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 import { api } from '../../server/api';
 installDefaultWorkerTestSessionHeaders(api, mockDb);

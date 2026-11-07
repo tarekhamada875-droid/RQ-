@@ -6,7 +6,8 @@ vi.mock('./firebaseAdmin', () => ({
   adminDb: {
     doc: (path: string) => ({ path }),
   },
-  isFirebaseAdminInitialized: () => true
+  isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 
 import { checkIdempotencyInTransaction, storeIdempotencyInTransaction } from './idempotency';

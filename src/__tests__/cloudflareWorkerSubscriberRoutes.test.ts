@@ -11,6 +11,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   firebaseConfig: {},
   initializeFirebaseAdmin: () => {},
   isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 
 import { api } from '../../server/api';
@@ -442,9 +443,14 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     }), workerEnv);
     const garageSummaryPath = `garages/${testGarageId}/maintained_summary/current`;
     const subscriberSummaryPath = 'subscriber_summary/global';
-    const summaryDelta = (path: string, field: string) => {
+    // Audit A1 (Phase 3, 2026-11-06): the previous summaryDelta helper
+    // unwrapped {__op:'increment', value:n} sentinels because MockFirestore
+    // persisted them as literal maps. Now that the mock applies
+    // FieldValue.increment transforms (mirroring real Firestore), the
+    // stored value IS the running total — no unwrapping needed.
+    const summaryValue = (path: string, field: string) => {
       const value = mockDb.records.get(path)?.[field];
-      return value?.__op === 'increment' ? value.value : value;
+      return typeof value === 'number' ? value : 0;
     };
 
     const addRes = await request('/api/subscribers/add', {
@@ -462,13 +468,14 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const { id: subscriberId } = await addRes.json() as any;
     const subscriberPath = `garages/${testGarageId}/subscribers/${subscriberId}`;
     expect(mockDb.records.get(subscriberPath)).toMatchObject({ ownerName: 'Owner Managed', garageId: testGarageId });
-    expect(summaryDelta(garageSummaryPath, 'totalSubscribersCount')).toBe(1);
-    expect(summaryDelta(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
-    expect(summaryDelta(garageSummaryPath, 'expiredSubscribersCount')).toBe(1);
-    expect(summaryDelta(subscriberSummaryPath, 'totalSubscribers')).toBe(1);
-    expect(summaryDelta(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
-    expect(summaryDelta(subscriberSummaryPath, 'expiredSubscribers')).toBe(1);
-    expect(summaryDelta(subscriberSummaryPath, 'garagesCount')).toBe(1);
+    // After add: each counter is at its post-add running total.
+    expect(summaryValue(garageSummaryPath, 'totalSubscribersCount')).toBe(1);
+    expect(summaryValue(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
+    expect(summaryValue(garageSummaryPath, 'expiredSubscribersCount')).toBe(1);
+    expect(summaryValue(subscriberSummaryPath, 'totalSubscribers')).toBe(1);
+    expect(summaryValue(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
+    expect(summaryValue(subscriberSummaryPath, 'expiredSubscribers')).toBe(1);
+    expect(summaryValue(subscriberSummaryPath, 'garagesCount')).toBe(1);
 
     const updateRes = await request('/api/subscribers/update', {
       garageId: testGarageId,
@@ -481,12 +488,14 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     const deleteRes = await request('/api/subscribers/delete', { garageId: testGarageId, subscriberId });
     expect(deleteRes.status).toBe(200);
     expect(mockDb.records.has(subscriberPath)).toBe(false);
-    expect(summaryDelta(garageSummaryPath, 'totalSubscribersCount')).toBe(-1);
-    expect(summaryDelta(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
-    expect(summaryDelta(garageSummaryPath, 'expiredSubscribersCount')).toBe(-1);
-    expect(summaryDelta(subscriberSummaryPath, 'totalSubscribers')).toBe(-1);
-    expect(summaryDelta(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
-    expect(summaryDelta(subscriberSummaryPath, 'expiredSubscribers')).toBe(-1);
+    // After delete: each counter is at its post-delete running total.
+    // (was 1 after add; -1 from delete → 0; activeSubscribers was 0 → 0)
+    expect(summaryValue(garageSummaryPath, 'totalSubscribersCount')).toBe(0);
+    expect(summaryValue(garageSummaryPath, 'activeSubscribersCount')).toBe(0);
+    expect(summaryValue(garageSummaryPath, 'expiredSubscribersCount')).toBe(0);
+    expect(summaryValue(subscriberSummaryPath, 'totalSubscribers')).toBe(0);
+    expect(summaryValue(subscriberSummaryPath, 'activeSubscribers')).toBe(0);
+    expect(summaryValue(subscriberSummaryPath, 'expiredSubscribers')).toBe(0);
 
     const events = [...mockDb.records.entries()]
       .filter(([path]) => path.startsWith(`garages/${testGarageId}/events/`))
