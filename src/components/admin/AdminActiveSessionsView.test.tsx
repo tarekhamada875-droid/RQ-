@@ -56,7 +56,6 @@ describe('AdminActiveSessionsView', () => {
   it('removes a revoked remote session and reports success', async () => {
     const showToast = vi.fn();
     mockedSessionService.revokeActiveSession.mockResolvedValue({
-      success: true,
       revokedSession: remoteSessionId,
       wasCurrent: false
     });
@@ -73,7 +72,6 @@ describe('AdminActiveSessionsView', () => {
   it('logs out when the current session is revoked', async () => {
     const onLogout = vi.fn();
     mockedSessionService.revokeActiveSession.mockResolvedValue({
-      success: true,
       revokedSession: currentSessionId,
       wasCurrent: true
     });
