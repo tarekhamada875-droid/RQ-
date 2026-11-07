@@ -7,6 +7,7 @@ import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempoten
 import { recordDomainEventInTransaction } from './events';
 import { parseFirestorePageRequest } from './firestorePagination';
 import { canViewFinancialReport } from './domain/authorization';
+import { withErrorHandler } from './routes/combinators';
 import { createFinancialReportAccumulator, finishFinancialReport, addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement } from './financialReporting';
 import { sanitizeDelegateDoc } from './workerReadHelpers';
 import { getCairoDateKey, getCairoDayBounds } from './projections';
@@ -16,72 +17,67 @@ export function registerFinancialRoutes(app: WorkerApp): void {
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
 
 // Handler 7: Delegate Commission Earnings & Dashboard (GET /api/delegate/commission-earnings & GET /api/delegates/dashboard)
-const handleDelegateDashboard = async (c: any) => {
+const handleDelegateDashboard = withErrorHandler(async (c: any) => {
+  const user = c.get('user');
+  if (user?.role !== 'delegate' || !user.entityId || !adminDb) {
+    return c.json({ success: false, error: 'FORBIDDEN' }, 403);
+  }
+
+  const delegateId = user.entityId;
+  const delegateRef = adminDb.collection('delegates').doc(delegateId);
+  const delegateSnap = await delegateRef.get();
+  if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+
+  const section = c.req.query('section');
+  const garagesCollection = adminDb.collection('garages');
+  const childQuery = (name: string) => name === 'createdGarages'
+    ? garagesCollection.where('createdByDelegateId', '==', delegateId)
+    : garagesCollection.where('referrerId', '==', delegateId);
+  const allowedSections = ['createdGarages', 'referredGarages'];
+  const readChildPage = async (name: string, cursor?: string) => {
+    const pageRequest = parseFirestorePageRequest(c.req.query('limit'), cursor, `delegate-dashboard:${delegateId}:${name}`);
+    return readWorkerFirestorePage(childQuery(name), garagesCollection, pageRequest);
+  };
   try {
-    const user = c.get('user');
-    if (user?.role !== 'delegate' || !user.entityId || !adminDb) {
-      return c.json({ success: false, error: 'FORBIDDEN' }, 403);
-    }
-
-    const delegateId = user.entityId;
-    const delegateRef = adminDb.collection('delegates').doc(delegateId);
-    const delegateSnap = await delegateRef.get();
-    if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
-
-    const section = c.req.query('section');
-    const garagesCollection = adminDb.collection('garages');
-    const childQuery = (name: string) => name === 'createdGarages'
-      ? garagesCollection.where('createdByDelegateId', '==', delegateId)
-      : garagesCollection.where('referrerId', '==', delegateId);
-    const allowedSections = ['createdGarages', 'referredGarages'];
-    const readChildPage = async (name: string, cursor?: string) => {
-      const pageRequest = parseFirestorePageRequest(c.req.query('limit'), cursor, `delegate-dashboard:${delegateId}:${name}`);
-      return readWorkerFirestorePage(childQuery(name), garagesCollection, pageRequest);
-    };
-    try {
-      if (section && section !== 'all') {
-        if (!allowedSections.includes(section)) return c.json({ success: false, error: 'INVALID_PAGE_SECTION' }, 400);
-        const page = await readChildPage(section, c.req.query('cursor'));
-        const garages = page.documents.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
-        return c.json({
-          success: true,
-          delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
-          garages,
-          items: garages,
-          hasMore: page.hasMore,
-          nextCursor: page.nextCursor,
-          pagination: { [section]: { hasMore: page.hasMore, nextCursor: page.nextCursor } }
-        });
-      }
-
-      const [createdPage, referredPage] = await Promise.all([
-        readChildPage('createdGarages', c.req.query('createdGaragesCursor')),
-        readChildPage('referredGarages', c.req.query('referredGaragesCursor'))
-      ]);
-      const garagesById = new Map<string, any>();
-      for (const doc of [...createdPage.documents, ...referredPage.documents]) {
-        garagesById.set(doc.id, sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
-      }
+    if (section && section !== 'all') {
+      if (!allowedSections.includes(section)) return c.json({ success: false, error: 'INVALID_PAGE_SECTION' }, 400);
+      const page = await readChildPage(section, c.req.query('cursor'));
+      const garages = page.documents.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
       return c.json({
         success: true,
         delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
-        garages: Array.from(garagesById.values()),
-        pagination: {
-          createdGarages: { hasMore: createdPage.hasMore, nextCursor: createdPage.nextCursor },
-          referredGarages: { hasMore: referredPage.hasMore, nextCursor: referredPage.nextCursor }
-        }
+        garages,
+        items: garages,
+        hasMore: page.hasMore,
+        nextCursor: page.nextCursor,
+        pagination: { [section]: { hasMore: page.hasMore, nextCursor: page.nextCursor } }
       });
-    } catch (error: any) {
-      if (error?.message === 'INVALID_PAGE_SIZE' || error?.message === 'INVALID_PAGE_CURSOR') {
-        return c.json({ success: false, error: error.message }, 400);
-      }
-      throw error;
     }
-  } catch (err: any) {
-    console.error('[Worker Delegate] Error loading dashboard:', err);
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+
+    const [createdPage, referredPage] = await Promise.all([
+      readChildPage('createdGarages', c.req.query('createdGaragesCursor')),
+      readChildPage('referredGarages', c.req.query('referredGaragesCursor'))
+    ]);
+    const garagesById = new Map<string, any>();
+    for (const doc of [...createdPage.documents, ...referredPage.documents]) {
+      garagesById.set(doc.id, sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
+    }
+    return c.json({
+      success: true,
+      delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+      garages: Array.from(garagesById.values()),
+      pagination: {
+        createdGarages: { hasMore: createdPage.hasMore, nextCursor: createdPage.nextCursor },
+        referredGarages: { hasMore: referredPage.hasMore, nextCursor: referredPage.nextCursor }
+      }
+    });
+  } catch (error: any) {
+    if (error?.message === 'INVALID_PAGE_SIZE' || error?.message === 'INVALID_PAGE_CURSOR') {
+      return c.json({ success: false, error: error.message }, 400);
+    }
+    throw error;
   }
-};
+}, 'Financial');
 
 app.get('/api/delegate/commission-earnings', requireWorkerAuth, handleDelegateDashboard);
 app.get('/api/delegates/dashboard', requireWorkerAuth, handleDelegateDashboard);
