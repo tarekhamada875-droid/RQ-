@@ -86,7 +86,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     }
     wasLoadingRef.current = isLoading;
   }, [isLoading, activeTab, checkoutJustSucceeded]);
-  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // (back handler registration moved below — needs isCreditGrantNotificationOpen
@@ -163,7 +162,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   useBackHandler(() => { handleAcknowledgeCreditGrant(); return true; }, isCreditGrantNotificationOpen);
   useBackHandler(() => { setIsMenuOpen(false); return true; }, isMenuOpen);
   useBackHandler(() => { setShowTermsModal(false); return true; }, showTermsModal);
-  useBackHandler(() => { setIsAppearanceOpen(false); return true; }, isAppearanceOpen);
+
   useBackHandler(() => { setIsReportsOpen(false); return true; }, isReportsOpen);
   useBackHandler(() => { setIsCreditGrantHistoryOpen(false); return true; }, isCreditGrantHistoryOpen);
   useBackHandler(() => { setActiveTab('main'); return true; }, activeTab === 'active_vehicles');
@@ -213,7 +212,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
     setShowSubscribers(target === "subscribers");
     setIsReportsOpen(target === "reports");
     setIsCreditGrantHistoryOpen(target === "history");
-    setIsAppearanceOpen(target === "appearance");
+
     setShowTermsModal(target === "terms");
   };
 
@@ -353,7 +352,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
         isCreditGrantLogsLoading={isCreditGrantLoading}
         subscriberPage={subscriberPage}
         isReportsOpen={isReportsOpen}
-        isAppearanceOpen={isAppearanceOpen}
         showTermsModal={showTermsModal}
         showToast={showToast}
         onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
@@ -363,7 +361,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
           clearNewCreditGrantBadge();
         }}
         onCloseReports={() => setIsReportsOpen(false)}
-        onCloseAppearance={() => setIsAppearanceOpen(false)}
         onCloseTerms={() => setShowTermsModal(false)}
         currentStaff={currentStaff}
         staffList={staffList}

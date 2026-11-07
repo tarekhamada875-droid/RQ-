@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
-import { AppearanceSettingsModal } from "../modals/AppearanceSettingsModal";
 import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
 import { CreditGrantNotificationModal } from "./modals/CreditGrantNotificationModal";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
@@ -20,14 +19,12 @@ interface GarageDashboardOverlaysProps {
   isCreditGrantLogsLoading: boolean;
   subscriberPage: SharedSubscriberPage | null;
   isReportsOpen: boolean;
-  isAppearanceOpen: boolean;
   showTermsModal: boolean;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onToggleMenu: () => void;
   onCloseSubscribers: () => void;
   onCloseCreditGrantHistory: () => void;
   onCloseReports: () => void;
-  onCloseAppearance: () => void;
   onCloseTerms: () => void;
   currentStaff: Staff | null;
   staffList: Staff[];
@@ -47,14 +44,12 @@ export const GarageDashboardOverlays = ({
   isCreditGrantLogsLoading,
   subscriberPage,
   isReportsOpen,
-  isAppearanceOpen,
   showTermsModal,
   showToast,
   onToggleMenu,
   onCloseSubscribers,
   onCloseCreditGrantHistory,
   onCloseReports,
-  onCloseAppearance,
   onCloseTerms,
   currentStaff,
   staffList,
@@ -100,9 +95,6 @@ export const GarageDashboardOverlays = ({
             showToast={showToast}
           />
         </Suspense>
-      )}
-      {isAppearanceOpen && (
-        <AppearanceSettingsModal garage={garage} currentStaff={currentStaff} onClose={onCloseAppearance} showToast={showToast} onToggleMenu={onToggleMenu} />
       )}
       {showTermsModal && <TermsAndConditionsModal onClose={onCloseTerms} />}
       <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
