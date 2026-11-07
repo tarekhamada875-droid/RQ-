@@ -15,6 +15,7 @@ import { canRunGarageMaintenance, canUpdateEntityPin } from './domain/authorizat
 import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
 import { recordDomainEventInTransaction } from './events';
 import { mapDomainErrorToStatus } from './routes/helpers';
+import { withErrorHandler } from './routes/combinators';
 import { parseMoneyAmount } from './money';
 import { parseFirestorePageRequest, firestorePageStartAfter, buildFirestorePage } from './firestorePagination';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
@@ -350,46 +351,41 @@ app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
 });
 
 // Garage Maintenance: Recalculate Cars Inside
-app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    const body = await c.req.json().catch(() => ({}));
-    const { garageId } = body;
-    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, withErrorHandler(async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json().catch(() => ({}));
+  const { garageId } = body;
+  if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    if (!canRunGarageMaintenance(user, 'recalculate-cars-inside')) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-
-    // Audit N13 (Phase 4, 2026-11-06): paginate the inside-vehicles query.
-    // Previously this did .where('status','==','inside').get() with no
-    // limit, returning ALL inside vehicles in memory. For 1k+ inside
-    // vehicles, this would OOM the Worker (128MB cap). Now pages through
-    // in chunks of 450 using startAfter cursor and counts docs.
-    const PAGE_SIZE = 450;
-    let actualCount = 0;
-    let lastDoc: any = null;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      let query: any = adminDb.collection(`garages/${garageId}/vehicles`)
-        .where('status', '==', 'inside')
-        .orderBy('__name__')
-        .limit(PAGE_SIZE);
-      if (lastDoc) {
-        query = query.startAfter(lastDoc);
-      }
-      const pageSnap = await query.get();
-      actualCount += pageSnap.docs.length;
-      if (pageSnap.docs.length < PAGE_SIZE) break; // last page
-      lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
-    }
-
-    await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
-    return c.json({ success: true, count: actualCount });
-  } catch (e: any) {
-    console.error('[Worker Garage] Error in recalculate-cars-inside:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+  if (!canRunGarageMaintenance(user, 'recalculate-cars-inside')) {
+    return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
   }
-});
+
+  // Audit N13 (Phase 4, 2026-11-06): paginate the inside-vehicles query.
+  // Previously this did .where('status','==','inside').get() with no
+  // limit, returning ALL inside vehicles in memory. For 1k+ inside
+  // vehicles, this would OOM the Worker (128MB cap). Now pages through
+  // in chunks of 450 using startAfter cursor and counts docs.
+  const PAGE_SIZE = 450;
+  let actualCount = 0;
+  let lastDoc: any = null;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let query: any = adminDb.collection(`garages/${garageId}/vehicles`)
+      .where('status', '==', 'inside')
+      .orderBy('__name__')
+      .limit(PAGE_SIZE);
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+    const pageSnap = await query.get();
+    actualCount += pageSnap.docs.length;
+    if (pageSnap.docs.length < PAGE_SIZE) break; // last page
+    lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
+  }
+
+  await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
+  return c.json({ success: true, count: actualCount });
+}, 'CreditGrant'));
 
 }

@@ -13,6 +13,7 @@ import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntity
 import { canManageDelegates } from './domain/authorization';
 import { normalizePhone } from './pinCrypto';
 import { writeMaintainedAdminDelta } from './workerMaintenance';
+import { withErrorHandler } from './routes/combinators';
 
 export function registerDelegateRoutes(app: WorkerApp): void {
 
@@ -145,47 +146,42 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
   }
 });
 
-app.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (!canManageDelegates(user)) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-    const body = await c.req.json().catch(() => ({} as Record<string, any>));
-    const { id } = body;
-    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-    const delegateId = validateId(id, 'id', true);
-    const delegateRef = adminDb.collection('delegates').doc(delegateId);
-    let missingDelegate = false;
-    let unsettledCycleTotal = 0;
-    await adminDb.runTransaction(async (t: any) => {
-      const delegateSnap = await t.get(delegateRef);
-      if (!delegateSnap.exists) {
-        missingDelegate = true;
-        return;
-      }
-      const delegateData = delegateSnap.data() || {};
-      unsettledCycleTotal = Number(delegateData.totalRechargedAmount || 0);
-      if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) return;
-      await deleteEntityPinInTransaction(t, 'delegates', delegateId);
-      t.delete(delegateRef);
-      // Atomically decrement the admin-summary counter inside the transaction.
-      writeMaintainedAdminDelta(t, { totalDelegates: -1 });
-    });
-    if (missingDelegate) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
-    if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) {
-      return c.json({
-        success: false,
-        error: 'DELEGATE_HAS_UNSETTLED_COMMISSION',
-        unsettledCycleTotal
-      }, 409);
-    }
-
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error('[Worker Delegate] Error in delete:', e);
-    return c.json({ success: false, error: e?.message || 'SERVER_ERROR' }, 500);
+app.post('/api/delegates/delete', requireWorkerAuth, withErrorHandler(async (c) => {
+  const user = c.get('user');
+  if (!canManageDelegates(user)) {
+    return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
   }
-});
+  const body = await c.req.json().catch(() => ({} as Record<string, any>));
+  const { id } = body;
+  if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+  const delegateId = validateId(id, 'id', true);
+  const delegateRef = adminDb.collection('delegates').doc(delegateId);
+  let missingDelegate = false;
+  let unsettledCycleTotal = 0;
+  await adminDb.runTransaction(async (t: any) => {
+    const delegateSnap = await t.get(delegateRef);
+    if (!delegateSnap.exists) {
+      missingDelegate = true;
+      return;
+    }
+    const delegateData = delegateSnap.data() || {};
+    unsettledCycleTotal = Number(delegateData.totalRechargedAmount || 0);
+    if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) return;
+    await deleteEntityPinInTransaction(t, 'delegates', delegateId);
+    t.delete(delegateRef);
+    // Atomically decrement the admin-summary counter inside the transaction.
+    writeMaintainedAdminDelta(t, { totalDelegates: -1 });
+  });
+  if (missingDelegate) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+  if (!Number.isFinite(unsettledCycleTotal) || unsettledCycleTotal !== 0) {
+    return c.json({
+      success: false,
+      error: 'DELEGATE_HAS_UNSETTLED_COMMISSION',
+      unsettledCycleTotal
+    }, 409);
+  }
+
+  return c.json({ success: true });
+}, 'Delegate'));
 
 }

@@ -479,40 +479,35 @@ app.post('/api/garages/delete-step', requireWorkerAuth, advanceGarageDeletionRou
 app.get('/api/garages/delete-status', requireWorkerAuth, readGarageDeletionStatusRoute);
 
 // Handler 4 & 5: Query Garages (GET /api/garages & GET /api/garages/:id)
-app.get('/api/garages', requireWorkerAuth, async (c) => {
-  try {
-    const user = c.get('user');
-    if (!['admin', 'delegate'].includes(user?.role || '')) {
-      return c.json({ success: false, error: 'FORBIDDEN' }, 403);
-    }
-
-    const garagesCollection = adminDb.collection('garages');
-    let query: any = garagesCollection;
-    let pageScope = `garages:admin:${user.uid}`;
-    if (user?.role === 'delegate') {
-      const delegateId = user.entityId || user.uid;
-      query = query.where('createdByDelegateId', '==', delegateId);
-      pageScope = `garages:delegate:${delegateId}`;
-    }
-
-    let pageRequest;
-    try {
-      pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), pageScope);
-    } catch (error: any) {
-      return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
-    }
-    query = query.orderBy('__name__', 'desc');
-    query = firestorePageStartAfter(query, garagesCollection, pageRequest.cursor, '__name__');
-    const snap = await query.limit(pageRequest.pageSize + 1).get();
-    const garagePage = buildFirestorePage(snap.docs, pageRequest, '__name__');
-    const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
-
-    return c.json({ success: true, garages, items: garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });
-  } catch (err: any) {
-    console.error('[Worker Garage] Error listing garages:', err);
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+app.get('/api/garages', requireWorkerAuth, withErrorHandler(async (c) => {
+  const user = c.get('user');
+  if (!['admin', 'delegate'].includes(user?.role || '')) {
+    return c.json({ success: false, error: 'FORBIDDEN' }, 403);
   }
-});
+
+  const garagesCollection = adminDb.collection('garages');
+  let query: any = garagesCollection;
+  let pageScope = `garages:admin:${user.uid}`;
+  if (user?.role === 'delegate') {
+    const delegateId = user.entityId || user.uid;
+    query = query.where('createdByDelegateId', '==', delegateId);
+    pageScope = `garages:delegate:${delegateId}`;
+  }
+
+  let pageRequest;
+  try {
+    pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), pageScope);
+  } catch (error: any) {
+    return c.json({ success: false, error: error?.message === 'INVALID_PAGE_SIZE' ? 'INVALID_PAGE_SIZE' : 'INVALID_PAGE_CURSOR' }, 400);
+  }
+  query = query.orderBy('__name__', 'desc');
+  query = firestorePageStartAfter(query, garagesCollection, pageRequest.cursor, '__name__');
+  const snap = await query.limit(pageRequest.pageSize + 1).get();
+  const garagePage = buildFirestorePage(snap.docs, pageRequest, '__name__');
+  const garages = garagePage.documents.map((docSnap: any) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+
+  return c.json({ success: true, garages, items: garages, hasMore: garagePage.hasMore, nextCursor: garagePage.nextCursor });
+}, 'Garage'));
 
 // Read-only consistency diagnostics & Event Ledger reconciliation.
 app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
@@ -672,80 +667,70 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
   }
 });
 
-app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
+app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, withErrorHandler(async (c) => {
   const startedAt = Date.now();
-  try {
-    const garageId = validateId(c.req.param('id'), 'garageId', true);
-    const user = c.get('user');
-    if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
-    const today = getCairoDateKey(new Date());
-    const [garageSnap, dailyStatsSnap] = await Promise.all([
-      adminDb.doc(`garages/${garageId}`).get(),
-      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()
-    ]);
-    if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
-    const dailyStatsData = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
-    const report = dailyStatsData.reportAggregateVersion === 1 && dailyStatsData.report
-      ? dailyStatsData.report
-      : undefined;
-    c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
-    // projection_buckets is no longer written on the hot path (efficiency fix #477).
-    // The primary source is the maintained_summary daily doc; the stored rebuild
-    // is a secondary safety net for older data.
-    const maintainedDailyRef = adminDb.doc(`garages/${garageId}/maintained_summary/daily_${today}`);
-    const maintainedDailySnap = await maintainedDailyRef.get();
-    if (maintainedDailySnap.exists) {
-      const md = maintainedDailySnap.data() || {};
-      const summary = {
-        activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
-        entriesToday: Number(md.todayEntries || 0),
-        exitsToday: Number(md.todayExits || 0),
-        grossRevenue: Number(md.todayRevenue || 0),
-        refundTotal: 0,
-        netRevenue: Number(md.todayRevenue || 0),
-        garageId,
-        dateId: today,
-        rebuiltAt: new Date().toISOString(),
-        source: 'maintained_daily_summary',
-        ...(report ? { report } : {})
-      };
-      c.header('X-Summary-Source', 'maintained_daily_summary');
-      return c.json({ success: true, data: { garageId, summary } });
-    }
-    const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
-    if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
-    const storedSummary = summarySnap.data() || {};
-    if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
-    const normalizedMoney = normalizeStoredDashboardMoney(storedSummary);
-    if (!normalizedMoney) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
-    c.header('X-Summary-Source', 'stored_rebuild');
-    return c.json({ success: true, data: { garageId, summary: { ...storedSummary, ...normalizedMoney, ...(report ? { report } : {}) } } });
-  } catch (error: any) {
-    console.error('[Worker Garage] Error reading dashboard summary:', error);
-    return c.json({ success: false, error: error?.message || 'SERVER_ERROR' }, 500);
+  const garageId = validateId(c.req.param('id'), 'garageId', true);
+  const user = c.get('user');
+  if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
+  const today = getCairoDateKey(new Date());
+  const [garageSnap, dailyStatsSnap] = await Promise.all([
+    adminDb.doc(`garages/${garageId}`).get(),
+    adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()
+  ]);
+  if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+  const dailyStatsData = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
+  const report = dailyStatsData.reportAggregateVersion === 1 && dailyStatsData.report
+    ? dailyStatsData.report
+    : undefined;
+  c.header('Server-Timing', `dashboard-summary;dur=${Date.now() - startedAt}`);
+  // projection_buckets is no longer written on the hot path (efficiency fix #477).
+  // The primary source is the maintained_summary daily doc; the stored rebuild
+  // is a secondary safety net for older data.
+  const maintainedDailyRef = adminDb.doc(`garages/${garageId}/maintained_summary/daily_${today}`);
+  const maintainedDailySnap = await maintainedDailyRef.get();
+  if (maintainedDailySnap.exists) {
+    const md = maintainedDailySnap.data() || {};
+    const summary = {
+      activeVehicleCount: Number(garageSnap.data()?.carsInside || 0),
+      entriesToday: Number(md.todayEntries || 0),
+      exitsToday: Number(md.todayExits || 0),
+      grossRevenue: Number(md.todayRevenue || 0),
+      refundTotal: 0,
+      netRevenue: Number(md.todayRevenue || 0),
+      garageId,
+      dateId: today,
+      rebuiltAt: new Date().toISOString(),
+      source: 'maintained_daily_summary',
+      ...(report ? { report } : {})
+    };
+    c.header('X-Summary-Source', 'maintained_daily_summary');
+    return c.json({ success: true, data: { garageId, summary } });
   }
-});
+  const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
+  if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
+  const storedSummary = summarySnap.data() || {};
+  if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
+  const normalizedMoney = normalizeStoredDashboardMoney(storedSummary);
+  if (!normalizedMoney) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
+  c.header('X-Summary-Source', 'stored_rebuild');
+  return c.json({ success: true, data: { garageId, summary: { ...storedSummary, ...normalizedMoney, ...(report ? { report } : {}) } } });
+}, 'Garage'));
 
-app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
-  try {
-    // Audit N11 (Phase 1, 2026-11-06): validate the id param using
-    // validateId (same as POST /api/garages/:id/reconcile at line 771).
-    // Previously this route just checked truthiness, allowing IDs with
-    // whitespace or path-traversal characters to reach Firestore.
-    const id = validateId(c.req.param('id'), 'garageId', true);
-    const user = c.get('user');
-    if (!decideGarageScope(user, id)) {
-      return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
-    }
-    const docSnap = await adminDb.doc(`garages/${id}`).get();
-    if (!docSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
-
-    return c.json({ success: true, garage: { id: docSnap.id, ...docSnap.data() } });
-  } catch (err: any) {
-    console.error('[Worker Garage] Error fetching garage:', err);
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, 500);
+app.get('/api/garages/:id', requireWorkerAuth, withErrorHandler(async (c) => {
+  // Audit N11 (Phase 1, 2026-11-06): validate the id param using
+  // validateId (same as POST /api/garages/:id/reconcile at line 771).
+  // Previously this route just checked truthiness, allowing IDs with
+  // whitespace or path-traversal characters to reach Firestore.
+  const id = validateId(c.req.param('id'), 'garageId', true);
+  const user = c.get('user');
+  if (!decideGarageScope(user, id)) {
+    return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
   }
-});
+  const docSnap = await adminDb.doc(`garages/${id}`).get();
+  if (!docSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
+
+  return c.json({ success: true, garage: { id: docSnap.id, ...docSnap.data() } });
+}, 'Garage'));
 
   // Staff, delegate, and credit-grant routes are split into focused modules.
   registerStaffRoutes(app);
