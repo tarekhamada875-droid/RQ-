@@ -69,10 +69,10 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(firstResponse.status).toBe(200);
     expect(firstBody.data).toMatchObject({
       balance: 514,
-      referralAward: { garageId: referrerGarageId, amount: 20 }
+      referralAward: { garageId: referrerGarageId, amount: 10 }
     });
     expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBe(514);
-    expect(mockDb.records.get(`garages/${referrerGarageId}`)?.credits).toBe(23);
+    expect(mockDb.records.get(`garages/${referrerGarageId}`)?.credits).toBe(13);
 
     const ledgerEntries = [...mockDb.records.entries()].filter(([path]) => path.startsWith('credit_ledger/'));
     expect(ledgerEntries).toHaveLength(2);
@@ -84,7 +84,7 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({
       referredGarageId: garageId,
       referrerGarageId,
-      amount: 20,
+      amount: 10,
       status: 'awarded'
     });
 
@@ -146,19 +146,19 @@ describe('BILL-06/07 manual prepaid credit grants and payment reporting', () => 
     expect(mockDb.records.get(`garages/${garageId}`)?.credits).toBe(114);
   });
 
-  it('awards 20 referral credits once on the first paid grant and keeps a distinct auditable record', async () => {
+  it('awards 10 referral credits once on the first paid grant and keeps a distinct auditable record', async () => {
     mockDb.seed(`garages/${garageId}`, { name: 'Prepaid test', billingModel: 'prepaid_credits', referredByGarageId: 'bill06-referrer', credits: 14 });
     mockDb.seed('garages/bill06-referrer', { name: 'Referrer', billingModel: 'prepaid_credits', credits: 3 });
     const first = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify(qualifyingGrantBody) }));
     expect(first.status).toBe(200);
-    expect(mockDb.records.get('garages/bill06-referrer')?.credits).toBe(23);
-    expect([...mockDb.records.entries()].find(([path, value]: [string, any]) => path.startsWith('credit_ledger/') && value.garageId === 'bill06-referrer' && value.kind === 'referral_award' && value.idempotencyKey === 'first_paid_grant:bill06-credit-garage')?.[1]).toMatchObject({ kind: 'referral_award', amount: 20, source: 'first_paid_grant_referral', referredGarageId: garageId });
-    expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({ referredGarageId: garageId, referrerGarageId: 'bill06-referrer', amount: 20 });
+    expect(mockDb.records.get('garages/bill06-referrer')?.credits).toBe(13);
+    expect([...mockDb.records.entries()].find(([path, value]: [string, any]) => path.startsWith('credit_ledger/') && value.garageId === 'bill06-referrer' && value.kind === 'referral_award' && value.idempotencyKey === 'first_paid_grant:bill06-credit-garage')?.[1]).toMatchObject({ kind: 'referral_award', amount: 10, source: 'first_paid_grant_referral', referredGarageId: garageId });
+    expect(mockDb.records.get(`credit_referral_awards/${garageId}`)).toMatchObject({ referredGarageId: garageId, referrerGarageId: 'bill06-referrer', amount: 10 });
     // A second qualifying-grant-sized call uses a fresh idempotency key but the qualifying marker is already set,
     // so no second referral award fires. The grant itself succeeds.
     const second = await api.fetch(new Request(endpoint, { method: 'POST', headers: adminHeaders, body: JSON.stringify({ ...qualifyingGrantBody, amount: 50, paymentAmountEgp: 50, idempotencyKey: 'bill06-grant-002' }) }));
     expect(second.status).toBe(200);
-    expect(mockDb.records.get('garages/bill06-referrer')?.credits).toBe(23);
+    expect(mockDb.records.get('garages/bill06-referrer')?.credits).toBe(13);
   });
 
   it('records a deferred legacy-referrer outcome without enabling that garage', async () => {

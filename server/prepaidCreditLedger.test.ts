@@ -32,7 +32,7 @@ describe('prepaid credit ledger (single bucket)', () => {
     expect(grantPaidCredits({ ...base, balance: Number.MAX_SAFE_INTEGER, amount: 1 })).toEqual({ ok: false, error: 'CREDIT_BALANCE_OVERFLOW' });
   });
 
-  it('awards exactly 20 referral credits only after the first paid grant', () => {
+  it('awards exactly 10 referral credits only after the first paid grant', () => {
     expect(awardReferralCredits({
       ...base,
       balance: 0,
@@ -40,7 +40,7 @@ describe('prepaid credit ledger (single bucket)', () => {
       referredGarageId: 'garage-1',
       paidGrantConfirmed: true,
       firstPaidGrant: true,
-    })).toMatchObject({ ok: true, value: { balance: 20, entry: { kind: 'referral_award', amount: 20 } } });
+    })).toMatchObject({ ok: true, value: { balance: 10, entry: { kind: 'referral_award', amount: 10 } } });
 
     expect(awardReferralCredits({
       ...base,

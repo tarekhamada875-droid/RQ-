@@ -139,12 +139,12 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const now = new Date();
     const billingModel = 'prepaid_credits';
     // Trial credits: admin-created garages are approved immediately, so they
-    // get 100 trial credits at creation. Delegate-created garages are pending
-    // and get 0 credits — the 100 trial credits are granted automatically
+    // get 50 trial credits at creation. Delegate-created garages are pending
+    // and get 0 credits — the 50 trial credits are granted automatically
     // when the admin approves them later (see /api/garages/update).
     // The delegate-side trial toggle was removed from the create-garage modal.
     const isTrial = callerRole === 'admin' || (!createdByDelegateId && !sanitized.createdByDelegateId);
-    const trialCreditAmount = isTrial ? 100 : 0;
+    const trialCreditAmount = isTrial ? 50 : 0;
     const finalDailyCapacity = 0;
     const garageRef = adminDb.collection('garages').doc();
     const garageId = garageRef.id;
@@ -427,14 +427,14 @@ app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(async (c) =>
       t.update(garageRef, updates);
 
       // Trial credits on approval: when an admin sets status → 'approved'
-      // for the first time, grant 100 trial credits automatically IF the
+      // for the first time, grant 50 trial credits automatically IF the
       // garage hasn't already received them. This replaces the delegate-side
       // trial toggle that was removed from the create-garage modal — the
       // delegate no longer decides; the credits just happen on approval.
       if (updates.status === 'approved' && !garageData.isTrial) {
         const trialTransition = grantTrialCredits({
           balance: Number(garageData.credits || 0),
-          amount: 100,
+          amount: 50,
           garageId: id,
           actorUid: user?.uid || 'admin',
           actorRole: 'admin',

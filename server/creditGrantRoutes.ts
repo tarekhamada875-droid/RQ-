@@ -86,7 +86,7 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 // Payment references were removed by owner decision (2026-10-29): grants now take
 // just an amount + reason. The 50-2,000 EGP range is enforced. Delegate commission
 // (100 EGP once, when the first qualifying paid grant >= 500 EGP) and the
-// referral reward (20 credits to the referring garage, same trigger) still fire.
+// referral reward (10 credits to the referring garage, same trigger) still fire.
 app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -116,7 +116,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       // Delegate commission is now a rolling 30-day recurring rule, NOT one-time.
       // It fires when paymentAmountEgp >= 500 AND (no prior commission OR the last
       // commission was more than 30 days ago). Capped at 100 EGP per 30-day window
-      // per garage. The referral reward (20 credits to the referrer) stays one-time
+      // per garage. The referral reward (10 credits to the referrer) stays one-time
       // — it still only fires on isFirstQualifyingGrant.
       const { isCommissionDue, commissionDelegateId } = decideDelegateCommission(
         paymentAmountEgp, garage.createdByDelegateId, garage.lastCommissionGrantAt
@@ -195,7 +195,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         const materializedReward = materializeCreditLedgerEntry(referralTransition.value.entry);
         if (materializedReward.ok === false) throw new Error(materializedReward.error);
         referralLedger = materializedReward.value;
-        referralAward = { garageId: referrerGarageId, amount: 20, entryId: referralLedger.entryId };
+        referralAward = { garageId: referrerGarageId, amount: 10, entryId: referralLedger.entryId };
       }
       const now = new Date();
       const currentAdminRevenue = Number(garage.totalAdminRevenue || 0);
@@ -249,14 +249,14 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
         t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
-        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
+        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 10, ledgerEntryId: referralLedger.entryId } });
       }
       if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {
           referredGarageId: garageId,
           referrerGarageId: referrerGarageId || null,
           ledgerEntryId: referralLedger?.entryId || null,
-          amount: referralLedger ? 20 : 0,
+          amount: referralLedger ? 10 : 0,
           status: referralLedger ? 'awarded' : (referrerGarageId ? 'referrer_not_prepaid' : 'no_eligible_referrer'),
           createdAt: now,
           createdBy: callerUid,
