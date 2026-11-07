@@ -30,7 +30,6 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     }
 
     const normNewPin = validateNewPin(newPin, 'newPin');
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     let targetGarageId: unknown = entityType === 'garages' ? entityId : undefined;
     if (entityType === 'staff' && user?.role !== 'admin') {
@@ -90,7 +89,6 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'reason', 'idempotencyKey'], false);
@@ -292,7 +290,6 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'reason', 'idempotencyKey'], false);
@@ -336,7 +333,6 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
 app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const scopedGarage = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
     if (user?.role !== 'admin' && !scopedGarage) return c.json({ success: false, error: 'FORBIDDEN' }, 403);

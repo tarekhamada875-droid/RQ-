@@ -30,10 +30,6 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (user?.role !== 'delegate') {
         return c.json({ success: false, error: 'FORBIDDEN: Delegate role required' }, 403);
       }
-      if (!adminDb) {
-        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-      }
-
       const body = await c.req.json().catch(() => ({}));
       const { garageId, amount: rawAmount } = body || {};
       if (!garageId) {
@@ -94,10 +90,6 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (user?.role !== 'delegate') {
         return c.json({ success: false, error: 'FORBIDDEN: Delegate role required' }, 403);
       }
-      if (!adminDb) {
-        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-      }
-
       const delegateId = user.entityId || user.uid;
       // Return recent requests (pending + recently reviewed). The delegate UI
       // uses this to show pending/rejected badges on their garage cards.
@@ -140,10 +132,6 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!adminDb) {
-        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-      }
-
       const status = c.req.query('status') || 'pending';
       if (!['pending', 'approved', 'rejected'].includes(status)) {
         return c.json({ success: false, error: 'INVALID_STATUS' }, 400);
@@ -175,10 +163,6 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!adminDb) {
-        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-      }
-
       const requestId = validateId(c.req.param('id'), 'id', true);
       const callerUid = user.uid;
       const now = new Date();
@@ -339,10 +323,6 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!adminDb) {
-        return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-      }
-
       const requestId = validateId(c.req.param('id'), 'id', true);
       const callerUid = user.uid;
       const now = new Date();

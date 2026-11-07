@@ -119,7 +119,6 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
     const entrantEntityId = user?.entityId;
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -347,7 +346,6 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
     if (!garageId || !vehicleId) {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     const requestFingerprint = createRequestFingerprint({ garageId, vehicleId });
 
@@ -540,7 +538,6 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!garageId || !vehicleId) {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     // Audit B3 (Phase 3, 2026-11-06): refunds are permanently disabled.
@@ -790,7 +787,6 @@ app.get('/api/vehicles/inside', requireWorkerAuth, async (c) => {
     if (!isAdmin && !isGarageScoped) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const snap = await adminDb.collection(`garages/${garageId}/vehicles`)
       .where('status', '==', 'inside')
@@ -826,7 +822,6 @@ app.get('/api/vehicles/history', requireWorkerAuth, async (c) => {
     if (!isAdmin && !isGarageScoped) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const dateQuery = c.req.query('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const dateRange = cairoDateRange(dateQuery);

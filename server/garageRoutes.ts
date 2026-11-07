@@ -1,6 +1,7 @@
 import type { WorkerApp } from './cloudflareWorker';
 import { enforceWorkerFinancialRateLimit } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
+import { withErrorHandler } from './routes/combinators';
 import { requireWorkerAuth } from './sessionInfrastructure';
 import { canSubmitGarageApplication, canManageGarageScopedData as decideGarageScope, canRunGarageMaintenance } from './domain/authorization';
 import { grantTrialCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
@@ -63,7 +64,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       sanitized.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
     );
 
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const delegateEntityId = callerRole === 'delegate' ? (user?.entityId || callerUid) : undefined;
     let requestFingerprint: string | undefined;
@@ -314,8 +314,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 });
 
 // Handler 2: Update Garage (POST /api/garages/update)
-app.post('/api/garages/update', requireWorkerAuth, async (c) => {
-  try {
+app.post('/api/garages/update', requireWorkerAuth, withErrorHandler(async (c) => {
     const user = c.get('user');
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
@@ -327,7 +326,6 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     // just checked truthiness — an attacker could send id with special
     // characters that would reach Firestore doc paths.
     const id = validateId(rawId, 'garageId', true);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const retiredUpdateFields = new Set([
       'billingModel', 'commissionPerVehicle', 'monthlySubscriptionFee', 'dailyCapacity', 'capacity', 'allowMonthlySubscribers',
@@ -472,23 +470,8 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
       await maintainedAdminSummaryRef().set({ schemaVersion: MAINTAINED_SUMMARY_VERSION, summaryScope: 'admin', stale: true, updatedAt: new Date() }, { merge: true });
     }
     return c.json({ success: true });
-  } catch (err: any) {
-    console.error('[Worker Garage] Error updating garage:', err);
-    // Surface the rate-change cooldown as a 409 with structured details so
-    // the client can show "days remaining" / "next allowed date" without
-    // parsing error strings.
-    if (err?.message === 'RATE_CHANGE_COOLDOWN_ACTIVE') {
-      return c.json({
-        success: false,
-        error: 'RATE_CHANGE_COOLDOWN_ACTIVE',
-        daysRemaining: err.daysRemaining,
-        nextAllowedDate: err.nextAllowedDate,
-      }, 409);
-    }
-    const status = err?.statusCode && Number.isFinite(err.statusCode) ? err.statusCode : 500;
-    return c.json({ success: false, error: err?.message || 'SERVER_ERROR' }, status);
-  }
-});
+  // withErrorHandler handles try/catch + RATE_CHANGE_COOLDOWN_ACTIVE (C3)
+}, 'Garage'));
 
 // Garage deletion handlers live in a dedicated module; all three routes share the same server authority.
 app.post('/api/garages/delete', requireWorkerAuth, startGarageDeletionRoute);
@@ -502,7 +485,6 @@ app.get('/api/garages', requireWorkerAuth, async (c) => {
     if (!['admin', 'delegate'].includes(user?.role || '')) {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const garagesCollection = adminDb.collection('garages');
     let query: any = garagesCollection;
@@ -539,7 +521,6 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     if (!canRunGarageMaintenance(user, 'reconciliation')) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const garageId = validateId(body?.garageId, 'garageId', true);
@@ -703,7 +684,6 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const user = c.get('user');
     if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const [garageSnap, dailyStatsSnap] = await Promise.all([
       adminDb.doc(`garages/${garageId}`).get(),
@@ -759,7 +739,6 @@ app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
     // Previously this route just checked truthiness, allowing IDs with
     // whitespace or path-traversal characters to reach Firestore.
     const id = validateId(c.req.param('id'), 'garageId', true);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const user = c.get('user');
     if (!decideGarageScope(user, id)) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
