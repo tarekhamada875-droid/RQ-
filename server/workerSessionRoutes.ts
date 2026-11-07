@@ -15,12 +15,9 @@ import {
   workerSessionDefinition,
   sessionIndexPath,
   cleanPin,
-  normalizePhone,
   verifyPinMatch,
-  verifyDocMatch,
   migratePinToHash,
   queryAccountWherePin,
-  queryDelegatesWherePhone,
   getAdminPin,
   checkPinAvailabilityAcrossAll,
   saveEntityPin,
@@ -87,46 +84,12 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       return c.json({ success: false, error: 'RATE_LIMIT_EXCEEDED', resetAt: pinLimit.resetAt }, 429);
     }
 
-    // Preserve the legacy Delegate phone-plus-PIN migration path. When a phone
-    // is supplied, scope the lookup to that delegate instead of falling back to
-    // a global PIN search.
-    // Audit N9 (Phase 1, 2026-11-06): use normalizePhone (keeps `+`) instead
-    // of cleanPin (strips all non-digits). The client's normalizePhone in
-    // src/utils/plates.ts:128 also keeps `+`, so a delegate who registered
-    // with `+20 100 123 4567` can now log in.
-    const normalizedPhone = normalizePhone(credentials.phone);
-    if (normalizedPhone) {
-      const delegateDocs = await queryDelegatesWherePhone(normalizedPhone);
-      const delegateMatches = delegateDocs
-        .map((doc) => ({ ...doc, check: verifyDocMatch(normalizedPin, doc.data) }))
-        .filter((doc) => doc.check.matches);
-      if (delegateMatches.length !== 1) return c.json({ success: false, error: 'بيانات الدخول غير صحيحة' });
-
-      const delegate = delegateMatches[0];
-      const account = { ...delegate.data };
-      delete account.pin;
-      delete account.ownerPin;
-      delete account.adminPin;
-      delete account.pinLookupHash;
-      if (delegate.check.isLegacy) await migratePinToHash('delegates', delegate.id, normalizedPin);
-      if (!adminDb) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
-
-      await adminDb.runTransaction(async (transaction: any) => {
-        const entityRef = adminDb.doc(`delegates/${delegate.id}`);
-        const securityRef = adminDb.doc(`delegate_sessions/${effectiveUid}`);
-        const deviceSecurityRef = adminDb.doc(`delegate_sessions/${effectiveUid}/sessions/${sessionId}`);
-        const entitySnap = await transaction.get(entityRef);
-        const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
-        const now = new Date();
-        const sessionData = { uid: effectiveUid, role: 'delegate', entityId: delegate.id, sessionId, isActive: true, lastActive: now, createdAt: now };
-        transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds: addActiveSession(entityData, sessionId), lastActive: now }, { merge: true });
-        transaction.set(securityRef, sessionData, { merge: true });
-        transaction.set(deviceSecurityRef, sessionData, { merge: true });
-        writeSessionIndex(transaction, sessionData);
-      });
-      await resetWorkerPinRateLimit(c.env?.PIN_RATE_LIMITER, effectiveUid, clientIp, normalizedPin);
-      return c.json({ success: true, role: 'delegate', accountId: delegate.id, account: { id: delegate.id, ...account }, sessionClaimed: true });
-    }
+    // The legacy phone-plus-PIN login path has been removed. All roles
+    // (admin, delegate, garage, staff) log in with PIN-only — the phone
+    // field is never sent by the UI and the phone-based delegate lookup
+    // was dead code. Removing it simplifies the verify-pin route and
+    // eliminates a Firestore query that was never executed in production.
+    // Audit ref: operator decision 2026-11-07.
 
     const collectionsToCheck: Array<{ name: string; role: 'supervisor' | 'delegate' | 'staff' | 'garage' }> = [
       { name: 'garages', role: 'garage' },
