@@ -57,13 +57,11 @@ import { registerFoundationRoutes } from './workerFoundationRoutes';
 import {
   MAINTAINED_SUMMARY_VERSION,
   maintainedGarageSummaryRef,
-  maintainedGarageDailySummaryRef,
   maintainedAdminSummaryRef,
   writeMaintainedGarageDelta,
   writeMaintainedGarageDailyDelta,
   writeMaintainedAdminDelta,
   writeMaintainedSubscriberDelta,
-  isUsableMaintainedSummary
 } from './workerMaintenance';
 
 export { PinRateLimiterDurableObject } from './workerPinRateLimiter';
@@ -311,17 +309,7 @@ registerFoundationRoutes(workerApp);
 registerSessionRoutes(workerApp);
 
 // 6. Public and read-heavy routes are registered from a focused module.
-registerReadRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  requireWorkerAuth,
-  ValidationError,
-  validateNumber,
-  mapDomainErrorToStatus,
-  maintainedGarageSummaryRef,
-  maintainedGarageDailySummaryRef,
-  isUsableMaintainedSummary,
-  maintainedSummaryVersion: MAINTAINED_SUMMARY_VERSION
-});
+registerReadRoutes(workerApp);
 
 // 7. Vehicle Operations & Operational Flow (CF5)
 registerVehicleRoutes(workerApp, {
@@ -466,16 +454,7 @@ workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
 // All production API routes are implemented directly on the Fetch-native Hono app.
 
 // 11. Credit Request Routes (delegate → admin credit request flow)
-registerCreditRequestRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  requireWorkerAuth,
-  validateId,
-  validateNumber,
-  grantPaidCredits,
-  materializeCreditLedgerEntry,
-  recordDomainEventInTransaction,
-  parseMoneyAmount
-});
+registerCreditRequestRoutes(workerApp);
 
 export { workerApp };
 export default {

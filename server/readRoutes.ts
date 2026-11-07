@@ -1,17 +1,15 @@
 import type { WorkerApp, WorkerUser } from './cloudflareWorker';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { ValidationError, validateNumber } from './validation';
+import { mapDomainErrorToStatus } from './routes/helpers';
+import {
+  maintainedGarageSummaryRef,
+  maintainedGarageDailySummaryRef,
+  isUsableMaintainedSummary,
+  MAINTAINED_SUMMARY_VERSION as maintainedSummaryVersion,
+} from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis, sanitizeDelegateDoc } from './workerReadHelpers';
-
-export interface RouteDeps {
-  getAdminDb: () => any;
-  requireWorkerAuth: any;
-  ValidationError: any;
-  validateNumber: any;
-  mapDomainErrorToStatus: any;
-  maintainedGarageSummaryRef: any;
-  maintainedGarageDailySummaryRef: any;
-  isUsableMaintainedSummary: any;
-  maintainedSummaryVersion: number;
-}
 
 const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber', 'creditRate'] as const;
 
@@ -29,18 +27,7 @@ function projectSystemConfig(config: Record<string, any>): Record<string, any> {
   return projected;
 }
 
-export function registerReadRoutes(app: WorkerApp, deps: RouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    ValidationError,
-    validateNumber,
-    mapDomainErrorToStatus,
-    maintainedGarageSummaryRef,
-    maintainedGarageDailySummaryRef,
-    isUsableMaintainedSummary,
-    maintainedSummaryVersion
-  } = deps;
+export function registerReadRoutes(app: WorkerApp): void {
 
 // Private route returning only the active, explicitly allowlisted config fields.
 app.get('/api/system-config', requireWorkerAuth, async (c) => {
@@ -50,10 +37,10 @@ app.get('/api/system-config', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
 
-    if (!getAdminDb()) {
+    if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
-    const snap = await getAdminDb().doc('system_config/global').get();
+    const snap = await adminDb.doc('system_config/global').get();
     if (!snap.exists) {
       return c.json({ success: true, config: DEFAULT_SYSTEM_CONFIG });
     }
@@ -73,7 +60,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
 
-    if (!getAdminDb()) {
+    if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
@@ -123,7 +110,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
     }
 
 
-    await getAdminDb().doc('system_config/global').set(updatePayload, { merge: true });
+    await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
     return c.json({ success: true });
   } catch (e: any) {
     console.error('[Worker Admin] Error in update-system-config:', e);
@@ -137,7 +124,7 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
 // Route 1: POST /api/check-subscriber
 app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
   try {
-    if (!getAdminDb()) {
+    if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
     const user = c.get('user') as WorkerUser | undefined;
@@ -158,7 +145,7 @@ app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Subscriber lookup scope required' }, 403);
     }
 
-    const subCollection = getAdminDb().collection(`garages/${garageId}/subscribers`);
+    const subCollection = adminDb.collection(`garages/${garageId}/subscribers`);
     const foundDoc = await lookupSubscriber(subCollection, { subscriberId, plateRaw, plateNumber, phone });
 
     if (!foundDoc) {
@@ -198,7 +185,7 @@ app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
 // Route 2: GET /api/garage-summary
 app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
   try {
-    if (!getAdminDb()) {
+    if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
     const user = c.get('user');
@@ -250,8 +237,8 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
     // would OOM the Worker (128MB cap). Now we page through in chunks
     // of 450 and count/filter docs without loading them all at once.
     const PAGE_SIZE = 450;
-    const garageSnap = await getAdminDb().doc(`garages/${garageId}`).get();
-    const dailyStatsSnap = await getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get();
+    const garageSnap = await adminDb.doc(`garages/${garageId}`).get();
+    const dailyStatsSnap = await adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get();
 
     if (!garageSnap.exists) {
       return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
@@ -266,7 +253,7 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
     let lastInsideDoc: any = null;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let query: any = getAdminDb().collection(`garages/${garageId}/vehicles`)
+      let query: any = adminDb.collection(`garages/${garageId}/vehicles`)
         .where('status', '==', 'inside')
         .orderBy('__name__')
         .limit(PAGE_SIZE);
@@ -283,7 +270,7 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
     let lastSubDoc: any = null;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let query: any = getAdminDb().collection(`garages/${garageId}/subscribers`)
+      let query: any = adminDb.collection(`garages/${garageId}/subscribers`)
         .orderBy('__name__')
         .limit(PAGE_SIZE);
       if (lastSubDoc) query = query.startAfter(lastSubDoc);
@@ -352,7 +339,7 @@ app.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!getAdminDb()) {
+    if (!adminDb) {
       return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
@@ -376,7 +363,7 @@ app.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
       }
     }
 
-    const delegatesCollection = getAdminDb().collection('delegates');
+    const delegatesCollection = adminDb.collection('delegates');
     let delegatesQuery = delegatesCollection.orderBy('createdAt', 'desc').orderBy('__name__', 'desc');
     if (cursorCreatedAt !== null && cursorId) {
       delegatesQuery = delegatesQuery.startAfter(cursorCreatedAt, cursorId);
