@@ -10,6 +10,7 @@ import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
 import { generateSafePin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface AdminAddGarageModalProps {
   isOpen: boolean;
@@ -74,6 +75,8 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
     }
   }, [isOpen]);
 
+  const modalA11y = useModalA11y(onClose);
+
   if (!isOpen) return null;
 
   const sanitizeNumeric = (val: string) => normalizeDigits(val).replace(/\D/g, '');
@@ -88,6 +91,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
+        {...modalA11y.containerProps}
       >
         {/* Header — lighter, cleaner */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-20 transition-colors">

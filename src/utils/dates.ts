@@ -37,6 +37,36 @@ export const sortGaragesNewestFirst = <T extends { createdAt?: any }>(garages: T
   return [...garages].sort((a, b) => getGarageTimestamp(b) - getGarageTimestamp(a));
 };
 
+/**
+ * Arabic pluralization helper.
+ *
+ * Audit ref: Phase 5 / N20 (consolidated audit, 2026-11-06).
+ *
+ * Arabic grammar requires different noun forms based on the count:
+ *   1        → singular (يوم)
+ *   2        → dual (يومان)
+ *   3–10     → plural (أيام، ساعات، دقائق)
+ *   11+      → singular with the counted noun (11 يوم، 21 يوم)
+ *
+ * The previous getDuration always used the singular form regardless of
+ * count — e.g. "3 يوم" instead of "3 أيام". This was visibly incorrect
+ * Arabic to native speakers, undermining trust in a financial UI.
+ */
+function arabicPlural(n: number, singular: string, dual: string, plural: string): string {
+  if (n === 1) return singular;
+  if (n === 2) return dual;
+  if (n >= 3 && n <= 10) return plural;
+  return singular; // 11+ uses singular form
+}
+
+const AR_DAY = (n: number) => arabicPlural(n, 'يوم', 'يومان', 'أيام');
+const AR_HOUR = (n: number) => arabicPlural(n, 'ساعة', 'ساعتان', 'ساعات');
+const AR_MINUTE = (n: number) => arabicPlural(n, 'دقيقة', 'دقيقتان', 'دقائق');
+
+// Exported for use in CheckOutModal and other components that display
+// Arabic durations with proper pluralization.
+export { AR_DAY, AR_HOUR, AR_MINUTE, arabicPlural };
+
 export const getDuration = (entryTime: any, referenceNow?: Date): string => {
   const start = entryTime ? safeDate(entryTime) : new Date();
   const end = referenceNow ? safeDate(referenceNow) : new Date();
@@ -52,18 +82,18 @@ export const getDuration = (entryTime: any, referenceNow?: Date): string => {
   if (totalHours >= 24) {
     const days = Math.floor(totalHours / 24);
     const hours = totalHours % 24;
-    let result = `${days} يوم`;
-    if (hours > 0) result += ` و ${hours} ساعة`;
-    if (minutes > 0) result += ` و ${minutes} دقيقة`;
+    let result = `${days} ${AR_DAY(days)}`;
+    if (hours > 0) result += ` و ${hours} ${AR_HOUR(hours)}`;
+    if (minutes > 0) result += ` و ${minutes} ${AR_MINUTE(minutes)}`;
     return result;
   }
 
   if (totalHours > 0) {
-    let result = `${totalHours} ساعة`;
-    if (minutes > 0) result += ` و ${minutes} دقيقة`;
+    let result = `${totalHours} ${AR_HOUR(totalHours)}`;
+    if (minutes > 0) result += ` و ${minutes} ${AR_MINUTE(minutes)}`;
     return result;
   }
-  return `${minutes} دقيقة`;
+  return `${minutes} ${AR_MINUTE(minutes)}`;
 };
 
 const arTimeFormatter = new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit' });
