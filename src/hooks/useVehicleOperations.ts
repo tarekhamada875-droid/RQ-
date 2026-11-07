@@ -50,8 +50,35 @@ export function useVehicleOperations({
   const now = useServerTimeNow();
   const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [showCheckInModal, setShowCheckInModal] = useState<boolean>(false);
-  const [showCheckOutModal, setShowCheckOutModal] = useState<boolean>(false);
+  const [showCheckInModal, _setShowCheckInModal] = useState<boolean>(false);
+  const [showCheckOutModal, _setShowCheckOutModal] = useState<boolean>(false);
+
+  // Audit D6 (Phase 7, 2026-11-06): close all overlays before opening a
+  // new one. Previously, 4 independent booleans could be true simultaneously,
+  // causing two modals to render on top of each other. Now each setter
+  // closes all others first — "two modals open" becomes impossible.
+  const closeAllOverlays = () => {
+    _setShowCheckInModal(false);
+    _setShowCheckOutModal(false);
+    setShowRecentExitWarning(false);
+    setShowSubscriberWarning(false);
+  };
+  const setShowCheckInModal = (val: boolean) => {
+    if (val) closeAllOverlays();
+    _setShowCheckInModal(val);
+  };
+  const setShowCheckOutModal = (val: boolean) => {
+    if (val) closeAllOverlays();
+    _setShowCheckOutModal(val);
+  };
+  const setShowRecentExitWarning = (val: boolean) => {
+    if (val) closeAllOverlays();
+    _setShowRecentExitWarning(val);
+  };
+  const setShowSubscriberWarning = (val: boolean) => {
+    if (val) closeAllOverlays();
+    _setShowSubscriberWarning(val);
+  };
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingType, setLoadingType] = useState<'hourly' | 'overnight' | 'checkout' | 'delete' | 'general' | null>(null);
   // Tracks whether the last checkout succeeded. The dashboard watches this
@@ -59,9 +86,9 @@ export function useVehicleOperations({
   // (success) or stay on the active-vehicles list (failure).
   const [checkoutJustSucceeded, setCheckoutJustSucceeded] = useState<boolean>(false);
 
-  const [showRecentExitWarning, setShowRecentExitWarning] = useState<boolean>(false);
+  const [showRecentExitWarning, _setShowRecentExitWarning] = useState<boolean>(false);
   const [recentVehicle, setRecentVehicle] = useState<Vehicle | null>(null);
-  const [showSubscriberWarning, setShowSubscriberWarning] = useState<boolean>(false);
+  const [showSubscriberWarning, _setShowSubscriberWarning] = useState<boolean>(false);
   const [subscriberWarningPlate, setSubscriberWarningPlate] = useState<string>('');
   const [pendingCheckInType, setPendingCheckInType] = useState<'hourly' | 'overnight' | null>(null);
 
