@@ -7,6 +7,8 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   adminLang: AdminLang;
+  /** Override the theme to always-light (used for the garage view). */
+  forceLight: (force: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,6 +24,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  // When forceLightRef is true, the garage view overrides the theme to
+  // always be 'light' regardless of the user's saved preference.
+  const [forceLight, setForceLight] = useState(false);
+  const effectiveTheme: Theme = forceLight ? 'light' : theme;
+
   const adminLang: AdminLang = 'ar';
 
   useEffect(() => {
@@ -34,17 +41,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = window.document.documentElement;
-    
+
     // Instantly disable CSS transitions during class swap to prevent 200+ elements from animating simultaneously
     root.classList.add('disable-transitions');
-    
+
     root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    
-    try {
-      localStorage.setItem('theme', theme);
-    } catch (e) {
-      console.error('Failed to save theme in localStorage', e);
+    root.classList.add(effectiveTheme);
+
+    // Only persist the user's actual choice (not the forced-light override)
+    if (!forceLight) {
+      try {
+        localStorage.setItem('theme', theme);
+      } catch (e) {
+        console.error('Failed to save theme in localStorage', e);
+      }
     }
 
     // Update browser theme-color meta tag for the system status bar.
@@ -65,14 +75,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     return () => cancelAnimationFrame(rafId);
-  }, [theme]);
+  }, [effectiveTheme, forceLight, theme]);
 
   const toggleTheme = () => {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, adminLang }}>
+    <ThemeContext.Provider value={{ theme: effectiveTheme, toggleTheme, adminLang, forceLight: setForceLight }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -85,3 +95,4 @@ export const useTheme = () => {
   }
   return context;
 };
+

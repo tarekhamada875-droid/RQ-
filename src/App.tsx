@@ -22,6 +22,7 @@ import { AdminMutationsProvider } from './hooks/adminMutationsContext';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
+import { useTheme } from './utils/ThemeContext';
 
 export default function App() {
   const app = useGarageApp();
@@ -30,6 +31,14 @@ export default function App() {
   const { view, setView, showOfflineScreen, isLandscapeMobile, showSubscribers, setShowSubscribers, showDeleteConfirm, setShowDeleteConfirm, selectedGarageForDetails, selectedDelegateForDetails, setSelectedGarageForDetails, setSelectedDelegateForDetails } = navigationUi;
   const { garage, delegate } = garageData;
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
+
+  // Force light theme when the garage view is active — garage owners always
+  // see the light/day theme for maximum clarity, regardless of their phone's
+  // dark mode setting. Admin and delegate views keep their normal theme.
+  const { forceLight } = useTheme();
+  useEffect(() => {
+    forceLight(view === 'garage');
+  }, [view, forceLight]);
 
   const systemConfig = useSystemConfig();
   const [localAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
