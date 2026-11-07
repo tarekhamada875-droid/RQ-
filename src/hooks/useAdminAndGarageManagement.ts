@@ -11,6 +11,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { claimEntitySession, releaseEntitySession, recordSessionAsClaimed, EntityRole } from '../services/authSessionService';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
+import { classifyAuthFailure, isSessionOccupiedError } from '../utils/classifyAuthFailure';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 
 interface UseAdminAndGarageManagementProps {
@@ -124,23 +125,8 @@ export function useAdminAndGarageManagement({
       if (!authRes || !authRes.success || !authRes.role) {
         logDiagnostic('LOGIN_AUTHENTICATE_CREDENTIALS_FAILED', { error: authRes?.error || 'INVALID_PIN' });
         const err = authRes?.error;
-        if (
-          err === 'SESSION_OCCUPIED' ||
-          err === 'DELEGATE_SESSION_OCCUPIED' ||
-          err === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          err?.includes('مستخدم على جهاز آخر') ||
-          err?.includes('نشط حالياً على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-        } else if (err === 'RATE_LIMIT_EXCEEDED' || err === 'RATE_LIMITER_UNAVAILABLE') {
-          showToast('محاولات كثيرة خاطئة. انتظر دقيقة ثم حاول مرة أخرى', 'error');
-        } else if (err === 'PIN_NOT_UNIQUE') {
-          showToast('رقم السر مكرر؛ برجاء مراجعة الإدارة', 'error');
-        } else if (err && err !== 'بيانات الدخول غير صحيحة' && err !== 'INVALID_PIN' && err !== 'تعذر الاتصال بخادم التحقق') {
-          showToast(err, 'error');
-        } else {
-          showToast('الرقم السري غير صحيح', 'error');
-        }
+        const _authFailure = classifyAuthFailure(err);
+        showToast(_authFailure.message, 'error');
         return;
       }
 
@@ -197,10 +183,7 @@ export function useAdminAndGarageManagement({
           console.warn('Login session claim error:', claimErr);
           const errMsg = claimErr?.message || String(claimErr);
           if (
-            errMsg === 'SESSION_OCCUPIED' ||
-            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-            errMsg.includes('مستخدم على جهاز آخر')
+isSessionOccupiedError(errMsg)
           ) {
             showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
           } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
@@ -212,10 +195,7 @@ export function useAdminAndGarageManagement({
           // A failed claim can have committed remotely even when its response was lost.
           // Release only this exact attempted session; never touch an occupied session.
           const sessionOccupied =
-            errMsg === 'SESSION_OCCUPIED' ||
-            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-            errMsg.includes('مستخدم على جهاز آخر');
+isSessionOccupiedError(errMsg);
           if (!sessionOccupied) {
             await releaseEntitySession({
               role: role as EntityRole,
@@ -339,23 +319,8 @@ export function useAdminAndGarageManagement({
 
       if (!authRes || !authRes.success || !authRes.role || authRes.role !== 'delegate') {
         const err = authRes?.error;
-        if (
-          err === 'SESSION_OCCUPIED' ||
-          err === 'DELEGATE_SESSION_OCCUPIED' ||
-          err === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-          err?.includes('مستخدم على جهاز آخر') ||
-          err?.includes('نشط حالياً على جهاز آخر')
-        ) {
-          showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
-        } else if (err === 'RATE_LIMIT_EXCEEDED' || err === 'RATE_LIMITER_UNAVAILABLE') {
-          showToast('محاولات كثيرة خاطئة. انتظر دقيقة ثم حاول مرة أخرى', 'error');
-        } else if (err === 'PIN_NOT_UNIQUE') {
-          showToast('رمز الدخول غير صالح حالياً، يرجى مراجعة الإدارة', 'error');
-        } else if (err && err !== 'بيانات الدخول غير صحيحة' && err !== 'INVALID_PIN' && err !== 'تعذر الاتصال بخادم التحقق') {
-          showToast(err, 'error');
-        } else {
-          showToast('بيانات الدخول غير صحيحة أو الحساب ليس مندوباً', 'error');
-        }
+        const _authFailure = classifyAuthFailure(err);
+        showToast(_authFailure.message, 'error');
         return;
       }
 
@@ -382,10 +347,7 @@ export function useAdminAndGarageManagement({
           console.warn('Delegate login session claim error:', claimErr);
           const errMsg = claimErr?.message || String(claimErr);
           if (
-            errMsg === 'SESSION_OCCUPIED' ||
-            errMsg === 'DELEGATE_SESSION_OCCUPIED' ||
-            errMsg === 'ACCESS_DENIED_ACTIVE_SESSION_EXISTS' ||
-            errMsg.includes('مستخدم على جهاز آخر')
+isSessionOccupiedError(errMsg)
           ) {
             showToast('هذا الحساب نشط حالياً على جهاز آخر', 'error');
           } else if (errMsg.includes('permission') || errMsg.includes('Permission')) {
