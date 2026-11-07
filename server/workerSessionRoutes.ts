@@ -145,7 +145,6 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
     const entityColl = sessionDef?.entity || '';
     const secColl = sessionDef?.sessions || '';
     const entityDocId = match.role === 'admin' ? 'auth_pin' : match.id;
-    if (!adminDb || !entityColl || !secColl) return c.json({ success: false, error: 'ADMIN_DB_NOT_INITIALIZED' }, 503);
 
     const sessionClaimStartedAt = Date.now();
     await adminDb.runTransaction(async (transaction: any) => {
@@ -265,7 +264,6 @@ workerApp.post('/api/admin/update-pin', async (c) => {
     const normalizedNewPin = validateNewPin(body.newPin, 'newPin');
     const normalizedCurrentPin = cleanPin(body.currentPin);
     if (!normalizedCurrentPin) return c.json({ success: false, error: 'CURRENT_PIN_REQUIRED' }, 400);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const storedPin = await getAdminPin();
     if (!storedPin) return c.json({ success: false, error: 'ADMIN_PIN_NOT_CONFIGURED' }, 500);
     if (!verifyPinMatch(normalizedCurrentPin, storedPin).matches) return c.json({ success: false, error: 'CURRENT_PIN_INCORRECT' }, 400);
@@ -317,7 +315,6 @@ workerApp.post('/api/auth/claim-admin-session', async (c) => {
     if (!effectiveUid || !uid || !sessionId) return c.json({ success: false, error: 'INVALID_PARAMS' }, 400);
     if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (uid !== effectiveUid) return c.json({ success: false, error: 'UID_MISMATCH' }, 401);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
     const existing = await adminDb.doc(`admin_sessions/${effectiveUid}`).get();
     const existingData = existing.exists ? existing.data() || {} : {};
     const pinCheck = body.pin ? verifyPinMatch(cleanPin(body.pin), await getAdminPin()) : { matches: false };
@@ -352,7 +349,6 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
     if (!uid || !sessionId || !role) return c.json({ success: false, valid: false, error: 'INVALID_PARAMS' }, 400);
     if (!effectiveUid) return c.json({ success: false, valid: false, error: 'UNAUTHORIZED' }, 401);
     if (String(uid).trim() !== effectiveUid) return c.json({ success: false, valid: false, error: 'UID_MISMATCH' }, 401);
-    if (!adminDb) return c.json({ success: false, valid: false, error: 'DATABASE_UNAVAILABLE' }, 503);
 
     if (role === 'supervisor') return c.json({ success: false, valid: false, error: 'ROLE_RETIRED' }, 403);
     const sessionDef = workerSessionDefinition(role);
@@ -424,7 +420,6 @@ workerApp.post('/api/auth/release-session', async (c) => {
     if (!verifiedUid || !targetUid || !sessionId || !role) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (role === 'supervisor') return c.json({ success: false, error: 'ROLE_RETIRED' }, 410);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
 
     let authorized = verifiedUid === targetUid;
     if (!authorized) {
@@ -482,7 +477,6 @@ workerApp.post('/api/auth/release-admin-session', async (c) => {
     if (!verifiedUid || !targetUid || !sessionId) return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     if (!isValidSessionId(sessionId)) return c.json({ success: false, error: 'INVALID_SESSION_ID' }, 400);
     if (verifiedUid !== targetUid || c.get('user')?.role !== 'admin') return c.json({ success: false, error: 'FORBIDDEN' }, 403);
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
     const rootRef = adminDb.doc(`admin_sessions/${targetUid}`);
     const rootSnap = await rootRef.get();
     const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
@@ -507,7 +501,6 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
     if (!canInvalidateAllSessions(c.get('user'))) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 503);
 
     const now = new Date();
     const sessionCollList: Array<{ name: string; entityCollection: string; fixedEntityId?: string }> = [

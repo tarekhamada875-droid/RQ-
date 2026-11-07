@@ -36,7 +36,6 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(pin);
 
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
     if (pinCheck.taken) {

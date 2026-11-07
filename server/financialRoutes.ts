@@ -189,7 +189,6 @@ app.get('/api/delegates/:id/commission-history', requireWorkerAuth, enforceWorke
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     let delegateId: string;
     try {
       delegateId = validateId(c.req.param('id'), 'id', true);
@@ -243,7 +242,6 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     let delegateId: string;
     try {
@@ -431,7 +429,6 @@ const handleFinancialSummaryReport = async (c: any) => {
     if (!canViewFinancialReport(user)) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const requestedStart = c.req.query('start');
     const requestedEnd = c.req.query('end');

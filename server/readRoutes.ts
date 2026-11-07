@@ -37,9 +37,6 @@ app.get('/api/system-config', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
 
-    if (!adminDb) {
-      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-    }
     const snap = await adminDb.doc('system_config/global').get();
     if (!snap.exists) {
       return c.json({ success: true, config: DEFAULT_SYSTEM_CONFIG });
@@ -58,10 +55,6 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-
-    if (!adminDb) {
-      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     }
 
     const body = await c.req.json().catch(() => ({}));
@@ -124,9 +117,6 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
 // Route 1: POST /api/check-subscriber
 app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
   try {
-    if (!adminDb) {
-      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-    }
     const user = c.get('user') as WorkerUser | undefined;
     const body = await c.req.json().catch(() => ({}));
     const garageId = body.garageId ? String(body.garageId).trim() : '';
@@ -185,9 +175,6 @@ app.post('/api/check-subscriber', requireWorkerAuth, async (c) => {
 // Route 2: GET /api/garage-summary
 app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
   try {
-    if (!adminDb) {
-      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-    }
     const user = c.get('user');
     const garageId = c.req.query('garageId') || user?.garageId || (user?.role === 'garage' ? user?.entityId : null);
 
@@ -339,10 +326,6 @@ app.get('/api/admin/delegates', requireWorkerAuth, async (c) => {
     if (user?.role !== 'admin') {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!adminDb) {
-      return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
-    }
-
     // Simple cursor pagination: cursor is base64(`${createdAtMillis},${docId}`).
     const limitParam = parseInt(c.req.query('limit') || '50', 10);
     const pageSize = Number.isSafeInteger(limitParam) && limitParam > 0 && limitParam <= 100 ? limitParam : 50;
