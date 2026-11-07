@@ -244,12 +244,14 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
       });
     }
 
-    const [garageSnap, insideVehiclesSnap, subscribersSnap, dailyStatsSnap] = await Promise.all([
-      getAdminDb().doc(`garages/${garageId}`).get(),
-      getAdminDb().collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
-      getAdminDb().collection(`garages/${garageId}/subscribers`).get(),
-      getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get()
-    ]);
+    // Audit N13 (Phase 4, 2026-11-06): paginate the fallback reads.
+    // Previously these were unpaginated .get() calls that returned ALL
+    // inside vehicles + ALL subscribers in memory. For 10k+ docs, this
+    // would OOM the Worker (128MB cap). Now we page through in chunks
+    // of 450 and count/filter docs without loading them all at once.
+    const PAGE_SIZE = 450;
+    const garageSnap = await getAdminDb().doc(`garages/${garageId}`).get();
+    const dailyStatsSnap = await getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get();
 
     if (!garageSnap.exists) {
       return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
@@ -259,19 +261,51 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
     const dailyStats = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
     const now = Date.now();
 
-    const activeSubscribers = subscribersSnap.docs.filter((doc: any) => {
-      const data = doc.data() || {};
-      const end = safeDateMillis(data.endDate);
-      return end === 0 || end >= now;
-    }).length;
+    // Paginated count of inside vehicles.
+    let insideCount = 0;
+    let lastInsideDoc: any = null;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let query: any = getAdminDb().collection(`garages/${garageId}/vehicles`)
+        .where('status', '==', 'inside')
+        .orderBy('__name__')
+        .limit(PAGE_SIZE);
+      if (lastInsideDoc) query = query.startAfter(lastInsideDoc);
+      const pageSnap = await query.get();
+      insideCount += pageSnap.docs.length;
+      if (pageSnap.docs.length < PAGE_SIZE) break;
+      lastInsideDoc = pageSnap.docs[pageSnap.docs.length - 1];
+    }
+
+    // Paginated count of subscribers (total + active).
+    let totalSubscribers = 0;
+    let activeSubscribers = 0;
+    let lastSubDoc: any = null;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let query: any = getAdminDb().collection(`garages/${garageId}/subscribers`)
+        .orderBy('__name__')
+        .limit(PAGE_SIZE);
+      if (lastSubDoc) query = query.startAfter(lastSubDoc);
+      const pageSnap = await query.get();
+      if (pageSnap.docs.length === 0) break;
+      for (const doc of pageSnap.docs) {
+        totalSubscribers += 1;
+        const data = doc.data() || {};
+        const end = safeDateMillis(data.endDate);
+        if (end === 0 || end >= now) activeSubscribers += 1;
+      }
+      if (pageSnap.docs.length < PAGE_SIZE) break;
+      lastSubDoc = pageSnap.docs[pageSnap.docs.length - 1];
+    }
 
     await maintainedGarageSummaryRef(garageId).set({
       schemaVersion: maintainedSummaryVersion,
       garageId,
       name: garageData.name || '',
-      carsInside: insideVehiclesSnap.size,
+      carsInside: insideCount,
       activeSubscribersCount: activeSubscribers,
-      totalSubscribersCount: subscribersSnap.size,
+      totalSubscribersCount: totalSubscribers,
       balanceExpiry: garageData.balanceExpiry || null,
       isTrial: Boolean(garageData.isTrial),
       dailyCapacity: Number(garageData.dailyCapacity || 0),
@@ -292,9 +326,9 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
       data: {
         garageId,
         name: garageData.name || '',
-        carsInside: insideVehiclesSnap.size,
+        carsInside: insideCount,
         activeSubscribersCount: activeSubscribers,
-        totalSubscribersCount: subscribersSnap.size,
+        totalSubscribersCount: totalSubscribers,
         todayEntries: Number(dailyStats.count || 0),
         todayRevenue: Number(dailyStats.revenue || dailyStats.netRevenue || 0),
         balanceExpiry: garageData.balanceExpiry || null,

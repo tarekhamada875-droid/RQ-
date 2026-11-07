@@ -225,19 +225,41 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     }
 
     // 5. Delete this staff member's activity history.
+    // Audit N13 (Phase 4, 2026-11-06): paginate the activity_logs query.
+    // Previously did .where('staffId','==',staffId).get() with no limit.
+    // A long-tenured staff member could have thousands of log entries,
+    // which would OOM the Worker (128MB cap) or exceed the subrequest
+    // cap. Now pages through in chunks of 450.
     let deletedActivityLogs = 0;
-    let activityBatch = getAdminDb().batch();
-    let activityBatchWrites = 0;
-    const activitySnap = await getAdminDb().collection('activity_logs')
-      .where('staffId', '==', staffId)
-      .get();
-    for (const doc of activitySnap.docs) {
-      activityBatch.delete(doc.ref);
-      activityBatchWrites += 1;
-      deletedActivityLogs += 1;
-      if (activityBatchWrites >= 450) { await activityBatch.commit(); activityBatch = getAdminDb().batch(); activityBatchWrites = 0; }
+    const ACTIVITY_PAGE_SIZE = 450;
+    let lastActivityDoc: any = null;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let activityQuery: any = getAdminDb().collection('activity_logs')
+        .where('staffId', '==', staffId)
+        .orderBy('__name__')
+        .limit(ACTIVITY_PAGE_SIZE);
+      if (lastActivityDoc) {
+        activityQuery = activityQuery.startAfter(lastActivityDoc);
+      }
+      const activitySnap = await activityQuery.get();
+      if (activitySnap.docs.length === 0) break;
+      let activityBatch = getAdminDb().batch();
+      let activityBatchWrites = 0;
+      for (const doc of activitySnap.docs) {
+        activityBatch.delete(doc.ref);
+        activityBatchWrites += 1;
+        deletedActivityLogs += 1;
+        if (activityBatchWrites >= 450) {
+          await activityBatch.commit();
+          activityBatch = getAdminDb().batch();
+          activityBatchWrites = 0;
+        }
+      }
+      if (activityBatchWrites > 0) await activityBatch.commit();
+      if (activitySnap.docs.length < ACTIVITY_PAGE_SIZE) break;
+      lastActivityDoc = activitySnap.docs[activitySnap.docs.length - 1];
     }
-    if (activityBatchWrites > 0) await activityBatch.commit();
 
     return c.json({ success: true, revokedSessions, deletedAuthUsers, deletedActivityLogs });
   } catch (e: any) {

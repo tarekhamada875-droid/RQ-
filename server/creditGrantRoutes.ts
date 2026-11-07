@@ -388,8 +388,28 @@ app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) =>
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
 
-    const vehSnap = await getAdminDb().collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get();
-    const actualCount = vehSnap.size;
+    // Audit N13 (Phase 4, 2026-11-06): paginate the inside-vehicles query.
+    // Previously this did .where('status','==','inside').get() with no
+    // limit, returning ALL inside vehicles in memory. For 1k+ inside
+    // vehicles, this would OOM the Worker (128MB cap). Now pages through
+    // in chunks of 450 using startAfter cursor and counts docs.
+    const PAGE_SIZE = 450;
+    let actualCount = 0;
+    let lastDoc: any = null;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let query: any = getAdminDb().collection(`garages/${garageId}/vehicles`)
+        .where('status', '==', 'inside')
+        .orderBy('__name__')
+        .limit(PAGE_SIZE);
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+      const pageSnap = await query.get();
+      actualCount += pageSnap.docs.length;
+      if (pageSnap.docs.length < PAGE_SIZE) break; // last page
+      lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
+    }
 
     await getAdminDb().collection('garages').doc(garageId).update({ carsInside: actualCount });
     return c.json({ success: true, count: actualCount });
