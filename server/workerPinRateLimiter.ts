@@ -137,7 +137,7 @@ async function callLimiter(namespace: PinRateLimiterNamespace, bucket: string, c
 /**
  * Checks the rate-limit buckets for a PIN verify attempt.
  *
- * Three buckets are checked (in order of decreasing cost-to-attacker):
+ * Three buckets are checked (in PARALLEL to minimize latency):
  *   1. account (per-uid): 10/min — caps repeated attempts from one
  *      anonymous uid. Attackers can mint unlimited uids from one IP,
  *      so this alone is insufficient (audit N2).
@@ -147,6 +147,10 @@ async function callLimiter(namespace: PinRateLimiterNamespace, bucket: string, c
  *      which any SPECIFIC PIN value can be probed, regardless of how
  *      many IPs the attacker has. This makes botnet size irrelevant
  *      for targeting a single PIN (audit N2).
+ *
+ * All 3 Durable Object calls run in parallel via Promise.all. Previously
+ * they were sequential (3 round-trips), which added ~4-6 seconds to
+ * every login when DO cold starts were involved. Parallel = 1 round-trip.
  *
  * Returns `{allowed: false, resetAt}` if ANY bucket is exhausted.
  */
@@ -159,17 +163,34 @@ export async function checkWorkerPinRateLimit(
   if (!namespace) throw new Error('PIN_RATE_LIMITER_UNAVAILABLE');
   const accountBucket = await hashPinRateLimitBucket('account', verifiedUid);
   const ipBucket = await hashPinRateLimitBucket('ip', clientIp || 'unknown');
-  const accountResult = await callLimiter(namespace, accountBucket, { action: 'check', maxAttempts: WORKER_PIN_ACCOUNT_MAX_ATTEMPTS });
-  if (accountResult.allowed === false) return { allowed: false, resetAt: accountResult.resetAt, bucket: 'account' };
-  const ipResult = await callLimiter(namespace, ipBucket, { action: 'check', maxAttempts: WORKER_PIN_IP_MAX_ATTEMPTS });
-  if (ipResult.allowed === false) return { allowed: false, resetAt: ipResult.resetAt, bucket: 'ip' };
-  // Audit N2: per-target-PIN bucket. Only checked when a normalized PIN
-  // is available (the verify-pin route has it; some other callers like
-  // check-pin-availability may not).
-  if (normalizedPin) {
-    const targetBucket = await hashPinRateLimitBucket('target_pin', normalizedPin);
-    const targetResult = await callLimiter(namespace, targetBucket, { action: 'check', maxAttempts: WORKER_PIN_TARGET_MAX_ATTEMPTS });
-    if (targetResult.allowed === false) return { allowed: false, resetAt: targetResult.resetAt, bucket: 'target_pin' };
+  const targetBucket = normalizedPin ? await hashPinRateLimitBucket('target_pin', normalizedPin) : null;
+
+  // Run all rate-limit checks in PARALLEL. Each check is a Durable Object
+  // subrequest. Sequential calls (the previous approach) added ~2-3s per
+  // extra bucket because each DO call has a network round-trip + potential
+  // cold-start. Parallel cuts the total from N × round-trip to 1 × round-trip.
+  //
+  // Trade-off: all buckets get incremented even if one would have denied.
+  // This means a denied request "wastes" one increment in each non-blocking
+  // bucket. This is acceptable — the extra increment is at most 1 attempt,
+  // and the latency improvement is critical for login UX.
+  const checks: Array<Promise<{ bucket: 'account' | 'ip' | 'target_pin'; result: { allowed?: boolean; resetAt?: number } }>> = [
+    callLimiter(namespace, accountBucket, { action: 'check', maxAttempts: WORKER_PIN_ACCOUNT_MAX_ATTEMPTS }).then(r => ({ bucket: 'account', result: r })),
+    callLimiter(namespace, ipBucket, { action: 'check', maxAttempts: WORKER_PIN_IP_MAX_ATTEMPTS }).then(r => ({ bucket: 'ip', result: r })),
+  ];
+  if (targetBucket) {
+    checks.push(
+      callLimiter(namespace, targetBucket, { action: 'check', maxAttempts: WORKER_PIN_TARGET_MAX_ATTEMPTS }).then(r => ({ bucket: 'target_pin', result: r })),
+    );
+  }
+
+  const results = await Promise.all(checks);
+
+  // Check results: if ANY bucket denied, return the first denial.
+  for (const { bucket, result } of results) {
+    if (result.allowed === false) {
+      return { allowed: false, resetAt: result.resetAt, bucket };
+    }
   }
   return { allowed: true };
 }
