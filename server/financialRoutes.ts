@@ -296,6 +296,15 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
     const monthlyPaidGrantTotalsEgp: Record<string, number> = {};
     let allTimePaidGrantTotalEgp = 0;
     let currentCyclePaidGrantTotalEgp = 0;
+
+    // Audit N14 (Phase 4, 2026-11-06): bound the recentPaidGrants array
+    // in memory. Previously this array accumulated ALL paid grants across
+    // all garages/pages, then sorted and sliced at the end. For a delegate
+    // with many garages and many grants, this could OOM the Worker.
+    // Now we keep only the top 50 by occurredAt using a bounded insertion
+    // (replace the oldest if the new one is more recent). This bounds
+    // memory to O(50) regardless of total grant count.
+    const MAX_RECENT_GRANTS = 50;
     const recentPaidGrants: Array<{
       entryId: string;
       garageId: string;
@@ -303,7 +312,18 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
       amountEgp: number;
       creditAmount: number;
       occurredAt: string;
+      _occurredAtMs: number;
     }> = [];
+
+    // Audit N14: subrequest budget. Cloudflare Workers paid plan caps
+    // at 1000 subrequests per request. Each garage page (50 garages) +
+    // each ledger page (100 entries) is 1 subrequest. For a delegate
+    // with 100+ garages, we'd use ~102 subrequests — well under the cap.
+    // But for pathological cases (1000+ garages), we stop early and
+    // return a truncated flag so the admin knows the totals are partial.
+    const MAX_SUBREQUESTS = 900; // leave 100 for overhead
+    let subrequestCount = 0;
+    let truncated = false;
 
     const garageCollection = getAdminDb().collection('garages');
     const creditLedgerCollection = getAdminDb().collection('credit_ledger');
@@ -312,20 +332,33 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
     let hasMoreGarages = true;
 
     while (hasMoreGarages) {
+      if (subrequestCount >= MAX_SUBREQUESTS) {
+        truncated = true;
+        break;
+      }
       const garagePageRequest = parseFirestorePageRequest('50', garageCursor, garageScope);
       const garagePage = await readWorkerFirestorePage(
         garageCollection.where('createdByDelegateId', '==', delegateId),
         garageCollection,
         garagePageRequest
       );
+      subrequestCount += 1;
 
       for (const garageDocument of garagePage.documents) {
+        if (subrequestCount >= MAX_SUBREQUESTS) {
+          truncated = true;
+          break;
+        }
         const garage = garageDocument.data() || {};
         const ledgerScope = `delegate-paid-grants:${delegateId}:${garageDocument.id}`;
         let ledgerCursor: string | undefined;
         let hasMoreLedger = true;
 
         while (hasMoreLedger) {
+          if (subrequestCount >= MAX_SUBREQUESTS) {
+            truncated = true;
+            break;
+          }
           const ledgerPageRequest = parseFirestorePageRequest('100', ledgerCursor, ledgerScope);
           const ledgerPage = await readWorkerFirestorePage(
             creditLedgerCollection.where('garageId', '==', garageDocument.id),
@@ -333,20 +366,15 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
             ledgerPageRequest,
             'occurredAt'
           );
+          subrequestCount += 1;
 
           for (const ledgerDocument of ledgerPage.documents) {
             const entry = ledgerDocument.data() || {};
             if (entry.kind !== 'paid_grant' || entry.paymentConfirmed !== true) continue;
             const creditAmount = parseMoneyAmount(entry.amount);
             const amountEgp = parseMoneyAmount(entry.paymentAmountEgp);
-            // Audit A2 (Phase 3, 2026-11-06): the previous filter required
-            // `amountEgp !== creditAmount` — a legacy 1:1 equality check
-            // that silently dropped every paid_grant ledger entry when
-            // creditRate ≠ 1, under-counting the delegate's all-time /
-            // monthly / current-cycle paid-grant totals and the recent-
-            // grants list. Now we just require both amounts to be positive
-            // numbers (shape check); the rate relationship is the credit-
-            // grant route's responsibility, not the reporting filter's.
+            // Audit A2 (Phase 3, 2026-11-06): shape check only (no
+            // amountEgp !== creditAmount equality). See A2 for details.
             if (creditAmount === null || creditAmount <= 0 || amountEgp === null || amountEgp <= 0) continue;
 
             const rawOccurredAt = entry.occurredAt && typeof entry.occurredAt === 'object' && typeof entry.occurredAt.toDate === 'function'
@@ -363,33 +391,61 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
             monthlyPaidGrantTotalsEgp[monthKey] = (monthlyPaidGrantTotalsEgp[monthKey] || 0) + amountEgp;
             if (!settledAt || occurredDate > settledAt) currentCyclePaidGrantTotalEgp += amountEgp;
 
-            recentPaidGrants.push({
-              entryId: String(entry.entryId || ledgerDocument.id),
-              garageId: garageDocument.id,
-              garageName: typeof garage.name === 'string' ? garage.name : '',
-              amountEgp,
-              creditAmount,
-              occurredAt,
-            });
+            // Audit N14: bounded insertion into recentPaidGrants.
+            // Keep only the 50 most-recent grants by occurredAt.
+            const occurredAtMs = occurredDate.getTime();
+            if (recentPaidGrants.length < MAX_RECENT_GRANTS) {
+              recentPaidGrants.push({
+                entryId: String(entry.entryId || ledgerDocument.id),
+                garageId: garageDocument.id,
+                garageName: typeof garage.name === 'string' ? garage.name : '',
+                amountEgp,
+                creditAmount,
+                occurredAt,
+                _occurredAtMs: occurredAtMs,
+              });
+            } else {
+              // Find the oldest in the array. If the new one is more
+              // recent, replace it.
+              let oldestIdx = 0;
+              for (let i = 1; i < recentPaidGrants.length; i++) {
+                if (recentPaidGrants[i]._occurredAtMs < recentPaidGrants[oldestIdx]._occurredAtMs) {
+                  oldestIdx = i;
+                }
+              }
+              if (occurredAtMs > recentPaidGrants[oldestIdx]._occurredAtMs) {
+                recentPaidGrants[oldestIdx] = {
+                  entryId: String(entry.entryId || ledgerDocument.id),
+                  garageId: garageDocument.id,
+                  garageName: typeof garage.name === 'string' ? garage.name : '',
+                  amountEgp,
+                  creditAmount,
+                  occurredAt,
+                  _occurredAtMs: occurredAtMs,
+                };
+              }
+            }
           }
 
           ledgerCursor = ledgerPage.nextCursor || undefined;
           hasMoreLedger = ledgerPage.hasMore;
         }
+        if (truncated) break;
       }
 
       garageCursor = garagePage.nextCursor || undefined;
-      hasMoreGarages = garagePage.hasMore;
+      hasMoreGarages = garagePage.hasMore && !truncated;
     }
 
-    recentPaidGrants.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+    recentPaidGrants.sort((a, b) => b._occurredAtMs - a._occurredAtMs);
     return c.json({
       success: true,
       data: {
         monthlyPaidGrantTotalsEgp,
         allTimePaidGrantTotalEgp,
         currentCyclePaidGrantTotalEgp,
-        recentPaidGrants: recentPaidGrants.slice(0, 50)
+        recentPaidGrants: recentPaidGrants.map(({ _occurredAtMs, ...rest }) => rest),
+        ...(truncated ? { truncated: true } : {})
       }
     });
   } catch (error: any) {
