@@ -588,16 +588,25 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
+    // Audit B3 (Phase 3, 2026-11-06): refunds are permanently disabled.
+    // The early return at line 593 rejects any requestedRefund > 0 with
+    // a 410. After that line, requestedRefund is always 0, so all the
+    // refund-emitting branches below (refundAmt > 0) were dead code.
+    // They've been removed; the operation is always 'delete' and the
+    // event type is always 'vehicle_deleted'. The 'vehicle_refunded'
+    // event TYPE itself is still alive in events.ts, projections.ts,
+    // financialReporting.ts, and domain/garageReconciliation.ts — those
+    // process historical refund events from before refunds were disabled
+    // and must stay.
     const requestedRefund = refundAmount === undefined || refundAmount === null || refundAmount === '' ? 0 : parseMoneyAmount(refundAmount);
     if (requestedRefund === null) return c.json({ success: false, error: 'INVALID_REFUND_AMOUNT' }, 400);
     if (requestedRefund > 0) return c.json({ success: false, error: 'REFUNDS_NOT_SUPPORTED' }, 410);
-    const operation = requestedRefund > 0 ? 'refund' : 'delete';
     const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
     const requestFingerprint = createRequestFingerprint({
       garageId,
       vehicleId: canonicalVehicleId,
-      operation,
-      refundAmount: requestedRefund
+      operation: 'delete',
+      refundAmount: 0
     });
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
@@ -657,11 +666,11 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         throw new Error('reached_daily_deletion_limit');
       }
 
-      const isSameRefundDay = garageData.lastRefundDate === todayYMD;
-      const maxEligibleRefund = vehicleData.status === 'outside'
-        ? parseMoneyAmount(vehicleData.totalCost) ?? 0
-        : 0;
-      const refundAmt = Math.min(requestedRefund, maxEligibleRefund);
+      // Audit B3: refund-related variables (isSameRefundDay,
+      // maxEligibleRefund, refundAmt) removed — refundAmt was always 0
+      // after the early return at line 603. The credit-restore path
+      // below (for vehicles deleted while still inside) is unrelated to
+      // refunds — it restores the credit that was debited at check-in.
       let creditRestore: any = null;
       if (typeof garageData.credits === 'number' && vehicleData.creditDebit && !vehicleData.creditRestoredAt) {
         const restoreResult = restoreCredits({
@@ -696,15 +705,9 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         dailyDeletionCount: todayDeletions + 1,
         lastDeletionDate: todayYMD
       };
-      if (refundAmt > 0) {
-        updates.dailyRefundCount = isSameRefundDay ? ((garageData.dailyRefundCount || 0) + 1) : 1;
-        updates.lastRefundDate = todayYMD;
-      }
-
-      if (refundAmt > 0) {
-        updates.todayRevenue = Math.max(0, Number(((garageData.todayRevenue || 0) - refundAmt).toFixed(2)));
-        updates.totalRevenue = Math.max(0, Number(((garageData.totalRevenue || 0) - refundAmt).toFixed(2)));
-      }
+      // Audit B3: the `if (refundAmt > 0)` branches that updated
+      // dailyRefundCount, lastRefundDate, todayRevenue, and totalRevenue
+      // are removed — refundAmt was always 0.
       if (creditRestore) {
         updates.credits = creditRestore.balance;
       }
@@ -719,10 +722,8 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           const prevCount = dailyStatsDoc.data()?.count || 0;
           if (prevCount > 0) statsUpdates.count = prevCount - 1;
         }
-        if (refundAmt > 0) {
-          const prevRev = dailyStatsDoc.data()?.revenue || 0;
-          statsUpdates.revenue = Math.max(0, Number((prevRev - refundAmt).toFixed(2)));
-        }
+        // Audit B3: the `if (refundAmt > 0)` branch that updated
+        // daily_stats.revenue is removed — refundAmt was always 0.
         if (Object.keys(statsUpdates).length > 0) {
           t.set(dailyStatsRef, statsUpdates, { merge: true });
         }
@@ -740,7 +741,8 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       });
       const maintainedDailyDelta: Record<string, number> = {};
       if (enteredToday) maintainedDailyDelta.todayEntries = -1;
-      if (refundAmt > 0) maintainedDailyDelta.todayRevenue = -refundAmt;
+      // Audit B3: the `if (refundAmt > 0) maintainedDailyDelta.todayRevenue
+      // = -refundAmt` line is removed — refundAmt was always 0.
       writeMaintainedGarageDailyDelta(t, garageId, todayYMD, maintainedDailyDelta);
 
       const logRef = getAdminDb().collection('activity_logs').doc();
@@ -752,7 +754,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         actionType: 'delete_refund',
         plateNumber: `مسح لوحة: ${vehicleData.plateNumber || vehicleId}`,
         timestamp: new Date(),
-        amount: refundAmt,
+        amount: 0,
         ...(creditRestore ? {
           creditAmount: creditRestore.entry.amount,
           creditLedgerEntryId: creditRestore.entry.entryId,
@@ -762,14 +764,18 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         garageId,
         aggregateType: 'vehicle',
         aggregateId: vehicleId,
-        eventType: refundAmt > 0 ? 'vehicle_refunded' : 'vehicle_deleted',
+        // Audit B3: always 'vehicle_deleted' — refunds are disabled.
+        // The 'vehicle_refunded' event type is still handled by
+        // projections.ts, financialReporting.ts, and
+        // domain/garageReconciliation.ts for historical events.
+        eventType: 'vehicle_deleted',
         actorUid: user?.uid || staffId || 'system',
         actorRole: callerRole || 'staff',
         idempotencyKey: idempotencyKey || undefined,
         payload: {
           plateNumber: vehicleData.plateNumber || vehicleId,
           plateNumberRaw: vehicleData.plateNumberRaw || vehicleId,
-          refundAmount: refundAmt,
+          refundAmount: 0,
           accountingDate: todayYMD,
           accountingPolicy: 'refund_on_refund_date',
           originalCheckoutAt: vehicleData.exitTime?.toDate ? vehicleData.exitTime.toDate().toISOString() : (vehicleData.exitTime || null),
@@ -783,7 +789,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           staffName: resolvedStaffName,
           operationId,
           operationVersion: nextOperationVersion(vehicleData.operationVersion),
-          projectionDelta: refundAmt > 0 ? createVehicleDelta('vehicle_refunded', refundAmt) : createVehicleDelta('vehicle_deleted')
+          projectionDelta: createVehicleDelta('vehicle_deleted')
         }
       });
       if (idempotencyKey) {
