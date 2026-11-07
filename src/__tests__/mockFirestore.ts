@@ -207,9 +207,18 @@ export class MockQuery {
         for (let index = 0; index < this.orderings.length; index += 1) {
           const ordering = this.orderings[index];
           const docValue = comparable(ordering.field === '__name__' ? doc.ref?.path : doc.data()?.[ordering.field]);
-          const cursorValue = comparable(ordering.field === '__name__' && this.cursor?.[index]?.path
-            ? this.cursor[index].path
-            : this.cursor?.[index]);
+          // Audit A1/N12: handle DocumentSnapshot inputs to startAfter.
+          // The real Firestore SDK accepts startAfter(snapshot) and
+          // extracts the field value internally. The mock previously
+          // only handled raw values, so startAfter(lastDoc) where
+          // lastDoc is a snapshot would compare against undefined and
+          // filter out all docs → infinite loop.
+          const cursorRaw = this.cursor?.[index];
+          const cursorValue = comparable(
+            ordering.field === '__name__'
+              ? (cursorRaw?.path ?? cursorRaw?.ref?.path ?? cursorRaw)
+              : (cursorRaw?.data?.() ?? cursorRaw)?.[ordering.field] ?? cursorRaw
+          );
           if (docValue === cursorValue) continue;
           const comparison = docValue < cursorValue ? -1 : 1;
           return ordering.direction === 'asc' ? comparison > 0 : comparison < 0;

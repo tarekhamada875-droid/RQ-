@@ -264,4 +264,51 @@ describe('Worker session lifecycle routes', () => {
     expect(unauthenticated.status).toBe(401);
     expect([...mockDb.records.entries()]).toEqual(before);
   });
+
+  it('paginates through >450 sessions without OOM (audit N12)', async () => {
+    // Audit N12 (Phase 4, 2026-11-06): the previous implementation fetched
+    // ALL docs from 4 session collections with no limit. For 10k+ sessions,
+    // this would OOM the Worker (128MB cap) or exceed the 1000-subrequest
+    // cap on paid plan. The fix paginates in chunks of 450 using
+    // orderBy('__name__') + startAfter cursor. This test seeds 500
+    // garage_sessions (more than one page) + 500 device sessions and
+    // verifies all are invalidated.
+    const SESSION_COUNT = 500; // > 450 page size
+    for (let i = 0; i < SESSION_COUNT; i++) {
+      const uid = `garage-uid-pag-${i}`;
+      const sessionId = `device-pag-${i}`;
+      mockDb.seed(`garage_sessions/${uid}`, {
+        uid, role: 'garage', entityId: `garage-pag-${i}`, sessionId,
+        isActive: true, currentSessionId: sessionId, activeSessionIds: [sessionId]
+      });
+      mockDb.seed(`garage_sessions/${uid}/sessions/${sessionId}`, {
+        uid, entityId: `garage-pag-${i}`, sessionId, isActive: true
+      });
+      mockDb.seed(`garages/garage-pag-${i}`, {
+        currentSessionId: sessionId, activeSessionIds: [sessionId]
+      });
+    }
+
+    const response = await request('/api/auth/invalidate-all-sessions', { method: 'POST' });
+    expect(response.status).toBe(200);
+    const body = await response.json() as any;
+    expect(body.success).toBe(true);
+    // At least 500 root + 500 device sessions = 1000 invalidated.
+    // (May be slightly more if the test middleware sets up admin session
+    // docs as records.) The key assertion is that pagination worked
+    // across the 450-doc boundary without OOM or infinite loop.
+    expect(body.invalidatedSessions).toBeGreaterThanOrEqual(1000);
+    // 500 entity markers cleared (one per garage-pag-N).
+    expect(body.clearedEntityMarkers).toBeGreaterThanOrEqual(500);
+
+    // Verify a sample of sessions across the pagination boundary (first,
+    // middle, last) are all invalidated.
+    for (const i of [0, 250, 499]) {
+      const uid = `garage-uid-pag-${i}`;
+      const sessionId = `device-pag-${i}`;
+      expect(mockDb.records.get(`garage_sessions/${uid}`)?.isActive).toBe(false);
+      expect(mockDb.records.get(`garage_sessions/${uid}/sessions/${sessionId}`)?.isActive).toBe(false);
+      expect(mockDb.records.get(`garages/garage-pag-${i}`)?.currentSessionId).toBeNull();
+    }
+  });
 });

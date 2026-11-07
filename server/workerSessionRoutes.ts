@@ -553,7 +553,22 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
       { name: 'garage_sessions', entityCollection: 'garages' },
       { name: 'staff_sessions', entityCollection: 'staff' }
     ];
-    const snapshots = await Promise.all(sessionCollList.map((entry) => adminDb.collection(entry.name).get()));
+
+    // Audit N12 (Phase 4, 2026-11-06): paginate the session collection
+    // reads + device subcollection reads. Previously this route did:
+    //   Promise.all(sessionCollList.map(e => adminDb.collection(e.name).get()))
+    // which fetched ALL docs from 4 collections with NO limit. For 10k+
+    // sessions per collection, this returned 40k+ docs in memory at once
+    // (Cloudflare Workers cap: 128MB) and each device subcollection
+    // read was an N+1 query. The route would OOM or exceed the 1000-
+    // subrequest cap on paid plan.
+    //
+    // Now: page through each collection in chunks of 450 (matching
+    // Firestore's batch write limit) using startAfter cursor pagination.
+    // Each chunk: 1 read (session page) + ≤450 reads (device subcolls)
+    // + ≤450*3 writes (session + session_index + entity marker) + ≤1
+    // batch commit. Bounded memory + bounded subrequests per chunk.
+    const SESSION_PAGE_SIZE = 450; // matches Firestore batch write limit
     let invalidatedSessions = 0;
     let clearedEntityMarkers = 0;
     let batch = adminDb.batch();
@@ -567,38 +582,65 @@ workerApp.post('/api/auth/invalidate-all-sessions', async (c) => {
       }
     };
 
-    for (let index = 0; index < sessionCollList.length; index += 1) {
-      const entry = sessionCollList[index];
-      for (const sessionDoc of snapshots[index].docs) {
-        const sessionData = sessionDoc.data() || {};
-        if (sessionData.isActive === true) invalidatedSessions += 1;
-        batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
-        batchWrites += 1;
-        if (sessionData.uid && sessionData.sessionId) {
-          batch.set(adminDb.doc(sessionIndexPath(sessionData.uid, sessionData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
-          batchWrites += 1;
+    for (const entry of sessionCollList) {
+      let lastDoc: any = null;
+      // Page through the session collection.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let query: any = adminDb.collection(entry.name).orderBy('__name__').limit(SESSION_PAGE_SIZE);
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
         }
+        const snapshot = await query.get();
+        if (snapshot.docs.length === 0) break; // no more docs
 
-        const entityId = entry.fixedEntityId || sessionData.entityId;
-        if (entityId) {
-          const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
-          batch.set(entityRef, { currentSessionId: null, activeSessionIds: [], lastActive: now }, { merge: true });
+        for (const sessionDoc of snapshot.docs) {
+          const sessionData = sessionDoc.data() || {};
+          if (sessionData.isActive === true) invalidatedSessions += 1;
+          batch.update(sessionDoc.ref, { isActive: false, lastActive: now });
           batchWrites += 1;
-          clearedEntityMarkers += 1;
-        }
-        const deviceSessions = await adminDb.collection(`${entry.name}/${sessionDoc.id}/sessions`).get();
-        for (const deviceSession of deviceSessions.docs) {
-          const deviceData = deviceSession.data() || {};
-          if (deviceData.isActive === true) invalidatedSessions += 1;
-          batch.update(deviceSession.ref, { isActive: false, lastActive: now });
-          batchWrites += 1;
-          if (deviceData.uid && deviceData.sessionId) {
-            batch.set(adminDb.doc(sessionIndexPath(deviceData.uid, deviceData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
+          if (sessionData.uid && sessionData.sessionId) {
+            batch.set(adminDb.doc(sessionIndexPath(sessionData.uid, sessionData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
             batchWrites += 1;
+          }
+
+          const entityId = entry.fixedEntityId || sessionData.entityId;
+          if (entityId) {
+            const entityRef = adminDb.doc(`${entry.entityCollection}/${entityId}`);
+            batch.set(entityRef, { currentSessionId: null, activeSessionIds: [], lastActive: now }, { merge: true });
+            batchWrites += 1;
+            clearedEntityMarkers += 1;
+          }
+
+          // Paginate the device subcollection too (was N+1 with no limit).
+          let lastDeviceDoc: any = null;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            let deviceQuery: any = adminDb.collection(`${entry.name}/${sessionDoc.id}/sessions`).orderBy('__name__').limit(SESSION_PAGE_SIZE);
+            if (lastDeviceDoc) {
+              deviceQuery = deviceQuery.startAfter(lastDeviceDoc);
+            }
+            const deviceSnap = await deviceQuery.get();
+            if (deviceSnap.docs.length === 0) break;
+            for (const deviceSession of deviceSnap.docs) {
+              const deviceData = deviceSession.data() || {};
+              if (deviceData.isActive === true) invalidatedSessions += 1;
+              batch.update(deviceSession.ref, { isActive: false, lastActive: now });
+              batchWrites += 1;
+              if (deviceData.uid && deviceData.sessionId) {
+                batch.set(adminDb.doc(sessionIndexPath(deviceData.uid, deviceData.sessionId)), { isActive: false, updatedAt: now }, { merge: true });
+                batchWrites += 1;
+              }
+              await commitBatchIfNeeded();
+            }
+            lastDeviceDoc = deviceSnap.docs[deviceSnap.docs.length - 1];
+            if (deviceSnap.docs.length < SESSION_PAGE_SIZE) break;
           }
           await commitBatchIfNeeded();
         }
-        await commitBatchIfNeeded();
+
+        lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        if (snapshot.docs.length < SESSION_PAGE_SIZE) break; // last page
       }
     }
 
