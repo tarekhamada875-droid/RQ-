@@ -74,8 +74,8 @@ describe('v159 — Sensitive Accounts Isolation & Credentials Security', () => {
   });
 
   test('Mandatory 1: Login failure does NOT disclose account existence (generic error message)', async () => {
-    // Test invalid phone / pin combination
-    const resWrongPin = await authService.authenticateUserCredentials({ phone: '01011112222', pin: '0000' });
+    // Test invalid pin combination
+    const resWrongPin = await authService.authenticateUserCredentials({ input: '01011112222', pin: '0000' });
     expect(resWrongPin.success).toBe(false);
     expect(resWrongPin.error).toBe('بيانات الدخول غير صحيحة');
     expect(resWrongPin.account).toBeUndefined();
@@ -89,7 +89,7 @@ describe('v159 — Sensitive Accounts Isolation & Credentials Security', () => {
 
   test('Mandatory 2: Account payload returned from authentication excludes PIN', async () => {
     // When authentication succeeds, the returned account data should never expose the PIN field
-    const mockDelegateAuth = await authService.authenticateUserCredentials({ phone: '01000000000', pin: '1234' });
+    const mockDelegateAuth = await authService.authenticateUserCredentials({ input: '01000000000', pin: '1234' });
     if (mockDelegateAuth.success && mockDelegateAuth.account) {
       expect(mockDelegateAuth.account.pin).toBeUndefined();
     }

@@ -12,7 +12,7 @@ import { useVehicleOperations } from './useVehicleOperations';
 import { useAdminAndGarageManagement } from './useAdminAndGarageManagement';
 import { useGarageSync } from './useGarageSync';
 
-const CURRENT_VERSION = '1.0.6';
+const CURRENT_VERSION = '1.0.7';
 
 /**
  * Composition root for the app's shared state.

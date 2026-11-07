@@ -19,7 +19,6 @@ export const authService = {
 
   authenticateUserCredentials: async (credentials: {
     input?: string;
-    phone?: string;
     pin?: string;
     expectedRole?: 'delegate';
     uid?: string;
