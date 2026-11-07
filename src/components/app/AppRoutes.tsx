@@ -28,7 +28,14 @@ export function AppRoutes() {
   const { isLoading, setIsLoading } = useVehicleOps();
   const { handleGarageLogin, createNewGarage, removeDelegate } = useAdminMutations();
 
-  logDiagnostic('RENDER_VIEW_EVALUATED', { view, isAuthReady, isLoading });
+  // Audit D9 (Phase 7, 2026-11-06): moved logDiagnostic into useEffect so
+  // it fires only when view/isAuthReady/isLoading actually change — not on
+  // every re-render. Previously this was a bare function call in the render
+  // body, which meant it ran on every single React re-render (dozens of times
+  // per second during loading/typing), flooding the diagnostic log.
+  useEffect(() => {
+    logDiagnostic('RENDER_VIEW_EVALUATED', { view, isAuthReady, isLoading });
+  }, [view, isAuthReady, isLoading]);
 
   useEffect(() => {
     if (!isLoading && isAuthReady) {

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Coins, Wrench } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminService } from '../../services';
+import { normalizeDigits } from '../../utils/plates';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -167,7 +168,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           inputMode="numeric"
           pattern={mode === 'grant' ? '[0-9]*' : '-?[0-9]*'}
           value={amount}
-          onChange={(event) => setAmount(event.target.value.replace(/[٠-٩۰-۹]/g, (digit) => String(digit.charCodeAt(0) >= 0x06f0 ? digit.charCodeAt(0) - 0x06f0 : digit.charCodeAt(0) - 0x0660)).replace(/[^\d-]/g, ''))}
+          onChange={(event) => setAmount(normalizeDigits(event.target.value).replace(/[^\d-]/g, ''))}
           placeholder={mode === 'grant' ? 'أدخل قيمة الرصيد' : 'مثال: -50'}
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
           className={`w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
