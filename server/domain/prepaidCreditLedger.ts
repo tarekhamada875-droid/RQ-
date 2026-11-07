@@ -233,3 +233,78 @@ export function materializeCreditLedgerEntry(entry: Omit<CreditLedgerEntry, 'ent
     },
   };
 }
+
+// ── Paid-credit-grant payload validation ──────────────────────────────────
+//
+// Audit ref: Phase 3 / A2 (consolidated audit, 2026-11-06).
+//
+// A paid-credit-grant event/ledger entry has two amount fields:
+//   - amount:           the EGP the customer paid
+//   - creditAmount:     the credits granted (= round(amount × creditRate))
+//
+// When creditRate = 1 (the default), the two are equal. When creditRate ≠ 1
+// (e.g. 0.5, 0.8, 2, 10 — the admin-configurable presets), they legitimately
+// differ.
+//
+// Three consumers previously each rolled their own validation that included
+// an `amount === creditAmount` equality check:
+//   1. server/events.ts:140-154 — validateEventParams (event-shape check)
+//   2. server/financialReporting.ts:161-162 — cashCollectedTotal aggregation
+//   3. server/financialRoutes.ts:342 — delegate paid-grant history
+//
+// (1) was correctly relaxed when creditRate was introduced (commit 9ac062a),
+// but (2) and (3) were never updated. The result: when an admin picked any
+// non-1 preset (0.5/0.8/2/10), every prepaid-credit-grant event was
+// silently dropped from:
+//   - the financial report's cashCollectedTotal (under-counted revenue)
+//   - the delegate's all-time/monthly/current-cycle paid-grant totals
+//   - the delegate's recent-grants list
+//
+// This shared rule validates only shape (positive safe integers + non-empty
+// creditLedgerEntryId). It does NOT check the rate relationship — that's
+// the credit-grant route's job (it computes creditAmount = round(amount ×
+// creditRate) authoritatively). All three consumers now use this rule.
+
+export interface CreditGrantPaymentPayload {
+  amount: number;            // EGP the customer paid
+  creditAmount: number;      // credits granted
+  creditLedgerEntryId: string;
+}
+
+export type CreditGrantPayloadError = 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD';
+
+export type CreditGrantPayloadResult =
+  | { readonly ok: true; readonly value: CreditGrantPaymentPayload }
+  | { readonly ok: false; readonly error: CreditGrantPayloadError };
+
+/**
+ * Validates the shape of a paid-credit-grant payload. Returns ok with the
+ * normalized payload, or err with INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD.
+ *
+ * Accepts both `amount` and `creditAmount` as positive safe integers
+ * (they may legitimately differ when creditRate ≠ 1) and a non-empty
+ * `creditLedgerEntryId` string.
+ *
+ * Use this everywhere you need to answer "is this a well-formed
+ * paid-grant payload?" — events.ts (validation), financialReporting.ts
+ * (filter), financialRoutes.ts (filter).
+ */
+export function creditGrantPayloadRule(payload: unknown): CreditGrantPayloadResult {
+  if (!payload || typeof payload !== 'object') return { ok: false, error: 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD' };
+  const p = payload as Partial<CreditGrantPaymentPayload>;
+  if (
+    typeof p.amount !== 'number' || !Number.isSafeInteger(p.amount) || Number(p.amount) < 1
+    || typeof p.creditAmount !== 'number' || !Number.isSafeInteger(p.creditAmount) || Number(p.creditAmount) < 1
+    || typeof p.creditLedgerEntryId !== 'string' || !p.creditLedgerEntryId
+  ) {
+    return { ok: false, error: 'INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD' };
+  }
+  return {
+    ok: true,
+    value: {
+      amount: p.amount,
+      creditAmount: p.creditAmount,
+      creditLedgerEntryId: p.creditLedgerEntryId,
+    },
+  };
+}

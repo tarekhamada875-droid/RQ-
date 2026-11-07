@@ -199,3 +199,68 @@ describe('canonical delegate commission settlement reporting', () => {
     expect(report.currentUnsettledByDelegate).toEqual({ 'del-1': 100 });
   });
 });
+
+// Audit A2 (Phase 3, 2026-11-06): regression tests for creditRate ≠ 1.
+// Previously, financialReporting.ts:161 filtered on `amount === creditAmount`
+// (a legacy 1:1 equality). When creditRate ≠ 1, the two legitimately differ
+// and the event was silently dropped — under-counting cashCollectedTotal.
+// These tests pin the new behavior: events with creditRate ≠ 1 are correctly
+// included in the totals.
+describe('creditRate ≠ 1 — financial reporting includes (not drops) the event (audit A2)', () => {
+  it('creditRate = 2 (1 EGP = 2 credits): pays 10 EGP, gets 20 credits → cashCollected = 10', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 10, creditAmount: 20, creditLedgerEntryId: 'g1' } },
+    ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' });
+
+    // BUG (pre-fix): this was 0 because amount(10) !== creditAmount(20)
+    // and the equality check dropped the event.
+    expect(report.prepaidCreditPaymentsEgp).toBe(10);
+    expect(report.cashCollectedTotal).toBe(10);
+  });
+
+  it('creditRate = 0.5 (1 EGP = 0.5 credits): pays 20 EGP, gets 10 credits → cashCollected = 20', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g2', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 20, creditAmount: 10, creditLedgerEntryId: 'g2' } },
+    ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' });
+
+    expect(report.prepaidCreditPaymentsEgp).toBe(20);
+    expect(report.cashCollectedTotal).toBe(20);
+  });
+
+  it('creditRate = 10 (1 EGP = 10 credits): pays 5 EGP, gets 50 credits → cashCollected = 5', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g3', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 5, creditAmount: 50, creditLedgerEntryId: 'g3' } },
+    ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' });
+
+    expect(report.prepaidCreditPaymentsEgp).toBe(5);
+    expect(report.cashCollectedTotal).toBe(5);
+  });
+
+  it('mixed rate-1 and rate-2 events sum correctly', () => {
+    const report = calculateFinancialReport([
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 50, creditAmount: 50, creditLedgerEntryId: 'g1' } },  // rate=1
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g2', occurredAt: '2026-09-18T09:00:00.000Z', payload: { amount: 10, creditAmount: 20, creditLedgerEntryId: 'g2' } },  // rate=2
+    ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' });
+
+    // BUG (pre-fix): this was 50 (only the rate=1 event counted).
+    expect(report.prepaidCreditPaymentsEgp).toBe(60);  // 50 + 10
+    expect(report.cashCollectedTotal).toBe(60);
+  });
+
+  it('still rejects malformed payloads (no amount, no creditLedgerEntryId, etc.)', () => {
+    const report = calculateFinancialReport([
+      // Missing creditLedgerEntryId — should be dropped.
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g1', occurredAt: '2026-09-18T08:00:00.000Z', payload: { amount: 10, creditAmount: 20 } },
+      // amount is a string — should be dropped.
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g2', occurredAt: '2026-09-18T09:00:00.000Z', payload: { amount: '10', creditAmount: 20, creditLedgerEntryId: 'g2' } },
+      // creditAmount = 0 — should be dropped (must be positive).
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g3', occurredAt: '2026-09-18T10:00:00.000Z', payload: { amount: 10, creditAmount: 0, creditLedgerEntryId: 'g3' } },
+      // Valid event — should be counted.
+      { eventType: 'prepaid_credit_grant_paid', aggregateId: 'g4', occurredAt: '2026-09-18T11:00:00.000Z', payload: { amount: 10, creditAmount: 20, creditLedgerEntryId: 'g4' } },
+    ], [], { start: '2026-09-18T00:00:00.000Z', end: '2026-09-19T00:00:00.000Z' });
+
+    // Only the valid event (g4) should be counted.
+    expect(report.prepaidCreditPaymentsEgp).toBe(10);
+    expect(report.cashCollectedTotal).toBe(10);
+  });
+});

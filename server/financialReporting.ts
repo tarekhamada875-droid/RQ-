@@ -1,4 +1,5 @@
 import { addMoney, parseMoneyAmount } from './money';
+import { creditGrantPayloadRule } from './domain/prepaidCreditLedger';
 
 export interface FinancialReportEvent {
   eventType?: string;
@@ -158,9 +159,15 @@ export function addFinancialReportEvent(accumulator: FinancialReportAccumulator,
     accumulator.walletTopupTotal = addMoney(accumulator.walletTopupTotal, payload.amount);
   }
   if (event.eventType === 'prepaid_credit_grant_paid') {
-    if (typeof payload.amount === 'number' && Number.isSafeInteger(payload.amount) && payload.amount > 0
-      && payload.amount === payload.creditAmount && typeof payload.creditLedgerEntryId === 'string' && payload.creditLedgerEntryId) {
-      accumulator.prepaidCreditPaymentsEgp = addMoney(accumulator.prepaidCreditPaymentsEgp, payload.amount);
+    // Audit A2 (Phase 3, 2026-11-06): the previous filter required
+    // `amount === creditAmount` — a legacy 1:1 equality check that silently
+    // dropped every event when creditRate ≠ 1, under-counting
+    // cashCollectedTotal. Now uses the shared creditGrantPayloadRule which
+    // validates shape only (no equality), so events with creditRate ≠ 1
+    // are correctly included.
+    const grantPayload = creditGrantPayloadRule(payload);
+    if (grantPayload.ok) {
+      accumulator.prepaidCreditPaymentsEgp = addMoney(accumulator.prepaidCreditPaymentsEgp, grantPayload.value.amount);
     }
   }
   if (event.eventType === 'commission_earned') {

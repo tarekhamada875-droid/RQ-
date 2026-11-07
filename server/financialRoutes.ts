@@ -339,7 +339,15 @@ app.get('/api/delegates/:id/paid-grant-history', requireWorkerAuth, enforceWorke
             if (entry.kind !== 'paid_grant' || entry.paymentConfirmed !== true) continue;
             const creditAmount = parseMoneyAmount(entry.amount);
             const amountEgp = parseMoneyAmount(entry.paymentAmountEgp);
-            if (creditAmount === null || creditAmount <= 0 || amountEgp !== creditAmount) continue;
+            // Audit A2 (Phase 3, 2026-11-06): the previous filter required
+            // `amountEgp !== creditAmount` — a legacy 1:1 equality check
+            // that silently dropped every paid_grant ledger entry when
+            // creditRate ≠ 1, under-counting the delegate's all-time /
+            // monthly / current-cycle paid-grant totals and the recent-
+            // grants list. Now we just require both amounts to be positive
+            // numbers (shape check); the rate relationship is the credit-
+            // grant route's responsibility, not the reporting filter's.
+            if (creditAmount === null || creditAmount <= 0 || amountEgp === null || amountEgp <= 0) continue;
 
             const rawOccurredAt = entry.occurredAt && typeof entry.occurredAt === 'object' && typeof entry.occurredAt.toDate === 'function'
               ? entry.occurredAt.toDate()

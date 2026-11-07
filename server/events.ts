@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getTraceContext } from './operationTrace';
 import { parseMoneyAmount } from './money';
+import { creditGrantPayloadRule } from './domain/prepaidCreditLedger';
 
 export type DomainEventType =
   | 'vehicle_entered'
@@ -138,17 +139,14 @@ function validateEventParams(params: CreateEventParams): void {
     if (!p.delegateId || typeof p.commissionAmount !== 'number' || !(p.sourceCreditGrantId || p.sourceRechargeId) || !p.earnedAt) throw new Error('INVALID_COMMISSION_PAYLOAD');
   }
   if (params.eventType === 'prepaid_credit_grant_paid') {
-    const amount = params.payload.amount;
-    const creditAmount = params.payload.creditAmount;
-    // Both must be positive safe integers. The legacy 1:1 equality check
-    // (`amount !== creditAmount`) was removed when the configurable creditRate
-    // was introduced — now `creditAmount = round(amount × creditRate)` and
-    // they legitimately differ when rate ≠ 1. The credit-grant route is the
-    // authoritative source of the rate-aware computation; the event validator
-    // only checks shape, not the rate relationship.
-    if (!Number.isSafeInteger(creditAmount) || Number(creditAmount) < 1
-        || !Number.isSafeInteger(amount) || Number(amount) < 1
-        || typeof params.payload.creditLedgerEntryId !== 'string' || !params.payload.creditLedgerEntryId) {
+    // Audit A2 (Phase 3, 2026-11-06): use the shared creditGrantPayloadRule
+    // from domain/prepaidCreditLedger.ts. The previous inline check was
+    // already rate-aware (no amount === creditAmount equality), but
+    // duplicating the shape validation across three consumers was the
+    // root cause of bug A2 — financialReporting.ts and financialRoutes.ts
+    // kept the legacy equality check and silently dropped events when
+    // creditRate ≠ 1. Now all three use the same rule.
+    if (creditGrantPayloadRule(params.payload).ok === false) {
       throw new Error('INVALID_CREDIT_GRANT_PAYMENT_PAYLOAD');
     }
   }
