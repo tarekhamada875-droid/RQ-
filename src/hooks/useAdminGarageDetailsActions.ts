@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminService, authService, garageService } from '../services';
 import { normalizeDigits } from '../utils/plates';
 import { canChangeGarageRates } from '../utils/businessRules';
+import { useAsyncAction } from './useAsyncAction';
 import { generateSafePin } from '../utils/pins';
 import type { Garage, Staff } from '../types';
 
@@ -84,7 +85,7 @@ export function useAdminGarageDetailsActions({
   // ── Rates ────────────────────────────────────────────────────────────
   const [hourlyRateInput, setHourlyRateInput] = useState<string>(String(garage.hourlyRate || 0));
   const [overnightRateInput, setOvernightRateInput] = useState<string>(String(garage.overnightRate || 0));
-  const [isSavingRates, setIsSavingRates] = useState(false);
+  const { isLoading: isSavingRates, run: runSaveRates } = useAsyncAction();
 
   useEffect(() => {
     setHourlyRateInput(String(garage.hourlyRate || 0));
@@ -113,8 +114,7 @@ export function useAdminGarageDetailsActions({
 
     if (isNaN(hourly) || isNaN(overnight)) return;
 
-    setIsSavingRates(true);
-    try {
+    await runSaveRates(async () => {
       const now = new Date();
       await garageService.updateGarage(garage.id, {
         hourlyRate: hourly,
@@ -128,20 +128,15 @@ export function useAdminGarageDetailsActions({
         lastRateChangeDate: now,
       });
       void refreshAdminListsAfterMutation();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSavingRates(false);
-    }
+    });
   };
 
   // ── Lock / Suspend ───────────────────────────────────────────────────
-  const [isUpdatingLock, setIsUpdatingLock] = useState(false);
+  const { isLoading: isUpdatingLock, run: runToggleLock } = useAsyncAction();
 
   const handleToggleLock = async () => {
     if (isUpdatingLock) return;
-    setIsUpdatingLock(true);
-    try {
+    await runToggleLock(async () => {
       const newLocked = !garage.isLocked;
       await garageService.updateGarage(garage.id, {
         isLocked: newLocked,
@@ -153,11 +148,7 @@ export function useAdminGarageDetailsActions({
         isSuspended: newLocked
       });
       void refreshAdminListsAfterMutation();
-    } catch (err) {
-      console.error('Failed to toggle garage lock:', err);
-    } finally {
-      setIsUpdatingLock(false);
-    }
+    }, (err) => console.error('Failed to toggle garage lock:', err));
   };
 
   // ── Monthly subscribers toggle ───────────────────────────────────────
