@@ -1,68 +1,19 @@
 // Firestore rules are not deployed by the Cloudflare release workflow. Test rule
 // changes in the Firestore Emulator and explicitly verify any Firebase project
 // before deployment; do not infer a production target from this source file.
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
 //
-// Collection: garages
-// Document ID: garageId
-// Fields:
-//   - name: string (required)
-//   - phone: string (required)
-//   - hourlyRate: number (required)
-//   - overnightRate: number (required)
-//   - subscriptionExpiry: timestamp (required)
-//   - createdAt: timestamp (required)
-//   - subscriptionDays: number (required)
-//   - billingModel: string ('subscription' | 'commission') (optional)
-//   - commissionPerVehicle: number (optional)
-//   - monthlySubscriptionFee: number (optional)
-//   - balance: number (optional)
-//   - isLocked: bool (optional)
-//   - lastSubscriptionDeduction: timestamp (optional)
-//   - lastPaidFriday: string (optional)
+// For the current data model and product rules, see docs/PROJECT.md.
 //
-// Collection: garages/{garageId}/vehicles
-// Document ID: vehicleId
-// Fields:
-//   - plateNumber: string (required)
-//   - plateNumberRaw: string (required)
-//   - entryTime: timestamp (required)
-//   - exitTime: timestamp (optional)
-//   - type: string ('hourly' | 'overnight') (required)
-//   - garageId: string (required)
-//   - status: string ('inside' | 'outside') (required)
-//   - totalCost: number (optional)
-//
-// Collection: staff
-// Document ID: staffId
-// Fields:
-//   - name: string (required)
-//   - phone: string (required)
-//   - garageId: string (required)
-//   - role: string ('staff') (required)
-//   - currentSessionId: string (optional)
-//
-// Collection: activity_logs
-// Document ID: logId
-// Fields:
-//   - garageId: string (required)
-//   - staffId: string (optional)
-//   - staffName: string (required)
-//   - actionType: string ('check_in' | 'check_out') (required)
-//   - plateNumber: string (required)
-//   - timestamp: timestamp (required)
-//
-// Collection: delegates
-// Document ID: delegateId
-// Fields:
-//   - name: string (required)
-//   - phone: string (required)
-//   - pin: string (required)
-//   - role: string ('delegate') (required)
-//   - currentSessionId: string (optional)
-//   - createdAt: timestamp (required)
+// Summary of the current prepaid-credits model:
+//   - All garages use prepaid credits (billingModel: 'prepaid_credits').
+//   - The subscription/hourly billing model has been retired.
+//   - 1 credit per regular vehicle check-in.
+//   - Subscriber check-in is free; subscriber renewal debits 2 credits.
+//   - The EGP-to-credit rate is admin-configurable (system_config/global.creditRate).
+//   - Delegate commission: 100 EGP, rolling 30-day recurring.
+//   - Referral reward: 20 credits, one-time on first qualifying grant.
+//   - PINs are stored in private_pins/ (not on entity docs).
+//   - PIN retirement: once used, a PIN can never be reused.
 //
 // ===============================================================
 

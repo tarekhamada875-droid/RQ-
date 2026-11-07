@@ -10,7 +10,7 @@ Cloudflare Pages frontend -> Cloudflare Worker API (Hono) -> Firebase Authentica
 
 The Worker owns authentication, authorization, garage scope, financial decisions, transactions, idempotency, and audit records. The browser must not approve payments, mutate balances, or decide authority from stale state.
 
-The active financial model is prepaid credits. Regular vehicle entry consumes 1 credit at check-in; monthly subscriber renewal debits 5 paid credits. Admin credit grants are 50–2,000 EGP per operation. Current rules are in [`docs/PROJECT.md`](docs/PROJECT.md).
+The active financial model is prepaid credits. Regular vehicle entry consumes 1 credit at check-in; monthly subscriber renewal debits 2 paid credits. The EGP-to-credit rate is admin-configurable (presets: 0.5, 0.8, 1, 2, 10). Admin credit grants are 50–2,000 EGP per operation. Current rules are in [`docs/PROJECT.md`](docs/PROJECT.md).
 
 ## Development
 

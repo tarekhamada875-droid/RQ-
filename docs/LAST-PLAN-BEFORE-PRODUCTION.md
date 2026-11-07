@@ -8,8 +8,8 @@
 
 | ID | Decision | Status |
 |---|---|---|
-| B1 | Pricing: 1 credit per regular car check-in. Subscriber check-in is free. Subscriber renewal debits 5 paid credits. No per-garage monthly fee. | ✅ Implemented |
-| B2 | Two separate revenues: **Garage Revenue** (money collected from drivers: hourly/overnight rates at check-out, plus 5 EGP per subscriber renewal) and **Admin Revenue** (EGP collected from garages for credits: 1 EGP = 1 credit). Tracked separately on garage docs. | ✅ Implemented |
+| B1 | Pricing: 1 credit per regular car check-in. Subscriber check-in is free. Subscriber renewal debits 2 paid credits. No per-garage monthly fee. | ✅ Implemented |
+| B2 | Two separate revenues: **Garage Revenue** (money collected from drivers: hourly/overnight rates at check-out, plus 2 EGP per subscriber renewal) and **Admin Revenue** (EGP collected from garages for credits: 1 EGP = 1 credit, configurable via admin creditRate setting). Tracked separately on garage docs. | ✅ Implemented |
 | B3 | Role access: current server permissions are the approved matrix. Workers enforce authorization; UI hiding is not security. | ✅ Implemented |
 | B4 | Deletion: garage deletion keeps the deletion audit log (security requirement). Staff deletion removes sessions, Auth user, and activity history. | ✅ Implemented |
 | B5 | Test data: synthetic emulator fixtures only. Production data never copied to tests/Preview. | ✅ Enforced by existing security rules |

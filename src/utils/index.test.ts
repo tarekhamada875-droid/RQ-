@@ -14,7 +14,7 @@ import {
 import { getDuration, isSessionActive } from './dates';
 import { calculateCost } from './cost';
 import { generateSafePin } from './pins';
-import { resolveShimmerColor, isLightColor } from './colors';
+import { isLightColor } from './colors';
 import { throttleSnapshot } from './storage';
 
 describe('Normalization & String Utilities Edge Cases', () => {
@@ -244,12 +244,7 @@ describe('Security & Helper Utils', () => {
 
   it('correctly assesses light/dark contrast and shimmer themes', () => {
     expect(isLightColor('#FFFFFF')).toBe(true);
-    expect(isLightColor('#000000')).toBe(false);
-
-    // Fixed Amber Gold accent color across all modes and inputs
-    expect(resolveShimmerColor('#ef4444', 'dark')).toBe('#f59e0b');
-    expect(resolveShimmerColor(undefined, 'dark')).toBe('#f59e0b');
-  });
+    expect(isLightColor('#000000')).toBe(false);  });
 });
 
 describe('Snapshot throttle lifecycle', () => {

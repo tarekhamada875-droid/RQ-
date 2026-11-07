@@ -4,17 +4,17 @@ RQ is an Arabic-only garage-management PWA. Production architecture is Cloudflar
 
 ## Active product model
 
-Garage billing uses prepaid credits only. Admin confirms payment and grants credits through the Worker. Credit grants must be 50–2,000 EGP per operation (bigger amounts require multiple grants). 1 EGP = 1 credit.
+Garage billing uses prepaid credits only. Admin confirms payment and grants credits through the Worker. Credit grants must be 50–2,000 EGP per operation (bigger amounts require multiple grants). The EGP-to-credit conversion rate is admin-configurable via `system_config/global.creditRate` (presets: 0.5, 0.8, 1, 2, 10). Default is 1 (1 EGP = 1 credit).
 
 Each garage has a single credit balance, stored as the `credits` field on the garage document. The previous three-bucket model (paid / referral / trial) was collapsed into this single balance on 2026-10-29 by owner decision; the *kind* of every ledger entry is still recorded for audit, but there is only one live balance number. Credits do not expire.
 
-Regular vehicle entry consumes 1 credit per car at check-in. Monthly subscriber check-in is free at check-in; subscriber renewal debits 5 credits per renewal from the single balance.
+Regular vehicle entry consumes 1 credit per car at check-in. Monthly subscriber check-in is free at check-in; subscriber renewal debits 2 credits per renewal from the single balance.
 
 A new trial grants exactly 100 credits (added to the single balance as a `trial_grant` ledger entry). Trial credits are not cash revenue.
 
-The referral reward is 20 credits, awarded once to the referring garage when the referred garage makes its first qualifying paid grant (≥ 500 EGP). The delegate commission is 100 EGP, awarded once to the delegate when a garage they onboarded makes its first qualifying paid grant (≥ 500 EGP). Both fire on the same trigger; smaller first grants do not trigger either. Retries, later grants, and legacy recharge events do not create another commission or referral reward.
+The referral reward is 20 credits, awarded once to the referring garage when the referred garage makes its first qualifying paid grant (≥ 500 EGP). The delegate commission is 100 EGP, awarded on a rolling 30-day recurring basis to the delegate when a garage they onboarded makes a qualifying paid grant (≥ 500 EGP) and no commission has been awarded in the past 30 days. Both fire on the same trigger; smaller first grants do not trigger either. Retries, later grants, and legacy recharge events do not create another commission or referral reward.
 
-Admin revenue (the EGP collected from garages for credits) is tracked separately on each garage doc as `totalAdminRevenue` and aggregated in the admin summary. Garage revenue (money collected from drivers at check-out, plus 5 EGP per subscriber renewal) is tracked separately as `totalRevenue` / `todayRevenue`.
+Admin revenue (the EGP collected from garages for credits) is tracked separately on each garage doc as `totalAdminRevenue` and aggregated in the admin summary. Garage revenue (money collected from drivers at check-out, plus 2 EGP per subscriber renewal) is tracked separately as `totalRevenue` / `todayRevenue`.
 
 All login PINs are exactly 5 digits. PIN resets are handled out-of-band: the garage owner contacts Admin by phone, and Admin resets the PIN through the Worker.
 

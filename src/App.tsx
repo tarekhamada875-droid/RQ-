@@ -5,8 +5,6 @@
 
 import { useEffect, Suspense } from 'react';
 import { CheckCircle2, XCircle, X } from 'lucide-react';
-import { resolveShimmerColor } from './utils/colors';
-import { useTheme } from './utils/ThemeContext';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { useSystemConfig } from './hooks/useSystemConfig';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
@@ -36,12 +34,11 @@ export default function App() {
   const { toast, clearToast: setToast } = useToast();
   const { isLoading, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, showRecentExitWarning, setShowRecentExitWarning, showSubscriberWarning, setShowSubscriberWarning, setSelectedVehicle, setRecentVehicle, setSubscriberWarningPlate } = vehicleOperations;
 
-  const { theme } = useTheme();
   const systemConfig = useSystemConfig();
   const [localAdminColor] = useLocalStorageState<string>('app_admin_color', '#10b981');
   const adminColor = systemConfig?.adminColor || localAdminColor || '#10b981';
   const activeColor = (view && (view.startsWith('admin_') || view === 'admin_dashboard')) ? adminColor : (garage?.shimmerColor || '#10b981');
-  const resolvedColor = resolveShimmerColor(activeColor, theme);
+  const resolvedColor = activeColor;
 
   useEffect(() => {
     if (!isLoading && isAuthReady) {

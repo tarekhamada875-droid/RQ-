@@ -12,9 +12,8 @@ import { useBackHandler } from '../../hooks/backHandler';
 import { AdminProvider } from '../../hooks/adminContext';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
-import { useTheme } from '../../utils/ThemeContext';
 import { normalizeArabicSearch, normalizeDigits } from '../../utils/plates';
-import { resolveShimmerColor, isLightColor } from '../../utils/colors';
+import { isLightColor } from '../../utils/colors';
 import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
@@ -127,8 +126,7 @@ export const AdminDashboard = memo(({
   useBackHandler(() => { setShowAddGarageModal(false); return true; }, showAddGarageModal);
   useBackHandler(() => { setActiveTab('catalog_settings'); return true; }, activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'wallet_settings' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports');
 
-  const { theme, } = useTheme();
-  const resolvedAdminColor = resolveShimmerColor(adminColor, theme);
+  const resolvedAdminColor = adminColor;
   
 
   const menuRef = React.useRef<HTMLDivElement>(null);

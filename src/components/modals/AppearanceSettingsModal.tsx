@@ -3,7 +3,7 @@ import { ChevronRight, Sun, Moon, Check } from 'lucide-react';
 import { useTheme } from '../../utils/ThemeContext';
 import { soundManager } from '../../utils/sounds';
 import { Garage, Staff } from '../../types';
-import { isLightColor, resolveShimmerColor } from '../../utils/colors';
+import { isLightColor } from '../../utils/colors';
 
 interface AppearanceSettingsModalProps {
   garage?: Garage | null;
@@ -20,7 +20,7 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
 }) => {
   const { theme, toggleTheme } = useTheme();
 
-  const resolvedActiveColor = resolveShimmerColor('#f59e0b', theme);
+  const resolvedActiveColor = '#f59e0b';
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">

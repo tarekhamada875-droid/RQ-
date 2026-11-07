@@ -15,8 +15,7 @@ import { useBackHandler } from "../../hooks/backHandler";
 import { useGarageInput } from "../../hooks/garageInput";
 import { useVehicleOps } from "../../hooks/vehicleOpsContext";
 import { FlipNumber } from "../ui/FlipNumber";
-import { useTheme } from "../../utils/ThemeContext";
-import { resolveShimmerColor, isLightColor } from '../../utils/colors';
+import { isLightColor } from '../../utils/colors';
 import { safeDate } from '../../utils/dates';
 import { auth } from "../../firebase";
 import { useSystemConfig } from '../../hooks/useSystemConfig';
@@ -67,8 +66,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { theme } = useTheme();
-  const shimmerColor = resolveShimmerColor(garage?.shimmerColor, theme);
+  const shimmerColor = garage?.shimmerColor || '#f59e0b';
   const [activeTab, setActiveTab] = useState<"main" | "active_vehicles">("main");
   const [itemsPerPage, setItemsPerPage] = useState(15);
   const [isCreditGrantHistoryOpen, setIsCreditGrantHistoryOpen] = useState(false);

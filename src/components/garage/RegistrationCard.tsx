@@ -1,11 +1,9 @@
 import React, { memo, useMemo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
-import { resolveShimmerColor } from '../../utils/colors';
 import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { BorderShimmer } from './BorderShimmer';
-import { useTheme } from '../../utils/ThemeContext';
 import { FitText } from '../ui/FitText';
 
 interface RegistrationCardProps {
@@ -39,8 +37,7 @@ export const RegistrationCard = memo(({
   shimmerActive = false,
   isLoading = false
 }: RegistrationCardProps) => {
-  const { theme } = useTheme();
-  const activeShimmerColor = resolveShimmerColor(garage?.shimmerColor, theme);
+  const activeShimmerColor = garage?.shimmerColor || '#f59e0b';
   const [isDebouncing, setIsDebouncing] = React.useState(false);
 
   // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
