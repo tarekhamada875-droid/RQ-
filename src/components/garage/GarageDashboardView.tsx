@@ -276,7 +276,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                 }}
                 closeKeyboard={closeKeyboard}
                 inputRef={inputRef}
-                shimmerActive={true}
                 isLoading={isLoading}
               />
             )}

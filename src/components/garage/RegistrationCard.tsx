@@ -3,7 +3,6 @@ import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
 import { Garage, Vehicle } from '../../types';
 import { LicensePlateKeyboard } from './LicensePlateKeyboard';
-import { BorderShimmer } from './BorderShimmer';
 import { FitText } from '../ui/FitText';
 
 interface RegistrationCardProps {
@@ -18,7 +17,6 @@ interface RegistrationCardProps {
   onCheckOut: (vehicle: Vehicle) => void;
   closeKeyboard: () => void;
   inputRef: React.RefObject<HTMLDivElement>;
-  shimmerActive?: boolean;
   isLoading?: boolean;
 }
 
@@ -34,10 +32,8 @@ export const RegistrationCard = memo(({
   onCheckOut,
   closeKeyboard,
   inputRef,
-  shimmerActive = false,
   isLoading = false
 }: RegistrationCardProps) => {
-  const activeShimmerColor = garage?.shimmerColor || '#f59e0b';
   const [isDebouncing, setIsDebouncing] = React.useState(false);
 
   // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
@@ -131,7 +127,6 @@ export const RegistrationCard = memo(({
           : 'border-slate-200 dark:border-slate-800'
       } ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
     >
-      <BorderShimmer isActive={shimmerActive} color={activeShimmerColor} />
       <div className="relative">
 
           <div className="flex flex-col gap-3 relative z-10">
