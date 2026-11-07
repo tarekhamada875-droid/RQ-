@@ -1,36 +1,16 @@
 import type { WorkerApp } from './cloudflareWorker';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { validateId, validateDateRange, validatePlate, validateIdempotencyKey } from './validation';
+import { mapDomainErrorToStatus } from './routes/helpers';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { recordDomainEventInTransaction } from './events';
+import { canManageGarageScopedData as decideGarageScope } from './domain/authorization';
+import { decideSubscriberAdd, decideSubscriberDelete, decideSubscriberRenew, decideSubscriberUpdate } from './domain/subscriberLifecycle';
+import { debitSubscriberRenewal, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
+import { addRequestToCommand, lifecycleErrorToLegacyError, subscriberDocumentToState, transitionToFirestoreUpdate, updateRequestToCommand } from './adapters/subscriberLifecycleAdapter';
+import { maintainedGarageSummaryRef, writeMaintainedGarageDelta, writeMaintainedSubscriberDelta } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
-
-export type SubscriberRouteDependency = (...args: any[]) => any;
-
-export interface SubscriberRouteDeps {
-  getAdminDb: () => any;
-  requireWorkerAuth: SubscriberRouteDependency;
-  decideGarageScope: SubscriberRouteDependency;
-  validateId: SubscriberRouteDependency;
-  validateDateRange: SubscriberRouteDependency;
-  validatePlate: SubscriberRouteDependency;
-  validateIdempotencyKey: SubscriberRouteDependency;
-  mapDomainErrorToStatus: SubscriberRouteDependency;
-  checkIdempotencyInTransaction: SubscriberRouteDependency;
-  createRequestFingerprint: SubscriberRouteDependency;
-  storeIdempotencyInTransaction: SubscriberRouteDependency;
-  recordDomainEventInTransaction: SubscriberRouteDependency;
-  decideSubscriberAdd: SubscriberRouteDependency;
-  decideSubscriberDelete: SubscriberRouteDependency;
-  decideSubscriberRenew: SubscriberRouteDependency;
-  decideSubscriberUpdate: SubscriberRouteDependency;
-  addRequestToCommand: SubscriberRouteDependency;
-  lifecycleErrorToLegacyError: SubscriberRouteDependency;
-  subscriberDocumentToState: SubscriberRouteDependency;
-  transitionToFirestoreUpdate: SubscriberRouteDependency;
-  updateRequestToCommand: SubscriberRouteDependency;
-  debitSubscriberRenewal: SubscriberRouteDependency;
-  materializeCreditLedgerEntry: SubscriberRouteDependency;
-  maintainedGarageSummaryRef: SubscriberRouteDependency;
-  writeMaintainedGarageDelta: SubscriberRouteDependency;
-  writeMaintainedSubscriberDelta: SubscriberRouteDependency;
-}
 
 function subscriberActivityDelta(before: any, after: any): { activeSubscribersCount: number; expiredSubscribersCount: number; activeSubscribers: number; expiredSubscribers: number } {
   const classify = (value: any) => {
@@ -50,35 +30,7 @@ function subscriberActivityDelta(before: any, after: any): { activeSubscribersCo
 
 
 
-export function registerSubscriberRoutes(app: WorkerApp, deps: SubscriberRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    decideGarageScope,
-    validateId,
-    validateDateRange,
-    validatePlate,
-    validateIdempotencyKey,
-    mapDomainErrorToStatus,
-    checkIdempotencyInTransaction,
-    createRequestFingerprint,
-    storeIdempotencyInTransaction,
-    recordDomainEventInTransaction,
-    decideSubscriberAdd,
-    decideSubscriberDelete,
-    decideSubscriberRenew,
-    decideSubscriberUpdate,
-    addRequestToCommand,
-    lifecycleErrorToLegacyError,
-    subscriberDocumentToState,
-    transitionToFirestoreUpdate,
-    updateRequestToCommand,
-    debitSubscriberRenewal,
-    materializeCreditLedgerEntry,
-    maintainedGarageSummaryRef,
-    writeMaintainedGarageDelta,
-    writeMaintainedSubscriberDelta
-  } = deps;
+export function registerSubscriberRoutes(app: WorkerApp): void {
 // 8. Subscriber Lifecycle Management (CF6)
 
 // Route 1: POST /api/subscribers/add
@@ -88,7 +40,7 @@ app.post('/api/subscribers/add', requireWorkerAuth, async (c) => {
     const callerRole = user?.role || 'garage';
     const body = await c.req.json().catch(() => ({}));
     const { garageId, subscriberData } = body;
-    if (!garageId || !subscriberData || !getAdminDb()) {
+    if (!garageId || !subscriberData || !adminDb) {
       return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     }
     const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -98,14 +50,14 @@ app.post('/api/subscribers/add', requireWorkerAuth, async (c) => {
     const dates = validateDateRange(subscriberData.startDate, subscriberData.endDate);
     const { plateNumber, plateRaw } = validatePlate(subscriberData.plateNumberRaw || subscriberData.plateNumber);
     const { costUnits: _costUnits, id: _id, createdAt: _createdAt, plateNumber: _clientPlate, plateNumberRaw: _clientPlateRaw, ...subscriberFields } = subscriberData;
-    const subscriberCollection = getAdminDb().collection(`garages/${validatedGarageId}/subscribers`);
+    const subscriberCollection = adminDb.collection(`garages/${validatedGarageId}/subscribers`);
     const subscriberId = `plate_${Buffer.from(plateRaw).toString('base64url')}`;
     const docRef = subscriberCollection.doc(subscriberId);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberData: { ...subscriberFields, plateNumber, plateNumberRaw: plateRaw, ...dates } });
     let resultData: { id: string } = { id: subscriberId };
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/add', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -143,7 +95,7 @@ app.post('/api/subscribers/add', requireWorkerAuth, async (c) => {
         id: docRef.id,
         createdAt: new Date()
       });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
         aggregateId: subscriberId,
@@ -178,7 +130,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
     const callerRole = user?.role || 'garage';
     const body = await c.req.json().catch(() => ({}));
     const { garageId, subscriberId, newDates } = body;
-    if (!garageId || !subscriberId || !newDates || !getAdminDb()) {
+    if (!garageId || !subscriberId || !newDates || !adminDb) {
       return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     }
     const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -187,12 +139,12 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
     }
     const dates = validateDateRange(newDates.startDate, newDates.endDate);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const subscriberRef = getAdminDb().collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
-    const garageRef = getAdminDb().collection('garages').doc(validatedGarageId);
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const garageRef = adminDb.collection('garages').doc(validatedGarageId);
     const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId, newDates: dates });
     let resultData: any = { success: true };
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/renew', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -241,7 +193,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         const materialized = materializeCreditLedgerEntry(creditResult.value.entry);
         if (materialized.ok === false) throw new Error(materialized.error);
         creditDebit = { ...creditResult.value, entry: materialized.value };
-        t.set(getAdminDb().doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
+        t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
         // Subscriber renewal = 2 EGP garage revenue (the garage collected 2 EGP from the subscriber).
         // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
         const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -266,7 +218,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         startDate: decision.value.state?.startDate,
         endDate: decision.value.state?.endDate
       });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
         aggregateId: subscriberId,
@@ -313,7 +265,7 @@ app.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const { garageId, subscriberId } = body;
     const subscriberData = body.subscriberData || body.updates || {};
-    if (!garageId || !subscriberId || !subscriberData || !getAdminDb()) {
+    if (!garageId || !subscriberId || !subscriberData || !adminDb) {
       return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     }
     const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -321,10 +273,10 @@ app.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' }, 403);
     }
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const subscriberRef = getAdminDb().collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
     const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId, subscriberData });
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/update', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) return;
@@ -364,7 +316,7 @@ app.post('/api/subscribers/update', requireWorkerAuth, async (c) => {
         expiredSubscribers: activityDelta.expiredSubscribers
       });
       t.update(subscriberRef, transitionToFirestoreUpdate(decision.value));
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
         aggregateId: subscriberId,
@@ -396,7 +348,7 @@ app.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
     const callerRole = user?.role || 'garage';
     const body = await c.req.json().catch(() => ({}));
     const { garageId, subscriberId } = body;
-    if (!garageId || !subscriberId || !getAdminDb()) {
+    if (!garageId || !subscriberId || !adminDb) {
       return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     }
     const validatedGarageId = validateId(garageId, 'garageId', true);
@@ -404,10 +356,10 @@ app.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Cannot manage subscribers for this garage' }, 403);
     }
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
-    const subscriberRef = getAdminDb().collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
+    const subscriberRef = adminDb.collection(`garages/${validatedGarageId}/subscribers`).doc(validateId(subscriberId, 'subscriberId', true));
     const requestFingerprint = createRequestFingerprint({ garageId: validatedGarageId, subscriberId });
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/subscribers/delete', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) return;
@@ -433,7 +385,7 @@ app.post('/api/subscribers/delete', requireWorkerAuth, async (c) => {
         garagesCount: removesLastGarageSubscriber ? -1 : 0
       });
       t.delete(subscriberRef);
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId: validatedGarageId,
         aggregateType: 'subscriber',
         aggregateId: subscriberId,

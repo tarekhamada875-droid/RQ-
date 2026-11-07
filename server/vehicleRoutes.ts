@@ -1,38 +1,22 @@
 import type { WorkerApp } from './cloudflareWorker';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { validateIdempotencyKey, validatePlate, normalizePlateRaw } from './validation';
+import { mapDomainErrorToStatus } from './routes/helpers';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { recordDomainEventInTransaction } from './events';
+import { parseMoneyAmount } from './money';
+import { calculateVehicleCost } from './domain/vehicleCost';
+import { createOperationId, createVehicleDelta, nextOperationVersion } from './deltaProjection';
+import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
+import { garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
+import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
+import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
+import { authorizeVehicleGarageScope } from './domain/authorization';
+import { debitRegularEntry, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
+import { writeMaintainedGarageDelta, writeMaintainedGarageDailyDelta } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
 import { applyCheckoutReportDelta, emptyDailyReportAggregate } from './reportAggregate';
-
-export type VehicleRouteDependency = (...args: any[]) => any;
-
-export interface VehicleRouteDeps {
-  getAdminDb: () => any;
-  requireWorkerAuth: VehicleRouteDependency;
-  checkIdempotencyInTransaction: VehicleRouteDependency;
-  createRequestFingerprint: VehicleRouteDependency;
-  storeIdempotencyInTransaction: VehicleRouteDependency;
-  recordDomainEventInTransaction: VehicleRouteDependency;
-  parseMoneyAmount: VehicleRouteDependency;
-  calculateVehicleCost: VehicleRouteDependency;
-  validateIdempotencyKey: VehicleRouteDependency;
-  validatePlate: VehicleRouteDependency;
-  normalizePlateRaw: VehicleRouteDependency;
-  mapDomainErrorToStatus: VehicleRouteDependency;
-  createOperationId: VehicleRouteDependency;
-  createVehicleDelta: VehicleRouteDependency;
-  nextOperationVersion: VehicleRouteDependency;
-  decideVehicleCheckIn: VehicleRouteDependency;
-  garageDocumentToCheckInState: VehicleRouteDependency;
-  vehicleDocumentToCheckInState: VehicleRouteDependency;
-  decideVehicleCheckOut: VehicleRouteDependency;
-  garageDocumentToCheckOutState: VehicleRouteDependency;
-  vehicleDocumentToCheckOutState: VehicleRouteDependency;
-  authorizeVehicleGarageScope: VehicleRouteDependency;
-  debitRegularEntry: VehicleRouteDependency;
-  materializeCreditLedgerEntry: VehicleRouteDependency;
-  restoreCredits: VehicleRouteDependency;
-  writeMaintainedGarageDelta: VehicleRouteDependency;
-  writeMaintainedGarageDailyDelta: VehicleRouteDependency;
-}
 
 const SUPPORTED_VEHICLE_TYPES = new Set(['hourly', 'overnight']);
 
@@ -100,36 +84,7 @@ function cairoDateRange(dateId: string): { start: Date; end: Date } | null {
 }
 
 
-export function registerVehicleRoutes(app: WorkerApp, deps: VehicleRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    checkIdempotencyInTransaction,
-    createRequestFingerprint,
-    storeIdempotencyInTransaction,
-    recordDomainEventInTransaction,
-    parseMoneyAmount,
-    calculateVehicleCost,
-    validateIdempotencyKey,
-    validatePlate,
-    normalizePlateRaw,
-    mapDomainErrorToStatus,
-    createOperationId,
-    createVehicleDelta,
-    nextOperationVersion,
-    decideVehicleCheckIn,
-    garageDocumentToCheckInState,
-    vehicleDocumentToCheckInState,
-    decideVehicleCheckOut,
-    garageDocumentToCheckOutState,
-    vehicleDocumentToCheckOutState,
-    authorizeVehicleGarageScope,
-    debitRegularEntry,
-    materializeCreditLedgerEntry,
-    restoreCredits,
-    writeMaintainedGarageDelta,
-    writeMaintainedGarageDailyDelta
-  } = deps;
+export function registerVehicleRoutes(app: WorkerApp): void {
 // 7. Vehicle Operations & Operational Flow (CF5)
 
 // Route 1: POST /api/vehicles/check-in
@@ -164,7 +119,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
     const entrantEntityId = user?.entityId;
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -173,7 +128,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
 
     let resultData: Record<string, any> = {};
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -181,10 +136,10 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
           return;
         }
       }
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      const vehicleRef = getAdminDb().doc(`garages/${garageId}/vehicles/${plateRaw}`);
-      const dailyStatsRef = getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`);
-      const subscriberCollection = getAdminDb().collection(`garages/${garageId}/subscribers`);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
+      const subscriberCollection = adminDb.collection(`garages/${garageId}/subscribers`);
 
       let isSubscriberAuthoritative = false;
       try {
@@ -229,7 +184,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         const materialized = materializeCreditLedgerEntry(creditResult.value.entry);
         if (materialized.ok === false) throw new Error(materialized.error);
         creditDebit = { ...creditResult.value, entry: materialized.value };
-        t.set(getAdminDb().doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
+        t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
       }
 
       t.set(vehicleRef, {
@@ -327,7 +282,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         };
       }
 
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'vehicle',
         aggregateId: plateRaw,
@@ -392,7 +347,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
     if (!garageId || !vehicleId) {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     const requestFingerprint = createRequestFingerprint({ garageId, vehicleId });
 
@@ -401,7 +356,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
 
     let checkoutResult: any = { cost: 0 };
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-out', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -410,10 +365,10 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
         }
       }
       const canonicalVehicleId = normalizePlateRaw(vehicleId) || vehicleId;
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      let vehicleRef = getAdminDb().doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
       const today = getCairoDateKey();
-      const dailyStatsRef = getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${today}`);
 
       let [garageSnap, vehicleSnap, dailyStatsSnap] = await Promise.all([
         t.get(garageRef),
@@ -422,7 +377,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       ]);
 
       if (!vehicleSnap.exists && canonicalVehicleId !== vehicleId) {
-        const altRef = getAdminDb().doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
+        const altRef = adminDb.doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
         const altSnap = await t.get(altRef);
         if (altSnap.exists) {
           vehicleRef = altRef;
@@ -504,7 +459,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
       });
       writeMaintainedGarageDailyDelta(t, garageId, today, { todayRevenue: finalDecisionCost, todayExits: 1 });
 
-      const logRef = getAdminDb().collection('activity_logs').doc();
+      const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
         garageId,
         garageName: garageData.name || '',
@@ -519,7 +474,7 @@ app.post('/api/vehicles/check-out', requireWorkerAuth, async (c) => {
         timestamp: new Date(),
         amount: finalDecisionCost
       });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'vehicle',
         aggregateId: vehicleId,
@@ -585,7 +540,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     if (!garageId || !vehicleId) {
       return c.json({ success: false, error: 'MISSING_PARAMETERS' }, 400);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const idempotencyKey = validateIdempotencyKey(body.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key'));
     // Audit B3 (Phase 3, 2026-11-06): refunds are permanently disabled.
@@ -610,7 +565,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
     });
     const getCairoDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(
           t,
@@ -623,9 +578,9 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       }
       const todayYMD = getCairoDateKey();
       const operationId = createOperationId(garageId, idempotencyKey || undefined);
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
-      let vehicleRef = getAdminDb().doc(`garages/${garageId}/vehicles/${vehicleId}`);
-      const dailyStatsRef = getAdminDb().doc(`garages/${garageId}/daily_stats/${todayYMD}`);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
+      let vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${vehicleId}`);
+      const dailyStatsRef = adminDb.doc(`garages/${garageId}/daily_stats/${todayYMD}`);
 
       let [garageDoc, vehicleDoc, dailyStatsDoc] = await Promise.all([
         t.get(garageRef),
@@ -634,7 +589,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       ]);
 
       if (!vehicleDoc.exists && canonicalVehicleId !== vehicleId) {
-        const altRef = getAdminDb().doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
+        const altRef = adminDb.doc(`garages/${garageId}/vehicles/${canonicalVehicleId}`);
         const altSnap = await t.get(altRef);
         if (altSnap.exists) {
           vehicleRef = altRef;
@@ -687,7 +642,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
         const materializedRestore = materializeCreditLedgerEntry(restoreResult.value.entry);
         if (materializedRestore.ok === false) throw new Error(materializedRestore.error);
         creditRestore = { ...restoreResult.value, entry: materializedRestore.value };
-        t.set(getAdminDb().doc(`credit_ledger/${materializedRestore.value.entryId}`), materializedRestore.value);
+        t.set(adminDb.doc(`credit_ledger/${materializedRestore.value.entryId}`), materializedRestore.value);
       }
 
       let enteredToday = false;
@@ -745,7 +700,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
       // = -refundAmt` line is removed — refundAmt was always 0.
       writeMaintainedGarageDailyDelta(t, garageId, todayYMD, maintainedDailyDelta);
 
-      const logRef = getAdminDb().collection('activity_logs').doc();
+      const logRef = adminDb.collection('activity_logs').doc();
       t.set(logRef, {
         garageId,
         garageName: garageData.name || '',
@@ -760,7 +715,7 @@ const handleVehicleDeleteOrRefund = async (c: any) => {
           creditLedgerEntryId: creditRestore.entry.entryId,
         } : {})
       });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'vehicle',
         aggregateId: vehicleId,
@@ -835,9 +790,9 @@ app.get('/api/vehicles/inside', requireWorkerAuth, async (c) => {
     if (!isAdmin && !isGarageScoped) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const snap = await getAdminDb().collection(`garages/${garageId}/vehicles`)
+    const snap = await adminDb.collection(`garages/${garageId}/vehicles`)
       .where('status', '==', 'inside')
       .get();
 
@@ -871,14 +826,14 @@ app.get('/api/vehicles/history', requireWorkerAuth, async (c) => {
     if (!isAdmin && !isGarageScoped) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const dateQuery = c.req.query('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const dateRange = cairoDateRange(dateQuery);
     if (!dateRange) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
     const limitQuery = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
 
-    const snap = await getAdminDb().collection('activity_logs')
+    const snap = await adminDb.collection('activity_logs')
       .where('garageId', '==', garageId)
       .where('timestamp', '>=', dateRange.start)
       .where('timestamp', '<', dateRange.end)

@@ -2,22 +2,12 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
 import { withTraceContext } from './operationTrace';
-import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
-import { recordDomainEventInTransaction } from './events';
-import { parseMoneyAmount } from './money';
 import { computeLookupHash, normalizePhone } from './pinCrypto';
 import { saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, checkPinAvailabilityAcrossAll } from './pinRepository';
-import { calculateVehicleCost } from './domain/vehicleCost';
-import { validateIdempotencyKey, validatePlate, normalizePlateRaw, validateDateRange, validateId, validateNumber, validateNewPin, validateString, sanitizePayload, ValidationError } from './validation';
+import { validateIdempotencyKey, validateId, validateNumber, validateNewPin, validateString, sanitizePayload, ValidationError } from './validation';
 import { mapDomainErrorToStatus } from './routes/helpers';
-import { createOperationId, createVehicleDelta, nextOperationVersion } from './deltaProjection';
-import { decideVehicleCheckIn } from './domain/vehicleCheckIn';
-import { garageDocumentToCheckInState, vehicleDocumentToCheckInState } from './adapters/vehicleCheckInAdapter';
-import { decideVehicleCheckOut } from './domain/vehicleCheckOut';
-import { garageDocumentToCheckOutState, vehicleDocumentToCheckOutState } from './adapters/vehicleCheckOutAdapter';
-import { authorizeVehicleGarageScope, canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canViewFinancialReport, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
-import { applyCorrection, awardReferralCredits, debitRegularEntry, debitSubscriberRenewal, grantPaidCredits, grantTrialCredits, materializeCreditLedgerEntry, restoreCredits } from './domain/prepaidCreditLedger';
-import { addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement, createFinancialReportAccumulator, finishFinancialReport } from './financialReporting';
+import { canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
+import { applyCorrection, awardReferralCredits, grantPaidCredits, grantTrialCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
 import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
@@ -27,27 +17,13 @@ import { registerSubscriberRoutes } from './subscriberRoutes';
 import { registerFinancialRoutes } from './financialRoutes';
 import { registerGarageRoutes } from './garageRoutes';
 import { registerCreditRequestRoutes } from './creditRequestRoutes';
-import { sanitizeDelegateDoc } from './workerReadHelpers';
 import {
   startGarageDeletionRoute,
   advanceGarageDeletionRoute,
   readGarageDeletionStatusRoute
 } from './garageDeletionRoutes';
 import { reconcileGarageState } from './domain/garageReconciliation';
-import {
-  decideSubscriberAdd,
-  decideSubscriberDelete,
-  decideSubscriberRenew,
-  decideSubscriberUpdate
-} from './domain/subscriberLifecycle';
 
-import {
-  addRequestToCommand,
-  lifecycleErrorToLegacyError,
-  subscriberDocumentToState,
-  transitionToFirestoreUpdate,
-  updateRequestToCommand
-} from './adapters/subscriberLifecycleAdapter';
 import { PinRateLimiterNamespace } from './workerPinRateLimiter';
 
 // Extracted modules (split from this file in the round-18 refactor).
@@ -58,12 +34,12 @@ import {
   MAINTAINED_SUMMARY_VERSION,
   maintainedGarageSummaryRef,
   maintainedAdminSummaryRef,
-  writeMaintainedGarageDelta,
-  writeMaintainedGarageDailyDelta,
   writeMaintainedAdminDelta,
-  writeMaintainedSubscriberDelta,
 } from './workerMaintenance';
 
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { recordDomainEventInTransaction } from './events';
+import { parseMoneyAmount } from './money';
 export { PinRateLimiterDurableObject } from './workerPinRateLimiter';
 
 export interface WorkerUser {
@@ -74,7 +50,7 @@ export interface WorkerUser {
   displayName?: string;
 }
 
-async function readWorkerFirestorePage(query: any, collection: any, pageRequest: ReturnType<typeof parseFirestorePageRequest>, orderField = 'createdAt') {
+export async function readWorkerFirestorePage(query: any, collection: any, pageRequest: ReturnType<typeof parseFirestorePageRequest>, orderField = 'createdAt') {
   const orderedQuery = query.orderBy(orderField, 'desc').orderBy('__name__', 'desc');
   const afterCursor = firestorePageStartAfter(orderedQuery, collection, pageRequest.cursor);
   const snapshot = await afterCursor.limit(pageRequest.pageSize + 1).get();
@@ -141,7 +117,7 @@ async function consumeWorkerFinancialRateLimit(key: string, now = Date.now(), co
   });
 }
 
-async function enforceWorkerFinancialRateLimit(c: any, next: () => Promise<void>) {
+export async function enforceWorkerFinancialRateLimit(c: any, next: () => Promise<void>) {
   // If the Admin SDK is unavailable, each protected route retains its existing
   // unavailable-SDK response and cannot perform a business-data write.
   if (!adminDb) return next();
@@ -312,85 +288,11 @@ registerSessionRoutes(workerApp);
 registerReadRoutes(workerApp);
 
 // 7. Vehicle Operations & Operational Flow (CF5)
-registerVehicleRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  requireWorkerAuth,
-  checkIdempotencyInTransaction,
-  createRequestFingerprint,
-  storeIdempotencyInTransaction,
-  recordDomainEventInTransaction,
-  parseMoneyAmount,
-  calculateVehicleCost,
-  validateIdempotencyKey,
-  validatePlate,
-  normalizePlateRaw,
-  mapDomainErrorToStatus,
-  createOperationId,
-  createVehicleDelta,
-  nextOperationVersion,
-  decideVehicleCheckIn,
-  garageDocumentToCheckInState,
-  vehicleDocumentToCheckInState,
-  decideVehicleCheckOut,
-  garageDocumentToCheckOutState,
-  vehicleDocumentToCheckOutState,
-  authorizeVehicleGarageScope,
-  debitRegularEntry,
-  materializeCreditLedgerEntry,
-  restoreCredits,
-  writeMaintainedGarageDelta,
-  writeMaintainedGarageDailyDelta
-});
+registerVehicleRoutes(workerApp);
 // 8. Subscriber Lifecycle Management (CF6)
-registerSubscriberRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  requireWorkerAuth,
-  decideGarageScope,
-  validateId,
-  validateDateRange,
-  validatePlate,
-  validateIdempotencyKey,
-  mapDomainErrorToStatus,
-  checkIdempotencyInTransaction,
-  createRequestFingerprint,
-  storeIdempotencyInTransaction,
-  recordDomainEventInTransaction,
-  decideSubscriberAdd,
-  decideSubscriberDelete,
-  decideSubscriberRenew,
-  decideSubscriberUpdate,
-  addRequestToCommand,
-  lifecycleErrorToLegacyError,
-  subscriberDocumentToState,
-  transitionToFirestoreUpdate,
-  updateRequestToCommand,
-  debitSubscriberRenewal,
-  materializeCreditLedgerEntry,
-  maintainedGarageSummaryRef,
-  writeMaintainedGarageDelta,
-  writeMaintainedSubscriberDelta
-});
+registerSubscriberRoutes(workerApp);
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
-registerFinancialRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  requireWorkerAuth,
-  enforceWorkerFinancialRateLimit,
-  validateId,
-  validateIdempotencyKey,
-  checkIdempotencyInTransaction,
-  createRequestFingerprint,
-  storeIdempotencyInTransaction,
-  recordDomainEventInTransaction,
-  parseFirestorePageRequest,
-  readWorkerFirestorePage,
-  sanitizeDelegateDoc,
-  canViewFinancialReport,
-  addFinancialReportCreditLedgerEntry,
-  addFinancialReportEvent,
-  addFinancialReportSettlement,
-  createFinancialReportAccumulator,
-  finishFinancialReport
-});
+registerFinancialRoutes(workerApp);
 // 10. Garage Management & System Hardening (CF8)
 registerGarageRoutes(workerApp, {
   getAdminDb: () => adminDb,
