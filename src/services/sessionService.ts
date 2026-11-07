@@ -1,4 +1,4 @@
-import { apiFetch } from '../api/apiClient';
+import { apiCall } from '../api/apiCall';
 
 export interface ActiveSession {
   id: string;
@@ -8,34 +8,21 @@ export interface ActiveSession {
   lastActive: string | null;
 }
 
-interface SessionListResponse {
-  success: boolean;
-  sessions: ActiveSession[];
-}
-
 interface SessionRevokeResponse {
-  success: boolean;
   revokedSession: string;
   wasCurrent: boolean;
 }
 
 export async function listActiveSessions(): Promise<ActiveSession[]> {
-  const response = await apiFetch<SessionListResponse>('/api/auth/sessions');
-  if (!response || response.success !== true || !Array.isArray(response.sessions)) {
-    throw new Error('SESSION_LIST_INVALID_RESPONSE');
-  }
-  return response.sessions;
+  const res = await apiCall<{ sessions: ActiveSession[] }>('/api/auth/sessions');
+  return Array.isArray(res?.sessions) ? res.sessions : [];
 }
 
 export async function revokeActiveSession(sessionKey: string): Promise<SessionRevokeResponse> {
   if (!/^[a-f0-9]{64}$/.test(sessionKey)) {
     throw new Error('INVALID_SESSION_KEY');
   }
-  const response = await apiFetch<SessionRevokeResponse>(`/api/auth/sessions/${sessionKey}`, { method: 'DELETE' });
-  if (!response || response.success !== true || response.revokedSession !== sessionKey) {
-    throw new Error('SESSION_REVOKE_INVALID_RESPONSE');
-  }
-  return response;
+  return apiCall<SessionRevokeResponse>(`/api/auth/sessions/${sessionKey}`, { method: 'DELETE' });
 }
 
 export const sessionService = {

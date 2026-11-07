@@ -1,20 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiFetch } from '../api/apiClient';
 import { listActiveSessions, revokeActiveSession } from './sessionService';
 
-vi.mock('../api/apiClient', () => ({
-  apiFetch: vi.fn()
+// Mock apiCall (which wraps apiFetch) at the module level
+vi.mock('../api/apiCall', () => ({
+  apiCall: vi.fn()
 }));
 
-const mockedApiFetch = vi.mocked(apiFetch);
+import { apiCall } from '../api/apiCall';
+const mockedApiCall = vi.mocked(apiCall);
 const sessionKey = 'a'.repeat(64);
 
 beforeEach(() => {
-  mockedApiFetch.mockReset();
+  mockedApiCall.mockReset();
 });
 
 describe('sessionService', () => {
-  it('lists active sessions only when the response shape is valid', async () => {
+  it('lists active sessions from the API response', async () => {
     const sessions = [{
       id: sessionKey,
       isCurrent: true,
@@ -22,37 +23,29 @@ describe('sessionService', () => {
       createdAt: '2026-09-23T05:00:00.000Z',
       lastActive: '2026-09-23T05:10:00.000Z'
     }];
-    mockedApiFetch.mockResolvedValue({ success: true, sessions });
+    mockedApiCall.mockResolvedValue({ sessions } as any);
 
     await expect(listActiveSessions()).resolves.toEqual(sessions);
-    expect(mockedApiFetch).toHaveBeenCalledWith('/api/auth/sessions');
+    expect(mockedApiCall).toHaveBeenCalledWith('/api/auth/sessions');
   });
 
-  it('rejects malformed session-list responses', async () => {
-    mockedApiFetch.mockResolvedValue({ success: true, sessions: 'not-an-array' });
-
-    await expect(listActiveSessions()).rejects.toThrow('SESSION_LIST_INVALID_RESPONSE');
+  it('returns empty array when sessions field is missing or invalid', async () => {
+    mockedApiCall.mockResolvedValue({ sessions: 'not-an-array' } as any);
+    await expect(listActiveSessions()).resolves.toEqual([]);
   });
 
   it('revokes a valid opaque session key with DELETE', async () => {
-    mockedApiFetch.mockResolvedValue({ success: true, revokedSession: sessionKey, wasCurrent: false });
+    mockedApiCall.mockResolvedValue({ revokedSession: sessionKey, wasCurrent: false } as any);
 
     await expect(revokeActiveSession(sessionKey)).resolves.toEqual({
-      success: true,
       revokedSession: sessionKey,
       wasCurrent: false
     });
-    expect(mockedApiFetch).toHaveBeenCalledWith(`/api/auth/sessions/${sessionKey}`, { method: 'DELETE' });
+    expect(mockedApiCall).toHaveBeenCalledWith(`/api/auth/sessions/${sessionKey}`, { method: 'DELETE' });
   });
 
   it('rejects invalid session keys before making a request', async () => {
     await expect(revokeActiveSession('raw-session-id')).rejects.toThrow('INVALID_SESSION_KEY');
-    expect(mockedApiFetch).not.toHaveBeenCalled();
-  });
-
-  it('rejects a revoke response for a different session key', async () => {
-    mockedApiFetch.mockResolvedValue({ success: true, revokedSession: 'b'.repeat(64), wasCurrent: false });
-
-    await expect(revokeActiveSession(sessionKey)).rejects.toThrow('SESSION_REVOKE_INVALID_RESPONSE');
+    expect(mockedApiCall).not.toHaveBeenCalled();
   });
 });

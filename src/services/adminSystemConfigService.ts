@@ -1,5 +1,5 @@
 import { auth, handleFirestoreError, OperationType } from '../firebase';
-import { apiFetch } from '../api/apiClient';
+import { apiCall } from '../api/apiCall';
 import { listenerTracker } from '../utils/listenerTracker';
 import type { SystemConfig } from '../types';
 
@@ -10,12 +10,11 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
 const configListeners = new Set<(config: SystemConfig | null) => void>();
 
 const getSystemConfig = async (): Promise<SystemConfig | null> => {
-  // system_config is private; use local/default bootstrap until an active Worker session exists.
   if (!auth.currentUser) return null;
 
   try {
-    const apiRes = await apiFetch<{ success?: boolean; config?: SystemConfig }>('/api/system-config');
-    return apiRes?.success && apiRes.config ? apiRes.config : null;
+    const res = await apiCall<{ config?: SystemConfig }>('/api/system-config');
+    return res?.config || null;
   } catch (error) {
     console.error('Error fetching system config:', error);
     return null;
@@ -34,8 +33,6 @@ export const adminSystemConfigService = {
       });
     };
 
-    // The app subscribes before the session coordinator has completed login.
-    // Refresh after it claims the server-owned session so settings are not stuck at defaults.
     if (typeof window !== 'undefined') window.addEventListener('rq-session-ready', refresh);
     refresh();
 
@@ -48,7 +45,7 @@ export const adminSystemConfigService = {
 
   updateSystemConfig: async (config: Partial<SystemConfig>): Promise<void> => {
     try {
-      await apiFetch('/api/admin/update-system-config', {
+      await apiCall('/api/admin/update-system-config', {
         method: 'POST',
         body: config
       });
