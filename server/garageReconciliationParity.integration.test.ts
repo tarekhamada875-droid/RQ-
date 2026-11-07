@@ -12,7 +12,8 @@ vi.mock('./firebaseAdmin', () => ({
   adminAuth: mockAdminAuth,
   firebaseConfig: {},
   initializeFirebaseAdmin: () => {},
-  isFirebaseAdminInitialized: () => true
+  isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 
 import { api } from './api';

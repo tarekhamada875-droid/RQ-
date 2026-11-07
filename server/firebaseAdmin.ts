@@ -1,8 +1,33 @@
 import { initializeApp as initAdminApp, cert, getApps as getAdminApps } from 'firebase-admin/app';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getFirestore as getAdminFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import fs from 'fs';
 import path from 'path';
+
+// Re-export FieldValue so consumers can import it from this module.
+//
+// Audit ref: Phase 3 / A1 (consolidated audit, 2026-11-06).
+//
+// In dev/tests, this is the real firebase-admin SDK's FieldValue —
+// FieldValue.increment(n) returns a server-side increment transform
+// that the SDK correctly applies inside runTransaction.
+//
+// In production (Cloudflare build), tools/build-cloudflare.mjs aliases
+// both 'firebaseAdmin' and 'firebase-admin/firestore' to
+// firebaseWorkerAdmin.ts (the hand-rolled REST client). That file
+// exports its own FieldValue sentinel that FirestoreRest.write
+// translates into a real server-side increment.
+//
+// Before this re-export, workerMaintenance.ts imported FieldValue from
+// './firebaseWorkerAdmin' directly — which in dev/tests returned the
+// sentinel ({__op:'increment', value:n}) instead of the SDK's real
+// transform. The MockFirestore persisted it as a literal map, so
+// isUsableMaintainedSummary got NaN and the O(1) maintained-summary
+// fast path silently never worked in dev. A test even papered over
+// this by unwrapping __op. Now workerMaintenance.ts imports FieldValue
+// from './firebaseAdmin', so dev/tests use the real SDK and production
+// uses the alias-targeted REST client — both correct.
+export { FieldValue };
 
 function loadFirebaseConfig(): any {
   const fallbackConfig = {

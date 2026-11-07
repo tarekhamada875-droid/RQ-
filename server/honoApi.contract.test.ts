@@ -4,7 +4,8 @@ vi.mock('./firebaseAdmin', () => ({
   adminDb: { doc: () => ({ set: async () => undefined }) },
   adminAuth: { verifyIdToken: async () => ({ uid: 'hono-synthetic-user', role: 'admin' }) },
   firebaseConfig: {},
-  isFirebaseAdminInitialized: () => true
+  isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 
 import api from './api';

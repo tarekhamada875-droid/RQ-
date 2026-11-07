@@ -18,6 +18,7 @@ vi.mock('../../server/firebaseAdmin', () => ({
   firebaseConfig: {},
   initializeFirebaseAdmin: () => {},
   isFirebaseAdminInitialized: () => true,
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
 }));
 
 import { api } from '../../server/api';

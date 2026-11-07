@@ -1,5 +1,13 @@
-import { FieldValue } from './firebaseWorkerAdmin';
-import { adminDb } from './firebaseAdmin';
+// Audit A1 (Phase 3, 2026-11-06): import FieldValue from './firebaseAdmin'
+// (not './firebaseWorkerAdmin'). In dev/tests, firebaseAdmin.ts re-exports
+// the real firebase-admin SDK's FieldValue; in production, the build alias
+// redirects firebaseAdmin → firebaseWorkerAdmin, so both halves come from
+// the same file and the sentinel is correctly translated by FirestoreRest.
+// The previous import from './firebaseWorkerAdmin' returned the sentinel
+// {__op:'increment', value:n} in dev/tests, which MockFirestore persisted
+// as a literal map — breaking isUsableMaintainedSummary (NaN) and forcing
+// a test to paper over it by unwrapping __op.
+import { adminDb, FieldValue } from './firebaseAdmin';
 
 /**
  * Maintained-summary helpers.
