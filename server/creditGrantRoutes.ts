@@ -1,42 +1,24 @@
 /**
  * creditGrant route handlers.
  *
- * Extracted from garageRoutes.ts (Wave 6c). Imports deps from the
- * shared GarageRouteDeps interface defined in garageRoutes.ts.
+ * Extracted from garageRoutes.ts (Wave 6c). Direct module imports
+ * after the C1 part 3 dependency-injection conversion.
  */
 import type { WorkerApp } from './cloudflareWorker';
-import type { GarageRouteDeps } from './garageRoutes';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
+import { applyCorrection, awardReferralCredits, grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
+import { canRunGarageMaintenance, canUpdateEntityPin } from './domain/authorization';
+import { recordDomainEventInTransaction } from './events';
+import { mapDomainErrorToStatus } from './routes/helpers';
+import { parseMoneyAmount } from './money';
+import { parseFirestorePageRequest, firestorePageStartAfter, buildFirestorePage } from './firestorePagination';
+import { writeMaintainedAdminDelta } from './workerMaintenance';
 
-export function registerCreditGrantRoutes(app: WorkerApp, deps: GarageRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    ValidationError,
-    validateNewPin,
-    validateIdempotencyKey,
-    validateId,
-    validateString,
-    validateNumber,
-    checkPinAvailabilityAcrossAll,
-    createRequestFingerprint,
-    checkIdempotencyInTransaction,
-    storeIdempotencyInTransaction,
-    mapDomainErrorToStatus,
-    parseMoneyAmount,
-    parseFirestorePageRequest,
-    firestorePageStartAfter,
-    buildFirestorePage,
-    canRunGarageMaintenance,
-    canUpdateEntityPin,
-    saveEntityPin,
-    grantPaidCredits,
-    awardReferralCredits,
-    applyCorrection,
-    materializeCreditLedgerEntry,
-    recordDomainEventInTransaction,
-    writeMaintainedAdminDelta,
-    sanitizePayload,
-  } = deps;
+export function registerCreditGrantRoutes(app: WorkerApp): void {
 
 app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
   try {
@@ -48,11 +30,11 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     }
 
     const normNewPin = validateNewPin(newPin, 'newPin');
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     let targetGarageId: unknown = entityType === 'garages' ? entityId : undefined;
     if (entityType === 'staff' && user?.role !== 'admin') {
-      const targetStaffSnap = await getAdminDb().collection('staff').doc(entityId).get();
+      const targetStaffSnap = await adminDb.collection('staff').doc(entityId).get();
       targetGarageId = targetStaffSnap.exists ? targetStaffSnap.data()?.garageId : null;
     }
     if (!canUpdateEntityPin(user, entityType, targetGarageId)) {
@@ -70,7 +52,7 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
 
     await saveEntityPin(entityType, entityId, normNewPin);
 
-    const targetDocRef = getAdminDb().collection(entityType).doc(entityId);
+    const targetDocRef = adminDb.collection(entityType).doc(entityId);
     const docSnap = await targetDocRef.get();
     if (docSnap.exists) {
       const data = docSnap.data() || {};
@@ -108,7 +90,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'paymentAmountEgp', 'paymentConfirmed', 'reason', 'idempotencyKey'], false);
@@ -121,10 +103,10 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, amount: sanitized.amount, paymentAmountEgp, reason });
     let granted: any = null;
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-grants', callerUid, requestFingerprint);
       if (isDuplicate) { granted = cachedResult; return; }
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garage = garageSnap.data() || {};
@@ -146,7 +128,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         ? garage.createdByDelegateId.trim()
         : '';
       const commissionDelegateRef = commissionDelegateId
-        ? getAdminDb().collection('delegates').doc(commissionDelegateId)
+        ? adminDb.collection('delegates').doc(commissionDelegateId)
         : null;
       const commissionDelegateSnap = commissionDelegateRef ? await t.get(commissionDelegateRef) : null;
       if (commissionDelegateRef && !commissionDelegateSnap?.exists) throw new Error('DELEGATE_NOT_FOUND');
@@ -170,9 +152,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         throw new Error('INVALID_DELEGATE_COMMISSION_BALANCE');
       }
       const referrerGarageId = typeof garage.referredByGarageId === 'string' ? garage.referredByGarageId : '';
-      const referralMarkerRef = isFirstQualifyingGrant ? getAdminDb().doc(`credit_referral_awards/${garageId}`) : null;
+      const referralMarkerRef = isFirstQualifyingGrant ? adminDb.doc(`credit_referral_awards/${garageId}`) : null;
       const referralMarkerSnap = referralMarkerRef ? await t.get(referralMarkerRef) : null;
-      const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? getAdminDb().doc(`garages/${referrerGarageId}`) : null;
+      const referrerRef = isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists && referrerGarageId && referrerGarageId !== garageId ? adminDb.doc(`garages/${referrerGarageId}`) : null;
       const referrerSnap = referrerRef ? await t.get(referrerRef) : null;
       let amount: number;
       // ── Credit rate ────────────────────────────────────────────────────────
@@ -180,7 +162,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       // The client-sent `amount` field is ignored — the server is authoritative
       // for the EGP→credit conversion so the admin UI doesn't need to know the
       // rate. The client only sends paymentAmountEgp; credits are derived.
-      const configSnap = await t.get(getAdminDb().doc('system_config/global'));
+      const configSnap = await t.get(adminDb.doc('system_config/global'));
       const configData = configSnap.exists ? (configSnap.data() || {}) : {};
       const creditRate = Number(configData.creditRate ?? 1);
       if (!Number.isFinite(creditRate) || creditRate <= 0) {
@@ -233,8 +215,8 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
         // Only set when commission was actually due this grant.
         ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
       }, { merge: true });
-      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp });
-      recordDomainEventInTransaction(t, getAdminDb(), {
+      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_entered_grant', paymentConfirmed: true, paymentAmountEgp });
+      recordDomainEventInTransaction(t, adminDb, {
         garageId,
         aggregateType: 'credit_grant',
         aggregateId: entry.value.entryId,
@@ -250,7 +232,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           totalRechargedAmount: nextUnsettledCommission,
           updatedAt: now
         });
-        recordDomainEventInTransaction(t, getAdminDb(), {
+        recordDomainEventInTransaction(t, adminDb, {
           garageId,
           aggregateType: 'delegate',
           aggregateId: commissionDelegateId,
@@ -269,11 +251,11 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           }
         });
       }
-      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_grant', timestamp: new Date(), details: { amount, paymentAmountEgp, reason, ledgerEntryId: entry.value.entryId } });
       if (referralLedger && referralAward && referrerRef && referralMarkerRef) {
         t.set(referrerRef, { credits: referralTransition.value.balance }, { merge: true });
-        t.set(getAdminDb().doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
-        t.set(getAdminDb().collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
+        t.set(adminDb.doc(`credit_ledger/${referralLedger.entryId}`), { ...referralLedger, source: 'first_paid_grant_referral', referredGarageId: garageId });
+        t.set(adminDb.collection('activity_logs').doc(), { garageId: referrerGarageId, garageName: referrerSnap.data()?.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_referral_award', timestamp: new Date(), details: { referredGarageId: garageId, amount: 20, ledgerEntryId: referralLedger.entryId } });
       }
       if (isFirstQualifyingGrant && referralMarkerRef && !referralMarkerSnap?.exists) {
         t.set(referralMarkerRef, {
@@ -310,7 +292,7 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
   try {
     const user = c.get('user');
     if (user?.role !== 'admin') return c.json({ success: false, error: 'ADMIN_ONLY' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const body = await c.req.json().catch(() => ({}));
     const sanitized = sanitizePayload(body, ['amount', 'reason', 'idempotencyKey'], false);
@@ -324,10 +306,10 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
     const callerUid = user.uid;
     const requestFingerprint = createRequestFingerprint({ garageId, amount, reason, kind: 'correction' });
     let correction: any = null;
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       const { isDuplicate, cachedResult } = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
       if (isDuplicate) { correction = cachedResult; return; }
-      const garageRef = getAdminDb().doc(`garages/${garageId}`);
+      const garageRef = adminDb.doc(`garages/${garageId}`);
       const garageSnap = await t.get(garageRef);
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garage = garageSnap.data() || {};
@@ -338,8 +320,8 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
       const entry = materializeCreditLedgerEntry(transition.value.entry);
       if (entry.ok === false) throw new Error(entry.error);
       t.set(garageRef, { credits: transition.value.balance }, { merge: true });
-      t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_correction' });
-      t.set(getAdminDb().collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_correction', timestamp: new Date(), details: { amount, reason, ledgerEntryId: entry.value.entryId } });
+      t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), { ...entry.value, source: 'admin_correction' });
+      t.set(adminDb.collection('activity_logs').doc(), { garageId, garageName: garage.name || '', staffId: callerUid, staffName: user.displayName || 'Admin', actionType: 'credit_correction', timestamp: new Date(), details: { amount, reason, ledgerEntryId: entry.value.entryId } });
       correction = { garageId, amount, reason, balance: transition.value.balance, entryId: entry.value.entryId };
       storeIdempotencyInTransaction(t, idempotencyKey, correction, '/api/garages/:id/credit-corrections', callerUid, requestFingerprint);
     });
@@ -354,12 +336,12 @@ app.post('/api/garages/:id/credit-corrections', requireWorkerAuth, async (c) => 
 app.get('/api/garages/:id/credit-ledger', requireWorkerAuth, async (c) => {
   try {
     const user = c.get('user');
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const scopedGarage = (user?.role === 'garage' || user?.role === 'staff') && (user?.garageId === garageId || user?.entityId === garageId);
     if (user?.role !== 'admin' && !scopedGarage) return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     const pageRequest = parseFirestorePageRequest(c.req.query('limit'), c.req.query('cursor'), `credit-ledger:${garageId}`);
-    const collection = getAdminDb().collection('credit_ledger');
+    const collection = adminDb.collection('credit_ledger');
     let query = collection.where('garageId', '==', garageId).orderBy('occurredAt', 'desc').orderBy('__name__', 'desc');
     query = firestorePageStartAfter(query, collection, pageRequest.cursor);
     const snapshot = await query.limit(pageRequest.pageSize + 1).get();
@@ -382,7 +364,7 @@ app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) =>
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({}));
     const { garageId } = body;
-    if (!garageId || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
     if (!canRunGarageMaintenance(user, 'recalculate-cars-inside')) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
@@ -398,7 +380,7 @@ app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) =>
     let lastDoc: any = null;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let query: any = getAdminDb().collection(`garages/${garageId}/vehicles`)
+      let query: any = adminDb.collection(`garages/${garageId}/vehicles`)
         .where('status', '==', 'inside')
         .orderBy('__name__')
         .limit(PAGE_SIZE);
@@ -411,7 +393,7 @@ app.post('/api/garages/recalculate-cars-inside', requireWorkerAuth, async (c) =>
       lastDoc = pageSnap.docs[pageSnap.docs.length - 1];
     }
 
-    await getAdminDb().collection('garages').doc(garageId).update({ carsInside: actualCount });
+    await adminDb.collection('garages').doc(garageId).update({ carsInside: actualCount });
     return c.json({ success: true, count: actualCount });
   } catch (e: any) {
     console.error('[Worker Garage] Error in recalculate-cars-inside:', e);

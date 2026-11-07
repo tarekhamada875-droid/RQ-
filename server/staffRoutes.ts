@@ -1,30 +1,18 @@
 /**
  * staff route handlers.
  *
- * Extracted from garageRoutes.ts (Wave 6c). Imports deps from the
- * shared GarageRouteDeps interface defined in garageRoutes.ts.
+ * Extracted from garageRoutes.ts (Wave 6c). Direct module imports
+ * after the C1 part 3 dependency-injection conversion.
  */
 import type { WorkerApp } from './cloudflareWorker';
-import type { GarageRouteDeps } from './garageRoutes';
+import { adminAuth, adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateString } from './validation';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntityPinInTransaction } from './pinRepository';
+import { canManageStaffForGarage } from './domain/authorization';
 
-export function registerStaffRoutes(app: WorkerApp, deps: GarageRouteDeps): void {
-  const {
-    getAdminDb,
-    getAdminAuth,
-    requireWorkerAuth,
-    ValidationError,
-    validateNewPin,
-    validateIdempotencyKey,
-    validateId,
-    validateString,
-    checkPinAvailabilityAcrossAll,
-    createRequestFingerprint,
-    checkIdempotencyInTransaction,
-    storeIdempotencyInTransaction,
-    saveEntityPinInTransaction,
-    deleteEntityPinInTransaction,
-    canManageStaffForGarage,
-  } = deps;
+export function registerStaffRoutes(app: WorkerApp): void {
 
 app.post('/api/staff/create', requireWorkerAuth, async (c) => {
   try {
@@ -48,7 +36,7 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
     const normName = validateString(name, 'name', { min: 2, max: 100, required: true })!;
     const normPin = validateNewPin(pin);
 
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
     if (pinCheck.taken) {
@@ -59,12 +47,12 @@ app.post('/api/staff/create', requireWorkerAuth, async (c) => {
       }, 400);
     }
 
-    const staffRef = getAdminDb().collection('staff').doc();
+    const staffRef = adminDb.collection('staff').doc();
     const staffId = staffRef.id;
 
     let resultData: Record<string, any> = { success: true, id: staffId };
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey && requestFingerprint) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/staff/create', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -102,9 +90,9 @@ app.post('/api/staff/update', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id, name, phone, role, permissions, pin } = body;
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const staffId = validateId(id, 'id', true);
-    const staffRef = getAdminDb().collection('staff').doc(staffId);
+    const staffRef = adminDb.collection('staff').doc(staffId);
 
     // Authorize the target before checking global PIN uniqueness, which otherwise
     // lets callers probe whether a PIN is already assigned outside their garage.
@@ -126,7 +114,7 @@ app.post('/api/staff/update', requireWorkerAuth, async (c) => {
     if (role) updates.role = role;
     if (permissions) updates.permissions = permissions;
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       const targetStaffSnap = await t.get(staffRef);
       if (!targetStaffSnap.exists) throw new Error('STAFF_NOT_FOUND');
       if (!canManageStaffForGarage(user, targetStaffSnap.data()?.garageId)) {
@@ -151,9 +139,9 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     const user = c.get('user');
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const staffId = validateId(id, 'id', true);
-    const staffRef = getAdminDb().collection('staff').doc(staffId);
+    const staffRef = adminDb.collection('staff').doc(staffId);
 
     // 1. Verify authorization and read the staff doc before mutation.
     const staffSnap = await staffRef.get();
@@ -171,12 +159,12 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     let revokedSessions = 0;
     const crypto = await import('crypto');
     const hashSessionId = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
-    const staffSessionsSnap = await getAdminDb().collection('staff_sessions')
+    const staffSessionsSnap = await adminDb.collection('staff_sessions')
       .where('entityId', '==', staffId)
       .get();
-    const adminAuthInstance = getAdminAuth();
+    const adminAuthInstance = adminAuth;
     const uidsToDelete: string[] = [];
-    let sessionBatch = getAdminDb().batch();
+    let sessionBatch = adminDb.batch();
     let sessionBatchWrites = 0;
     for (const sessionDoc of staffSessionsSnap.docs) {
       const sessionData = sessionDoc.data() || {};
@@ -186,27 +174,27 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
       sessionBatch.update(sessionDoc.ref, { isActive: false, lastActive: now });
       sessionBatchWrites += 1;
       if (sessionData.uid && sessionData.sessionId) {
-        sessionBatch.set(getAdminDb().doc(`session_index/${hashSessionId(`${sessionData.uid}:${sessionData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
+        sessionBatch.set(adminDb.doc(`session_index/${hashSessionId(`${sessionData.uid}:${sessionData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
         sessionBatchWrites += 1;
       }
-      const deviceSessions = await getAdminDb().collection(`staff_sessions/${sessionDoc.id}/sessions`).get();
+      const deviceSessions = await adminDb.collection(`staff_sessions/${sessionDoc.id}/sessions`).get();
       for (const deviceDoc of deviceSessions.docs) {
         const deviceData = deviceDoc.data() || {};
         if (deviceData.isActive === true) revokedSessions += 1;
         sessionBatch.update(deviceDoc.ref, { isActive: false, lastActive: now });
         sessionBatchWrites += 1;
         if (deviceData.uid && deviceData.sessionId) {
-          sessionBatch.set(getAdminDb().doc(`session_index/${hashSessionId(`${deviceData.uid}:${deviceData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
+          sessionBatch.set(adminDb.doc(`session_index/${hashSessionId(`${deviceData.uid}:${deviceData.sessionId}`)}`), { isActive: false, updatedAt: now }, { merge: true });
           sessionBatchWrites += 1;
         }
-        if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = getAdminDb().batch(); sessionBatchWrites = 0; }
+        if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = adminDb.batch(); sessionBatchWrites = 0; }
       }
-      if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = getAdminDb().batch(); sessionBatchWrites = 0; }
+      if (sessionBatchWrites >= 450) { await sessionBatch.commit(); sessionBatch = adminDb.batch(); sessionBatchWrites = 0; }
     }
     if (sessionBatchWrites > 0) await sessionBatch.commit();
 
     // 3. Delete the staff doc and its PIN atomically.
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       await deleteEntityPinInTransaction(t, 'staff', staffId);
       t.delete(staffRef);
     });
@@ -235,7 +223,7 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
     let lastActivityDoc: any = null;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let activityQuery: any = getAdminDb().collection('activity_logs')
+      let activityQuery: any = adminDb.collection('activity_logs')
         .where('staffId', '==', staffId)
         .orderBy('__name__')
         .limit(ACTIVITY_PAGE_SIZE);
@@ -244,7 +232,7 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
       }
       const activitySnap = await activityQuery.get();
       if (activitySnap.docs.length === 0) break;
-      let activityBatch = getAdminDb().batch();
+      let activityBatch = adminDb.batch();
       let activityBatchWrites = 0;
       for (const doc of activitySnap.docs) {
         activityBatch.delete(doc.ref);
@@ -252,7 +240,7 @@ app.post('/api/staff/delete', requireWorkerAuth, async (c) => {
         deletedActivityLogs += 1;
         if (activityBatchWrites >= 450) {
           await activityBatch.commit();
-          activityBatch = getAdminDb().batch();
+          activityBatch = adminDb.batch();
           activityBatchWrites = 0;
         }
       }

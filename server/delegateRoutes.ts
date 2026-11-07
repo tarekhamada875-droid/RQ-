@@ -1,31 +1,20 @@
 /**
  * delegate route handlers.
  *
- * Extracted from garageRoutes.ts (Wave 6c). Imports deps from the
- * shared GarageRouteDeps interface defined in garageRoutes.ts.
+ * Extracted from garageRoutes.ts (Wave 6c). Direct module imports
+ * after the C1 part 3 dependency-injection conversion.
  */
 import type { WorkerApp } from './cloudflareWorker';
-import type { GarageRouteDeps } from './garageRoutes';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateString } from './validation';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { checkPinAvailabilityAcrossAll, deleteEntityPinInTransaction, saveEntityPinInTransaction } from './pinRepository';
+import { canManageDelegates } from './domain/authorization';
+import { normalizePhone } from './pinCrypto';
+import { writeMaintainedAdminDelta } from './workerMaintenance';
 
-export function registerDelegateRoutes(app: WorkerApp, deps: GarageRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    ValidationError,
-    validateNewPin,
-    normalizePhone,
-    validateIdempotencyKey,
-    validateId,
-    validateString,
-    checkPinAvailabilityAcrossAll,
-    createRequestFingerprint,
-    checkIdempotencyInTransaction,
-    storeIdempotencyInTransaction,
-    saveEntityPinInTransaction,
-    deleteEntityPinInTransaction,
-    canManageDelegates,
-    writeMaintainedAdminDelta,
-  } = deps;
+export function registerDelegateRoutes(app: WorkerApp): void {
 
 app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
   try {
@@ -59,7 +48,7 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
     const normPhone = phone ? normalizePhone(phone) : '';
     const normPin = validateNewPin(pin);
 
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const pinCheck = await checkPinAvailabilityAcrossAll(normPin);
     if (pinCheck.taken) {
@@ -70,12 +59,12 @@ app.post('/api/delegates/create', requireWorkerAuth, async (c) => {
       }, 400);
     }
 
-    const delRef = getAdminDb().collection('delegates').doc();
+    const delRef = adminDb.collection('delegates').doc();
     const delId = delRef.id;
 
     let resultData: Record<string, any> = { success: true, id: delId };
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey && requestFingerprint) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/delegates/create', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
@@ -116,7 +105,7 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id, name, phone, pin } = body;
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const delegateId = validateId(id, 'id', true);
     const retiredField = ['commissionRate', 'commissions', 'balance', 'totalEarned']
       .find((field) => body[field] !== undefined);
@@ -140,8 +129,8 @@ app.post('/api/delegates/update', requireWorkerAuth, async (c) => {
     if (name) updates.name = String(name).trim();
     if (phone !== undefined) updates.phone = String(phone).trim();
 
-    const delegateRef = getAdminDb().collection('delegates').doc(delegateId);
-    await getAdminDb().runTransaction(async (t: any) => {
+    const delegateRef = adminDb.collection('delegates').doc(delegateId);
+    await adminDb.runTransaction(async (t: any) => {
       const delegateSnap = await t.get(delegateRef);
       if (!delegateSnap.exists) throw new Error('DELEGATE_NOT_FOUND');
       if (normalizedPin) await saveEntityPinInTransaction(t, 'delegates', delegateId, normalizedPin);
@@ -165,12 +154,12 @@ app.post('/api/delegates/delete', requireWorkerAuth, async (c) => {
     }
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { id } = body;
-    if (!id || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!id || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const delegateId = validateId(id, 'id', true);
-    const delegateRef = getAdminDb().collection('delegates').doc(delegateId);
+    const delegateRef = adminDb.collection('delegates').doc(delegateId);
     let missingDelegate = false;
     let unsettledCycleTotal = 0;
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       const delegateSnap = await t.get(delegateRef);
       if (!delegateSnap.exists) {
         missingDelegate = true;

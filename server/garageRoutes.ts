@@ -1,108 +1,35 @@
 import type { WorkerApp } from './cloudflareWorker';
+import { enforceWorkerFinancialRateLimit } from './cloudflareWorker';
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { canSubmitGarageApplication, canManageGarageScopedData as decideGarageScope, canRunGarageMaintenance } from './domain/authorization';
+import { grantTrialCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
+import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
+import { calculateDailyProjection, getCairoDayBounds } from './projections';
+import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
+import { mapDomainErrorToStatus } from './routes/helpers';
+import {
+  MAINTAINED_SUMMARY_VERSION,
+  maintainedGarageSummaryRef,
+  maintainedAdminSummaryRef,
+  writeMaintainedAdminDelta,
+} from './workerMaintenance';
+import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
+import { parseMoneyAmount } from './money';
+import { computeLookupHash } from './pinCrypto';
+import { checkPinAvailabilityAcrossAll, saveEntityPinInTransaction } from './pinRepository';
+import { reconcileGarageState } from './domain/garageReconciliation';
+import { validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
+import {
+  startGarageDeletionRoute,
+  advanceGarageDeletionRoute,
+  readGarageDeletionStatusRoute
+} from './garageDeletionRoutes';
 import { registerStaffRoutes } from './staffRoutes';
 import { registerDelegateRoutes } from './delegateRoutes';
 import { registerCreditGrantRoutes } from './creditGrantRoutes';
 
-export type GarageRouteDependency = (...args: any[]) => any;
-
-export interface GarageRouteDeps {
-  getAdminDb: () => any;
-  getAdminAuth: () => any;
-  requireWorkerAuth: GarageRouteDependency;
-  enforceWorkerFinancialRateLimit: GarageRouteDependency;
-  canSubmitGarageApplication: GarageRouteDependency;
-  sanitizePayload: GarageRouteDependency;
-  validateString: GarageRouteDependency;
-  validateNumber: GarageRouteDependency;
-  ValidationError: new (...args: any[]) => any;
-  validateNewPin: GarageRouteDependency;
-  normalizePhone: GarageRouteDependency;
-  validateIdempotencyKey: GarageRouteDependency;
-  computeLookupHash: GarageRouteDependency;
-  checkPinAvailabilityAcrossAll: GarageRouteDependency;
-  createRequestFingerprint: GarageRouteDependency;
-  checkIdempotencyInTransaction: GarageRouteDependency;
-  saveEntityPinInTransaction: GarageRouteDependency;
-  maintainedGarageSummaryRef: GarageRouteDependency;
-  maintainedAdminSummaryRef: GarageRouteDependency;
-  MAINTAINED_SUMMARY_VERSION: any;
-  writeMaintainedAdminDelta: GarageRouteDependency;
-  storeIdempotencyInTransaction: GarageRouteDependency;
-  mapDomainErrorToStatus: GarageRouteDependency;
-  parseMoneyAmount: GarageRouteDependency;
-  parseFirestorePageRequest: GarageRouteDependency;
-  firestorePageStartAfter: GarageRouteDependency;
-  buildFirestorePage: GarageRouteDependency;
-  canRunGarageMaintenance: GarageRouteDependency;
-  validateId: GarageRouteDependency;
-  getCairoDayBounds: GarageRouteDependency;
-  reconcileGarageState: GarageRouteDependency;
-  isValidDateKey: GarageRouteDependency;
-  calculateDailyProjection: GarageRouteDependency;
-  aggregateProjectionBuckets: GarageRouteDependency;
-  reconcileDashboardSummary: GarageRouteDependency;
-  decideGarageScope: GarageRouteDependency;
-  isFreshDashboardSummary: GarageRouteDependency;
-  normalizeStoredDashboardMoney: GarageRouteDependency;
-  canManageStaffForGarage: GarageRouteDependency;
-  deleteEntityPinInTransaction: GarageRouteDependency;
-  canManageDelegates: GarageRouteDependency;
-  saveEntityPin: GarageRouteDependency;
-  canUpdateEntityPin: GarageRouteDependency;
-  grantPaidCredits: GarageRouteDependency;
-  grantTrialCredits: GarageRouteDependency;
-  awardReferralCredits: GarageRouteDependency;
-  applyCorrection: GarageRouteDependency;
-  materializeCreditLedgerEntry: GarageRouteDependency;
-  recordDomainEventInTransaction: GarageRouteDependency;
-  startGarageDeletionRoute: GarageRouteDependency;
-  advanceGarageDeletionRoute: GarageRouteDependency;
-  readGarageDeletionStatusRoute: GarageRouteDependency;
-}
-
-export function registerGarageRoutes(app: WorkerApp, deps: GarageRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    enforceWorkerFinancialRateLimit,
-    canSubmitGarageApplication,
-    sanitizePayload,
-    validateString,
-    validateNumber,
-    validateNewPin,
-    validateIdempotencyKey,
-    computeLookupHash,
-    checkPinAvailabilityAcrossAll,
-    createRequestFingerprint,
-    checkIdempotencyInTransaction,
-    saveEntityPinInTransaction,
-    maintainedGarageSummaryRef,
-    maintainedAdminSummaryRef,
-    MAINTAINED_SUMMARY_VERSION,
-    writeMaintainedAdminDelta,
-    storeIdempotencyInTransaction,
-    mapDomainErrorToStatus,
-    parseMoneyAmount,
-    parseFirestorePageRequest,
-    firestorePageStartAfter,
-    buildFirestorePage,
-    canRunGarageMaintenance,
-    validateId,
-    getCairoDayBounds,
-    reconcileGarageState,
-    isValidDateKey,
-    calculateDailyProjection,
-    aggregateProjectionBuckets,
-    reconcileDashboardSummary,
-    decideGarageScope,
-    isFreshDashboardSummary,
-    normalizeStoredDashboardMoney,
-    grantTrialCredits,
-    materializeCreditLedgerEntry,
-    startGarageDeletionRoute,
-    advanceGarageDeletionRoute,
-    readGarageDeletionStatusRoute
-  } = deps;
+export function registerGarageRoutes(app: WorkerApp): void {
 // 10. Garage Management & System Hardening (CF8)
 
 // Handler 1: Create Garage (POST /api/garages/create)
@@ -136,7 +63,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       sanitized.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
     );
 
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const delegateEntityId = callerRole === 'delegate' ? (user?.entityId || callerUid) : undefined;
     let requestFingerprint: string | undefined;
@@ -155,7 +82,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const readExistingResult = async (): Promise<{ isDuplicate: boolean; cachedResult?: any }> => {
       if (!idempotencyKey) return { isDuplicate: false };
       let duplicate: { isDuplicate: boolean; cachedResult?: any } = { isDuplicate: false };
-      await getAdminDb().runTransaction(async (t: any) => {
+      await adminDb.runTransaction(async (t: any) => {
         duplicate = await checkIdempotencyInTransaction(
           t, idempotencyKey, '/api/garages/create', callerUid, requestFingerprint
         );
@@ -178,7 +105,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
       const cairoDateKey = `${cairoParts.year}-${cairoParts.month}-${cairoParts.day}`;
       delegateQuotaDateKey = cairoDateKey;
       const { start: cairoDayStart, end: cairoNextDayStart } = getCairoDayBounds(cairoDateKey);
-      const delegateGaragesToday = await getAdminDb().collection('garages')
+      const delegateGaragesToday = await adminDb.collection('garages')
         .where('createdByDelegateId', '==', delegateEntityId)
         .where('createdAt', '>=', cairoDayStart)
         .where('createdAt', '<', cairoNextDayStart)
@@ -219,9 +146,9 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const isTrial = callerRole === 'admin' || (!createdByDelegateId && !sanitized.createdByDelegateId);
     const trialCreditAmount = isTrial ? 100 : 0;
     const finalDailyCapacity = 0;
-    const garageRef = getAdminDb().collection('garages').doc();
+    const garageRef = adminDb.collection('garages').doc();
     const garageId = garageRef.id;
-    const logRef = getAdminDb().collection('activity_logs').doc();
+    const logRef = adminDb.collection('activity_logs').doc();
     const garageDoc: Record<string, any> = {
       name: name.trim(),
       phone,
@@ -287,7 +214,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     let isReplay = false;
     let delegateQuotaExceeded = false;
 
-    await getAdminDb().runTransaction(async (t: any) => {
+    await adminDb.runTransaction(async (t: any) => {
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(
           t, idempotencyKey, '/api/garages/create', callerUid, requestFingerprint
@@ -301,13 +228,13 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
 
       let delegateQuotaLockRef: any;
       if (callerRole === 'delegate' && delegateEntityId && delegateQuotaDateKey) {
-        delegateQuotaLockRef = getAdminDb().collection('delegate_garage_creation_quota_locks')
+        delegateQuotaLockRef = adminDb.collection('delegate_garage_creation_quota_locks')
           .doc(`${encodeURIComponent(delegateEntityId)}_${delegateQuotaDateKey}`);
         // Same-day creations by this delegate share one transactional lock.
         // Firestore retries conflicts, re-running the quota query after a concurrent commit.
         await t.get(delegateQuotaLockRef);
         const { start: cairoDayStart, end: cairoNextDayStart } = getCairoDayBounds(delegateQuotaDateKey);
-        const delegateGaragesToday = await t.get(getAdminDb().collection('garages')
+        const delegateGaragesToday = await t.get(adminDb.collection('garages')
           .where('createdByDelegateId', '==', delegateEntityId)
           .where('createdAt', '>=', cairoDayStart)
           .where('createdAt', '<', cairoNextDayStart)
@@ -341,7 +268,7 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
         if (trialTransition.ok === false) throw new Error(trialTransition.error);
         const trialLedger = materializeCreditLedgerEntry(trialTransition.value.entry);
         if (trialLedger.ok === false) throw new Error(trialLedger.error);
-        t.set(getAdminDb().doc(`credit_ledger/${trialLedger.value.entryId}`), {
+        t.set(adminDb.doc(`credit_ledger/${trialLedger.value.entryId}`), {
           ...trialLedger.value,
           source: 'garage_creation_trial',
         });
@@ -400,7 +327,7 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     // just checked truthiness — an attacker could send id with special
     // characters that would reach Firestore doc paths.
     const id = validateId(rawId, 'garageId', true);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const retiredUpdateFields = new Set([
       'billingModel', 'commissionPerVehicle', 'monthlySubscriptionFee', 'dailyCapacity', 'capacity', 'allowMonthlySubscribers',
@@ -460,8 +387,8 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
     const isRateChangeRequest =
       ('hourlyRate' in updates && updates.hourlyRate !== undefined) ||
       ('overnightRate' in updates && updates.overnightRate !== undefined);
-    await getAdminDb().runTransaction(async (t: any) => {
-      const garageRef = getAdminDb().collection('garages').doc(id);
+    await adminDb.runTransaction(async (t: any) => {
+      const garageRef = adminDb.collection('garages').doc(id);
       const garageSnap = await t.get(garageRef);
       const garageData = garageSnap.data() || {};
 
@@ -521,7 +448,7 @@ app.post('/api/garages/update', requireWorkerAuth, async (c) => {
         const trialLedger = materializeCreditLedgerEntry(trialTransition.value.entry);
         if (trialLedger.ok === false) throw new Error(trialLedger.error);
 
-        t.set(getAdminDb().doc(`credit_ledger/${trialLedger.value.entryId}`), {
+        t.set(adminDb.doc(`credit_ledger/${trialLedger.value.entryId}`), {
           ...trialLedger.value,
           source: 'garage_approval_trial',
         });
@@ -575,9 +502,9 @@ app.get('/api/garages', requireWorkerAuth, async (c) => {
     if (!['admin', 'delegate'].includes(user?.role || '')) {
       return c.json({ success: false, error: 'FORBIDDEN' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
-    const garagesCollection = getAdminDb().collection('garages');
+    const garagesCollection = adminDb.collection('garages');
     let query: any = garagesCollection;
     let pageScope = `garages:admin:${user.uid}`;
     if (user?.role === 'delegate') {
@@ -612,11 +539,11 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     if (!canRunGarageMaintenance(user, 'reconciliation')) {
       return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
     }
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
 
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const garageId = validateId(body?.garageId, 'garageId', true);
-    const garageRef = getAdminDb().doc(`garages/${garageId}`);
+    const garageRef = adminDb.doc(`garages/${garageId}`);
     const garageSnap = await garageRef.get();
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
 
@@ -625,9 +552,9 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     }).format(new Date());
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(today);
     const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
-      getAdminDb().collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
-      getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get(),
-      getAdminDb().collection(`garages/${garageId}/events`)
+      adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get(),
+      adminDb.collection(`garages/${garageId}/events`)
         .where('occurredAt', '>=', dayStart.toISOString())
         .where('occurredAt', '<', nextDayStart.toISOString())
         .orderBy('occurredAt', 'desc')
@@ -658,7 +585,7 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
 
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { garageId, date } = body || {};
-    if (!garageId || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
     const targetDate = date || new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(new Date());
@@ -666,14 +593,14 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
 
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(targetDate);
     const [bucketSnap, eventsSnap, garageSnap, dailyStatsSnap] = await Promise.all([
-      getAdminDb().collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', targetDate).get(),
-      getAdminDb().collection(`garages/${garageId}/events`)
+      adminDb.collection(`garages/${garageId}/projection_buckets`).where('dateId', '==', targetDate).get(),
+      adminDb.collection(`garages/${garageId}/events`)
         .where('occurredAt', '>=', dayStart.toISOString())
         .where('occurredAt', '<', nextDayStart.toISOString())
         .orderBy('occurredAt', 'asc')
         .get(),
-      getAdminDb().doc(`garages/${garageId}`).get(),
-      getAdminDb().doc(`garages/${garageId}/daily_stats/${targetDate}`).get()
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`).get()
     ]);
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
 
@@ -701,7 +628,7 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
       reconciliation,
       legacyDifferences
     };
-    await getAdminDb().doc(`garages/${garageId}/dashboard_summary/current`).set(summaryData, { merge: true });
+    await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).set(summaryData, { merge: true });
     return c.json({
       success: true,
       data: {
@@ -728,7 +655,7 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
 
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { garageId, date } = body || {};
-    if (!garageId || !getAdminDb()) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
+    if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
     const targetDate = date || new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
@@ -736,7 +663,7 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
     if (!isValidDateKey(targetDate)) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
 
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(targetDate);
-    const eventsSnap = await getAdminDb().collection(`garages/${garageId}/events`)
+    const eventsSnap = await adminDb.collection(`garages/${garageId}/events`)
       .where('occurredAt', '>=', dayStart.toISOString())
       .where('occurredAt', '<', nextDayStart.toISOString())
       .orderBy('occurredAt', 'asc')
@@ -753,7 +680,7 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
       eventsSnap.docs.map((doc: any) => doc.data() || {}),
       targetDate
     );
-    const projectionRef = getAdminDb().doc(`garages/${garageId}/daily_stats/${targetDate}`);
+    const projectionRef = adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`);
     const projectionData = {
       ...projection,
       rebuiltAt: new Date().toISOString(),
@@ -776,11 +703,11 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const user = c.get('user');
     if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const [garageSnap, dailyStatsSnap] = await Promise.all([
-      getAdminDb().doc(`garages/${garageId}`).get(),
-      getAdminDb().doc(`garages/${garageId}/daily_stats/${today}`).get()
+      adminDb.doc(`garages/${garageId}`).get(),
+      adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()
     ]);
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
     const dailyStatsData = dailyStatsSnap.exists ? dailyStatsSnap.data() || {} : {};
@@ -791,7 +718,7 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
     // projection_buckets is no longer written on the hot path (efficiency fix #477).
     // The primary source is the maintained_summary daily doc; the stored rebuild
     // is a secondary safety net for older data.
-    const maintainedDailyRef = getAdminDb().doc(`garages/${garageId}/maintained_summary/daily_${today}`);
+    const maintainedDailyRef = adminDb.doc(`garages/${garageId}/maintained_summary/daily_${today}`);
     const maintainedDailySnap = await maintainedDailyRef.get();
     if (maintainedDailySnap.exists) {
       const md = maintainedDailySnap.data() || {};
@@ -811,7 +738,7 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
       c.header('X-Summary-Source', 'maintained_daily_summary');
       return c.json({ success: true, data: { garageId, summary } });
     }
-    const summarySnap = await getAdminDb().doc(`garages/${garageId}/dashboard_summary/current`).get();
+    const summarySnap = await adminDb.doc(`garages/${garageId}/dashboard_summary/current`).get();
     if (!summarySnap.exists) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_NOT_READY' }, 404);
     const storedSummary = summarySnap.data() || {};
     if (!isFreshDashboardSummary(storedSummary, today)) return c.json({ success: false, error: 'DASHBOARD_SUMMARY_STALE' }, 404);
@@ -832,12 +759,12 @@ app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
     // Previously this route just checked truthiness, allowing IDs with
     // whitespace or path-traversal characters to reach Firestore.
     const id = validateId(c.req.param('id'), 'garageId', true);
-    if (!getAdminDb()) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
+    if (!adminDb) return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
     const user = c.get('user');
     if (!decideGarageScope(user, id)) {
       return c.json({ success: false, error: 'FORBIDDEN: Garage scope required' }, 403);
     }
-    const docSnap = await getAdminDb().doc(`garages/${id}`).get();
+    const docSnap = await adminDb.doc(`garages/${id}`).get();
     if (!docSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
 
     return c.json({ success: true, garage: { id: docSnap.id, ...docSnap.data() } });
@@ -848,7 +775,7 @@ app.get('/api/garages/:id', requireWorkerAuth, async (c) => {
 });
 
   // Staff, delegate, and credit-grant routes are split into focused modules.
-  registerStaffRoutes(app, deps);
-  registerDelegateRoutes(app, deps);
-  registerCreditGrantRoutes(app, deps);
+  registerStaffRoutes(app);
+  registerDelegateRoutes(app);
+  registerCreditGrantRoutes(app);
 }
