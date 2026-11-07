@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { Garage } from '../../types';
 import type { GarageDeletionProgress } from '../../services/garageDeletionService';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface DeleteGarageConfirmModalProps {
   garage: Garage;
@@ -21,13 +22,16 @@ export const DeleteGarageConfirmModal: React.FC<DeleteGarageConfirmModalProps> =
 }) => {
   useBodyScrollLock();
 
+  const modalA11y = useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
         onClick={isLoading ? undefined : onCancel}
         className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
       />
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" dir="rtl">
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" dir="rtl"
+        {...modalA11y.containerProps}>
         <div className="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-inner shrink-0">
           <Trash2 className="w-7 h-7" />
         </div>

@@ -4,6 +4,7 @@ import { Vehicle } from '../../types';
 import { getDuration } from '../../utils/dates';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface RecentExitWarningModalProps {
   vehicle: Vehicle;
@@ -19,13 +20,16 @@ export const RecentExitWarningModal: React.FC<RecentExitWarningModalProps> = mem
   const now = useServerTimeNow();
   useBodyScrollLock();
 
+  const modalA11y = useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
         onClick={onCancel}
         className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
       />
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" dir="rtl">
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" dir="rtl"
+        {...modalA11y.containerProps}>
         <div className="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-inner shrink-0">
           <AlertTriangle className="w-7 h-7 text-amber-500 dark:text-amber-400" />
         </div>

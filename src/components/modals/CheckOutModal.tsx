@@ -3,9 +3,10 @@ import { AlertTriangle, LogOut } from 'lucide-react';
 import { EgyptianPlate } from '../ui/EgyptianPlate';
 import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
-import { safeDate, formatEntryTimeParts } from '../../utils/dates';
+import { safeDate, formatEntryTimeParts, AR_DAY } from '../../utils/dates';
 import { calculateCost } from '../../utils/cost';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
+import { useModalA11y } from '../../hooks/useModalA11y';
 import { Vehicle, Garage, Staff } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
@@ -92,6 +93,8 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
     return isInitialMinute ? 580 : 520;
   }, [confirmingSide, isInitialMinute, isLargeScreen]);
 
+  const modalA11y = useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <style>{`
@@ -140,9 +143,10 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
         transition={{ 
           duration: 0
         }}
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto shadow-2xl" 
+        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto shadow-2xl"
         style={{ willChange: 'transform, height, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
         dir="rtl"
+        {...modalA11y.containerProps}
       >
         {/* Handle Bar Area */}
         <button 
@@ -336,7 +340,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                           if (days > 0) {
                             return (
                               <>
-                                <span>{days} يوم</span>
+                                <span>{days} {AR_DAY(days)}</span>
                                 {(hours > 0 || minutes > 0) && (
                                   <span className="text-xs sm:text-sm md:text-base text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1.5">
                                     {hours > 0 && <span>{hours} س</span>}

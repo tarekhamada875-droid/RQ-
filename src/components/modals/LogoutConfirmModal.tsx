@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface LogoutConfirmModalProps {
   onConfirm: () => void;
@@ -96,6 +97,8 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
     return 'gap-1.5';
   };
 
+  const modalA11y = useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div 
@@ -105,6 +108,8 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
       <div 
         className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps"
         dir="rtl"
+              {...modalA11y.containerProps}
+
       >
         <div className="text-center mb-6">
           <p className="text-slate-500 dark:text-slate-400 font-bold text-sm leading-relaxed px-4">

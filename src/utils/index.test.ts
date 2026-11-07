@@ -171,20 +171,34 @@ describe('Parking Duration & Cost Calculation Comprehensive Scenarios', () => {
     expect(calculateCost({ entryTime: entry, type: 'overnight' }, baseGarage, new Date('2026-08-02T11:00:00Z'))).toBe(200);
   });
 
-  it('formats getDuration output in Arabic for various time spans', () => {
+  it('formats getDuration output in Arabic for various time spans (audit N20 pluralization)', () => {
     const now = new Date('2026-08-04T12:00:00Z');
 
     // Under 1 minute
     expect(getDuration(new Date('2026-08-04T11:59:45Z'), now)).toBe('0 دقيقة');
 
-    // 15 minutes
+    // 15 minutes (11+ uses singular form per Arabic grammar)
     expect(getDuration(new Date('2026-08-04T11:45:00Z'), now)).toBe('15 دقيقة');
 
-    // 2 hours 30 mins
-    expect(getDuration(new Date('2026-08-04T09:30:00Z'), now)).toBe('2 ساعة و 30 دقيقة');
+    // 2 hours 30 mins — 2 uses dual form (ساعتان)
+    expect(getDuration(new Date('2026-08-04T09:30:00Z'), now)).toBe('2 ساعتان و 30 دقيقة');
 
-    // Days & Hours
-    expect(getDuration(new Date('2026-08-02T08:00:00Z'), now)).toContain('2 يوم');
+    // Days & Hours — 2 days uses dual form (يومان)
+    expect(getDuration(new Date('2026-08-02T08:00:00Z'), now)).toContain('2 يومان');
+
+    // Audit N20 (Phase 5, 2026-11-06): additional pluralization checks.
+    // 3 days → plural (أيام)
+    const threeDaysAgo = new Date('2026-08-01T12:00:00Z');
+    const dur3 = getDuration(threeDaysAgo, now);
+    expect(dur3).toContain('3 أيام');
+
+    // 1 hour → singular (ساعة)
+    const oneHourAgo = new Date('2026-08-04T11:00:00Z');
+    expect(getDuration(oneHourAgo, now)).toBe('1 ساعة');
+
+    // 5 minutes → plural (دقائق)
+    const fiveMinAgo = new Date('2026-08-04T11:55:00Z');
+    expect(getDuration(fiveMinAgo, now)).toBe('5 دقائق');
   });
 });
 

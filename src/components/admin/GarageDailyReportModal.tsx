@@ -9,9 +9,10 @@ import {
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { safeDate } from '../../utils/dates';
+import { safeDate, AR_DAY } from '../../utils/dates';
 import { useToast } from '../../hooks/toast';
 import type { ActivityLog, Garage } from '../../types';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface GarageDailyReportModalProps {
   garage: Garage;
@@ -107,7 +108,7 @@ function getDetailsContent(log: any): string {
   }
   if (action === 'recharge') {
     if (log.details && typeof log.details === 'object' && log.details.packageName) {
-      const days = log.details.durationDays ? ` — ${log.details.durationDays} يوم` : '';
+      const days = log.details.durationDays ? ` — ${log.details.durationDays} ${AR_DAY(Number(log.details.durationDays))}` : '';
       return `${log.details.packageName}${days}`;
     }
     if (typeof log.details === 'string' && log.details.trim()) {
@@ -277,6 +278,8 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
     }
   }, [garage, onClose, showToast]);
 
+  const modalA11y = useModalA11y(onClose);
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 font-sans animate-overlay-30fps"
@@ -286,6 +289,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
       <div
         className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-all animate-popup-30fps"
         onClick={(e) => e.stopPropagation()}
+        {...modalA11y.containerProps}
       >
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">

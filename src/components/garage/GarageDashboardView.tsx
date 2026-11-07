@@ -286,14 +286,15 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
 
             {!isInputFocused && (
               <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-[2rem] overflow-hidden flex flex-col items-center pt-4 md:pt-10 [@media(max-height:500px)]:pt-2 transition-colors w-full shadow-sm relative shrink-0">
-                <div
+                <button
                   onClick={() => setActiveTab("active_vehicles")}
-                  className="mb-4 md:mb-10 [@media(max-height:500px)]:mb-2 cursor-pointer w-full flex justify-center"
+                  className="mb-4 md:mb-10 [@media(max-height:500px)]:mb-2 cursor-pointer w-full flex justify-center outline-none"
+                  aria-label="عرض السيارات النشطة"
                 >
                   <div className="relative flex flex-col items-center w-full px-4 md:px-8">
                     <FlipNumber value={garage?.carsInside || 0} size="lg" displayDigits="arabic" />
                   </div>
-                </div>
+                </button>
 
                 <button
                   onClick={() => setActiveTab("active_vehicles")}

@@ -6,6 +6,7 @@ import { APP_TEXT } from '../../constants';
 import { Garage } from '../../types';
 import { formatPlateNumber } from '../../utils/plates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface CheckInModalProps {
   newPlateNumber: string;
@@ -35,6 +36,8 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
     return () => media.removeEventListener('change', listener);
   }, []);
 
+  const modalA11y = useModalA11y(onCancel);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div 
@@ -42,10 +45,11 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
         className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
         style={{ willChange: 'opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
       />
-      <div 
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps" 
+      <div
+        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps"
         style={{ willChange: 'transform, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
         dir="rtl"
+        {...modalA11y.containerProps}
       >
         {isLoading ? (
           <div className="py-16 text-center">
