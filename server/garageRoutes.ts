@@ -29,6 +29,7 @@ import {
 import { registerStaffRoutes } from './staffRoutes';
 import { registerDelegateRoutes } from './delegateRoutes';
 import { registerCreditGrantRoutes } from './creditGrantRoutes';
+import { getCairoDateKey } from './projections';
 
 export function registerGarageRoutes(app: WorkerApp): void {
 // 10. Garage Management & System Hardening (CF8)
@@ -63,7 +64,6 @@ app.post('/api/garages/create', requireWorkerAuth, enforceWorkerFinancialRateLim
     const idempotencyKey = validateIdempotencyKey(
       sanitized.idempotencyKey || c.req.header('x-idempotency-key') || c.req.header('idempotency-key')
     );
-
 
     const delegateEntityId = callerRole === 'delegate' ? (user?.entityId || callerUid) : undefined;
     let requestFingerprint: string | undefined;
@@ -528,9 +528,7 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
     const garageSnap = await garageRef.get();
     if (!garageSnap.exists) return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
 
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
+    const today = getCairoDateKey(new Date());
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(today);
     const [insideSnap, dailyStatsSnap, eventsSnap] = await Promise.all([
       adminDb.collection(`garages/${garageId}/vehicles`).where('status', '==', 'inside').get(),
@@ -567,9 +565,7 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
     const body = await c.req.json().catch(() => ({} as Record<string, any>));
     const { garageId, date } = body || {};
     if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
-    const targetDate = date || new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
+    const targetDate = date || getCairoDateKey(new Date());
     if (!isValidDateKey(targetDate)) throw new Error('INVALID_DATE');
 
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(targetDate);
@@ -638,9 +634,7 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
     const { garageId, date } = body || {};
     if (!garageId || !adminDb) return c.json({ success: false, error: 'INVALID_REQUEST' }, 400);
 
-    const targetDate = date || new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(new Date());
+    const targetDate = date || getCairoDateKey(new Date());
     if (!isValidDateKey(targetDate)) return c.json({ success: false, error: 'INVALID_DATE' }, 400);
 
     const { start: dayStart, end: nextDayStart } = getCairoDayBounds(targetDate);
@@ -684,7 +678,7 @@ app.get('/api/garages/:id/dashboard-summary', requireWorkerAuth, async (c) => {
     const garageId = validateId(c.req.param('id'), 'garageId', true);
     const user = c.get('user');
     if (!decideGarageScope(user, garageId)) return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const today = getCairoDateKey(new Date());
     const [garageSnap, dailyStatsSnap] = await Promise.all([
       adminDb.doc(`garages/${garageId}`).get(),
       adminDb.doc(`garages/${garageId}/daily_stats/${today}`).get()

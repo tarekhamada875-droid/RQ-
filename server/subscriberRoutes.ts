@@ -11,6 +11,7 @@ import { debitSubscriberRenewal, materializeCreditLedgerEntry } from './domain/p
 import { addRequestToCommand, lifecycleErrorToLegacyError, subscriberDocumentToState, transitionToFirestoreUpdate, updateRequestToCommand } from './adapters/subscriberLifecycleAdapter';
 import { maintainedGarageSummaryRef, writeMaintainedGarageDelta, writeMaintainedSubscriberDelta } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis } from './workerReadHelpers';
+import { getCairoDateKey } from './projections';
 
 function subscriberActivityDelta(before: any, after: any): { activeSubscribersCount: number; expiredSubscribersCount: number; activeSubscribers: number; expiredSubscribers: number } {
   const classify = (value: any) => {
@@ -27,8 +28,6 @@ function subscriberActivityDelta(before: any, after: any): { activeSubscribersCo
     expiredSubscribers: afterCounts.expired - beforeCounts.expired
   };
 }
-
-
 
 export function registerSubscriberRoutes(app: WorkerApp): void {
 // 8. Subscriber Lifecycle Management (CF6)
@@ -196,7 +195,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
         // Subscriber renewal = 2 EGP garage revenue (the garage collected 2 EGP from the subscriber).
         // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
-        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const todayKey = getCairoDateKey(new Date());
         const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;
         t.set(garageRef, {
           credits: creditDebit.balance,

@@ -10,6 +10,7 @@ import {
   MAINTAINED_SUMMARY_VERSION as maintainedSummaryVersion,
 } from './workerMaintenance';
 import { lookupSubscriber, safeDateMillis, sanitizeDelegateDoc } from './workerReadHelpers';
+import { getCairoDateKey } from './projections';
 
 const ACTIVE_SYSTEM_CONFIG_FIELDS = ['adminColor', 'paymentWalletNumber', 'creditRate'] as const;
 
@@ -102,7 +103,6 @@ app.post('/api/admin/update-system-config', requireWorkerAuth, async (c) => {
       updatePayload.creditRate = rate;
     }
 
-
     await adminDb.doc('system_config/global').set(updatePayload, { merge: true });
     return c.json({ success: true });
   } catch (e: any) {
@@ -189,7 +189,7 @@ app.get('/api/garage-summary', requireWorkerAuth, async (c) => {
       return c.json({ success: false, error: 'FORBIDDEN: Garage summary scope required' }, 403);
     }
 
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const today = getCairoDateKey(new Date());
 
     const [maintainedGarageSnap, maintainedDailySnap] = await Promise.all([
       maintainedGarageSummaryRef(garageId).get(),

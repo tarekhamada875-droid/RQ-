@@ -8,6 +8,7 @@ import {
 import type { Garage } from '../types';
 import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
+import { getCairoDateKey } from '../../server/projections';
 
 export type { GarageDeletionProgress, GarageDeletionStatus } from './garageDeletionService';
 
@@ -41,7 +42,7 @@ export interface GaragePage {
 
 export function isFreshGarageDashboardSummary(summary: GarageDashboardSummary | null | undefined, now = Date.now(), maxAgeMs = 5 * 60 * 1000): summary is GarageDashboardSummary {
   if (!summary?.dateId || !summary.rebuiltAt) return false;
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now));
+  const today = getCairoDateKey(new Date(now));
   const rebuiltAt = Date.parse(summary.rebuiltAt);
   return summary.dateId === today && Number.isFinite(rebuiltAt) && now - rebuiltAt >= 0 && now - rebuiltAt <= maxAgeMs;
 }
@@ -151,7 +152,6 @@ export const garageService = {
     }
   },
 
-
   recalculateCarsInside: async (garageId: string): Promise<number> => {
     try {
       const res = await apiFetch('/api/garages/recalculate-cars-inside', {
@@ -164,6 +164,5 @@ export const garageService = {
       throw error;
     }
   },
-
 
 };

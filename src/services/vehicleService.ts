@@ -5,6 +5,7 @@ import { Vehicle } from '../types';
 import { listenerTracker } from '../utils/listenerTracker';
 import { apiFetch } from '../api/apiClient';
 import { safeDate } from '../utils/dates';
+import { getCairoDateKey } from '../../server/projections';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
 const TODAY_ACTIVITY_LOG_LIMIT = 200;
@@ -61,13 +62,9 @@ function recordActivityLogQueryFailure(source: TodayActivityLogSource, error: un
   });
 }
 
-function getCairoDateKey(date: Date = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
-}
-
 function getCairoDayStartTimestamp(date = new Date()): Date {
   try {
-    const cairoDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+    const cairoDateStr = getCairoDateKey(date);
     const startOfDay = new Date(`${cairoDateStr}T00:00:00+02:00`);
     return isNaN(startOfDay.getTime()) ? new Date(Date.now() - 24 * 3600 * 1000) : startOfDay;
   } catch {
@@ -173,7 +170,7 @@ export const vehicleService = {
 
   subscribeToTodayTransactions: (garageId: string, callback: TodayActivityLogCallback) => {
     const trackerUnsub = listenerTracker.register(`garages/${garageId}/today_transactions`);
-    const today = getCairoDateKey();
+    const today = getCairoDateKey(new Date());
     const startTime = getCairoDayStartTimestamp();
     const firestoreTimestamp = Timestamp.fromDate(startTime);
     let isClosed = false;
@@ -268,7 +265,7 @@ export const vehicleService = {
   },
 
   getTodayTransactionsOnce: async (garageId: string): Promise<any[]> => {
-    const today = getCairoDateKey();
+    const today = getCairoDateKey(new Date());
     const startTime = getCairoDayStartTimestamp();
     const firestoreTimestamp = Timestamp.fromDate(startTime);
 
