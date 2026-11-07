@@ -115,11 +115,11 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
           top: -100%;
           width: 300%;
           height: 300%;
-          background: conic-gradient(from 0deg, transparent 120deg, #ff0000 360deg);
-          animation: snake-rotate 1.6s linear infinite;
+          background: conic-gradient(from 0deg, transparent 240deg, #ff0000 360deg);
+          animation: snake-rotate 4s linear infinite;
         }
         .dark .snake-border-wrapper::before {
-          background: conic-gradient(from 0deg, transparent 120deg, #ffffff 360deg);
+          background: conic-gradient(from 0deg, transparent 240deg, #ffffff 360deg);
         }
       `}</style>
       
