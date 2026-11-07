@@ -1,17 +1,10 @@
 import type { WorkerApp, WorkerUser } from './cloudflareWorker';
-
-export type CreditRequestRouteDependency = (...args: any[]) => any;
-
-export interface CreditRequestRouteDeps {
-  getAdminDb: () => any;
-  requireWorkerAuth: CreditRequestRouteDependency;
-  validateId: CreditRequestRouteDependency;
-  validateNumber: CreditRequestRouteDependency;
-  grantPaidCredits: CreditRequestRouteDependency;
-  materializeCreditLedgerEntry: CreditRequestRouteDependency;
-  recordDomainEventInTransaction: CreditRequestRouteDependency;
-  parseMoneyAmount: CreditRequestRouteDependency;
-}
+import { adminDb } from './firebaseAdmin';
+import { requireWorkerAuth } from './sessionInfrastructure';
+import { validateId, validateNumber } from './validation';
+import { grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
+import { recordDomainEventInTransaction } from './events';
+import { parseMoneyAmount } from './money';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -28,17 +21,7 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
  *         ('pending' | 'approved' | 'rejected'), createdAt, reviewedAt,
  *         reviewedBy
  */
-export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestRouteDeps): void {
-  const {
-    getAdminDb,
-    requireWorkerAuth,
-    validateId,
-    validateNumber,
-    grantPaidCredits,
-    materializeCreditLedgerEntry,
-    recordDomainEventInTransaction,
-    parseMoneyAmount,
-  } = deps;
+export function registerCreditRequestRoutes(app: WorkerApp): void {
 
   // ── Delegate creates a credit request ────────────────────────────────
   app.post('/api/delegates/credit-requests', requireWorkerAuth, async (c: any) => {
@@ -47,7 +30,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       if (user?.role !== 'delegate') {
         return c.json({ success: false, error: 'FORBIDDEN: Delegate role required' }, 403);
       }
-      if (!getAdminDb()) {
+      if (!adminDb) {
         return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
       }
 
@@ -62,7 +45,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       const delegateId = user.entityId || user.uid;
 
       // Verify the garage exists and was created by this delegate.
-      const garageSnap = await getAdminDb().doc(`garages/${validatedGarageId}`).get();
+      const garageSnap = await adminDb.doc(`garages/${validatedGarageId}`).get();
       if (!garageSnap.exists) {
         return c.json({ success: false, error: 'GARAGE_NOT_FOUND' }, 404);
       }
@@ -75,7 +58,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       }
 
       // One pending request per garage at a time.
-      const existingSnap = await getAdminDb()
+      const existingSnap = await adminDb
         .collection('credit_requests')
         .where('garageId', '==', validatedGarageId)
         .where('status', '==', 'pending')
@@ -86,7 +69,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       }
 
       const now = new Date();
-      const requestRef = getAdminDb().collection('credit_requests').doc();
+      const requestRef = adminDb.collection('credit_requests').doc();
       await requestRef.set({
         garageId: validatedGarageId,
         garageName: garage.name || '',
@@ -111,14 +94,14 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       if (user?.role !== 'delegate') {
         return c.json({ success: false, error: 'FORBIDDEN: Delegate role required' }, 403);
       }
-      if (!getAdminDb()) {
+      if (!adminDb) {
         return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
       }
 
       const delegateId = user.entityId || user.uid;
       // Return recent requests (pending + recently reviewed). The delegate UI
       // uses this to show pending/rejected badges on their garage cards.
-      const snap = await getAdminDb()
+      const snap = await adminDb
         .collection('credit_requests')
         .where('delegateId', '==', delegateId)
         .orderBy('createdAt', 'desc')
@@ -157,7 +140,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!getAdminDb()) {
+      if (!adminDb) {
         return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
       }
 
@@ -169,7 +152,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       const limitParam = parseInt(c.req.query('limit') || '50', 10);
       const pageSize = Number.isSafeInteger(limitParam) && limitParam > 0 && limitParam <= 100 ? limitParam : 50;
 
-      const snap = await getAdminDb()
+      const snap = await adminDb
         .collection('credit_requests')
         .where('status', '==', status)
         .orderBy('createdAt', 'desc')
@@ -192,7 +175,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!getAdminDb()) {
+      if (!adminDb) {
         return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
       }
 
@@ -202,14 +185,14 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
 
       let grantedResult: any = null;
 
-      await getAdminDb().runTransaction(async (t: any) => {
-        const requestRef = getAdminDb().doc(`credit_requests/${requestId}`);
+      await adminDb.runTransaction(async (t: any) => {
+        const requestRef = adminDb.doc(`credit_requests/${requestId}`);
         const requestSnap = await t.get(requestRef);
         if (!requestSnap.exists) throw new Error('CREDIT_REQUEST_NOT_FOUND');
         const requestData = requestSnap.data() || {};
         if (requestData.status !== 'pending') throw new Error('CREDIT_REQUEST_ALREADY_PROCESSED');
 
-        const garageRef = getAdminDb().doc(`garages/${requestData.garageId}`);
+        const garageRef = adminDb.doc(`garages/${requestData.garageId}`);
         const garageSnap = await t.get(garageRef);
         if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
         const garage = garageSnap.data() || {};
@@ -250,7 +233,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
         let commissionDelegateRef: any = null;
 
         if (commissionDelegateId) {
-          commissionDelegateRef = getAdminDb().collection('delegates').doc(commissionDelegateId);
+          commissionDelegateRef = adminDb.collection('delegates').doc(commissionDelegateId);
           const delegateSnap = await t.get(commissionDelegateRef);
           if (!delegateSnap.exists) throw new Error('DELEGATE_NOT_FOUND');
           const delegateData = delegateSnap.data() || {};
@@ -268,7 +251,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
           ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
         }, { merge: true });
 
-        t.set(getAdminDb().doc(`credit_ledger/${entry.value.entryId}`), {
+        t.set(adminDb.doc(`credit_ledger/${entry.value.entryId}`), {
           ...entry.value,
           source: 'credit_request_approval',
           paymentConfirmed: true,
@@ -281,7 +264,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
             totalRechargedAmount: nextUnsettledCommission,
             updatedAt: now
           });
-          recordDomainEventInTransaction(t, getAdminDb(), {
+          recordDomainEventInTransaction(t, adminDb, {
             garageId: requestData.garageId,
             aggregateType: 'delegate',
             aggregateId: commissionDelegateId,
@@ -308,7 +291,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
         // Write an activity_log entry so the garage-side recharge
         // notification (subscribeToGarageRechargeLogs) picks this up.
         // Mirrors the direct-grant path in /api/garages/:id/credit-grants.
-        t.set(getAdminDb().collection('activity_logs').doc(), {
+        t.set(adminDb.collection('activity_logs').doc(), {
           garageId: requestData.garageId,
           garageName: garage.name || requestData.garageName || '',
           staffId: callerUid,
@@ -324,7 +307,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
           }
         });
 
-        recordDomainEventInTransaction(t, getAdminDb(), {
+        recordDomainEventInTransaction(t, adminDb, {
           garageId: requestData.garageId,
           aggregateType: 'credit_request',
           aggregateId: requestId,
@@ -356,7 +339,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       if (user?.role !== 'admin') {
         return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
       }
-      if (!getAdminDb()) {
+      if (!adminDb) {
         return c.json({ success: false, error: 'ADMIN_SDK_NOT_INITIALIZED' }, 500);
       }
 
@@ -364,7 +347,7 @@ export function registerCreditRequestRoutes(app: WorkerApp, deps: CreditRequestR
       const callerUid = user.uid;
       const now = new Date();
 
-      const requestRef = getAdminDb().doc(`credit_requests/${requestId}`);
+      const requestRef = adminDb.doc(`credit_requests/${requestId}`);
       const requestSnap = await requestRef.get();
       if (!requestSnap.exists) {
         return c.json({ success: false, error: 'CREDIT_REQUEST_NOT_FOUND' }, 404);
