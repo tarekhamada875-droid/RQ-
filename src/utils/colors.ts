@@ -3,13 +3,6 @@
  */
 
 /**
- * Resolves the application shimmer accent color, always returning Amber Gold (#f59e0b).
- */
-export const resolveShimmerColor = (_color?: string, _theme?: 'light' | 'dark'): string => {
-  return '#f59e0b';
-};
-
-/**
  * Checks if a hex color is "light" (bright), suggesting a dark text color should be used on top of it.
  */
 export const isLightColor = (color: string | undefined): boolean => {

@@ -221,7 +221,7 @@ export function useSubscriberForm(
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       if (errMsg.includes('INSUFFICIENT_PAID_CREDITS') || errMsg.includes('INSUFFICIENT_ELIGIBLE_CREDITS')) {
-        showToast('رصيدك خلص — تجديد الاشتراك يحتاج 5 رصيد مدفوع. يرجى شحن الرصيد أولاً', 'error');
+        showToast('رصيدك خلص — تجديد الاشتراك يحتاج 2 رصيد مدفوع. يرجى شحن الرصيد أولاً', 'error');
       } else {
         showToast('حدث خطأ أثناء تجديد الاشتراك', 'error');
       }
