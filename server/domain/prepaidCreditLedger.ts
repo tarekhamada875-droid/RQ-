@@ -3,8 +3,8 @@
 // Previously the system kept three separate running balances per garage
 // (paid / referral / trial). As of 2026-10-29 the owner approved collapsing
 // them into one balance. The *kind* of every ledger entry is still recorded
-// for audit (so you can always look back and see "this 100 came from trial,
-// this 500 came from a paid grant, this 20 was a referral bonus, this -50
+// for audit (so you can always look back and see "this 50 came from trial,
+// this 500 came from a paid grant, this 10 was a referral bonus, this -50
 // was an admin correction"), but there is only one live balance number.
 
 export type CreditEntryKind =
@@ -82,7 +82,7 @@ export interface CreditRestoreCommand extends CreditTransitionCommand {
 }
 
 const MAX_CREDITS = Number.MAX_SAFE_INTEGER;
-const REFERRAL_AWARD_AMOUNT = 20;
+const REFERRAL_AWARD_AMOUNT = 10;
 
 function isValidPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
