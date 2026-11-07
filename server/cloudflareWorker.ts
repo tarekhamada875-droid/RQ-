@@ -1,15 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { adminDb, adminAuth, initializeFirebaseAdmin } from './firebaseAdmin';
+import { adminDb, initializeFirebaseAdmin } from './firebaseAdmin';
 import { withTraceContext } from './operationTrace';
-import { computeLookupHash, normalizePhone } from './pinCrypto';
-import { saveEntityPin, saveEntityPinInTransaction, deleteEntityPinInTransaction, checkPinAvailabilityAcrossAll } from './pinRepository';
-import { validateIdempotencyKey, validateId, validateNumber, validateNewPin, validateString, sanitizePayload, ValidationError } from './validation';
-import { mapDomainErrorToStatus } from './routes/helpers';
-import { canManageGarageScopedData as decideGarageScope, canManageDelegates, canManageStaffForGarage, canUpdateEntityPin, canSubmitGarageApplication, canRunGarageMaintenance } from './domain/authorization';
-import { applyCorrection, awardReferralCredits, grantPaidCredits, grantTrialCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
-import { aggregateProjectionBuckets, isFreshDashboardSummary, isValidDateKey, normalizeStoredDashboardMoney, reconcileDashboardSummary } from './dashboardSummary';
-import { calculateDailyProjection, getCairoDayBounds } from './projections';
 import { buildFirestorePage, firestorePageStartAfter, parseFirestorePageRequest } from './firestorePagination';
 import { registerReadRoutes } from './readRoutes';
 import { registerVehicleRoutes } from './vehicleRoutes';
@@ -17,12 +9,6 @@ import { registerSubscriberRoutes } from './subscriberRoutes';
 import { registerFinancialRoutes } from './financialRoutes';
 import { registerGarageRoutes } from './garageRoutes';
 import { registerCreditRequestRoutes } from './creditRequestRoutes';
-import {
-  startGarageDeletionRoute,
-  advanceGarageDeletionRoute,
-  readGarageDeletionStatusRoute
-} from './garageDeletionRoutes';
-import { reconcileGarageState } from './domain/garageReconciliation';
 
 import { PinRateLimiterNamespace } from './workerPinRateLimiter';
 
@@ -30,16 +16,7 @@ import { PinRateLimiterNamespace } from './workerPinRateLimiter';
 import { requireWorkerAuth } from './sessionInfrastructure';
 import { registerSessionRoutes } from './workerSessionRoutes';
 import { registerFoundationRoutes } from './workerFoundationRoutes';
-import {
-  MAINTAINED_SUMMARY_VERSION,
-  maintainedGarageSummaryRef,
-  maintainedAdminSummaryRef,
-  writeMaintainedAdminDelta,
-} from './workerMaintenance';
 
-import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
-import { recordDomainEventInTransaction } from './events';
-import { parseMoneyAmount } from './money';
 export { PinRateLimiterDurableObject } from './workerPinRateLimiter';
 
 export interface WorkerUser {
@@ -294,60 +271,7 @@ registerSubscriberRoutes(workerApp);
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
 registerFinancialRoutes(workerApp);
 // 10. Garage Management & System Hardening (CF8)
-registerGarageRoutes(workerApp, {
-  getAdminDb: () => adminDb,
-  getAdminAuth: () => adminAuth,
-  requireWorkerAuth,
-  enforceWorkerFinancialRateLimit,
-  canSubmitGarageApplication,
-  sanitizePayload,
-  validateString,
-  validateNumber,
-  ValidationError,
-  validateNewPin,
-  normalizePhone,
-  validateIdempotencyKey,
-  computeLookupHash,
-  checkPinAvailabilityAcrossAll,
-  createRequestFingerprint,
-  checkIdempotencyInTransaction,
-  saveEntityPinInTransaction,
-  maintainedGarageSummaryRef,
-  maintainedAdminSummaryRef,
-  MAINTAINED_SUMMARY_VERSION,
-  writeMaintainedAdminDelta,
-  storeIdempotencyInTransaction,
-  mapDomainErrorToStatus,
-  parseMoneyAmount,
-  parseFirestorePageRequest,
-  firestorePageStartAfter,
-  buildFirestorePage,
-  canRunGarageMaintenance,
-  validateId,
-  getCairoDayBounds,
-  reconcileGarageState,
-  isValidDateKey,
-  calculateDailyProjection,
-  aggregateProjectionBuckets,
-  reconcileDashboardSummary,
-  decideGarageScope,
-  isFreshDashboardSummary,
-  normalizeStoredDashboardMoney,
-  canManageStaffForGarage,
-  deleteEntityPinInTransaction,
-  canManageDelegates,
-  saveEntityPin,
-  canUpdateEntityPin,
-  grantPaidCredits,
-  grantTrialCredits,
-  awardReferralCredits,
-  applyCorrection,
-  materializeCreditLedgerEntry,
-  recordDomainEventInTransaction,
-  startGarageDeletionRoute,
-  advanceGarageDeletionRoute,
-  readGarageDeletionStatusRoute,
-});
+registerGarageRoutes(workerApp);
 // Activity Logs Placeholder (Server generated only)
 workerApp.post('/api/activity-logs/add', requireWorkerAuth, async (c) => {
   return c.json({ success: false, error: 'SERVER_GENERATED_ONLY' }, 403);

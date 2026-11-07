@@ -1,11 +1,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerGarageRoutes } from './garageRoutes';
-import { getCairoDayBounds } from './projections';
-import { parseMoneyAmount } from './money';
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+// Mock the modules that creditGrantRoutes imports directly.
+vi.mock('./firebaseAdmin', () => ({
+  adminDb: {
+    collection: vi.fn(),
+    doc: vi.fn(),
+    runTransaction: vi.fn(),
+  },
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
+}));
+vi.mock('./sessionInfrastructure', () => ({
+  requireWorkerAuth: vi.fn((_c, next) => next()),
+  sessionIndexPath: () => '',
+}));
+vi.mock('./events', () => ({
+  recordDomainEventInTransaction: vi.fn((_t: any, _db: any, event: any) => event),
+}));
+vi.mock('./domain/prepaidCreditLedger', () => ({
+  grantPaidCredits: vi.fn(({ balance, amount, garageId, actorUid, actorRole, reason, reference, occurredAt, idempotencyKey }: any) => ({
+    ok: true,
+    value: {
+      balance: { ...balance, paid: balance.paid + amount },
+      entry: {
+        garageId, kind: 'paid_grant', bucket: 'paid', amount,
+        balanceBefore: balance.paid + balance.referral + balance.trial,
+        balanceAfter: balance.paid + amount + balance.referral + balance.trial,
+        actorUid, actorRole, reason, reference, occurredAt, idempotencyKey
+      }
+    }
+  })),
+  materializeCreditLedgerEntry: vi.fn((entry: any) => ({ ok: true, value: { ...entry, entryId: 'credit-ledger-1' } })),
+  grantTrialCredits: vi.fn(),
+  awardReferralCredits: vi.fn(),
+  applyCorrection: vi.fn(),
+}));
+
+import { registerCreditGrantRoutes } from './creditGrantRoutes';
+import { adminDb } from './firebaseAdmin';
+import { recordDomainEventInTransaction } from './events';
+import { grantPaidCredits } from './domain/prepaidCreditLedger';
+
+afterEach(() => vi.clearAllMocks());
+
+const recordDomainEventMock = vi.mocked(recordDomainEventInTransaction);
+const grantPaidCreditsMock = vi.mocked(grantPaidCredits);
 
 function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
   const routes = new Map<string, (context: any) => Promise<any>>();
@@ -68,83 +106,26 @@ function createCreditGrantHarness(options: { withDelegate?: boolean } = {}) {
     runTransaction: vi.fn(async (callback: (t: any) => unknown) => callback(transaction))
   };
 
-  const recordDomainEventInTransaction = vi.fn((_t: any, _db: any, event: any) => event);
-  const grantPaidCredits = vi.fn(({ balance, amount, garageId, actorUid, actorRole, reason, reference, occurredAt, idempotencyKey }: any) => ({
-    ok: true,
-    value: {
-      balance: { ...balance, paid: balance.paid + amount },
-      entry: {
-        garageId, kind: 'paid_grant', bucket: 'paid', amount,
-        balanceBefore: balance.paid + balance.referral + balance.trial,
-        balanceAfter: balance.paid + amount + balance.referral + balance.trial,
-        actorUid, actorRole, reason, reference, occurredAt, idempotencyKey
-      }
-    }
-  }));
+  // Wire the mocked adminDb to return our test db.
+  (adminDb.collection as any).mockImplementation((name: string) => db.collection(name));
+  (adminDb.doc as any).mockImplementation((path: string) => {
+    const parts = path.split('/');
+    const coll = parts[0];
+    const id = parts[1];
+    return db.collection(coll).doc(id);
+  });
+  (adminDb.runTransaction as any).mockImplementation((callback: (t: any) => unknown) => db.runTransaction(callback));
 
-  const dependencies: any = {
-    getAdminDb: () => db,
-    requireWorkerAuth: vi.fn(),
-    enforceWorkerFinancialRateLimit: vi.fn(),
-    canSubmitGarageApplication: () => true,
-    sanitizePayload: (body: any) => body,
-    validateString: (value: any) => value,
-    validateNumber: (value: any) => Number(value),
-    ValidationError: class extends Error {},
-    validateNewPin: (value: any) => value,
-    normalizePhone: (value: any) => String(value || '').trim(),
-    validateIdempotencyKey: (value: any) => value,
-    computeLookupHash: () => 'pin-hash',
-    checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
-    createRequestFingerprint: () => 'request-fingerprint',
-    checkIdempotencyInTransaction: async () => ({ isDuplicate: false }),
-    saveEntityPinInTransaction: vi.fn(),
-    maintainedGarageSummaryRef: vi.fn(),
-    maintainedAdminSummaryRef: vi.fn(() => ({ set: vi.fn(async () => undefined) })),
-    MAINTAINED_SUMMARY_VERSION: 1,
-    writeMaintainedAdminDelta: vi.fn(),
-    storeIdempotencyInTransaction: vi.fn(),
-    mapDomainErrorToStatus: (error: any) => ({ statusCode: 500, message: error?.message || 'SERVER_ERROR' }),
-    parseMoneyAmount,
-    parseFirestorePageRequest: vi.fn(),
-    firestorePageStartAfter: vi.fn(),
-    buildFirestorePage: vi.fn(),
-    canRunGarageMaintenance: vi.fn(),
-    validateId: (value: any) => value,
-    getCairoDayBounds,
-    reconcileGarageState: vi.fn(),
-    isValidDateKey: vi.fn(),
-    calculateDailyProjection: vi.fn(),
-    aggregateProjectionBuckets: vi.fn(),
-    reconcileDashboardSummary: vi.fn(),
-    decideGarageScope: vi.fn(),
-    isFreshDashboardSummary: vi.fn(),
-    normalizeStoredDashboardMoney: vi.fn(),
-    canManageStaffForGarage: vi.fn(),
-    deleteEntityPinInTransaction: vi.fn(),
-    canManageDelegates: vi.fn(),
-    saveEntityPin: vi.fn(),
-    canUpdateEntityPin: vi.fn(),
-    validatePackageCatalogRecord: vi.fn(),
-    grantPaidCredits,
-    grantTrialCredits: vi.fn(),
-    awardReferralCredits: vi.fn(),
-    materializeCreditLedgerEntry: (entry: any) => ({ ok: true, value: { ...entry, entryId: 'credit-ledger-1' } }),
-    recordDomainEventInTransaction,
-    startGarageDeletionRoute: vi.fn(),
-    advanceGarageDeletionRoute: vi.fn(),
-    readGarageDeletionStatusRoute: vi.fn()
-  };
+  registerCreditGrantRoutes(app);
 
-  registerGarageRoutes(app, dependencies);
   return {
     route: routes.get('POST /api/garages/:id/credit-grants')!,
     garage,
     delegate,
     writes,
     transaction,
-    recordDomainEventInTransaction,
-    grantPaidCredits
+    recordDomainEventInTransaction: recordDomainEventMock,
+    grantPaidCredits: grantPaidCreditsMock
   };
 }
 
@@ -224,4 +205,3 @@ describe('first paid credit grant delegate commission', () => {
     expect(harness.grantPaidCredits).not.toHaveBeenCalled();
   });
 });
-

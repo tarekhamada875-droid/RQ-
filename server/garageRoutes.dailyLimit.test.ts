@@ -1,9 +1,38 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { registerGarageRoutes } from './garageRoutes';
 import { getCairoDayBounds } from './projections';
+
+// Mock the modules that garageRoutes imports directly.
+vi.mock('./firebaseAdmin', () => ({
+  adminDb: {
+    collection: vi.fn(),
+    doc: vi.fn(),
+    runTransaction: vi.fn(),
+  },
+}));
+vi.mock('./sessionInfrastructure', () => ({
+  requireWorkerAuth: vi.fn((_c, next) => next()),
+  sessionIndexPath: () => '',
+}));
+vi.mock('./cloudflareWorker', () => ({
+  enforceWorkerFinancialRateLimit: vi.fn((_c, next) => next()),
+  readWorkerFirestorePage: vi.fn(),
+}));
+vi.mock('./idempotency', () => ({
+  checkIdempotencyInTransaction: vi.fn(async () => ({ isDuplicate: false })),
+  createRequestFingerprint: vi.fn(() => 'request-fingerprint'),
+  storeIdempotencyInTransaction: vi.fn(),
+}));
+vi.mock('./pinRepository', () => ({
+  checkPinAvailabilityAcrossAll: vi.fn(async () => ({ taken: false })),
+  saveEntityPinInTransaction: vi.fn(),
+}));
+
+import { registerGarageRoutes } from './garageRoutes';
+import { adminDb } from './firebaseAdmin';
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function createGarageRouteHarness() {
@@ -28,65 +57,17 @@ function createGarageRouteHarness() {
     get: vi.fn(async () => ({ size: 3 }))
   };
   const db = {
-    collection: vi.fn(() => query),
+    collection: vi.fn((_name: string) => query),
+    doc: vi.fn((path: string) => ({ path, id: path.split('/').pop() })),
     runTransaction: vi.fn(async (callback: (transaction: unknown) => unknown) => callback({}))
   };
 
-  const dependencies: any = {
-    getAdminDb: () => db,
-    requireWorkerAuth: vi.fn(),
-    enforceWorkerFinancialRateLimit: vi.fn(),
-    canSubmitGarageApplication: () => true,
-    sanitizePayload: (body: unknown) => body,
-    validateString: (value: unknown) => value,
-    validateNumber: (value: unknown) => value,
-    ValidationError: class extends Error {},
-    validateNewPin: (value: unknown) => value,
-    normalizePhone: (value: unknown) => String(value || '').trim(),
-    validateIdempotencyKey: (value: unknown) => value,
-    computeLookupHash: () => 'pin-lookup-hash',
-    checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
-    createRequestFingerprint: () => 'request-fingerprint',
-    checkIdempotencyInTransaction: async () => ({ isDuplicate: false }),
-    saveEntityPinInTransaction: vi.fn(),
-    maintainedGarageSummaryRef: vi.fn(),
-    maintainedAdminSummaryRef: vi.fn(),
-    MAINTAINED_SUMMARY_VERSION: 1,
-    writeMaintainedAdminDelta: vi.fn(),
-    storeIdempotencyInTransaction: vi.fn(),
-    mapDomainErrorToStatus: () => ({ statusCode: 500, message: 'unexpected error' }),
-    parseMoneyAmount: vi.fn(),
-    parseFirestorePageRequest: vi.fn(),
-    firestorePageStartAfter: vi.fn(),
-    buildFirestorePage: vi.fn(),
-    canRunGarageMaintenance: () => false,
-    validateId: vi.fn(),
-    getCairoDayBounds,
-    reconcileGarageState: vi.fn(),
-    isValidDateKey: vi.fn(),
-    calculateDailyProjection: vi.fn(),
-    aggregateProjectionBuckets: vi.fn(),
-    reconcileDashboardSummary: vi.fn(),
-    decideGarageScope: vi.fn(),
-    isFreshDashboardSummary: vi.fn(),
-    normalizeStoredDashboardMoney: vi.fn(),
-    canManageStaffForGarage: vi.fn(),
-    deleteEntityPinInTransaction: vi.fn(),
-    canManageDelegates: vi.fn(),
-    saveEntityPin: vi.fn(),
-    canUpdateEntityPin: vi.fn(),
-    validatePackageCatalogRecord: vi.fn(),
-    grantPaidCredits: vi.fn(),
-    grantTrialCredits: vi.fn(),
-    awardReferralCredits: vi.fn(),
-    materializeCreditLedgerEntry: vi.fn(),
-    recordDomainEventInTransaction: vi.fn(),
-    startGarageDeletionRoute: vi.fn(),
-    advanceGarageDeletionRoute: vi.fn(),
-    readGarageDeletionStatusRoute: vi.fn()
-  };
+  // Wire the mocked adminDb to return our test db.
+  (adminDb.collection as any).mockImplementation((name: string) => db.collection(name));
+  (adminDb.doc as any).mockImplementation((path: string) => db.doc(path));
+  (adminDb.runTransaction as any).mockImplementation((callback: (transaction: unknown) => unknown) => db.runTransaction(callback));
 
-  registerGarageRoutes(app, dependencies);
+  registerGarageRoutes(app);
   return { createGarage: routes.get('POST /api/garages/create'), queryCalls, query, db };
 }
 
@@ -109,7 +90,7 @@ describe('delegate daily garage creation limit', () => {
       req: {
         json: async () => ({
           name: 'Test Garage',
-          pin: '1234',
+          pin: '12345',
           idempotencyKey: 'create-garage-at-boundary'
         }),
         header: () => undefined

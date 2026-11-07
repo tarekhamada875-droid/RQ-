@@ -1,5 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
-import { registerGarageRoutes } from './garageRoutes';
+
+// Mock the modules that delegateRoutes imports directly.
+vi.mock('./firebaseAdmin', () => ({
+  adminDb: {
+    collection: vi.fn(),
+    doc: vi.fn(),
+    runTransaction: vi.fn(),
+  },
+  FieldValue: { increment: (v: number) => ({ __op: 'increment', value: v }) },
+}));
+vi.mock('./sessionInfrastructure', () => ({
+  requireWorkerAuth: vi.fn((_c, next) => next()),
+  sessionIndexPath: () => '',
+}));
+vi.mock('./pinRepository', () => ({
+  checkPinAvailabilityAcrossAll: vi.fn(async () => ({ taken: false })),
+  saveEntityPinInTransaction: vi.fn(),
+  deleteEntityPinInTransaction: vi.fn(),
+}));
+
+import { registerDelegateRoutes } from './delegateRoutes';
+import { adminDb } from './firebaseAdmin';
 
 function createDelegateRoutesHarness() {
   const routes = new Map<string, (context: any) => Promise<any>>();
@@ -34,23 +55,12 @@ function createDelegateRoutesHarness() {
     runTransaction: vi.fn(async (callback: (t: any) => unknown) => callback(transaction))
   };
 
-  registerGarageRoutes(app, {
-    getAdminDb: () => db,
-    requireWorkerAuth: vi.fn(),
-    canManageDelegates: (user: any) => user?.role === 'admin',
-    validateString: (value: any) => value,
-    validateNewPin: (value: any) => value,
-    normalizePhone: (value: any) => String(value || '').trim(),
-    validateId: (value: any) => value,
-    checkPinAvailabilityAcrossAll: async () => ({ taken: false }),
-    saveEntityPinInTransaction: vi.fn(),
-    writeMaintainedAdminDelta: vi.fn(),
-    validateIdempotencyKey: () => null,
-    createRequestFingerprint: () => 'fingerprint',
-    checkIdempotencyInTransaction: async () => ({ isDuplicate: false }),
-    storeIdempotencyInTransaction: vi.fn(),
-    ValidationError: class extends Error {}
-  } as any);
+  // Wire the mocked adminDb to return our test db.
+  (adminDb.collection as any).mockImplementation((name: string) => db.collection(name));
+  (adminDb.doc as any).mockImplementation((path: string) => db.doc(path));
+  (adminDb.runTransaction as any).mockImplementation((callback: (t: any) => unknown) => db.runTransaction(callback));
+
+  registerDelegateRoutes(app);
 
   return {
     create: routes.get('POST /api/delegates/create')!,
@@ -76,7 +86,7 @@ function context(body: Record<string, unknown>) {
 describe('retired delegate commission configuration', () => {
   it('creates delegates with only the canonical commission totals', async () => {
     const harness = createDelegateRoutesHarness();
-    const response = await harness.create(context({ name: 'مندوب اختبار', phone: '01000000000', pin: '1234' }));
+    const response = await harness.create(context({ name: 'مندوب اختبار', phone: '01000000000', pin: '12345' }));
 
     expect(response.status).toBe(200);
     const created = harness.writes.find((write) => write.operation === 'set' && write.path === 'delegates/delegate-new')?.data;
@@ -94,7 +104,7 @@ describe('retired delegate commission configuration', () => {
       const response = await harness.create(context({
         name: 'مندوب اختبار',
         phone: '01000000000',
-        pin: '1234',
+        pin: '12345',
         [field]: field === 'commissions' ? { daily: 5 } : 10
       }));
 
