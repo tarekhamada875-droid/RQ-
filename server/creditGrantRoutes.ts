@@ -12,6 +12,7 @@ import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempoten
 import { checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { applyCorrection, awardReferralCredits, grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { canRunGarageMaintenance, canUpdateEntityPin } from './domain/authorization';
+import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
 import { recordDomainEventInTransaction } from './events';
 import { mapDomainErrorToStatus } from './routes/helpers';
 import { parseMoneyAmount } from './money';
@@ -116,15 +117,9 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       // commission was more than 30 days ago). Capped at 100 EGP per 30-day window
       // per garage. The referral reward (20 credits to the referrer) stays one-time
       // — it still only fires on isFirstQualifyingGrant.
-      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-      const isQualifyingPayment = paymentAmountEgp >= 500;
-      const lastCommissionGrantAt = garage.lastCommissionGrantAt
-        ? (garage.lastCommissionGrantAt.toMillis ? garage.lastCommissionGrantAt.toMillis() : new Date(garage.lastCommissionGrantAt).getTime())
-        : null;
-      const isCommissionDue = isQualifyingPayment && (lastCommissionGrantAt === null || (Date.now() - lastCommissionGrantAt) >= THIRTY_DAYS_MS);
-      const commissionDelegateId = isCommissionDue && typeof garage.createdByDelegateId === 'string'
-        ? garage.createdByDelegateId.trim()
-        : '';
+      const { isCommissionDue, commissionDelegateId } = decideDelegateCommission(
+        paymentAmountEgp, garage.createdByDelegateId, garage.lastCommissionGrantAt
+      );
       const commissionDelegateRef = commissionDelegateId
         ? adminDb.collection('delegates').doc(commissionDelegateId)
         : null;
@@ -243,7 +238,7 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
           idempotencyKey: `${idempotencyKey}:commission`,
           payload: {
             delegateId: commissionDelegateId,
-            commissionAmount: 100,
+            commissionAmount: COMMISSION_AMOUNT_EGP,
             sourceCreditGrantId: entry.value.entryId,
             earnedAt: now.toISOString()
           }

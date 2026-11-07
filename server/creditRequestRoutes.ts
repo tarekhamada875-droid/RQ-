@@ -4,9 +4,9 @@ import { requireWorkerAuth } from './sessionInfrastructure';
 import { validateId, validateNumber } from './validation';
 import { grantPaidCredits, materializeCreditLedgerEntry } from './domain/prepaidCreditLedger';
 import { recordDomainEventInTransaction } from './events';
+import { decideDelegateCommission, COMMISSION_AMOUNT_EGP } from './domain/delegateCommission';
 import { parseMoneyAmount } from './money';
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Credit-request routes for the delegate → admin credit request flow.
@@ -201,16 +201,10 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
         if (entry.ok === false) throw new Error(entry.error);
 
         // ── Delegate commission (rolling 30-day rule) ───────────────────
-        // Same logic as /api/garages/:id/credit-grants. Fires when amount
-        // >= 500 AND (no prior commission OR last was >30 days ago).
-        const isQualifyingPayment = amount >= 500;
-        const lastCommissionGrantAt = garage.lastCommissionGrantAt
-          ? (garage.lastCommissionGrantAt.toMillis ? garage.lastCommissionGrantAt.toMillis() : new Date(garage.lastCommissionGrantAt).getTime())
-          : null;
-        const isCommissionDue = isQualifyingPayment && (lastCommissionGrantAt === null || (Date.now() - lastCommissionGrantAt) >= THIRTY_DAYS_MS);
-        const commissionDelegateId = isCommissionDue && typeof garage.createdByDelegateId === 'string'
-          ? garage.createdByDelegateId.trim()
-          : '';
+        // Delegate commission (rolling 30-day rule) — shared with creditGrantRoutes.
+        const { isCommissionDue, commissionDelegateId } = decideDelegateCommission(
+          amount, garage.createdByDelegateId, garage.lastCommissionGrantAt
+        );
 
         let nextLifetimeCommission: number | null = null;
         let nextUnsettledCommission: number | null = null;
@@ -223,8 +217,8 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
           const delegateData = delegateSnap.data() || {};
           const currentLifetime = parseMoneyAmount(delegateData.totalCommissionEarned ?? 0);
           const currentUnsettled = parseMoneyAmount(delegateData.totalRechargedAmount ?? 0);
-          nextLifetimeCommission = parseMoneyAmount(currentLifetime + 100);
-          nextUnsettledCommission = parseMoneyAmount(currentUnsettled + 100);
+          nextLifetimeCommission = parseMoneyAmount(currentLifetime + COMMISSION_AMOUNT_EGP);
+          nextUnsettledCommission = parseMoneyAmount(currentUnsettled + COMMISSION_AMOUNT_EGP);
         }
 
         // ── Write everything ─────────────────────────────────────────────
@@ -258,7 +252,7 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
             idempotencyKey: `credit-request-approve:${requestId}:commission`,
             payload: {
               delegateId: commissionDelegateId,
-              commissionAmount: 100,
+              commissionAmount: COMMISSION_AMOUNT_EGP,
               sourceCreditGrantId: entry.value.entryId,
               earnedAt: now.toISOString()
             }
