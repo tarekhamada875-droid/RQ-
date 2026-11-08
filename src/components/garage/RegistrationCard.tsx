@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useCallback, useDeferredValue, useMemo } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
 import { Garage, Vehicle } from '../../types';
@@ -54,9 +54,13 @@ export const RegistrationCard = memo(({
   // Memoize plate parsing — previously getPlateParts was called 4+ times
   // and getRawPlate/isPlateValid ran in an inline IIFE on every render
   // (i.e. on every keystroke into the plate input).
-  const plateParts = useMemo(() => getPlateParts(newPlateNumber), [newPlateNumber]);
-  const rawPlate = useMemo(() => getRawPlate(newPlateNumber), [newPlateNumber]);
-  const isPlateValidMemo = useMemo(() => isPlateValid(newPlateNumber), [newPlateNumber]);
+  // PERF (audit 2026-11-08): deferred so the expensive downstream renders
+  // (FitText re-fit, submit-button enable/disable, existing-vehicle lookup)
+  // don't block the next keystroke. React batches them into the next frame.
+  const deferredPlate = useDeferredValue(newPlateNumber);
+  const plateParts = useMemo(() => getPlateParts(deferredPlate), [deferredPlate]);
+  const rawPlate = useMemo(() => getRawPlate(deferredPlate), [deferredPlate]);
+  const isPlateValidMemo = useMemo(() => isPlateValid(deferredPlate), [deferredPlate]);
   const existingVehicleForPlate = useMemo(() => {
     return (isPlateValidMemo && rawPlate) ? insideVehicleByRawPlate.get(rawPlate) : undefined;
   }, [isPlateValidMemo, rawPlate, insideVehicleByRawPlate]);
@@ -112,16 +116,18 @@ export const RegistrationCard = memo(({
     };
   }, [isInputFocused, setIsInputFocused, inputRef]);
 
-  const handleVirtualKeyPress = (key: string) => {
+  // PERF (audit 2026-11-08): memoized so LicensePlateKeyboard's memo
+  // doesn't bail out on every render (which would re-render all 19 keys).
+  const handleVirtualKeyPress = useCallback((key: string) => {
     const raw = getRawPlate(newPlateNumber + key);
     const clean = getCleanPlate(raw);
     setNewPlateNumber(clean);
-  };
+  }, [newPlateNumber, setNewPlateNumber]);
 
   return (
     <div
       ref={inputRef}
-      className={`bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border relative shrink-0 p-4 md:p-8 max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto w-full transition-all duration-150 ${
+      className={`bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border relative shrink-0 p-4 md:p-8 max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto w-full ${
         isInputFocused
           ? 'border-slate-900 dark:border-slate-700'
           : 'border-slate-200 dark:border-slate-800'
@@ -224,8 +230,8 @@ export const RegistrationCard = memo(({
                   <div className="flex-1 h-full min-w-0 flex justify-center items-center px-2" dir="rtl">
                     <FitText
                       minFontSize={14}
-                      className={`font-black text-slate-950 text-center transition-all duration-150 ${
-                        newPlateNumber 
+                      className={`font-black text-slate-950 text-center ${
+                        newPlateNumber
                           ? (plateParts.letters.length >= 4
                               ? 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl tracking-normal'
                               : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-[0.1em]') 

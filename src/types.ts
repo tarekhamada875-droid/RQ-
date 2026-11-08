@@ -51,6 +51,19 @@ export interface Garage {
   lastRefundDate?: string; // YYYY-MM-DD
   dailyDeletionCount?: number;
   lastDeletionDate?: string; // YYYY-MM-DD
+  /**
+   * Server-stamped timestamp of the most recent credit-grant activity log
+   * (actionType='credit_grant'). The Worker writes this in the same
+   * transaction that writes the activity_log doc, so the client can
+   * detect "you just got credits" by listening to the garage doc instead
+   * of subscribing to the activity_logs subcollection at limit 1.
+   *
+   * Drives the new-credit-grant badge on the garage dashboard. The
+   * notification modal's full log details are fetched on-demand via
+   * adminActivityService.getLatestCreditGrantLog when this timestamp
+   * changes — see useCreditGrantNotification.
+   */
+  lastCreditGrantAt?: FirestoreTimestamp;
   todayRevenue?: number;
   todayCount?: number;
   lastTransactionDate?: string; // YYYY-MM-DD

@@ -9,6 +9,7 @@ import { useGarageData } from '../../hooks/garageDataContext';
 import { GarageDailyReportModal } from './GarageDailyReportModal';
 import { normalizeDigits } from '../../utils/plates';
 import type { Garage } from '../../types';
+import { FastInput } from '../ui/FastInput';
 
 interface AdminDailyGarageReportsViewProps {
   onBack: () => void;
@@ -73,13 +74,14 @@ export const AdminDailyGarageReportsView = ({ onBack }: AdminDailyGarageReportsV
       {/* Search */}
       <div className="relative mb-4">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        <input
+        <FastInput
           type="text"
           inputMode="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          defaultValue={search}
+          onCommit={setSearch}
+          onLiveValue={setSearch}
           placeholder="ابحث باسم الجراج أو رقم الهاتف أو المالك..."
-          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl pr-10 pl-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-emerald-500 outline-none transition-colors"
+          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl pr-10 pl-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-emerald-500 outline-none"
         />
       </div>
 

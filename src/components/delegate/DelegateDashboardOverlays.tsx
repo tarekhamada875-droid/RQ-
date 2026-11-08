@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Loader2, PlusCircle, RefreshCw, X } from 'lucide-react';
 import { Garage } from '../../types';
 import { generateSafePin } from '../../utils/pins';
+import { FastInput, type FastInputHandle } from '../ui/FastInput';
 
 interface DelegateDashboardOverlaysProps {
   showAddGarage: boolean;
@@ -26,6 +27,10 @@ export const DelegateDashboardOverlays = ({
   setPinGenerationsRemaining,
   isLoading,
 }: DelegateDashboardOverlaysProps) => {
+  // PERF (audit 2026-11-08): FastInput imperative handle so the "generate
+  // safe PIN" button can imperatively set the read-only PIN field's DOM
+  // value without going through a controlled-value round-trip.
+  const newGaragePinRef = useRef<FastInputHandle>(null);
 
   return (
     <>
@@ -106,14 +111,17 @@ export const DelegateDashboardOverlays = ({
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">رمز الدخول (PIN)</label>
                   <div className="relative">
-                    <input 
-                      name="pin" 
-                      type="text" 
-                      value={newGaragePin}
+                    <FastInput
+                      ref={newGaragePinRef}
+                      name="pin"
+                      type="text"
+                      defaultValue={newGaragePin}
+                      onCommit={setNewGaragePin}
+                      onLiveValue={setNewGaragePin}
                       readOnly
-                      required 
-                      className="w-full p-3.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none cursor-not-allowed text-center pl-12" 
-                      dir="ltr" 
+                      required
+                      className="w-full p-3.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold font-mono outline-none cursor-not-allowed text-center pl-12"
+                      dir="ltr"
                     />
                     {pinGenerationsRemaining > 0 && (
                       <button
@@ -121,6 +129,7 @@ export const DelegateDashboardOverlays = ({
                         onClick={() => {
                           const nextPin = generateSafePin(allGarages.map(g => g.pin));
                           setNewGaragePin(nextPin);
+                          newGaragePinRef.current?.setValue(nextPin);
                           setPinGenerationsRemaining(prev => prev - 1);
                         }}
                         className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg hover:text-slate-900 dark:hover:text-white transition-colors"

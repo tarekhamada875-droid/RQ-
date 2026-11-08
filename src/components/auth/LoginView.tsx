@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { memo } from 'react';
+import React, { memo, useCallback, useDeferredValue } from 'react';
 import { ChevronRight, Delete } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { normalizeDigits } from '../../utils/plates';
@@ -24,23 +24,27 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
   closeKeyboard,
 }) => {
   const cleanPin = normalizeDigits(loginPhone || '').replace(/\D/g, '');
+  // PERF (audit 2026-11-08): deferred so PIN display + badge don't block
+  // the next keystroke. The state itself (loginPhone) updates instantly
+  // for the parent's submit handler; only the display is deferred.
+  const deferredPin = useDeferredValue(cleanPin);
 
-  const handleKeyPress = (key: string) => {
+  const handleKeyPress = useCallback((key: string) => {
     if (isLoading) return;
     if (cleanPin.length < 10) {
       setLoginPhone(cleanPin + key);
     }
-  };
+  }, [isLoading, cleanPin, setLoginPhone]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (isLoading) return;
     setLoginPhone(cleanPin.slice(0, -1));
-  };
+  }, [isLoading, cleanPin, setLoginPhone]);
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     if (isLoading) return;
     setLoginPhone('');
-  };
+  }, [isLoading, setLoginPhone]);
 
   // Support physical keyboard / numpad / barcode scanner
   React.useEffect(() => {
@@ -78,16 +82,16 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
             {/* Top Bar - Standard Egyptian Blue */}
             <div className="h-7 sm:h-8 bg-[#0057b7] text-white flex items-center justify-center px-3 sm:px-4 font-black border-b border-slate-900/10 relative">
               {/* Integrated Live Digit Counter Badge */}
-              {cleanPin.length > 0 ? (
+              {deferredPin.length > 0 ? (
                 <div 
                   className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white shadow-xs backdrop-blur-xs transition-all duration-200"
                   dir="rtl"
                 >
                   <span className="font-mono font-black text-xs text-white">
-                    {cleanPin.length}
+                    {deferredPin.length}
                   </span>
                   <span className="font-sans font-medium text-[10px] text-blue-100">
-                    {cleanPin.length === 1 ? 'رقم' : cleanPin.length === 2 ? 'رقمان' : cleanPin.length <= 10 ? 'أرقام' : 'رقم'}
+                    {deferredPin.length === 1 ? 'رقم' : deferredPin.length === 2 ? 'رقمان' : deferredPin.length <= 10 ? 'أرقام' : 'رقم'}
                   </span>
                 </div>
               ) : (
@@ -99,9 +103,9 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
 
             {/* Plate Interior: Monospace Egyptian PIN Numbers */}
             <div className="h-20 sm:h-24 bg-[#fcfcfc] dark:bg-slate-900/90 flex items-center justify-center px-4 relative">
-              {cleanPin.length > 0 ? (
+              {deferredPin.length > 0 ? (
                 <span className="font-mono font-black text-3xl sm:text-4xl md:text-5xl text-slate-900 dark:text-slate-100 tracking-[0.25em] antialiased">
-                  {cleanPin}
+                  {deferredPin}
                 </span>
               ) : (
                 <span className="text-slate-400 dark:text-slate-600 text-sm sm:text-base font-bold tracking-normal font-sans" dir="rtl">
@@ -110,7 +114,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
               )}
 
               {/* Blinking Cursor Indicator when active */}
-              {cleanPin.length > 0 && cleanPin.length < 10 && !isLoading && (
+              {deferredPin.length > 0 && deferredPin.length < 10 && !isLoading && (
                 <span className="inline-block w-1 h-7 sm:h-8 bg-[#0057b7] animate-pulse ml-1 rounded-full" />
               )}
             </div>
@@ -130,7 +134,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
             </button>
           ))}
           <button
-            disabled={isLoading || cleanPin.length === 0}
+            disabled={isLoading || deferredPin.length === 0}
             onClick={handleClearAll}
             className="h-12 sm:h-16 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-black text-xs sm:text-sm outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-all active:scale-95 select-none touch-manipulation shadow-xs"
           >
@@ -144,7 +148,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
             0
           </button>
           <button
-            disabled={isLoading || cleanPin.length === 0}
+            disabled={isLoading || deferredPin.length === 0}
             onClick={handleDelete}
             className="h-12 sm:h-16 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:bg-amber-500/30 transition-all active:scale-95 outline-none disabled:opacity-40 disabled:pointer-events-none select-none touch-manipulation shadow-xs"
           >

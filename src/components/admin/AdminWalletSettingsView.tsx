@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, Check, Loader2, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../api/apiClient';
 import { adminService } from '../../services';
+import { FastInput } from '../ui/FastInput';
 
 interface AdminWalletSettingsViewProps {
   onBack: () => void;
@@ -100,13 +101,18 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
               <label htmlFor="payment-wallet-number" className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
                 {'رقم المحفظة (فودافون كاش / إنستاباي / محفظة بنكية)'}
               </label>
-              <input
+              <FastInput
                 id="payment-wallet-number"
                 type="text"
                 inputMode="tel"
-                value={paymentWalletNumber}
-                onChange={(e) => {
-                  setPaymentWalletNumber(e.target.value);
+                defaultValue={paymentWalletNumber}
+                onCommit={(v) => {
+                  setPaymentWalletNumber(v);
+                  setSaveError('');
+                  setSaveSuccess('');
+                }}
+                onLiveValue={(v) => {
+                  setPaymentWalletNumber(v);
                   setSaveError('');
                   setSaveSuccess('');
                 }}
@@ -114,7 +120,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
                 aria-label={'رقم محفظة الدفع'}
                 required
                 placeholder={'01012345678 / Instapay / محفظة'}
-                className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
+                className="w-full text-center text-lg font-mono font-bold p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
                 dir="ltr"
                 autoFocus
               />

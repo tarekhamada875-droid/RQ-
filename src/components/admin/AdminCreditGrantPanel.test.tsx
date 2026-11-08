@@ -8,6 +8,18 @@ vi.mock('../../services', () => { const _svc = {
     adminCorrectGarageCredits: vi.fn(async () => ({})),
   }; return { firestoreService: _svc, garageService: _svc, garageDeletionService: _svc, vehicleService: _svc, delegateService: _svc, adminService: _svc, authService: _svc }; });
 
+// PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
+// not React's onChange. fireEvent.change fires a React synthetic 'change'
+// event which FastInput doesn't see. To fill a FastInput in tests, we must
+// set the DOM value directly and dispatch a native 'input' event, then
+// blur to trigger onCommit.
+const fillFastInput = (input: HTMLElement, value: string) => {
+  const el = input as HTMLInputElement;
+  el.value = value;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  fireEvent.blur(el);
+};
+
 const legacyGarage: any = { id: 'legacy-1', name: 'Legacy', billingModel: 'subscription' };
 const prepaidGarage: any = { id: 'prepaid-1', name: 'Prepaid', billingModel: 'prepaid_credits', credits: 0 };
 
@@ -39,7 +51,7 @@ describe('AdminCreditGrantPanel', () => {
 
   it('accepts Arabic-Indic digits in the grant amount', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '١٠٠' } });
+    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '١٠٠');
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
@@ -52,7 +64,7 @@ describe('AdminCreditGrantPanel', () => {
   it('reuses the same idempotency key when retrying an ambiguous failed grant', async () => {
     vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('NETWORK_ERROR'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
+    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
 
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('تعذرت العملية. يرجى مراجعة البيانات والمحاولة مرة أخرى.');
@@ -70,7 +82,7 @@ describe('AdminCreditGrantPanel', () => {
   it('shows Arabic guidance when the server returns an English error code', async () => {
     vi.mocked(adminService.adminGrantGarageCredits).mockRejectedValueOnce(new Error('GARAGE_NOT_PREPAID'));
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
+    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('إدارة الرصيد متاحة للجراجات التي تعمل بنظام الرصيد مسبق الدفع فقط.');
@@ -87,7 +99,7 @@ describe('AdminCreditGrantPanel', () => {
 
   it('submits the grant immediately with auto-generated reason and paymentConfirmed=true', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
-    fireEvent.change(screen.getByLabelText(/الرصيد المراد إضافته/i), { target: { value: '100' } });
+    fillFastInput(screen.getByLabelText(/الرصيد المراد إضافته/i), '100');
     fireEvent.click(screen.getByRole('button', { name: /^إضافة رصيد$/i }));
 
     await waitFor(() => expect(adminService.adminGrantGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({
@@ -104,7 +116,7 @@ describe('AdminCreditGrantPanel', () => {
   it('rejects positive values in correction mode — only deductions allowed', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fireEvent.change(screen.getByLabelText(/قيمة الخصم/i), { target: { value: '50' } });
+    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '50');
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
@@ -114,7 +126,7 @@ describe('AdminCreditGrantPanel', () => {
   it('rejects zero in correction mode — only deductions allowed', async () => {
     render(<AdminCreditGrantPanel garage={prepaidGarage} />);
     fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fireEvent.change(screen.getByLabelText(/قيمة الخصم/i), { target: { value: '0' } });
+    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '0');
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/أدخل قيمة خصم سالبة/);
@@ -124,7 +136,7 @@ describe('AdminCreditGrantPanel', () => {
   it('applies a negative deduction in correction mode with auto-generated reason', async () => {
     render(<AdminCreditGrantPanel garage={{ ...prepaidGarage, credits: 100 }} />);
     fireEvent.click(screen.getByRole('tab', { name: /خصم رصيد/i }));
-    fireEvent.change(screen.getByLabelText(/قيمة الخصم/i), { target: { value: '-50' } });
+    fillFastInput(screen.getByLabelText(/قيمة الخصم/i), '-50');
     fireEvent.click(screen.getByRole('button', { name: /^تطبيق الخصم$/i }));
 
     await waitFor(() => expect(adminService.adminCorrectGarageCredits).toHaveBeenCalledWith('prepaid-1', expect.objectContaining({

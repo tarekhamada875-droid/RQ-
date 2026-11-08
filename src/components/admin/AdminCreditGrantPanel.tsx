@@ -3,6 +3,7 @@ import { Coins, Wrench } from 'lucide-react';
 import { Garage } from '../../types';
 import { adminService } from '../../services';
 import { normalizeDigits } from '../../utils/plates';
+import { FastInput } from '../ui/FastInput';
 
 const CREDIT_ERROR_MESSAGES: Record<string, string> = {
   ADMIN_ONLY: 'ليس لديك صلاحية لإدارة الرصيد.',
@@ -162,16 +163,17 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         <label htmlFor="credit-amount" className="block text-sm font-bold text-slate-800 dark:text-slate-100">
           {mode === 'grant' ? 'الرصيد المراد إضافته (50 إلى 2,000)' : 'قيمة الخصم (سالبة، حتى -100,000)'}
         </label>
-        <input
+        <FastInput
           id="credit-amount"
           type="text"
           inputMode="numeric"
-          pattern={mode === 'grant' ? '[0-9]*' : '-?[0-9]*'}
-          value={amount}
-          onChange={(event) => setAmount(normalizeDigits(event.target.value).replace(/[^\d-]/g, ''))}
+          defaultValue={amount}
+          onCommit={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
+          onLiveValue={(v) => setAmount(normalizeDigits(v).replace(/[^\d-]/g, ''))}
+          mask={(v) => normalizeDigits(v).replace(/[^\d-]/g, '')}
           placeholder={mode === 'grant' ? 'أدخل قيمة الرصيد' : 'مثال: -50'}
           aria-describedby={error ? 'credit-amount-error' : success ? 'credit-amount-success' : undefined}
-          className={`w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
+          className={`w-full rounded-xl border border-slate-300 bg-white p-3 text-lg font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none ${mode === 'grant' ? 'focus:border-emerald-500' : 'focus:border-amber-500'} dark:border-slate-700 dark:bg-slate-950 dark:text-white`}
         />
         {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}

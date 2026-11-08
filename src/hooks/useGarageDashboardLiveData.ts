@@ -53,7 +53,13 @@ export function useGarageDashboardLiveData({
   const [subscriberState, setSubscriberState] = useState<SubscriberState>(EMPTY_SUBSCRIBER_PAGE);
 
   useEffect(() => {
-    if (!garageId || !isAuthenticated) {
+    if (!garageId || !isAuthenticated || !isCreditGrantHistoryOpen) {
+      // Modal-on-demand listener: only subscribe while the credit-grant-history
+      // overlay is open. The dashboard's "new credit grant" badge no longer
+      // depends on this listener — it reads `garage.lastCreditGrantAt` from
+      // the existing garage-doc subscription (see useCreditGrantNotification).
+      // Closing the modal tears the listener down; reopening it re-runs the
+      // limit-50 query. Zero Firestore reads while the modal is closed.
       setCreditGrantState({ garageId: garageId ?? null, logs: [], isLoading: false });
       return;
     }
@@ -82,7 +88,7 @@ export function useGarageDashboardLiveData({
         clearTimeout(loadingTimeout);
         setCreditGrantState({ garageId, logs, isLoading: false });
       },
-      isCreditGrantHistoryOpen ? 50 : 1,
+      50, // always 50 — no longer toggles between 1 and 50 since closed = no listener
       () => {
         if (!active) return;
         receivedInitialSnapshot = true;

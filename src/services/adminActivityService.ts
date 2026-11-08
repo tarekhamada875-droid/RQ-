@@ -118,6 +118,26 @@ export const adminActivityService = {
     }
   },
 
+  getLatestCreditGrantLog: async (garageId: string): Promise<ActivityLog | null> => {
+    if (!garageId) return null;
+    try {
+      const q = query(
+        collection(db, 'activity_logs'),
+        where('garageId', '==', garageId),
+        where('actionType', '==', 'credit_grant'),
+        orderBy('timestamp', 'desc'),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+      const doc = snap.docs[0];
+      return { id: doc.id, ...doc.data() } as ActivityLog;
+    } catch (err) {
+      console.warn('[adminService] getLatestCreditGrantLog failed:', err);
+      return null;
+    }
+  },
+
   getSystemLogsByPlateOnce: async (rawPlate: string): Promise<ActivityLog[]> => {
     try {
       const q = query(

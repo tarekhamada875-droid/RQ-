@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { normalizeDigits } from '../../../utils/plates';
 import { Garage, Staff } from '../../../types';
+import { FastInput } from '../../ui/FastInput';
 
 interface AdminGarageModalsProps {
   garage: Garage;
@@ -68,12 +69,14 @@ export const AdminGarageModals = memo(({
             <form onSubmit={onAddStaffSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="block text-xs font-black text-slate-700 dark:text-slate-300">{'اسم الموظف'}</label>
-                <input
+                <FastInput
                   placeholder={'مثال: أحمد محمد'}
-                  value={staffForm.name}
+                  defaultValue={staffForm.name}
                   autoFocus
-                  onChange={e => setStaffForm(prev => ({ ...prev, name: e.target.value.replace(/[0-9]/g, '') }))}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 text-center transition-all"
+                  onCommit={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                  onLiveValue={(v) => setStaffForm(prev => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                  mask={(v) => v.replace(/[0-9]/g, '')}
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 text-center"
                 />
               </div>
 
@@ -184,20 +187,25 @@ export const AdminGarageModals = memo(({
                   <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">
                     {'رمز الدخول الجديد (5 أرقام):'}
                   </label>
-                  <input
+                  <FastInput
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]{5}"
                     minLength={5}
                     maxLength={5}
-                    value={garagePinInput}
-                    onChange={(e) => {
-                      setGaragePinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5));
+                    defaultValue={garagePinInput}
+                    onCommit={(v) => {
+                      setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
                       setPinError('');
                     }}
+                    onLiveValue={(v) => {
+                      setGaragePinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5));
+                      setPinError('');
+                    }}
+                    mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
                     placeholder="••••"
                     autoFocus
-                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full text-center text-xl font-mono font-black tracking-widest py-3 px-4 bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 rounded-2xl text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                   {pinError && (
                     <p className="text-xs font-bold text-rose-500 text-center mt-2 animate-shake">

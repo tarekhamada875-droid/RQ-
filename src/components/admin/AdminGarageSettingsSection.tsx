@@ -5,6 +5,7 @@ import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
 import { useToast } from '../../hooks/toast';
 import type { Staff } from '../../types';
+import { FastInput } from '../ui/FastInput';
 
 export const isValidStaffPin = (pin: string): boolean => /^\d{5}$/.test(pin);
 
@@ -100,15 +101,17 @@ export const AdminGarageSettingsSection = ({
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-400 text-center">
                         {'سعر الساعة (ج.م)'}
                       </label>
-                      <input 
-                        type="text" 
+                      <FastInput
+                        type="text"
                         inputMode="numeric"
                         disabled={!rateCheck.allowed}
-                        value={hourlyRateInput}
-                        onChange={(e) => setHourlyRateInput(e.target.value.replace(/\D/g, ''))}
-                        className={`w-full bg-white dark:bg-slate-800 border-2 rounded-xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white text-center transition-all outline-none font-mono ${
-                          !rateCheck.allowed 
-                            ? 'opacity-60 cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900' 
+                        defaultValue={hourlyRateInput}
+                        onCommit={(v) => setHourlyRateInput(v.replace(/\D/g, ''))}
+                        onLiveValue={(v) => setHourlyRateInput(v.replace(/\D/g, ''))}
+                        mask={(v) => v.replace(/\D/g, '')}
+                        className={`w-full bg-white dark:bg-slate-800 border-2 rounded-xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white text-center outline-none font-mono ${
+                          !rateCheck.allowed
+                            ? 'opacity-60 cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900'
                             : 'border-slate-200 dark:border-slate-700 focus:border-emerald-500'
                         }`}
                       />
@@ -117,15 +120,17 @@ export const AdminGarageSettingsSection = ({
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-400 text-center">
                         {'سعر المبيت (ج.م)'}
                       </label>
-                      <input 
-                        type="text" 
+                      <FastInput
+                        type="text"
                         inputMode="numeric"
                         disabled={!rateCheck.allowed}
-                        value={overnightRateInput}
-                        onChange={(e) => setOvernightRateInput(e.target.value.replace(/\D/g, ''))}
-                        className={`w-full bg-white dark:bg-slate-800 border-2 rounded-xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white text-center transition-all outline-none font-mono ${
-                          !rateCheck.allowed 
-                            ? 'opacity-60 cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900' 
+                        defaultValue={overnightRateInput}
+                        onCommit={(v) => setOvernightRateInput(v.replace(/\D/g, ''))}
+                        onLiveValue={(v) => setOvernightRateInput(v.replace(/\D/g, ''))}
+                        mask={(v) => v.replace(/\D/g, '')}
+                        className={`w-full bg-white dark:bg-slate-800 border-2 rounded-xl px-4 py-3 text-lg font-black text-slate-900 dark:text-white text-center outline-none font-mono ${
+                          !rateCheck.allowed
+                            ? 'opacity-60 cursor-not-allowed border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900'
                             : 'border-slate-200 dark:border-slate-700 focus:border-emerald-500'
                         }`}
                       />
@@ -200,14 +205,16 @@ export const AdminGarageSettingsSection = ({
                             
                             {editingStaffPinId === s.id ? (
                               <div className="flex items-center gap-1 mt-1">
-                                <input
+                                <FastInput
                                   type="tel"
                                   inputMode="numeric"
-                                  value={editingStaffPinValue}
+                                  defaultValue={editingStaffPinValue}
+                                  onCommit={(v) => setEditingStaffPinValue(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
+                                  onLiveValue={(v) => setEditingStaffPinValue(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
+                                  mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
                                   minLength={5}
                                   maxLength={5}
                                   pattern="[0-9]{5}"
-                                  onChange={(e) => setEditingStaffPinValue(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
                                   className="w-14 text-[10px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded px-1 text-center font-mono font-black placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                   placeholder="••••"
                                   autoFocus

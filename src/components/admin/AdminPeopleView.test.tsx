@@ -15,6 +15,18 @@ vi.mock('../../utils/ThemeContext', () => ({
   useTheme: () => themeMock,
 }));
 
+// PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
+// not React's onChange. fireEvent.change fires a React synthetic 'change'
+// event which FastInput doesn't see. To fill a FastInput in tests, we must
+// set the DOM value directly and dispatch a native 'input' event, then
+// blur to trigger onCommit.
+const fillFastInput = (placeholder: string, value: string) => {
+  const input = screen.getByPlaceholderText(placeholder) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  fireEvent.blur(input);
+};
+
 beforeEach(() => {
   themeMock.adminLang = 'ar';
   vi.clearAllMocks();
@@ -37,9 +49,9 @@ describe('AdminPeopleView delegate creation', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
-    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
-    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
+    fillFastInput('مثال: أحمد محمد...', 'Test delegate');
+    fillFastInput('01xxxxxxxxx', '01012345');
+    fillFastInput('•••••', '12345');
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر على الخادم إضافة المندوب (رقم التتبع: delegate-ref-500).')).toBeInTheDocument();
@@ -57,9 +69,9 @@ describe('AdminPeopleView delegate creation', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
-    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
-    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
+    fillFastInput('مثال: أحمد محمد...', 'Test delegate');
+    fillFastInput('01xxxxxxxxx', '01012345');
+    fillFastInput('•••••', '12345');
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();
@@ -77,9 +89,9 @@ describe('AdminPeopleView delegate creation', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'إضافة مندوب جديد' }));
-    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد...'), { target: { value: 'Test delegate' } });
-    fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345' } });
-    fireEvent.change(screen.getByPlaceholderText('•••••'), { target: { value: '12345' } });
+    fillFastInput('مثال: أحمد محمد...', 'Test delegate');
+    fillFastInput('01xxxxxxxxx', '01012345');
+    fillFastInput('•••••', '12345');
     fireEvent.click(screen.getByRole('button', { name: 'تأكيد إضافة المندوب' }));
 
     expect(await screen.findByText('تعذر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.')).toBeInTheDocument();

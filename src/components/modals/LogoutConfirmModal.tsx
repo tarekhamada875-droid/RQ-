@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useCallback, useDeferredValue } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useModalA11y } from '../../hooks/useModalA11y';
@@ -30,24 +30,27 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [attempts, setAttempts] = useState(readAttempts);
 
-  const displayLength = Math.max(4, pin.length);
+  // PERF (audit 2026-11-08): deferred so PIN box display doesn't block
+  // the next keystroke. The actual `pin` state is used only on submit.
+  const deferredPin = useDeferredValue(pin);
+  const displayLength = Math.max(4, deferredPin.length);
 
   useBodyScrollLock();
 
-  const handleKeyPress = (num: string) => {
+  const handleKeyPress = useCallback((num: string) => {
     if (pin.length < 10 && !isLoggingOut) {
       const newPin = pin + num;
       setPin(newPin);
       setError(false);
     }
-  };
+  }, [pin.length, isLoggingOut]);
 
-  const handleBackspace = () => {
+  const handleBackspace = useCallback(() => {
     if (pin.length > 0 && !isLoggingOut) {
       setPin(pin.slice(0, -1));
       setError(false);
     }
-  };
+  }, [pin, isLoggingOut]);
 
   const handleLogoutSubmit = async () => {
     if (pin.length < 4 || isLoggingOut) return;
@@ -124,13 +127,13 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
           {Array.from({ length: displayLength }).map((_, i) => (
             <div 
               key={i}
-              className={`${getBoxSize()} rounded-2xl border-2 flex items-center justify-center font-black relative overflow-hidden transition-all shrink-0 ${
+              className={`${getBoxSize()} rounded-2xl border-2 flex items-center justify-center font-black relative overflow-hidden shrink-0 ${
                 error 
                   ? 'border-red-500 text-red-500 bg-red-50 dark:bg-red-950/30' 
-                  : (pin[i] ? 'border-emerald-500 text-white bg-emerald-600' : 'border-slate-200 dark:border-slate-800 text-transparent bg-slate-50/50 dark:bg-slate-800/50')
+                  : (deferredPin[i] ? 'border-emerald-500 text-white bg-emerald-600' : 'border-slate-200 dark:border-slate-800 text-transparent bg-slate-50/50 dark:bg-slate-800/50')
               }`}
             >
-              <span className="relative z-10">{pin[i] ? '•' : ''}</span>
+              <span className="relative z-10">{deferredPin[i] ? '•' : ''}</span>
             </div>
           ))}
         </div>

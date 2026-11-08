@@ -204,4 +204,21 @@ describe('first paid credit grant delegate commission', () => {
     expect(harness.writes).toHaveLength(0);
     expect(harness.grantPaidCredits).not.toHaveBeenCalled();
   });
+
+  it('stamps lastCreditGrantAt on the garage doc so the dashboard badge can read it without an activity_logs subscription', async () => {
+    // Audit ref: Option 2 ("buzzer on the microwave"), 2026-11-08.
+    // The Worker must mirror the activity_log 'credit_grant' timestamp onto
+    // the garage doc in the SAME transaction that writes the activity_log.
+    // Otherwise the client can't tear down its always-on activity_logs
+    // listener (the badge would stop firing).
+    const harness = createCreditGrantHarness();
+    const response = await harness.route(requestContext(grantBody(500, 'grant-stamp')));
+    expect(response.status).toBe(200);
+
+    const garageWrites = harness.writes.filter((w) => w.path === 'garages/garage-1' && w.operation === 'set');
+    expect(garageWrites.length).toBeGreaterThan(0);
+    const stampWrite = garageWrites.find((w) => w.data && typeof w.data.lastCreditGrantAt !== 'undefined');
+    expect(stampWrite).toBeDefined();
+    expect(stampWrite!.data.lastCreditGrantAt).toBeInstanceOf(Date);
+  });
 });

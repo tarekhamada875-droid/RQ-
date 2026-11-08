@@ -568,6 +568,13 @@ export function useGarageSync({
               (preserved as any).totalRevenue = current.totalRevenue;
               (preserved as any).totalVehiclesOut = current.totalVehiclesOut;
               (preserved as any).lastTransactionDate = current.lastTransactionDate;
+              // Preserve the badge-trigger timestamp too — a stale cached
+              // snapshot may carry an older lastCreditGrantAt (queued before
+              // the fresh write committed). Letting it overwrite would
+              // briefly suppress the "new credit grant" badge that the
+              // fresh snapshot just turned on, causing a visible flicker.
+              // See useCreditGrantNotification + audit Option 2 (2026-11-08).
+              (preserved as any).lastCreditGrantAt = current.lastCreditGrantAt;
             }
             return {
               ...updatedGarage,

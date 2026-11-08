@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus,
   X,
@@ -8,6 +8,7 @@ import {
 import { Garage } from '../../types';
 import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
+import { FastInput, type FastInputHandle } from '../ui/FastInput';
 import { generateSafePin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
 import { useModalA11y } from '../../hooks/useModalA11y';
@@ -59,6 +60,10 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
   });
   const [localPin, setLocalPin] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // PERF (audit 2026-11-08): FastInput imperative handle so the "generate
+  // safe PIN" button and form-reset can imperatively set the PIN field's
+  // DOM value without going through a controlled-value round-trip.
+  const garagePinInputRef = useRef<FastInputHandle>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -150,6 +155,8 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               setGarageForm(emptyForm);
               setLocalPin('');
               setPinInput('');
+              // Imperatively clear FastInput DOM values (they're uncontrolled).
+              garagePinInputRef.current?.setValue('');
             }}
             className="space-y-5"
           >
@@ -166,28 +173,28 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <label htmlFor="admin-add-garage-name" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'اسم الجراج'}</label>
-                <input
+                <FastInput
                   name="name"
                   id="admin-add-garage-name"
+                  defaultValue={localForm.name}
+                  onCommit={(v) => setLocalForm(prev => ({ ...prev, name: v }))}
+                  onLiveValue={(v) => setLocalForm(prev => ({ ...prev, name: v }))}
                   placeholder={'اسم الجراج...'}
-                  value={localForm.name}
-                  onChange={(e) => setLocalForm(prev => ({ ...prev, name: e.target.value }))}
                   required
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold focus:border-emerald-500 dark:focus:border-emerald-500 outline-none text-base transition-all"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold focus:border-emerald-500 dark:focus:border-emerald-500 outline-none text-base"
                 />
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="admin-add-garage-phone" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'رقم الموبايل (اختياري)'}</label>
-                <input
+                <FastInput
                   name="phone"
                   id="admin-add-garage-phone"
+                  defaultValue={localForm.phone}
+                  onCommit={(v) => setLocalForm(prev => ({ ...prev, phone: sanitizeNumeric(v) }))}
+                  onLiveValue={(v) => setLocalForm(prev => ({ ...prev, phone: sanitizeNumeric(v) }))}
+                  mask={sanitizeNumeric}
                   placeholder="01xxxxxxxxx"
-                  value={localForm.phone}
-                  onChange={(e) => {
-                    const val = sanitizeNumeric(e.target.value);
-                    setLocalForm(prev => ({ ...prev, phone: val }));
-                  }}
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider transition-all"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-wider"
                   dir="ltr"
                 />
               </div>
@@ -198,35 +205,33 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'التعريفة'}</span>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <input
+                  <FastInput
                     name="hourlyRate"
                     id="admin-add-garage-hourly-rate"
                     type="text"
                     inputMode="numeric"
+                    defaultValue={localForm.hourlyRate}
+                    onCommit={(v) => setLocalForm(prev => ({ ...prev, hourlyRate: sanitizeNumeric(v) }))}
+                    onLiveValue={(v) => setLocalForm(prev => ({ ...prev, hourlyRate: sanitizeNumeric(v) }))}
+                    mask={sanitizeNumeric}
                     aria-label={'سعر الساعة'}
                     placeholder="10 ج.م"
-                    value={localForm.hourlyRate}
-                    onChange={(e) => {
-                      const val = sanitizeNumeric(e.target.value);
-                      setLocalForm(prev => ({ ...prev, hourlyRate: val }));
-                    }}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg"
                   />
                 </div>
                 <div>
-                  <input
+                  <FastInput
                     name="overnightRate"
                     id="admin-add-garage-overnight-rate"
                     type="text"
                     inputMode="numeric"
+                    defaultValue={localForm.overnightRate}
+                    onCommit={(v) => setLocalForm(prev => ({ ...prev, overnightRate: sanitizeNumeric(v) }))}
+                    onLiveValue={(v) => setLocalForm(prev => ({ ...prev, overnightRate: sanitizeNumeric(v) }))}
+                    mask={sanitizeNumeric}
                     aria-label={'سعر المبيت'}
                     placeholder="50 ج.م"
-                    value={localForm.overnightRate}
-                    onChange={(e) => {
-                      const val = sanitizeNumeric(e.target.value);
-                      setLocalForm(prev => ({ ...prev, overnightRate: val }));
-                    }}
-                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg transition-all"
+                    className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-bold text-center focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono text-lg"
                   />
                 </div>
               </div>
@@ -236,23 +241,29 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <div className="space-y-1.5">
               <label htmlFor="admin-add-garage-pin" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">{'رمز الدخول'}</label>
               <div className="relative">
-                <input
+                <FastInput
+                  ref={garagePinInputRef}
                   name="pin"
                   id="admin-add-garage-pin"
                   type="tel"
                   inputMode="numeric"
-                  value={localPin}
-                  onChange={(e) => {
-                    const val = sanitizeNumeric(e.target.value).slice(0, 5);
+                  defaultValue={localPin}
+                  onCommit={(v) => {
+                    const val = sanitizeNumeric(v).slice(0, 5);
                     setLocalPin(val);
                     setPinInput(val);
                   }}
+                  onLiveValue={(v) => {
+                    const val = sanitizeNumeric(v).slice(0, 5);
+                    setLocalPin(val);
+                    setPinInput(val);
+                  }}
+                  mask={(v) => sanitizeNumeric(v).slice(0, 5)}
                   placeholder="12345"
                   minLength={5}
                   maxLength={5}
-                  pattern="[0-9]{5}"
                   required
-                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.3em] text-center text-lg transition-all pl-12"
+                  className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 outline-none font-mono font-bold tracking-[0.3em] text-center text-lg pl-12"
                   dir="ltr"
                 />
                 <IconButton
@@ -261,6 +272,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
                     const newPin = generateSafePin(allGarages.map(g => g.pin));
                     setLocalPin(newPin);
                     setPinInput(newPin);
+                    garagePinInputRef.current?.setValue(newPin);
                   }}
                   aria-label={'توليد رقم سري عشوائي'}
                   className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
