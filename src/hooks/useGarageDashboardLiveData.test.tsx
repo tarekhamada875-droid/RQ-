@@ -54,62 +54,57 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('useGarageDashboardLiveData', () => {
-  it('shares one garage-scoped recharge and subscriber listener across dashboard and overlays', () => {
-    let rechargeCallback: ((logs: any[]) => void) | undefined;
-    let subscriberCallback: ((subscribers: any[], page: any) => void) | undefined;
-    const unsubscribeRecharge = vi.fn();
-    const unsubscribeSubscribers = vi.fn();
-
-    serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback) => {
-      rechargeCallback = callback;
-      return unsubscribeRecharge;
-    });
-    serviceMocks.subscribeToSubscribers.mockImplementation((_garageId, callback) => {
-      subscriberCallback = callback;
-      return unsubscribeSubscribers;
-    });
-
-    const { result, rerender, unmount } = renderHook(
+describe('useGarageDashboardLiveData — Option 2 (modal-only credit-grant listener)', () => {
+  it('does NOT subscribe to credit-grant logs while the history modal is closed (badge reads garage.lastCreditGrantAt instead)', () => {
+    const { result, rerender } = renderHook(
       (options) => useGarageDashboardLiveData(options),
       { initialProps: baseOptions },
     );
 
-    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenCalledTimes(1);
-    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenLastCalledWith(
-      'garage-1', expect.any(Function), 1, expect.any(Function),
-    );
+    // Subscriber listener still runs (badge reads subscriber list).
     expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
+    // Credit-grant listener does NOT run while modal is closed.
+    expect(serviceMocks.subscribeToCreditGrantLogs).not.toHaveBeenCalled();
+    expect(result.current.creditGrantLogs).toEqual([]);
+    expect(result.current.isCreditGrantLoading).toBe(false);
 
-    act(() => {
-      rechargeCallback?.([createRechargeLog('recent')]);
-      subscriberCallback?.([createSubscriber('first')], {
-        lastDoc: { id: 'cursor-50' },
-        hasMore: true,
-      });
+    // Re-render with the modal still closed — still no listener.
+    rerender({ ...baseOptions, isCreditGrantHistoryOpen: false });
+    expect(serviceMocks.subscribeToCreditGrantLogs).not.toHaveBeenCalled();
+  });
+
+  it('opens a limit-50 credit-grant listener when the history modal opens, and tears it down when the modal closes', () => {
+    let rechargeCallback: ((logs: any[]) => void) | undefined;
+    const unsubscribeRecharge = vi.fn();
+    serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback) => {
+      rechargeCallback = callback;
+      return unsubscribeRecharge;
     });
 
-    expect(result.current.creditGrantLogs).toEqual([createRechargeLog('recent')]);
-    expect(result.current.subscriberPage).toMatchObject({
-      garageId: 'garage-1',
-      subscribers: [createSubscriber('first')],
-      lastDoc: { id: 'cursor-50' },
-      hasMore: true,
-      hasSnapshot: true,
-    });
+    const { result, rerender } = renderHook(
+      (options) => useGarageDashboardLiveData(options),
+      { initialProps: baseOptions },
+    );
 
+    // Initially closed — no listener.
+    expect(serviceMocks.subscribeToCreditGrantLogs).not.toHaveBeenCalled();
+
+    // Open the modal — listener starts at limit 50.
     rerender({ ...baseOptions, isCreditGrantHistoryOpen: true });
-    expect(unsubscribeRecharge).toHaveBeenCalledTimes(1);
-    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenCalledTimes(2);
+    expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenCalledTimes(1);
     expect(serviceMocks.subscribeToCreditGrantLogs).toHaveBeenLastCalledWith(
       'garage-1', expect.any(Function), 50, expect.any(Function),
     );
-    expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
-    expect(unsubscribeSubscribers).not.toHaveBeenCalled();
 
-    unmount();
-    expect(unsubscribeRecharge).toHaveBeenCalledTimes(2);
-    expect(unsubscribeSubscribers).toHaveBeenCalledTimes(1);
+    act(() => {
+      rechargeCallback?.([createRechargeLog('recent')]);
+    });
+    expect(result.current.creditGrantLogs).toEqual([createRechargeLog('recent')]);
+
+    // Close the modal — listener tears down, logs cleared.
+    rerender({ ...baseOptions, isCreditGrantHistoryOpen: false });
+    expect(unsubscribeRecharge).toHaveBeenCalledTimes(1);
+    expect(result.current.creditGrantLogs).toEqual([]);
   });
 
   it('unsubscribes the subscriber listener when the dashboard no longer needs its badge data', () => {
@@ -129,13 +124,8 @@ describe('useGarageDashboardLiveData', () => {
     expect(unsubscribeSubscribers).toHaveBeenCalledTimes(1);
   });
 
-  it('does not accept callbacks from a previous garage after switching garages', () => {
-    const callbacks: Array<(logs: any[]) => void> = [];
+  it('does not accept callbacks from a previous garage after switching garages (subscriber path)', () => {
     const subscriberCallbacks: Array<(subscribers: any[], page: any) => void> = [];
-    serviceMocks.subscribeToCreditGrantLogs.mockImplementation((_garageId, callback) => {
-      callbacks.push(callback);
-      return vi.fn();
-    });
     serviceMocks.subscribeToSubscribers.mockImplementation((_garageId, callback) => {
       subscriberCallbacks.push(callback);
       return vi.fn();
@@ -145,10 +135,12 @@ describe('useGarageDashboardLiveData', () => {
       { initialProps: baseOptions },
     );
 
-    rerender({ ...baseOptions, garageId: 'garage-2' });
+    // Open the modal so the credit-grant listener also runs and we exercise
+    // the garage-switch path for both listeners.
+    rerender({ ...baseOptions, isCreditGrantHistoryOpen: true });
+    rerender({ ...baseOptions, isCreditGrantHistoryOpen: true, garageId: 'garage-2' });
+
     act(() => {
-      callbacks[0]([createRechargeLog('stale')]);
-      callbacks[1]([{ ...createRechargeLog('current'), garageId: 'garage-2' }]);
       subscriberCallbacks[0]([createSubscriber('stale')], { lastDoc: { id: 'old-cursor' }, hasMore: true });
       subscriberCallbacks[1]([{ ...createSubscriber('current'), garageId: 'garage-2' }], {
         lastDoc: { id: 'new-cursor' },
@@ -156,7 +148,6 @@ describe('useGarageDashboardLiveData', () => {
       });
     });
 
-    expect(result.current.creditGrantLogs.map(({ id }) => id)).toEqual(['current']);
     expect(result.current.subscriberPage).toMatchObject({
       garageId: 'garage-2',
       subscribers: [{ id: 'current', garageId: 'garage-2' }],

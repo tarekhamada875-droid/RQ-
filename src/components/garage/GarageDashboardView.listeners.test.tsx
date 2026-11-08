@@ -19,6 +19,7 @@ vi.mock('../../hooks/vehicleOpsContext', () => ({
 const serviceMocks = vi.hoisted(() => ({
   subscribeToCreditGrantLogs: vi.fn(),
   subscribeToSubscribers: vi.fn(),
+  getLatestCreditGrantLog: vi.fn(),
 }));
 
 vi.mock('../../services', () => ({
@@ -148,6 +149,7 @@ beforeEach(() => {
     subscriberListeners.push(listener);
     return unsubscribe;
   });
+  serviceMocks.getLatestCreditGrantLog.mockResolvedValue(null);
   Object.defineProperty(globalThis, 'IntersectionObserver', {
     configurable: true,
     value: class {
@@ -163,22 +165,43 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('GarageDashboardView shared garage listeners (UI-005)', () => {
-  it('reuses badge snapshots in both overlays, avoids duplicate listeners on repeated open/close, and cleans up on unmount', async () => {
+describe('GarageDashboardView listeners under Option 2 (badge reads garage.lastCreditGrantAt, modal-only credit-grant listener)', () => {
+  it('does NOT subscribe to credit-grant logs while the history modal is closed; opens a limit-50 listener on demand and tears it down on close', async () => {
     const { unmount } = render(<DashboardHarness />);
 
+    // No credit-grant listener at all while the modal is closed — the badge
+    // reads garage.lastCreditGrantAt via the existing garage-doc subscription.
     await waitFor(() => {
-      expect(rechargeListeners).toHaveLength(1);
       expect(subscriberListeners).toHaveLength(1);
     });
-    expect(activeCount(rechargeListeners)).toBe(1);
+    expect(rechargeListeners).toHaveLength(0);
     expect(activeCount(subscriberListeners)).toBe(1);
 
+    // Subscriber badge still works (separate listener, unchanged).
     const subscriber = {
       id: 'expiring-subscriber',
       ownerName: 'Soon Expiring',
       endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     };
+    act(() => {
+      subscriberListeners[0].callback([subscriber], { lastDoc: { id: 'cursor-50' }, hasMore: true });
+    });
+    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('1');
+
+    // Open subscribers overlay — does not open a credit-grant listener.
+    fireEvent.click(screen.getByRole('button', { name: 'Open subscribers' }));
+    expect(screen.getByTestId('overlay-subscriber-ids')).toHaveTextContent('expiring-subscriber');
+    expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Close subscribers' }));
+    expect(activeCount(subscriberListeners)).toBe(1);
+    expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
+
+    // Open the credit-grant history overlay — limit-50 listener starts now.
+    fireEvent.click(screen.getByRole('button', { name: 'Open recharge history' }));
+    await waitFor(() => expect(rechargeListeners).toHaveLength(1));
+    expect(rechargeListeners[0].limit).toBe(50);
+    expect(activeCount(rechargeListeners)).toBe(1);
+
     const recharge = {
       id: 'shared-recharge',
       garageId: 'garage-listener-integration',
@@ -187,40 +210,20 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
       amount: 100,
       details: { packageName: 'Shared package' },
     };
-    act(() => {
-      subscriberListeners[0].callback([subscriber], { lastDoc: { id: 'cursor-50' }, hasMore: true });
-      rechargeListeners[0].callback([recharge]);
-    });
+    act(() => rechargeListeners[0].callback([recharge]));
+    expect(screen.getByTestId('overlay-recharge-ids')).toHaveTextContent('shared-recharge');
 
-    expect(screen.getByTestId('expiring-subscriber-badge')).toHaveTextContent('1');
-    expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
+    // Close the history overlay — listener tears down.
+    fireEvent.click(screen.getByRole('button', { name: 'Close history' }));
+    await waitFor(() => expect(activeCount(rechargeListeners)).toBe(0));
+    expect(rechargeListeners[0].unsubscribe).toHaveBeenCalledOnce();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open subscribers' }));
-    expect(screen.getByTestId('overlay-subscriber-ids')).toHaveTextContent('expiring-subscriber');
-    expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Close subscribers' }));
-    expect(activeCount(subscriberListeners)).toBe(1);
-    expect(serviceMocks.subscribeToSubscribers).toHaveBeenCalledTimes(1);
-
+    // Reopen — fresh listener.
     fireEvent.click(screen.getByRole('button', { name: 'Open recharge history' }));
     await waitFor(() => expect(rechargeListeners).toHaveLength(2));
-    expect(rechargeListeners[0].unsubscribe).toHaveBeenCalledOnce();
-    expect(activeCount(rechargeListeners)).toBe(1);
-    expect(rechargeListeners[1].limit).toBe(50);
-    act(() => rechargeListeners[1].callback([recharge]));
-    expect(screen.getByTestId('overlay-recharge-ids')).toHaveTextContent('shared-recharge');
-    fireEvent.click(screen.getByRole('button', { name: 'Close history' }));
-    await waitFor(() => expect(rechargeListeners).toHaveLength(3));
-    expect(rechargeListeners[1].unsubscribe).toHaveBeenCalledOnce();
-    expect(activeCount(rechargeListeners)).toBe(1);
-    expect(rechargeListeners[2].limit).toBe(1);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open recharge history' }));
-    await waitFor(() => expect(rechargeListeners).toHaveLength(4));
     expect(activeCount(rechargeListeners)).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Close history' }));
-    await waitFor(() => expect(rechargeListeners).toHaveLength(5));
-    expect(activeCount(rechargeListeners)).toBe(1);
+    await waitFor(() => expect(activeCount(rechargeListeners)).toBe(0));
 
     unmount();
     expect(activeCount(rechargeListeners)).toBe(0);
@@ -228,8 +231,6 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
   });
 
   it('counts only subscribers expiring today through three days from now using the Cairo business day', async () => {
-    // The dashboard derives "today" from the wall clock, so pin the system
-    // time (Date only — real timers keep waitFor functional).
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       vi.setSystemTime(new Date('2026-10-24T12:00:00.000Z'));
@@ -249,28 +250,58 @@ describe('GarageDashboardView shared garage listeners (UI-005)', () => {
     }
   });
 
-  it('expires an unacknowledged credit grant notification with a targeted timer', () => {
+  it('fires the badge when garage.lastCreditGrantAt is recent and unacknowledged, fetches log details on-demand, and expires after 15 minutes', async () => {
     vi.useFakeTimers();
     try {
-      const initialNow = new Date('2026-10-19T12:14:00.000Z');
-      const rechargeTime = new Date('2026-10-19T12:00:00.000Z');
-      const garage = makeGarage();
+      // Grant happened 5 minutes ago — well inside the 15-minute window,
+      // so advancing 60 seconds later must NOT dismiss the badge.
+      const grantTime = new Date('2026-10-19T12:00:00.000Z');
+      const initialNow = new Date('2026-10-19T12:05:00.000Z');
       vi.setSystemTime(initialNow);
-      render(<DashboardHarness garage={garage} />);
+
+      // Badge trigger: garage doc carries lastCreditGrantAt (server-stamped).
+      const garage = makeGarage({ lastCreditGrantAt: grantTime });
       const recharge = {
         id: 'expiring-recharge',
         garageId: garage.id,
-        actionType: 'recharge',
-        timestamp: rechargeTime,
+        actionType: 'credit_grant',
+        timestamp: grantTime,
         amount: 100,
         details: { packageName: 'Expiring package' },
       };
+      // On-demand fetch returns the latest credit-grant activity_log doc.
+      serviceMocks.getLatestCreditGrantLog.mockResolvedValue(recharge);
 
-      expect(rechargeListeners).toHaveLength(1);
-      act(() => rechargeListeners[0].callback([recharge]));
+      render(<DashboardHarness garage={garage} />);
+
+      // Badge fires synchronously off lastCreditGrantAt comparison (effect
+      // runs on mount; no waitFor needed since the state is set during
+      // the initial render's effect flush).
       expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
 
+      // The credit-grant listener is NOT running (modal is closed) — the
+      // badge source is the garage doc, not the activity_logs subcollection.
+      expect(rechargeListeners).toHaveLength(0);
+
+      // Drain the on-demand log-detail fetch microtask queue and assert it
+      // fired exactly once with the correct garageId. Wrapped in act() so
+      // the resulting state update (setLatestRechargeLog) is flushed
+      // synchronously instead of leaking into the next assertion.
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(serviceMocks.getLatestCreditGrantLog).toHaveBeenCalledTimes(1);
+      expect(serviceMocks.getLatestCreditGrantLog).toHaveBeenCalledWith(garage.id);
+
+      // Advance 60 seconds — still within the 15-minute window (5+1=6min),
+      // badge stays on.
       act(() => vi.advanceTimersByTime(60 * 1000));
+      expect(screen.getByTestId('recharge-badge')).toHaveTextContent('true');
+
+      // Advance past the remaining ~9 minutes (to 15:00 total) — badge
+      // auto-clears via the expiry timer.
+      act(() => vi.advanceTimersByTime(10 * 60 * 1000));
       expect(screen.getByTestId('recharge-badge')).toHaveTextContent('false');
     } finally {
       vi.useRealTimers();

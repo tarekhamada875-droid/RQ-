@@ -203,6 +203,11 @@ app.post('/api/garages/:id/credit-grants', requireWorkerAuth, async (c) => {
       t.set(garageRef, {
         credits: transition.value.balance,
         totalAdminRevenue: newAdminRevenue,
+        // Stamp the badge trigger on the garage doc so the client's
+        // "new credit grant" notification can listen to the garage doc
+        // (already subscribed for carsInside / credits) instead of running
+        // a separate always-on activity_logs listener at limit 1.
+        lastCreditGrantAt: now,
         ...(isFirstPaidGrant ? { firstPaidCreditGrantAt: now } : {}),
         ...(isFirstQualifyingGrant ? { firstQualifyingGrantAt: now } : {}),
         // Update lastCommissionGrantAt so the rolling 30-day window resets.

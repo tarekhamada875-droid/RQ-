@@ -152,7 +152,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   } = useCreditGrantNotification({
     garageId: garage?.id,
     isAuthenticated,
-    creditGrantLogs,
+    lastCreditGrantAt: garage?.lastCreditGrantAt,
     isTrial: garage?.isTrial,
   });
 

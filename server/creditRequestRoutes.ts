@@ -211,6 +211,10 @@ export function registerCreditRequestRoutes(app: WorkerApp): void {
       t.set(garageRef, {
         credits: transition.value.balance,
         totalAdminRevenue: currentAdminRevenue + amount,
+        // Stamp the badge trigger on the garage doc (mirrors
+        // /api/garages/:id/credit-grants) so the client's notification
+        // listener doesn't need a separate activity_logs subscription.
+        lastCreditGrantAt: now,
         ...(isCommissionDue ? { lastCommissionGrantAt: now } : {})
       }, { merge: true });
 
