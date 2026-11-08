@@ -6,6 +6,7 @@ import { formatPlateNumber, getCleanPlate } from '../../utils/plates';
 import { safeDate } from '../../utils/dates';
 import { getCairoDateKey } from '../../domain/garage/businessDay';
 import type { Subscriber } from '../../types';
+import { FastInput } from '../ui/FastInput';
 
 type Duration = '1w' | '2w' | '1m' | 'custom';
 type RenewType = 'week' | 'two_weeks' | 'month';
@@ -147,21 +148,19 @@ export const SubscriberModals = ({
                            <Delete className="w-4 h-4" />
                          </button>
                        )}
-                       <input 
-                         type="text" 
+                       <FastInput
+                         type="text"
                          inputMode="none"
                          autoComplete="off"
                          autoCorrect="off"
                          spellCheck="false"
-                         value={plateNumber}
-                         onChange={(e) => {
-                           const clean = getCleanPlate(e.target.value);
-                           setPlateNumber(clean);
-                         }}
+                         defaultValue={plateNumber}
+                         onCommit={(v) => setPlateNumber(getCleanPlate(v))}
+                         onLiveValue={(v) => setPlateNumber(getCleanPlate(v))}
+                         mask={getCleanPlate}
                          onFocus={() => setIsPlateFocused(true)}
                          className="absolute inset-0 w-full h-full opacity-0 z-30 cursor-text"
                          dir="rtl"
-  
                        />
                        <div className="absolute inset-0 pointer-events-none z-10 flex">
                          <EgyptianPlate 
@@ -195,10 +194,12 @@ export const SubscriberModals = ({
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pr-1">اسم المالك</label>
                   <div className="relative">
                     <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
+                    <FastInput
                       type="text"
-                      value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value.replace(/[0-9]/g, ''))}
+                      defaultValue={ownerName}
+                      onCommit={(v) => setOwnerName(v.replace(/[0-9]/g, ''))}
+                      onLiveValue={(v) => setOwnerName(v.replace(/[0-9]/g, ''))}
+                      mask={(v) => v.replace(/[0-9]/g, '')}
                       onFocus={() => setIsPlateFocused(false)}
                       className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                       placeholder="الاسم"
@@ -211,13 +212,15 @@ export const SubscriberModals = ({
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider pr-1">رقم الهاتف</label>
                   <div className="relative">
                     <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
+                    <FastInput
                       type="tel"
                       inputMode="numeric"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      defaultValue={phone}
+                      onCommit={(v) => setPhone(v.replace(/\D/g, ''))}
+                      onLiveValue={(v) => setPhone(v.replace(/\D/g, ''))}
+                      mask={(v) => v.replace(/\D/g, '')}
                       onFocus={() => setIsPlateFocused(false)}
-                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-left hover:text-right transition-all"
+                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-left hover:text-right"
                       placeholder="رقم الهاتف"
                       dir="ltr"
                       required

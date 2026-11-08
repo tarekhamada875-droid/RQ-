@@ -4,6 +4,7 @@ import { normalizeDigits } from '../../utils/plates';
 import { adminService, authService } from '../../services';
 import { apiFetch } from '../../api/apiClient';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
+import { FastInput } from '../ui/FastInput';
 
 interface AdminPinSettingsViewProps {
   onCancel: () => void;
@@ -135,20 +136,19 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
             <form onSubmit={handleVerifyCurrentPin} className="space-y-6 relative z-10">
               <div className="space-y-4 text-center">
-                <input
+                <FastInput
                   type="password"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={currentPinAttempt}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setCurrentPinAttempt(val);
-                  }}
+                  defaultValue={currentPinAttempt}
+                  onCommit={(v) => setCurrentPinAttempt(v.replace(/\D/g, ''))}
+                  onLiveValue={(v) => setCurrentPinAttempt(v.replace(/\D/g, ''))}
+                  mask={(v) => v.replace(/\D/g, '')}
                   maxLength={10}
                   aria-label={"رمز الدخول الحالي"}
                   required
                   placeholder="••••"
-                  className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 dark:focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.3em] font-mono"
+                  className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-red-500 dark:focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none tracking-[0.3em] font-mono"
                   autoFocus
                 />
               </div>
@@ -205,21 +205,20 @@ export const AdminPinSettingsView: React.FC<AdminPinSettingsViewProps> = ({
 
             <form onSubmit={handleSaveNewPin} className="space-y-6 relative z-10">
               <div className="space-y-4 text-center">
-                <input
+                <FastInput
                   type="tel"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={newAdminPinValue}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setNewAdminPinValue(val);
-                  }}
+                  defaultValue={newAdminPinValue}
+                  onCommit={(v) => setNewAdminPinValue(v.replace(/\D/g, ''))}
+                  onLiveValue={(v) => setNewAdminPinValue(v.replace(/\D/g, ''))}
+                  mask={(v) => v.replace(/\D/g, '')}
                   maxLength={5}
                   minLength={5}
                   aria-label={"رمز الدخول الجديد"}
                   required
                   placeholder="•••••"
-                  className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all tracking-[0.3em] font-mono"
+                  className="w-full max-w-xs mx-auto text-center p-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl font-black text-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-emerald-500 dark:focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 outline-none tracking-[0.3em] font-mono"
                   autoFocus
                 />
               </div>

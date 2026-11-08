@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useRef } from 'react';
 import { Delegate, Garage } from '../../types';
 import {
   Users,
@@ -17,6 +17,7 @@ import { authService, delegateService } from '../../services';
 import { generateSafePin, formatDisplayPin } from '../../utils/pins';
 import { normalizeDigits } from '../../utils/plates';
 import { classifyApiFailure, getApiFailureReference } from '../../utils/apiFailure';
+import { FastInput, type FastInputHandle } from '../ui/FastInput';
 
 interface AdminPeopleViewProps {
   delegates: Delegate[];
@@ -45,6 +46,10 @@ export const AdminPeopleView = memo(({
   const [delegateForm, setDelegateForm] = useState({ name: '', phone: '', pin: '' });
   const [delegatePinError, setDelegatePinError] = useState('');
   const [isSubmittingDelegate, setIsSubmittingDelegate] = useState(false);
+  // PERF (audit 2026-11-08): FastInput imperative handle so the "generate
+  // safe PIN" button can imperatively set the PIN field's DOM value
+  // without going through a controlled-value round-trip.
+  const pinInputRef = useRef<FastInputHandle>(null);
 
   const handleCreateDelegate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,23 +155,27 @@ export const AdminPeopleView = memo(({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-600 dark:text-slate-400">الاسم بالكامل</label>
-                <input
-                  value={delegateForm.name}
-                  onChange={(e) => setDelegateForm({ ...delegateForm, name: e.target.value.replace(/[0-9]/g, '') })}
+                <FastInput
+                  defaultValue={delegateForm.name}
+                  onCommit={(v) => setDelegateForm((prev) => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                  onLiveValue={(v) => setDelegateForm((prev) => ({ ...prev, name: v.replace(/[0-9]/g, '') }))}
+                  mask={(v) => v.replace(/[0-9]/g, '')}
                   placeholder="مثال: أحمد محمد..."
                   required
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500 transition-all"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رقم الهاتف</label>
-                <input
-                  value={delegateForm.phone}
-                  onChange={(e) => setDelegateForm({ ...delegateForm, phone: e.target.value.replace(/\D/g, '') })}
+                <FastInput
+                  defaultValue={delegateForm.phone}
+                  onCommit={(v) => setDelegateForm((prev) => ({ ...prev, phone: v.replace(/\D/g, '') }))}
+                  onLiveValue={(v) => setDelegateForm((prev) => ({ ...prev, phone: v.replace(/\D/g, '') }))}
+                  mask={(v) => v.replace(/\D/g, '')}
                   placeholder="01xxxxxxxxx"
                   required
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500"
                 />
               </div>
             </div>
@@ -174,25 +183,26 @@ export const AdminPeopleView = memo(({
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400">رمز الدخول (5 أرقام بالضبط)</label>
               <div className="relative">
-                <input
+                <FastInput
+                  ref={pinInputRef}
                   type="tel"
                   inputMode="numeric"
-                  value={delegateForm.pin}
-                  onChange={(e) => {
-                    const cleanPin = normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5);
-                    setDelegateForm({ ...delegateForm, pin: cleanPin });
-                  }}
+                  defaultValue={delegateForm.pin}
+                  onCommit={(v) => setDelegateForm((prev) => ({ ...prev, pin: normalizeDigits(v).replace(/\D/g, '').slice(0, 5) }))}
+                  onLiveValue={(v) => setDelegateForm((prev) => ({ ...prev, pin: normalizeDigits(v).replace(/\D/g, '').slice(0, 5) }))}
+                  mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
                   placeholder="•••••"
                   minLength={5}
                   maxLength={5}
                   required
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center tracking-[0.3em] transition-all px-10"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-mono font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 text-center tracking-[0.3em] px-10"
                 />
                 <button
                   type="button"
                   onClick={() => {
                     const safePin = generateSafePin(delegates.map(d => d.pin));
-                    setDelegateForm({ ...delegateForm, pin: safePin });
+                    setDelegateForm((prev) => ({ ...prev, pin: safePin }));
+                    pinInputRef.current?.setValue(safePin);
                   }}
                   className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
                   title="توليد رقم سري عشوائي"

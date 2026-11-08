@@ -107,11 +107,21 @@ const renderDashboardForGarageCreation = (
 };
 
 const fillAddGarageDraft = () => {
-  fireEvent.change(screen.getByPlaceholderText('اسم الجراج...'), { target: { value: 'Draft Garage' } });
-  fireEvent.change(screen.getByPlaceholderText('10 ج.م'), { target: { value: '25' } });
-  fireEvent.change(screen.getByPlaceholderText('50 ج.م'), { target: { value: '60' } });
-  fireEvent.change(screen.getByPlaceholderText('01xxxxxxxxx'), { target: { value: '01012345678' } });
-  fireEvent.change(screen.getByPlaceholderText('12345'), { target: { value: '12345' } });
+  // PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
+  // not React's onChange. fireEvent.change fires a React synthetic 'change'
+  // event which FastInput doesn't see. We must set the DOM value directly,
+  // dispatch a native 'input' event, then blur to trigger onCommit.
+  const fill = (placeholder: string, value: string) => {
+    const input = screen.getByPlaceholderText(placeholder) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fireEvent.blur(input);
+  };
+  fill('اسم الجراج...', 'Draft Garage');
+  fill('10 ج.م', '25');
+  fill('50 ج.م', '60');
+  fill('01xxxxxxxxx', '01012345678');
+  fill('12345', '12345');
 };
 
 const submitAddGarageDraft = () => {

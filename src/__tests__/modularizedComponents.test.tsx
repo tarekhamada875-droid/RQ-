@@ -112,6 +112,18 @@ const renderWithTheme = (ui: React.ReactElement) => {
   return render(<ThemeProvider><ToastProvider>{ui}</ToastProvider></ThemeProvider>);
 };
 
+// PERF (audit 2026-11-08): FastInput uses a native 'input' event listener,
+// not React's onChange. fireEvent.change fires a React synthetic 'change'
+// event which FastInput doesn't see. To fill a FastInput in tests, we must
+// set the DOM value directly and dispatch a native 'input' event, then
+// blur to trigger onCommit.
+const fillFastInput = (placeholder: string, value: string) => {
+  const input = screen.getByPlaceholderText(placeholder) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  fireEvent.blur(input);
+};
+
 describe('Modularized Admin Components Integrity', () => {
   it('renders AdminGarageHeroAndStats with correct status and KPI stats', () => {
     const onToggleLock = vi.fn();
@@ -208,7 +220,7 @@ describe('Modularized Admin Components Integrity', () => {
     renderWithTheme(<TestHarness />);
     fireEvent.click(screen.getByText('الإعدادات والتعريفة وطاقم العمل'));
     fireEvent.click(screen.getByText('إضافة موظف'));
-    fireEvent.change(screen.getByPlaceholderText('مثال: أحمد محمد'), { target: { value: 'H Staff Probe' } });
+    fillFastInput('مثال: أحمد محمد', 'H Staff Probe');
     fireEvent.click(screen.getByText('تأكيد الإضافة'));
 
     expect(await screen.findByText('H Staff Probe')).toBeDefined();

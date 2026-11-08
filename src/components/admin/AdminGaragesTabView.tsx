@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Search, ChevronLeft, Building2, Loader2, RefreshCw } from 'lucide-react';
 import { Garage } from '../../types';
+import { FastInput } from '../ui/FastInput';
 
 interface AdminGaragesTabViewProps {
   displayedGarages: Garage[];
@@ -48,12 +49,13 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
               </div>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-3.5 h-3.5" />
-                <input 
-                  type="text" 
+                <FastInput
+                  type="text"
                   placeholder={'بحث حسب الاسم أو الهاتف...'}
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pr-8 pl-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 font-medium transition-all"
+                  defaultValue={adminSearch}
+                  onCommit={setAdminSearch}
+                  onLiveValue={setAdminSearch}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pr-8 pl-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 font-medium"
                   dir="auto"
                 />
               </div>

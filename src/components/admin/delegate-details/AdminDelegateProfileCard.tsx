@@ -6,6 +6,7 @@ import { formatDisplayPin } from '../../../utils/pins';
 import { normalizeDigits } from '../../../utils/plates';
 import { authService, delegateService } from '../../../services';
 import { useToast } from '../../../hooks/toast';
+import { FastInput } from '../../ui/FastInput';
 
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
@@ -65,14 +66,16 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
             {isEditingPin ? (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
                 <Lock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <input
+                <FastInput
                   type="tel"
                   inputMode="numeric"
-                  value={pinInput}
+                  defaultValue={pinInput}
                   minLength={5}
                   maxLength={5}
                   pattern="[0-9]{5}"
-                  onChange={(e) => setPinInput(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 5))}
+                  onCommit={(v) => setPinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
+                  onLiveValue={(v) => setPinInput(normalizeDigits(v).replace(/\D/g, '').slice(0, 5))}
+                  mask={(v) => normalizeDigits(v).replace(/\D/g, '').slice(0, 5)}
                   className="w-16 bg-transparent text-blue-600 dark:text-blue-400 text-sm font-black text-center focus:outline-none focus:ring-0 border-0 p-0 font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="••••"
                 />

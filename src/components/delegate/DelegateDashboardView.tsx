@@ -27,6 +27,7 @@ import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
 import { useToast } from '../../hooks/toast';
+import { FastInput } from '../ui/FastInput';
 
 interface DelegateDashboardViewProps {
   delegate: Delegate;
@@ -494,12 +495,14 @@ export const DelegateDashboardView = memo(({
             <form onSubmit={handleSubmitCreditRequest} className="space-y-4 text-right">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">قيمة الرصيد (50 إلى 2,000)</label>
-                <input
+                <FastInput
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={creditRequestAmount}
-                  onChange={(e) => setCreditRequestAmount(e.target.value.replace(/\D/g, ''))}
+                  defaultValue={creditRequestAmount}
+                  onCommit={(v) => setCreditRequestAmount(v.replace(/\D/g, ''))}
+                  onLiveValue={(v) => setCreditRequestAmount(v.replace(/\D/g, ''))}
+                  mask={(v) => v.replace(/\D/g, '')}
                   placeholder="100"
                   className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold text-center outline-none focus:border-amber-500 font-mono text-lg"
                   dir="ltr"
