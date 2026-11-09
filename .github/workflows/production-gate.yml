@@ -172,10 +172,121 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  e2e:
+    name: E2E browser smoke (garage, admin, delegate)
+    if: github.event_name != 'workflow_dispatch' || inputs.source_run_id == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.deploy_sha || github.sha }}
+          fetch-depth: 0
+
+      # Same Markdown-only scope detection as the verify job: a docs-only
+      # change skips the browser smoke instead of burning ~10 CI minutes.
+      - name: Detect Markdown-only change
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+
+          docs_only=true
+          changed_paths="$(mktemp)"
+          trap 'rm -f "$changed_paths"' EXIT
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            docs_only=false
+          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if ! git diff --name-only -z "$BASE_SHA...$GITHUB_SHA" > "$changed_paths"; then
+              docs_only=false
+            fi
+          else
+            if ! git diff --name-only -z "$BASE_SHA" "$GITHUB_SHA" > "$changed_paths"; then
+              docs_only=false
+            fi
+          fi
+
+          if [[ "$docs_only" == "true" ]]; then
+            if [[ ! -s "$changed_paths" ]]; then
+              docs_only=false
+            else
+              while IFS= read -r -d '' path; do
+                case "$path" in
+                  *.md) ;;
+                  *) docs_only=false ;;
+                esac
+              done < "$changed_paths"
+            fi
+          fi
+
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "Markdown-only change: $docs_only"
+
+      - name: Setup Node
+        if: steps.scope.outputs.docs_only != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java for Firebase emulators
+        if: steps.scope.outputs.docs_only != 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install dependencies
+        if: steps.scope.outputs.docs_only != 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # The smoke spawns `chromium` from PATH. Runner images ship Google
+      # Chrome but not a `chromium` binary, so link one into place; fall
+      # back to a Playwright-managed Chromium if no Chrome is present.
+      - name: Link a Chromium binary onto PATH
+        if: steps.scope.outputs.docs_only != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BROWSER="$(command -v chromium || command -v chromium-browser || command -v google-chrome || command -v google-chrome-stable || true)"
+          if [[ -z "$BROWSER" ]]; then
+            npx --yes playwright@1.49.1 install chromium
+            BROWSER="$(find "$HOME/.cache/ms-playwright" -type f -path '*chrome-linux/chrome' | head -n 1)"
+          fi
+          sudo ln -sf "$BROWSER" /usr/local/bin/chromium
+          chromium --version
+
+      - name: E2E smoke — garage role
+        if: steps.scope.outputs.docs_only != 'true'
+        run: npm run ui-fixtures:browser-smoke:garage
+
+      - name: E2E smoke — admin role
+        if: steps.scope.outputs.docs_only != 'true'
+        run: npm run ui-fixtures:browser-smoke:admin
+
+      - name: E2E smoke — delegate role
+        if: steps.scope.outputs.docs_only != 'true'
+        run: npm run ui-fixtures:browser-smoke:delegate
+
+      - name: Upload E2E smoke evidence
+        if: always() && steps.scope.outputs.docs_only != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rq-e2e-smoke-${{ github.event.pull_request.head.sha || inputs.deploy_sha || github.sha }}
+          path: tmp/ui-fixture-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
+
   deploy:
     name: Deploy verified Worker and smoke test
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && inputs.source_run_id == '' && github.ref == 'refs/heads/main' && needs.verify.outputs.docs_only != 'true'
-    needs: verify
+    needs: [verify, e2e]
     concurrency:
       group: rq-cloudflare-production
       cancel-in-progress: false
