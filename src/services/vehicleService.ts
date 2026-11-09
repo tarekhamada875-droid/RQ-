@@ -8,7 +8,7 @@ import { safeDate } from '../utils/dates';
 import { getCairoDateKey } from '../../server/projections';
 import { generateIdempotencyKey } from '../types/apiContracts';
 
-const TODAY_ACTIVITY_LOG_LIMIT = 200;
+const TODAY_ACTIVITY_LOG_LIMIT = 50;
 const TODAY_REPORT_ACTION = 'check_out';
 
 type TodayActivityLogSource = 'live' | 'one-shot';
@@ -184,7 +184,7 @@ export const vehicleService = {
       emit(mapTodayTransactions(snapshot, today));
     };
 
-    // The UI labels the daily report as a maximum of 200 activity records.
+    // The UI labels the daily report as a maximum of 50 activity records.
     const q = query(
       collection(db, 'activity_logs'),
       where('garageId', '==', garageId),
