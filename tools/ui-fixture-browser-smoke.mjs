@@ -19,9 +19,13 @@ const viewportProfiles = {
 const viewport = viewportProfiles[viewportName];
 if (!viewport) throw new Error(`Unsupported RQ_FIXTURE_VIEWPORT: ${viewportName}`);
 const scenarios = {
+  // All roles now log in through the single LoginView ('/#/admin' only sets
+  // the view to admin_login; the confirm button is 'تسجيل الدخول' for every
+  // role). The old per-role entry buttons ('دخول المندوب') and labels
+  // ('دخول', 'دخول للوحة الشحن') were removed from the UI.
   garage: { pin: '88000001', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'UI Fixture Garage', output: 'garage-mobile-authenticated' },
-  admin: { pin: '88000000', route: '/#/admin', entryText: null, loginText: 'دخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
-  delegate: { pin: '88000003', route: '/', entryText: 'دخول المندوب', loginText: 'دخول للوحة الشحن', expectedText: 'لوحة المندوب', output: 'delegate-mobile-authenticated' },
+  admin: { pin: '88000000', route: '/#/admin', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة تحكم النظام', output: 'admin-mobile-authenticated' },
+  delegate: { pin: '88000003', route: '/', entryText: null, loginText: 'تسجيل الدخول', expectedText: 'لوحة المندوب', output: 'delegate-mobile-authenticated' },
 };
 const scenario = scenarios[role];
 if (!scenario) throw new Error(`Unsupported RQ_FIXTURE_ROLE: ${role}`);
