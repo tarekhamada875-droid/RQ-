@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
+import { __resetAllAuthCachesForTests } from '../../server/authCache';
 
 const mockDb = new MockFirestore();
 
@@ -24,6 +25,10 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
   beforeEach(async () => {
     mockDb.clear();
+    // PR-F: reset auth caches between tests so each test sees a fresh
+    // (uncached) auth flow. The existing assertions count read numbers
+    // assuming cache-miss on every request.
+    __resetAllAuthCachesForTests();
     mockDb.seed(`garages/${testGarageId}`, {
       name: 'Subscriber Test Garage',
       dailyCapacity: 50,
@@ -84,6 +89,10 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
     // Duplicate plate should return 409 without falling through to legacy queries.
     mockDb.resetDocumentCounts();
+    // PR-F: reset auth caches so the duplicate call sees a fresh (uncached)
+    // auth flow. Without this, the cache hit from the first add call skips
+    // session-resolution reads, breaking the read-count comparison.
+    __resetAllAuthCachesForTests();
     const duplicateRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST',
       headers: {

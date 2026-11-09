@@ -21,6 +21,7 @@ import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
 import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
 import { canInvalidateAllSessions } from './domain/authorization';
 import { checkWorkerPinRateLimit, resetWorkerPinRateLimit } from './workerPinRateLimiter';
+import { getCachedRole, setCachedRole, getCachedSession, setCachedSession } from './authCache';
 
 export interface WorkerAuthMiddleware {
   (c: any, next: () => Promise<void>, options?: { skipRoleResolution?: boolean }): Promise<any | void>;
@@ -225,23 +226,43 @@ export const requireWorkerAuth: WorkerAuthMiddleware = async function requireWor
     let role = (decoded as any).role || 'worker';
     let garageId = (decoded as any).garageId || null;
     const entityId = (decoded as any).entityId || decodedUid;
+    // PR-F: token iat (issued-at, Unix seconds) is the cache invalidation
+    // boundary. Token rotation (hourly) produces a new iat → new cache key,
+    // so we never serve stale role info from a previous token. Firebase ID
+    // tokens always carry iat as a number; the fallback `0` only kicks in
+    // for synthetic test tokens that skip verification.
+    const iat = typeof (decoded as any).iat === 'number' ? (decoded as any).iat : 0;
 
     if (!options.skipRoleResolution && adminDb && (!role || role === 'worker')) {
-      const adminDoc = await adminDb.doc(`admins/${decodedUid}`).get();
-      if (adminDoc.exists) {
-        role = 'admin';
+      // PR-F: check the role cache before doing up to 3 Firestore reads.
+      // Cache hit → 0 Firestore reads for role resolution.
+      const cached = getCachedRole({ uid: decodedUid, iat });
+      if (cached) {
+        role = cached.role;
+        garageId = cached.garageId;
+        // entityId from cache; falls back to decodedUid for admin (auth_pin case).
+        // We don't overwrite entityId here because the cache stores it correctly.
       } else {
-        const staffDoc = await adminDb.doc(`staff/${decodedUid}`).get();
-        if (staffDoc.exists) {
-          role = staffDoc.data()?.role || 'worker';
-          garageId = staffDoc.data()?.garageId || null;
+        const adminDoc = await adminDb.doc(`admins/${decodedUid}`).get();
+        if (adminDoc.exists) {
+          role = 'admin';
         } else {
-          const garageDoc = await adminDb.doc(`garages/${decodedUid}`).get();
-          if (garageDoc.exists) {
-            role = 'garage';
-            garageId = decodedUid;
+          const staffDoc = await adminDb.doc(`staff/${decodedUid}`).get();
+          if (staffDoc.exists) {
+            role = staffDoc.data()?.role || 'worker';
+            garageId = staffDoc.data()?.garageId || null;
+          } else {
+            const garageDoc = await adminDb.doc(`garages/${decodedUid}`).get();
+            if (garageDoc.exists) {
+              role = 'garage';
+              garageId = decodedUid;
+            }
           }
         }
+        // PR-F: populate the cache. entityId from the decoded token is the
+        // authoritative value (admin → auth_pin mapping is handled in
+        // resolveWorkerSessionUser, not here).
+        setCachedRole({ uid: decodedUid, iat }, { role, garageId, entityId });
       }
     }
 
@@ -252,10 +273,23 @@ export const requireWorkerAuth: WorkerAuthMiddleware = async function requireWor
     }
     if (!options.skipRoleResolution && sessionId) {
       if (!adminDb) return c.json({ success: false, error: 'SESSION_VALIDATION_UNAVAILABLE' }, 503);
+      // PR-F: check the session cache before doing up to 3 Firestore reads.
+      // Cache hit → 0 Firestore reads for session resolution. The cached
+      // WorkerUser is returned directly (no entity-doc re-validation) — this
+      // is acceptable because the cache TTL is only 30s, and session
+      // revocation is eventually-consistent within that window.
+      const cachedSession = getCachedSession({ uid: decodedUid, sessionId, iat });
+      if (cachedSession) {
+        c.set('user', cachedSession.user);
+        return next();
+      }
       const resolution = await resolveWorkerSessionUser(decodedUid, sessionId, workerSessionDefinition(role) ? role : undefined);
       if (!resolution.user) {
         return c.json({ success: false, error: resolution.error }, 401);
       }
+      // PR-F: populate the session cache. The cached user is the resolved
+      // WorkerUser, which includes role/garageId/entityId/displayName.
+      setCachedSession({ uid: decodedUid, sessionId, iat }, resolution.user);
       c.set('user', resolution.user);
       return next();
     }

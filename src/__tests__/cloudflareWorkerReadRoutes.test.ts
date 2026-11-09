@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
+import { __resetAllAuthCachesForTests } from '../../server/authCache';
 
 const mockDb = new MockFirestore();
 
@@ -23,6 +24,10 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
 
   beforeEach(() => {
     mockDb.clear();
+    // PR-F: reset auth caches between tests so each test sees a fresh
+    // (uncached) auth flow. The existing assertions count read numbers
+    // assuming cache-miss on every request.
+    __resetAllAuthCachesForTests();
     mockDb.seed('garages/test-garage', {
       name: 'Summary Test Garage',
       hourlyRate: 10,
@@ -97,6 +102,10 @@ describe('CF4 — Cloudflare Worker Public and Read-Heavy Business Routes', () =
     expect(mockDb.documentReadCount).toBe(5); // four session-resolution reads plus one canonical lookup
 
     mockDb.clear();
+    // PR-F: reset auth caches so the second call sees a fresh (uncached)
+    // auth flow. Without this, the cache hit from the first call skips
+    // session-resolution reads, breaking the read-count comparison.
+    __resetAllAuthCachesForTests();
     mockDb.seed(`garages/${garageId}/subscribers/legacy-raw`, {
       plateNumber: 'ABC 123', plateNumberRaw: plateRaw, phone: '01000000001', startDate: '2026-10-01', endDate: '2026-10-31'
     });
