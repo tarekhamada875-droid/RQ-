@@ -87,7 +87,14 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('node_modules')) {
               if (id.includes('firebase')) return 'firebase';
-              if (id.includes('react') || id.includes('lucide-react') || id.includes('motion')) return 'vendor';
+              // PR-G: split motion into its own chunk so it's not bundled
+              // with react/lucide-react in the vendor chunk. Motion is only
+              // used by a few components (GarageDashboardHeaderAndDrawer,
+              // CheckOutModal until de-motion in commit 5) — most routes
+              // don't need it, so splitting it reduces the initial vendor
+              // chunk for routes that never import motion.
+              if (id.includes('motion')) return 'motion';
+              if (id.includes('react') || id.includes('lucide-react')) return 'vendor';
               return 'deps';
             }
           }
