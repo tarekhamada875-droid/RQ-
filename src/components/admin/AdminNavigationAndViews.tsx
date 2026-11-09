@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Garage, Delegate } from '../../types';
 import { useAdmin } from '../../hooks/adminContext';
 import {
@@ -13,14 +13,26 @@ import {
   Coins,
   CalendarDays
 } from 'lucide-react';
-import { AdminPeopleView } from './AdminPeopleView';
-import { AdminGaragesTabView } from './AdminGaragesTabView';
-import { AdminRequestsView } from './AdminRequestsView';
-import { AdminPinSettingsView } from './AdminPinSettingsView';
-import { AdminActiveSessionsView } from './AdminActiveSessionsView';
-import { AdminWalletSettingsView } from './AdminWalletSettingsView';
-import { AdminCreditRateSettingsView } from './AdminCreditRateSettingsView';
-import { AdminDailyGarageReportsView } from './AdminDailyGarageReportsView';
+
+// PR-G: lazy-load the 8 admin tab views so they're code-split into separate
+// chunks. The admin dashboard only shows one tab at a time, so eagerly
+// loading all 8 views inflates the initial bundle with code the user may
+// never visit. Each lazy import produces a separate chunk fetched on demand.
+const AdminPeopleView = React.lazy(() => import('./AdminPeopleView').then(m => ({ default: m.AdminPeopleView })));
+const AdminGaragesTabView = React.lazy(() => import('./AdminGaragesTabView').then(m => ({ default: m.AdminGaragesTabView })));
+const AdminRequestsView = React.lazy(() => import('./AdminRequestsView').then(m => ({ default: m.AdminRequestsView })));
+const AdminPinSettingsView = React.lazy(() => import('./AdminPinSettingsView').then(m => ({ default: m.AdminPinSettingsView })));
+const AdminActiveSessionsView = React.lazy(() => import('./AdminActiveSessionsView').then(m => ({ default: m.AdminActiveSessionsView })));
+const AdminWalletSettingsView = React.lazy(() => import('./AdminWalletSettingsView').then(m => ({ default: m.AdminWalletSettingsView })));
+const AdminCreditRateSettingsView = React.lazy(() => import('./AdminCreditRateSettingsView').then(m => ({ default: m.AdminCreditRateSettingsView })));
+const AdminDailyGarageReportsView = React.lazy(() => import('./AdminDailyGarageReportsView').then(m => ({ default: m.AdminDailyGarageReportsView })));
+
+// Lightweight loading fallback shown while a lazy tab chunk is fetching.
+const TabLoadingFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+  </div>
+);
 
 interface AdminNavigationAndViewsProps {
   activeTab: string;
@@ -134,6 +146,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
         </div>
       )}
 
+      <Suspense fallback={<TabLoadingFallback />}>
       {activeTab === 'people' || activeTab === 'delegates' ? (
         <AdminPeopleView
           delegates={delegates}
@@ -270,6 +283,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
           onCancel={() => setActiveTab('catalog_settings')}
         />
       ) : null}
+      </Suspense>
     </>
   );
 };
