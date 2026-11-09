@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from 'react';
+import React, { memo } from 'react';
 import { formatArabicDigits } from '../../utils/plates';
 
 interface FlipCardProps {
@@ -18,11 +18,10 @@ export const FlipNumber: React.FC<FlipCardProps> = memo(({ value, size = 'md', c
   // count changes (9 -> 10 adds a slot, 10 -> 9 removes one), which is the
   // intended behavior.
   const digits = value.toString().split('');
-  const previousDigitsRef = useRef<string[] | null>(null);
-
-  useEffect(() => {
-    previousDigitsRef.current = digits;
-  }, [value, size]);
+  // PR-J fix 4: removed previousDigitsRef — it was set in a useEffect but
+  // never read anywhere in the component. Dead code that added a useless
+  // effect run on every value/size change. The flip animation was never
+  // wired to the previous-digits comparison; this was leftover scaffolding.
 
   return (
     <div

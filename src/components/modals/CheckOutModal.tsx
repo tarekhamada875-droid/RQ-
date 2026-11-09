@@ -342,15 +342,24 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     {/* Body Block */}
                     <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-3">
                       <div className="flex flex-col items-center justify-center gap-0.5 sm:gap-1 leading-tight">
-                        <span className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white font-sans">
-                          {formatEntryTimeParts(selectedVehicle.entryTime || now, now).main}
-                        </span>
+                        {/* PR-J fix 1 (F4): call formatEntryTimeParts once, not twice.
+                            Pre-PR-J: L346 and L349 each called formatEntryTimeParts
+                            independently — two Intl.DateTimeFormat constructions per
+                            render for the same input. Post-PR-J: compute once. */}
                         {(() => {
                           const parts = formatEntryTimeParts(selectedVehicle.entryTime || now, now);
-                          if (parts.isToday) {
-                            return <span className="text-[10px] sm:text-xs md:text-sm text-slate-400 dark:text-slate-500 font-black leading-none mt-[-1px] sm:mt-0">اليوم</span>;
-                          }
-                          return <span className="text-[10px] sm:text-xs md:text-sm text-emerald-600 dark:text-emerald-400 font-bold leading-none mt-[-1px] sm:mt-0">{parts.sub}</span>;
+                          return (
+                            <>
+                              <span className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white font-sans">
+                                {parts.main}
+                              </span>
+                              {parts.isToday ? (
+                                <span className="text-[10px] sm:text-xs md:text-sm text-slate-400 dark:text-slate-500 font-black leading-none mt-[-1px] sm:mt-0">اليوم</span>
+                              ) : (
+                                <span className="text-[10px] sm:text-xs md:text-sm text-emerald-600 dark:text-emerald-400 font-bold leading-none mt-[-1px] sm:mt-0">{parts.sub}</span>
+                              )}
+                            </>
+                          );
                         })()}
                       </div>
                     </div>
