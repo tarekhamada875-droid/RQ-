@@ -5,6 +5,7 @@ import { Spinner } from '../ui/Spinner';
 import { IconButton } from '../ui/IconButton';
 import { safeDate, formatEntryTimeParts, AR_DAY } from '../../utils/dates';
 import { calculateCost } from '../../utils/cost';
+import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { Vehicle, Garage, Staff } from '../../types';
@@ -35,7 +36,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const now = useServerTimeNow();
   const entryDate = selectedVehicle.entryTime ? safeDate(selectedVehicle.entryTime) : now;
   const diffMs = Math.max(0, now.getTime() - entryDate.getTime());
-  const isInitialMinute = !selectedVehicle.isSubscriber && diffMs <= 300000; // 5-minute entry-error correction window
+  const isInitialMinute = !selectedVehicle.isSubscriber && isWithinEntryErrorWindow(diffMs); // 5-minute entry-error correction window
   const entrantEntityId = currentStaff?.id ?? garage.id;
   const entrantRole = currentStaff ? 'staff' : 'garage';
   const canDelete = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
@@ -245,7 +246,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               className="flex-1 flex flex-col items-center overflow-y-auto scrollbar-hide max-h-[calc(92vh-90px)] max-h-[calc(92dvh-90px)] w-full px-1"
             >
                 <>
-                  {!selectedVehicle.isSubscriber && diffMs < 300000 ? null : (
+                  {!selectedVehicle.isSubscriber && isWithinEntryErrorWindow(diffMs) ? null : (
                 <div className="flex flex-col items-center justify-center mt-2 sm:mt-4 md:mt-6 h-20 sm:h-32 md:h-36 mb-2 sm:mb-4 shrink-0">
                   {selectedVehicle.isSubscriber ? (
                     <div className="flex flex-col items-center">
