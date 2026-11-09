@@ -4,7 +4,9 @@ import { listenerTracker } from '../src/utils/listenerTracker';
 
 const GARAGE_COUNT = 10;
 const LISTENERS_PER_GARAGE = 4;
-const DAILY_ACTIVITY_LIMIT = 200;
+// PR-C: TODAY_ACTIVITY_LOG_LIMIT in src/services/vehicleService.ts was trimmed
+// 200 → 50. This model now reflects the actual per-refresh fetch.
+const DAILY_ACTIVITY_LIMIT = 50;
 const SUBSCRIBER_PAGE_SIZE = 50;
 const PROJECTION_SHARDS = 8;
 

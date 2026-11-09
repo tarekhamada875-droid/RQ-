@@ -1,0 +1,102 @@
+{
+  "benchmark": "RQ post-PR-D capacity model (Measurement Point 1)",
+  "modelType": "static-analysis",
+  "codebaseHead": "f733756 (post-PR-D)",
+  "prsReflected": [
+    "PR-L (#675)",
+    "PR-B2 (#676)",
+    "PR-A (#677)",
+    "PR-C (#678)",
+    "PR-D (#679)"
+  ],
+  "scenario": {
+    "garages": 10,
+    "delegates": 1,
+    "admins": 1,
+    "workdayHours": 8,
+    "freeTierReadsPerDay": 50000,
+    "supervisorTarget10Garages": 12500,
+    "supervisorTargetPct": 25
+  },
+  "perGarageRefreshBreakdown": {
+    "garageDocOnSnapshot": 1,
+    "vehiclesInsideQuery": 1,
+    "vehiclesInsideDocs": 15,
+    "todayActivityQuery": 1,
+    "todayActivityDocs": 30,
+    "staffQuery": 1,
+    "staffDocs": 4
+  },
+  "perGarageRefreshTotal": 53,
+  "garageRefreshesPerDay": 10,
+  "perDelegatePollBreakdown": {
+    "createdGaragesQuery": 1,
+    "createdGaragesDocs": 50,
+    "createdGaragesSentinel": 1,
+    "referredGaragesQuery": 1,
+    "referredGaragesDocs": 50,
+    "referredGaragesSentinel": 1,
+    "delegateDoc": 0
+  },
+  "perDelegatePollTotal": 104,
+  "delegatePollsPer8h": 160,
+  "perAdminViewBreakdown": {
+    "adminGaragesQuery": 1,
+    "adminGaragesDocs": 50,
+    "adminGaragesSentinel": 1,
+    "adminDelegatesQuery": 1,
+    "adminDelegatesDocs": 50,
+    "adminDelegatesSentinel": 1
+  },
+  "perAdminViewTotal": 104,
+  "adminViewsPerDay": 5,
+  "perVehicleOpReads": 5,
+  "vehicleOpsPerGaragePerDay": 30,
+  "totals": {
+    "garageReadsPerDay": 5300,
+    "vehicleOpsReadsPerDay": 1500,
+    "delegateReadsPerDay": 16640,
+    "adminReadsPerDay": 520,
+    "totalModeledReadsPerDay": 23960
+  },
+  "comparison": {
+    "prePrdTotal": 47520,
+    "savingsPrd": 23560,
+    "savingsPrdPct": 49.6
+  },
+  "budget": {
+    "freeTierReadsPerDay": 50000,
+    "budgetUtilizationPct": 47.9,
+    "budgetHeadroom": 26040,
+    "maxGaragesAtCurrentPattern": 48
+  },
+  "supervisorTarget": {
+    "target10Garages": 12500,
+    "actual": 23960,
+    "actualVsTargetRatio": 1.92,
+    "withinTarget": false
+  },
+  "note": "Static-analysis capacity model. The HTTP load test half (tools/ten-garage-load-test.mjs) requires operator infrastructure (staging URL + 10 synthetic auth tokens) and is requested separately. This model reflects actual code paths as of post-PR-D main HEAD f733756."
+}
+
+--- Realistic scenario (founding 15 garages, 3-5 garages/delegate) ---
+{
+  "benchmark": "RQ post-PR-D capacity model — REALISTIC 15-garage founding cohort",
+  "scenario": {
+    "garages": 15,
+    "delegates": 3,
+    "admins": 1
+  },
+  "perDelegatePollTotal_realistic": 10,
+  "delegateReadsPerDay": 4800,
+  "garageReadsPerDay": 7950,
+  "vehicleOpsReadsPerDay": 2250,
+  "adminReadsPerDay": 520,
+  "totalModeledReadsPerDay": 15520,
+  "budgetUtilizationPct": 31,
+  "budgetHeadroom": 34480,
+  "supervisorTarget15Garages_pct": 40,
+  "supervisorTarget15Garages_reads": 20000,
+  "withinSupervisorTarget": true,
+  "actualVsTargetRatio": 0.78
+}
