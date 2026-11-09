@@ -26,6 +26,19 @@ let activeDb: FirestoreRest | null = null;
 let activeAuth: FirebaseAuthRest | null = null;
 let accessTokenCache: { token: string; expiresAt: number } | null = null;
 let certCache: { expiresAt: number; keys: Record<string, JsonMap> } | null = null;
+// PERF (audit PR-1, 2026-11-08): imported RSA CryptoKeys are cached so
+// `crypto.subtle.importKey` runs ONCE per cert rotation (≈1h), not once per
+// authenticated request. RSA-2048 JWK import is 1-5ms CPU; on a hot isolate
+// handling 50 req/s this previously cost 50-250ms/s of pure crypto overhead.
+// Keyed by `kid` so cert rotations correctly invalidate the matching entry.
+const certCryptoKeys: Map<string, CryptoKey> = new Map();
+// PERF (audit PR-1, 2026-11-08): the service-account private-key CryptoKey
+// is cached at module scope. The PEM is stable for the isolate's lifetime,
+// so re-importing on every access-token refresh (~1h) was wasted work.
+// Severity: medium (not critical — runs ~once per hour per isolate, not
+// per request). Kept in this PR because it's a one-line addition next to
+// the certCryptoKeys cache and the same architectural pattern.
+let serviceAccountCryptoKey: CryptoKey | null = null;
 
 function base64Url(value: ArrayBuffer | Uint8Array | string): string {
   const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -57,11 +70,16 @@ async function getGoogleAccessToken(): Promise<string> {
   if (accessTokenCache && accessTokenCache.expiresAt > Date.now() + 60_000) return accessTokenCache.token;
   if (!config.serviceAccount) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not configured');
   const now = Math.floor(Date.now() / 1000);
-  const key = await importPrivateKey(config.serviceAccount.private_key);
+  // PERF (audit PR-1, 2026-11-08): cache the imported CryptoKey — RSA-2048
+  // PKCS#8 import is expensive (~5-15ms CPU) and the PEM is stable for the
+  // isolate's lifetime. Subsequent calls (every ~1h) skip the import.
+  if (!serviceAccountCryptoKey) {
+    serviceAccountCryptoKey = await importPrivateKey(config.serviceAccount.private_key);
+  }
   const assertion = await signedJwt(
     { alg: 'RS256', typ: 'JWT' },
     { iss: config.serviceAccount.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: config.serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 },
-    key
+    serviceAccountCryptoKey
   );
   const response = await fetch(config.serviceAccount.token_uri || 'https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -296,7 +314,15 @@ class FirebaseAuthRest {
     const certs = await getGoogleCerts();
     const jwk = certs[header.kid];
     if (!jwk) throw new Error('INVALID_TOKEN_KEY');
-    const key = await crypto.subtle.importKey('jwk', jwk as JsonWebKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    // PERF (audit PR-1, 2026-11-08): RSA JWK import is cached per `kid`.
+    // On cert rotation (every ~1h via getGoogleCerts' TTL), the new `kid`s
+    // miss the cache and get imported once; old `kid`s' entries persist
+    // harmlessly until the cert cache TTL expires them via the prune below.
+    let key = certCryptoKeys.get(header.kid);
+    if (!key) {
+      key = await crypto.subtle.importKey('jwk', jwk as JsonWebKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+      certCryptoKeys.set(header.kid, key);
+    }
     const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fromBase64Url(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
     if (!valid) throw new Error('INVALID_TOKEN_SIGNATURE');
     return payload;
@@ -311,6 +337,15 @@ async function getGoogleCerts(): Promise<Record<string, JsonMap>> {
   const keys = Object.fromEntries((jwks.keys || []).filter((key) => typeof key.kid === 'string').map((key) => [key.kid as string, key]));
   const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 3600);
   certCache = { keys, expiresAt: Date.now() + maxAge * 1000 };
+  // PERF (audit PR-1, 2026-11-08): prune cached CryptoKeys whose `kid` is no
+  // longer in the active cert set. Without this, the certCryptoKeys Map would
+  // grow unboundedly across rotations (Google rotates signing keys roughly
+  // monthly). Only the kids still present in the new cert set stay cached;
+  // stale entries (for rotated-out kids) get evicted so memory stays bounded.
+  const activeKids = new Set(Object.keys(keys));
+  for (const cachedKid of certCryptoKeys.keys()) {
+    if (!activeKids.has(cachedKid)) certCryptoKeys.delete(cachedKid);
+  }
   return keys;
 }
 
@@ -325,6 +360,11 @@ export function initializeFirebaseAdmin(env?: WorkerEnv): void {
   config = { projectId: env?.FIREBASE_PROJECT_ID || serviceAccount?.project_id || DEFAULT_PROJECT, databaseId: env?.FIREBASE_DATABASE_ID || DEFAULT_DATABASE, serviceAccount };
   activeDb = new FirestoreRest(config.projectId, config.databaseId);
   activeAuth = new FirebaseAuthRest(config.projectId);
+  // PERF (audit PR-1, 2026-11-08): invalidate the cached private-key CryptoKey
+  // on re-init. In production this runs once per isolate (no-op after the first
+  // call); in tests it ensures a different `FIREBASE_SERVICE_ACCOUNT_JSON`
+  // doesn't reuse a stale imported key.
+  serviceAccountCryptoKey = null;
 }
 
 export const adminDb: any = new Proxy({}, { get(_target, property) {
