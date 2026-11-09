@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { logDiagnostic } from '../utils/authDiagnosticLogger';
@@ -519,7 +519,11 @@ export function useGarageSession({
     };
   }, [view, isAuthReady, sessionId, garage?.id, delegate?.id, currentStaff?.id]);
 
-  return {
+  // PR-H: memoize the session context bucket. Without useMemo, this
+  // return creates a new object on every render, causing ALL useSession()
+  // consumers to re-render — even when only one value (e.g. showLogoutConfirm)
+  // changed. The deps array lists every value that goes into the object.
+  return useMemo(() => ({
     user,
     setUser,
     isAuthReady,
@@ -531,5 +535,17 @@ export function useGarageSession({
     handleLogout,
     handleInitiateLogout,
     getLatestEntitySnapshot,
-  };
+  }), [
+    user,
+    setUser,
+    isAuthReady,
+    sessionId,
+    isSessionReady,
+    showLogoutConfirm,
+    setShowLogoutConfirm,
+    isLoggingOut,
+    handleLogout,
+    handleInitiateLogout,
+    getLatestEntitySnapshot,
+  ]);
 }
