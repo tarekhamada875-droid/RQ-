@@ -149,6 +149,18 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
     }
   }, [flushPending]);
 
+  // PR-I: stabilize the native input event listener so it only subscribes
+  // once on mount, not on every scheduleLiveUpdate identity change. The
+  // latest scheduleLiveUpdate is held in a ref so the listener always
+  // calls the current version without re-subscribing. This prevents
+  // removing/re-adding the 'input' event listener on every parent render
+  // that changes onLiveValue (which cascades through flushPending →
+  // scheduleLiveUpdate → this effect's deps array).
+  const scheduleLiveUpdateRef = useRef(scheduleLiveUpdate);
+  scheduleLiveUpdateRef.current = scheduleLiveUpdate;
+  const maskRef = useRef(mask);
+  maskRef.current = mask;
+
   // Native input event listener (NOT React's onChange). Fires synchronously
   // when the DOM value changes, but doesn't trigger React reconciliation.
   useEffect(() => {
@@ -158,9 +170,11 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
     const handleInput = (event: Event) => {
       const target = event.target as HTMLInputElement;
       let value = target.value;
-      // Apply mask if provided (e.g. Arabic digit conversion).
-      if (mask) {
-        const masked = mask(value);
+      // Apply mask if provided (e.g. Arabic digit conversion). Read from
+      // ref so the listener doesn't need to re-subscribe when mask changes.
+      const currentMask = maskRef.current;
+      if (currentMask) {
+        const masked = currentMask(value);
         if (masked !== value) {
           // Update the DOM directly — no React round-trip.
           const selectionStart = target.selectionStart;
@@ -173,7 +187,7 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
           value = masked;
         }
       }
-      scheduleLiveUpdate(value);
+      scheduleLiveUpdateRef.current(value);
     };
 
     // 'input' is the standard DOM event for value changes (covers keyboard,
@@ -187,7 +201,10 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
         rafIdRef.current = null;
       }
     };
-  }, [mask, scheduleLiveUpdate]);
+    // PR-I: empty deps — subscribe once on mount, read latest mask +
+    // scheduleLiveUpdate from refs. This prevents the listener from being
+    // torn down and re-added on every parent render.
+  }, []);
 
   // Sync defaultValue changes from parent → DOM (e.g. parent calls
   // setValue imperatively, or remounts with a new defaultValue after a

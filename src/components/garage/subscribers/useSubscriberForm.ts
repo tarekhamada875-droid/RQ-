@@ -4,6 +4,11 @@ import type { Subscriber, Garage } from '../../../types';
 import { getCleanPlate, getRawPlate } from '../../../utils/plates';
 import { getCairoDateKey } from '../../../domain/garage/businessDay';
 
+// PR-I: debounce interval for draft persistence. Per supervisor instruction:
+// "400ms debounce + teardown 清 timer". 400ms balances user typing speed
+// against localStorage write cost. The timer is cleaned up on unmount.
+const DRAFT_PERSIST_DEBOUNCE_MS = 400;
+
 const parseDateKey = (dateKey: string | any): Date => {
   if (!dateKey) return new Date();
   if (typeof dateKey === 'string' && dateKey.length === 10 && dateKey[4] === '-' && dateKey[7] === '-') {
@@ -102,12 +107,23 @@ export function useSubscriberForm(
     };
   }, [editingSubscriber]);
 
-  // Draft persistence
+  // PR-I: draft persistence — debounced 400ms + teardown cleanup.
+  // Pre-PR-I: 3 localStorage.setItem calls on every keystroke. Post-PR-I:
+  // writes are batched into a single timer that fires 400ms after the
+  // last keystroke. The timer is cleared on unmount to prevent writes
+  // after the component is gone. clearDraft() + sub_show_modal writer
+  // (L114-116) are preserved unchanged.
   useEffect(() => {
     if (!editingSubscriber) {
-      localStorage.setItem('sub_plate', plateNumber);
-      localStorage.setItem('sub_name', ownerName);
-      localStorage.setItem('sub_phone', phone);
+      const timer = setTimeout(() => {
+        localStorage.setItem('sub_plate', plateNumber);
+        localStorage.setItem('sub_name', ownerName);
+        localStorage.setItem('sub_phone', phone);
+      }, DRAFT_PERSIST_DEBOUNCE_MS);
+      // PR-I: teardown — clear the timer on unmount or when deps change.
+      // Without this, the timer could fire after unmount and write stale
+      // values to localStorage (e.g. if the user navigated away mid-typing).
+      return () => clearTimeout(timer);
     }
   }, [plateNumber, ownerName, phone, editingSubscriber]);
 
