@@ -38,7 +38,7 @@ const newestActivityDocs = () => [...firestoreMocks.logs]
     const byTimestamp = (b.data().timestamp as Date).getTime() - (a.data().timestamp as Date).getTime();
     return byTimestamp || a.id.localeCompare(b.id);
   })
-  .slice(0, 200);
+  .slice(0, 50);
 
 const makeActivityDoc = (index: number, now: number) => ({
   id: `activity-${String(index).padStart(4, '0')}`,
@@ -90,24 +90,24 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns the newest 200 from the indexed live and one-time queries', async () => {
+  it('returns the newest 50 from the indexed live and one-time queries', async () => {
     const liveResults: any[][] = [];
     const unsubscribe = vehicleService.subscribeToTodayTransactions('garage-activity-limit-test', (logs) => {
       liveResults.push(logs);
     });
 
-    expect(firestoreMocks.limit).toHaveBeenCalledWith(200);
+    expect(firestoreMocks.limit).toHaveBeenCalledWith(50);
     expect(hasCheckoutFilter(queryPartsFrom(firestoreMocks.onSnapshot.mock.calls[0]))).toBe(true);
     expect(liveResults).toHaveLength(1);
-    expect(liveResults[0]).toHaveLength(200);
+    expect(liveResults[0]).toHaveLength(50);
     expect(liveResults[0][0].id).toBe('activity-0000');
-    expect(liveResults[0][199].id).toBe('activity-0199');
+    expect(liveResults[0][49].id).toBe('activity-0049');
     unsubscribe();
 
     const oneTimeResults = await vehicleService.getTodayTransactionsOnce('garage-activity-limit-test');
-    expect(oneTimeResults).toHaveLength(200);
+    expect(oneTimeResults).toHaveLength(50);
     expect(oneTimeResults[0].id).toBe('activity-0000');
-    expect(oneTimeResults[199].id).toBe('activity-0199');
+    expect(oneTimeResults[49].id).toBe('activity-0049');
   });
 
   it('keeps activity history restricted to the current Cairo calendar day', () => {
@@ -165,9 +165,9 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
     expect(deliveries).toHaveLength(1);
     expect(deliveries[0].error).toBeUndefined();
-    expect(deliveries[0].logs).toHaveLength(200);
+    expect(deliveries[0].logs).toHaveLength(50);
     expect(deliveries[0].logs[0].id).toBe('activity-0000');
-    expect(deliveries[0].logs[199].id).toBe('activity-0199');
+    expect(deliveries[0].logs[49].id).toBe('activity-0049');
     expect(consoleWarning).toHaveBeenCalledWith('[vehicleService] activity_logs_index_fallback', {
       event: 'activity_logs_index_fallback',
       source: 'live',
@@ -187,9 +187,9 @@ describe('daily activity ordering, fallback, and visible cap', () => {
     expect(hasLimit(fallbackParts)).toBe(true);
     expect(hasCheckoutFilter(fallbackParts)).toBe(true);
     expect(fallbackParts.some((part: any) => part?.kind === 'orderBy' && part.field === 'timestamp' && part.direction === 'desc')).toBe(true);
-    expect(logs).toHaveLength(200);
+    expect(logs).toHaveLength(50);
     expect(logs[0].id).toBe('activity-0000');
-    expect(logs[199].id).toBe('activity-0199');
+    expect(logs[49].id).toBe('activity-0049');
     expect(consoleWarning).toHaveBeenCalledWith('[vehicleService] activity_logs_index_fallback', {
       event: 'activity_logs_index_fallback',
       source: 'one-shot',

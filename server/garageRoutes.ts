@@ -31,6 +31,14 @@ import { registerDelegateRoutes } from './delegateRoutes';
 import { registerCreditGrantRoutes } from './creditGrantRoutes';
 import { getCairoDateKey } from './projections';
 
+// Defensive read cap for the three day-scoped `garages/{garageId}/events` queries
+// (reconciliation, dashboard-summary rebuild, rebuild-projections). Day-bounding
+// already constrains volume, but this prevents a runaway garage (e.g. a faulty
+// importer) from consuming the entire 50K-read/day budget in a single request.
+// Single-field auto-index on `occurredAt` handles range+orderBy on the same field;
+// no composite index declaration is required in firestore.indexes.json.
+const DAY_SCOPED_EVENTS_READ_CAP = 500;
+
 export function registerGarageRoutes(app: WorkerApp): void {
 // 10. Garage Management & System Hardening (CF8)
 
@@ -532,6 +540,7 @@ app.post('/api/garages/reconciliation', requireWorkerAuth, async (c) => {
         .where('occurredAt', '>=', dayStart.toISOString())
         .where('occurredAt', '<', nextDayStart.toISOString())
         .orderBy('occurredAt', 'desc')
+        .limit(DAY_SCOPED_EVENTS_READ_CAP)
         .get()
     ]);
     const reconciliation = reconcileGarageState({
@@ -570,6 +579,7 @@ app.post('/api/garages/dashboard-summary/rebuild', requireWorkerAuth, async (c) 
         .where('occurredAt', '>=', dayStart.toISOString())
         .where('occurredAt', '<', nextDayStart.toISOString())
         .orderBy('occurredAt', 'asc')
+        .limit(DAY_SCOPED_EVENTS_READ_CAP)
         .get(),
       adminDb.doc(`garages/${garageId}`).get(),
       adminDb.doc(`garages/${garageId}/daily_stats/${targetDate}`).get()
@@ -637,6 +647,7 @@ app.post('/api/garages/rebuild-projections', requireWorkerAuth, async (c) => {
       .where('occurredAt', '>=', dayStart.toISOString())
       .where('occurredAt', '<', nextDayStart.toISOString())
       .orderBy('occurredAt', 'asc')
+      .limit(DAY_SCOPED_EVENTS_READ_CAP)
       .get();
 
     const lastEvent = eventsSnap.docs.at(-1);
