@@ -10,15 +10,13 @@
  * matrix tests + the MP-1 read-ledger harness).
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   getCachedRole,
   setCachedRole,
-  clearRoleCache,
   roleCacheSize,
   getCachedSession,
   setCachedSession,
-  clearSessionCache,
   sessionCacheSize,
   __resetAllAuthCachesForTests,
   __authCacheStatsForTests,
