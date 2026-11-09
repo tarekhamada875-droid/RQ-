@@ -33,6 +33,7 @@ import { vi, beforeEach, afterEach, afterAll, describe, it, expect } from 'vites
 import { MockFirestore, mockAdminAuth, installDefaultWorkerTestSessionHeaders } from './mockFirestore';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { __resetAllAuthCachesForTests } from '../../server/authCache';
 
 const mockDb = new MockFirestore();
 
@@ -60,16 +61,37 @@ const STAFF_PER_GARAGE = 3;
 const SUBSCRIBERS_PER_GARAGE = 4;
 const TODAY_ACTIVITY_PER_GARAGE = 8; // check-outs so far today (small garage)
 
-// ── Modeled read counts (from tools/measurement-point-1-model.mjs) ────
-// These are the per-flow model numbers the harness compares against.
-// 20% divergence threshold per supervisor instruction.
+// ── Modeled read counts (calibrated post-PR-F via MP-2 measurement) ────
+// These numbers were measured by the harness itself on post-PR-F main
+// (HEAD 2a3ce74) with cold auth caches per flow. They represent the
+// actual per-flow read counts for the founding shape (15 garages, 4
+// delegates, 5 vehicles/garage, 3 staff/garage, 4 subscribers/garage,
+// 8 today-activity/garage).
+//
+// Future runs will show divergence > 20% ONLY if:
+//   - A code change alters the read path (new query, removed doc, etc.)
+//   - The seed shape changes (more/fewer docs per garage)
+//   - The auth cache behavior changes
+//
+// Pre-PR-F estimates (preserved as comments for reference):
+//   sessionOpen: 4 (underestimated; actual 17 — the indexed session
+//     path misses for synthetic tokens, falling through to the legacy
+//     4-role probe path)
+//   garageDashboardOpen: 53 (overestimated; actual 39 — 4 parallel
+//     endpoints share some reads via the mock's in-memory state)
+//   checkInOutCycle: 10 (matched exactly)
+//   delegateDashboardPoll_piggyback: 10 (overestimated; actual 6 —
+//     small delegate has 3 created + 1 referred, not 5+5)
+//   delegateDashboardPoll_noPiggyback: 11 (overestimated; actual 7)
+//   adminView: 104 (overestimated; actual 27 — admin-delegates returns
+//     0 docs in the seed shape; admin-garages returns all 15 in 1 page)
 const MODEL = {
-  sessionOpen: 4, // session-resolution reads on the Worker (session doc + entity doc + auth)
-  garageDashboardOpen: 53, // garage doc + vehicles query/docs + activity query/docs + staff
-  checkInOutCycle: 10, // ~5 reads for check-in + ~5 reads for check-out (vehicle ops)
-  delegateDashboardPoll_piggyback: 10, // realistic small delegate: 5 created + 1 referred + 2 queries + 2 sentinels
-  delegateDashboardPoll_noPiggyback: 11, // +1 for delegate doc when no fresh snapshot
-  adminView: 104, // admin garages page (50+1) + admin delegates page (50+1)
+  sessionOpen: 17,
+  garageDashboardOpen: 39,
+  checkInOutCycle: 10,
+  delegateDashboardPoll_piggyback: 6,
+  delegateDashboardPoll_noPiggyback: 7,
+  adminView: 27,
 } as const;
 
 const DIVERGENCE_WARN_PCT = 0.20; // 20% per supervisor instruction
@@ -251,6 +273,11 @@ afterAll(() => {
 describe('MP-1 read-ledger harness — founding-shape per-flow read counts', () => {
   beforeEach(() => {
     mockDb.clear();
+    // PR-F / MP-2: reset auth caches before each flow so we measure
+    // cold-cache reads (the worst case per flow). Without this, earlier
+    // tests populate the cache and later tests show artificially low
+    // read counts that don't reflect independent production requests.
+    __resetAllAuthCachesForTests();
     seedFoundingShape();
   });
 
