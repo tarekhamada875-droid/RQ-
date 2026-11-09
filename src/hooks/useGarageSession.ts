@@ -73,6 +73,14 @@ export function useGarageSession({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const logoutInProgressRef = useRef(false);
 
+  // PR-D piggyback: latest entity-doc snapshot captured by the session-guard
+  // onSnapshot below. Exposed via getLatestEntitySnapshot() so useGarageSync's
+  // delegate dashboard poll can pass includeDelegate=false to the Worker and
+  // skip the duplicate delegate doc read. NO new listener is created — this
+  // ref is fed by the existing session-guard onSnapshot at L424.
+  const latestEntitySnapshotRef = useRef<{ data: Record<string, unknown> | null; receivedAt: number } | null>(null);
+  const getLatestEntitySnapshot = useCallback(() => latestEntitySnapshotRef.current, []);
+
   // Auth state listener
   useEffect(() => {
     logDiagnostic('AUTH_LISTENER_MOUNTED');
@@ -433,6 +441,11 @@ export function useGarageSession({
             return;
           }
           const data = snapshot.data();
+          // PR-D piggyback: cache the fresh server snapshot so useGarageSync's
+          // delegate dashboard poll can pass includeDelegate=false and skip the
+          // duplicate delegate doc read on the Worker. Stored in a ref (not state)
+          // to avoid extra re-renders — the dashboard poll reads it synchronously.
+          latestEntitySnapshotRef.current = { data: data || null, receivedAt: Date.now() };
           const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
           const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
 
@@ -517,5 +530,6 @@ export function useGarageSession({
     isLoggingOut,
     handleLogout,
     handleInitiateLogout,
+    getLatestEntitySnapshot,
   };
 }

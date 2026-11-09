@@ -13,6 +13,11 @@ export function registerFinancialRoutes(app: WorkerApp): void {
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
 
 // Handler 7: Delegate Commission Earnings & Dashboard (GET /api/delegate/commission-earnings & GET /api/delegates/dashboard)
+// PR-D piggyback: when the client already has a fresh delegate doc snapshot from
+// its session-guard onSnapshot (useGarageSession.ts:424), it can pass
+// ?includeDelegate=false to skip the delegate doc read on the Worker, saving
+// 1 read per poll. The response then returns `delegate: null` and the client
+// uses its cached snapshot for the delegate field.
 const handleDelegateDashboard = withErrorHandler(async (c: any) => {
   const user = c.get('user');
   if (user?.role !== 'delegate' || !user.entityId || !adminDb) {
@@ -20,9 +25,14 @@ const handleDelegateDashboard = withErrorHandler(async (c: any) => {
   }
 
   const delegateId = user.entityId;
+  const includeDelegate = c.req.query('includeDelegate') !== 'false';
   const delegateRef = adminDb.collection('delegates').doc(delegateId);
-  const delegateSnap = await delegateRef.get();
-  if (!delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
+  // Skip the delegate doc read when the client reports it has a fresh snapshot
+  // (PR-D piggyback). The delegate field in the response will be null, and the
+  // client must use its cached snapshot from useGarageSession's session-guard
+  // onSnapshot instead.
+  const delegateSnap = includeDelegate ? await delegateRef.get() : null;
+  if (delegateSnap && !delegateSnap.exists) return c.json({ success: false, error: 'DELEGATE_NOT_FOUND' }, 404);
 
   const section = c.req.query('section');
   const garagesCollection = adminDb.collection('garages');
@@ -41,7 +51,7 @@ const handleDelegateDashboard = withErrorHandler(async (c: any) => {
       const garages = page.documents.map((doc: any) => sanitizeDelegateDoc({ id: doc.id, ...doc.data() }));
       return c.json({
         success: true,
-        delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+        delegate: delegateSnap ? sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }) : null,
         garages,
         items: garages,
         hasMore: page.hasMore,
@@ -60,7 +70,7 @@ const handleDelegateDashboard = withErrorHandler(async (c: any) => {
     }
     return c.json({
       success: true,
-      delegate: sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }),
+      delegate: delegateSnap ? sanitizeDelegateDoc({ id: delegateSnap.id, ...delegateSnap.data() }) : null,
       garages: Array.from(garagesById.values()),
       pagination: {
         createdGarages: { hasMore: createdPage.hasMore, nextCursor: createdPage.nextCursor },

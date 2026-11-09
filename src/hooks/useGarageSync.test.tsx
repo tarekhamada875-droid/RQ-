@@ -147,7 +147,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     unmount();
   });
 
-  it('polls at 120-second intervals and only the active delegate ID after a switch', async () => {
+  it('polls at 180-second intervals and only the active delegate ID after a switch', async () => {
     const responses = {
       'delegate-1': { id: 'delegate-1', name: 'First delegate from server' },
       'delegate-2': { id: 'delegate-2', name: 'Second delegate from server' }
@@ -176,6 +176,11 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
     expect(serviceMocks.getDashboardData.mock.calls.every(([delegateId]) => delegateId === 'delegate-1')).toBe(true);
 
@@ -187,11 +192,68 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(serviceMocks.getDashboardData.mock.calls[2][0]).toBe('delegate-2');
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(180_000);
     });
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(4);
     expect(serviceMocks.getDashboardData.mock.calls.filter(([delegateId]) => delegateId === 'delegate-1')).toHaveLength(2);
     expect(serviceMocks.getDashboardData.mock.calls.filter(([delegateId]) => delegateId === 'delegate-2')).toHaveLength(2);
+    unmount();
+  });
+
+  it('piggybacks the delegate doc read when session-guard snapshot is fresh (PR-D)', async () => {
+    // PR-D: when useGarageSession's session-guard onSnapshot has a fresh delegate
+    // doc snapshot (≤10s old), the dashboard poll passes { includeDelegate: false }
+    // so the Worker skips the duplicate delegate doc read. The response.delegate
+    // is null in that case, and the hook falls back to the cached snapshot.
+    const snapshotData = { id: 'delegate-1', name: 'Snapshot delegate', activeSessionIds: ['session-x'] };
+    const getLatestEntitySnapshot = vi.fn(() => ({
+      data: snapshotData,
+      receivedAt: Date.now(),
+    }));
+    // Worker omits delegate when includeDelegate=false; client must use snapshot.
+    serviceMocks.getDashboardData.mockResolvedValue({
+      ...dashboardResponse({ id: 'delegate-1' } as any),
+      delegate: null,
+      garages: [],
+    });
+
+    const setDelegate = vi.fn();
+    const { unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: { id: 'delegate-1', name: 'Initial delegate' },
+      setDelegate,
+      getLatestEntitySnapshot,
+    }));
+
+    await act(async () => { await Promise.resolve(); });
+
+    expect(getLatestEntitySnapshot).toHaveBeenCalled();
+    // The poll should have passed { includeDelegate: false } as the second arg.
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledWith('delegate-1', { includeDelegate: false });
+    // setDelegate should have been called with a delegate object that includes
+    // the snapshot's id and name (proving the snapshot was used as fallback).
+    expect(setDelegate).toHaveBeenCalledWith(expect.objectContaining({ id: 'delegate-1', name: 'Snapshot delegate' }));
+    unmount();
+  });
+
+  it('skips piggyback when session-guard snapshot is stale or missing (PR-D)', async () => {
+    // When no fresh snapshot is available, the poll uses the default call
+    // signature (single arg) — preserving pre-PR-D behavior.
+    const getLatestEntitySnapshot = vi.fn(() => null);
+    serviceMocks.getDashboardData.mockResolvedValue(
+      dashboardResponse({ id: 'delegate-1', name: 'Server delegate' })
+    );
+
+    const { unmount } = renderHook(() => useGarageSync({
+      ...createBaseProps(),
+      delegate: { id: 'delegate-1', name: 'Initial delegate' },
+      getLatestEntitySnapshot,
+    }));
+
+    await act(async () => { await Promise.resolve(); });
+
+    // Single-arg call signature preserved (no options bag).
+    expect(serviceMocks.getDashboardData).toHaveBeenCalledWith('delegate-1');
     unmount();
   });
 
@@ -211,7 +273,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(180_000);
     });
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
 
@@ -264,7 +326,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
 
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(180_000);
     });
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(1);
 
@@ -273,7 +335,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
       await Promise.resolve();
     });
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(180_000);
     });
 
     expect(serviceMocks.getDashboardData).toHaveBeenCalledTimes(2);
@@ -712,7 +774,7 @@ describe('useGarageSync Delegate dashboard polling (FE-003)', () => {
     });
     expect(result.current.allGarages).toHaveLength(1);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(180_000);
     });
     expect(result.current.allGarages).toHaveLength(2);
 

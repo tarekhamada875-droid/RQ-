@@ -159,6 +159,9 @@ export function useGarageApp() {
     setVehicles,
     setTodayTransactions,
     showToast,
+    // PR-D piggyback: lets the delegate dashboard poll pass includeDelegate=false
+    // when the session-guard onSnapshot has a fresh delegate doc snapshot.
+    getLatestEntitySnapshot: session.getLatestEntitySnapshot,
   });
 
   // 3. Vehicle Operations Hook

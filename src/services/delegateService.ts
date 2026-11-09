@@ -60,9 +60,16 @@ async function createSettlementIdempotencyKey(delegateId: string, totalRecharged
 }
 
 export const delegateService = {
-  getDashboardData: async (delegateId: string): Promise<DelegateDashboardData> => {
-    const response = await apiFetch<DelegateDashboardData & { success: boolean }>('/api/delegates/dashboard');
-    if (response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
+  getDashboardData: async (delegateId: string, options?: { includeDelegate?: boolean }): Promise<DelegateDashboardData> => {
+    // PR-D piggyback: when the client has a fresh delegate doc snapshot from
+    // useGarageSession's session-guard onSnapshot, pass includeDelegate=false to
+    // skip the Worker's delegate doc read. The response.delegate will be null;
+    // the caller is responsible for using its cached snapshot instead.
+    const includeDelegate = options?.includeDelegate !== false;
+    const url = includeDelegate ? '/api/delegates/dashboard' : '/api/delegates/dashboard?includeDelegate=false';
+    const response = await apiFetch<DelegateDashboardData & { success: boolean }>(url);
+    // Only verify scope when the server actually returned a delegate doc.
+    if (response.delegate && response.delegate.id !== delegateId) throw new Error('DELEGATE_SCOPE_MISMATCH');
     return response;
   },
 
