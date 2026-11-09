@@ -1,0 +1,79 @@
+name: Perf Nightly
+
+# Runs the in-memory performance benchmarks and the ten-garage readiness
+# assertions on a schedule so performance regressions surface on their own
+# instead of waiting for a supervisor to run them by hand. All tools here are
+# synthetic local workloads (node:perf_hooks) — no Firebase, no network, no
+# production traffic, zero Firestore reads.
+
+on:
+  schedule:
+    # 03:17 UTC daily (≈ 05:17 Cairo) — before business hours.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-nightly
+  cancel-in-progress: false
+
+jobs:
+  perf:
+    name: Performance benchmarks and ten-garage readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Prepare results directory
+        run: mkdir -p tmp/perf-results
+
+      # Assertion-based gate: fails the run if the 10-garage synthetic
+      # workload exceeds its readiness thresholds.
+      - name: Ten-garage readiness assertions
+        shell: bash
+        run: |
+          set -eo pipefail
+          npm run ten-garage:readiness 2>&1 | tee tmp/perf-results/ten-garage-readiness.txt
+
+      - name: Performance benchmark
+        shell: bash
+        run: |
+          set -eo pipefail
+          npm run benchmark 2>&1 | tee tmp/perf-results/performance-benchmark.txt
+
+      - name: Financial report benchmark
+        shell: bash
+        run: |
+          set -eo pipefail
+          npm run financial-report:benchmark 2>&1 | tee tmp/perf-results/financial-report-benchmark.txt
+
+      - name: Firestore pagination benchmark
+        shell: bash
+        run: |
+          set -eo pipefail
+          npm run firestore-pagination:benchmark 2>&1 | tee tmp/perf-results/firestore-pagination-benchmark.txt
+
+      - name: Upload perf results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rq-perf-results-${{ github.run_id }}
+          path: tmp/perf-results/
+          if-no-files-found: ignore
+          retention-days: 30
