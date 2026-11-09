@@ -31,23 +31,6 @@ export interface DelegateCreditRequest {
   reviewedAt: number | null;
 }
 
-export interface DelegateCommissionHistoryItem {
-  eventId: string;
-  eventType: 'commission_earned' | 'delegate_settled';
-  occurredAt: string;
-  garageId?: string;
-  commissionAmount?: number;
-  previousRechargedAmount?: number;
-  settlementId?: string;
-  sourceCreditGrantId?: string;
-}
-export interface DelegatePaidGrantSummary {
-  monthlyPaidGrantTotalsEgp: Record<string, number>;
-  allTimePaidGrantTotalEgp: number;
-  currentCyclePaidGrantTotalEgp: number;
-  recentPaidGrants: Array<{ entryId: string; garageId: string; garageName: string; amountEgp: number; creditAmount: number; occurredAt: string }>;
-}
-
 export interface DelegateDashboardPage {
   items: Garage[];
   hasMore: boolean;
@@ -160,23 +143,6 @@ export const delegateService = {
       handleFirestoreError(error, OperationType.UPDATE, `delegates/${id}`);
       throw error;
     }
-  },
-
-  getDelegateCommissionHistory: async (delegateId: string): Promise<DelegateCommissionHistoryItem[]> => {
-    try {
-      const response = await apiFetch<{ items: DelegateCommissionHistoryItem[] }>(
-        `/api/delegates/${encodeURIComponent(delegateId)}/commission-history`
-      );
-      return Array.isArray(response.items) ? response.items : [];
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, `delegates/${delegateId}/commission-history`);
-      throw error;
-    }
-  },
-
-  getDelegatePaidGrantSummary: async (delegateId: string): Promise<DelegatePaidGrantSummary> => {
-    const response = await apiFetch<{ data: DelegatePaidGrantSummary }>(`/api/delegates/${encodeURIComponent(delegateId)}/paid-grant-history`);
-    return response.data;
   },
 
   getDelegateRecharges: async (delegateId: string) => {
