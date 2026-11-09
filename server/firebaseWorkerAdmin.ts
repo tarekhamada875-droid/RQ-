@@ -39,6 +39,13 @@ const certCryptoKeys: Map<string, CryptoKey> = new Map();
 // per request). Kept in this PR because it's a one-line addition next to
 // the certCryptoKeys cache and the same architectural pattern.
 let serviceAccountCryptoKey: CryptoKey | null = null;
+// PERF (audit C1/PR-A, 2026-11-09): env-stamp state for the init guard in
+// initializeFirebaseAdmin. `lastInitEnv === null` means "never initialized";
+// once set, subsequent calls with identical env bindings short-circuit.
+// `lastInitServiceAccountRaw` tracks the previous raw service-account string
+// so the CryptoKey cache is invalidated only on a real key change.
+let lastInitEnv: { projectId?: string; databaseId?: string; rawServiceAccount?: string } | null = null;
+let lastInitServiceAccountRaw: string | undefined = undefined;
 
 function base64Url(value: ArrayBuffer | Uint8Array | string): string {
   const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value);
@@ -353,6 +360,29 @@ export const FieldValue = { increment: (value: number) => ({ __op: 'increment', 
 
 export function initializeFirebaseAdmin(env?: WorkerEnv): void {
   const raw = env?.FIREBASE_SERVICE_ACCOUNT_JSON || env?.FIREBASE_SERVICE_ACCOUNT;
+
+  // PERF (audit C1/PR-A, 2026-11-09): env-stamp guard. cloudflareWorker.ts's
+  // auth middleware calls this on EVERY request (`initializeFirebaseAdmin(c.env)`).
+  // Without this guard, every request re-parsed the service-account JSON
+  // (~2-3KB), rebuilt activeDb/activeAuth, and — the worst part — nulled
+  // serviceAccountCryptoKey, defeating PR-1's CryptoKey cache entirely
+  // (the "cache" was invalidated 50×/s on a hot isolate).
+  //
+  // The stamp compares the four WorkerEnv fields by string identity.
+  // In Cloudflare Workers, `c.env` bindings are the same object across
+  // requests on an isolate, so `===` hits the V8 reference-equality fast
+  // path (O(1), no content scan). A genuinely changed binding (deploy
+  // with new secrets, tests with a different service account) fails the
+  // stamp and takes the slow path below.
+  if (
+    lastInitEnv &&
+    lastInitEnv.projectId === env?.FIREBASE_PROJECT_ID &&
+    lastInitEnv.databaseId === env?.FIREBASE_DATABASE_ID &&
+    lastInitEnv.rawServiceAccount === raw
+  ) {
+    return; // env unchanged — keep activeDb/activeAuth and the CryptoKey cache
+  }
+
   let serviceAccount: ServiceAccount | undefined;
   if (raw) {
     try { serviceAccount = JSON.parse(raw) as ServiceAccount; } catch { throw new Error('INVALID_FIREBASE_SERVICE_ACCOUNT_JSON'); }
@@ -360,11 +390,20 @@ export function initializeFirebaseAdmin(env?: WorkerEnv): void {
   config = { projectId: env?.FIREBASE_PROJECT_ID || serviceAccount?.project_id || DEFAULT_PROJECT, databaseId: env?.FIREBASE_DATABASE_ID || DEFAULT_DATABASE, serviceAccount };
   activeDb = new FirestoreRest(config.projectId, config.databaseId);
   activeAuth = new FirebaseAuthRest(config.projectId);
-  // PERF (audit PR-1, 2026-11-08): invalidate the cached private-key CryptoKey
-  // on re-init. In production this runs once per isolate (no-op after the first
-  // call); in tests it ensures a different `FIREBASE_SERVICE_ACCOUNT_JSON`
-  // doesn't reuse a stale imported key.
-  serviceAccountCryptoKey = null;
+  lastInitEnv = { projectId: env?.FIREBASE_PROJECT_ID, databaseId: env?.FIREBASE_DATABASE_ID, rawServiceAccount: raw };
+  // PERF (audit PR-1, 2026-11-08; narrowed by C1/PR-A, 2026-11-09): invalidate
+  // the cached private-key CryptoKey ONLY when the service-account raw string
+  // actually changed (test scenarios / operator key rotation). The C1 guard
+  // above already prevents same-env calls from reaching this line, so the
+  // per-request path NEVER nulls the key — PR-1's cache survives across
+  // requests. A changed raw string with an identical private key would
+  // re-import once on the next access-token refresh: harmless (one extra
+  // ~5ms import per rotation) and strictly safer than reusing a key whose
+  // provenance is no longer the active config.
+  if (lastInitServiceAccountRaw !== undefined && raw !== lastInitServiceAccountRaw) {
+    serviceAccountCryptoKey = null;
+  }
+  lastInitServiceAccountRaw = raw;
 }
 
 export const adminDb: any = new Proxy({}, { get(_target, property) {
@@ -389,4 +428,15 @@ export const adminAuth: any = new Proxy({}, { get(_target, property) {
 export function isFirebaseAdminInitialized(): boolean {
   if (!activeDb) initializeFirebaseAdmin();
   return Boolean(activeDb && activeAuth);
+}
+
+/** @internal Test seam for the C1 init-guard regression suite. Not production API. */
+export function __c1TestServiceAccountKeyIsCached(): boolean {
+  return serviceAccountCryptoKey !== null;
+}
+
+/** @internal Test seam — clears token/key caches so C1 tests start deterministic (prior tests in the file populate the 1h token cache). */
+export function __c1TestResetAuthCaches(): void {
+  accessTokenCache = null;
+  serviceAccountCryptoKey = null;
 }
