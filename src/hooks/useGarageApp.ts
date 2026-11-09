@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Garage, Vehicle, Staff } from '../types';
 import type { GarageDeletionProgress } from '../services/garageDeletionService';
 import { useLocalStorageState } from './useLocalStorage';
@@ -200,7 +200,13 @@ export function useGarageApp() {
     refreshAdminLists: syncData.refreshAdminLists,
   });
 
-  const navigationUi = {
+  // PR-H: memoize the navigationUi context bucket. Without useMemo, this
+  // object literal gets a new reference on every useGarageApp render,
+  // causing ALL useNavigationUi() consumers to re-render — even when
+  // none of the individual values changed. The deps array lists every
+  // value that goes into the object so the reference only changes when
+  // one of them actually changes.
+  const navigationUi = useMemo(() => ({
     isLandscapeMobile,
     view,
     setView,
@@ -219,9 +225,33 @@ export function useGarageApp() {
     closeKeyboard,
     isOnline,
     showOfflineScreen,
-  };
+  }), [
+    isLandscapeMobile,
+    view,
+    setView,
+    loginPhone,
+    setLoginPhone,
+    selectedGarageForDetails,
+    setSelectedGarageForDetails,
+    selectedDelegateForDetails,
+    setSelectedDelegateForDetails,
+    showDeleteConfirm,
+    setShowDeleteConfirm,
+    garageDeletionProgress,
+    showSubscribers,
+    setShowSubscribers,
+    showToast,
+    closeKeyboard,
+    isOnline,
+    showOfflineScreen,
+  ]);
 
-  const garageData = {
+  // PR-H: memoize the garageData context bucket. Spreads syncData (which
+  // is already a hook return with its own reference lifecycle) plus the
+  // local-state garage/delegate/vehicles. Without useMemo, this object
+  // gets a new reference on every render, causing ALL useGarageData()
+  // consumers to re-render unnecessarily.
+  const garageData = useMemo(() => ({
     ...syncData,
     garage,
     setGarage,
@@ -229,7 +259,7 @@ export function useGarageApp() {
     setDelegate,
     vehicles,
     todayTransactions,
-  };
+  }), [syncData, garage, setGarage, delegate, setDelegate, vehicles, todayTransactions]);
 
   return {
     session,
