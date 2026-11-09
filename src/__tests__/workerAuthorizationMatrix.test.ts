@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MockFirestore, mockAdminAuth } from './mockFirestore';
 import { hashSessionId } from '../../server/auth/sessionMarkers';
+import { __resetAllAuthCachesForTests } from '../../server/authCache';
 
 const mockDb = new MockFirestore();
 
@@ -74,6 +75,11 @@ async function call(path: string, token: string, init: RequestInit = {}) {
 describe('Worker role and garage-scope authorization matrix', () => {
   beforeEach(() => {
     mockDb.clear();
+    // PR-F: clear auth caches between tests so each test sees a fresh
+    // (uncached) auth flow. Without this, the first test's session
+    // resolution populates the cache, and subsequent tests hit the cache
+    // (0 Firestore reads) — which breaks assertions on requestedPaths.
+    __resetAllAuthCachesForTests();
     mockDb.seed('garages/garage-a', { id: 'garage-a', name: 'Garage Alpha' });
     mockDb.seed('garages/garage-b', { id: 'garage-b', name: 'Garage Beta' });
   });
@@ -414,6 +420,11 @@ describe('Worker role and garage-scope authorization matrix', () => {
       netRevenue: 25
     });
     mockDb.resetDocumentCounts();
+    // PR-F: reset auth caches between the two calls so the read-count
+    // comparison reflects the dashboard-summary logic only, not the
+    // auth-cache hit differential (which is a separate concern, tested
+    // by the MP-1 read-ledger harness).
+    __resetAllAuthCachesForTests();
     const fallbackResponse = await call('/api/garages/garage-a/dashboard-summary', tokens.garage);
     const fallbackReadCount = mockDb.documentReadCount;
     expect(fallbackResponse.status).toBe(200);
