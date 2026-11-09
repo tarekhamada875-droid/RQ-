@@ -18,6 +18,21 @@ const fixtureDelegateId = 'ui-fixture-delegate';
 const lookupSalt = 'ark_garage_secure_pin_lookup_salt_v2';
 const lookupHash = pin => crypto.scryptSync(pin, lookupSalt, 32).toString('hex');
 
+// private_pins.pin must match the production contract written by
+// pinRepository.setPrivatePin: hashPinWithUniqueSalt's "$scrypt$N=..,r=..,p=..$<salthex>$<derived>"
+// format. verifyDocMatch re-verifies every hash-lookup candidate through
+// verifySingleFieldValue, which ONLY accepts this format — a plaintext pin
+// (the previous fixture format) is silently discarded and login fails with
+// "بيانات الدخول غير صحيحة" even though the pinLookupHash query matched.
+const scryptPin = pin => {
+  const N = 16384;
+  const r = 8;
+  const p = 1;
+  const salt = crypto.randomBytes(16);
+  const derived = crypto.scryptSync(pin, salt, 32, { N, r, p }).toString('hex');
+  return `$scrypt$N=${N},r=${r},p=${p}$${salt.toString('hex')}$${derived}`;
+};
+
 const documents = [
   ['admin_settings/auth_pin', {
     pin: '88000000',
@@ -28,7 +43,7 @@ const documents = [
   ['private_pins/auth_pin', {
     entityType: 'admin_settings',
     entityId: 'auth_pin',
-    pin: '88000000',
+    pin: scryptPin('88000000'),
     pinLookupHash: lookupHash('88000000'),
     createdAt: now,
     updatedAt: now,
@@ -51,7 +66,7 @@ const documents = [
   [`private_pins/${fixtureGarageId}`, {
     entityType: 'garages',
     entityId: fixtureGarageId,
-    pin: '88000001',
+    pin: scryptPin('88000001'),
     pinLookupHash: lookupHash('88000001'),
     createdAt: now,
     updatedAt: now,
@@ -69,7 +84,7 @@ const documents = [
   [`private_pins/${fixtureStaffId}`, {
     entityType: 'staff',
     entityId: fixtureStaffId,
-    pin: '88000002',
+    pin: scryptPin('88000002'),
     pinLookupHash: lookupHash('88000002'),
     createdAt: now,
     updatedAt: now,
@@ -86,7 +101,7 @@ const documents = [
   [`private_pins/${fixtureDelegateId}`, {
     entityType: 'delegates',
     entityId: fixtureDelegateId,
-    pin: '88000003',
+    pin: scryptPin('88000003'),
     pinLookupHash: lookupHash('88000003'),
     createdAt: now,
     updatedAt: now,
