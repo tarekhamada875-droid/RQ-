@@ -165,7 +165,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     });
     mockDb.seed('supervisors/legacy-supervisor', { id: 'legacy-supervisor', name: 'Preserved record' });
 
-    for (const path of ['/api/garages', '/api/garages/garage-a', '/api/financial-summary']) {
+    for (const path of ['/api/garages', '/api/garages/garage-a', '/api/admin/delegates']) {
       const response = await call(path, tokens.supervisor);
       expect(response.status, path).toBe(403);
       expect(await response.json()).toMatchObject({ success: false, error: 'ROLE_RETIRED' });
@@ -178,7 +178,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     ['unresolved worker fallback', tokens.worker, 401, 'SESSION_REVOKED']
   ] as const)('returns a standard error envelope for %s principals', async (_label, token, status, code) => {
     const correlationId = `role-matrix-${_label.replace(/\s+/g, '-')}`;
-    const response = await call('/api/financial-summary', token, {
+    const response = await call('/api/admin/delegates', token, {
       headers: { 'x-correlation-id': correlationId }
     });
     const body = await response.json() as Record<string, unknown>;
@@ -201,7 +201,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     };
     mockDb.seed('supervisor_sessions/worker-uid', legacySession);
 
-    const response = await call('/api/financial-summary', 'valid-worker-token', {
+    const response = await call('/api/admin/delegates', 'valid-worker-token', {
       headers: { 'x-session-id': 'legacy-supervisor-session' }
     });
 
@@ -237,7 +237,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
   });
 
   it.each([
-    ['/api/financial-summary', 'GET'],
+    ['/api/admin/delegates', 'GET'],
     ['/api/garages/delete', 'POST']
   ])('denies non-admin access to %s for every non-admin role', async (path, method) => {
     for (const token of [tokens.supervisor, tokens.delegate, tokens.garage, tokens.staff]) {
@@ -250,7 +250,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
   });
 
   it('does not trust a client-supplied role to elevate a garage owner', async () => {
-    const response = await call('/api/financial-summary', tokens.garage, {
+    const response = await call('/api/admin/delegates', tokens.garage, {
       headers: { 'x-test-role': 'admin' }
     });
     expect(response.status).toBe(403);
@@ -301,7 +301,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
   });
 
   it('rejects an anonymous Firebase token without a session identity', async () => {
-    const response = await call('/api/financial-summary', 'valid-worker-token');
+    const response = await call('/api/admin/delegates', 'valid-worker-token');
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
   });

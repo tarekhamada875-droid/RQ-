@@ -62,14 +62,13 @@ describe('Hono API contracts', () => {
     }
   });
 
-  it('requires authentication for session lifecycle and financial report routes', async () => {
+  it('requires authentication for session lifecycle routes', async () => {
     const cases: Array<[string, RequestInit]> = [
       ['/api/auth/sessions', {}],
       ['/api/auth/sessions/session-key', { method: 'DELETE' }],
       ['/api/auth/validate-or-refresh-session', emptyPost],
       ['/api/auth/release-session', emptyPost],
-      ['/api/auth/invalidate-all-sessions', emptyPost],
-      ['/api/reports/financial', {}]
+      ['/api/auth/invalidate-all-sessions', emptyPost]
     ];
     for (const [path, init] of cases) {
       expect((await honoRequest(path, init)).status, path).toBe(401);

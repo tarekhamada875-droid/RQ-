@@ -2,15 +2,12 @@ import type { WorkerApp } from './cloudflareWorker';
 import { readWorkerFirestorePage } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
 import { requireWorkerAuth } from './sessionInfrastructure';
-import { validateId, validateIdempotencyKey } from './validation';
+import { validateIdempotencyKey } from './validation';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { recordDomainEventInTransaction } from './events';
 import { parseFirestorePageRequest } from './firestorePagination';
-import { canViewFinancialReport } from './domain/authorization';
 import { withErrorHandler } from './routes/combinators';
-import { createFinancialReportAccumulator, finishFinancialReport, addFinancialReportCreditLedgerEntry, addFinancialReportEvent, addFinancialReportSettlement } from './financialReporting';
 import { sanitizeDelegateDoc } from './workerReadHelpers';
-import { getCairoDateKey, getCairoDayBounds } from './projections';
 
 export function registerFinancialRoutes(app: WorkerApp): void {
 // 9. Financial Transactions, Recharge Requests, Delegate Commissions & Reporting (CF7)
@@ -175,101 +172,7 @@ const handleSettleDelegateAccount = async (c: any) => {
 app.post('/api/delegate/withdraw-commission', requireWorkerAuth, handleSettleDelegateAccount);
 app.post('/api/delegates/settle-account', requireWorkerAuth, handleSettleDelegateAccount);
 
-// Handler 9: Financial Summary Report (GET /api/financial-summary & GET /api/reports/financial)
-const handleFinancialSummaryReport = async (c: any) => {
-  try {
-    const user = c.get('user');
-    if (!canViewFinancialReport(user)) {
-      return c.json({ success: false, error: 'FORBIDDEN: Admin role required' }, 403);
-    }
-
-    const requestedStart = c.req.query('start');
-    const requestedEnd = c.req.query('end');
-    const delegateId = c.req.query('delegateId') ? validateId(c.req.query('delegateId'), 'delegateId', true) : undefined;
-
-    const isStrictDateOnly = (value?: string) => {
-      if (value === undefined) return true;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-      const parsed = new Date(`${value}T00:00:00.000Z`);
-      return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-    };
-    if (!isStrictDateOnly(requestedStart) || !isStrictDateOnly(requestedEnd)) {
-      return c.json({ success: false, code: 'INVALID_REPORT_DATE', error: 'INVALID_REPORT_DATE', statusCode: 400 }, 400);
-    }
-
-    if (requestedStart && requestedEnd && new Date(requestedStart) >= new Date(requestedEnd)) {
-      return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
-    }
-
-    const now = new Date();
-    const todayDateKey = getCairoDateKey(now);
-    const today = new Date(`${todayDateKey}T00:00:00.000Z`);
-    const defaultEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-    const subtractOneCalendarYear = (date: Date) => {
-      const year = date.getUTCFullYear() - 1;
-      const month = date.getUTCMonth();
-      const day = Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
-      return new Date(Date.UTC(year, month, day));
-    };
-    // No-date reports default to the latest 12 calendar months. Partial ranges
-    // are bounded too; older history remains available through explicit dates.
-    const start = requestedStart || subtractOneCalendarYear(requestedEnd ? new Date(`${requestedEnd}T00:00:00.000Z`) : today).toISOString().slice(0, 10);
-    const end = requestedEnd || defaultEnd.toISOString().slice(0, 10);
-    if (new Date(start) >= new Date(end)) {
-      return c.json({ success: false, code: 'START_MUST_PRECEDE_END', error: 'START_MUST_PRECEDE_END', statusCode: 400 }, 400);
-    }
-    // Apply inclusive-start/exclusive-end boundaries in Firestore and process
-    // stable cursor pages so Worker memory is independent of ledger history.
-    const startAt = getCairoDayBounds(start).start;
-    const endAt = getCairoDayBounds(end).start;
-    // Domain events persist occurredAt as an ISO string, unlike settlement
-    // records, whose settledAt field is a Firestore Timestamp/Date.
-    const eventStartAt = startAt.toISOString();
-    const eventEndAt = endAt.toISOString();
-    let eventsQuery: any = adminDb.collectionGroup('events');
-    let settlementsQuery: any = adminDb.collection('settlements');
-    let creditLedgerQuery: any = adminDb.collection('credit_ledger');
-    eventsQuery = eventsQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
-    settlementsQuery = settlementsQuery.where('settledAt', '>=', startAt).where('settledAt', '<', endAt);
-    if (!delegateId) creditLedgerQuery = creditLedgerQuery.where('occurredAt', '>=', eventStartAt).where('occurredAt', '<', eventEndAt);
-    const accumulator = createFinancialReportAccumulator({ start: startAt, end: endAt, delegateId });
-    const pageSize = 250;
-    const forEachPage = async (baseQuery: any, timestampField: string, consume: (value: any) => void) => {
-      let cursor: any = null;
-      while (true) {
-        let pageQuery = baseQuery.orderBy(timestampField, 'asc').orderBy('__name__', 'asc').limit(pageSize);
-        if (cursor) pageQuery = pageQuery.startAfter(cursor.timestamp, cursor.ref);
-        const page = await pageQuery.get();
-        if (page.docs.length === 0) break;
-        for (const document of page.docs) consume(document.data() || {});
-        if (page.docs.length < pageSize) break;
-        const last = page.docs[page.docs.length - 1];
-        cursor = { timestamp: last.data()?.[timestampField], ref: last.ref };
-      }
-    };
-    // Load settlement cutoffs before events; keep only totals and one latest
-    // timestamp per delegate, never the underlying document arrays.
-    await forEachPage(settlementsQuery, 'settledAt', (settlement) => addFinancialReportSettlement(accumulator, settlement));
-    await forEachPage(eventsQuery, 'occurredAt', (event) => addFinancialReportEvent(accumulator, event));
-    if (!delegateId) await forEachPage(creditLedgerQuery, 'occurredAt', (entry) => addFinancialReportCreditLedgerEntry(accumulator, entry));
-    const report = finishFinancialReport(accumulator);
-
-    return c.json({
-      success: true,
-      data: {
-        report,
-        filters: { start, end, delegateId: delegateId || null },
-        generatedAt: new Date().toISOString()
-      }
-    });
-  } catch (err: any) {
-    console.error('[Worker Reports] Error generating financial report:', err);
-    return c.json({ success: false, error: err?.message || 'REPORT_GENERATION_FAILED' }, 500);
-  }
-};
-
-app.get('/api/financial-summary', requireWorkerAuth, handleFinancialSummaryReport);
-app.get('/api/reports/financial', requireWorkerAuth, handleFinancialSummaryReport);
+// Handler 9 (GET /api/financial-summary & GET /api/reports/financial) was deleted
+// as dead code — no client caller. See PR-B2.
 
 }
-
