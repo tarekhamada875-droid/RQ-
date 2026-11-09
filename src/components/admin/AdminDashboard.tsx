@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { memo } from 'react';
+import React, { memo, Suspense } from 'react';
 import { adminService, garageService } from '../../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../services/garageDeletionService';
-import { AppearanceSettingsModal } from '../modals/AppearanceSettingsModal';
 import { soundManager } from '../../utils/sounds';
 import { useBackHandler } from '../../hooks/backHandler';
 import { AdminProvider } from '../../hooks/adminContext';
@@ -18,12 +17,19 @@ import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useLocalStorageState } from '../../hooks/useLocalStorage';
 import { useSystemConfig } from '../../hooks/useSystemConfig';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
 import '../../styles/admin-custom-theme.css';
 
 import { AdminHeader } from './AdminHeader';
 import { AdminNavigationAndViews } from './AdminNavigationAndViews';
-import { AdminAddGarageModal } from './AdminAddGarageModal';
-import { AdminConfirmDialog } from './AdminConfirmDialog';
+
+// PR-G: lazy-load the 4 admin modals so they're code-split into separate
+// chunks. These modals are conditionally rendered (showAppearanceModal,
+// showAddGarageModal, etc.) — eagerly importing them inflates the admin
+// initial bundle with modal code that may never be needed.
+const AppearanceSettingsModal = lazyWithRetry(() => import('../modals/AppearanceSettingsModal').then(m => ({ default: m.AppearanceSettingsModal })));
+const AdminAddGarageModal = lazyWithRetry(() => import('./AdminAddGarageModal').then(m => ({ default: m.AdminAddGarageModal })));
+const AdminConfirmDialog = lazyWithRetry(() => import('./AdminConfirmDialog').then(m => ({ default: m.AdminConfirmDialog })));
 
 interface AdminDashboardProps {
   allGarages: Garage[];
@@ -329,6 +335,8 @@ export const AdminDashboard = memo(({
         </AdminProvider>
       </main>
 
+      {/* PR-G: lazy-loaded modals wrapped in Suspense */}
+      <Suspense fallback={null}>
       {/* Add Garage Modal */}
       <AdminAddGarageModal
         isOpen={showAddGarageModal}
@@ -372,6 +380,7 @@ export const AdminDashboard = memo(({
           }}
         />
       )}
+      </Suspense>
     </div>
   );
 });

@@ -1,4 +1,4 @@
-import React, { useState, memo, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, memo, useMemo, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useBackHandler } from '../../hooks/backHandler';
 import {
   Building2,
@@ -22,7 +22,9 @@ import { generateSafePin } from '../../utils/pins';
 import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
-import { TermsAndConditionsModal } from '../modals/TermsAndConditionsModal';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
+// PR-G: lazy-load TermsAndConditionsModal
+const TermsAndConditionsModal = lazyWithRetry(() => import('../modals/TermsAndConditionsModal').then(m => ({ default: m.TermsAndConditionsModal })));
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
 import { delegateService, type DelegateCreditRequest } from '../../services/delegateService';
 import { useDelegateDashboard } from '../../hooks/delegateDashboardContext';
@@ -455,9 +457,11 @@ export const DelegateDashboardView = memo(({
         isLoading={isLoading}
       />
       {showTermsModal && (
+        <Suspense fallback={null}>
         <TermsAndConditionsModal
           onClose={() => setShowTermsModal(false)}
         />
+        </Suspense>
       )}
 
       {/* Credit Request Modal */}

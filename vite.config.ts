@@ -22,6 +22,17 @@ export default defineConfig(() => {
           clientsClaim: true,
           cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          // PR-G: exclude lazy-loaded chunks from the SW precache. These
+          // chunks are fetched on demand via dynamic import() — precaching
+          // them would download ~238 KB of code the user may never need
+          // (e.g. admin tab views for non-admin users, motion for routes
+          // that don't use it). The SW caches them at runtime when first
+          // requested via the default runtime caching behavior.
+          globIgnores: [
+            '**/Admin*View-*.js',   // 8 lazy admin tab chunks
+            '**/*Modal-*.js',       // 5 lazy modal chunks
+            '**/motion-*.js',       // motion chunk (lazy via code-split)
+          ],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -87,7 +98,14 @@ export default defineConfig(() => {
           manualChunks(id) {
             if (id.includes('node_modules')) {
               if (id.includes('firebase')) return 'firebase';
-              if (id.includes('react') || id.includes('lucide-react') || id.includes('motion')) return 'vendor';
+              // PR-G: split motion into its own chunk so it's not bundled
+              // with react/lucide-react in the vendor chunk. Motion is only
+              // used by a few components (GarageDashboardHeaderAndDrawer,
+              // CheckOutModal until de-motion in commit 5) — most routes
+              // don't need it, so splitting it reduces the initial vendor
+              // chunk for routes that never import motion.
+              if (id.includes('motion')) return 'motion';
+              if (id.includes('react') || id.includes('lucide-react')) return 'vendor';
               return 'deps';
             }
           }

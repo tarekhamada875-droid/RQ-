@@ -9,7 +9,6 @@ import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { Vehicle, Garage, Staff } from '../../types';
-import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface CheckOutModalProps {
@@ -124,28 +123,15 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
         }
       `}</style>
       
-      <motion.div 
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 1 }}
+      <div 
         onClick={() => !isLoading && onCancel()}
         className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
         style={{ willChange: 'opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
-        transition={{ duration: 0 }}
       />
       
-      <motion.div 
-        initial={{ y: 0, opacity: 1 }}
-        animate={{ 
-          y: 0,
-          height: modalHeight
-        }}
-        exit={{ y: 0, opacity: 1 }}
-        transition={{ 
-          duration: 0
-        }}
+      <div 
         className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto shadow-2xl"
-        style={{ willChange: 'transform, height, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
+        style={{ willChange: 'transform, height, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden', height: modalHeight }}
         dir="rtl"
         {...modalA11y.containerProps}
       >
@@ -161,18 +147,13 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 
         {/* Action Buttons Layer */}
         <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
-          <AnimatePresence>
-            {!confirmingSide ? (
-              <>
-                {/* Left Button */}
-                {!isInitialMinute && (
-                  <motion.div
-                    initial={{ x: -25, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: -100, opacity: 0, rotate: -30, scale: 0.7 }}
-                    transition={{ duration: 0 }}
-                    className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 left-3 sm:left-6 md:left-8 lg:left-12 xl:left-16 pointer-events-auto"
-                  >
+          {!confirmingSide ? (
+            <>
+              {/* Left Button */}
+              {!isInitialMinute && (
+                <div
+                  className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 left-3 sm:left-6 md:left-8 lg:left-12 xl:left-16 pointer-events-auto"
+                >
                     <IconButton
                       type="button"
                       onClick={() => handleButtonClick('left')}
@@ -182,16 +163,12 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rotate-180 stroke-[3] text-white" />
                     </IconButton>
-                  </motion.div>
+                  </div>
                 )}
                 
                 {/* Right Button */}
                 {!isInitialMinute && (
-                  <motion.div 
-                    initial={{ x: 25, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: 100, opacity: 0, rotate: 30, scale: 0.7 }}
-                    transition={{ duration: 0 }}
+                  <div 
                     className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 right-3 sm:right-6 md:right-8 lg:right-12 xl:right-16 pointer-events-auto"
                   >
                     <IconButton
@@ -203,16 +180,12 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 stroke-[3] text-white" />
                     </IconButton>
-                  </motion.div>
+                  </div>
                 )}
               </>
             ) : showLargeButton && (
               <div className="absolute inset-x-0 bottom-0 top-10 flex items-center justify-center pointer-events-none p-6 md:p-12">
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 120 }}
-                  animate={{ scale: 1.15, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, y: 50 }}
-                  transition={{ duration: 0 }}
+                <div
                   className="snake-border-wrapper w-60 h-28 sm:w-96 sm:h-52 rounded-2xl sm:rounded-2xl p-[6px] pointer-events-auto shadow-xl"
                 >
                   <IconButton
@@ -228,21 +201,14 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       <LogOut className="w-12 h-12 sm:w-24 sm:h-24 -rotate-90 stroke-[4] text-white" />
                     )}
                   </IconButton>
-                </motion.div>
+                </div>
               </div>
             )}
-          </AnimatePresence>
         </div>
 
         {/* Content Area - Instant collapse to reduce resource usage */}
-        <AnimatePresence>
           {!confirmingSide && (
-            <motion.div
-              initial={{ opacity: 1, y: 0 }}
-              exit={{ 
-                opacity: 0, 
-                transition: { duration: 0 }
-              }}
+            <div
               className="flex-1 flex flex-col items-center overflow-y-auto scrollbar-hide max-h-[calc(92vh-90px)] max-h-[calc(92dvh-90px)] w-full px-1"
             >
                 <>
@@ -409,10 +375,9 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               </div>
 
                 </>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 });
