@@ -22,6 +22,17 @@ export default defineConfig(() => {
           clientsClaim: true,
           cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          // PR-G: exclude lazy-loaded chunks from the SW precache. These
+          // chunks are fetched on demand via dynamic import() — precaching
+          // them would download ~238 KB of code the user may never need
+          // (e.g. admin tab views for non-admin users, motion for routes
+          // that don't use it). The SW caches them at runtime when first
+          // requested via the default runtime caching behavior.
+          globIgnores: [
+            '**/Admin*View-*.js',   // 8 lazy admin tab chunks
+            '**/*Modal-*.js',       // 5 lazy modal chunks
+            '**/motion-*.js',       // motion chunk (lazy via code-split)
+          ],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
