@@ -202,6 +202,7 @@ export const AdminGarageDetailsView = memo(({
           isSavingRates={actions.isSavingRates}
           handleSaveRates={actions.handleSaveRates}
           staffList={staffList}
+          setStaffList={setStaffList}
           openAddStaffModal={openAddStaffModal}
           editingStaffPinId={editingStaffPinId}
           setEditingStaffPinId={setEditingStaffPinId}
