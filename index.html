@@ -13,7 +13,19 @@
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- PR-J fix 6: trimmed Google Fonts from 16 weights to 8.
+         Pre-PR-J: Amiri 4 (400, 700, italic 400, italic 700) + Inter 6
+         (400, 500, 600, 700, 800, 900) + Outfit 6 (400, 500, 600, 700,
+         800, 900) = 16 weights. Each weight is a separate font file
+         download (~30-60 KB each). Post-PR-J: only the weights actually
+         used in the codebase (font-medium/500, font-bold/700,
+         font-extrabold/800, font-black/900) are loaded. Amiri retains
+         400+700 for body Arabic text; italic variants dropped (not used
+         in body text). Inter and Outfit trimmed to the 4 used weights.
+         Total: Amiri 2 + Inter 4 + Outfit 2 (Outfit only uses 700, 900
+         in the actual codebase, confirmed via grep) = 8 weights.
+         Net: 16 → 8 = 50% reduction in font payload. -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />

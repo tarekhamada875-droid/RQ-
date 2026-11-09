@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LoginView } from '../auth/LoginView';
 import { ErrorBoundary } from '../layout/ErrorBoundary';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
@@ -53,11 +53,29 @@ export function AppRoutes() {
     }
   }, [view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, isLoading, isAuthReady, setView]);
 
+  // PR-J fix 2: memoize the DelegateDashboardProvider value so it
+  // doesn't get a new object reference on every AppRoutes render.
+  // Pre-PR-J: the inline object literal caused ALL useDelegateDashboard()
+  // consumers to re-render on every AppRoutes render. Post-PR-J: useMemo
+  // with the 7 values as deps. Declared before the conditional returns
+  // to satisfy the Rules of Hooks (no conditional hook calls).
+  const delegateDashboardValue = useMemo(() => ({
+    delegatePagination,
+    delegateListsLoading: !!delegateListsLoading,
+    delegateListsError: !!delegateListsError,
+    delegateDashboardLoading: !!delegateDashboardLoading,
+    delegateDashboardError: !!delegateDashboardError,
+    onRetryDelegateDashboard: retryDelegateDashboard,
+    onLoadMoreDelegateGarages: loadMoreDelegateGarages,
+  }), [delegatePagination, delegateListsLoading, delegateListsError, delegateDashboardLoading, delegateDashboardError, retryDelegateDashboard, loadMoreDelegateGarages]);
+
   if (view === 'login' || view === 'admin_login' || view === 'delegate_login') return <LoginView loginPhone={loginPhone} setLoginPhone={setLoginPhone} handleGarageLogin={handleGarageLogin} isLoading={isLoading || !isAuthReady} closeKeyboard={closeKeyboard} />;
 
   if (view === 'admin_dashboard') return <ErrorBoundary><AdminDashboardLazy allGarages={allGarages} isLoading={isLoading} createNewGarage={createNewGarage} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setSelectedDelegateForDetails={setSelectedDelegateForDetails} delegates={delegates} adminGarageHasMore={adminGarageHasMore} adminDelegateHasMore={adminDelegateHasMore} adminListsLoading={adminListsLoading} adminListsError={adminListsError} onLoadMoreAdminGarages={loadMoreAdminGarages} onLoadMoreAdminDelegates={loadMoreAdminDelegates} onRefreshAdminLists={refreshAdminLists} showToast={showToast} /></ErrorBoundary>;
 
-  if (view === 'delegate_dashboard' && delegate) return <ErrorBoundary><DelegateDashboardProvider value={{ delegatePagination, delegateListsLoading: !!delegateListsLoading, delegateListsError: !!delegateListsError, delegateDashboardLoading: !!delegateDashboardLoading, delegateDashboardError: !!delegateDashboardError, onRetryDelegateDashboard: retryDelegateDashboard, onLoadMoreDelegateGarages: loadMoreDelegateGarages }}><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} /></DelegateDashboardProvider></ErrorBoundary>;
+  if (view === 'delegate_dashboard' && delegate) {
+    return <ErrorBoundary><DelegateDashboardProvider value={delegateDashboardValue}><DelegateDashboardLazy delegate={delegate} allGarages={delegateGarages} onLogout={handleInitiateLogout} onCreateGarage={createNewGarage} isLoading={isLoading} /></DelegateDashboardProvider></ErrorBoundary>;
+  }
 
   if (view === 'admin_garage_details' && selectedGarageForDetails) return <ErrorBoundary><AdminGarageDetailsLazy selectedGarageForDetails={selectedGarageForDetails} setView={setView} setSelectedGarageForDetails={setSelectedGarageForDetails} setShowDeleteConfirm={setShowDeleteConfirm} staffList={staffList} setStaffList={setStaffList} isLoading={isLoading} setIsLoading={setIsLoading} onRefreshAdminLists={refreshAdminLists} /></ErrorBoundary>;
 

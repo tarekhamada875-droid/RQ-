@@ -1,4 +1,4 @@
-import React, { useState, memo, useCallback, useDeferredValue } from 'react';
+import React, { useState, memo, useCallback, useDeferredValue, useEffect, useRef } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useModalA11y } from '../../hooks/useModalA11y';
@@ -29,6 +29,32 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
   const [error, setError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [attempts, setAttempts] = useState(readAttempts);
+
+  // PR-J fix 3: track pending timeouts so they can be cleaned up on unmount.
+  // Pre-PR-J: the two setTimeout calls in handleLogoutSubmit (L74, L78)
+  // were not tracked — if the modal unmounted before the timeout fired
+  // (e.g. user pressed back, session expired), the callback would run on
+  // an unmounted component, causing a React warning + potential state
+  // update on unmounted component. Post-PR-J: timeout IDs are stored in
+  // a ref and cleared on unmount via useEffect cleanup.
+  const pendingTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  useEffect(() => {
+    return () => {
+      // Clear all pending timeouts on unmount.
+      for (const id of pendingTimeoutsRef.current) {
+        clearTimeout(id);
+      }
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
+  const scheduleTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimeoutsRef.current.delete(id);
+      fn();
+    }, ms);
+    pendingTimeoutsRef.current.add(id);
+    return id;
+  }, []);
 
   // PERF (audit 2026-11-08): deferred so PIN box display doesn't block
   // the next keystroke. The actual `pin` state is used only on submit.
@@ -71,11 +97,12 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
         setIsLoggingOut(false);
         
         if (newAttempts >= 3) {
-          setTimeout(() => {
+          // PR-J fix 3: use scheduleTimeout so the timeout is tracked + cleaned up on unmount.
+          scheduleTimeout(() => {
             onCancel(); 
           }, 1000);
         } else {
-          setTimeout(() => {
+          scheduleTimeout(() => {
             setPin('');
             setError(false);
           }, 1200);

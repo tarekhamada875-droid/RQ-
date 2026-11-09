@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, memo, useRef } from 'react';
+import React, { useState, memo, useRef, useMemo } from 'react';
 import { Delegate, Garage } from '../../types';
 import {
   Users,
@@ -41,6 +41,24 @@ export const AdminPeopleView = memo(({
   onRefresh
 }: AdminPeopleViewProps) => {
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // PR-J fix 5: pre-compute garage counts per delegate to avoid O(N×M)
+  // in the render. Pre-PR-J: delegates.map((d) => ... allGarages.filter(...).length)
+  // was O(N delegates × M garages) on every render. Post-PR-J: one pass
+  // over allGarages builds a Map<delegateId, count>, then each delegate's
+  // count is O(1) lookup. With 4 delegates × 15 garages the saving is
+  // small (~60 ops → ~19 ops), but at scale (50 delegates × 500 garages)
+  // it's 25,000 ops → 550 ops.
+  const garageCountByDelegate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of allGarages) {
+      const delegateId = g.createdByDelegateId;
+      if (delegateId) {
+        counts.set(delegateId, (counts.get(delegateId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [allGarages]);
 
   // Delegates State
   const [delegateForm, setDelegateForm] = useState({ name: '', phone: '', pin: '' });
@@ -245,7 +263,8 @@ export const AdminPeopleView = memo(({
       {/* Delegates Section Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {delegates.map((d) => {
-            const assignedGaragesCount = d.garageCount ?? (allGarages || []).filter(g => g.createdByDelegateId === d.id).length;
+            // PR-J fix 5: O(1) Map lookup instead of O(M) filter per delegate.
+            const assignedGaragesCount = d.garageCount ?? (garageCountByDelegate.get(d.id) ?? 0);
 
             return (
               <div
