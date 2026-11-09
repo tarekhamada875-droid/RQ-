@@ -18,6 +18,10 @@ interface UseGarageSyncProps {
   setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   setTodayTransactions: React.Dispatch<React.SetStateAction<Vehicle[]>>;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  // PR-D piggyback: returns the latest entity-doc snapshot captured by
+  // useGarageSession's session-guard onSnapshot, or null if no fresh snapshot
+  // is available. Used to skip the duplicate delegate doc read on the Worker.
+  getLatestEntitySnapshot?: () => { data: Record<string, unknown> | null; receivedAt: number } | null;
 }
 
 export function useGarageSync({
@@ -35,6 +39,7 @@ export function useGarageSync({
   setVehicles,
   setTodayTransactions,
   showToast,
+  getLatestEntitySnapshot,
 }: UseGarageSyncProps) {
   const [allGarages, setAllGarages] = useState<Garage[]>([]);
   const [delegates, setDelegates] = useState<any[]>([]);
@@ -396,13 +401,35 @@ export function useGarageSync({
       if (dashboardRequestInFlight) return;
       dashboardRequestInFlight = true;
       try {
-        const data = await delegateService.getDashboardData(delegateId);
+        // PR-D piggyback: if useGarageSession's session-guard onSnapshot has a
+        // fresh delegate doc snapshot (≤10s old), pass includeDelegate=false so
+        // the Worker skips the duplicate delegate doc read. We use the snapshot
+        // for setDelegate() instead of the HTTP response's delegate field.
+        const SNAPSHOT_FRESH_MS = 10_000;
+        const latestSnapshot = getLatestEntitySnapshot?.();
+        const snapshotIsFresh = Boolean(
+          latestSnapshot
+          && (Date.now() - latestSnapshot.receivedAt) < SNAPSHOT_FRESH_MS
+          && latestSnapshot.data
+        );
+        // Only thread the options bag when piggybacking — keeps the no-piggyback
+        // call signature identical to the pre-PR-D shape (`(delegateId)`) so
+        // existing call-count and arg assertions stay valid.
+        const data = snapshotIsFresh
+          ? await delegateService.getDashboardData(delegateId, { includeDelegate: false })
+          : await delegateService.getDashboardData(delegateId);
         if (
           cancelled ||
           delegateDashboardGenerationRef.current !== requestGeneration ||
           delegateDashboardOwnerRef.current !== delegateId
         ) return;
-        setDelegate(data.delegate);
+        // Use the cached snapshot for setDelegate when the Worker omitted it.
+        // The snapshot data includes activeSessionIds (used by session-guard);
+        // it is the canonical delegate doc state.
+        const effectiveDelegate = data.delegate ?? (snapshotIsFresh && latestSnapshot?.data
+          ? { id: delegateId, ...latestSnapshot.data }
+          : null);
+        if (effectiveDelegate) setDelegate(effectiveDelegate);
         setDelegateDashboardLoading(false);
         setDelegateDashboardError(false);
         if (delegateDashboardLoadedOwnerRef.current !== delegateId) {
@@ -438,10 +465,13 @@ export function useGarageSync({
     };
 
     void loadDashboard();
-    // Delegates do not need second-by-second numbers. Every refresh reads the delegate
-    // record plus a page of garages, so poll slowly and only while the tab is visible.
-    const DASHBOARD_REFRESH_MS = 120_000;
-    const DASHBOARD_MIN_GAP_MS = 30_000;
+    // Delegates do not need second-by-second numbers. Every refresh reads a page
+    // of garages (the delegate doc is now piggybacked on the session-guard
+    // onSnapshot when fresh — see loadDashboard above), so poll slowly and only
+    // while the tab is visible. Cadence extended from 120s → 180s in PR-D per
+    // supervisor instruction "30s polls → piggyback 或 90s" (no new listener).
+    const DASHBOARD_REFRESH_MS = 180_000;
+    const DASHBOARD_MIN_GAP_MS = 60_000;
     let lastDashboardLoadAt = Date.now();
     const refreshIfVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
