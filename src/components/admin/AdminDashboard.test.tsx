@@ -43,13 +43,42 @@ vi.mock('./AdminNavigationAndViews', () => ({
     </>
   ),
 }));
-vi.mock('./PackageValidationErrorModal', () => ({ PackageValidationErrorModal: () => null }));
-vi.mock('./AdminConfirmDialog', () => ({
-  AdminConfirmDialog: ({ isOpen, onConfirm }: any) => isOpen
-    ? <button onClick={() => void Promise.resolve(onConfirm()).catch(() => {})}>Confirm dialog action</button>
-    : null
+
+// PR-G: mock the lazy-loaded admin modals so they render synchronously in tests.
+// The lazy import (lazyWithRetry) would otherwise require async chunk loading
+// which the synchronous getByPlaceholderText assertions can't wait for.
+vi.mock('./AdminAddGarageModal', () => ({
+  AdminAddGarageModal: ({ isOpen, garageForm, setGarageForm, pinInput, setPinInput, onSubmit }: any) => {
+    if (!isOpen) return null;
+    return (
+      <form onSubmit={(e: FormEvent) => { e.preventDefault(); onSubmit?.(e); }}>
+        <input placeholder="اسم الجراج..." value={garageForm?.name || ''} onChange={(e) => setGarageForm?.({ ...garageForm, name: e.target.value })} />
+        <input placeholder="10 ج.م" value={garageForm?.hourlyRate || ''} onChange={(e) => setGarageForm?.({ ...garageForm, hourlyRate: e.target.value })} />
+        <input placeholder="50 ج.م" value={garageForm?.overnightRate || ''} onChange={(e) => setGarageForm?.({ ...garageForm, overnightRate: e.target.value })} />
+        <input placeholder="01xxxxxxxxx" value={garageForm?.walletNumber || ''} onChange={(e) => setGarageForm?.({ ...garageForm, walletNumber: e.target.value })} />
+        <input placeholder="12345" value={pinInput || ''} onChange={(e) => setPinInput?.(e.target.value)} />
+        <button type="submit">Submit</button>
+      </form>
+    );
+  }
 }));
-vi.mock('../modals/AppearanceSettingsModal', () => ({ AppearanceSettingsModal: () => null }));
+vi.mock('./AdminConfirmDialog', () => ({
+  AdminConfirmDialog: ({ isOpen, onConfirm, onCancel }: any) => {
+    if (!isOpen) return null;
+    return (
+      <>
+        <button onClick={() => void Promise.resolve(onConfirm()).catch(() => {})}>Confirm dialog action</button>
+        <button onClick={onCancel}>Cancel</button>
+      </>
+    );
+  }
+}));
+vi.mock('../modals/AppearanceSettingsModal', () => ({
+  AppearanceSettingsModal: ({ onClose }: any) => (
+    <div><button onClick={onClose}>Close Appearance</button></div>
+  )
+}));
+vi.mock('./PackageValidationErrorModal', () => ({ PackageValidationErrorModal: () => null }));
 
 beforeEach(() => {
   localStorage.clear();

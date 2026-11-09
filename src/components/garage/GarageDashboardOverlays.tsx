@@ -2,13 +2,14 @@ import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
-import { TermsAndConditionsModal } from "../modals/TermsAndConditionsModal";
-import { CreditGrantNotificationModal } from "./modals/CreditGrantNotificationModal";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
 import type { ActivityLog, Garage, Staff, Vehicle } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
 const GarageReportsLazy = lazyWithRetry(() => import("./GarageReportsView").then((module) => ({ default: module.GarageReportsView })));
+// PR-G: lazy-load TermsAndConditionsModal + CreditGrantNotificationModal
+const TermsAndConditionsModal = lazyWithRetry(() => import("../modals/TermsAndConditionsModal").then(m => ({ default: m.TermsAndConditionsModal })));
+const CreditGrantNotificationModal = lazyWithRetry(() => import("./modals/CreditGrantNotificationModal").then(m => ({ default: m.CreditGrantNotificationModal })));
 
 interface GarageDashboardOverlaysProps {
   garage: Garage;
@@ -96,8 +97,14 @@ export const GarageDashboardOverlays = ({
           />
         </Suspense>
       )}
-      {showTermsModal && <TermsAndConditionsModal onClose={onCloseTerms} />}
-      <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
+      {showTermsModal && (
+        <Suspense fallback={null}>
+          <TermsAndConditionsModal onClose={onCloseTerms} />
+        </Suspense>
+      )}
+      <Suspense fallback={null}>
+        <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
+      </Suspense>
     </>
   );
 };
