@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useDeferredValue, useMemo, useState } from 'react';
+import React, { memo, useCallback, useDeferredValue, useMemo, useState, useRef } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
 import { Garage, Vehicle } from '../../types';
@@ -42,6 +42,10 @@ export const RegistrationCard = memo(({
   // small component redrawing, never the whole app.
   const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [isDebouncing, setIsDebouncing] = React.useState(false);
+  // Guard against double-submit: a ref updates synchronously (unlike
+  // isLoading state which is async). Prevents a second check-in request
+  // from firing before isLoading flips to true (which causes "already inside").
+  const isSubmittingRef = useRef(false);
 
   // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
   // changes (Firestore snapshot), not on every keystroke. Replaces the O(N)
@@ -80,16 +84,13 @@ export const RegistrationCard = memo(({
   const showOnlyOvernight = hourlyPrice <= 0 && overnightPrice > 0;
 
   const handleGuardedCheckIn = async (type: 'hourly' | 'overnight') => {
-    if (isDebouncing || isLoading) return;
+    if (isDebouncing || isLoading || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsDebouncing(true);
     setTimeout(() => setIsDebouncing(false), 300);
     closeKeyboard();
-    // PR-U: pass the plate value to handleCheckIn. On error, the hook
-    // returns the formatted plate so we can restore it locally (the hook
-    // no longer owns newPlateNumber state). On success, returns null —
-    // we MUST clear the plate so the user doesn't accidentally re-submit
-    // the same plate (which would get "already inside" from the server).
     const restorePlate = await handleCheckIn(type, newPlateNumber);
+    isSubmittingRef.current = false;
     if (restorePlate) {
       setNewPlateNumber(restorePlate);
     } else {
