@@ -156,6 +156,20 @@ export function useVehicleOperations({
     const raw = getRawPlate(plateValue);
     const formatted = formatPlateNumber(plateValue);
 
+    // DEBUG LOGGING: trace the exact plate values being sent to the server
+    console.log('[CHECK-IN DEBUG]', {
+      step: 'start',
+      typedPlate: plateValue,
+      rawPlate: raw,
+      formattedPlate: formatted,
+      garageId: garage.id,
+      vehiclesInside: vehicles.filter(v => v.status === 'inside').map(v => ({
+        id: v.id,
+        plateNumberRaw: v.plateNumberRaw,
+        status: v.status,
+      })),
+    });
+
     // PR-E cache fix: removed client-side "already inside" check.
     // Pre-fix: vehicles.find(v => v.plateNumberRaw === raw) checked the
     // local vehicles array. But PR-E's persistent IDB cache serves stale
@@ -238,6 +252,7 @@ export function useVehicleOperations({
       // reuse this same key so the server can return the original committed
       // result instead of creating a duplicate transaction.
       const idempotencyKey = generateIdempotencyKey('vehicle_checkin');
+      console.log('[CHECK-IN DEBUG]', { step: 'sending-to-server', rawPlate: raw, idempotencyKey });
       const res = await withAsyncLock(`checkin-${garage.id}-${raw}`, () =>
         vehicleService.checkInVehicle(garage.id, {
           plateNumber: formatted,
@@ -251,10 +266,12 @@ export function useVehicleOperations({
       );
 
       if (!res.success) {
+        console.log('[CHECK-IN DEBUG]', { step: 'server-error', error: res.error, rawPlate: raw });
         throw new Error(res.error);
       }
 
       const serverData = (res as any).data;
+      console.log('[CHECK-IN DEBUG]', { step: 'server-success', serverData: JSON.stringify(serverData).slice(0, 200), rawPlate: raw });
       const serverVehicle = serverData?.vehicle;
       const newVehicleObj: Vehicle = {
         id: raw,
@@ -307,7 +324,9 @@ export function useVehicleOperations({
       }
       return null; // success — RegistrationCard clears the plate
     } catch (error: any) {
+      console.log('[CHECK-IN DEBUG]', { step: 'catch', errorMessage: error?.message, rawPlate: raw });
       if (error?.message === 'Operation already in progress') {
+        console.log('[CHECK-IN DEBUG]', { step: 'already-in-progress (withAsyncLock blocked)' });
         return null;
       }
 
@@ -331,6 +350,13 @@ export function useVehicleOperations({
         message.includes('موجودة بالفعل بالداخل') ||
         message.includes('conflicts with the current state')
       ) {
+        console.log('[CHECK-IN DEBUG]', {
+          step: 'ALREADY_INSIDE from server',
+          rawPlate: raw,
+          message,
+          fullError: error?.message,
+          vehiclesInside: vehicles.filter(v => v.status === 'inside').map(v => v.plateNumberRaw),
+        });
         showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
         return null; // clear the plate — user needs to type a different one
       } else if (message.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || message.includes('INSUFFICIENT_PAID_CREDITS') || message.includes('رصيدك خلص')) {
