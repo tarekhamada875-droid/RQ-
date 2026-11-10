@@ -119,8 +119,12 @@ export const RegistrationCard = memo(({
   // PERF (audit 2026-11-08): memoized so LicensePlateKeyboard's memo
   // doesn't bail out on every render (which would re-render all 19 keys).
   const handleVirtualKeyPress = useCallback((key: string) => {
-    const raw = getRawPlate(newPlateNumber + key);
-    const clean = getCleanPlate(raw);
+    // Use getCleanPlate (display-safe, preserves Alef variants like أ)
+    // NOT getRawPlate (which normalizes أ → ا for server-side matching).
+    // Pre-fix: this called getRawPlate first, which normalized أ → ا,
+    // then passed the normalized result to getCleanPlate — so the display
+    // always showed ا instead of the typed أ.
+    const clean = getCleanPlate(newPlateNumber + key);
     setNewPlateNumber(clean);
   }, [newPlateNumber, setNewPlateNumber]);
 
