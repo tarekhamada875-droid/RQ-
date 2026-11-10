@@ -68,9 +68,11 @@ describe('Normalization & String Utilities Edge Cases', () => {
     expect(getCleanPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('أبج١٢٣٤');
     expect(getRawPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('ابج1234');
 
+    // getPlateParts now uses getCleanPlate (display-safe) which preserves
+    // Arabic-Indic digits (٩٨٧) instead of normalizing to Western (987).
     const parts = getPlateParts(' س ص ع  ٩ ٨ ٧ ');
     expect(parts.letters).toBe('سصع');
-    expect(parts.numbers).toBe('987');
+    expect(parts.numbers).toBe('٩٨٧');
 
     // Validation checks
     expect(isPlateValid(' ا ب ج 1 2 3 ')).toBe(true);
