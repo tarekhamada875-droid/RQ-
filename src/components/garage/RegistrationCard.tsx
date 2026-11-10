@@ -86,10 +86,14 @@ export const RegistrationCard = memo(({
     closeKeyboard();
     // PR-U: pass the plate value to handleCheckIn. On error, the hook
     // returns the formatted plate so we can restore it locally (the hook
-    // no longer owns newPlateNumber state).
+    // no longer owns newPlateNumber state). On success, returns null —
+    // we MUST clear the plate so the user doesn't accidentally re-submit
+    // the same plate (which would get "already inside" from the server).
     const restorePlate = await handleCheckIn(type, newPlateNumber);
     if (restorePlate) {
       setNewPlateNumber(restorePlate);
+    } else {
+      setNewPlateNumber(''); // success — clear the plate input
     }
   };
 
