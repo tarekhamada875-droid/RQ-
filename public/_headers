@@ -8,7 +8,14 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com https://rq.tarekhamada875.workers.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self'
+  # CSP fix: added missing domains that were causing console errors:
+  # - script-src: added https://apis.google.com (Firebase Auth gapi script)
+  #   and 'unsafe-eval' (Firebase SDK uses eval in some code paths)
+  # - connect-src: added https://apis.google.com, https://firebasestorage.googleapis.com,
+  #   https://*.googleapis.com (Firestore/Auth/Storage all use *.googleapis.com)
+  # - frame-src: added https://*.firebaseapp.com (Firebase Auth iframe for popup/redirect)
+  # - worker-src: added blob: (Workbox SW may use blob: workers)
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://apis.google.com https://*.googleapis.com wss://*.firebaseio.com https://rq.tarekhamada875.workers.dev; frame-src https://*.firebaseapp.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self' blob:
 
 # HTML must never be cached (PWA shell) — override the immutable cache rule below.
 /index.html
