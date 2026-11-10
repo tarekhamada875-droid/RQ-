@@ -27,6 +27,7 @@
     "release:smoke": "tsx tools/release-smoke.ts",
     "smoke:worker-artifact": "node tools/worker-artifact-smoke.mjs",
     "maintainability:check": "tsx tools/maintainability-check.ts",
+    "guardrails": "tsx tools/prk-guardrails.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rq-unified-hono \"node tools/firestore-rules-security.test.mjs\"",
     "backfill:null-legacy-pins": "tsx scripts/backfill-null-legacy-pin-fields.ts"
   },
