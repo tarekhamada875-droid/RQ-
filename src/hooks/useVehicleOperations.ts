@@ -322,6 +322,8 @@ export function useVehicleOperations({
       }
 
       // PR-U: on error, return formatted so RegistrationCard restores the plate.
+      // Exception: "already inside" returns null (clears the plate) because
+      // the user can't retry the same plate — they need to type a new one.
       if (
         message === 'ALREADY_INSIDE' ||
         message === 'VEHICLE_ALREADY_INSIDE' ||
@@ -330,7 +332,7 @@ export function useVehicleOperations({
         message.includes('conflicts with the current state')
       ) {
         showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
-        return formatted;
+        return null; // clear the plate — user needs to type a different one
       } else if (message.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || message.includes('INSUFFICIENT_PAID_CREDITS') || message.includes('رصيدك خلص')) {
         showToast('رصيدك خلص — يرجى شحن الرصيد قبل إدخال سيارات جديدة', 'error');
         return formatted;
