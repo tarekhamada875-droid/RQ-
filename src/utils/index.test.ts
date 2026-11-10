@@ -62,8 +62,10 @@ describe('Normalization & String Utilities Edge Cases', () => {
   });
 
   it('correctly handles complex plate extraction and edge cases', () => {
-    // Normal valid Egyptian plate with 3 letters and up to 4 numbers
-    expect(getCleanPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('ابج١٢٣٤');
+    // Normal valid Egyptian plate with 3 letters and up to 4 numbers.
+    // getCleanPlate preserves original Alef variants (أ) for display;
+    // getRawPlate normalizes to plain Alef (ا) for server-side matching.
+    expect(getCleanPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('أبج١٢٣٤');
     expect(getRawPlate('أ ب ج ١ ٢ ٣ ٤')).toBe('ابج1234');
 
     const parts = getPlateParts(' س ص ع  ٩ ٨ ٧ ');

@@ -139,8 +139,9 @@ export function useSubscriberForm(
   };
 
   const handleVirtualKeyPress = (key: string) => {
-    const raw = getRawPlate(plateNumber + key);
-    const clean = getCleanPlate(raw);
+    // Use getCleanPlate (display-safe, preserves Alef variants like أ)
+    // NOT getRawPlate (which normalizes أ → ا for server-side matching).
+    const clean = getCleanPlate(plateNumber + key);
     setPlateNumber(clean);
   };
 

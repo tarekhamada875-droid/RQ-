@@ -507,9 +507,18 @@ export function useVehicleOperations({
       // stale Firestore snapshot from reverting the change before it catches up.
       setVehicles(prev => prev.filter(v => v.id !== vehicleToDelete.id));
       if (isInside) {
+        // Credit refund: the Worker restores 1 credit on authorized vehicle
+        // deletion. Without this optimistic update, the stale-snapshot guard
+        // in useGarageSync.ts preserves the OLD credits value (pre-delete),
+        // so the user never sees the credit go back up. By optimistically
+        // adding the refund here, the guard preserves the CORRECT value.
+        const creditRefundAmount = (vehicleToDelete as any)?.creditDebit?.amount ?? 0;
         setGarage(prev => prev ? {
           ...prev,
           carsInside: Math.max(0, (prev.carsInside || 0) - 1),
+          ...(creditRefundAmount > 0 && typeof prev.credits === 'number'
+            ? { credits: prev.credits + creditRefundAmount }
+            : {}),
           _confirmedTransactionUntil: Date.now() + 2000,
         } : prev);
       }

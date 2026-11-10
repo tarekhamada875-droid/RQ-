@@ -70,9 +70,12 @@ export const getCleanPlate = (val: string): string => {
   let letters = '';
   let numbers = '';
 
-  const normalized = normalizeLetters(val);
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized[i];
+  // Preserve original Arabic letters (including Alef variants like أ إ آ)
+  // for DISPLAY. Only normalize via getRawPlate() for server-side matching.
+  // Pre-fix: this called normalizeLetters(val) which converted أ → ا, so the
+  // plate display showed ا instead of أ and the keypad couldn't highlight أ.
+  for (let i = 0; i < val.length; i++) {
+    const char = val[i];
     // Numbers (English, Arabic, Persian)
     if ((char >= '0' && char <= '9') || (char >= '\u0660' && char <= '\u0669') || (char >= '\u06F0' && char <= '\u06F9')) {
       if (numbers.length < 4) numbers += char;
