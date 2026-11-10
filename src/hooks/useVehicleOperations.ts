@@ -48,7 +48,9 @@ export function useVehicleOperations({
   onCheckOutComplete,
 }: UseVehicleOperationsProps) {
   const now = useServerTimeNow();
-  const [newPlateNumber, setNewPlateNumber] = useState<string>('');
+  // PR-U: newPlateNumber state removed — moved to RegistrationCard local state.
+  // The draft no longer lives in this hook (a context bucket), so every
+  // keystroke only re-renders RegistrationCard, not the whole app.
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showCheckInModal, _setShowCheckInModal] = useState<boolean>(false);
   const [showCheckOutModal, _setShowCheckOutModal] = useState<boolean>(false);
@@ -91,6 +93,12 @@ export function useVehicleOperations({
   const [showSubscriberWarning, _setShowSubscriberWarning] = useState<boolean>(false);
   const [subscriberWarningPlate, setSubscriberWarningPlate] = useState<string>('');
   const [pendingCheckInType, setPendingCheckInType] = useState<'hourly' | 'overnight' | null>(null);
+  // PR-U: pendingCheckInPlate preserves the plate value across the
+  // RecentExitWarning flow. Previously this was implicitly held in
+  // newPlateNumber (context state). Now that the draft lives in
+  // RegistrationCard, we need to explicitly store the plate that
+  // triggered the warning so the "confirm" action can re-check-in.
+  const [pendingCheckInPlate, setPendingCheckInPlate] = useState<string>('');
 
   const deletingVehicleRef = useRef<string | null>(null);
 
@@ -133,22 +141,26 @@ export function useVehicleOperations({
   }, []);
 
   // Check In
-  const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', bypassWarning = false) => {
+  // PR-U: handleCheckIn now takes plateValue as a parameter (the draft
+  // no longer lives in this hook's state). Returns the formatted plate
+  // string when the caller should restore it (on error), or null on
+  // success / no-restore-needed.
+  const handleCheckIn = useCallback(async (type: 'hourly' | 'overnight', plateValue: string, bypassWarning = false): Promise<string | null> => {
     if (!isOnline) {
       showToast('لا يوجد اتصال بالإنترنت. يرجى إعادة المحاولة عند عودة النت.', 'error');
-      return;
+      return null;
     }
-    if (!garage || !newPlateNumber || isTransactionLocked()) return;
+    if (!garage || !plateValue || isTransactionLocked()) return null;
     closeKeyboard();
 
-    const raw = getRawPlate(newPlateNumber);
-    const formatted = formatPlateNumber(newPlateNumber);
-    
+    const raw = getRawPlate(plateValue);
+    const formatted = formatPlateNumber(plateValue);
+
     const existing = vehicles.find(v => v.plateNumberRaw === raw);
     if (existing) {
       showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
       setShowCheckInModal(false);
-      return;
+      return formatted; // PR-U: restore the plate so the user can see what they typed
     }
 
     const recentlyExited = todayTransactions
@@ -164,14 +176,15 @@ export function useVehicleOperations({
       if (Date.now() - exitTime.getTime() < 3600000) {
         setRecentVehicle(recentlyExited);
         setPendingCheckInType(type);
+        setPendingCheckInPlate(plateValue); // PR-U: preserve plate for re-check-in
         setShowRecentExitWarning(true);
         soundManager.play('error');
-        return;
+        return formatted; // PR-U: restore plate so user sees what triggered the warning
       }
     }
 
     let isSubscriber = false;
-    
+
     setIsLoading(true);
     setLoadingType(type);
     acquireTransactionLock();
@@ -180,7 +193,8 @@ export function useVehicleOperations({
     // busy/locked state (isLoading) provides the feedback that the operation
     // is in-flight.
     setShowCheckInModal(false);
-    setNewPlateNumber('');
+    // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft
+    // now and clears it itself when handleCheckIn returns null (success).
 
     if (garage.hasMonthlySubscribers) {
       try {
@@ -198,7 +212,7 @@ export function useVehicleOperations({
         setIsLoading(false);
         setLoadingType(null);
         showToast('تعذر التحقق من حالة الاشتراك. يرجى المحاولة مرة أخرى.', 'error');
-        return;
+        return formatted; // PR-U: restore plate on error
       }
     }
 
@@ -209,7 +223,7 @@ export function useVehicleOperations({
       setSubscriberWarningPlate(formatted);
       setShowSubscriberWarning(true);
       soundManager.play('error');
-      return;
+      return formatted; // PR-U: restore plate so user sees what triggered the warning
     }
 
     // Keep the form pending until the Worker confirms the entry. The Worker
@@ -288,11 +302,12 @@ export function useVehicleOperations({
           _confirmedTransactionUntil: Date.now() + 2000,
         } : prev);
       }
+      return null; // PR-U: success — no plate restore needed
     } catch (error: any) {
       if (error?.message === 'Operation already in progress') {
-        return;
+        return null;
       }
-      
+
       let message = error?.message || '';
       if (message.startsWith('{') && message.endsWith('}')) {
         try {
@@ -303,6 +318,7 @@ export function useVehicleOperations({
         }
       }
 
+      // PR-U: on error, return formatted so RegistrationCard restores the plate.
       if (
         message === 'ALREADY_INSIDE' ||
         message === 'VEHICLE_ALREADY_INSIDE' ||
@@ -311,17 +327,19 @@ export function useVehicleOperations({
         message.includes('conflicts with the current state')
       ) {
         showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
+        return formatted;
       } else if (message.includes('INSUFFICIENT_ELIGIBLE_CREDITS') || message.includes('INSUFFICIENT_PAID_CREDITS') || message.includes('رصيدك خلص')) {
         showToast('رصيدك خلص — يرجى شحن الرصيد قبل إدخال سيارات جديدة', 'error');
+        return formatted;
       } else if (message.includes('permission') || message.includes('PERMISSION_DENIED') || message === 'UNAUTHORIZED') {
-        setNewPlateNumber(formatted);
         showToast('انتهت الجلسة لعدم النشاط، يرجى تسجيل الدخول مجدداً', 'error');
+        return formatted;
       } else if (message.includes('الحد اليومي') || message.includes('اشتراك') || message.includes('CAPACITY_LIMIT_REACHED') || message.includes('SUBSCRIPTION_EXPIRED')) {
-        setNewPlateNumber(formatted);
         showToast(message, 'error');
+        return formatted;
       } else {
-        setNewPlateNumber(formatted);
         showToast(message || 'حدث خطأ أثناء إدخال السيارة، يرجى المحاولة مرة أخرى', 'error');
+        return formatted;
       }
     } finally {
       // release the lock BEFORE setting isLoading false, so the UI
@@ -330,7 +348,8 @@ export function useVehicleOperations({
       setIsLoading(false);
       setLoadingType(null);
     }
-  }, [isOnline, garage, setGarage, setVehicles, newPlateNumber, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  }, [isOnline, garage, setGarage, setVehicles, isLoading, closeKeyboard, vehicles, todayTransactions, showRecentExitWarning, currentStaff, showToast, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
+  // PR-U: removed newPlateNumber from deps — it's now a parameter, not state.
 
   // Check Out
   const confirmCheckOut = useCallback(async () => {
@@ -380,7 +399,7 @@ export function useVehicleOperations({
       }
       setShowCheckOutModal(false);
       setSelectedVehicle(null);
-      setNewPlateNumber('');
+      // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft.
       soundManager.play('checkOut');
       setCheckoutJustSucceeded(true);
       // return to the main dashboard so the user sees the large
@@ -426,7 +445,7 @@ export function useVehicleOperations({
       if (isBusinessError) {
         setShowCheckOutModal(false);
         setSelectedVehicle(null);
-        setNewPlateNumber('');
+        // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft.
       }
     } finally {
       // release the lock BEFORE setting isLoading false, so the UI
@@ -483,7 +502,7 @@ export function useVehicleOperations({
     // The busy/locked state provides the feedback that the operation is in-flight.
     setShowCheckOutModal(false);
     setSelectedVehicle(null);
-    setNewPlateNumber('');
+    // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft.
     setIsLoading(true);
     setLoadingType('delete');
     acquireTransactionLock();
@@ -547,10 +566,9 @@ export function useVehicleOperations({
   // prop by Object.is; a new object reference re-renders ALL consumers
   // regardless of inner callback stability. The 3 PR-H memoizations
   // (navigationUi, garageData, session) were correct; this one was skipped
-  // with bad justification. Now memoized with all 26 values as deps.
+  // with bad justification. Now memoized with all 24 values as deps.
+  // PR-U: newPlateNumber/setNewPlateNumber removed — moved to RegistrationCard.
   return useMemo(() => ({
-    newPlateNumber,
-    setNewPlateNumber,
     selectedVehicle,
     setSelectedVehicle,
     showCheckInModal,
@@ -572,12 +590,11 @@ export function useVehicleOperations({
     setSubscriberWarningPlate,
     pendingCheckInType,
     setPendingCheckInType,
+    pendingCheckInPlate,
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,
   }), [
-    newPlateNumber,
-    setNewPlateNumber,
     selectedVehicle,
     setSelectedVehicle,
     showCheckInModal,
@@ -599,6 +616,7 @@ export function useVehicleOperations({
     setSubscriberWarningPlate,
     pendingCheckInType,
     setPendingCheckInType,
+    pendingCheckInPlate,
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useDeferredValue, useMemo } from 'react';
+import React, { memo, useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { Delete, Loader2 } from 'lucide-react';
 import { getCleanPlate, getRawPlate, getPlateParts, isPlateValid, formatArabicDigits } from '../../utils/plates';
 import { Garage, Vehicle } from '../../types';
@@ -6,14 +6,18 @@ import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { FitText } from '../ui/FitText';
 
 interface RegistrationCardProps {
-  newPlateNumber: string;
-  setNewPlateNumber: (val: string) => void;
+  // PR-U: newPlateNumber/setNewPlateNumber removed from props — the draft
+  // state now lives INSIDE RegistrationCard so every keystroke only
+  // re-renders this component, not the whole app's context consumers.
   isInputFocused: boolean;
   setIsInputFocused: (val: boolean) => void;
   plateInputRef: React.RefObject<HTMLInputElement>;
   vehicles: Vehicle[];
   garage: Garage;
-  handleCheckIn: (type: 'hourly' | 'overnight') => void;
+  // PR-U: handleCheckIn now takes the plate value as a parameter and
+  // returns the formatted plate on error (so RegistrationCard can restore
+  // it). Returns null on success or when no restore is needed.
+  handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   onCheckOut: (vehicle: Vehicle) => void;
   closeKeyboard: () => void;
   inputRef: React.RefObject<HTMLDivElement>;
@@ -21,8 +25,6 @@ interface RegistrationCardProps {
 }
 
 export const RegistrationCard = memo(({
-  newPlateNumber,
-  setNewPlateNumber,
   isInputFocused,
   setIsInputFocused,
   plateInputRef,
@@ -34,6 +36,11 @@ export const RegistrationCard = memo(({
   inputRef,
   isLoading = false
 }: RegistrationCardProps) => {
+  // PR-U: local draft state. Previously this lived in useVehicleOperations
+  // (a context bucket), so every keystroke updated context state and
+  // re-rendered ALL consumers. Now it's local — one keystroke = one
+  // small component redrawing, never the whole app.
+  const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [isDebouncing, setIsDebouncing] = React.useState(false);
 
   // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
@@ -72,12 +79,18 @@ export const RegistrationCard = memo(({
   const showOnlyHourly = hourlyPrice > 0 && overnightPrice <= 0;
   const showOnlyOvernight = hourlyPrice <= 0 && overnightPrice > 0;
 
-  const handleGuardedCheckIn = (type: 'hourly' | 'overnight') => {
+  const handleGuardedCheckIn = async (type: 'hourly' | 'overnight') => {
     if (isDebouncing || isLoading) return;
     setIsDebouncing(true);
     setTimeout(() => setIsDebouncing(false), 300);
     closeKeyboard();
-    handleCheckIn(type);
+    // PR-U: pass the plate value to handleCheckIn. On error, the hook
+    // returns the formatted plate so we can restore it locally (the hook
+    // no longer owns newPlateNumber state).
+    const restorePlate = await handleCheckIn(type, newPlateNumber);
+    if (restorePlate) {
+      setNewPlateNumber(restorePlate);
+    }
   };
 
   const handleGuardedCheckOut = (vehicle: Vehicle) => {
