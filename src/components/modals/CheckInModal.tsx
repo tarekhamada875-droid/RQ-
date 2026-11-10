@@ -9,16 +9,19 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface CheckInModalProps {
-  newPlateNumber: string;
+  // PR-U: newPlateNumber removed — the modal now takes plateValue as a prop
+  // (or owns it locally if needed). This modal is legacy dead code (no
+  // setShowCheckInModal(true) calls in production), but it must compile.
+  plateValue: string;
   garage: Garage;
   isLoading: boolean;
   loadingType: string | null;
-  onCheckIn: (type: 'hourly' | 'overnight') => void;
+  onCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   onCancel: () => void;
 }
 
 export const CheckInModal: React.FC<CheckInModalProps> = memo(({
-  newPlateNumber,
+  plateValue,
   garage,
   isLoading,
   loadingType,
@@ -66,7 +69,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
             
             <div className="flex items-center justify-center mb-8 sm:mb-14 text-center scale-90 sm:scale-125 origin-center sm:my-8">
               <EgyptianPlate 
-                plateNumber={formatPlateNumber(newPlateNumber)} 
+                plateNumber={formatPlateNumber(plateValue)}
                 size={isLargeScreen ? "lg" : "md"} 
               />
             </div>
@@ -74,7 +77,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
             <div className="flex flex-col gap-3 sm:gap-4">
               {((Number(garage.hourlyRate) > 0 && Number(garage.overnightRate) > 0) || (Number(garage.hourlyRate) <= 0 && Number(garage.overnightRate) <= 0) || Number(garage.hourlyRate) > 0) && (
                 <button 
-                  onClick={() => onCheckIn('hourly')}
+                  onClick={() => void onCheckIn('hourly', plateValue)}
                   disabled={isLoading}
                   className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
                 >
@@ -93,7 +96,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
 
               {((Number(garage.hourlyRate) > 0 && Number(garage.overnightRate) > 0) || (Number(garage.hourlyRate) <= 0 && Number(garage.overnightRate) <= 0) || Number(garage.overnightRate) > 0) && (
                 <button 
-                  onClick={() => onCheckIn('overnight')}
+                  onClick={() => void onCheckIn('overnight', plateValue)}
                   disabled={isLoading}
                   className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
                 >

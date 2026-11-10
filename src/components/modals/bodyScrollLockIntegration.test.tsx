@@ -12,7 +12,7 @@ const ModalStack = () => {
     <>
       {showCheckIn && (
         <CheckInModal
-          newPlateNumber="TEST123"
+          plateValue="TEST123"
           garage={{ id: 'garage-1', name: 'Test Garage', dailyCapacity: 50 } as any}
           isLoading={false}
           loadingType={null}

@@ -60,7 +60,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   } = props;
 
   // Vehicle operations come from VehicleOpsProvider (context, not props)
-  const { setSelectedVehicle, setShowCheckOutModal, newPlateNumber, setNewPlateNumber, handleCheckIn, isLoading, checkoutJustSucceeded } = useVehicleOps();
+  const { setSelectedVehicle, setShowCheckOutModal, handleCheckIn, isLoading, checkoutJustSucceeded } = useVehicleOps();
 
   // Input refs + focus state come from GarageInputProvider (context, not props)
   const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();
@@ -262,8 +262,6 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
               />
             ) : (
               <RegistrationCard
-                newPlateNumber={newPlateNumber}
-                setNewPlateNumber={setNewPlateNumber}
                 isInputFocused={isInputFocused}
                 setIsInputFocused={setIsInputFocused}
                 plateInputRef={plateInputRef}

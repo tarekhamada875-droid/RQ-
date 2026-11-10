@@ -76,23 +76,17 @@ describe('useVehicleOperations confirmed feedback', () => {
     const plate = 'س ج ط 1 2 3 4';
     const { result } = renderOperations(createGarage());
 
+    let operation!: Promise<string | null>;
     act(() => {
-      result.current.setNewPlateNumber(plate);
-      result.current.setShowCheckInModal(true);
-    });
-
-    let operation!: Promise<void>;
-    act(() => {
-      operation = result.current.handleCheckIn('hourly');
+      operation = result.current.handleCheckIn('hourly', plate);
     });
 
     expect(result.current.isLoading).toBe(true);
     expect(result.current.vehicles).toEqual([]);
     expect(result.current.garage?.carsInside).toBe(0);
     expect(result.current.garage?.credits).toBe(5);
-    // the plate form closes immediately on submit (before Worker
-    // confirms). The busy/locked state (isLoading) provides the feedback.
-    expect(result.current.newPlateNumber).toBe('');
+    // PR-U: newPlateNumber no longer exists in the hook (moved to RegistrationCard).
+    // The plate is passed as a parameter to handleCheckIn.
     expect(result.current.showCheckInModal).toBe(false);
 
     await act(async () => {
@@ -121,7 +115,6 @@ describe('useVehicleOperations confirmed feedback', () => {
     expect(result.current.garage?.credits).toBe(4);
     expect(result.current.garage?.todayCount).toBe(1);
     expect(result.current.garage?.lastTransactionDate).toBe('2026-10-30');
-    expect(result.current.newPlateNumber).toBe('');
     expect(result.current.showCheckInModal).toBe(false);
   });
 

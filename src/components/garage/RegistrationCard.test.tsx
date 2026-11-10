@@ -9,8 +9,8 @@ vi.mock('../../utils/ThemeContext', () => ({
 
 const renderRegistrationCard = (overrides: Record<string, unknown> = {}) => {
   const props = {
-    newPlateNumber: '',
-    setNewPlateNumber: vi.fn(),
+    // PR-U: newPlateNumber/setNewPlateNumber removed — RegistrationCard now
+    // owns its own draft state. Tests verify the rendered plate display.
     isInputFocused: false,
     setIsInputFocused: vi.fn(),
     plateInputRef: createRef<HTMLInputElement>(),
@@ -49,14 +49,17 @@ describe('RegistrationCard accessible plate input', () => {
     expect(plateInput).toHaveAttribute('inputmode', 'none');
   });
 
-  it('keeps the virtual keyboard updating the plate value', () => {
-    const setNewPlateNumber = vi.fn();
-    renderRegistrationCard({ isInputFocused: true, setNewPlateNumber });
+  it('keeps the virtual keyboard updating the plate value (PR-U: local state)', () => {
+    renderRegistrationCard({ isInputFocused: true });
 
-    // Number keys display Arabic-Indic digits (٠-٩) for uneducated staff readability,
-    // but the value sent to setNewPlateNumber is still Western (0-9) for storage.
+    // PR-U: newPlateNumber is now local state inside RegistrationCard.
+    // Clicking the '١' (Arabic 1) key should update the plate display.
+    // The plate preview shows Arabic-Indic digits via formatArabicDigits.
     fireEvent.click(screen.getByRole('button', { name: '١' }));
 
-    expect(setNewPlateNumber).toHaveBeenCalledWith('1');
+    // The plate input should now contain '1' (Western digit in the DOM input,
+    // displayed as ١ in the plate preview via formatArabicDigits).
+    const plateInput = screen.getByRole('textbox', { name: 'رقم لوحة السيارة' }) as HTMLInputElement;
+    expect(plateInput.value).toBe('1');
   });
 });

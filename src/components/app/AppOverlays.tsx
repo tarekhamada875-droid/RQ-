@@ -32,15 +32,18 @@ export function AppOverlays() {
         ? 'admin:auth-pin'
         : `view:${view}`;
   const logoutAttemptScope = `${activeIdentity}:session:${sessionId}`;
-  const { newPlateNumber, selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, setNewPlateNumber, setSelectedVehicle } = useVehicleOps();
+  const { selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, pendingCheckInPlate, setSelectedVehicle } = useVehicleOps();
   const { deleteGarage } = useAdminMutations();
 
   return <Suspense fallback={null}>
-    {showCheckInModal && garage && <CheckInModal newPlateNumber={newPlateNumber} garage={garage} isLoading={isLoading} loadingType={loadingType} onCheckIn={handleCheckIn} onCancel={() => setShowCheckInModal(false)} />}
+    {/* PR-U: CheckInModal is legacy dead code — nobody calls setShowCheckInModal(true)
+        in production. It's kept for compilation; the active check-in flow goes
+        through RegistrationCard → handleCheckIn(type, plateValue) directly. */}
+    {showCheckInModal && garage && <CheckInModal plateValue="" garage={garage} isLoading={isLoading} loadingType={loadingType} onCheckIn={handleCheckIn} onCancel={() => setShowCheckInModal(false)} />}
     {showCheckOutModal && selectedVehicle && garage && <CheckOutModal selectedVehicle={selectedVehicle} garage={garage} currentStaff={currentStaff} isLoading={isLoading} loadingType={loadingType} onConfirm={confirmCheckOut} onDelete={handleDeleteVehicle} onCancel={() => { setShowCheckOutModal(false); setSelectedVehicle(null); }} />}
     {showDeleteConfirm && view === 'admin_garage_details' && selectedGarageForDetails && <DeleteGarageConfirmModal garage={selectedGarageForDetails} isLoading={isLoading} progress={garageDeletionProgress} onConfirm={() => deleteGarage(selectedGarageForDetails)} onCancel={() => setShowDeleteConfirm(false)} />}
     {showDeleteConfirm && selectedVehicle && <DeleteVehicleConfirmModal vehicle={selectedVehicle} isLoading={isLoading} onConfirm={handleDeleteVehicle} onCancel={() => { setShowDeleteConfirm(false); setSelectedVehicle(null); }} />}
-    {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); handleCheckIn(pendingCheckInType); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); setNewPlateNumber(''); }} />}
+    {showRecentExitWarning && recentVehicle && <RecentExitWarningModal vehicle={recentVehicle} onConfirm={() => { if (pendingCheckInType) { setShowRecentExitWarning(false); void handleCheckIn(pendingCheckInType, pendingCheckInPlate, true); } }} onCancel={() => { setShowRecentExitWarning(false); setRecentVehicle(null); }} />}
     {showSubscriberWarning && subscriberWarningPlate && <SubscriberWarningModal plateNumber={subscriberWarningPlate} onConfirm={() => { setShowSubscriberWarning(false); setSubscriberWarningPlate(''); }} />}
     {showLogoutConfirm && <LogoutConfirmModal key={logoutAttemptScope} attemptScope={logoutAttemptScope} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} onVerifyPin={authService.verifyAdminPinForLogout} />}
   </Suspense>;
