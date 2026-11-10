@@ -112,11 +112,19 @@ export interface PlateParts {
 
 /**
  * Splits a plate number into its distinct letter and number segments.
+ *
+ * Uses getCleanPlate (preserves original Arabic letters including Alef
+ * variants like أ) so the display shows what the user actually typed.
+ * Pre-fix: this called getRawPlate, which normalized أ → ا, so the plate
+ * preview on the check-in screen always showed ا even after the
+ * getCleanPlate fix in the previous PR.
+ *
+ * For server-side matching, use getRawPlate directly (it normalizes).
  */
 export const getPlateParts = (val: string): PlateParts => {
-  const raw = getRawPlate(val);
-  const letters = raw.replace(/[0-9]/g, '');
-  const numbers = raw.replace(/[^0-9]/g, '');
+  const clean = getCleanPlate(val);
+  const letters = clean.replace(/[0-9\u0660-\u0669\u06F0-\u06F9]/g, '');
+  const numbers = clean.replace(/[^0-9\u0660-\u0669\u06F0-\u06F9]/g, '');
   return { letters, numbers };
 };
 
