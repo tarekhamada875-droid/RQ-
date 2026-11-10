@@ -24,8 +24,12 @@
          in body text). Inter and Outfit trimmed to the 4 used weights.
          Total: Amiri 2 + Inter 4 + Outfit 2 (Outfit only uses 700, 900
          in the actual codebase, confirmed via grep) = 8 weights.
-         Net: 16 → 8 = 50% reduction in font payload. -->
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" />
+         Net: 16 → 8 = 50% reduction in font payload.
+         LCP win 1: defer font loading with media=print + onload swap so
+         fonts don't block first paint. System fonts render immediately;
+         Google Fonts swap in when they arrive (display=swap). -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" /></noscript>
     <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />

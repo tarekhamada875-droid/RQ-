@@ -93,6 +93,14 @@ export default defineConfig(() => {
       sourcemap: false,
       minify: 'esbuild',
       chunkSizeWarningLimit: 2000,
+      // LCP win 2: disable ALL modulepreload links. Vite adds <link
+      // rel="modulepreload"> for every chunk the app imports — including
+      // the 623KB firebase chunk — forcing the browser to download
+      // everything BEFORE first paint. Disabling preloading means the
+      // browser only downloads chunks when they're actually imported
+      // at runtime. The app's loading screen renders immediately with
+      // just the index chunk (~126KB), then firebase loads after.
+      modulePreload: false,
       rollupOptions: {
         output: {
           manualChunks(id) {
