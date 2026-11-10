@@ -117,34 +117,36 @@ function checkRouteCallers(): CheckResult {
     '/api/people/update-pin',
   ]);
 
-  // Scan src/ for fetch('/api/...') calls
-  const srcDir = resolve(root, 'src');
-  if (existsSync(srcDir)) {
-    function scanDir(dir: string): string[] {
-      const files: string[] = [];
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const fullPath = resolve(dir, entry.name);
-        if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '__tests__') {
-          files.push(...scanDir(fullPath));
-        } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.test.ts') && !entry.name.endsWith('.test.tsx')) {
-          files.push(fullPath);
-        }
-      }
-      return files;
-    }
-
-    const files = scanDir(srcDir);
-    const routePattern = /['"`](\/api\/[^'"`\s?]+)['"`]/g;
-    const foundRoutes = new Set<string>();
-
-    for (const file of files) {
-      const content = readFileSync(file, 'utf8');
-      let match: RegExpExecArray | null;
-      while ((match = routePattern.exec(content)) !== null) {
-        const route = match[1];
-        foundRoutes.add(route);
+  // PR-K fix: scan BOTH src/ and tools/ for fetch('/api/...') calls.
+  // Pre-fix: the comment said "src/ AND tools/" but only src/ was scanned.
+  // Now scans both directories. Excludes __tests__/ and *.test.* files.
+  const scanDirs = [resolve(root, 'src'), resolve(root, 'tools')];
+  function scanDir(dir: string): string[] {
+    const files: string[] = [];
+    if (!existsSync(dir)) return files;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = resolve(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '__tests__') {
+        files.push(...scanDir(fullPath));
+      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) && !entry.name.endsWith('.test.ts') && !entry.name.endsWith('.test.tsx')) {
+        files.push(fullPath);
       }
     }
+    return files;
+  }
+
+  const files = scanDirs.flatMap(scanDir);
+  const routePattern = /['"`](\/api\/[^'"`\s?]+)['"`]/g;
+  const foundRoutes = new Set<string>();
+
+  for (const file of files) {
+    const content = readFileSync(file, 'utf8');
+    let match: RegExpExecArray | null;
+    while ((match = routePattern.exec(content)) !== null) {
+      const route = match[1];
+      foundRoutes.add(route);
+    }
+  }
 
     // Check each found route against the allowlist
     for (const route of foundRoutes) {
@@ -157,12 +159,11 @@ function checkRouteCallers(): CheckResult {
         }
       }
     }
-  }
 
   return {
     name: 'route-caller-checker',
     status: warnings.length === 0 ? 'pass' : 'warn',
-    details: `Scanned src/ for fetch('/api/...') calls; found ${warnings.length} routes not in the operator allowlist.`,
+    details: `Scanned src/ and tools/ for fetch('/api/...') calls; found ${warnings.length} routes not in the operator allowlist.`,
     warnings,
   };
 }
@@ -244,7 +245,7 @@ function checkListenerCount(): CheckResult {
   return {
     name: 'listener-count-report',
     status: warnings.length === 0 ? 'pass' : 'warn',
-    details: `Peak Firestore listeners (founding 15+3+1 scenario): ${peakListeners} (ceiling; PR-E multi-tab sharing reduces actual)`,
+    details: `Peak Firestore listeners (founding 15+3+1 scenario): ${peakListeners} (ceiling; PR-E multi-tab sharing reduces actual). NOTE: this is a static estimate using hand-written per-session constants (4 garage, 1 delegate, 0 admin), NOT a runtime measurement. For production listener counts, query the listenerTracker telemetry from the browser console (window.__RQ_FIRESTORE_LISTENER_DIAGNOSTICS__().telemetry).`,
     warnings,
   };
 }

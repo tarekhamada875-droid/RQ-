@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useMemo } from 'react';
 import { Garage } from '../types';
 import { delegateService, garageService } from '../services';
 import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../services/garageDeletionService';
@@ -506,11 +506,19 @@ isSessionOccupiedError(errMsg)
     await refreshAdminLists();
   }, [refreshAdminLists]);
 
-  return {
+  // PR-H2: memoize the return value. Previously exempted in PR-H with
+  // incorrect React logic. Now memoized — same fix as useVehicleOperations.
+  return useMemo(() => ({
     handleGarageLogin,
     handleDelegateLogin,
     createNewGarage,
     deleteGarage,
     removeDelegate,
-  };
+  }), [
+    handleGarageLogin,
+    handleDelegateLogin,
+    createNewGarage,
+    deleteGarage,
+    removeDelegate,
+  ]);
 }

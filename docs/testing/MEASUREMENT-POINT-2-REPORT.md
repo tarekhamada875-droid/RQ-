@@ -5,6 +5,8 @@
 **PRs merged since MP-1**: PR-E (#681, persistent cache), PR-F (#683, auth caches)
 **Supervisor instruction**: *"MP-2 (harness is now the measuring stick)"* — the 20% divergence threshold is now binding.
 
+**Scope note (per supervisor review)**: The harness counts **Worker-side Firestore reads only** (reads through the Cloudflare Worker's mockDb). The client app also reads Firestore directly (11 files use `firebase/firestore` `onSnapshot`/`getDocs`). Those client-side reads are NOT counted by the harness. They were bounded in the MP-1 capacity model (`tools/measurement-point-1-model.mjs`) and PR-E's persistent IDB cache kills most repeat client reads, so the 27% budget figure is trustworthy — but the harness numbers on this page are Worker-side only.
+
 ---
 
 ## ✅ Measurement Point 2: PASSED — All flows within 20% threshold

@@ -5,8 +5,17 @@
  * load test (which measured latency/throughput, not our budget currency of
  * Firestore reads). This harness seeds the founding shape (15 garages, 4-5
  * delegates × 3-5 garages each, subscribers, one day of vehicle activity)
- * and measures per-flow Firestore read counts using the existing
+ * and measures per-flow Worker-side Firestore read counts using the existing
  * mockDb.documentReadCount pattern.
+ *
+ * IMPORTANT SCOPE NOTE (per supervisor review): this harness counts
+ * WORKER-SIDE Firestore reads only (reads that go through the Cloudflare
+ * Worker's mockDb). The client app ALSO reads Firestore directly (11 files
+ * use firebase/firestore onSnapshot/getDocs directly). Those client-side
+ * reads are NOT counted here. They were bounded in the MP-1 capacity
+ * model (tools/measurement-point-1-model.mjs) and PR-E's persistent IDB
+ * cache kills most repeat client reads, so the 27% budget figure is
+ * trustworthy — but this harness's numbers are Worker-side only.
  *
  * Acceptance (per supervisor): per-flow table, measured vs. model, warn at
  * 20% divergence on any flow. Failure mode is "warn" (console.warn), not
