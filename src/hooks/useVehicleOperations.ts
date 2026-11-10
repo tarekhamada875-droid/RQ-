@@ -156,12 +156,13 @@ export function useVehicleOperations({
     const raw = getRawPlate(plateValue);
     const formatted = formatPlateNumber(plateValue);
 
-    const existing = vehicles.find(v => v.plateNumberRaw === raw);
-    if (existing) {
-      showToast('هذه السيارة موجودة بالفعل بالداخل', 'error');
-      setShowCheckInModal(false);
-      return formatted; // PR-U: restore the plate so the user can see what they typed
-    }
+    // PR-E cache fix: removed client-side "already inside" check.
+    // Pre-fix: vehicles.find(v => v.plateNumberRaw === raw) checked the
+    // local vehicles array. But PR-E's persistent IDB cache serves stale
+    // vehicle data from previous sessions on app reopen, causing false
+    // "already inside" errors for cars that have since left. The server
+    // already checks for duplicates and returns ALREADY_INSIDE — let it
+    // be the source of truth.
 
     const recentlyExited = todayTransactions
       .filter(v => v.plateNumberRaw === raw)
@@ -290,27 +291,21 @@ export function useVehicleOperations({
       }
       soundManager.play('checkIn');
 
-      // apply credits AFTER the count animation has started.
-      // The GarageSubscriptionCard triggers the 5-arrow debit animation when
-      // credits decrease. By delaying the credit update, the count finishes
-      // changing before the arrows begin falling.
+      // Apply credits + arrows SIMULTANEOUSLY with the count change.
+      // Pre-fix: a 600ms delay separated count change from credit update
+      // to create a "staggered" effect. The user hated it — they want
+      // everything to happen at once like a calculator: tap → done → next.
+      // Also removed the 1800ms wait for arrows to finish (PR #695) —
+      // the arrows play in the BACKGROUND while the user can already
+      // type the next plate. They're decoration, not a blocker.
       if (typeof serverData?.credits === 'number') {
-        await new Promise<void>((resolve) => setTimeout(resolve, 600));
         setGarage(prev => prev ? {
           ...prev,
           credits: serverData.credits,
           _confirmedTransactionUntil: Date.now() + 2000,
         } : prev);
-        // Keep isLoading true until the arrows animation finishes (1800ms).
-        // Pre-fix: isLoading cleared immediately after the credit update,
-        // but the arrows kept falling for 1.8s. During that window the
-        // buttons re-enabled and the user could start a new check-in,
-        // creating overlapping visual states (old arrows + new spinner +
-        // new vehicle). Now the loading spinner covers the entire visual
-        // feedback sequence: count change → arrows fall → clean state.
-        await new Promise<void>((resolve) => setTimeout(resolve, 1800));
       }
-      return null; // PR-U: success — no plate restore needed
+      return null; // success — RegistrationCard clears the plate
     } catch (error: any) {
       if (error?.message === 'Operation already in progress') {
         return null;
