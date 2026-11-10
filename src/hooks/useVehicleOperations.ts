@@ -301,6 +301,14 @@ export function useVehicleOperations({
           credits: serverData.credits,
           _confirmedTransactionUntil: Date.now() + 2000,
         } : prev);
+        // Keep isLoading true until the arrows animation finishes (1800ms).
+        // Pre-fix: isLoading cleared immediately after the credit update,
+        // but the arrows kept falling for 1.8s. During that window the
+        // buttons re-enabled and the user could start a new check-in,
+        // creating overlapping visual states (old arrows + new spinner +
+        // new vehicle). Now the loading spinner covers the entire visual
+        // feedback sequence: count change → arrows fall → clean state.
+        await new Promise<void>((resolve) => setTimeout(resolve, 1800));
       }
       return null; // PR-U: success — no plate restore needed
     } catch (error: any) {
