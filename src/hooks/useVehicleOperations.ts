@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { Vehicle, Garage, Staff } from '../types';
 import { adminService, vehicleService } from '../services';
 import { soundManager } from '../utils/sounds';
@@ -541,7 +541,14 @@ export function useVehicleOperations({
     }
   }, [isOnline, garage, selectedVehicle, currentStaff, showToast, setGarage, setVehicles, isTransactionLocked, acquireTransactionLock, releaseTransactionLock]);
 
-  return {
+  // PR-H2: memoize the return value. Previously exempted in PR-H with
+  // incorrect React logic ("useCallback handlers are stable so consumers
+  // don't re-render"). That's wrong — React.Context compares the value
+  // prop by Object.is; a new object reference re-renders ALL consumers
+  // regardless of inner callback stability. The 3 PR-H memoizations
+  // (navigationUi, garageData, session) were correct; this one was skipped
+  // with bad justification. Now memoized with all 26 values as deps.
+  return useMemo(() => ({
     newPlateNumber,
     setNewPlateNumber,
     selectedVehicle,
@@ -568,5 +575,32 @@ export function useVehicleOperations({
     handleCheckIn,
     confirmCheckOut,
     handleDeleteVehicle,
-  };
+  }), [
+    newPlateNumber,
+    setNewPlateNumber,
+    selectedVehicle,
+    setSelectedVehicle,
+    showCheckInModal,
+    setShowCheckInModal,
+    showCheckOutModal,
+    setShowCheckOutModal,
+    isLoading,
+    setIsLoading,
+    loadingType,
+    setLoadingType,
+    checkoutJustSucceeded,
+    showRecentExitWarning,
+    setShowRecentExitWarning,
+    recentVehicle,
+    setRecentVehicle,
+    showSubscriberWarning,
+    setShowSubscriberWarning,
+    subscriberWarningPlate,
+    setSubscriberWarningPlate,
+    pendingCheckInType,
+    setPendingCheckInType,
+    handleCheckIn,
+    confirmCheckOut,
+    handleDeleteVehicle,
+  ]);
 }
