@@ -140,7 +140,17 @@ export function useGarageSession({
     // clearing in-memory owner state or the authoritative session cleanup.
     try {
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id') {
+        const isAppKey = key.startsWith('app_') && key !== 'app_admin_color' && key !== 'app_theme' && key !== 'app_session_id';
+        // STORAGE (DevTools runtime audit 2026-11-11, follow-up to the
+        // successful-logout purge): attempt counters are scoped per
+        // (identity, device session) as `logout_attempts:<identity>:session:<id>`.
+        // A session that ends without the modal's success path — remote kick,
+        // forced expiry, abandoned modal — leaves its counter behind, and
+        // counters of identities that never log in again stay forever. A new
+        // login starts a fresh attempt budget, so at session teardown every
+        // logout_attempts:* key on this device is dead weight.
+        const isLogoutAttemptKey = key.startsWith('logout_attempts:');
+        if (isAppKey || isLogoutAttemptKey) {
           try { localStorage.removeItem(key); } catch { /* Continue clearing other keys. */ }
         }
       });
