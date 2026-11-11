@@ -17,12 +17,30 @@ export function useLocalStorageState<T>(key: string, defaultValue: T): [T, React
       return;
     }
     try {
+      // PERF (DevTools runtime audit 2026-11-11): compute the persisted string
+      // once and compare it with what is already stored. Same-value writes —
+      // common when a parent re-render recreates object identity — must not
+      // repeat synchronous localStorage I/O, and must not broadcast: every
+      // mounted hook instance re-reads + re-parses storage on each broadcast.
+      // Skipping the no-op write also skips the cascade entirely.
+      let nextValue: string | null;
       if (state === null || state === undefined) {
-        localStorage.removeItem(key);
+        nextValue = null;
       } else if (typeof state === 'string') {
-        localStorage.setItem(key, state);
+        nextValue = state;
       } else {
-        localStorage.setItem(key, JSON.stringify(state));
+        nextValue = JSON.stringify(state);
+      }
+
+      const current = localStorage.getItem(key);
+      if (nextValue === current) {
+        return; // nothing changed — skip both the write and the broadcast
+      }
+
+      if (nextValue === null) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, nextValue);
       }
       window.dispatchEvent(new CustomEvent('local-storage-update', { detail: { key } }));
     } catch (e) {
