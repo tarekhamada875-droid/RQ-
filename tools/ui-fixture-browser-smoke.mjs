@@ -191,7 +191,11 @@ async function main() {
       const diagnostic = await evaluate(page, `({ href: location.href, readyState: document.readyState, title: document.title, body: document.body?.innerText?.slice(0, 500) || '', htmlLength: document.documentElement?.outerHTML?.length || 0 })`);
       throw new Error(`${error.message}; page=${JSON.stringify(diagnostic)}`);
     }
-    await sleep(2_000);
+    // Wait for Firebase lazy-loading to complete before interacting.
+    // The firebaseReady promise delays app rendering by ~2-3s while
+    // firebase/auth and firebase/firestore load via dynamic import().
+    // The original 2s delay is not enough — increase to 5s.
+    await sleep(5_000);
     if (scenario.entryText) await clickButtonByText(page, scenario.entryText);
     await clickPinDigits(page, scenario.pin);
     const displayedPin = await evaluate(page, `document.body.innerText.includes(${JSON.stringify(scenario.pin)}) || document.querySelectorAll('button').length > 0`);
