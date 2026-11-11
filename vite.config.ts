@@ -17,6 +17,7 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: false, // We already have our own manifest.json in public/
+        injectRegister: false, // Performance: don't inject registerSW.js as render-blocking script. We handle SW registration ourselves via the inline script in index.html (which runs after First Paint via window.addEventListener('load')).
         workbox: {
           skipWaiting: true,
           clientsClaim: true,

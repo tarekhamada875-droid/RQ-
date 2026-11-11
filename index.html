@@ -53,14 +53,11 @@
         }
       })();
 
-      // Register clean service worker for PWA installability helper
+      // Performance: SW registration moved here (non-blocking, after First Paint).
+      // Previously this was a render-blocking <script src="/registerSW.js"> tag
+      // in <head> — now it's an inline script that runs after window 'load' event,
+      // so it doesn't delay First Contentful Paint.
       if ('serviceWorker' in navigator) {
-        var isReloadingForServiceWorker = false;
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
-          if (isReloadingForServiceWorker) return;
-          isReloadingForServiceWorker = true;
-          window.location.reload();
-        });
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
             console.log('PWA ServiceWorker registered with scope:', reg.scope);
