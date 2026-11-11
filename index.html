@@ -20,16 +20,21 @@
          download (~30-60 KB each). Post-PR-J: only the weights actually
          used in the codebase (font-medium/500, font-bold/700,
          font-extrabold/800, font-black/900) are loaded. Amiri retains
-         400+700 for body Arabic text; italic variants dropped (not used
-         in body text). Inter and Outfit trimmed to the 4 used weights.
-         Total: Amiri 2 + Inter 4 + Outfit 2 (Outfit only uses 700, 900
-         in the actual codebase, confirmed via grep) = 8 weights.
-         Net: 16 → 8 = 50% reduction in font payload.
+         700 only — DevTools runtime audit 2026-11-11 + full source
+         census: the 4 font-serif usages all request weight >= 600
+         (font-black/900, font-bold/700, font-semibold/600), and CSS
+         resolves every one of them to the 700 file; the 400 weight was
+         never rendered by any view. Italic variants dropped (not used
+         in body text). Inter and Outfit trimmed to the used weights
+         (Outfit renders 700 via font-mono font-bold and 900 via
+         font-mono font-black; Inter serves the default sans stack).
+         Total: Amiri 1 + Inter 4 + Outfit 2 = 7 weights.
+         Net: 16 → 8 (PR-J) → 7 (this trim).
          LCP win 1: defer font loading with media=print + onload swap so
          fonts don't block first paint. System fonts render immediately;
          Google Fonts swap in when they arrive (display=swap). -->
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" /></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Inter:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet" /></noscript>
     <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
