@@ -66,12 +66,15 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
     let resultData: Record<string, any> = {};
 
     await adminDb.runTransaction(async (t: any) => {
+      console.log('[WORKER CHECK-IN DEBUG]', { step: 'transaction-start', garageId, plateRaw, plateNumber, idempotencyKey });
       if (idempotencyKey) {
         const duplicate = await checkIdempotencyInTransaction(t, idempotencyKey, '/api/vehicles/check-in', user?.uid, requestFingerprint);
         if (duplicate.isDuplicate) {
+          console.log('[WORKER CHECK-IN DEBUG]', { step: 'idempotency-duplicate-hit', idempotencyKey, cachedResult: JSON.stringify(duplicate.cachedResult || {}).slice(0, 200) });
           resultData = duplicate.cachedResult || {};
           return;
         }
+        console.log('[WORKER CHECK-IN DEBUG]', { step: 'idempotency-miss (fresh request)', idempotencyKey });
       }
       const garageRef = adminDb.doc(`garages/${garageId}`);
       const vehicleRef = adminDb.doc(`garages/${garageId}/vehicles/${plateRaw}`);
@@ -84,6 +87,7 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         const startDate = subscriber?.startDate || '';
         const endDate = subscriber?.endDate || '';
         isSubscriberAuthoritative = Boolean(startDate && endDate && today >= startDate && today <= endDate);
+        console.log('[WORKER CHECK-IN DEBUG]', { step: 'subscriber-lookup', plateRaw, isSubscriberAuthoritative, subscriberEndDate: endDate || 'none' });
       } catch (subErr) {
         console.warn('[Worker Check-In] Subscriber lookup failed inside transaction:', subErr);
         throw new Error('SUBSCRIBER_LOOKUP_UNAVAILABLE', { cause: subErr });
@@ -95,14 +99,34 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
         t.get(dailyStatsRef)
       ]);
 
+      console.log('[WORKER CHECK-IN DEBUG]', {
+        step: 'firestore-reads',
+        plateRaw,
+        vehicleDocPath: `garages/${garageId}/vehicles/${plateRaw}`,
+        vehicleDocExists: vehicleSnap.exists,
+        vehicleDocStatus: vehicleSnap.exists ? (vehicleSnap.data()?.status || 'MISSING') : 'NO_DOC',
+        vehicleDocData: vehicleSnap.exists ? JSON.stringify(vehicleSnap.data()).slice(0, 300) : 'null',
+        garageExists: garageSnap.exists,
+      });
+
       if (!garageSnap.exists) throw new Error('GARAGE_NOT_FOUND');
       const garageData = garageSnap.data() || {};
 
       const resolvedStaffName = user?.displayName || (callerRole === 'admin' ? 'مدير النظام' : (callerRole === 'garage' ? 'مدير الجراج' : 'موظف'));
       const checkInGarage = garageDocumentToCheckInState(garageData, isSubscriberAuthoritative);
       const checkInVehicle = vehicleDocumentToCheckInState(vehicleSnap.exists ? vehicleSnap.data() || {} : null);
+      console.log('[WORKER CHECK-IN DEBUG]', {
+        step: 'decision-input',
+        plateRaw,
+        checkInVehicle_exists: checkInVehicle.exists,
+        checkInVehicle_status: checkInVehicle.status,
+      });
       const decision = decideVehicleCheckIn({ today }, checkInGarage, checkInVehicle);
-      if (decision.ok === false) throw new Error(decision.error);
+      console.log('[WORKER CHECK-IN DEBUG]', { step: 'decision-result', plateRaw, decision: JSON.stringify(decision) });
+      if (decision.ok === false) {
+        console.log('[WORKER CHECK-IN DEBUG]', { step: 'DECISION_REJECTED', plateRaw, error: decision.error, vehicleExists: checkInVehicle.exists, vehicleStatus: checkInVehicle.status });
+        throw new Error(decision.error);
+      }
       const { isNewDay } = decision.value;
       const prepaidCreditsEnabled = garageData.billingModel === 'prepaid_credits' || typeof garageData.credits === 'number';
       let creditDebit: any = null;
@@ -253,8 +277,10 @@ app.post('/api/vehicles/check-in', requireWorkerAuth, async (c) => {
 
     const durationMs = Date.now() - requestStartedAt;
     c.header('Server-Timing', `check-in;dur=${durationMs}`);
+    console.log('[WORKER CHECK-IN DEBUG]', { step: 'SUCCESS', plateRaw, durationMs, carsInside: resultData?.carsInside, credits: resultData?.credits });
     return c.json({ success: true, data: resultData });
   } catch (err: any) {
+    console.log('[WORKER CHECK-IN DEBUG]', { step: 'CATCH_ERROR', error: err?.message });
     console.error('[Worker] Check-in error:', err);
     const { statusCode, message } = mapDomainErrorToStatus(err);
     return c.json({ success: false, error: message }, statusCode as any);
