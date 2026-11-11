@@ -183,6 +183,8 @@ export const RegistrationCard = memo(({
               <input
                 ref={plateInputRef}
                 type="text"
+                name="plateNumber"
+                id="plateNumber"
                 aria-label="رقم لوحة السيارة"
                 aria-describedby="registration-plate-input-description"
                 inputMode="none"
