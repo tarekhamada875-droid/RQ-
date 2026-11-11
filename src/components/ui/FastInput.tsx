@@ -129,12 +129,17 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
   const [liveValue, setLiveValue] = useState<string>(defaultValue);
   const isValid = validate ? validate(liveValue) : true;
 
-  // rAF batching: collapse multiple keystrokes within one frame into one update.
-  const rafIdRef = useRef<number | null>(null);
+  // Performance: replaced requestAnimationFrame with setTimeout debounce.
+  // rAF waits for the next browser paint frame — if the main thread is busy
+  // (142ms tasks, 45ms layouts from the Lighthouse trace), rAF is delayed,
+  // making the UI feel sluggish. A 16ms setTimeout fires immediately after
+  // the current task completes, without waiting for the next paint frame.
+  // This is the pattern recommended by Chrome DevTools for input handling.
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingValueRef = useRef<string | null>(null);
 
   const flushPending = useCallback(() => {
-    rafIdRef.current = null;
+    timeoutIdRef.current = null;
     if (pendingValueRef.current === null) return;
     const next = pendingValueRef.current;
     pendingValueRef.current = null;
@@ -144,8 +149,10 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
 
   const scheduleLiveUpdate = useCallback((value: string) => {
     pendingValueRef.current = value;
-    if (rafIdRef.current === null) {
-      rafIdRef.current = requestAnimationFrame(flushPending);
+    if (timeoutIdRef.current === null) {
+      // 16ms ≈ one frame at 60fps, but fires via the macrotask queue
+      // instead of being gated by the browser's render pipeline.
+      timeoutIdRef.current = setTimeout(flushPending, 16);
     }
   }, [flushPending]);
 
@@ -196,9 +203,9 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
     input.addEventListener('input', handleInput);
     return () => {
       input.removeEventListener('input', handleInput);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
       }
     };
     // PR-I: empty deps — subscribe once on mount, read latest mask +
@@ -253,10 +260,10 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
       const value = inputRef.current?.value ?? '';
       committedRef.current = value;
       onCommit(value);
-      // Flush any pending rAF update immediately so the live state is fresh.
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
+      // Flush any pending update immediately so the live state is fresh.
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
         pendingValueRef.current = null;
         setLiveValue(value);
         if (onLiveValue) onLiveValue(value);
