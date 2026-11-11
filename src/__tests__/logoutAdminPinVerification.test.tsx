@@ -93,7 +93,10 @@ describe('v165 — Logout Admin PIN Verification & Modal Isolation', () => {
       expect(onConfirmMock).toHaveBeenCalledTimes(1);
     });
     expect(onCancelMock).not.toHaveBeenCalled();
-    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent('garage:garage-user-123:session-1')}`)).toBe('0');
+    // Zombie-key purge (DevTools runtime audit 2026-11-11): success removes
+    // the per-session attempt key instead of persisting '0' — a missing key
+    // already reads as 0 attempts.
+    expect(localStorage.getItem(`logout_attempts:${encodeURIComponent('garage:garage-user-123:session-1')}`)).toBeNull();
   });
 
   it('2. Rejects logout and displays error message when wrong PIN is entered', async () => {
