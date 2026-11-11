@@ -302,6 +302,40 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     hook.unmount();
   });
 
+  it('sweeps stale logout attempt counters at session teardown but preserves device-scoped keys', async () => {
+    // Counters from identities/sessions that never complete a successful
+    // logout survive until teardown: a remote kick or abandoned modal never
+    // reaches the modal's own purge, and dead identities' counters would
+    // otherwise persist forever on long-lived garage devices.
+    localStorage.setItem('logout_attempts:staff-1:session:old-device-uuid', '2');
+    localStorage.setItem('logout_attempts:admin:session:session-lifecycle-test', '1');
+    localStorage.setItem('app_garage', JSON.stringify({ id: 'garage-1' }));
+    localStorage.setItem('app_admin_color', 'emerald');
+    localStorage.setItem('app_theme', 'dark');
+    localStorage.setItem('app_session_id', 'keep-me');
+    localStorage.setItem('rq_canonical_session_id', 'session-lifecycle-test');
+
+    const props = createProps();
+    const hook = renderHook(() => useGarageSession(props));
+    await waitFor(() => expect(sessionMocks.onSnapshot).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      await hook.result.current.handleLogout();
+    });
+
+    expect(localStorage.getItem('logout_attempts:staff-1:session:old-device-uuid')).toBeNull();
+    expect(localStorage.getItem('logout_attempts:admin:session:session-lifecycle-test')).toBeNull();
+    // Existing teardown contract is unchanged:
+    expect(localStorage.getItem('app_garage')).toBeNull();
+    expect(localStorage.getItem('app_admin_color')).toBe('emerald');
+    expect(localStorage.getItem('app_theme')).toBe('dark');
+    expect(localStorage.getItem('app_session_id')).toBe('keep-me');
+    expect(localStorage.getItem('rq_canonical_session_id')).toBe('session-lifecycle-test');
+    expect(sessionMocks.signOut).toHaveBeenCalledOnce();
+
+    hook.unmount();
+  });
+
   it('finishes in-memory logout when browser storage removal throws', async () => {
     const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
       throw new Error('storage unavailable');
