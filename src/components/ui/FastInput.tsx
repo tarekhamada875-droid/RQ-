@@ -282,6 +282,7 @@ export const FastInput = memo(forwardRef<FastInputHandle, FastInputProps>(functi
     <>
       <input
         {...rest}
+        name={rest.name || 'fastInput'}
         ref={inputRef}
         defaultValue={defaultValue}
         onFocus={handleFocus}
