@@ -77,7 +77,7 @@ describe('FastInput — DOM-first architecture (audit 2026-11-08)', () => {
 
   describe('onLiveValue fires (rAF-batched) on input', () => {
     beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     });
 
     afterEach(() => {
