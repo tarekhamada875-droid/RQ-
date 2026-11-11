@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../firebase', () => ({ auth: { currentUser: null } }));
 
 import { ApiError, apiFetch, getApiUrl } from './apiClient';
+import { auth } from '../firebase';
 
 function response(body: unknown, status = 200, contentType = 'application/json'): Response {
   return new Response(JSON.stringify(body), {
@@ -15,6 +16,10 @@ describe('frontend API boundary', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    (auth as { currentUser: unknown }).currentUser = null;
   });
 
   it('uses the Cloudflare Worker fallback for deployed API endpoints and preserves external URLs', () => {
@@ -83,5 +88,66 @@ describe('frontend API boundary', () => {
     const error = new ApiError('failure', { code: 'TEST', status: 400 });
     expect(error).toBeInstanceOf(Error);
     expect(error.message).toBe('failure');
+  });
+
+  it('shares a single in-flight token fetch across concurrent requests (single-flight)', async () => {
+    // DevTools runtime audit 2026-11-11: concurrent requests each awaited
+    // getIdToken() independently, overlapping refresh work near expiry.
+    let tokenFetches = 0;
+    const authUser = {
+      uid: 'user-1',
+      getIdToken: vi.fn(() => new Promise<string>((resolve) => {
+        tokenFetches += 1;
+        setTimeout(() => resolve('shared-token'), 10);
+      })),
+    };
+    (auth as { currentUser: unknown }).currentUser = authUser;
+    // Fresh Response per call: a Response body can only be read once.
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(response({ success: true })));
+
+    await Promise.all([
+      apiFetch('/api/health'),
+      apiFetch('/api/health'),
+      apiFetch('/api/health'),
+    ]);
+
+    expect(tokenFetches).toBe(1);
+    expect(authUser.getIdToken).toHaveBeenCalledTimes(1);
+    for (const call of fetchMock.mock.calls) {
+      const headers = (call[1] as RequestInit).headers as Record<string, string>;
+      expect(headers.Authorization).toBe('Bearer shared-token');
+    }
+
+    // No blind TTL cache: after the fetch settles, the next request fetches
+    // again (the Firebase SDK then serves its own cached token).
+    await apiFetch('/api/health');
+    expect(tokenFetches).toBe(2);
+  });
+
+  it('does not share an in-flight token fetch across different users', async () => {
+    let resolveFirst!: (token: string) => void;
+    const getIdTokenFirst = vi.fn(() => new Promise<string>((resolve) => { resolveFirst = resolve; }));
+    (auth as { currentUser: unknown }).currentUser = { uid: 'user-1', getIdToken: getIdTokenFirst };
+    // Fresh Response per call: a Response body can only be read once.
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(response({ success: true })));
+
+    const first = apiFetch('/api/health');
+
+    // Swap the signed-in user while the first token fetch is still pending:
+    // the second request must not inherit the first user's token.
+    const getIdTokenSecond = vi.fn().mockResolvedValue('token-user-2');
+    (auth as { currentUser: unknown }).currentUser = { uid: 'user-2', getIdToken: getIdTokenSecond };
+    const second = apiFetch('/api/health');
+
+    resolveFirst('token-user-1');
+    await Promise.all([first, second]);
+
+    expect(getIdTokenFirst).toHaveBeenCalledTimes(1);
+    expect(getIdTokenSecond).toHaveBeenCalledTimes(1);
+    const authHeaders = fetchMock.mock.calls.map(
+      (call) => ((call[1] as RequestInit).headers as Record<string, string>).Authorization
+    );
+    expect(authHeaders).toContain('Bearer token-user-1');
+    expect(authHeaders).toContain('Bearer token-user-2');
   });
 });

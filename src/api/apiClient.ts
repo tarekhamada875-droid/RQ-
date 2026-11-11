@@ -108,6 +108,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// RELIABILITY (DevTools runtime audit 2026-11-11): concurrent requests each
+// awaited `getIdToken()` independently; when the cached token neared expiry,
+// several requests could trigger overlapping refresh work for the same user.
+// Token fetches are now shared per user while in flight ("single-flight").
+//
+// Deliberately NOT the audit's suggested 5-minute blind TTL with
+// `getIdToken(true)` (forced refresh): forcing refreshes changes token
+// freshness semantics, and caching tokens on a wall-clock TTL risks sending
+// stale credentials — the same class of auth-timing regression that forced
+// the revert of PRs #710–#714. Single-flight deduplication only: once the
+// fetch settles, the next request calls `getIdToken()` again and the
+// Firebase SDK serves its own cached token (refreshing only when near
+// expiry), exactly as before.
+let inFlightTokenFetch: Promise<string> | null = null;
+let inFlightTokenFetchUid: string | null = null;
+
+function fetchTokenOnce(user: { uid?: string; getIdToken: () => Promise<string> }): Promise<string> {
+  const uid = typeof user.uid === 'string' ? user.uid : null;
+  if (inFlightTokenFetch && inFlightTokenFetchUid === uid) {
+    return inFlightTokenFetch;
+  }
+  const fetchPromise = user.getIdToken().finally(() => {
+    if (inFlightTokenFetch === fetchPromise) {
+      inFlightTokenFetch = null;
+      inFlightTokenFetchUid = null;
+    }
+  });
+  inFlightTokenFetch = fetchPromise;
+  inFlightTokenFetchUid = uid;
+  return fetchPromise;
+}
+
 function errorText(result: unknown, status: number): string {
   if (isRecord(result)) {
     if (typeof result.error === 'string') return result.error;
@@ -138,7 +170,7 @@ export async function apiFetch<T = Record<string, any>>(endpoint: string, option
   let token = '';
   if (auth.currentUser && typeof auth.currentUser.getIdToken === 'function') {
     try {
-      token = await auth.currentUser.getIdToken();
+      token = await fetchTokenOnce(auth.currentUser);
     } catch (cause) {
       console.warn('[ApiClient] Failed to obtain Firebase ID token:', cause);
     }
