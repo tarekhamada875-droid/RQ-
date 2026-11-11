@@ -86,7 +86,13 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
     try {
       const valid = await onVerifyPin(pin);
       if (valid) {
-        localStorage.setItem(attemptsStorageKey, '0');
+        // STORAGE (DevTools runtime audit 2026-11-11): the attempt counter key
+        // is scoped per session (`logout_attempts:<scope>`). Resetting it to
+        // '0' kept a zombie key behind for every session that ever opened
+        // this modal — unbounded localStorage growth on long-lived devices.
+        // A missing key already reads as 0 attempts (readAttempts), so
+        // removing it is behavior-identical and leaves nothing behind.
+        localStorage.removeItem(attemptsStorageKey);
         setAttempts(0);
         onConfirm();
       } else {
