@@ -95,15 +95,8 @@ export function useGarageSession({
     });
     const timer = setTimeout(() => {
       logDiagnostic('AUTH_TIMEOUT_FALLBACK_TRIGGERED');
-      // Note: increased from 4500 to 8000 to account for Firebase lazy-loading
-      // (PR #711). The firebaseReady promise delays app rendering by ~2-3s
-      // while firebase/auth loads via dynamic import(). The original 4.5s
-      // timeout was designed for synchronous Firebase loading — it now starts
-      // AFTER the app renders, so the total wait from page load is:
-      // ~3s (lazy-load) + 8s (timeout) = 11s, which is enough for the
-      // Firebase emulator to resolve auth state.
       setIsAuthReady(true);
-    }, 8000);
+    }, 4500);
     return () => {
       unsubscribe();
       clearTimeout(timer);
