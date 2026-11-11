@@ -54,8 +54,8 @@ describe('RegistrationCard accessible plate input', () => {
 
     // PR-U: newPlateNumber is now local state inside RegistrationCard.
     // Clicking the '١' (Arabic 1) key should update the plate display.
-    // The plate preview shows Arabic-Indic digits via formatArabicDigits.
-    fireEvent.click(screen.getByRole('button', { name: '١' }));
+    // The keypad buttons now have aria-labels: "رقم ١" for numbers.
+    fireEvent.click(screen.getByRole('button', { name: 'رقم ١' }));
 
     // The plate input should now contain '1' (Western digit in the DOM input,
     // displayed as ١ in the plate preview via formatArabicDigits).
