@@ -105,13 +105,14 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('firebase')) return 'firebase';
-              // PR-G: split motion into its own chunk so it's not bundled
-              // with react/lucide-react in the vendor chunk. Motion is only
-              // used by a few components (GarageDashboardHeaderAndDrawer,
-              // CheckOutModal until de-motion in commit 5) — most routes
-              // don't need it, so splitting it reduces the initial vendor
-              // chunk for routes that never import motion.
+              // LCP win: split Firebase into auth + firestore chunks.
+              // Auth is needed for login (small, ~100KB). Firestore is
+              // needed for data (larger, ~500KB). The app loads auth
+              // first (fast login screen), then firestore loads after.
+              if (id.includes('firebase/auth') || id.includes('@firebase/auth')) return 'firebase-auth';
+              if (id.includes('firebase/firestore') || id.includes('@firebase/firestore')) return 'firebase-firestore';
+              if (id.includes('firebase/app') || id.includes('@firebase/app') || id.includes('@firebase/util') || id.includes('firebase/app-check')) return 'firebase-core';
+              if (id.includes('firebase')) return 'firebase-other';
               if (id.includes('motion')) return 'motion';
               if (id.includes('react') || id.includes('lucide-react')) return 'vendor';
               return 'deps';
