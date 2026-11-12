@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Trash2, RotateCcw, Check, Loader2 } from 'lucide-react';
+import { useModalA11y } from '../../hooks/useModalA11y';
 
 interface AdminConfirmDialogProps {
   isOpen: boolean;
@@ -24,6 +25,8 @@ export const AdminConfirmDialog: React.FC<AdminConfirmDialogProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const modalA11y = useModalA11y(onCancel);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -53,10 +56,13 @@ export const AdminConfirmDialog: React.FC<AdminConfirmDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
-      <div 
-        className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-2xl transition-all scale-100 animate-popup-30fps"
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps" onClick={onCancel}>
+      <div
+        ref={containerRef}
+        tabIndex={-1}
+        className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-2xl transition-all scale-100 animate-popup-30fps focus-visible:ring-2 focus-visible:ring-emerald-500"
         onClick={e => e.stopPropagation()}
+        {...modalA11y.containerProps}
       >
         <div className="p-8 text-center">
           <div className={`w-20 h-20 mx-auto rounded-xl flex items-center justify-center mb-6 transition-all duration-200 ${

@@ -101,7 +101,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
         {/* Header — lighter, cleaner */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-20 transition-colors">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div className="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Plus className="w-5 h-5 stroke-[3]" />
             </div>
             <div className="text-right">

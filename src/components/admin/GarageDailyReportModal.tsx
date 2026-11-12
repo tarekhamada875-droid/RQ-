@@ -294,7 +294,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center font-black shrink-0">
+            <div className="w-11 h-11 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center font-black shrink-0">
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -310,7 +310,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             type="button"
             onClick={onClose}
             disabled={isExporting}
-            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             aria-label="إغلاق"
           >
             <X className="w-5 h-5" />
