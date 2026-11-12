@@ -287,7 +287,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-all animate-popup-30fps"
+        className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl transition-[colors,transform] animate-popup-30fps"
         onClick={(e) => e.stopPropagation()}
         {...modalA11y.containerProps}
       >
@@ -358,7 +358,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
                   onClick={() => {
                     setSelectedDate(day.dateId);
                   }}
-                  className={`aspect-square rounded-lg text-xs font-black transition-all ${
+                  className={`aspect-square rounded-lg text-xs font-black transition-[colors,transform] ${
                     isSelected
                       ? 'bg-emerald-500 text-white shadow-md'
                       : isFuture
@@ -407,7 +407,7 @@ export const GarageDailyReportModal = ({ garage, onClose }: GarageDailyReportMod
             type="button"
             onClick={() => selectedDate && void handleDownloadCSV(selectedDate)}
             disabled={!selectedDate || isExporting}
-            className={`mt-4 w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${
+            className={`mt-4 w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-[colors,transform] ${
               selectedDate && !isExporting
                 ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md active:scale-98 cursor-pointer'
                 : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'

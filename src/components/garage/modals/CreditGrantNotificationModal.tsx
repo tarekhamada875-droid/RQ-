@@ -194,7 +194,7 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
               isReferralReward
                 ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/10'
                 : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10'
-            } text-white py-4 px-6 rounded-2xl font-black text-base transition-all shadow-lg block`}
+            } text-white py-4 px-6 rounded-2xl font-black text-base transition-[colors,transform] shadow-lg block`}
           >
             تمام
           </button>

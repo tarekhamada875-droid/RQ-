@@ -138,7 +138,7 @@ export const AdminDelegateDetailsView = memo(({
               type="button"
               onClick={() => setConfirmSettle(true)}
               disabled={isLoading}
-              className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-[colors,transform] shadow-sm cursor-pointer disabled:opacity-50"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coins className="w-5 h-5" />}
               <span>صرف وتسوية العمولة</span>

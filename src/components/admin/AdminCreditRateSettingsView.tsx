@@ -181,7 +181,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                           setSaveError('');
                           setSaveSuccess('');
                         }}
-                        className={`relative w-full p-4 rounded-2xl border-2 transition-all cursor-pointer text-right flex flex-col gap-2 ${
+                        className={`relative w-full p-4 rounded-2xl border-2 transition-[colors,transform] cursor-pointer text-right flex flex-col gap-2 ${
                           isSelected
                             ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-md'
                             : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-emerald-400 dark:hover:border-emerald-700'
@@ -224,7 +224,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
               <button
                 type="submit"
                 disabled={isSaving || !hasChanges}
-                className="px-8 h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="px-8 h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
               >
                 {isSaving ? (
                   <>
@@ -241,7 +241,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
               <button
                 type="button"
                 onClick={onBack}
-                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>{'رجوع'}</span>

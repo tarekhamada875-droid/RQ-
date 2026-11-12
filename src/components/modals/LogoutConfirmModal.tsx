@@ -179,7 +179,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
               type="button"
               disabled={isLoggingOut}
               onClick={() => handleKeyPress(num.toString())}
-              className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100/50 dark:border-slate-800/50 text-2xl font-black text-slate-900 dark:text-white active:scale-[0.95] dark:active:bg-slate-700 outline-none transition-all disabled:opacity-50"
+              className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100/50 dark:border-slate-800/50 text-2xl font-black text-slate-900 dark:text-white active:scale-[0.95] dark:active:bg-slate-700 outline-none transition-[colors,transform] disabled:opacity-50"
             >
               {num}
             </button>
@@ -188,7 +188,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
             type="button"
             disabled={isLoggingOut}
             onClick={onCancel}
-            className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border-2 border-slate-700 text-slate-200 font-extrabold text-sm active:scale-[0.95] outline-none transition-all disabled:opacity-50 shadow-sm"
+            className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 border-2 border-slate-700 text-slate-200 font-extrabold text-sm active:scale-[0.95] outline-none transition-[colors,transform] disabled:opacity-50 shadow-sm"
           >
             إلغاء
           </button>
@@ -196,7 +196,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
             type="button"
             disabled={isLoggingOut}
             onClick={() => handleKeyPress('0')}
-            className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100/50 dark:border-slate-800/50 text-2xl font-black text-slate-900 dark:text-white active:scale-[0.95] dark:active:bg-slate-700 outline-none transition-all disabled:opacity-50"
+            className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100/50 dark:border-slate-800/50 text-2xl font-black text-slate-900 dark:text-white active:scale-[0.95] dark:active:bg-slate-700 outline-none transition-[colors,transform] disabled:opacity-50"
           >
             0
           </button>
@@ -204,7 +204,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
             type="button"
             disabled={isLoggingOut}
             onClick={handleBackspace}
-            className="h-16 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border-2 border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:scale-[0.95] outline-none transition-all disabled:opacity-50 shadow-sm"
+            className="h-16 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border-2 border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:scale-[0.95] outline-none transition-[colors,transform] disabled:opacity-50 shadow-sm"
           >
             <Delete className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </button>
@@ -216,7 +216,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = memo(({
             type="button"
             onClick={handleLogoutSubmit}
             disabled={pin.length < 4 || isLoggingOut}
-            className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-black text-base rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] outline-none cursor-pointer"
+            className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-black text-base rounded-2xl flex items-center justify-center gap-2 transition-[colors,transform] active:scale-[0.98] outline-none cursor-pointer"
           >
             {isLoggingOut ? (
               <Loader2 className="w-5 h-5 animate-spin" />

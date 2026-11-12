@@ -61,14 +61,14 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                   if (theme !== 'light') toggleTheme();
                   soundManager.play('setting');
                 }}
-                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all cursor-pointer text-center outline-none ${
+                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-[colors,transform] cursor-pointer text-center outline-none ${
                   theme === 'light'
                     ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 shadow-md scale-[1.02]'
                     : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 text-slate-400'
                 }`}
               >
                 <div 
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-[colors,transform] ${
                     theme === 'light' 
                       ? (isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white') 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
@@ -99,14 +99,14 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                   if (theme !== 'dark') toggleTheme();
                   soundManager.play('setting');
                 }}
-                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all cursor-pointer text-center outline-none ${
+                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-[colors,transform] cursor-pointer text-center outline-none ${
                   theme === 'dark'
                     ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 shadow-md scale-[1.02]'
                     : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 text-slate-400'
                 }`}
               >
                 <div 
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-[colors,transform] ${
                     theme === 'dark' 
                       ? (isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white') 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'

@@ -291,7 +291,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
               <select
                 name="referredByGarageId"
                 id="admin-add-garage-referrer"
-                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-all"
+                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-[colors,transform]"
                 dir="rtl"
               >
                 <option value="">{'بدون ترشيح / مباشر'}</option>
@@ -307,7 +307,7 @@ export const AdminAddGarageModal: React.FC<AdminAddGarageModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-emerald-600 dark:bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-emerald-700 dark:hover:bg-emerald-700 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-150 outline-none cursor-pointer shadow-sm"
+              className="w-full bg-emerald-600 dark:bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-emerald-700 dark:hover:bg-emerald-700 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
             >
               {isLoading ? <Spinner /> : (
                 <>

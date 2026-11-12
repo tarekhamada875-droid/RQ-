@@ -108,7 +108,7 @@ export const AdminDailyGarageReportsView = ({ onBack }: AdminDailyGarageReportsV
               key={garage.id}
               type="button"
               onClick={() => setSelectedGarage(garage)}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700 p-4 rounded-2xl text-right cursor-pointer transition-all group shadow-sm active:scale-98 flex flex-col gap-2"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-700 p-4 rounded-2xl text-right cursor-pointer transition-[colors,transform] group shadow-sm active:scale-98 flex flex-col gap-2"
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-black text-sm text-slate-900 dark:text-white leading-tight flex-1">

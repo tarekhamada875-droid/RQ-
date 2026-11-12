@@ -200,7 +200,7 @@ export const DelegateDashboardView = memo(({
           <div className="relative" ref={settingsRef}>
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all outline-none border ${showSettings ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-[colors,transform] outline-none border ${showSettings ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
               aria-label="الإعدادات"
             >
               <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -223,7 +223,7 @@ export const DelegateDashboardView = memo(({
                           if (theme !== 'light') toggleTheme();
                           setShowSettings(false);
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all outline-none font-bold text-xs ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-[colors,transform] outline-none font-bold text-xs ${
                           theme === 'light'
                             ? 'bg-amber-500 border-amber-500 text-slate-950 font-black'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
@@ -239,7 +239,7 @@ export const DelegateDashboardView = memo(({
                           if (theme !== 'dark') toggleTheme();
                           setShowSettings(false);
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all outline-none font-bold text-xs ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-[colors,transform] outline-none font-bold text-xs ${
                           theme === 'dark'
                             ? 'bg-amber-500 border-amber-500 text-slate-950 font-black'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
@@ -319,7 +319,7 @@ export const DelegateDashboardView = memo(({
         <button
           type="button"
           onClick={handleOpenAddGarage}
-          className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 p-4 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-all shadow-sm cursor-pointer"
+          className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 p-4 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-[colors,transform] shadow-sm cursor-pointer"
         >
           <PlusCircle className="w-6 h-6" />
           <span>افتح جراج جديد</span>
@@ -517,7 +517,7 @@ export const DelegateDashboardView = memo(({
               <button
                 type="submit"
                 disabled={submittingCreditRequest}
-                className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-all disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-[colors,transform] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
               >
                 {submittingCreditRequest ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>

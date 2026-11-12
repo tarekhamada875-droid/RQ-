@@ -250,7 +250,7 @@ export const RegistrationCard = memo(({
                 <button
                   disabled={isLoading || isDebouncing}
                   onClick={() => handleGuardedCheckOut(existingVehicleForPlate)}
-                  className="w-full py-4 md:py-8 bg-red-500 text-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 transition-all focus-visible:ring-2 focus-visible:ring-white md:scale-[1.01] hover:bg-red-600 active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 md:py-8 bg-red-500 text-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 transition-[colors,transform] focus-visible:ring-2 focus-visible:ring-white md:scale-[1.01] hover:bg-red-600 active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="text-lg md:text-2xl font-black tracking-tight flex items-center justify-center gap-2">
                     {(isLoading || isDebouncing) ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 text-white animate-spin" /> : 'إصدار فاتورة خروج'}
@@ -265,7 +265,7 @@ export const RegistrationCard = memo(({
                         <button 
                           disabled={!isPlateValidMemo || isLoading || isDebouncing}
                           onClick={() => handleGuardedCheckIn('hourly')}
-                          className={`${showOnlyHourly ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-150 ${
+                          className={`${showOnlyHourly ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-[colors,transform] duration-150 ${
                             isPlateValidMemo && !isLoading && !isDebouncing
                               ? 'bg-white dark:bg-slate-900 border-2 md:border-3 border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/80 active:scale-[0.98]' 
                               : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'
@@ -285,7 +285,7 @@ export const RegistrationCard = memo(({
                         <button 
                           disabled={!isPlateValidMemo || isLoading || isDebouncing}
                           onClick={() => handleGuardedCheckIn('overnight')}
-                          className={`${showOnlyOvernight ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-150 ${
+                          className={`${showOnlyOvernight ? 'w-full' : 'flex-1'} py-4 md:py-8 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center gap-1 md:gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-[colors,transform] duration-150 ${
                             isPlateValidMemo && !isLoading && !isDebouncing
                               ? 'bg-emerald-600 dark:bg-emerald-600 border-2 md:border-3 border-emerald-700 dark:border-emerald-500 text-white font-black hover:bg-emerald-700 dark:hover:bg-emerald-600/90 active:scale-[0.98]' 
                               : 'bg-slate-100 dark:bg-slate-800/40 border-2 border-slate-200 dark:border-slate-800/80 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-50'

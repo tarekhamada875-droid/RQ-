@@ -159,7 +159,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       onClick={() => handleButtonClick('left')}
                       disabled={isLoading}
                       aria-label="بدء تأكيد خروج السيارة من الجانب الأيسر"
-                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
+                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-[colors,transform] hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rotate-180 stroke-[3] text-white" />
                     </IconButton>
@@ -176,7 +176,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       onClick={() => handleButtonClick('right')}
                       disabled={isLoading}
                       aria-label="بدء تأكيد خروج السيارة من الجانب الأيمن"
-                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
+                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-[colors,transform] hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 stroke-[3] text-white" />
                     </IconButton>
@@ -246,7 +246,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   <button 
                     onClick={onDelete}
                     disabled={isLoading}
-                    className="w-full h-14 sm:h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 active:scale-95 transition-all duration-150 cursor-pointer"
+                    className="w-full h-14 sm:h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 active:scale-95 transition-[colors,transform] duration-150 cursor-pointer"
                   >
                     {isLoading && loadingType === 'delete' ? (
                       <Spinner className="!text-white" />

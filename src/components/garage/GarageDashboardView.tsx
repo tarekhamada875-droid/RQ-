@@ -299,7 +299,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                 >
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                     <div
-                      className={`w-7 h-7 md:w-8 md:h-8 [@media(max-height:500px)]:w-6 [@media(max-height:500px)]:h-6 rounded-full flex items-center justify-center border-2 shadow-md group-hover:scale-110 transition-all ${
+                      className={`w-7 h-7 md:w-8 md:h-8 [@media(max-height:500px)]:w-6 [@media(max-height:500px)]:h-6 rounded-full flex items-center justify-center border-2 shadow-md group-hover:scale-110 transition-[colors,transform] ${
                         isLightColor(shimmerColor) ? "text-slate-900" : "text-white"
                       }`}
                       style={{

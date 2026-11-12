@@ -167,7 +167,7 @@ export const AdminGarageSettingsSection = ({
                     type="button"
                     disabled={!rateCheck.allowed || !hasRateChanges || isSavingRates}
                     onClick={handleSaveRates}
-                    className={`w-full py-3.5 text-center rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all ${
+                    className={`w-full py-3.5 text-center rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] ${
                       rateCheck.allowed && hasRateChanges 
                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md active:scale-98 cursor-pointer' 
                         : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
@@ -199,7 +199,7 @@ export const AdminGarageSettingsSection = ({
                     </h4>
                     <button 
                       onClick={openAddStaffModal}
-                      className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-black text-xs transition-all shadow-sm cursor-pointer"
+                      className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-black text-xs transition-[colors,transform] shadow-sm cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{'إضافة موظف'}</span>

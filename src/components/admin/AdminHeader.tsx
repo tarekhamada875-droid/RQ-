@@ -69,7 +69,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <div className="flex items-center gap-4 relative" ref={menuRef}>
             <button 
               onClick={() => setShowMenu(!showMenu)}
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all outline-none border-2 ${
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-[colors,transform] outline-none border-2 ${
                 showMenu 
                   ? 'bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 text-emerald-600 dark:text-emerald-400' 
                   : 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400'
@@ -123,7 +123,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         setShowMenu(false);
                         onOpenAppearanceSettings();
                       }}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-all outline-none cursor-pointer"
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-[colors,transform] outline-none cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
@@ -142,7 +142,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         setShowMenu(false);
                         onLogout();
                       }}
-                      className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all font-black text-sm outline-none cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-[colors,transform] font-black text-sm outline-none cursor-pointer"
                     >
                       <LogOut className="w-5 h-5 rotate-180" />
                       <span>{'تسجيل الخروج'}</span>
