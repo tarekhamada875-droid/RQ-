@@ -6,19 +6,11 @@ import { LicensePlateKeyboard } from './LicensePlateKeyboard';
 import { FitText } from '../ui/FitText';
 
 interface RegistrationCardProps {
-  // PR-U: newPlateNumber/setNewPlateNumber removed from props — the draft
-  // state now lives INSIDE RegistrationCard so every keystroke only
-  // re-renders this component, not the whole app's context consumers.
   isInputFocused: boolean;
   setIsInputFocused: (val: boolean) => void;
   plateInputRef: React.RefObject<HTMLInputElement>;
   vehicles: Vehicle[];
   garage: Garage;
-  // PR-U: handleCheckIn now takes the plate value as a parameter and
-  // returns the formatted plate on error (so RegistrationCard can restore
-  // it). Returns null on success or when no restore is needed.
-  // UX (owner report 2026-11-12): the draft is cleared at submit START,
-  // before the await — see handleGuardedCheckIn below.
   handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   onCheckOut: (vehicle: Vehicle) => void;
   closeKeyboard: () => void;
@@ -29,7 +21,7 @@ interface RegistrationCardProps {
 export const RegistrationCard = memo(({
   isInputFocused,
   setIsInputFocused,
-  plateInputRef,
+  plateInputRef: _plateInputRef,
   vehicles,
   garage,
   handleCheckIn,
@@ -38,15 +30,11 @@ export const RegistrationCard = memo(({
   inputRef,
   isLoading = false
 }: RegistrationCardProps) => {
-  // PR-U: local draft state. Previously this lived in useVehicleOperations
-  // (a context bucket), so every keystroke updated context state and
-  // re-rendered ALL consumers. Now it's local — one keystroke = one
-  // small component redrawing, never the whole app.
+  // Pure state — no <input> element. Like the logout keypad: buttons → state.
+  // This eliminates: hidden input sync, onChange handler, onMouseDown
+  // preventDefault, native keyboard fighting, focus management overhead.
   const [newPlateNumber, setNewPlateNumber] = useState<string>('');
   const [isDebouncing, setIsDebouncing] = React.useState(false);
-  // Guard against double-submit: a ref updates synchronously (unlike
-  // isLoading state which is async). Prevents a second check-in request
-  // from firing before isLoading flips to true (which causes "already inside").
   const isSubmittingRef = useRef(false);
 
   // Pre-build a raw-plate → vehicle lookup map when the active vehicles list
@@ -120,13 +108,7 @@ export const RegistrationCard = memo(({
     onCheckOut(vehicle);
   };
 
-  // Force input value to stay in sync with state
-  // even when getCleanPlate results in no state change (e.g. typing a space)
-  React.useEffect(() => {
-    if (plateInputRef.current && plateInputRef.current.value !== newPlateNumber) {
-      plateInputRef.current.value = newPlateNumber;
-    }
-  }, [newPlateNumber, plateInputRef]);
+  // No hidden <input> sync needed — pure button → state like logout keypad.
 
   React.useEffect(() => {
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
@@ -181,7 +163,6 @@ export const RegistrationCard = memo(({
                 onClick={(e) => {
                   e.stopPropagation();
                   setNewPlateNumber(newPlateNumber.slice(0, -1));
-                  plateInputRef.current?.focus();
                 }}
                 aria-label="حذف آخر حرف"
                 className="absolute bg-red-500 text-white rounded-2xl flex items-center justify-center hover:bg-red-600 transition-colors focus-visible:ring-2 focus-visible:ring-white -top-3 -left-3 w-11 h-11 min-w-[44px] min-h-[44px] md:w-16 md:h-16 md:-top-6 md:-left-6 z-50 shadow-md cursor-pointer active:scale-95"
@@ -190,46 +171,14 @@ export const RegistrationCard = memo(({
               </button>
             )}
             
-            <div className="relative h-28 sm:h-36 md:h-52 lg:h-60 overflow-hidden" onClick={() => { if (isLoading) return; setIsInputFocused(true); plateInputRef.current?.focus(); }}>
+            <div className="relative h-28 sm:h-36 md:h-52 lg:h-60 overflow-hidden cursor-pointer" onClick={() => { if (isLoading) return; setIsInputFocused(true); }}>
               <span id="registration-plate-input-description" className="sr-only">
                 استخدم لوحة المفاتيح الظاهرة لإدخال أحرف وأرقام اللوحة المصرية.
               </span>
-              <input
-                ref={plateInputRef}
-                type="text"
-                name="plateNumber"
-                id="plateNumber"
-                aria-label="رقم لوحة السيارة"
-                aria-describedby="registration-plate-input-description"
-                inputMode="none"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
-                disabled={isLoading}
-                value={newPlateNumber}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const clean = getCleanPlate(val);
-                  
-                  // Force state update even if same to ensure input sync
-                  setNewPlateNumber(clean);
-                }}
-                onFocus={(e) => {
-                  setIsInputFocused(true);
-                  const len = e.target.value.length;
-                  e.target.setSelectionRange(len, len);
-                }}
-                onBlur={() => {
-                  // Small delay to allow other interactions
-                  setTimeout(() => setIsInputFocused(false), 200);
-                }}
-                className="absolute inset-0 w-full h-full opacity-0 z-30 cursor-text"
-                dir="rtl"
-              />
-              
+
               <div className={`absolute inset-0 w-full h-full bg-white border-slate-900 rounded-xl overflow-hidden flex flex-col z-10 ${
                 isInputFocused ? 'border-[3px] ring-2 ring-blue-500/20' : 'border-2 md:border-[3px]'
-              }`} dir="ltr">
+              }`} dir="ltr" role="textbox" aria-label="رقم لوحة السيارة" aria-describedby="registration-plate-input-description">
                 {/* Authentic Egyptian Plate Header */}
                 <div className="flex items-center justify-between px-3 sm:px-6 font-black bg-[#0057b7] text-white shrink-0 h-8 sm:h-11 md:h-14 border-b-2 border-slate-900/20 select-none">
                   {/* Left Screw Rivet */}
