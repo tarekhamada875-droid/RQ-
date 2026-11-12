@@ -180,7 +180,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         const renewalKey = idempotencyKey || `subscriber-renewal:${subscriberId}:${dates.startDate}:${dates.endDate}`;
         const creditResult = debitSubscriberRenewal({
           balance: Number(garageData.credits ?? 0),
-          amount: 2,
+          amount: 1,
           garageId: validatedGarageId,
           actorUid: user?.uid || 'system',
           actorRole: callerRole,
@@ -193,7 +193,7 @@ app.post('/api/subscribers/renew', requireWorkerAuth, async (c) => {
         if (materialized.ok === false) throw new Error(materialized.error);
         creditDebit = { ...creditResult.value, entry: materialized.value };
         t.set(adminDb.doc(`credit_ledger/${materialized.value.entryId}`), materialized.value);
-        // Subscriber renewal = 2 EGP garage revenue (the garage collected 2 EGP from the subscriber).
+        // Subscriber renewal = 1 credit (same as regular check-in).
         // This is SEPARATE from admin revenue (which is the credits the admin sold to the garage).
         const todayKey = getCairoDateKey(new Date());
         const isNewRevenueDay = garageData.lastTransactionDate !== todayKey;

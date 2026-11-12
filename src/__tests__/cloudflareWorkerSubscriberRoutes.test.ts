@@ -200,7 +200,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     expect(renewBody.success).toBe(true);
   });
 
-  it('debits exactly two credits and returns the remaining balance for prepaid renewal', async () => {
+  it('debits exactly one credit and returns the remaining balance for prepaid renewal', async () => {
     mockDb.seed(`garages/${testGarageId}`, {
       billingModel: 'prepaid_credits',
       credits: 32,
@@ -220,13 +220,13 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
       body: JSON.stringify({ garageId: testGarageId, subscriberId, newDates: { startDate: '2026-11-01', endDate: '2026-11-30' } })
     }), workerEnv);
     expect(renewRes.status).toBe(200);
-    expect(await renewRes.json()).toMatchObject({ success: true, credits: 30, creditDebit: { amount: 2 } });
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(30);
-    expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit' && record.amount === 2)).toBe(true);
+    expect(await renewRes.json()).toMatchObject({ success: true, credits: 31, creditDebit: { amount: 1 } });
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(31);
+    expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit' && record.amount === 1)).toBe(true);
   });
 
-  it('blocks prepaid renewal below two credits and never spends trial credits separately', async () => {
-    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', credits: 1 });
+  it('blocks prepaid renewal below one credit and never spends trial credits separately', async () => {
+    mockDb.seed(`garages/${testGarageId}`, { billingModel: 'prepaid_credits', credits: 0 });
     const addRes = await api.fetch(new Request('http://localhost/api/subscribers/add', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer valid-admin-token' },
       body: JSON.stringify({ garageId: testGarageId, subscriberData: { name: 'Underfunded Renewal', plateNumber: 'س ص ع 5555', plateNumberRaw: 'سصع5555', startDate: '2026-10-01', endDate: '2026-10-31' } })
@@ -238,7 +238,7 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
     }), workerEnv);
     expect(renewRes.status).toBe(409);
     expect(await renewRes.json()).toMatchObject({ success: false, error: 'رصيد غير كافٍ لإتمام هذه العملية' });
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(1);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(0);
     expect([...mockDb.records.values()].some((record: any) => record.kind === 'subscriber_renewal_debit')).toBe(false);
   });
 
@@ -283,14 +283,14 @@ describe('CF6 — Cloudflare Worker Subscriber Lifecycle Routes', () => {
 
     const first = await request();
     expect(first.status).toBe(200);
-    expect((await first.json() as any).credits).toBe(8);
+    expect((await first.json() as any).credits).toBe(9);
     const writesAfterFirst = mockDb.documentWriteCount;
     const replay = await request();
 
     expect(replay.status).toBe(200);
-    expect((await replay.json() as any).credits).toBe(8);
+    expect((await replay.json() as any).credits).toBe(9);
     expect(mockDb.documentWriteCount).toBe(writesAfterFirst);
-    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(8);
+    expect(mockDb.records.get(`garages/${testGarageId}`)?.credits).toBe(9);
     expect([...mockDb.records.values()].filter((record: any) => record.kind === 'subscriber_renewal_debit')).toHaveLength(1);
     expect([...mockDb.records.values()].filter((record: any) => record.eventType === 'subscriber_renewed')).toHaveLength(1);
   });
