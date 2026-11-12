@@ -17,6 +17,8 @@ interface RegistrationCardProps {
   // PR-U: handleCheckIn now takes the plate value as a parameter and
   // returns the formatted plate on error (so RegistrationCard can restore
   // it). Returns null on success or when no restore is needed.
+  // UX (owner report 2026-11-12): the draft is cleared at submit START,
+  // before the await — see handleGuardedCheckIn below.
   handleCheckIn: (type: 'hourly' | 'overnight', plateValue: string) => Promise<string | null>;
   onCheckOut: (vehicle: Vehicle) => void;
   closeKeyboard: () => void;
@@ -89,12 +91,23 @@ export const RegistrationCard = memo(({
     setIsDebouncing(true);
     setTimeout(() => setIsDebouncing(false), 300);
     closeKeyboard();
-    const restorePlate = await handleCheckIn(type, newPlateNumber);
+    // UX (owner report 2026-11-12): clear the draft BEFORE the await, not
+    // after. During the submit window the vehicles list gains the checked-in
+    // car — whichever lands first, the Worker response (setVehicles in
+    // handleCheckIn) or the Firestore snapshot — while the typed plate was
+    // still in the draft. existingVehicleForPlate then matched the
+    // just-checked-in car and the card flipped to the red
+    // "السيارة موجودة حالياً بالداخل" checkout button mid-submit, which
+    // operators read as "the app says I checked in twice". With the draft
+    // empty for the whole in-flight window, no intermediate render can flip
+    // the action area. The restore contract is unchanged: a non-null return
+    // puts the plate back (warnings, retryable errors).
+    const submittedPlate = newPlateNumber;
+    setNewPlateNumber('');
+    const restorePlate = await handleCheckIn(type, submittedPlate);
     isSubmittingRef.current = false;
     if (restorePlate) {
       setNewPlateNumber(restorePlate);
-    } else {
-      setNewPlateNumber(''); // success — clear the plate input
     }
   };
 

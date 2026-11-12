@@ -209,7 +209,10 @@ export function useVehicleOperations({
     // is in-flight.
     setShowCheckInModal(false);
     // PR-U: setNewPlateNumber('') removed — RegistrationCard owns the draft
-    // now and clears it itself when handleCheckIn returns null (success).
+    // now. UX (owner report 2026-11-12): it clears the draft at submit
+    // START (before this await) and restores it when this returns a plate,
+    // so the in-flight window can never flip the action area to the red
+    // already-inside checkout button.
 
     if (garage.hasMonthlySubscribers) {
       try {
