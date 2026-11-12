@@ -94,6 +94,11 @@ export default defineConfig(() => {
       sourcemap: false,
       minify: 'esbuild',
       chunkSizeWarningLimit: 2000,
+      // Performance: don't inject CSS as a render-blocking <link> in <head>.
+      // Instead, load it via a non-blocking pattern. The critical CSS
+      // (background colors, dark mode) is already inlined in <style> in
+      // index.html, so the first paint doesn't need the full 237KB stylesheet.
+      cssCodeSplit: false,
       // LCP win 2: disable ALL modulepreload links. Vite adds <link
       // rel="modulepreload"> for every chunk the app imports — including
       // the 623KB firebase chunk — forcing the browser to download
