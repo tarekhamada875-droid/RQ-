@@ -172,7 +172,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">{'رمز دخول الآدمن'}</h3>
-                <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
                   <Key className="w-5 h-5" />
                 </div>
               </div>
@@ -189,7 +189,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">الأجهزة والجلسات</h3>
-                <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shadow-sm shrink-0">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
               </div>
@@ -206,7 +206,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">رقم محفظة الدفع</h3>
-                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
                   <Wallet className="w-5 h-5" />
                 </div>
               </div>
@@ -223,7 +223,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">سعر الرصيد</h3>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
                   <Coins className="w-5 h-5" />
                 </div>
               </div>
@@ -240,7 +240,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">تقارير الجراجات اليومية</h3>
-                <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-sm shrink-0">
                   <CalendarDays className="w-5 h-5" />
                 </div>
               </div>
