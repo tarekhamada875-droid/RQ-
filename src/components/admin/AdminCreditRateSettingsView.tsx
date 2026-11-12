@@ -15,11 +15,13 @@ interface AdminCreditRateSettingsViewProps {
  * math, no decimals to mis-enter. Each preset shows a live preview of what
  * 100 EGP buys, so the consequence of each choice is visible before saving.
  *
- *   0.5 EGP/credit → 100 EGP buys 200 credits  (cheapest credits)
- *   0.8 EGP/credit → 100 EGP buys 125 credits  (discount)
- *   1   EGP/credit → 100 EGP buys 100 credits  (default, legacy)
- *   2   EGP/credit → 100 EGP buys  50 credits
- *  10   EGP/credit → 100 EGP buys  10 credits  (premium credits)
+ *   0.5  EGP/credit → 100 EGP buys 200 credits  (cheapest credits)
+ *   0.65 EGP/credit → 100 EGP buys 153 credits
+ *   0.75 EGP/credit → 100 EGP buys 133 credits
+ *   0.8  EGP/credit → 100 EGP buys 125 credits  (discount)
+ *   1    EGP/credit → 100 EGP buys 100 credits  (default, legacy)
+ *   2    EGP/credit → 100 EGP buys  50 credits
+ *  10    EGP/credit → 100 EGP buys  10 credits  (premium credits)
  *
  * Storage: the server stores `creditRate` = credits-per-EGP (the inverse).
  *   creditRate = 1 / egpPerCredit
@@ -33,7 +35,7 @@ interface AdminCreditRateSettingsViewProps {
  * security-sensitive operation. The admin is already authenticated.
  */
 
-const PRESETS: readonly number[] = [0.5, 0.8, 1, 2, 10];
+const PRESETS: readonly number[] = [0.5, 0.65, 0.75, 0.8, 1, 2, 10];
 
 const PREVIEW_EGP = 100;
 
