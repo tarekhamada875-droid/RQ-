@@ -53,13 +53,13 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   e.stopPropagation();
                   handleBack();
                 }}
-                className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
+                className="flex items-center justify-center w-11 h-11 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
                 title={'رجوع'}
               >
                 <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
               </button>
             )}
-            <div className="hidden sm:flex w-10 h-10 bg-slate-900 dark:bg-slate-800 rounded-xl items-center justify-center text-white">
+            <div className="hidden sm:flex w-11 h-11 bg-slate-900 dark:bg-slate-800 rounded-xl items-center justify-center text-white">
               <Shield className="w-6 h-6 stroke-[3]" />
             </div>
             <h1 className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight leading-tight">
@@ -106,7 +106,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                       <button 
                         type="button"
                         onClick={() => setShowMenu(false)}
-                        className="w-10 h-10 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center transition-colors outline-none cursor-pointer shrink-0"
+                        className="w-11 h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center transition-colors outline-none cursor-pointer shrink-0"
                       >
                         <X className="w-6 h-6 stroke-[2.5]" />
                       </button>
