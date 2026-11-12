@@ -50,9 +50,9 @@ const KeyButton = memo(({ char, isNumber, className = "", isSelected, isDisabled
         e.preventDefault();
         if (!isDisabled) onKeyPress(char);
       }}
-      className={`${heightClass} w-full flex items-center justify-center transition-[colors,transform] active:scale-[0.95] touch-manipulation select-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${fontClass} ${
+      className={`${heightClass} w-full flex items-center justify-center touch-manipulation select-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${fontClass} ${
         isSelected
-          ? 'bg-emerald-600 text-white z-10 scale-[1.03] border-transparent rounded-lg shadow-md'
+          ? 'bg-emerald-600 text-white z-10 border-transparent rounded-lg'
           : 'bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 active:bg-slate-100 dark:active:bg-slate-700 border-[0.5px] border-slate-200 dark:border-slate-700/60'
       } ${isDisabled ? 'opacity-25 cursor-not-allowed' : 'opacity-100'} ${className}`}
     >
