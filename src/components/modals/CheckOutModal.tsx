@@ -6,6 +6,7 @@ import { IconButton } from '../ui/IconButton';
 import { safeDate, formatEntryTimeParts, AR_DAY } from '../../utils/dates';
 import { calculateCost } from '../../utils/cost';
 import { isWithinEntryErrorWindow } from '../../utils/graceWindow';
+import { getCairoDateKey } from '../../domain/garage/businessDay';
 import { useServerTimeNow } from '../../hooks/serverTimeContext';
 import { useModalA11y } from '../../hooks/useModalA11y';
 import { Vehicle, Garage, Staff } from '../../types';
@@ -39,6 +40,16 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
   const entrantEntityId = currentStaff?.id ?? garage.id;
   const entrantRole = currentStaff ? 'staff' : 'garage';
   const canDelete = selectedVehicle.enteredByEntityId === entrantEntityId && selectedVehicle.enteredByRole === entrantRole;
+  // During grace window: only delete is allowed (no checkout). After grace:
+  // only checkout is allowed (no delete). This prevents 0-EGP checkouts that
+  // look broken in reports. Delete respects the 3/day limit from the Worker.
+  // If daily deletions are exhausted, the user must wait out the grace window
+  // and then checkout normally.
+  const todayYMD = getCairoDateKey(new Date());
+  const deletionsToday = garage.lastDeletionDate === todayYMD ? (garage.dailyDeletionCount || 0) : 0;
+  const deletionsRemaining = Math.max(0, 3 - deletionsToday);
+  const showDeleteButton = isInitialMinute && canDelete && deletionsRemaining > 0;
+  const showCheckoutButtons = !isInitialMinute || !canDelete || deletionsRemaining === 0;
 
   const [confirmingSide, setConfirmingSide] = React.useState<'left' | 'right' | null>(null);
   const [showLargeButton, setShowLargeButton] = React.useState(false);
@@ -150,7 +161,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
           {!confirmingSide ? (
             <>
               {/* Left Button */}
-              {!isInitialMinute && (
+              {showCheckoutButtons && (
                 <div
                   className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 left-3 sm:left-6 md:left-8 lg:left-12 xl:left-16 pointer-events-auto"
                 >
@@ -167,7 +178,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                 )}
                 
                 {/* Right Button */}
-                {!isInitialMinute && (
+                {showCheckoutButtons && (
                   <div 
                     className="absolute top-12 sm:top-14 md:top-18 lg:top-24 xl:top-28 right-3 sm:right-6 md:right-8 lg:right-12 xl:right-16 pointer-events-auto"
                   >
@@ -212,7 +223,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               className="flex-1 flex flex-col items-center overflow-y-auto scrollbar-hide max-h-[calc(92vh-90px)] max-h-[calc(92dvh-90px)] w-full px-1"
             >
                 <>
-                  {!selectedVehicle.isSubscriber && isWithinEntryErrorWindow(diffMs) ? null : (
+                  {showDeleteButton ? null : (
                 <div className="flex flex-col items-center justify-center mt-2 sm:mt-4 md:mt-6 h-20 sm:h-32 md:h-36 mb-2 sm:mb-4 shrink-0">
                   {selectedVehicle.isSubscriber ? (
                     <div className="flex flex-col items-center">
@@ -241,7 +252,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               </div>
 
               {/* Entry Error Delete Action Banner */}
-              {canDelete && isInitialMinute && (
+              {showDeleteButton && (
                 <div className="w-full mb-3 sm:mb-4 shrink-0">
                   <button 
                     onClick={onDelete}
