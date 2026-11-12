@@ -43,7 +43,7 @@ export const SubscriberWarningModal: React.FC<SubscriberWarningModalProps> = mem
         
         <button 
           onClick={onConfirm}
-          className="w-full py-3.5 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl font-black text-base hover:bg-slate-800 dark:hover:bg-emerald-500 active:scale-95 transition-all duration-150 outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
+          className="w-full py-3.5 bg-slate-900 dark:bg-emerald-600 text-white rounded-2xl font-black text-base hover:bg-slate-800 dark:hover:bg-emerald-500 active:scale-95 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
         >
           حسنًا، فهمت
         </button>

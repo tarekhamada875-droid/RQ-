@@ -82,7 +82,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('garages')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
                 activeTab === 'garages'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -96,7 +96,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('requests')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
                 activeTab === 'requests'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -119,7 +119,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('people')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
                 activeTab === 'people' || activeTab === 'delegates'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -133,7 +133,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             <button
               type="button"
               onClick={() => setActiveTab('catalog_settings')}
-              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              className={`flex shrink-0 snap-start items-center justify-center sm:flex-1 gap-2.5 px-4 py-2.5 rounded-xl font-black text-xs transition-[colors,transform] cursor-pointer ${
                   activeTab === 'catalog_settings' || activeTab === 'admin-pin' || activeTab === 'active_sessions' || activeTab === 'credit_rate_settings' || activeTab === 'daily_garage_reports'
                   ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -168,7 +168,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Admin PIN */}
             <div 
               onClick={() => setActiveTab('admin-pin')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">{'رمز دخول الآدمن'}</h3>
@@ -185,7 +185,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Active Devices */}
             <div
               onClick={() => setActiveTab('active_sessions')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">الأجهزة والجلسات</h3>
@@ -202,7 +202,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Payment Wallet Number */}
             <div
               onClick={() => setActiveTab('wallet_settings')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">رقم محفظة الدفع</h3>
@@ -219,7 +219,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Credit Rate */}
             <div
               onClick={() => setActiveTab('credit_rate_settings')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">سعر الرصيد</h3>
@@ -236,7 +236,7 @@ export const AdminNavigationAndViews: React.FC<AdminNavigationAndViewsProps> = (
             {/* Daily Garage Reports */}
             <div
               onClick={() => setActiveTab('daily_garage_reports')}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-sky-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-all group shadow-sm"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-sky-500 p-6 rounded-2xl cursor-pointer flex flex-col justify-between h-36 transition-[colors,transform] group shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-slate-900 dark:text-white text-base">تقارير الجراجات اليومية</h3>

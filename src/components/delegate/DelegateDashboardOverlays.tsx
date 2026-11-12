@@ -74,7 +74,7 @@ export const DelegateDashboardOverlays = ({
               >
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">اسم الجراج</label>
-                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
+                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-[colors,transform] placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
                 </div>
   
                 <div className="grid grid-cols-2 gap-3">
@@ -144,7 +144,7 @@ export const DelegateDashboardOverlays = ({
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-all disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-[colors,transform] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>

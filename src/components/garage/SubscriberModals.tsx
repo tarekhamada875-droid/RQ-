@@ -246,7 +246,7 @@ export const SubscriberModals = ({
                           setSelectedDuration(d.id as Duration);
                           setIsPlateFocused(false);
                         }}
-                        className={`py-3.5 px-2 rounded-2xl border text-center flex flex-col items-center justify-center transition-all ${
+                        className={`py-3.5 px-2 rounded-2xl border text-center flex flex-col items-center justify-center transition-[colors,transform] ${
                           selectedDuration === d.id
                             ? 'bg-blue-600 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-700 dark:text-white font-extrabold shadow-sm'
                             : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700/80'
@@ -291,7 +291,7 @@ export const SubscriberModals = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-black text-sm disabled:opacity-50 transition-all outline-none"
+                  className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-black text-sm disabled:opacity-50 transition-[colors,transform] outline-none"
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -323,14 +323,14 @@ export const SubscriberModals = ({
                 <button
                   type="button"
                   onClick={() => setSubscriberToDelete(null)}
-                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all outline-none"
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl font-bold text-xs uppercase tracking-widest transition-[colors,transform] outline-none"
                 >
                   إلغاء
                 </button>
                 <button
                   type="button"
                   onClick={confirmDelete}
-                  className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all outline-none"
+                  className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-[colors,transform] outline-none"
                 >
                   حذف
                 </button>
@@ -406,7 +406,7 @@ export const SubscriberModals = ({
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => handleConfirmRenew(opt.type)}
-                        className="w-full text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-[#faf9f6] dark:bg-slate-900 hover:bg-blue-50/10 dark:hover:bg-blue-400/5 transition-all outline-none flex items-center justify-between group active:scale-[0.98] disabled:opacity-50"
+                        className="w-full text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-[#faf9f6] dark:bg-slate-900 hover:bg-blue-50/10 dark:hover:bg-blue-400/5 transition-[colors,transform] outline-none flex items-center justify-between group active:scale-[0.98] disabled:opacity-50"
                       >
                         <div className="space-y-1">
                           <p className="font-black text-slate-900 dark:text-white text-sm group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{opt.label}</p>

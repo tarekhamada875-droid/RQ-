@@ -91,7 +91,7 @@ export const AdminGarageModals = memo(({
                 <button
                   type="submit"
                   disabled={isLoading || !staffForm.name}
-                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -106,7 +106,7 @@ export const AdminGarageModals = memo(({
                   type="button"
                   disabled={isLoading}
                   onClick={() => setShowAddStaffModal(false)}
-                  className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer"
+                  className="px-5 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-[colors,transform] cursor-pointer"
                 >
                   {'إلغاء'}
                 </button>
@@ -132,7 +132,7 @@ export const AdminGarageModals = memo(({
               <button
                 onClick={() => onDeleteStaff(staffToDelete.id)}
                 disabled={isLoading}
-                className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm hover:bg-rose-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                className="flex-1 h-14 bg-rose-600 text-white rounded-2xl font-black text-sm hover:bg-rose-700 disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
               >
                 {isLoading ? (
                   <>
@@ -146,7 +146,7 @@ export const AdminGarageModals = memo(({
               <button
                 disabled={isLoading}
                 onClick={() => setStaffToDelete(null)}
-                className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
+                className="flex-1 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-200 disabled:opacity-50 transition-[colors,transform] cursor-pointer flex items-center justify-center"
               >
                 {'إلغاء'}
               </button>
@@ -219,7 +219,7 @@ export const AdminGarageModals = memo(({
                 <button
                   type="submit"
                   disabled={isUpdatingGaragePin || !/^\d{5}$/.test(garagePinInput)}
-                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm disabled:opacity-50 transition-[colors,transform] flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   {isUpdatingGaragePin ? (
                     <>
@@ -234,7 +234,7 @@ export const AdminGarageModals = memo(({
                   type="button"
                   disabled={isUpdatingGaragePin}
                   onClick={() => setShowEditGaragePinModal(false)}
-                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-all cursor-pointer flex items-center justify-center"
+                  className="flex-1 h-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-[colors,transform] cursor-pointer flex items-center justify-center"
                 >
                   {'إلغاء'}
                 </button>

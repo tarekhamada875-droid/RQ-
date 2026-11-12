@@ -99,7 +99,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
             ) : (
               <button 
                 onClick={() => setIsEditingPin(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 text-sm font-black transition-all hover:bg-blue-100 dark:hover:bg-blue-900/40 cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 text-sm font-black transition-[colors,transform] hover:bg-blue-100 dark:hover:bg-blue-900/40 cursor-pointer"
               >
                 <Lock className="w-4 h-4" />
                 <span>{'الرمز:'} {formatDisplayPin(delegate.pin)}</span>

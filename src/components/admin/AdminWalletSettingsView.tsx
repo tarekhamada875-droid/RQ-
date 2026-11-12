@@ -133,7 +133,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
               <button
                 type="submit"
                 disabled={isSaving || !hasChanges}
-                className="px-8 h-14 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="px-8 h-14 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
               >
                 {isSaving ? (
                   <>
@@ -150,7 +150,7 @@ export const AdminWalletSettingsView: React.FC<AdminWalletSettingsViewProps> = (
               <button
                 type="button"
                 onClick={onBack}
-                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>{'رجوع'}</span>

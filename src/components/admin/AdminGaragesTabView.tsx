@@ -33,7 +33,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
             {(
         <button
           onClick={onOpenAddGarage}
-          className="w-full bg-slate-900 dark:bg-emerald-600 text-white dark:text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-4 hover:opacity-90 transition-all outline-none active:scale-[0.98]"
+          className="w-full bg-slate-900 dark:bg-emerald-600 text-white dark:text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-4 hover:opacity-90 transition-[colors,transform] outline-none active:scale-[0.98]"
         >
           <Plus className="w-5 h-5 stroke-[3]" />
           <span>{'إضافة جراج جديد'}</span>
@@ -84,7 +84,7 @@ export const AdminGaragesTabView: React.FC<AdminGaragesTabViewProps> = ({
                     onClick={() => {
                                             onSelectGarage(g);
                     }}
-                    className={`w-full bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group`}
+                    className={`w-full bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3 transition-[colors,transform] cursor-pointer active:scale-[0.99] group`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span className="text-mobile-wrap font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-snug">

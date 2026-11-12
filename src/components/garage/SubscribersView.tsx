@@ -159,7 +159,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
         {/* Add Subscriber Button */}
         <button
           onClick={form.handleOpenAdd}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all outline-none active:scale-[0.98] mb-5 shadow-sm shadow-blue-500/10"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-[colors,transform] outline-none active:scale-[0.98] mb-5 shadow-sm shadow-blue-500/10"
         >
           <Plus className="w-5 h-5 stroke-[3]" />
           <span>إضافة مشترك جديد</span>

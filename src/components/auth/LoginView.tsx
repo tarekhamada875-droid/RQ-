@@ -84,7 +84,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
               {/* Integrated Live Digit Counter Badge */}
               {deferredPin.length > 0 ? (
                 <div 
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white shadow-xs backdrop-blur-xs transition-all duration-200"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white shadow-xs backdrop-blur-xs transition-[colors,transform] duration-200"
                   dir="rtl"
                 >
                   <span className="font-mono font-black text-xs text-white">
@@ -122,7 +122,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
         </div>
 
         {/* Keypad */}
-        <div className={`grid grid-cols-3 gap-2 sm:gap-3 transition-all duration-300 ${isLoading ? 'opacity-40 pointer-events-none' : ''}`} dir="ltr">
+        <div className={`grid grid-cols-3 gap-2 sm:gap-3 transition-[colors,transform] duration-300 ${isLoading ? 'opacity-40 pointer-events-none' : ''}`} dir="ltr">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
             <button
               key={num}
@@ -136,7 +136,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
           <button
             disabled={isLoading || deferredPin.length === 0}
             onClick={handleClearAll}
-            className="h-12 sm:h-16 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-black text-xs sm:text-sm outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-all active:scale-95 select-none touch-manipulation shadow-xs"
+            className="h-12 sm:h-16 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-black text-xs sm:text-sm outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-[colors,transform] active:scale-95 select-none touch-manipulation shadow-xs"
           >
             مسح الكل
           </button>
@@ -150,7 +150,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
           <button
             disabled={isLoading || deferredPin.length === 0}
             onClick={handleDelete}
-            className="h-12 sm:h-16 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:bg-amber-500/30 transition-all active:scale-95 outline-none disabled:opacity-40 disabled:pointer-events-none select-none touch-manipulation shadow-xs"
+            className="h-12 sm:h-16 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:bg-amber-500/30 transition-[colors,transform] active:scale-95 outline-none disabled:opacity-40 disabled:pointer-events-none select-none touch-manipulation shadow-xs"
           >
             <Delete className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" />
           </button>
@@ -160,7 +160,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
         <button 
           onClick={() => handleGarageLogin()}
           disabled={isLoading || cleanPin.length === 0}
-          className="w-full bg-[#0057b7] hover:bg-[#004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale transition-all flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm hover:shadow-md active:scale-[0.99]"
+          className="w-full bg-[#0057b7] hover:bg-[#004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale transition-[colors,transform] flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm hover:shadow-md active:scale-[0.99]"
         >
           {isLoading ? (
             <div className="flex items-center gap-2">

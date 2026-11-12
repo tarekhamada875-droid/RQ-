@@ -132,7 +132,7 @@ export const AdminPeopleView = memo(({
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer bg-emerald-600 text-white shadow-md"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-[colors,transform] cursor-pointer bg-emerald-600 text-white shadow-md"
             >
               <Briefcase className="w-4 h-4 shrink-0" />
               <span>المناديب المعينون</span>
@@ -147,7 +147,7 @@ export const AdminPeopleView = memo(({
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm ${
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] cursor-pointer shadow-sm ${
               showAddForm
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               : 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -238,7 +238,7 @@ export const AdminPeopleView = memo(({
             <button
               type="submit"
               disabled={isSubmittingDelegate}
-              className="w-full text-white py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50 bg-emerald-600 hover:bg-emerald-700"
+              className="w-full text-white py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] shadow-sm cursor-pointer disabled:opacity-50 bg-emerald-600 hover:bg-emerald-700"
             >
               {isSubmittingDelegate ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -270,7 +270,7 @@ export const AdminPeopleView = memo(({
               <div
                 key={d.id}
                 onClick={() => onSelectDelegate(d)}
-                className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
+                className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm hover:shadow-md transition-[colors,transform] flex flex-col justify-between space-y-4 ${
                   'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 cursor-pointer'
                 }`}
               >

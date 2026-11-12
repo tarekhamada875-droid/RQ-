@@ -79,7 +79,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
                 <button 
                   onClick={() => void onCheckIn('hourly', plateValue)}
                   disabled={isLoading}
-                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
                 >
                   <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
                     {loadingType === 'hourly' ? <Spinner /> : <Clock className="w-7 h-7 sm:w-8 sm:h-8" />}
@@ -98,7 +98,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
                 <button 
                   onClick={() => void onCheckIn('overnight', plateValue)}
                   disabled={isLoading}
-                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-sm"
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
                 >
                   <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
                     {loadingType === 'overnight' ? <Spinner /> : <Moon className="w-7 h-7 sm:w-8 sm:h-8" />}
@@ -116,7 +116,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
 
             <button 
               onClick={onCancel}
-              className="w-full mt-6 h-14 sm:h-16 text-red-500 dark:text-red-400 font-black text-sm sm:text-base hover:text-red-700 bg-red-50 dark:bg-red-900/20 active:scale-95 rounded-2xl border border-red-100 dark:border-red-900/30 transition-all duration-150 outline-none cursor-pointer flex items-center justify-center shadow-sm"
+              className="w-full mt-6 h-14 sm:h-16 text-red-500 dark:text-red-400 font-black text-sm sm:text-base hover:text-red-700 bg-red-50 dark:bg-red-900/20 active:scale-95 rounded-2xl border border-red-100 dark:border-red-900/30 transition-[colors,transform] duration-150 outline-none cursor-pointer flex items-center justify-center shadow-sm"
             >
               {APP_TEXT.GARAGE.CANCEL}
             </button>

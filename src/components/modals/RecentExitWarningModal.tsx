@@ -44,13 +44,13 @@ export const RecentExitWarningModal: React.FC<RecentExitWarningModalProps> = mem
         <div className="space-y-3 pt-1">
           <button 
             onClick={onConfirm}
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-base active:scale-95 transition-all duration-150 outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-base active:scale-95 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center"
           >
             نعم، تأكيد الدخول
           </button>
           <button 
             onClick={onCancel}
-            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 rounded-2xl font-bold text-sm transition-all duration-150 outline-none cursor-pointer flex items-center justify-center"
+            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 rounded-2xl font-bold text-sm transition-[colors,transform] duration-150 outline-none cursor-pointer flex items-center justify-center"
           >
             لا، إلغاء
           </button>

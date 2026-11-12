@@ -93,7 +93,7 @@ export const AdminGarageHeroAndStats = memo(({
             <button
               disabled={isUpdatingLock}
               onClick={onToggleLock}
-              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] disabled:opacity-60 cursor-pointer ${
                 garage.isLocked
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
                   : 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm'

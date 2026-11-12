@@ -138,7 +138,7 @@ export const AdminGarageDetailsView = memo(({
             <button
               type="button"
               onClick={() => setShowMenu(!showMenu)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all outline-none border ${showMenu ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-[colors,transform] outline-none border ${showMenu ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
             >
               <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400 stroke-[2.5]" />
             </button>

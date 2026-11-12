@@ -26,12 +26,12 @@ export const AdminGarageFinancialsSection = memo(({
         <button
           type="button"
           onClick={onToggleMonthlySubscribers}
-          className={`w-14 h-8 rounded-full p-1 transition-all duration-300 relative shrink-0 cursor-pointer ${
+          className={`w-14 h-8 rounded-full p-1 transition-[colors,transform] duration-300 relative shrink-0 cursor-pointer ${
             garage.hasMonthlySubscribers ? 'bg-purple-600' : 'bg-slate-200 dark:bg-slate-800'
           }`}
           aria-label={garage.hasMonthlySubscribers ? 'تعطيل المشتركين الشهريين' : 'تفعيل المشتركين الشهريين'}
         >
-          <div className={`w-6 h-6 bg-white rounded-full transition-all duration-300 transform ${
+          <div className={`w-6 h-6 bg-white rounded-full transition-[colors,transform] duration-300 transform ${
             garage.hasMonthlySubscribers ? '-translate-x-6' : 'translate-x-0'
           }`} />
         </button>

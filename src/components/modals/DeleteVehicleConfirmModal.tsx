@@ -40,13 +40,13 @@ export const DeleteVehicleConfirmModal: React.FC<DeleteVehicleConfirmModalProps>
           <button 
             onClick={onConfirm}
             disabled={isLoading}
-            className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black text-base active:scale-95 disabled:opacity-50 transition-all duration-150 outline-none cursor-pointer shadow-lg shadow-red-600/20 flex items-center justify-center"
+            className="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-black text-base active:scale-95 disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-lg shadow-red-600/20 flex items-center justify-center"
           >
             تأكيد الحذف
           </button>
           <button 
             onClick={onCancel}
-            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 rounded-2xl font-bold text-sm transition-all duration-150 outline-none cursor-pointer flex items-center justify-center"
+            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 rounded-2xl font-bold text-sm transition-[colors,transform] duration-150 outline-none cursor-pointer flex items-center justify-center"
           >
             إلغاء
           </button>
