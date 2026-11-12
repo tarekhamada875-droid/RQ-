@@ -46,14 +46,11 @@ const KeyButton = memo(({ char, isNumber, className = "", isSelected, isDisabled
     <button
       type="button"
       aria-label={isNumber ? `رقم ${formatArabicDigits(char)}` : `حرف ${char}`}
-      onMouseDown={(e) => {
-        e.preventDefault(); // Critical: prevents input focus loss
-      }}
       onClick={(e) => {
         e.preventDefault();
         if (!isDisabled) onKeyPress(char);
       }}
-      className={`${heightClass} w-full flex items-center justify-center transition-colors active:brightness-125 touch-manipulation select-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${fontClass} ${
+      className={`${heightClass} w-full flex items-center justify-center transition-all active:scale-[0.95] touch-manipulation select-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${fontClass} ${
         isSelected
           ? 'bg-emerald-600 text-white z-10 scale-[1.03] border-transparent rounded-lg shadow-md'
           : 'bg-white dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 active:bg-slate-100 dark:active:bg-slate-700 border-[0.5px] border-slate-200 dark:border-slate-700/60'
@@ -102,7 +99,6 @@ export const LicensePlateKeyboard: React.FC<LicensePlateKeyboardProps> = memo(({
           : 'rounded-2xl md:rounded-[2rem] border-2 border-slate-300 dark:border-slate-800 mt-2'
       }`}
       dir="rtl"
-      onMouseDown={(e) => e.preventDefault()}
     >
       {/* Numbers Section */}
       <div className="flex flex-col">
