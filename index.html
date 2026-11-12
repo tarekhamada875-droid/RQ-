@@ -81,14 +81,20 @@
       }
     </script>
     <style>
-      /* Prevent initial white flashes before React script compiles */
+      /* Prevent initial white/dark flashes before React script compiles.
+         color-scheme tells the browser which themes this page supports
+         BEFORE Tailwind CSS loads — prevents flash of wrong-colored
+         scrollbars, form controls, and default text. */
+      html { color-scheme: light dark; }
       html, body {
         background-color: #faf9f6;
+        color: #0f172a;
         margin: 0;
         padding: 0;
       }
       html.dark, html.dark body {
-        background-color: #000000;
+        background-color: #020617;
+        color: #f1f5f9;
       }
       .browser-unsupported-message { display: none; }
       .browser-unsupported .browser-unsupported-message {
