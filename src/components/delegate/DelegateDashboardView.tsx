@@ -23,6 +23,7 @@ import { sortGaragesNewestFirst } from '../../utils/dates';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { FitText } from '../ui/FitText';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
+import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
 // PR-G: lazy-load TermsAndConditionsModal
 const TermsAndConditionsModal = lazyWithRetry(() => import('../modals/TermsAndConditionsModal').then(m => ({ default: m.TermsAndConditionsModal })));
 import { DelegateDashboardOverlays } from './DelegateDashboardOverlays';
@@ -457,7 +458,7 @@ export const DelegateDashboardView = memo(({
         isLoading={isLoading}
       />
       {showTermsModal && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<DelayedFallback><ModalSuspenseBackdrop /></DelayedFallback>}>
         <TermsAndConditionsModal
           onClose={() => setShowTermsModal(false)}
         />

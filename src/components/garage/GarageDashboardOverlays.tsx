@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { SubscribersView } from "./SubscribersView";
 import { CreditGrantHistoryView } from "./CreditGrantHistoryView";
 import { lazyWithRetry } from "../../utils/lazyWithRetry";
+import { DelayedFallback, ModalSuspenseBackdrop, PageSkeleton } from "../layout/LoadingFallbacks";
 import type { ActivityLog, Garage, Staff, Vehicle } from "../../types";
 import type { SharedSubscriberPage } from "../../hooks/useGarageDashboardLiveData";
 
@@ -85,7 +86,7 @@ export const GarageDashboardOverlays = ({
         <CreditGrantHistoryView garage={garage} onClose={onCloseCreditGrantHistory} showToast={showToast} onToggleMenu={onToggleMenu} sharedLogs={creditGrantLogs} sharedIsLoading={isCreditGrantLogsLoading} />
       )}
       {isReportsOpen && !currentStaff && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
           <GarageReportsLazy
             garage={garage}
             vehiclesInside={vehiclesInside}
@@ -98,10 +99,14 @@ export const GarageDashboardOverlays = ({
         </Suspense>
       )}
       {showTermsModal && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<DelayedFallback><ModalSuspenseBackdrop /></DelayedFallback>}>
           <TermsAndConditionsModal onClose={onCloseTerms} />
         </Suspense>
       )}
+      {/* CreditGrantNotificationModal renders unconditionally (isOpen prop) so
+          this boundary silently pre-warms its chunk at dashboard mount —
+          keep fallback={null}: a visible backdrop here would flash on every
+          dashboard open whenever that chunk is still downloading. */}
       <Suspense fallback={null}>
         <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
       </Suspense>

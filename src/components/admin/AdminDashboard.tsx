@@ -9,6 +9,7 @@ import { deleteGarageWithRecovery, garageDeletionFailureMessage } from '../../se
 import { soundManager } from '../../utils/sounds';
 import { useBackHandler } from '../../hooks/backHandler';
 import { AdminProvider } from '../../hooks/adminContext';
+import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
 import { useSession } from '../../hooks/sessionContext';
 import { Garage, Delegate } from '../../types';
 import { normalizeArabicSearch, normalizeDigits } from '../../utils/plates';
@@ -335,7 +336,13 @@ export const AdminDashboard = memo(({
         </AdminProvider>
       </main>
 
-      {/* PR-G: lazy-loaded modals wrapped in Suspense */}
+      {/* PR-G: lazy-loaded modals wrapped in Suspense.
+          UX-C: AdminAddGarageModal/AdminConfirmDialog render unconditionally
+          (isOpen prop) — this boundary silently pre-warms their chunks at
+          dashboard mount, so it keeps fallback={null} (a visible backdrop
+          would flash on every admin dashboard open). The conditional
+          AppearanceSettingsModal gets its own boundary with a real backdrop
+          so its first-ever tap is never a dead tap. */}
       <Suspense fallback={null}>
       {/* Add Garage Modal */}
       <AdminAddGarageModal
@@ -364,23 +371,25 @@ export const AdminDashboard = memo(({
         cancelText={confirmDialog.cancelText}
         type={confirmDialog.type}
       />
-
-      {/* Appearance Settings Modal */}
-      {showAppearanceSettings && (
-        <AppearanceSettingsModal 
-          onClose={() => setShowAppearanceSettings(false)}
-          adminColor={adminColor}
-          onUpdateAdminColor={async (color) => {
-            setLocalAdminColor(color);
-            try {
-              await adminService.updateSystemConfig({ adminColor: color });
-            } catch (err) {
-              console.warn('Failed to save adminColor to Firestore:', err);
-            }
-          }}
-        />
-      )}
       </Suspense>
+
+      {/* Appearance Settings Modal — conditional, so a real backdrop is safe */}
+      {showAppearanceSettings && (
+        <Suspense fallback={<DelayedFallback><ModalSuspenseBackdrop /></DelayedFallback>}>
+          <AppearanceSettingsModal
+            onClose={() => setShowAppearanceSettings(false)}
+            adminColor={adminColor}
+            onUpdateAdminColor={async (color) => {
+              setLocalAdminColor(color);
+              try {
+                await adminService.updateSystemConfig({ adminColor: color });
+              } catch (err) {
+                console.warn('Failed to save adminColor to Firestore:', err);
+              }
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 });

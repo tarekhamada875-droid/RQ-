@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { useLocalStorageState } from './hooks/useLocalStorage';
 import { useSystemConfig } from './hooks/useSystemConfig';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
@@ -20,6 +20,7 @@ import { NavigationUiProvider } from './hooks/navigationUiContext';
 import { GarageDataProvider } from './hooks/garageDataContext';
 import { AdminMutationsProvider } from './hooks/adminMutationsContext';
 import { shouldWaitForSessionReady } from './utils/authViewGuard';
+import { DelayedFallback, PageSkeleton } from './components/layout/LoadingFallbacks';
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppOverlays } from './components/app/AppOverlays';
 import { useTheme } from './utils/ThemeContext';
@@ -55,6 +56,18 @@ export default function App() {
     }
   }, [isLoading, isAuthReady, view, garage, delegate, currentStaff, selectedGarageForDetails, selectedDelegateForDetails, setView]);
 
+  // UX-C soft loading: the FIRST gate of a page load renders immediately so
+  // the handoff from main.tsx's BootSplash stays seamless. Any gate that
+  // appears AFTER real content was on screen (view switches, session
+  // re-claims) waits 250ms first — fast transitions then swap content with
+  // no loading flash at all, slow ones still get the full sync screen.
+  const waitingForInitialSyncEarly = view === 'garage' && !garageData.isInitialSyncComplete;
+  const isGateActive = !isAuthReady || shouldWaitForSessionReady(view, isSessionReady) || waitingForInitialSyncEarly;
+  const hasRenderedContentRef = useRef(false);
+  useEffect(() => {
+    if (!isGateActive) hasRenderedContentRef.current = true;
+  }, [isGateActive]);
+
   // ── Back-handler registrations ──────────────────────────────────────
   // Each App-level modal registers itself via useBackHandler. When the phone
   // back button is pressed, the stack is popped top-to-bottom — the topmost
@@ -89,10 +102,10 @@ export default function App() {
   // check-in/out during the brief window where stale cached snapshots could
   // clobber optimistic UI writes. Admin/delegate views are not gated — they
   // use different listeners and were never affected by the race.
-  const waitingForInitialSync = view === 'garage' && !garageData.isInitialSyncComplete;
-  if (!isAuthReady || shouldWaitForSessionReady(view, isSessionReady) || waitingForInitialSync) {
-    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSync ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
-    return <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري تحميل البيانات...</p></div>;
+  if (isGateActive) {
+    logDiagnostic(!isAuthReady ? 'APP_WAITING_FOR_AUTH_READY' : (waitingForInitialSyncEarly ? 'APP_WAITING_FOR_INITIAL_SYNC' : 'APP_WAITING_FOR_SESSION_READY'), { isAuthReady, isSessionReady, view, isInitialSyncComplete: garageData.isInitialSyncComplete });
+    const gateScreen = <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" /><p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري مزامنة البيانات...</p></div>;
+    return hasRenderedContentRef.current ? <DelayedFallback>{gateScreen}</DelayedFallback> : gateScreen;
   }
 
   const isLoggedIn = Boolean(view && view !== 'login');
@@ -105,7 +118,7 @@ export default function App() {
     <ErrorBoundary>
       <NetworkStatusBanner />
       <AppOverlays />
-      <Suspense fallback={<div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" /><p className="text-slate-600 dark:text-slate-300 font-bold text-xs">جاري تحميل الصفحة...</p></div>}>
+      <Suspense fallback={<DelayedFallback><PageSkeleton /></DelayedFallback>}>
         <AppRoutes />
       </Suspense>
     </ErrorBoundary>

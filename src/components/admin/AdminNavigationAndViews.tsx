@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Garage, Delegate } from '../../types';
 import { useAdmin } from '../../hooks/adminContext';
+import { DelayedFallback } from '../layout/LoadingFallbacks';
 import {
   Car,
   Users,
@@ -27,11 +28,18 @@ const AdminWalletSettingsView = React.lazy(() => import('./AdminWalletSettingsVi
 const AdminCreditRateSettingsView = React.lazy(() => import('./AdminCreditRateSettingsView').then(m => ({ default: m.AdminCreditRateSettingsView })));
 const AdminDailyGarageReportsView = React.lazy(() => import('./AdminDailyGarageReportsView').then(m => ({ default: m.AdminDailyGarageReportsView })));
 
-// Lightweight loading fallback shown while a lazy tab chunk is fetching.
+// UX-C: loading fallback shown while a lazy tab chunk is fetching. Static
+// ghost rows matching the tab card layout (no pulse — UI-LIGHT-SPEED). The
+// DelayedFallback wrapper means warm-cache tab switches (<250ms) show no
+// loading UI at all.
 const TabLoadingFallback = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
-  </div>
+  <DelayedFallback>
+    <div className="space-y-4 py-2" aria-hidden="true">
+      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
+      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
+      <div className="h-36 rounded-2xl bg-slate-200/70 dark:bg-slate-800/50" />
+    </div>
+  </DelayedFallback>
 );
 
 interface AdminNavigationAndViewsProps {
