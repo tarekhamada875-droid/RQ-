@@ -23,14 +23,14 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
   const resolvedActiveColor = '#f59e0b';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden " dir="rtl">
       {/* Header */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
           <button
             type="button"
             onClick={onClose}
-            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none cursor-pointer shrink-0 active:scale-95"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center outline-none cursor-pointer shrink-0 "
             aria-label="الرجوع"
             title="رجوع"
           >
@@ -61,14 +61,14 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                   if (theme !== 'light') toggleTheme();
                   soundManager.play('setting');
                 }}
-                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-[colors,transform] cursor-pointer text-center outline-none ${
+                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 cursor-pointer text-center outline-none ${
                   theme === 'light'
-                    ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 shadow-md scale-[1.02]'
-                    : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 text-slate-400'
+                    ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 scale-[1.02]'
+                    : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 text-slate-400'
                 }`}
               >
                 <div 
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-[colors,transform] ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                     theme === 'light' 
                       ? (isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white') 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
@@ -82,7 +82,7 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                 </div>
                 {theme === 'light' && (
                   <div 
-                    className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${
                       isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white'
                     }`} 
                     style={{ backgroundColor: resolvedActiveColor }}
@@ -99,14 +99,14 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                   if (theme !== 'dark') toggleTheme();
                   soundManager.play('setting');
                 }}
-                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 transition-[colors,transform] cursor-pointer text-center outline-none ${
+                className={`p-5 rounded-2xl border-2 flex flex-col items-center gap-3 cursor-pointer text-center outline-none ${
                   theme === 'dark'
-                    ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 shadow-md scale-[1.02]'
-                    : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 text-slate-400'
+                    ? 'border-slate-800 dark:border-white bg-white dark:bg-slate-900 scale-[1.02]'
+                    : 'border-slate-200 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 text-slate-400'
                 }`}
               >
                 <div 
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-[colors,transform] ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                     theme === 'dark' 
                       ? (isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white') 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
@@ -120,7 +120,7 @@ export const AppearanceSettingsModal: React.FC<AppearanceSettingsModalProps> = m
                 </div>
                 {theme === 'dark' && (
                   <div 
-                    className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center ${
                       isLightColor(resolvedActiveColor) ? 'text-slate-900' : 'text-white'
                     }`} 
                     style={{ backgroundColor: resolvedActiveColor }}

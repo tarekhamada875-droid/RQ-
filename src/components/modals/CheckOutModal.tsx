@@ -108,41 +108,14 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <style>{`
-        @keyframes snake-rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .snake-border-wrapper {
-          position: relative;
-          z-index: 0;
-          overflow: hidden;
-        }
-        .snake-border-wrapper::before {
-          content: '';
-          position: absolute;
-          z-index: -1;
-          left: -100%;
-          top: -100%;
-          width: 300%;
-          height: 300%;
-          background: conic-gradient(from 0deg, transparent 240deg, #ff0000 360deg);
-          animation: snake-rotate 4s linear infinite;
-        }
-        .dark .snake-border-wrapper::before {
-          background: conic-gradient(from 0deg, transparent 240deg, #ffffff 360deg);
-        }
-      `}</style>
-      
       <div 
         onClick={() => !isLoading && onCancel()}
         className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
-        style={{ willChange: 'opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
       />
       
       <div 
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto shadow-2xl"
-        style={{ willChange: 'transform, height, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden', height: modalHeight }}
+        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl rounded-t-[3.5rem] sm:rounded-[3.5rem] md:rounded-[4rem] p-6 sm:p-8 md:p-10 lg:p-12 pt-12 text-center border-t sm:border border-x border-slate-200 dark:border-slate-800 flex flex-col max-h-[92dvh] overflow-y-auto "
+        style={{ height: modalHeight }}
         dir="rtl"
         {...modalA11y.containerProps}
       >
@@ -153,7 +126,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
           className="w-full h-14 absolute top-0 left-0 flex items-start justify-center pt-5 group outline-none z-20"
           aria-label="إغلاق"
         >
-          <div className="w-14 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full group-hover:bg-slate-300 dark:group-hover:bg-slate-700 transition-colors" />
+          <div className="w-14 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" />
         </button>
 
         {/* Action Buttons Layer */}
@@ -170,7 +143,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       onClick={() => handleButtonClick('left')}
                       disabled={isLoading}
                       aria-label="بدء تأكيد خروج السيارة من الجانب الأيسر"
-                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-[colors,transform] hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
+                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 rotate-180 stroke-[3] text-white" />
                     </IconButton>
@@ -187,7 +160,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                       onClick={() => handleButtonClick('right')}
                       disabled={isLoading}
                       aria-label="بدء تأكيد خروج السيارة من الجانب الأيمن"
-                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center transition-[colors,transform] hover:scale-105 active:scale-95 shadow-lg shadow-red-500/15"
+                      className="w-16 h-20 sm:w-20 sm:h-24 md:w-24 md:h-32 lg:w-32 lg:h-40 xl:w-36 xl:h-44 rounded-2xl sm:rounded-[1.75rem] md:rounded-[2.25rem] lg:rounded-[3rem] xl:rounded-[3.5rem] bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/15"
                     >
                       <LogOut className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 stroke-[3] text-white" />
                     </IconButton>
@@ -197,14 +170,14 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
             ) : showLargeButton && (
               <div className="absolute inset-x-0 bottom-0 top-10 flex items-center justify-center pointer-events-none p-6 md:p-12">
                 <div
-                  className="snake-border-wrapper w-60 h-28 sm:w-96 sm:h-52 rounded-2xl sm:rounded-2xl p-[6px] pointer-events-auto shadow-xl"
+                  className="w-60 h-28 sm:w-96 sm:h-52 rounded-2xl sm:rounded-2xl p-[6px] pointer-events-auto bg-red-500 dark:bg-white"
                 >
                   <IconButton
                     type="button"
                     onClick={handleGuardedConfirm}
                     disabled={isLoading || isConfirming}
                     aria-label={`تأكيد خروج السيارة ${selectedVehicle.plateNumber}`}
-                    className="relative w-full h-full rounded-[2.1rem] sm:rounded-[2.4rem] bg-slate-950 dark:bg-red-500 flex flex-col items-center justify-center z-10 outline-none transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative w-full h-full rounded-[2.1rem] sm:rounded-[2.4rem] bg-slate-950 dark:bg-red-500 flex flex-col items-center justify-center z-10 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loadingType === 'checkout' || isConfirming ? (
                       <Spinner />
@@ -257,7 +230,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   <button 
                     onClick={onDelete}
                     disabled={isLoading}
-                    className="w-full h-14 sm:h-16 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 active:scale-95 transition-[colors,transform] duration-150 cursor-pointer"
+                    className="w-full h-14 sm:h-16 bg-red-600 text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-red-600/25 cursor-pointer"
                   >
                     {isLoading && loadingType === 'delete' ? (
                       <Spinner className="!text-white" />
@@ -270,13 +243,13 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
               )}
 
               {/* Ticket Card Container */}
-              <div className="w-full bg-slate-50/50 dark:bg-slate-950/20 border-2 md:border-[3px] border-slate-900 dark:border-black rounded-xl p-3 sm:p-4 mb-2 sm:mb-4 shadow-sm overflow-hidden shrink-0">
+              <div className="w-full bg-slate-50/50 dark:bg-slate-950/20 border-2 md:border-[3px] border-slate-900 dark:border-black rounded-xl p-3 sm:p-4 mb-2 sm:mb-4 overflow-hidden shrink-0">
                 
                 {/* Grid / Bento layout for 4 items without icons to maximize text size */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   
                   {/* Item 1: الفئة / النوع (النوع) */}
-                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-sm text-center overflow-hidden">
+                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl text-center overflow-hidden">
                     {/* Header Block */}
                     <div className="py-1.5 sm:py-2 px-3 bg-slate-100/70 dark:bg-slate-950/50 border-b border-slate-150 dark:border-slate-800/60 shrink-0">
                       <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 tracking-wide">النوع</span>
@@ -300,7 +273,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   </div>
 
                   {/* Item 2: مدة الانتظار (المدة) */}
-                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-sm text-center overflow-hidden">
+                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl text-center overflow-hidden">
                     {/* Header Block */}
                     <div className="py-1.5 sm:py-2 px-3 bg-slate-100/70 dark:bg-slate-950/50 border-b border-slate-150 dark:border-slate-800/60 shrink-0">
                       <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 tracking-wide">المدة</span>
@@ -345,7 +318,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   </div>
 
                   {/* Item 3: وقت الدخول (الوصول) */}
-                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-sm text-center overflow-hidden">
+                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl text-center overflow-hidden">
                     {/* Header Block */}
                     <div className="py-1.5 sm:py-2 px-3 bg-slate-100/70 dark:bg-slate-950/50 border-b border-slate-150 dark:border-slate-800/60 shrink-0">
                       <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 tracking-wide">الوصول</span>
@@ -377,7 +350,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = memo(({
                   </div>
 
                   {/* Item 4: الموظف المسؤول (المسؤول) */}
-                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl shadow-sm text-center overflow-hidden">
+                  <div className="flex flex-col h-[90px] sm:h-[110px] md:h-[130px] bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 rounded-2xl text-center overflow-hidden">
                     {/* Header Block */}
                     <div className="py-1.5 sm:py-2 px-3 bg-slate-100/70 dark:bg-slate-950/50 border-b border-slate-150 dark:border-slate-800/60 shrink-0">
                       <span className="text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 tracking-wide">المسؤول</span>

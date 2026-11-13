@@ -36,10 +36,10 @@ export const GarageActiveVehiclesList = memo(({
   disabled = false,
 }: GarageActiveVehiclesListProps) => {
   return (
-    <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border border-slate-150 dark:border-slate-800 overflow-hidden flex flex-col flex-1 min-h-[400px] md:min-h-[500px] transition-colors w-full shadow-sm">
-      <div className="p-3 md:p-4 px-4 md:px-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0 transition-colors">
+    <div className="bg-[#faf9f6] dark:bg-slate-900 rounded-[2rem] border border-slate-150 dark:border-slate-800 overflow-hidden flex flex-col flex-1 min-h-[400px] md:min-h-[500px] w-full ">
+      <div className="p-3 md:p-4 px-4 md:px-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0 ">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 md:w-11 md:h-11 bg-slate-900 dark:bg-slate-800 rounded-lg flex items-center justify-center text-white transition-[colors,transform]">
+          <div className="w-8 h-8 md:w-11 md:h-11 bg-slate-900 dark:bg-slate-800 rounded-lg flex items-center justify-center text-white ">
             <Car className="w-4 h-4 md:w-6 md:h-6" />
           </div>
           <div>
@@ -53,7 +53,7 @@ export const GarageActiveVehiclesList = memo(({
             type="button"
             onClick={onClose}
             aria-label="إغلاق قائمة السيارات النشطة"
-            className="w-8 h-8 md:w-11 md:h-11 bg-red-500 dark:bg-red-600 text-white rounded-xl flex shrink-0 items-center justify-center hover:bg-red-600 dark:hover:bg-red-700 transition-colors outline-none shadow-sm"
+            className="w-8 h-8 md:w-11 md:h-11 bg-red-500 dark:bg-red-600 text-white rounded-xl flex shrink-0 items-center justify-center outline-none "
           >
             <XIcon className="w-4 h-4 md:w-5 md:h-5" />
           </IconButton>
@@ -62,7 +62,7 @@ export const GarageActiveVehiclesList = memo(({
 
       <div
         ref={scrollContainerRef}
-        className="divide-y divide-slate-100 dark:divide-slate-800 flex-1 overflow-y-auto custom-scrollbar overscroll-contain touch-pan-y bg-[#faf9f6] dark:bg-slate-900 transition-colors"
+        className="divide-y divide-slate-100 dark:divide-slate-800 flex-1 overflow-y-auto custom-scrollbar overscroll-contain touch-pan-y bg-[#faf9f6] dark:bg-slate-900 "
       >
         {visibleVehicles.map((vehicle) => (
           <VehicleItem

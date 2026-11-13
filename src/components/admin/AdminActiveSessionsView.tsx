@@ -80,13 +80,13 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
   };
 
   return (
-    <div dir="rtl" className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200 text-right">
+    <div dir="rtl" className="max-w-4xl mx-auto space-y-6 text-right">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-black text-slate-900 dark:text-white">{'الأجهزة والجلسات النشطة'}</h2>
           <p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-400">{'راجع الأجهزة التي تستخدم حسابك وألغِ الجلسات غير المعروفة.'}</p>
         </div>
-        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-black text-slate-600 dark:text-slate-300 hover:border-emerald-500">{'عودة'}</button>
+        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-black text-slate-600 dark:text-slate-300 ">{'عودة'}</button>
       </div>
 
       <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 flex gap-3 items-start">
@@ -115,7 +115,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
       ) : (
         <div className="space-y-3">
           {sessions.map((session) => (
-            <article key={session.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+            <article key={session.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 flex flex-col sm:flex-row sm:items-center gap-4 ">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${session.isCurrent ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{deviceIcon(session)}</div>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -126,7 +126,7 @@ export const AdminActiveSessionsView: React.FC<AdminActiveSessionsViewProps> = (
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400"><Clock3 className="w-3.5 h-3.5" /> {'آخر نشاط:'} {formatTimestamp(session.lastActive, 'ar-EG')}</div>
                 <div className="text-[10px] font-mono text-slate-400 truncate">{'معرّف آمن:'} {session.id.slice(0, 12)}…</div>
               </div>
-              <button type="button" onClick={() => void revokeSession(session)} disabled={busySession !== null} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-black disabled:opacity-50 shrink-0">
+              <button type="button" onClick={() => void revokeSession(session)} disabled={busySession !== null} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-black disabled:opacity-50 shrink-0">
                 {busySession === session.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
                 {session.isCurrent ? 'تسجيل الخروج' : 'إلغاء الجلسة'}
               </button>

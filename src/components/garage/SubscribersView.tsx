@@ -71,10 +71,10 @@ interface SubscribersViewProps {
  * Orchestrator for the subscribers fullscreen view.
  *
  * Split (Tier-2 refactor #3) from a 678-line god component into:
- *   - useSubscriberList: list state + Firestore subscription + pagination
- *   - useSubscriberForm: form draft state + add/edit/renew/delete handlers
- *   - SubscriberCard: per-item render with its own memo boundary
- *   - this file: composition + header + search + list layout
+ * - useSubscriberList: list state + Firestore subscription + pagination
+ * - useSubscriberForm: form draft state + add/edit/renew/delete handlers
+ * - SubscriberCard: per-item render with its own memo boundary
+ * - this file: composition + header + search + list layout
  *
  * Form keystrokes no longer re-render the list (the list hook's state is
  * isolated from the form hook's state). Each subscriber card has its own
@@ -133,14 +133,14 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
   }, [todayDateObj]);
 
   return (
-    <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors" dir="rtl">
+    <div className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden " dir="rtl">
       {/* Header */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 z-40 w-full shrink-0">
         <div className="max-w-4xl mx-auto flex items-center gap-4 w-full">
           <button
             type="button"
             onClick={onClose}
-            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center outline-none shrink-0"
             aria-label="الرجوع"
             title="رجوع"
           >
@@ -159,7 +159,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
         {/* Add Subscriber Button */}
         <button
           onClick={form.handleOpenAdd}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-[colors,transform] outline-none active:scale-[0.98] mb-5 shadow-sm shadow-blue-500/10"
+          className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 outline-none mb-5 shadow-sm shadow-blue-500/10"
         >
           <Plus className="w-5 h-5 stroke-[3]" />
           <span>إضافة مشترك جديد</span>
@@ -189,7 +189,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
             // user doesn't see a blank list area during initial load.
             <div className="space-y-3" aria-label="جاري تحميل المشتركين">
               {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+                <div key={item} className="h-28 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
               ))}
             </div>
           ) : filteredSubscribers.length === 0 ? (
@@ -223,7 +223,7 @@ export const SubscribersView = memo(({ garage, onClose, showToast, subscriberPag
             type="button"
             onClick={handleLoadMoreSubscribers}
             disabled={isLoadingMoreSubscribers}
-            className="w-full min-h-11 mt-3 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition-colors"
+            className="w-full min-h-11 mt-3 px-4 py-3 bg-slate-100 dark:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 "
           >
             <ChevronDown className="w-4 h-4" />
             <span>{isLoadingMoreSubscribers ? 'جارٍ تحميل المزيد...' : 'تحميل 50 مشتركاً أقدم'}</span>

@@ -32,7 +32,7 @@ function BootSplash() {
   return (
     <div className="w-full h-full min-h-screen bg-[#faf9f6] dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center font-sans" dir="rtl">
       <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-slate-600 dark:text-slate-300 font-bold text-sm animate-pulse">جاري تحميل البيانات...</p>
+      <p className="text-slate-600 dark:text-slate-300 font-bold text-sm">جاري تحميل البيانات...</p>
     </div>
   );
 }

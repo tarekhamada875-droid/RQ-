@@ -185,9 +185,9 @@ export const DelegateDashboardView = memo(({
   };
 
   return (
-    <div className={`h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors overflow-x-hidden ${showAddGarage ? 'overflow-hidden' : 'overflow-y-auto'}`} dir="rtl">
+    <div className={`h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col overflow-x-hidden ${showAddGarage ? 'overflow-hidden' : 'overflow-y-auto'}`} dir="rtl">
       {/* Header — minimal: title + settings icon */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sticky top-0 z-40 transition-colors">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3 sticky top-0 z-40 ">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl flex items-center justify-center">
@@ -200,7 +200,7 @@ export const DelegateDashboardView = memo(({
           <div className="relative" ref={settingsRef}>
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-[colors,transform] outline-none border ${showSettings ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center outline-none border ${showSettings ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
               aria-label="الإعدادات"
             >
               <SettingsIcon className="w-5 h-5 text-slate-600 dark:text-slate-400" />
@@ -213,7 +213,7 @@ export const DelegateDashboardView = memo(({
                   onClick={() => setShowSettings(false)}
                 />
 
-                <div className="absolute top-12 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute top-12 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 overflow-hidden ">
                   <div className="p-3.5 flex flex-col gap-2">
                     <span className="font-bold text-xs text-slate-400 dark:text-slate-500 pr-1 select-none text-right">وضع الشاشة:</span>
                     <div className="flex gap-2">
@@ -223,7 +223,7 @@ export const DelegateDashboardView = memo(({
                           if (theme !== 'light') toggleTheme();
                           setShowSettings(false);
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-[colors,transform] outline-none font-bold text-xs ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border outline-none font-bold text-xs ${
                           theme === 'light'
                             ? 'bg-amber-500 border-amber-500 text-slate-950 font-black'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
@@ -239,7 +239,7 @@ export const DelegateDashboardView = memo(({
                           if (theme !== 'dark') toggleTheme();
                           setShowSettings(false);
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-[colors,transform] outline-none font-bold text-xs ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border outline-none font-bold text-xs ${
                           theme === 'dark'
                             ? 'bg-amber-500 border-amber-500 text-slate-950 font-black'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
@@ -258,7 +258,7 @@ export const DelegateDashboardView = memo(({
                         setShowTermsModal(true);
                         setShowSettings(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-right hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 rounded-xl transition-colors font-bold text-xs cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-right text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs cursor-pointer"
                     >
                       <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>الشروط والأحكام</span>
@@ -271,7 +271,7 @@ export const DelegateDashboardView = memo(({
                         onLogout();
                         setShowSettings(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-right hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl transition-colors font-bold text-xs"
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-right text-red-600 dark:text-red-400 rounded-xl font-bold text-xs"
                     >
                       <LogOut className="w-4 h-4 rotate-180" />
                       <span>تسجيل الخروج</span>
@@ -319,7 +319,7 @@ export const DelegateDashboardView = memo(({
         <button
           type="button"
           onClick={handleOpenAddGarage}
-          className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 p-4 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 transition-[colors,transform] shadow-sm cursor-pointer"
+          className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-4 rounded-2xl font-black text-base flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
         >
           <PlusCircle className="w-6 h-6" />
           <span>افتح جراج جديد</span>
@@ -343,7 +343,7 @@ export const DelegateDashboardView = memo(({
                 <button
                   type="button"
                   onClick={onRetryDelegateDashboard}
-                  className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-bold text-sm"
+                  className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 font-bold text-sm"
                 >
                   <RefreshCw className="w-4 h-4" />
                   إعادة المحاولة
@@ -362,7 +362,7 @@ export const DelegateDashboardView = memo(({
             return (
               <div
                 key={g.id}
-                className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-col gap-3 shadow-sm ${
+                className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 flex flex-col gap-3 ${
                   isPendingCreation
                     ? 'border-dashed border-slate-300 dark:border-slate-800 opacity-75'
                     : 'border-slate-200 dark:border-slate-800'
@@ -406,7 +406,7 @@ export const DelegateDashboardView = memo(({
                       <button
                         type="button"
                         onClick={() => handleOpenCreditRequest(g)}
-                        className="self-start inline-flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 transition-colors cursor-pointer"
+                        className="self-start inline-flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-xl bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 cursor-pointer"
                       >
                         <Coins className="w-3.5 h-3.5" />
                         طلب رصيد
@@ -437,7 +437,7 @@ export const DelegateDashboardView = memo(({
               type="button"
               onClick={onLoadMoreDelegateGarages}
               disabled={delegateListsLoading}
-              className="w-full min-h-[44px] mt-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full min-h-[44px] mt-3 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {delegateListsLoading ? 'جارٍ تحميل المزيد...' : 'عرض المزيد من الجراجات'}
             </button>
@@ -486,7 +486,7 @@ export const DelegateDashboardView = memo(({
               <button
                 type="button"
                 onClick={() => setShowCreditRequestModal(false)}
-                className="w-9 h-9 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex shrink-0 items-center justify-center transition-colors outline-none cursor-pointer"
+                className="w-9 h-9 bg-red-500/10 text-red-500 rounded-xl flex shrink-0 items-center justify-center outline-none cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -517,7 +517,7 @@ export const DelegateDashboardView = memo(({
               <button
                 type="submit"
                 disabled={submittingCreditRequest}
-                className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-[colors,transform] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
               >
                 {submittingCreditRequest ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>

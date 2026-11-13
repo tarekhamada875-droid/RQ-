@@ -132,7 +132,7 @@ export const AdminPeopleView = memo(({
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-[colors,transform] cursor-pointer bg-emerald-600 text-white shadow-md"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm cursor-pointer bg-emerald-600 text-white shadow-md"
             >
               <Briefcase className="w-4 h-4 shrink-0" />
               <span>المناديب المعينون</span>
@@ -147,13 +147,13 @@ export const AdminPeopleView = memo(({
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] cursor-pointer shadow-sm ${
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
               showAddForm
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'bg-emerald-600 text-white'
             }`}
           >
-            <Plus className={`w-4 h-4 stroke-[3] transition-transform duration-200 ${showAddForm ? 'rotate-45' : ''}`} />
+            <Plus className={`w-4 h-4 stroke-[3] ${showAddForm ? 'rotate-45' : ''}`} />
             <span>{showAddForm ? 'إلغاء النافذة' : 'إضافة مندوب جديد'}</span>
           </button>
         )}
@@ -161,7 +161,7 @@ export const AdminPeopleView = memo(({
 
       {/* Collapsible Add Form */}
       {showAddForm && (
-        <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/30 rounded-3xl p-6 shadow-md max-w-xl mx-auto space-y-4 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/30 rounded-3xl p-6 max-w-xl mx-auto space-y-4 ">
           <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-500/10 text-emerald-600">
               <Plus className="w-4 h-4 stroke-[3]" />
@@ -222,7 +222,7 @@ export const AdminPeopleView = memo(({
                     setDelegateForm((prev) => ({ ...prev, pin: safePin }));
                     pinInputRef.current?.setValue(safePin);
                   }}
-                  className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer"
+                  className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl cursor-pointer"
                   title="توليد رقم سري عشوائي"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -238,7 +238,7 @@ export const AdminPeopleView = memo(({
             <button
               type="submit"
               disabled={isSubmittingDelegate}
-              className="w-full text-white py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-[colors,transform] shadow-sm cursor-pointer disabled:opacity-50 bg-emerald-600 hover:bg-emerald-700"
+              className="w-full text-white py-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50 bg-emerald-600 "
             >
               {isSubmittingDelegate ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -256,7 +256,7 @@ export const AdminPeopleView = memo(({
       {hasError && (
         <div className="flex items-center justify-between gap-3 text-xs font-bold text-rose-600 dark:text-rose-400">
           <span>تعذر تحميل قائمة المناديب.</span>
-          {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/30"><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
+          {onRefresh && <button type="button" onClick={() => void onRefresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 px-3 dark:border-rose-900 "><RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة</button>}
         </div>
       )}
 
@@ -270,8 +270,8 @@ export const AdminPeopleView = memo(({
               <div
                 key={d.id}
                 onClick={() => onSelectDelegate(d)}
-                className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm hover:shadow-md transition-[colors,transform] flex flex-col justify-between space-y-4 ${
-                  'border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 cursor-pointer'
+                className={`bg-white dark:bg-slate-900 border-2 rounded-3xl p-5 shadow-sm flex flex-col justify-between space-y-4 ${
+                  'border-slate-200 dark:border-slate-800 cursor-pointer'
                 }`}
               >
                 {/* Header */}

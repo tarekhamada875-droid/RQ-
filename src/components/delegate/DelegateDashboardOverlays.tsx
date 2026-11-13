@@ -38,7 +38,7 @@ export const DelegateDashboardOverlays = ({
         {showAddGarage && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 overflow-y-auto" onClick={() => setShowAddGarage(false)}>
             <div 
-              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 transition-colors" 
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-6 sm:p-8 relative my-auto border border-slate-200 dark:border-slate-800 " 
               onClick={e => e.stopPropagation()}
               onMouseDown={e => e.stopPropagation()}
               onTouchStart={e => e.stopPropagation()}
@@ -53,7 +53,7 @@ export const DelegateDashboardOverlays = ({
                 <button 
                   type="button"
                   onClick={() => setShowAddGarage(false)}
-                  className="w-9 h-9 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl flex shrink-0 items-center justify-center transition-colors outline-none cursor-pointer"
+                  className="w-9 h-9 bg-red-500/10 text-red-500 rounded-xl flex shrink-0 items-center justify-center outline-none cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -74,7 +74,7 @@ export const DelegateDashboardOverlays = ({
               >
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">اسم الجراج</label>
-                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 transition-[colors,transform] placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
+                  <input name="name" placeholder="جراج التوفيق" required className="w-full p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:border-amber-500 placeholder:text-slate-400 dark:placeholder:text-slate-500" dir="rtl" />
                 </div>
   
                 <div className="grid grid-cols-2 gap-3">
@@ -132,7 +132,7 @@ export const DelegateDashboardOverlays = ({
                           newGaragePinRef.current?.setValue(nextPin);
                           setPinGenerationsRemaining(prev => prev - 1);
                         }}
-                        className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg hover:text-slate-900 dark:hover:text-white transition-colors"
+                        className="absolute left-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg "
                         title="توليد رقم سري عشوائي"
                       >
                         <RefreshCw className="w-4 h-4" />
@@ -144,7 +144,7 @@ export const DelegateDashboardOverlays = ({
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base hover:opacity-95 transition-[colors,transform] disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                  className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 rounded-xl py-3.5 font-black text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>

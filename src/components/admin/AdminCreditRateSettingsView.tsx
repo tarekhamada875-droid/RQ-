@@ -15,16 +15,16 @@ interface AdminCreditRateSettingsViewProps {
  * math, no decimals to mis-enter. Each preset shows a live preview of what
  * 100 EGP buys, so the consequence of each choice is visible before saving.
  *
- *   0.5  EGP/credit → 100 EGP buys 200 credits  (cheapest credits)
- *   0.65 EGP/credit → 100 EGP buys 153 credits
- *   0.75 EGP/credit → 100 EGP buys 133 credits
- *   0.8  EGP/credit → 100 EGP buys 125 credits  (discount)
- *   1    EGP/credit → 100 EGP buys 100 credits  (default, legacy)
- *   2    EGP/credit → 100 EGP buys  50 credits
- *  10    EGP/credit → 100 EGP buys  10 credits  (premium credits)
+ * 0.5 EGP/credit → 100 EGP buys 200 credits (cheapest credits)
+ * 0.65 EGP/credit → 100 EGP buys 153 credits
+ * 0.75 EGP/credit → 100 EGP buys 133 credits
+ * 0.8 EGP/credit → 100 EGP buys 125 credits (discount)
+ * 1 EGP/credit → 100 EGP buys 100 credits (default, legacy)
+ * 2 EGP/credit → 100 EGP buys 50 credits
+ * 10 EGP/credit → 100 EGP buys 10 credits (premium credits)
  *
  * Storage: the server stores `creditRate` = credits-per-EGP (the inverse).
- *   creditRate = 1 / egpPerCredit
+ * creditRate = 1 / egpPerCredit
  * The UI converts on load and on save; backend logic is unchanged — it still
  * computes `credits = round(paymentAmountEgp × creditRate)`.
  *
@@ -129,11 +129,11 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
 
   return (
     <div className="max-w-2xl mx-auto font-sans" dir="rtl">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 shadow-xl transition-colors relative overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none" />
 
         <div className="mb-8 text-center space-y-3 relative z-10">
-          <div className="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+          <div className="w-14 h-14 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto ">
             <Coins className="w-7 h-7 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
@@ -183,10 +183,10 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                           setSaveError('');
                           setSaveSuccess('');
                         }}
-                        className={`relative w-full p-4 rounded-2xl border-2 transition-[colors,transform] cursor-pointer text-right flex flex-col gap-2 ${
+                        className={`relative w-full p-4 rounded-2xl border-2 cursor-pointer text-right flex flex-col gap-2 ${
                           isSelected
-                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-md'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:border-emerald-400 dark:hover:border-emerald-700'
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 '
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 '
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -200,7 +200,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
                             </span>
                           )}
                           {isSelected && (
-                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                            <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center ">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </span>
                           )}
@@ -226,7 +226,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
               <button
                 type="submit"
                 disabled={isSaving || !hasChanges}
-                className="px-8 h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="px-8 h-14 bg-emerald-500 text-white font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed "
               >
                 {isSaving ? (
                   <>
@@ -243,7 +243,7 @@ export const AdminCreditRateSettingsView: React.FC<AdminCreditRateSettingsViewPr
               <button
                 type="button"
                 onClick={onBack}
-                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl transition-[colors,transform] cursor-pointer flex items-center justify-center gap-2"
+                className="px-6 h-14 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-extrabold text-sm rounded-2xl cursor-pointer flex items-center justify-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>{'رجوع'}</span>

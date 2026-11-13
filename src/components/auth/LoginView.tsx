@@ -74,17 +74,17 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-white dark:bg-slate-900 w-full max-w-sm sm:max-w-md md:max-w-lg rounded-2xl pt-6 pb-8 sm:pt-8 sm:pb-10 px-5 sm:px-8 border border-slate-100 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden"
+        className="relative bg-white dark:bg-slate-900 w-full max-w-sm sm:max-w-md md:max-w-lg rounded-2xl pt-6 pb-8 sm:pt-8 sm:pb-10 px-5 sm:px-8 border border-slate-100 dark:border-slate-800/80 _8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
       >
         {/* Central Display: Authentic Egyptian License Plate Design */}
         <div className="mb-5 sm:mb-7 select-none" dir="ltr">
-          <div className="relative w-full max-w-[320px] sm:max-w-[380px] mx-auto bg-white dark:bg-slate-900 border-[3px] border-slate-900 dark:border-slate-700 rounded-2xl overflow-hidden shadow-md flex flex-col">
+          <div className="relative w-full max-w-[320px] sm:max-w-[380px] mx-auto bg-white dark:bg-slate-900 border-[3px] border-slate-900 dark:border-slate-700 rounded-2xl overflow-hidden flex flex-col">
             {/* Top Bar - Standard Egyptian Blue */}
             <div className="h-7 sm:h-8 bg-[#0057b7] text-white flex items-center justify-center px-3 sm:px-4 font-black border-b border-slate-900/10 relative">
               {/* Integrated Live Digit Counter Badge */}
               {deferredPin.length > 0 ? (
                 <div 
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white shadow-xs backdrop-blur-xs transition-[colors,transform] duration-200"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white shadow-xs "
                   dir="rtl"
                 >
                   <span className="font-mono font-black text-xs text-white">
@@ -115,20 +115,20 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
 
               {/* Blinking Cursor Indicator when active */}
               {deferredPin.length > 0 && deferredPin.length < 10 && !isLoading && (
-                <span className="inline-block w-1 h-7 sm:h-8 bg-[#0057b7] animate-pulse ml-1 rounded-full" />
+                <span className="inline-block w-1 h-7 sm:h-8 bg-[#0057b7] ml-1 rounded-full" />
               )}
             </div>
           </div>
         </div>
 
         {/* Keypad */}
-        <div className={`grid grid-cols-3 gap-2 sm:gap-3 transition-[colors,transform] duration-300 ${isLoading ? 'opacity-40 pointer-events-none' : ''}`} dir="ltr">
+        <div className={`grid grid-cols-3 gap-2 sm:gap-3 ${isLoading ? 'opacity-40 pointer-events-none' : ''}`} dir="ltr">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
             <button
               key={num}
               disabled={isLoading}
               onClick={() => handleKeyPress(num.toString())}
-              className="h-12 sm:h-16 rounded-xl bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800/60 text-xl sm:text-2xl font-bold font-mono text-slate-800 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-700 outline-none transition-[background-color,transform] duration-75 active:scale-95 disabled:pointer-events-none flex items-center justify-center hover:border-slate-400/40 select-none touch-manipulation shadow-xs"
+              className="h-12 sm:h-16 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/60 text-xl sm:text-2xl font-bold font-mono text-slate-800 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-700 outline-none disabled:pointer-events-none flex items-center justify-center select-none touch-manipulation "
             >
               {num}
             </button>
@@ -136,21 +136,21 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
           <button
             disabled={isLoading || deferredPin.length === 0}
             onClick={handleClearAll}
-            className="h-12 sm:h-16 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-black text-xs sm:text-sm outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center transition-[colors,transform] active:scale-95 select-none touch-manipulation shadow-xs"
+            className="h-12 sm:h-16 rounded-xl bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-black text-xs sm:text-sm outline-none disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center select-none touch-manipulation shadow-xs"
           >
             مسح الكل
           </button>
           <button
             disabled={isLoading}
             onClick={() => handleKeyPress('0')}
-            className="h-12 sm:h-16 rounded-xl bg-slate-50/70 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800/60 text-xl sm:text-2xl font-bold font-mono text-slate-800 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-700 outline-none transition-[background-color,transform] duration-75 active:scale-95 disabled:pointer-events-none flex items-center justify-center hover:border-slate-400/40 select-none touch-manipulation shadow-xs"
+            className="h-12 sm:h-16 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/60 text-xl sm:text-2xl font-bold font-mono text-slate-800 dark:text-slate-200 active:bg-slate-200 dark:active:bg-slate-700 outline-none disabled:pointer-events-none flex items-center justify-center select-none touch-manipulation "
           >
             0
           </button>
           <button
             disabled={isLoading || deferredPin.length === 0}
             onClick={handleDelete}
-            className="h-12 sm:h-16 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:bg-amber-500/30 transition-[colors,transform] active:scale-95 outline-none disabled:opacity-40 disabled:pointer-events-none select-none touch-manipulation shadow-xs"
+            className="h-12 sm:h-16 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center active:bg-amber-500/30 outline-none disabled:opacity-40 disabled:pointer-events-none select-none touch-manipulation shadow-xs"
           >
             <Delete className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" />
           </button>
@@ -160,7 +160,7 @@ export const LoginView: React.FC<LoginViewProps> = memo(({
         <button 
           onClick={() => handleGarageLogin()}
           disabled={isLoading || cleanPin.length === 0}
-          className="w-full bg-[#0057b7] hover:bg-[#004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale transition-[colors,transform] flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm hover:shadow-md active:scale-[0.99]"
+          className="w-full bg-[#0057b7] #004494] text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-40 disabled:grayscale flex items-center justify-center mt-5 sm:mt-6 outline-none shadow-sm "
         >
           {isLoading ? (
             <div className="flex items-center gap-2">

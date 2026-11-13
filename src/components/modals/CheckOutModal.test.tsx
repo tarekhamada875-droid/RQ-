@@ -10,14 +10,6 @@ vi.mock('../../hooks/serverTimeContext', () => ({
   useServerTimeNow: () => now,
 }));
 
-vi.mock('motion/react', async () => {
-  const { createElement, Fragment } = await import('react');
-  const MotionDiv = ({ children, initial, animate, exit, transition, ...props }: any) =>
-    createElement('div', props, children);
-  const AnimatePresence = ({ children }: any) => createElement(Fragment, null, children);
-  return { motion: { div: MotionDiv }, AnimatePresence };
-});
-
 vi.mock('../ui/EgyptianPlate', () => ({
   EgyptianPlate: ({ plateNumber }: { plateNumber: string }) => <span>{plateNumber}</span>,
 }));

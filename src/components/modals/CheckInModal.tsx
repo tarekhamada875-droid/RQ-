@@ -45,12 +45,10 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div 
         onClick={() => !isLoading && onCancel()}
-        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps"
-        style={{ willChange: 'opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
+        className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80"
       />
       <div
-        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800 shadow-2xl animate-popup-30fps"
-        style={{ willChange: 'transform, opacity', transform: 'translate3d(0, 0, 0)', backfaceVisibility: 'hidden' }}
+        className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl rounded-t-3xl sm:rounded-3xl p-6 sm:p-10 text-center max-h-[90vh] max-h-[90dvh] overflow-y-auto custom-scrollbar-slate stable-scrollbar border border-slate-200/80 dark:border-slate-800 "
         dir="rtl"
         {...modalA11y.containerProps}
       >
@@ -79,9 +77,9 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
                 <button 
                   onClick={() => void onCheckIn('hourly', plateValue)}
                   disabled={isLoading}
-                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 group disabled:opacity-50 outline-none cursor-pointer shadow-sm"
                 >
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                     {loadingType === 'hourly' ? <Spinner /> : <Clock className="w-7 h-7 sm:w-8 sm:h-8" />}
                   </div>
                   <div className="text-right">
@@ -90,7 +88,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
                       <span className="font-mono">{garage.hourlyRate ?? 0}</span> {APP_TEXT.GARAGE.CURRENCY} / ساعة
                     </div>
                   </div>
-                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
+                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto " />
                 </button>
               )}
 
@@ -98,25 +96,25 @@ export const CheckInModal: React.FC<CheckInModalProps> = memo(({
                 <button 
                   onClick={() => void onCheckIn('overnight', plateValue)}
                   disabled={isLoading}
-                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] group disabled:opacity-50 transition-[colors,transform] duration-150 outline-none cursor-pointer shadow-sm"
+                  className="flex items-center gap-4 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 group disabled:opacity-50 outline-none cursor-pointer shadow-sm"
                 >
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm shrink-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                     {loadingType === 'overnight' ? <Spinner /> : <Moon className="w-7 h-7 sm:w-8 sm:h-8" />}
                   </div>
                   <div className="text-right">
-                    <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white transition-colors">{APP_TEXT.GARAGE.TYPE_OVERNIGHT}</div>
-                    <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold transition-colors mt-0.5">
+                    <div className="font-black text-xl sm:text-2xl text-slate-900 dark:text-white ">{APP_TEXT.GARAGE.TYPE_OVERNIGHT}</div>
+                    <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold mt-0.5">
                       <span className="font-mono">{garage.overnightRate ?? 0}</span> {APP_TEXT.GARAGE.CURRENCY} ثابت
                     </div>
                   </div>
-                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto group-hover:text-emerald-600 transition-colors" />
+                  <ChevronRight className="w-6 h-6 text-slate-300 dark:text-slate-700 mr-auto " />
                 </button>
               )}
             </div>
 
             <button 
               onClick={onCancel}
-              className="w-full mt-6 h-14 sm:h-16 text-red-500 dark:text-red-400 font-black text-sm sm:text-base hover:text-red-700 bg-red-50 dark:bg-red-900/20 active:scale-95 rounded-2xl border border-red-100 dark:border-red-900/30 transition-[colors,transform] duration-150 outline-none cursor-pointer flex items-center justify-center shadow-sm"
+              className="w-full mt-6 h-14 sm:h-16 text-red-500 dark:text-red-400 font-black text-sm sm:text-base bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 outline-none cursor-pointer flex items-center justify-center shadow-sm"
             >
               {APP_TEXT.GARAGE.CANCEL}
             </button>

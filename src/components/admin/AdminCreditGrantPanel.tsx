@@ -144,7 +144,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           role="tab"
           aria-selected={mode === 'grant'}
           onClick={() => { setMode('grant'); setError(''); setSuccess(''); setAmount(''); }}
-          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${mode === 'grant' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold ${mode === 'grant' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
         >
           <span className="inline-flex items-center gap-1"><Coins className="h-3.5 w-3.5" />إضافة رصيد</span>
         </button>
@@ -153,7 +153,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
           role="tab"
           aria-selected={mode === 'correction'}
           onClick={() => { setMode('correction'); setError(''); setSuccess(''); setAmount(''); }}
-          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${mode === 'correction' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+          className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold ${mode === 'correction' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
         >
           <span className="inline-flex items-center gap-1"><Wrench className="h-3.5 w-3.5" />خصم رصيد</span>
         </button>
@@ -177,7 +177,7 @@ export const AdminCreditGrantPanel: React.FC<Props> = ({ garage }) => {
         />
         {error && <p id="credit-amount-error" role="alert" className="text-sm text-red-600">{error}</p>}
         {success && <p id="credit-amount-success" role="status" className="text-sm font-semibold text-emerald-600">{success}</p>}
-        <button type="submit" disabled={submitting} className={`w-full rounded-xl px-4 py-3 font-black text-white transition disabled:opacity-50 ${mode === 'grant' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+        <button type="submit" disabled={submitting} className={`w-full rounded-xl px-4 py-3 font-black text-white disabled:opacity-50 ${mode === 'grant' ? 'bg-emerald-600 ' : 'bg-amber-600 '}`}>
           {submitting
             ? (mode === 'grant' ? 'جارٍ إضافة الرصيد…' : 'جارٍ تطبيق الخصم…')
             : (mode === 'grant' ? 'إضافة رصيد' : 'تطبيق الخصم')}

@@ -37,7 +37,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
 
   return (
     <div
-      className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden transition-colors"
+      className="fixed inset-0 bg-[#faf9f6] dark:bg-slate-950 z-[100] flex flex-col pt-safe px-safe overflow-hidden "
       dir="rtl"
     >
       {/* Header — matches Subscribers/RechargeHistory pattern */}
@@ -46,7 +46,7 @@ export const TermsAndConditionsModal: React.FC<TermsAndConditionsModalProps> = m
           <button
             type="button"
             onClick={handleClose}
-            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center outline-none shrink-0"
             aria-label="الرجوع"
             title="رجوع"
           >

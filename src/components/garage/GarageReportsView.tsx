@@ -221,13 +221,13 @@ export const GarageReportsView = memo(({
   }, [dashboardSummary, localTodayExitedVehicles, localGarage, staffList]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden transition-colors select-none" dir="rtl">
+    <div className="fixed inset-0 z-[100] bg-[#faf9f6] dark:bg-slate-950 flex flex-col pt-safe px-safe overflow-hidden select-none" dir="rtl">
       {/* Header */}
       <header className="relative bg-[#faf9f6] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5 z-40 w-full shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3 w-full">
           <button
             onClick={onClose}
-            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center hover:bg-slate-800 dark:hover:bg-amber-500 transition-colors shadow-sm outline-none shrink-0"
+            className="w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl flex items-center justify-center outline-none shrink-0"
             aria-label="الرجوع"
             title="رجوع"
           >
@@ -242,7 +242,7 @@ export const GarageReportsView = memo(({
       {/* Modern, Compact Refresh Bar */}
       <div className="px-5 py-2.5 bg-slate-100/40 dark:bg-slate-900/40 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
             محدث: {formatLastRefreshed(lastRefreshed)}
           </span>
@@ -250,7 +250,7 @@ export const GarageReportsView = memo(({
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center gap-1 text-[10px] font-black text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 disabled:opacity-40 transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-[10px] font-black text-purple-600 dark:text-purple-400 disabled:opacity-40 cursor-pointer"
         >
           <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
           <span>{isRefreshing ? 'جاري التحديث...' : 'تحديث'}</span>
@@ -264,12 +264,12 @@ export const GarageReportsView = memo(({
             before the Worker confirms the dashboard summary. */}
         {isInitialLoad ? (
           <div className="space-y-4" aria-label="جاري تحميل التقارير">
-            <div className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+            <div className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
             <div className="grid grid-cols-2 gap-3.5">
-              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
-              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
+              <div className="h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
             </div>
-            <div className="h-32 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse" />
+            <div className="h-32 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
           </div>
         ) : hasError ? (
           <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-5 py-8 text-center">
@@ -279,7 +279,7 @@ export const GarageReportsView = memo(({
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white hover:bg-rose-700 disabled:opacity-40 transition-colors cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-40 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'جاري التحديث...' : 'إعادة المحاولة'}
@@ -315,7 +315,7 @@ export const GarageReportsView = memo(({
             <div className="grid grid-cols-2 gap-3.5">
               
               {/* Card: Revenue */}
-              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between shadow-sm">
+              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between ">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">إيرادات اليوم</span>
                   <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/40 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
@@ -328,7 +328,7 @@ export const GarageReportsView = memo(({
               </div>
 
               {/* Card: Departures */}
-              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
+              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col ">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">مغادرات اليوم</span>
                   <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center text-rose-500 dark:text-rose-400">
@@ -346,7 +346,7 @@ export const GarageReportsView = memo(({
             </div>
 
             {/* Row 2: Staff Shift Performance List */}
-            <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden ">
               <button
                 onClick={handleStaffPerformanceToggle}
                 className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
@@ -369,7 +369,7 @@ export const GarageReportsView = memo(({
               {!isStaffPerformanceCollapsed && (
                 <div className="p-4 py-2 divide-y divide-slate-100 dark:divide-slate-800/50">
                   {stats.staffPerformance.map((staff, idx) => (
-                    <div key={staff.name} className="flex items-center justify-between py-2.5 transition-colors">
+                    <div key={staff.name} className="flex items-center justify-between py-2.5 ">
                       <div className="flex items-center gap-2.5">
                         <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">#{idx + 1}</span>
                         <div>

@@ -11,7 +11,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
   return (
     <div className="fixed inset-0 z-50 flex flex-col w-full h-full select-none overflow-hidden" dir="rtl">
       {garage ? (
-        <div className="flex-1 flex flex-row w-full h-full bg-[#ffd43b] dark:bg-slate-950 transition-colors">
+        <div className="flex-1 flex flex-row w-full h-full bg-[#ffd43b] dark:bg-slate-950 ">
           
           {/* Right Pane: Hourly Tariff Block */}
           <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
@@ -55,7 +55,7 @@ export const LandscapeMobileView: React.FC<LandscapeMobileViewProps> = memo(({ g
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#ffd43b] dark:bg-slate-950 text-slate-950 dark:text-[#ffd43b] text-center">
-          <Smartphone className="w-12 h-12 mb-3 animate-bounce opacity-80" />
+          <Smartphone className="w-12 h-12 mb-3 opacity-80" />
           <h2 className="text-xl font-black mb-1 font-sans">يرجى تدوير الجهاز</h2>
           <p className="text-xs opacity-80 max-w-xs font-serif font-bold">اقلب الهاتف للوضعية الرأسية لمتابعة تسجيل الدخول</p>
         </div>

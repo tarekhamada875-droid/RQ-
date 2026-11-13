@@ -11,7 +11,7 @@ import { FastInput } from '../../ui/FastInput';
 interface AdminDelegateProfileCardProps {
   delegate: Delegate;
   /** Called after a successful PIN update so the parent can refresh its
-   *  delegate state cleanly (instead of the child mutating the prop). */
+   * delegate state cleanly (instead of the child mutating the prop). */
   onPinUpdated?: (newPin: string) => void;
 }
 
@@ -54,12 +54,12 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-8 transition-colors">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-100 dark:border-slate-800 p-8 ">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <div className="flex-1 text-center sm:text-right space-y-2">
           <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">{delegate.name}</h2>
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 text-sm font-bold transition-colors">
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-400 text-sm font-bold ">
               <Phone className="w-4 h-4" />
               <span dir="ltr">{delegate.phone}</span>
             </div>
@@ -82,7 +82,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                 <button
                   onClick={handleUpdatePin}
                   disabled={isUpdatingPin}
-                  className="w-5 h-5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center cursor-pointer"
+                  className="w-5 h-5 bg-blue-600 text-white rounded-lg flex items-center justify-center cursor-pointer"
                 >
                   {isUpdatingPin ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 stroke-[3]" />}
                 </button>
@@ -91,7 +91,7 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
                     setPinInput(delegate.pin && delegate.pin.length === 64 ? '' : (delegate.pin || ''));
                     setIsEditingPin(false);
                   }}
-                  className="text-xs font-bold text-slate-400 px-1 hover:underline"
+                  className="text-xs font-bold text-slate-400 px-1 "
                 >
                   {'إلغاء'}
                 </button>
@@ -99,15 +99,15 @@ export const AdminDelegateProfileCard: React.FC<AdminDelegateProfileCardProps> =
             ) : (
               <button 
                 onClick={() => setIsEditingPin(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 text-sm font-black transition-[colors,transform] hover:bg-blue-100 dark:hover:bg-blue-900/40 cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-blue-600 dark:text-blue-400 text-sm font-black cursor-pointer"
               >
                 <Lock className="w-4 h-4" />
                 <span>{'الرمز:'} {formatDisplayPin(delegate.pin)}</span>
-                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-bold underline mr-1 hover:text-blue-600">{'تعديل'}</span>
+                <span className="text-[10px] text-blue-400 dark:text-blue-500 font-bold underline mr-1 ">{'تعديل'}</span>
               </button>
             )}
           </div>
-          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 transition-colors">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 mt-4 ">
             <Calendar className="w-4 h-4" />
             <span>{'تاريخ الانضمام:'} {delegate.createdAt ? safeDate(delegate.createdAt).toLocaleDateString('ar-EG') : 'غير معروف'}</span>
           </div>

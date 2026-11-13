@@ -83,7 +83,7 @@ const FlipDigit = React.memo(({ digit, size = 'md', color = 'default', displayDi
 
   return (
     <div
-      className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none shadow-sm`}
+      className={`relative ${sizeClasses[size]} ${colors.bg} overflow-hidden border ${colors.border} flex items-center justify-center select-none `}
     >
       <span
         data-testid="flip-number-digit"

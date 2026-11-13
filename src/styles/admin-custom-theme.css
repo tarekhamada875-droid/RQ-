@@ -104,12 +104,6 @@
   border-color: var(--admin-color) !important;
 }
 
-/* Shadow color override — ~10% opacity */
-.admin-custom-theme .shadow-emerald-500\/5 {
-  --tw-shadow-color: color-mix(in srgb, var(--admin-color) 10%, transparent) !important;
-  --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -1px var(--tw-shadow-color) !important;
-}
-
 /* Gradient overrides — ~5% opacity */
 .admin-custom-theme .from-emerald-500\/5,
 .admin-custom-theme .dark\:from-emerald-500\/5 {

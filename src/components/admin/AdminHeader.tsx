@@ -37,7 +37,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   return (
     <>
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 transition-colors w-full shrink-0">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 w-full shrink-0">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             {activeTab !== 'garages' && (
@@ -53,7 +53,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   e.stopPropagation();
                   handleBack();
                 }}
-                className="flex items-center justify-center w-11 h-11 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shadow-sm shrink-0"
+                className="flex items-center justify-center w-11 h-11 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl outline-none cursor-pointer shrink-0"
                 title={'رجوع'}
               >
                 <ChevronRight className={`w-5.5 h-5.5 text-amber-400 dark:text-slate-950 stroke-[3.5] `} />
@@ -69,7 +69,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <div className="flex items-center gap-4 relative" ref={menuRef}>
             <button 
               onClick={() => setShowMenu(!showMenu)}
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-[colors,transform] outline-none border-2 ${
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center outline-none border-2 ${
                 showMenu 
                   ? 'bg-emerald-100 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/80 text-emerald-600 dark:text-emerald-400' 
                   : 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400'
@@ -93,7 +93,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800/60 font-sans">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-400 dark:bg-amber-400 flex items-center justify-center text-slate-950 font-extrabold shadow-sm shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-400 dark:bg-amber-400 flex items-center justify-center text-slate-950 font-extrabold shrink-0">
                           <Shield className="w-6 h-6 stroke-[2.5]" />
                         </div>
                         <div className="flex flex-col text-right">
@@ -106,7 +106,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                       <button 
                         type="button"
                         onClick={() => setShowMenu(false)}
-                        className="w-11 h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center transition-colors outline-none cursor-pointer shrink-0"
+                        className="w-11 h-11 bg-red-600 text-white rounded-xl flex items-center justify-center outline-none cursor-pointer shrink-0"
                       >
                         <X className="w-6 h-6 stroke-[2.5]" />
                       </button>
@@ -123,10 +123,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         setShowMenu(false);
                         onOpenAppearanceSettings();
                       }}
-                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 hover:bg-slate-100/60 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 transition-[colors,transform] outline-none cursor-pointer"
+                      className="w-full flex items-center justify-between p-2.5 bg-[#faf9f6] dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl border-2 border-slate-150 dark:border-slate-800 outline-none cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 flex items-center justify-center shrink-0 ">
                           <Sliders className="w-4 h-4 text-amber-400 dark:text-slate-950" />
                         </div>
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{'إعدادات المظهر'}</span>
@@ -142,7 +142,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         setShowMenu(false);
                         onLogout();
                       }}
-                      className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-[colors,transform] font-black text-sm outline-none cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2.5 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm outline-none cursor-pointer"
                     >
                       <LogOut className="w-5 h-5 rotate-180" />
                       <span>{'تسجيل الخروج'}</span>

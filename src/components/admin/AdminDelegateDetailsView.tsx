@@ -33,7 +33,7 @@ export const AdminDelegateDetailsView = memo(({
   useBackHandler(() => { setConfirmSettle(false); return true; }, confirmSettle);
   useBackHandler(() => { setConfirmDelete(false); return true; }, confirmDelete);
 
-  const {  } = useTheme();
+  const { } = useTheme();
   
 
   const lifetimeCommission = Number(delegate.totalCommissionEarned || 0);
@@ -81,7 +81,7 @@ export const AdminDelegateDetailsView = memo(({
                 setSelectedDelegate(null);
                 setView('admin_dashboard');
               }}
-              className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl hover:bg-slate-800 dark:hover:bg-amber-500 outline-none cursor-pointer transition-colors shrink-0"
+              className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl outline-none cursor-pointer shrink-0"
             >
               <ChevronRight className="w-5 h-5 stroke-[3.5]" />
             </button>
@@ -94,7 +94,7 @@ export const AdminDelegateDetailsView = memo(({
           </div>
           <button
             onClick={() => setConfirmDelete(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 cursor-pointer"
             title={'سحب الصلاحية'}
           >
             <Trash2 className="w-4 h-4" />
@@ -138,7 +138,7 @@ export const AdminDelegateDetailsView = memo(({
               type="button"
               onClick={() => setConfirmSettle(true)}
               disabled={isLoading}
-              className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 transition-[colors,transform] shadow-sm cursor-pointer disabled:opacity-50"
+              className="w-full bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 p-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-sm cursor-pointer disabled:opacity-50"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coins className="w-5 h-5" />}
               <span>صرف وتسوية العمولة</span>

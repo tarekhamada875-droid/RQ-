@@ -100,8 +100,8 @@ export const SubscriberModals = ({
     <>
         {showAddModal && (
           <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 animate-overlay-30fps" onClick={() => setShowAddModal(false)} />
-            <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl max-h-[90dvh] overflow-y-auto custom-scrollbar-slate animate-popup-30fps">
+            <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={() => setShowAddModal(false)} />
+            <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl max-h-[90dvh] overflow-y-auto custom-scrollbar-slate">
               
               {/* Modal Header */}
               <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
@@ -110,7 +110,7 @@ export const SubscriberModals = ({
                 </h3>
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="w-8 h-8 flex items-center justify-center bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-full border border-red-100 dark:border-red-900/30 outline-none"
+                  className="w-8 h-8 flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full border border-red-100 dark:border-red-900/30 outline-none"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -143,7 +143,7 @@ export const SubscriberModals = ({
                              e.stopPropagation();
                              setPlateNumber(plateNumber.slice(0, -1));
                            }}
-                           className="absolute bg-red-500 text-white rounded-xl flex items-center justify-center hover:bg-red-600 transition-colors outline-none -top-2 -left-2 w-8 h-8 z-40 shadow-md"
+                           className="absolute bg-red-500 text-white rounded-xl flex items-center justify-center outline-none -top-2 -left-2 w-8 h-8 z-40 "
                          >
                            <Delete className="w-4 h-4" />
                          </button>
@@ -182,7 +182,7 @@ export const SubscriberModals = ({
                 )}
   
                 {!editingSubscriber && isPlateFocused && (
-                   <div ref={keypadContainerRef} className="mt-2 animate-fadeIn shrink-0">
+                   <div ref={keypadContainerRef} className="mt-2 shrink-0">
                      <LicensePlateKeyboard 
                        onKeyPress={handleVirtualKeyPress}
                        currentValue={plateNumber}
@@ -220,7 +220,7 @@ export const SubscriberModals = ({
                       onLiveValue={(v) => setPhone(v.replace(/\D/g, ''))}
                       mask={(v) => v.replace(/\D/g, '')}
                       onFocus={() => setIsPlateFocused(false)}
-                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-left hover:text-right"
+                      className="w-full pl-4 pr-12 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-slate-400 dark:focus:border-slate-500 text-sm font-bold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-left "
                       placeholder="رقم الهاتف"
                       dir="ltr"
                       required
@@ -246,10 +246,10 @@ export const SubscriberModals = ({
                           setSelectedDuration(d.id as Duration);
                           setIsPlateFocused(false);
                         }}
-                        className={`py-3.5 px-2 rounded-2xl border text-center flex flex-col items-center justify-center transition-[colors,transform] ${
+                        className={`py-3.5 px-2 rounded-2xl border text-center flex flex-col items-center justify-center ${
                           selectedDuration === d.id
-                            ? 'bg-blue-600 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-700 dark:text-white font-extrabold shadow-sm'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700/80'
+                            ? 'bg-blue-600 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-700 dark:text-white font-extrabold '
+                            : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 font-bold '
                         }`}
                       >
                         <span className="text-sm">{d.label}</span>
@@ -291,7 +291,7 @@ export const SubscriberModals = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-black text-sm disabled:opacity-50 transition-[colors,transform] outline-none"
+                  className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-black text-sm disabled:opacity-50 outline-none"
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -310,8 +310,8 @@ export const SubscriberModals = ({
   
         {/* Delete Subscriber Confirmation Modal */}
         {subscriberToDelete && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 animate-overlay-30fps">
-            <div className="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 animate-popup-30fps">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80">
+            <div className="bg-[#faf9f6] dark:bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
               <div className="p-8 text-center">
                 <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trash2 className="w-8 h-8" />
@@ -323,14 +323,14 @@ export const SubscriberModals = ({
                 <button
                   type="button"
                   onClick={() => setSubscriberToDelete(null)}
-                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl font-bold text-xs uppercase tracking-widest transition-[colors,transform] outline-none"
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl font-bold text-xs uppercase tracking-widest outline-none"
                 >
                   إلغاء
                 </button>
                 <button
                   type="button"
                   onClick={confirmDelete}
-                  className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-[colors,transform] outline-none"
+                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest outline-none"
                 >
                   حذف
                 </button>
@@ -341,9 +341,9 @@ export const SubscriberModals = ({
   
         {/* Renewal Options Modal */}
         {showRenewModal && activeSubscriberForRenew && (
-          <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 animate-overlay-30fps">
+          <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80">
             <div className="absolute inset-0" onClick={() => { setShowRenewModal(false); setActiveSubscriberForRenew(null); }} />
-            <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-2xl animate-popup-30fps" dir="rtl">
+            <div className="relative bg-[#faf9f6] dark:bg-slate-900 w-full max-w-md rounded-[2rem] sm:rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden " dir="rtl">
               
               {/* Header */}
               <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
@@ -357,7 +357,7 @@ export const SubscriberModals = ({
                     setShowRenewModal(false);
                     setActiveSubscriberForRenew(null);
                   }}
-                  className="w-8 h-8 flex items-center justify-center bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded-full border border-red-100 dark:border-red-900/30 outline-none"
+                  className="w-8 h-8 flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full border border-red-100 dark:border-red-900/30 outline-none"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -406,10 +406,10 @@ export const SubscriberModals = ({
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => handleConfirmRenew(opt.type)}
-                        className="w-full text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-[#faf9f6] dark:bg-slate-900 hover:bg-blue-50/10 dark:hover:bg-blue-400/5 transition-[colors,transform] outline-none flex items-center justify-between group active:scale-[0.98] disabled:opacity-50"
+                        className="w-full text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#faf9f6] dark:bg-slate-900 outline-none flex items-center justify-between group disabled:opacity-50"
                       >
                         <div className="space-y-1">
-                          <p className="font-black text-slate-900 dark:text-white text-sm group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{opt.label}</p>
+                          <p className="font-black text-slate-900 dark:text-white text-sm ">{opt.label}</p>
                           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">ينتهي في: <span className="text-slate-600 dark:text-slate-300 font-extrabold">{previewDateStr}</span></p>
                         </div>
                       </button>
