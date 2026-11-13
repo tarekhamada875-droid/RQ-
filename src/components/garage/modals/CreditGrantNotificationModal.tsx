@@ -1,17 +1,22 @@
 import React from 'react';
-import { X as XIcon, Gift, Zap, Sparkles } from 'lucide-react';
+import { X as XIcon, Gift, Zap, Sparkles, Coins } from 'lucide-react';
 import { ActivityLog } from '../../../types';
 import { safeDate } from '../../../utils/dates';
 
 interface CreditGrantNotificationModalProps {
   isOpen: boolean;
   creditGrantLog: ActivityLog | null;
+  /** Live garage.credits from the dashboard's garage-doc subscription —
+   *  shown as "الرصيد الحالي" on the prepaid top-up card. Optional: the row
+   *  is hidden when the balance is unknown rather than guessed. */
+  currentCredits?: number;
   onClose: () => void;
 }
 
 export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModalProps> = ({
   isOpen,
   creditGrantLog,
+  currentCredits,
   onClose
 }) => {
   if (!isOpen || !creditGrantLog) return null;
@@ -55,6 +60,97 @@ export const CreditGrantNotificationModal: React.FC<CreditGrantNotificationModal
   // Time display is hidden from user-facing screens per Q89D.
   // formattedTime is retained for potential admin-only use but not shown to users.
 
+  // ── Prepaid credit top-up (the current billing model) ──────────────────────
+  // Admin "إضافة رصيد" grants (and approved credit requests) write
+  // actionType:'credit_grant' with details:{amount, paymentAmountEgp, reason}
+  // and NO package identity — no details.packageName, no plateNumber. The
+  // legacy subscription layout below would fall back to "الباقة: الباقة"
+  // and "مجاناً (فترة تجريبية)" — meaningless for a paid credit top-up.
+  // Instead render a clean top-up card mirroring the سجل شحن الرصيد history
+  // cards (owner-approved visual language): +N رصيد, current balance, date.
+  const creditAmount = Number(details?.amount);
+  const isPrepaidCreditTopUp =
+    !isReferralReward &&
+    !isTrial &&
+    rawPkgName === '' &&
+    Number.isSafeInteger(creditAmount) &&
+    creditAmount > 0;
+
+  const currentBalanceDisplay =
+    typeof currentCredits === 'number' && Number.isFinite(currentCredits)
+      ? currentCredits.toLocaleString('ar-EG')
+      : null;
+
+  if (isPrepaidCreditTopUp) {
+    return (
+      <div
+        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-[110] flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="w-full max-w-md bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 relative overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          dir="rtl"
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center outline-none z-20"
+            aria-label="إغلاق"
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+
+          <div className="text-center mt-2">
+            <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <Coins className="w-8 h-8" />
+            </div>
+
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4">
+              تم شحن الرصيد بنجاح!
+            </h3>
+
+            <p className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none mb-6">
+              +{creditAmount.toLocaleString('ar-EG')} رصيد
+            </p>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl px-4 py-3.5 text-right border border-slate-100 dark:border-slate-800/50 mb-6">
+              {currentBalanceDisplay && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                      الرصيد الحالي:
+                    </span>
+                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
+                      {currentBalanceDisplay}
+                    </span>
+                  </div>
+                  <div className="w-full border-t border-slate-200/40 dark:border-slate-800/40 my-3" />
+                </>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                  التاريخ:
+                </span>
+                <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono">
+                  {formattedDate}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full bg-emerald-600 text-white py-4 px-6 rounded-2xl font-black text-base block"
+            >
+              تمام
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy subscription-package / trial / referral layouts below — kept for
+  // garages still on the subscription model and for historical logs.
   const modalTitle = isReferralReward
     ? 'مبروك! جالك يوم هدية مجاني 🎁'
     : isTrial
