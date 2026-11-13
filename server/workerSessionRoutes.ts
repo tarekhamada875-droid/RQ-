@@ -24,7 +24,7 @@ import {
   isValidSessionId,
   isNewPinFormat,
   validateNewPin,
-  addActiveSession,
+  claimEntityActiveSessionIds,
   hasActiveSession,
   hashSessionId,
   removeActiveSession,
@@ -153,7 +153,7 @@ workerApp.post('/api/auth/verify-pin', async (c) => {
       const deviceSecurityRef = adminDb.doc(`${secColl}/${effectiveUid}/sessions/${sessionId}`);
       const entitySnap = await transaction.get(entityRef);
       const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
-      const activeSessionIds = addActiveSession(entityData, sessionId);
+      const activeSessionIds = await claimEntityActiveSessionIds(transaction, entityData, sessionId, secColl, effectiveUid);
       const resolvedGarageId = match.role === 'staff' ? (entityData.garageId || '') : (match.role === 'garage' ? entityDocId : '');
       const displayName = match.account?.name || (match.role === 'admin' ? 'مدير النظام' : (match.role === 'garage' ? 'مدير الجراج' : match.role));
       const sessionData = { uid: effectiveUid, role: match.role, entityId: entityDocId, garageId: resolvedGarageId, displayName, sessionId, isActive: true, lastActive: new Date(), createdAt: new Date() };
@@ -325,7 +325,7 @@ workerApp.post('/api/auth/claim-admin-session', async (c) => {
       const deviceRef = adminDb.doc(`admin_sessions/${effectiveUid}/sessions/${sessionId}`);
       const entitySnap = await transaction.get(entityRef);
       const entityData = entitySnap.exists ? entitySnap.data() || {} : {};
-      const activeSessionIds = addActiveSession(entityData, sessionId);
+      const activeSessionIds = await claimEntityActiveSessionIds(transaction, entityData, sessionId, 'admin_sessions', effectiveUid);
       const sessionData = { uid: effectiveUid, role: 'admin', entityId: 'auth_pin', sessionId, isActive: true, lastActive: new Date(), createdAt: new Date() };
       transaction.set(entityRef, { currentSessionId: sessionId, activeSessionIds, lastActive: new Date() }, { merge: true });
       transaction.set(rootRef, { ...sessionData, currentSessionId: sessionId, activeSessionIds }, { merge: true });

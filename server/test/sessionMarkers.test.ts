@@ -15,9 +15,12 @@ describe('multi-device session markers', () => {
   });
 
   it('bounds the active-session marker to prevent unbounded account-document growth', () => {
-    const ids = addActiveSession({ activeSessionIds: Array.from({ length: 100 }, (_, index) => `session-${index}`) }, 'session-100');
-    expect(ids).toHaveLength(100);
-    expect(ids.at(-1)).toBe('session-100');
+    // The cap is 500 now: high enough that recency eviction never touches a
+    // live daily-use device in practice, and claims prune stale entries first
+    // (see sessionClaimPrune.test.ts). The bound still guards doc growth.
+    const ids = addActiveSession({ activeSessionIds: Array.from({ length: 500 }, (_, index) => `session-${index}`) }, 'session-500');
+    expect(ids).toHaveLength(500);
+    expect(ids.at(-1)).toBe('session-500');
     expect(ids).not.toContain('session-0');
   });
 

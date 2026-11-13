@@ -18,7 +18,7 @@ import { isValidBackendOperatorToken } from './backendOperatorToken';
 import { cleanPin, normalizePhone, verifyPinMatch, verifyDocMatch } from './pinCrypto';
 import { migratePinToHash, queryAccountWherePin, queryDelegatesWherePhone, getAdminPin, checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
 import { isNewPinFormat, validateNewPin, isValidSessionId } from './validation';
-import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary } from './auth/sessionMarkers';
+import { addActiveSession, hasActiveSession, hashSessionId, removeActiveSession, toSessionSummary, activeSessionIds, overflowCandidateIds, isSessionLastActiveStale } from './auth/sessionMarkers';
 import { canInvalidateAllSessions } from './domain/authorization';
 import { checkWorkerPinRateLimit, resetWorkerPinRateLimit } from './workerPinRateLimiter';
 import { getCachedRole, setCachedRole, getCachedSession, setCachedSession } from './authCache';
@@ -66,6 +66,52 @@ function writeSessionIndex(transaction: any, sessionData: Record<string, any>): 
 function updateSessionIndex(uid: string, sessionId: string, updates: Record<string, any>): Promise<any> {
   if (!adminDb) return Promise.resolve();
   return adminDb.doc(sessionIndexPath(uid, sessionId)).set({ ...updates, updatedAt: new Date() }, { merge: true });
+}
+
+/**
+ * Compute the entity's activeSessionIds after claiming `sessionId`.
+ *
+ * The list previously grew without bound and was capped by evicting the
+ * insertion-order-oldest entry — which, for a garage whose devices accumulate
+ * sessions (browser reinstalls, cleared storage, per-load fallback IDs), is
+ * exactly the daily-use device still holding an active session. The owner then
+ * sees "logged out from another device" with no other device involved
+ * (2026-11-13 incident).
+ *
+ * Now: when the list would overflow its cap, probe the oldest entries' device
+ * docs and prune the ones that are already dead by the app's own 24h idle
+ * rule BEFORE evicting anything live. Under the cap (the common case) this
+ * costs zero extra Firestore reads.
+ */
+export async function claimEntityActiveSessionIds(
+  transaction: any,
+  entityData: Record<string, any>,
+  sessionId: string,
+  sessionsRoot: string,
+  uid: string
+): Promise<string[]> {
+  const candidates = overflowCandidateIds(entityData, sessionId);
+  if (candidates.length === 0 || !sessionsRoot || !uid || !adminDb) {
+    return addActiveSession(entityData, sessionId);
+  }
+  const staleIds: string[] = [];
+  for (const candidateId of candidates) {
+    try {
+      const deviceSnap = await transaction.get(adminDb.doc(`${sessionsRoot}/${uid}/sessions/${candidateId}`));
+      const lastActive = deviceSnap.exists ? (deviceSnap.data() || {}).lastActive : undefined;
+      if (!deviceSnap.exists || isSessionLastActiveStale(lastActive)) {
+        staleIds.push(candidateId);
+      }
+    } catch (error: any) {
+      // Unreadable device docs must never widen the eviction set; treat as live.
+      console.error('[Worker Auth] Stale-session probe failed; keeping entry:', error?.message || 'unknown');
+    }
+  }
+  if (staleIds.length === 0) {
+    return addActiveSession(entityData, sessionId);
+  }
+  const surviving = activeSessionIds(entityData).filter((id) => !staleIds.includes(id));
+  return addActiveSession({ activeSessionIds: surviving }, sessionId);
 }
 
 async function resolveWorkerSessionUser(
