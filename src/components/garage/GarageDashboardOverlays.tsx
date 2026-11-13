@@ -108,7 +108,7 @@ export const GarageDashboardOverlays = ({
           keep fallback={null}: a visible backdrop here would flash on every
           dashboard open whenever that chunk is still downloading. */}
       <Suspense fallback={null}>
-        <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} onClose={onCloseCreditGrantNotification} />
+        <CreditGrantNotificationModal isOpen={isCreditGrantNotificationOpen && !!creditGrantLog} creditGrantLog={creditGrantLog} currentCredits={garage.credits} onClose={onCloseCreditGrantNotification} />
       </Suspense>
     </>
   );
