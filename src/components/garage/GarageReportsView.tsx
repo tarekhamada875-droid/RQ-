@@ -1,111 +1,19 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import { 
-  ChevronRight, 
-  RefreshCw, 
-  TrendingUp, 
-  CheckCircle2,
-  BarChart2,
-  ChevronDown,
-  ChevronUp,
+import {
+  ChevronRight,
+  RefreshCw,
   AlertTriangle
 } from 'lucide-react';
-import { ActivityLog, Garage, Vehicle, Staff } from '../../types';
+import { Garage, Vehicle, Staff } from '../../types';
 import { garageService, GarageDashboardSummary, isFreshGarageDashboardSummary } from '../../services';
 import { formatArabicDigits } from '../../utils/plates';
-
-export type GarageReportRecord = Partial<Vehicle> & Partial<ActivityLog> & { id: string };
-
-export interface GarageReportStats {
-  totalExited: number;
-  hourlyExited: number;
-  overnightExited: number;
-  actualCalculatedTodayRevenue: number;
-  staffPerformance: Array<{ name: string; count: number; revenue: number }>;
-}
-
-// Activity-log fallback cap (mirrors vehicleService.TODAY_ACTIVITY_LOG_LIMIT).
-// Exported so tests can pin the warning threshold without hardcoding 200 twice.
-export const REPORTS_ACTIVITY_LOG_LIMIT = 200;
-
-export type ReportsNoticeState = 'fresh_summary' | 'live_may_be_truncated' | 'live_ok';
-
-/**
- * Decide which notice to show at the top of the reports page.
- *
- * - 'fresh_summary'           — authoritative server summary is available.
- * - 'live_may_be_truncated'   — fallback activity log is in use AND we are at
- *                               risk of having hit the 200-record cap. This is
- *                               the only state that warrants alarming the user.
- * - 'live_ok'                 — fallback activity log is in use but we have
- *                               all of today's records (fewer than the cap).
- *                               Crying "might be incomplete" here is dishonest,
- *                               especially on a quiet morning with 0 exits.
- */
-export function pickReportsNoticeState(
-  freshSummaryAvailable: boolean,
-  totalExited: number,
-  activityLogLimit: number = REPORTS_ACTIVITY_LOG_LIMIT,
-): ReportsNoticeState {
-  if (freshSummaryAvailable) return 'fresh_summary';
-  if (totalExited >= activityLogLimit) return 'live_may_be_truncated';
-  return 'live_ok';
-}
-
-export function buildGarageReportStats(
-  records: GarageReportRecord[],
-  staffList: Staff[],
-  localGarage: Garage | null | undefined,
-): GarageReportStats {
-  let hourlyExited = 0;
-  let overnightExited = 0;
-  let actualCalculatedTodayRevenue = 0;
-
-  const staffPerformance: Record<string, { count: number; revenue: number }> = {
-    'مدير الجراج': { count: 0, revenue: 0 }
-  };
-  const knownStaffNames = new Set<string>();
-  for (const staff of staffList || []) {
-    const name = staff?.name?.trim();
-    if (name) {
-      staffPerformance[name] = { count: 0, revenue: 0 };
-      knownStaffNames.add(name);
-    }
-  }
-
-  // todayTransactions is an activity-log feed, not a vehicle feed. Only a
-  // checkout represents a departure; check-ins and recharge logs must not be counted.
-  const checkoutRecords = (records || []).filter((record) => record?.actionType === 'check_out');
-  for (const record of checkoutRecords) {
-    if (record.type === 'hourly') hourlyExited++;
-    else if (record.type === 'overnight') overnightExited++;
-
-    // Checkout activity logs persist the charge as `amount`; `totalCost` is only
-    // present on the historical vehicle document.
-    const fee = typeof record.amount === 'number'
-      ? record.amount
-      : (typeof record.totalCost === 'number' ? record.totalCost : 0);
-    actualCalculatedTodayRevenue += fee;
-
-    const rawName = (record.staffName || '').trim();
-    const isGarageManager = !rawName || record.staffName === 'مدير الجراج' ||
-      rawName === localGarage?.name || rawName === (localGarage as any)?.ownerName ||
-      !knownStaffNames.has(rawName);
-    const handler = isGarageManager ? 'مدير الجراج' : rawName;
-    if (!staffPerformance[handler]) staffPerformance[handler] = { count: 0, revenue: 0 };
-    staffPerformance[handler].count++;
-    staffPerformance[handler].revenue += fee;
-  }
-
-  return {
-    totalExited: checkoutRecords.length,
-    hourlyExited,
-    overnightExited,
-    actualCalculatedTodayRevenue,
-    staffPerformance: Object.entries(staffPerformance)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.revenue - a.revenue)
-  };
-}
+import { GarageReportStatCard } from './reports/GarageReportStatCard';
+import { GarageStaffPerformanceCard } from './reports/GarageStaffPerformanceCard';
+import {
+  type GarageReportRecord,
+  buildGarageReportStats,
+  pickReportsNoticeState,
+} from './reports/garageReportStats';
 
 interface GarageReportsViewProps {
   garage: Garage;
@@ -310,90 +218,28 @@ export const GarageReportsView = memo(({
                 </p>
               );
             })()}
-            
-            {/* Row 1: Grid metrics */}
+
+            {/* Row 1: Grid metrics — two presentational tiles. */}
             <div className="grid grid-cols-2 gap-3.5">
-              
-              {/* Card: Revenue */}
-              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col justify-between ">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">إيرادات اليوم</span>
-                  <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/40 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
-                    <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </div>
-                </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-                  {formatArabicDigits(stats.todayRevenue)} <span className="text-[10px] font-bold text-slate-400">ج.م</span>
-                </p>
-              </div>
-
-              {/* Card: Departures */}
-              <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col ">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">مغادرات اليوم</span>
-                  <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center text-rose-500 dark:text-rose-400">
-                    <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.3]" />
-                  </div>
-                </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white leading-none font-mono">
-                  {formatArabicDigits(stats.totalExited)} <span className="text-[10px] font-bold text-slate-400">مغادرة</span>
-                </p>
-                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1.5 leading-none">
-                  ساعة: {formatArabicDigits(stats.hourlyExited)} • مبيت: {formatArabicDigits(stats.overnightExited)}
-                </span>
-              </div>
-
+              <GarageReportStatCard
+                variant="revenue"
+                value={stats.todayRevenue}
+              />
+              <GarageReportStatCard
+                variant="departures"
+                value={stats.totalExited}
+                sublabel={
+                  <>ساعة: {formatArabicDigits(stats.hourlyExited)} • مبيت: {formatArabicDigits(stats.overnightExited)}</>
+                }
+              />
             </div>
 
             {/* Row 2: Staff Shift Performance List */}
-            <div className="bg-[#faf9f6] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden ">
-              <button
-                onClick={handleStaffPerformanceToggle}
-                className="w-full p-3 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/40 cursor-pointer select-none outline-none"
-              >
-                <div className="flex items-center gap-1.5">
-                  <BarChart2 className="w-3.5 h-3.5 text-purple-500" />
-                  <h3 className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                    ورديات الموظفين اليوم
-                  </h3>
-                </div>
-                <div>
-                  {isStaffPerformanceCollapsed ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
-                  ) : (
-                    <ChevronUp className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 stroke-[3]" />
-                  )}
-                </div>
-              </button>
-              
-              {!isStaffPerformanceCollapsed && (
-                <div className="p-4 py-2 divide-y divide-slate-100 dark:divide-slate-800/50">
-                  {stats.staffPerformance.map((staff, idx) => (
-                    <div key={staff.name} className="flex items-center justify-between py-2.5 ">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">#{idx + 1}</span>
-                        <div>
-                          <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">{staff.name}</h4>
-                          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">مغادر: {staff.count} سيارة</span>
-                        </div>
-                      </div>
-
-                      <div className="text-left font-mono">
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          {staff.revenue} ج.م
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {stats.staffPerformance.length === 0 && (
-                    <div className="text-center py-6 text-slate-400 dark:text-slate-600 font-bold text-[11px]">
-                      لا يوجد معاملات بيع مسجلة لأي موظف اليوم.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <GarageStaffPerformanceCard
+              staffPerformance={stats.staffPerformance}
+              isCollapsed={isStaffPerformanceCollapsed}
+              onToggle={handleStaffPerformanceToggle}
+            />
           </>
         )}
 

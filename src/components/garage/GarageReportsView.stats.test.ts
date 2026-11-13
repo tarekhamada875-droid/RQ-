@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGarageReportStats, pickReportsNoticeState, REPORTS_ACTIVITY_LOG_LIMIT } from './GarageReportsView';
+import { buildGarageReportStats, pickReportsNoticeState, REPORTS_ACTIVITY_LOG_LIMIT } from './reports/garageReportStats';
 
 describe('buildGarageReportStats', () => {
   it('counts only checkout logs and uses the persisted amount', () => {
