@@ -6,7 +6,8 @@
  */
 import type { WorkerApp } from './cloudflareWorker';
 import { adminDb } from './firebaseAdmin';
-import { requireWorkerAuth } from './sessionInfrastructure';
+import { requireWorkerAuth, WORKER_SESSION_DEFINITIONS } from './sessionInfrastructure';
+import { hashSessionId } from './auth/sessionMarkers';
 import { ValidationError, validateId, validateIdempotencyKey, validateNewPin, validateNumber, validateString, sanitizePayload } from './validation';
 import { checkIdempotencyInTransaction, createRequestFingerprint, storeIdempotencyInTransaction } from './idempotency';
 import { checkPinAvailabilityAcrossAll, saveEntityPin } from './pinRepository';
@@ -52,6 +53,40 @@ app.post('/api/people/update-pin', requireWorkerAuth, async (c) => {
     }
 
     await saveEntityPin(entityType, entityId, normNewPin);
+
+    // PIN-change kick (device-doc authority, 2026-11-13 incident): the PIN is
+    // the only credential for new logins, so devices still holding an active
+    // session under the OLD PIN must be signed out here, server-side. Sessions
+    // live per device under {role}_sessions/{uid}/sessions/{sid}; the
+    // session_index is the only uid→entity map, so query it by entityId
+    // (single-field equality — covered by the automatic index) and deactivate
+    // every matching live device doc. This replaces the old implicit kick that
+    // relied on the entity activeSessionIds marker gating auth (removed — the
+    // marker is advisory bookkeeping now and no longer revokes anything).
+    try {
+      const indexSnap = await adminDb.collectionGroup('session_index')
+        .where('entityId', '==', entityId)
+        .get();
+      const kickNow = new Date();
+      for (const indexHit of indexSnap.docs) {
+        const entry = indexHit.data() || {};
+        if (entry.entityCollection !== entityType || entry.isActive !== true) continue;
+        if (typeof entry.uid !== 'string' || !entry.uid) continue;
+        if (typeof entry.sessionHash !== 'string' || !entry.sessionHash) continue;
+        const roleDefinition = WORKER_SESSION_DEFINITIONS[entry.role];
+        if (!roleDefinition) continue;
+        const devicesSnap = await adminDb.collection(`${roleDefinition.sessions}/${entry.uid}/sessions`).get();
+        for (const deviceDoc of devicesSnap.docs) {
+          if (hashSessionId(deviceDoc.id) !== entry.sessionHash) continue;
+          await deviceDoc.ref.set({ isActive: false, lastActive: kickNow }, { merge: true });
+          await indexHit.ref.set({ isActive: false, updatedAt: kickNow }, { merge: true });
+        }
+      }
+    } catch (kickError: any) {
+      // Best-effort: the PIN itself has already changed, so no NEW session can
+      // be created with the old credential even if this sweep fails.
+      console.error('[Worker People] Session kick after PIN change failed:', kickError?.message || kickError);
+    }
 
     const targetDocRef = adminDb.collection(entityType).doc(entityId);
     const docSnap = await targetDocRef.get();

@@ -335,9 +335,17 @@ describe('Worker role and garage-scope authorization matrix', () => {
     expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_EXPIRED' });
   });
 
-  it('rejects a fresh PIN session after the entity active-session marker is revoked', async () => {
-    const sessionId = 'garage-session-marker-revoked';
+  it('accepts a fresh active per-device PIN session even when the entity marker never listed it', async () => {
+    // 2026-11-13 incident: the entity doc's activeSessionIds array has several
+    // non-transactional Worker writers, so a lost or missing marker must not
+    // revoke a device whose own session doc is active and fresh. The device
+    // doc is the auth record; the entity marker is advisory bookkeeping.
+    const sessionId = 'garage-session-marker-lost';
     mockDb.seed('garage_sessions/worker-uid', {
+      uid: 'worker-uid', role: 'garage', entityId: 'garage-a', garageId: 'garage-a',
+      sessionId, isActive: true, lastActive: new Date()
+    });
+    mockDb.seed(`garage_sessions/worker-uid/sessions/${sessionId}`, {
       uid: 'worker-uid', role: 'garage', entityId: 'garage-a', garageId: 'garage-a',
       sessionId, isActive: true, lastActive: new Date()
     });
@@ -346,8 +354,7 @@ describe('Worker role and garage-scope authorization matrix', () => {
     const response = await call('/api/garages/garage-a', 'valid-worker-token', {
       headers: { 'x-session-id': sessionId }
     });
-    expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({ success: false, error: 'SESSION_REVOKED' });
+    expect(response.status).toBe(200);
   });
 
   it('resolves a fresh active per-device PIN session', async () => {

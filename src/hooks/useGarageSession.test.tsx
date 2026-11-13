@@ -201,21 +201,23 @@ describe('useGarageSession Firestore listener lifecycle', () => {
     intervalSpy.mockRestore();
   });
 
-  it('does not log out when authoritative session validation is unavailable', async () => {
+  it('does not log out or re-validate when the entity marker shows another device', async () => {
+    // 2026-11-13 incident: the entity doc's activeSessionIds array has several
+    // non-transactional Worker writers, so marker churn must not be treated as
+    // eviction. The guard ignores marker changes entirely; revocation arrives
+    // through API 401s and the validate-or-refresh heartbeat instead.
     const props = createProps();
-    sessionMocks.validateOrRefreshSessionOnServer.mockRejectedValueOnce(
-      Object.assign(new Error('offline'), { code: 'NETWORK_ERROR' })
-    );
     const hook = renderHook(() => useGarageSession(props));
     await waitFor(() => expect(snapshotCallbacks).toHaveLength(1));
 
     await act(async () => {
       snapshotCallbacks[0](entitySnapshot(['session-lifecycle-test']));
       snapshotCallbacks[0](entitySnapshot([], 'session-on-another-device'));
+      snapshotCallbacks[0](entitySnapshot([]));
       await Promise.resolve();
     });
-    await waitFor(() => expect(sessionMocks.validateOrRefreshSessionOnServer).toHaveBeenCalledOnce());
 
+    expect(sessionMocks.validateOrRefreshSessionOnServer).not.toHaveBeenCalled();
     expect(props.setView).not.toHaveBeenCalled();
     expect(props.showToast).not.toHaveBeenCalled();
     expect(sessionMocks.releaseEntitySession).not.toHaveBeenCalled();

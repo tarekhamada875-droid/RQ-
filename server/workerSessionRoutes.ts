@@ -25,7 +25,6 @@ import {
   isNewPinFormat,
   validateNewPin,
   claimEntityActiveSessionIds,
-  hasActiveSession,
   hashSessionId,
   removeActiveSession,
   toSessionSummary,
@@ -373,16 +372,21 @@ workerApp.post('/api/auth/validate-or-refresh-session', async (c) => {
       return c.json({ success: false, valid: false, error: 'SESSION_EXPIRED' });
     }
 
-    // The entity-doc hasActiveSession check is needed here to detect multi-device
-    // eviction: when device B claims the session, device A's sessionId is removed
-    // from the entity's activeSessionIds, but the device-session doc is not updated.
-    // Without this read, an evicted device would keep seeing a live dashboard until
-    // its 24h session timeout.
+    // Device-doc authority (2026-11-13 incident): the device session doc above
+    // is the authentication record. The entity doc's activeSessionIds array is
+    // advisory bookkeeping with several non-transactional writers, so it must
+    // not gate validation — the previous hasActiveSession check here both
+    // logged out live devices whose marker had been lost by another writer AND
+    // permanently deactivated their blameless device docs (the
+    // validate-then-kill amplification). Real revocation deactivates the
+    // device doc itself (release-session, DELETE /api/auth/sessions/:key,
+    // invalidate-all-sessions), which the isActive check above enforces.
+    // Only the entity's EXISTENCE is checked: a deleted/disabled account
+    // revokes the session for real.
     const targetEntityId = role === 'admin' ? 'auth_pin' : sessionData.entityId || entityId;
     if (targetEntityId) {
-      const entityRef = adminDb.doc(`${entityColl}/${targetEntityId}`);
-      const entitySnap = await entityRef.get();
-      if (!entitySnap.exists || !hasActiveSession(entitySnap.data() || {}, sessionId)) {
+      const entitySnap = await adminDb.doc(`${entityColl}/${targetEntityId}`).get();
+      if (!entitySnap.exists) {
         await deviceRef.set({ isActive: false }, { merge: true });
         const rootData = rootSnap.exists ? rootSnap.data() || {} : {};
         const remaining = removeActiveSession(rootData, sessionId);
