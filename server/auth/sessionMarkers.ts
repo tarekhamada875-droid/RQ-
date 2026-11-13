@@ -2,7 +2,49 @@ import crypto from 'node:crypto';
 
 export type SessionMarkerData = Readonly<{ currentSessionId?: unknown; activeSessionIds?: unknown }>;
 
-const MAX_ACTIVE_SESSION_IDS = 100;
+const MAX_ACTIVE_SESSION_IDS = 500;
+
+/**
+ * A session whose device doc has not been refreshed for this long is already
+ * dead by the app's own rules (resolveWorkerSessionUser returns SESSION_EXPIRED
+ * past this window), so it can be pruned from an entity's activeSessionIds
+ * without ever touching a live device.
+ */
+export const SESSION_IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * When the entity's activeSessionIds list overflows, probe this many extra
+ * oldest entries beyond the strict overflow count for staleness so one claim
+ * can prune a batch of dead sessions instead of evicting a live device.
+ */
+export const STALE_PRUNE_LOOKAHEAD = 10;
+
+/**
+ * Oldest entries that a new claim would need to examine for staleness before
+ * any live session may be evicted. Empty when the list is under the cap
+ * (the common case: zero extra Firestore reads per claim).
+ */
+export function overflowCandidateIds(data: SessionMarkerData, incomingSessionId: string): string[] {
+  const list = activeSessionIds(data).filter((id) => id !== incomingSessionId);
+  const overflow = list.length + 1 - MAX_ACTIVE_SESSION_IDS;
+  if (overflow <= 0) return [];
+  return list.slice(0, overflow + STALE_PRUNE_LOOKAHEAD);
+}
+
+/** True when a device-doc lastActive value is missing or older than the idle timeout. */
+export function isSessionLastActiveStale(value: unknown, now = Date.now()): boolean {
+  let ms = 0;
+  if (value instanceof Date) {
+    ms = value.getTime();
+  } else if (typeof value === 'number') {
+    ms = value;
+  } else if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: unknown }).toDate === 'function') {
+    ms = (value as { toDate: () => Date }).toDate().getTime();
+  } else if (typeof value === 'string' || typeof value === 'object') {
+    ms = new Date(value as string).getTime();
+  }
+  return !Number.isFinite(ms) || !ms || now - ms > SESSION_IDLE_TIMEOUT_MS;
+}
 
 export type SessionSummary = Readonly<{
   id: string;
