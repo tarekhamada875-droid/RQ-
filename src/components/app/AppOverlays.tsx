@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
+import { DelayedFallback, ModalSuspenseBackdrop } from '../layout/LoadingFallbacks';
 import { authService } from '../../services';
 import { useVehicleOps } from '../../hooks/vehicleOpsContext';
 import { useSession } from '../../hooks/sessionContext';
@@ -35,7 +36,7 @@ export function AppOverlays() {
   const { selectedVehicle, showCheckInModal, setShowCheckInModal, showCheckOutModal, setShowCheckOutModal, isLoading, loadingType, handleCheckIn, confirmCheckOut, handleDeleteVehicle, showRecentExitWarning, setShowRecentExitWarning, recentVehicle, setRecentVehicle, showSubscriberWarning, setShowSubscriberWarning, subscriberWarningPlate, setSubscriberWarningPlate, pendingCheckInType, pendingCheckInPlate, setSelectedVehicle } = useVehicleOps();
   const { deleteGarage } = useAdminMutations();
 
-  return <Suspense fallback={null}>
+  return <Suspense fallback={<DelayedFallback><ModalSuspenseBackdrop /></DelayedFallback>}>
     {/* PR-U: CheckInModal is legacy dead code — nobody calls setShowCheckInModal(true)
         in production. It's kept for compilation; the active check-in flow goes
         through RegistrationCard → handleCheckIn(type, plateValue) directly. */}

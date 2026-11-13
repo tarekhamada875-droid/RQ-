@@ -15,6 +15,7 @@ import { useBackHandler } from "../../hooks/backHandler";
 import { useGarageInput } from "../../hooks/garageInput";
 import { useVehicleOps } from "../../hooks/vehicleOpsContext";
 import { FlipNumber } from "../ui/FlipNumber";
+import { Spinner } from "../ui/Spinner";
 import { isLightColor } from '../../utils/colors';
 import { safeDate } from '../../utils/dates';
 import { auth } from "../../firebase";
@@ -60,7 +61,7 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
   } = props;
 
   // Vehicle operations come from VehicleOpsProvider (context, not props)
-  const { setSelectedVehicle, setShowCheckOutModal, handleCheckIn, isLoading, checkoutJustSucceeded } = useVehicleOps();
+  const { setSelectedVehicle, setShowCheckOutModal, handleCheckIn, isLoading, loadingType, checkoutJustSucceeded } = useVehicleOps();
 
   // Input refs + focus state come from GarageInputProvider (context, not props)
   const { plateInputRef, inputRef, isInputFocused, setIsInputFocused } = useGarageInput();
@@ -276,6 +277,28 @@ export const GarageDashboardView = memo((props: GarageDashboardViewProps) => {
                 inputRef={inputRef}
                 isLoading={isLoading}
               />
+            )}
+
+            {/* UX-C: during a vehicle transaction the action buttons unmount
+                (the draft plate is cleared at submit start), which used to
+                leave the screen silent while the Worker round trip ran. This
+                slim status strip explains the locked buttons instead. */}
+            {isLoading && (
+              <div
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl bg-slate-900/[0.04] dark:bg-slate-800/40 text-slate-500 dark:text-slate-400"
+                role="status"
+              >
+                <Spinner className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-bold">
+                  {loadingType === 'hourly' || loadingType === 'overnight'
+                    ? 'جاري تسجيل دخول السيارة...'
+                    : loadingType === 'checkout'
+                      ? 'جاري تسجيل خروج السيارة...'
+                      : loadingType === 'delete'
+                        ? 'جاري حذف السيارة...'
+                        : 'جاري تنفيذ العملية...'}
+                </span>
+              </div>
             )}
 
             {!isInputFocused && (
