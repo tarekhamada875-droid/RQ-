@@ -144,7 +144,11 @@ describe('Worker session lifecycle routes', () => {
     expect(mockDb.records.get('garage_sessions/garage-uid-garage-a')?.isActive).toBe(false);
   });
 
-  it('rejects a device removed from the entity active-session marker', async () => {
+  it('keeps a live device valid even when the entity marker no longer lists it', async () => {
+    // 2026-11-13 incident: the entity doc's activeSessionIds array has several
+    // non-transactional writers, so a lost update must not revoke a device
+    // whose own session doc is still active. The device doc is the auth
+    // record; the entity marker is advisory bookkeeping.
     const now = new Date();
     mockDb.seed('garage_sessions/garage-uid-garage-a', {
       uid: 'garage-uid-garage-a', role: 'garage', entityId: 'garage-a', sessionId: 'device-a', isActive: true,
@@ -162,8 +166,9 @@ describe('Worker session lifecycle routes', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ success: false, valid: false, error: 'SESSION_REVOKED' });
-    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a/sessions/device-a')?.isActive).toBe(false);
+    expect(await response.json()).toMatchObject({ success: true, valid: true });
+    // The blameless device doc must NOT be deactivated by validation.
+    expect(mockDb.records.get('garage_sessions/garage-uid-garage-a/sessions/device-a')?.isActive).toBe(true);
   });
 
   it('invalidates root and device sessions across roles and clears only session markers', async () => {

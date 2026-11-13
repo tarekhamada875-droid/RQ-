@@ -154,7 +154,18 @@ async function resolveWorkerSessionUser(
 
           const entityId = indexedRole === 'admin' ? 'auth_pin' : indexData.entityId;
           const entitySnap = await adminDb.doc(`${indexedDefinition.entity}/${entityId}`).get();
-          if (entitySnap.exists && hasActiveSession(entitySnap.data() || {}, sessionId)) {
+          // Device-doc authority (2026-11-13 incident): the per-device session
+          // doc above is the authentication record — it is Worker-written and
+          // has no shared-doc contention. The entity doc's activeSessionIds
+          // array is advisory bookkeeping maintained by the same
+          // claim/release transactions, but several of its writers are
+          // non-transactional read-modify-writes, so a lost update there must
+          // never log out a live device. Only the entity's EXISTENCE is
+          // required here (deleted/disabled account). Real revocation
+          // deactivates the device doc itself (release-session,
+          // DELETE /api/auth/sessions/:key, invalidate-all-sessions), which is
+          // what the isActive check above already enforces.
+          if (entitySnap.exists) {
             const entityData = entitySnap.data() || {};
             let garageId = sessionData.garageId || indexData.garageId || (indexedRole === 'garage' ? entityId : null);
             let displayName = sessionData.displayName || indexData.displayName || '';
@@ -204,8 +215,10 @@ async function resolveWorkerSessionUser(
 
     const entityId = role === 'admin' ? 'auth_pin' : sessionData.entityId || '';
     if (!entityId) continue;
+    // Device-doc authority (see the indexed path above): the entity marker is
+    // advisory bookkeeping, not an auth gate. Only existence is required.
     const entitySnap = await adminDb.doc(`${definition.entity}/${entityId}`).get();
-    if (!entitySnap.exists || !hasActiveSession(entitySnap.data() || {}, sessionId)) continue;
+    if (!entitySnap.exists) continue;
     const entityData = entitySnap.data() || {};
 
     let garageId = sessionData.garageId || (role === 'garage' ? entityId : null);

@@ -11,7 +11,6 @@ import {
   refreshEntitySession,
   type EntityRole
 } from '../services/authSessionService';
-import { authService } from '../services/authService';
 import { signInAnonymouslyOnce } from '../services/anonymousAuth';
 import { listenerTracker } from '../utils/listenerTracker';
 
@@ -436,7 +435,6 @@ export function useGarageSession({
 
       if (docCollection && activeEntityId) {
         const entityDocRef = doc(db, docCollection, activeEntityId);
-        let hasEverBeenActive = false;
         let isEvicting = false;
 
         const unsubscribeEntitySnapshot = onSnapshot(entityDocRef, async (snapshot) => {
@@ -456,53 +454,16 @@ export function useGarageSession({
           // duplicate delegate doc read on the Worker. Stored in a ref (not state)
           // to avoid extra re-renders — the dashboard poll reads it synchronously.
           latestEntitySnapshotRef.current = { data: data || null, receivedAt: Date.now() };
-          const activeIds = Array.isArray(data?.activeSessionIds) ? data.activeSessionIds : [];
-          const isSessionActive = activeIds.includes(sessionId) || data?.currentSessionId === sessionId;
-
-          if (isSessionActive) {
-            hasEverBeenActive = true;
-            return;
-          }
-
-          // If this session has never been confirmed active yet, it's still initializing/syncing from the server write.
-          // Do NOT falsely evict during the initial connection window!
-          if (!hasEverBeenActive) {
-            return;
-          }
-
-          // If the session was active, but is no longer in activeSessionIds:
-          // Verify authoritatively with the server before logging out!
-          isEvicting = true;
-          try {
-            const isStillValid = await authService.validateOrRefreshSessionOnServer(
-              currentUser.uid,
-              sessionId,
-              activeRole,
-              activeEntityId
-            );
-            if (!isMounted) {
-              isEvicting = false;
-              return;
-            }
-            if (isStillValid === null) {
-              // A transport/server failure is not evidence that the session was revoked.
-              isEvicting = false;
-              return;
-            }
-            if (isStillValid) {
-              // Server confirmed session is still valid; client snapshot was transiently out of sync
-              isEvicting = false;
-              return;
-            }
-          } catch {
-            // Network error during validation; do not kick out on transient network error
-            isEvicting = false;
-            return;
-          }
-
-          // Server confirmed session is revoked/displaced
-          showLogoutToastOnce('تم تسجيل خروجك من جهاز آخر');
-          handleLogout(true);
+          // Session revocation is deliberately NOT detected here. The entity
+          // doc's activeSessionIds array is advisory bookkeeping with several
+          // non-transactional writers on the Worker; treating a missing marker
+          // as eviction force-logged-out live devices whose session doc was
+          // still active (the 2026-11-13 "logged out from another device"
+          // incident). The authoritative revocation record is the device
+          // session doc, which the browser cannot read directly; it reaches
+          // this client through (a) any Worker API call answering 401 (the
+          // global api-session-expired event), and (b) the hourly
+          // validate-or-refresh heartbeat. Both paths already force logout.
         }, (err) => {
           console.warn('Entity lock snapshot warning:', err);
         });
