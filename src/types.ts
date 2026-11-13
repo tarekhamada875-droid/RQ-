@@ -184,5 +184,3 @@ export interface SystemConfig {
   creditRate?: number;
   updatedAt?: FirestoreTimestamp;
 }
-
-export * from './types/apiContracts';

@@ -2,14 +2,6 @@ import { EntityRole } from '../types';
 import { authService } from './authService';
 export type { EntityRole };
 
-export interface GarageSessionDoc {
-  garageId?: string;
-  activeSessionId?: string;
-  sessionId?: string;
-  deviceId?: string;
-  lastHeartbeat?: string;
-}
-
 export interface ClaimSessionParams {
   role: EntityRole;
   entityId: string;

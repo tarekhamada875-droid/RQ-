@@ -10,8 +10,6 @@ import { validateGarageCreation } from '../domain/garage/validation';
 import { listenerTracker } from '../utils/listenerTracker';
 import { getCairoDateKey } from '../../server/projections';
 
-export type { GarageDeletionProgress, GarageDeletionStatus } from './garageDeletionService';
-
 export interface GarageDashboardSummary {
   activeVehicleCount: number;
   entriesToday: number;
